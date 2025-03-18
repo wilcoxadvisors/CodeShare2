@@ -277,7 +277,7 @@ function ChartOfAccounts() {
   });
   
   const deleteAccount = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id: number) => {
       return await apiRequest(
         `/api/entities/${currentEntity?.id}/accounts/${id}`, 
         {
@@ -318,9 +318,7 @@ function ChartOfAccounts() {
           });
           
           // Get full account details before showing the form
-          apiRequest(`/api/entities/${currentEntity?.id}/accounts/${accountToDelete.id}`, {
-            method: 'GET'
-          })
+          apiRequest(`/api/entities/${currentEntity?.id}/accounts/${accountToDelete.id}`)
             .then((accountDetails: any) => {
               setAccountData(prev => ({
                 ...prev,
