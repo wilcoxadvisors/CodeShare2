@@ -14,12 +14,15 @@ if (hasValidApiKey) {
   });
 }
 
+// Error message for when XAI API key is not available
+const API_KEY_MISSING_MESSAGE = "AI integration not available. Please add the XAI_API_KEY to your environment variables to enable AI features.";
+
 // Fallback function for when API key is not available
 const generateFallbackResponse = (endpoint: string, message: string = 'API key not configured') => {
   console.warn(`XAI integration failed for ${endpoint}: ${message}`);
   return {
     error: "XAI integration not available",
-    message: "Please provide a valid XAI API key to enable AI features."
+    message: API_KEY_MISSING_MESSAGE
   };
 };
 
@@ -28,7 +31,9 @@ export function registerAIRoutes(app: Express) {
   app.get('/api/ai/status', async (_req: Request, res: Response) => {
     res.json({ 
       available: hasValidApiKey,
-      message: hasValidApiKey ? 'xAI integration is ready' : 'xAI API key is not configured'
+      message: hasValidApiKey 
+        ? 'xAI integration is ready' 
+        : 'xAI API key is not configured. Please add the XAI_API_KEY to your environment variables.'
     });
   });
 
@@ -44,7 +49,7 @@ export function registerAIRoutes(app: Express) {
       // Check if API key is available
       if (!hasValidApiKey || !openai) {
         return res.json({ 
-          analysis: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          analysis: API_KEY_MISSING_MESSAGE
         });
       }
       

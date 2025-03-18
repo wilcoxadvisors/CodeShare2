@@ -133,6 +133,17 @@ export async function analyzeFinancialDocument(base64Image: string): Promise<str
  */
 export async function checkAiStatus(): Promise<{ available: boolean; message: string }> {
   try {
+    // First check locally if the API key exists
+    const apiKeyExists = await checkXaiApiKey();
+    
+    if (!apiKeyExists) {
+      return { 
+        available: false, 
+        message: 'xAI API key is not available. Please contact your administrator to set up the API key.' 
+      };
+    }
+    
+    // If API key exists, verify server connectivity
     const response = await fetch('/api/ai/status');
     
     if (!response.ok) {
