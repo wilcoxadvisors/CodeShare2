@@ -82,7 +82,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Use bcrypt to compare the password with the hash
-        const bcrypt = require('bcryptjs');
         const isMatch = await bcrypt.compare(password, user.password);
         
         if (isMatch) {
