@@ -25,6 +25,33 @@ interface AuthUser {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Public routes for checking API availability - must be defined before auth middleware
+  app.post("/api/public/check-api", (req, res) => {
+    try {
+      const { api } = req.body;
+      
+      if (!api || typeof api !== 'string') {
+        return res.status(400).json({ message: 'Invalid API name provided' });
+      }
+      
+      // Whitelist of APIs that can be publicly checked
+      const allowedApis = ['XAI_API_KEY', 'OPENAI_API_KEY'];
+      
+      if (!allowedApis.includes(api)) {
+        return res.status(403).json({ message: 'Not allowed to check this API' });
+      }
+      
+      // Check if the API key exists in the environment
+      const exists = !!process.env[api];
+      
+      // Return existence flag but NEVER the actual value
+      return res.json({ exists });
+    } catch (error) {
+      console.error('Error checking API availability:', error);
+      return res.status(500).json({ message: 'Failed to check API availability' });
+    }
+  });
+
   // Import memorystore dynamically with ESM syntax
   const MemoryStore = (await import("memorystore")).default(session);
   
@@ -740,13 +767,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API route to check for the existence of secrets
-  app.post("/api/secrets/check", isAuthenticated, (req, res) => {
+  // API route to check for the existence of secrets - public access for pre-login availability checks
+  app.post("/api/secrets/check", (req, res) => {
     try {
       const { secret } = req.body;
       
       if (!secret || typeof secret !== 'string') {
         return res.status(400).json({ message: 'Invalid secret name provided' });
+      }
+      
+      // Whitelist of secrets that can be publicly checked
+      const allowedSecrets = ['XAI_API_KEY', 'OPENAI_API_KEY'];
+      
+      if (!allowedSecrets.includes(secret)) {
+        return res.status(403).json({ message: 'Not allowed to check this secret' });
       }
       
       // Check if the secret exists in the environment
