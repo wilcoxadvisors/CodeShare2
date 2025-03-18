@@ -1,141 +1,112 @@
-import OpenAI from "openai";
+import { apiRequest } from './queryClient';
 
-// Create client with xAI API base URL and API key from environment
-const openaiClient = new OpenAI({ 
-  baseURL: "https://api.x.ai/v1", 
-  apiKey: process.env.XAI_API_KEY 
-});
-
-// Text-only financial analysis using Grok
+/**
+ * Analyze financial data and provide insights
+ * @param text - The financial data text to analyze
+ * @returns Promise containing the analysis result
+ */
 export async function analyzeFinancialData(text: string): Promise<string> {
-  const prompt = `As a financial analysis expert, please analyze the following data and provide insights:\n\n${text}`;
-
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
+    const response = await apiRequest('/api/ai/analyze', {
+      method: 'POST',
+      data: { text }
     });
-
-    return response.choices[0].message.content || "No analysis generated";
+    
+    return response.analysis || 'No analysis available';
   } catch (error) {
-    console.error("Error analyzing financial data:", error);
-    throw new Error(`Failed to analyze financial data: ${error.message}`);
+    console.error('Failed to analyze financial data:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to analyze financial data');
   }
 }
 
-// Sentiment analysis of financial reports or market conditions
+/**
+ * Analyze sentiment of text
+ * @param text - The text to analyze
+ * @returns Promise containing sentiment rating and confidence
+ */
 export async function analyzeSentiment(text: string): Promise<{
-  sentiment: "positive" | "negative" | "neutral";
+  rating: number;
   confidence: number;
-  analysis: string;
 }> {
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a financial sentiment analysis expert. Analyze the sentiment of the text and provide a rating of 'positive', 'negative', or 'neutral', a confidence score between 0 and 1, and a brief analysis. Respond with JSON in this format: { 'sentiment': string, 'confidence': number, 'analysis': string }",
-        },
-        {
-          role: "user",
-          content: text,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
+    const response = await apiRequest('/api/ai/sentiment', {
+      method: 'POST',
+      data: { text }
     });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-
+    
+    if (!response.rating || !response.confidence) {
+      return { rating: 0, confidence: 0 };
+    }
+    
     return {
-      sentiment: result.sentiment || "neutral",
-      confidence: Math.max(0, Math.min(1, result.confidence || 0.5)),
-      analysis: result.analysis || "No sentiment analysis available",
+      rating: Math.max(1, Math.min(5, Math.round(response.rating))),
+      confidence: Math.max(0, Math.min(1, response.confidence))
     };
   } catch (error) {
-    console.error("Failed to analyze sentiment:", error);
-    return {
-      sentiment: "neutral",
-      confidence: 0,
-      analysis: `Error analyzing sentiment: ${error.message}`,
-    };
+    console.error('Failed to analyze sentiment:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to analyze sentiment');
   }
 }
 
-// Transaction categorization helper
+/**
+ * Categorize a transaction based on its description
+ * @param description - The transaction description
+ * @returns Promise containing the suggested category
+ */
 export async function categorizeTransaction(description: string): Promise<{
   category: string;
   confidence: number;
 }> {
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a financial categorization expert. Analyze the transaction description and categorize it into one of these categories: 'Operating Expense', 'Non-operating Expense', 'Cost of Goods Sold', 'Marketing', 'Rent', 'Payroll', 'Utilities', 'Equipment', 'Professional Services', 'Travel', 'Insurance', 'Taxes', 'Depreciation', 'Revenue', 'Other'. Provide a confidence score between 0 and 1. Respond with JSON in this format: { 'category': string, 'confidence': number }",
-        },
-        {
-          role: "user",
-          content: description,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
+    const response = await apiRequest('/api/ai/categorize', {
+      method: 'POST',
+      data: { description }
     });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-
+    
     return {
-      category: result.category || "Other",
-      confidence: Math.max(0, Math.min(1, result.confidence || 0.5)),
+      category: response.category || 'Uncategorized',
+      confidence: response.confidence || 0
     };
   } catch (error) {
-    console.error("Failed to categorize transaction:", error);
-    return {
-      category: "Other",
-      confidence: 0,
-    };
+    console.error('Failed to categorize transaction:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to categorize transaction');
   }
 }
 
-// Generate report summaries or executive digests
+/**
+ * Generate a summary of a financial report
+ * @param reportData - The report data to summarize
+ * @returns Promise containing the summary
+ */
 export async function generateReportSummary(reportData: string): Promise<string> {
-  const prompt = `Please generate an executive summary of the following financial report data. Highlight key metrics, trends, and actionable insights:\n\n${reportData}`;
-
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1000,
+    const response = await apiRequest('/api/ai/summarize', {
+      method: 'POST',
+      data: { reportData }
     });
-
-    return response.choices[0].message.content || "No summary generated";
+    
+    return response.summary || 'No summary available';
   } catch (error) {
-    console.error("Error generating report summary:", error);
-    throw new Error(`Failed to generate report summary: ${error.message}`);
+    console.error('Failed to generate report summary:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to generate report summary');
   }
 }
 
-// Explain accounting concepts or transactions
+/**
+ * Explain an accounting concept
+ * @param concept - The accounting concept to explain
+ * @returns Promise containing the explanation
+ */
 export async function explainAccountingConcept(concept: string): Promise<string> {
-  const prompt = `Please explain the following accounting concept in simple, easy-to-understand terms: ${concept}`;
-
   try {
-    const response = await openaiClient.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
+    const response = await apiRequest('/api/ai/explain', {
+      method: 'POST',
+      data: { concept }
     });
-
-    return response.choices[0].message.content || "No explanation generated";
+    
+    return response.explanation || 'No explanation available';
   } catch (error) {
-    console.error("Error explaining accounting concept:", error);
-    throw new Error(`Failed to explain accounting concept: ${error.message}`);
+    console.error('Failed to explain accounting concept:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to explain accounting concept');
   }
 }

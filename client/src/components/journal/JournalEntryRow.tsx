@@ -1,7 +1,15 @@
 // src/components/journal/JournalEntryRow.tsx
-import React from 'react';
-import { Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, Sparkles } from 'lucide-react';
 import { AccountType } from '@shared/schema';
+import { AiInsight } from '../AiInsight';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
 
 interface JournalEntryRowProps {
   entry: {
@@ -51,6 +59,19 @@ export default function JournalEntryRow({
   accountsList,
   getSubledgerBadge
 }: JournalEntryRowProps) {
+  const [openAiDialog, setOpenAiDialog] = useState(false);
+  
+  // Function to find account by subtype and handle selection
+  const findAndSelectAccountBySubtype = (subtype: string) => {
+    // Find the first account matching the subtype
+    const matchingAccount = accountsList.find(account => 
+      account.subtype === subtype
+    );
+    
+    if (matchingAccount) {
+      handleAccountSelect(entry.id, matchingAccount.id);
+    }
+  };
   return (
     <tr className="border-b">
       <td className="py-2 px-3">
@@ -159,7 +180,39 @@ export default function JournalEntryRow({
           className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </td>
-      <td className="py-2 px-3">
+      <td className="py-2 px-3 flex space-x-2">
+        {/* AI Suggestion Button */}
+        <Dialog open={openAiDialog} onOpenChange={setOpenAiDialog}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              disabled={!entry.description}
+              className={`text-blue-500 hover:text-blue-700 p-1 ${!entry.description ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="AI Suggest Account"
+            >
+              <Sparkles size={18} />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>AI Account Suggestion</DialogTitle>
+            </DialogHeader>
+            <AiInsight
+              title="Transaction Category Analysis"
+              description="AI will analyze the transaction description to suggest an appropriate account category."
+              initialData={entry.description || ''}
+              insightType="categorize"
+              showInput={false}
+              onInsightGenerated={(suggestion) => {
+                // Use the suggestion to find a matching account
+                findAndSelectAccountBySubtype(suggestion.toLowerCase().replace(/ /g, '_'));
+                setOpenAiDialog(false);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Remove Button */}
         <button
           type="button"
           onClick={() => removeEntryRow(entry.id)}
