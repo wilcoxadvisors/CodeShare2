@@ -13,6 +13,7 @@ import JournalEntries from "./pages/JournalEntries";
 import JournalEntryDetail from "./pages/JournalEntryDetail";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import Reports from "./pages/Reports";
+import TrialBalance from "./pages/TrialBalance";
 import AccountsPayable from "./pages/AccountsPayable";
 import AccountsReceivable from "./pages/AccountsReceivable";
 import FixedAssets from "./pages/FixedAssets";
@@ -102,6 +103,12 @@ function Router() {
       <Route path="/reports">
         <AppLayout>
           <ProtectedRoute component={Reports} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/trial-balance">
+        <AppLayout>
+          <ProtectedRoute component={TrialBalance} />
         </AppLayout>
       </Route>
       

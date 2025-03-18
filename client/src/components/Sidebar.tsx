@@ -90,6 +90,17 @@ function Sidebar() {
               </a>
             </Link>
             
+            <Link href="/trial-balance">
+              <a className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                isActive('/trial-balance') 
+                  ? 'bg-secondary-800 text-white' 
+                  : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
+              }`}>
+                <BarChart2 className="h-5 w-5 mr-3" />
+                Trial Balance
+              </a>
+            </Link>
+            
             <Link href="/accounts-payable">
               <a className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
                 isActive('/accounts-payable') 

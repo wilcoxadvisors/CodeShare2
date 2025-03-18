@@ -695,6 +695,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+  
+  app.get("/api/entities/:entityId/reports/trial-balance", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const { asOfDate } = req.query;
+      const date = asOfDate ? new Date(asOfDate as string) : new Date();
+      
+      const accounts = await storage.getAccounts(entityId);
+      const generalLedger = await storage.getGeneralLedger(entityId, {
+        endDate: date
+      });
+      
+      // Calculate account balances
+      const accountBalances = accounts.map(account => {
+        // Filter GL entries for this account and calculate totals
+        const entries = generalLedger.filter(entry => entry.accountId === account.id);
+        const debit = entries.reduce((sum, entry) => sum + parseFloat(entry.debit || '0'), 0);
+        const credit = entries.reduce((sum, entry) => sum + parseFloat(entry.credit || '0'), 0);
+        
+        // Return account with balances
+        return {
+          ...account,
+          debit,
+          credit,
+          balance: account.type === AccountType.ASSET || account.type === AccountType.EXPENSE 
+            ? debit - credit  // Debit balance accounts
+            : credit - debit  // Credit balance accounts
+        };
+      });
+      
+      const result = {
+        asOfDate: date,
+        accounts: accountBalances,
+        totalDebits: accountBalances.reduce((sum, account) => sum + account.debit, 0),
+        totalCredits: accountBalances.reduce((sum, account) => sum + account.credit, 0)
+      };
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating trial balance:', error);
+      res.status(500).json({ message: 'Failed to generate trial balance' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
