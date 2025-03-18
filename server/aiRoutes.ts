@@ -195,4 +195,85 @@ export function registerAIRoutes(app: Express) {
       });
     }
   });
+
+  // Route for document image analysis (receipts/invoices) - optimized for token efficiency
+  app.post('/api/ai/analyze-document', async (req: Request, res: Response) => {
+    try {
+      const { image } = req.body;
+      
+      if (!image) {
+        return res.status(400).json({ error: 'Document image is required' });
+      }
+      
+      const response = await openai.chat.completions.create({
+        model: "grok-2-vision-1212",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Extract key financial information from this document image (if present):\n- Document type\n- Date\n- Total amount\n- Company/vendor name\n- Line items\n- Payment information\n\nProvide the results in a structured format."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${image}`
+                }
+              }
+            ],
+          },
+        ],
+        max_tokens: 500, // Limit response size
+      });
+
+      return res.json({ 
+        analysis: response.choices[0].message.content 
+      });
+    } catch (error: any) {
+      console.error('Error analyzing document image:', error);
+      return res.status(500).json({ 
+        error: `Document analysis failed: ${error.message || 'Unknown error'}` 
+      });
+    }
+  });
+
+  // Route for generating audit suggestions - optimized for token efficiency
+  app.post('/api/ai/audit-suggestions', async (req: Request, res: Response) => {
+    try {
+      const { transactionData } = req.body;
+      
+      if (!transactionData) {
+        return res.status(400).json({ error: 'Transaction data is required' });
+      }
+      
+      // Limit transaction data to save tokens
+      const truncatedData = transactionData.length > 3000 ? transactionData.substring(0, 3000) + '...' : transactionData;
+      
+      const response = await openai.chat.completions.create({
+        model: "grok-2-1212",
+        messages: [
+          {
+            role: "system",
+            content: "You are an audit expert. Suggest 3-5 targeted audit procedures based on the transaction data."
+          },
+          {
+            role: "user",
+            content: truncatedData
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 400, // Limit response size
+      });
+      
+      return res.json({ 
+        suggestions: response.choices[0].message.content 
+      });
+    } catch (error: any) {
+      console.error('Error generating audit suggestions:', error);
+      return res.status(500).json({ 
+        error: `Audit suggestion generation failed: ${error.message || 'Unknown error'}` 
+      });
+    }
+  });
 }

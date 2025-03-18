@@ -22,6 +22,14 @@ interface ExplanationResponse {
   explanation: string;
 }
 
+interface DocumentAnalysisResponse {
+  analysis: string;
+}
+
+interface AuditSuggestionsResponse {
+  suggestions: string;
+}
+
 /**
  * Analyze financial data and provide insights
  * @param text - The financial data text to analyze
@@ -145,5 +153,49 @@ export async function explainAccountingConcept(concept: string): Promise<string>
   } catch (error) {
     console.error('Failed to explain accounting concept:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to explain accounting concept');
+  }
+}
+
+/**
+ * Analyze document image (receipt/invoice)
+ * @param imageBase64 - The base64-encoded image data
+ * @returns Promise containing the analysis
+ */
+export async function analyzeDocumentImage(imageBase64: string): Promise<string> {
+  try {
+    const response = await apiRequest<DocumentAnalysisResponse>('/api/ai/analyze-document', {
+      method: 'POST',
+      body: JSON.stringify({ image: imageBase64 }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.analysis || 'No document analysis available';
+  } catch (error) {
+    console.error('Failed to analyze document image:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to analyze document image');
+  }
+}
+
+/**
+ * Generate audit suggestions based on transaction data
+ * @param transactionData - The transaction data to analyze
+ * @returns Promise containing the audit suggestions
+ */
+export async function generateAuditSuggestions(transactionData: string): Promise<string> {
+  try {
+    const response = await apiRequest<AuditSuggestionsResponse>('/api/ai/audit-suggestions', {
+      method: 'POST',
+      body: JSON.stringify({ transactionData }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.suggestions || 'No audit suggestions available';
+  } catch (error) {
+    console.error('Failed to generate audit suggestions:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to generate audit suggestions');
   }
 }
