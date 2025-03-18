@@ -8,10 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import PageHeader from '../components/PageHeader';
 import JournalHeader from './journal/JournalHeader';
-import JournalEntriesTable from './journal/JournalEntriesTable';
-import ActionButtons from './journal/ActionButtons';
-import { AccountType } from '@shared/schema';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -21,6 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import JournalEntriesTable from './journal/JournalEntriesTable';
+import ActionButtons from './journal/ActionButtons';
+import { AccountType } from '@shared/schema';
 
 interface JournalEntryLine {
   id: string;
@@ -153,6 +153,27 @@ export default function ManualJournalEntry() {
       ...prev,
       [name]: value
     }));
+  };
+  
+  // Handle cancel button click
+  const handleCancel = () => {
+    // If there are any entries with data, show confirmation dialog
+    const hasData = journalData.entries.some(entry => 
+      entry.accountId || entry.description || entry.debit || entry.credit
+    ) || journalData.description || supportingDocs.length > 0;
+    
+    if (hasData) {
+      setShowCancelConfirm(true);
+    } else {
+      // No data to lose, navigate back immediately
+      setLocation("/journal-entries");
+    }
+  };
+  
+  // Handle confirmed cancel
+  const handleConfirmedCancel = () => {
+    setShowCancelConfirm(false);
+    setLocation("/journal-entries");
   };
   
   // Handle journal entry line changes
@@ -485,8 +506,30 @@ export default function ManualJournalEntry() {
           isSubmitting={isSubmitting}
           submitStatus={submitStatus}
           setSubmitStatus={setSubmitStatus}
+          onCancel={handleCancel}
         />
       </form>
+      
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. If you cancel now, all your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmedCancel} 
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
