@@ -129,14 +129,22 @@ function JournalEntries() {
             </svg>
             Export
           </button>
-          <Link href="/journal-entries/new">
-            <Button 
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              <Plus className="-ml-1 mr-2 h-5 w-5" />
-              New Journal Entry
-            </Button>
-          </Link>
+          <Button 
+            onClick={handleNewJournalEntry}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
+            New Journal Entry
+          </Button>
+          <Button 
+            onClick={() => setLocation("/journal-entries/batch-upload")}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Batch Upload
+          </Button>
         </div>
       </PageHeader>
 
