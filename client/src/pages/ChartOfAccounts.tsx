@@ -46,7 +46,7 @@ function ChartOfAccounts() {
 
   // Get accounts data
   const { data: accounts = [], isLoading, refetch } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : null,
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ["no-entity-selected"],
     enabled: !!currentEntity,
   });
 

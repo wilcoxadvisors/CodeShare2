@@ -23,7 +23,7 @@ function TrialBalance() {
   const [reportTab, setReportTab] = useState("summary"); // summary or detail
 
   const { data: trialBalanceData, isLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/trial-balance`, reportDate] : null,
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/trial-balance`, reportDate] : ["no-entity-selected"],
     enabled: !!currentEntity
   });
 
