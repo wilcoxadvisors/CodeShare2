@@ -10,7 +10,8 @@ import {
   Wallet,
   Computer,
   Settings,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 
 function Sidebar() {
@@ -106,6 +107,12 @@ function Sidebar() {
               path="/fixed-assets" 
               icon={<Computer className="h-5 w-5 mr-2" />} 
               label="Fixed Assets" 
+            />
+            
+            <NavItem 
+              path="/document-analysis" 
+              icon={<FileText className="h-5 w-5 mr-2" />} 
+              label="Document Analysis" 
             />
             
             <div className="mt-6 border-t border-blue-700 pt-4">
