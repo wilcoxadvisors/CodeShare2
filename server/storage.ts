@@ -4,10 +4,13 @@ import {
   accounts, Account, InsertAccount, AccountType,
   journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
   journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
+  journalEntryFiles,
   fixedAssets, FixedAsset, InsertFixedAsset,
   savedReports, SavedReport, ReportType,
   userEntityAccess
 } from "@shared/schema";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { db } from "./db";
 
 // Storage interface for data access
 export interface IStorage {
@@ -834,4 +837,557 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async getEntity(id: number): Promise<Entity | undefined> {
+    const [entity] = await db.select().from(entities).where(eq(entities.id, id));
+    return entity || undefined;
+  }
+
+  async getEntities(): Promise<Entity[]> {
+    return await db.select().from(entities);
+  }
+
+  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+    const userEntities = await db
+      .select()
+      .from(entities)
+      .where(eq(entities.ownerId, userId))
+      .orderBy(entities.name);
+    
+    const accessEntities = await db
+      .select({
+        entity: entities
+      })
+      .from(userEntityAccess)
+      .innerJoin(entities, eq(userEntityAccess.entityId, entities.id))
+      .where(eq(userEntityAccess.userId, userId));
+    
+    const accessEntitiesData = accessEntities.map(row => row.entity);
+    
+    // Combine both sets of entities and return unique by ID
+    const combinedEntities = [...userEntities, ...accessEntitiesData];
+    const uniqueEntities = combinedEntities.filter((entity, index, self) =>
+      index === self.findIndex((e) => e.id === entity.id)
+    );
+    
+    return uniqueEntities;
+  }
+
+  async createEntity(insertEntity: InsertEntity): Promise<Entity> {
+    const [entity] = await db
+      .insert(entities)
+      .values(insertEntity)
+      .returning();
+    return entity;
+  }
+
+  async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
+    const [entity] = await db
+      .update(entities)
+      .set(entityData)
+      .where(eq(entities.id, id))
+      .returning();
+    return entity || undefined;
+  }
+
+  async getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined> {
+    const [access] = await db
+      .select()
+      .from(userEntityAccess)
+      .where(and(
+        eq(userEntityAccess.userId, userId),
+        eq(userEntityAccess.entityId, entityId)
+      ));
+    return access?.accessLevel;
+  }
+
+  async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void> {
+    await db
+      .insert(userEntityAccess)
+      .values({ userId, entityId, accessLevel })
+      .onConflictDoUpdate({
+        target: [userEntityAccess.userId, userEntityAccess.entityId],
+        set: { accessLevel }
+      });
+  }
+
+  async getAccount(id: number): Promise<Account | undefined> {
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, id));
+    return account || undefined;
+  }
+
+  async getAccounts(entityId: number): Promise<Account[]> {
+    return await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.entityId, entityId))
+      .orderBy(accounts.code);
+  }
+
+  async getAccountsByType(entityId: number, type: AccountType): Promise<Account[]> {
+    return await db
+      .select()
+      .from(accounts)
+      .where(and(
+        eq(accounts.entityId, entityId),
+        eq(accounts.type, type)
+      ))
+      .orderBy(accounts.code);
+  }
+
+  async createAccount(insertAccount: InsertAccount): Promise<Account> {
+    const [account] = await db
+      .insert(accounts)
+      .values(insertAccount)
+      .returning();
+    return account;
+  }
+
+  async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
+    const [account] = await db
+      .update(accounts)
+      .set(accountData)
+      .where(eq(accounts.id, id))
+      .returning();
+    return account || undefined;
+  }
+
+  async deleteAccount(id: number): Promise<void> {
+    await db
+      .delete(accounts)
+      .where(eq(accounts.id, id));
+  }
+
+  async getJournalEntry(id: number): Promise<JournalEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(journalEntries)
+      .where(eq(journalEntries.id, id));
+    return entry || undefined;
+  }
+
+  async getJournalEntries(entityId: number): Promise<JournalEntry[]> {
+    return await db
+      .select()
+      .from(journalEntries)
+      .where(eq(journalEntries.entityId, entityId))
+      .orderBy(desc(journalEntries.date));
+  }
+
+  async getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]> {
+    return await db
+      .select()
+      .from(journalEntries)
+      .where(and(
+        eq(journalEntries.entityId, entityId),
+        eq(journalEntries.status, status)
+      ))
+      .orderBy(desc(journalEntries.date));
+  }
+
+  async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
+    const [entry] = await db
+      .insert(journalEntries)
+      .values(insertEntry)
+      .returning();
+    return entry;
+  }
+
+  async updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined> {
+    const [entry] = await db
+      .update(journalEntries)
+      .set(entryData)
+      .where(eq(journalEntries.id, id))
+      .returning();
+    return entry || undefined;
+  }
+
+  async getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]> {
+    return await db
+      .select()
+      .from(journalEntryLines)
+      .where(eq(journalEntryLines.journalEntryId, journalEntryId))
+      .orderBy(journalEntryLines.lineNo);
+  }
+
+  async createJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
+    const [line] = await db
+      .insert(journalEntryLines)
+      .values(insertLine)
+      .returning();
+    return line;
+  }
+
+  async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(journalEntryFiles)
+      .where(eq(journalEntryFiles.journalEntryId, journalEntryId));
+  }
+
+  async createJournalEntryFile(journalEntryId: number, file: any): Promise<any> {
+    const [newFile] = await db
+      .insert(journalEntryFiles)
+      .values({ ...file, journalEntryId })
+      .returning();
+    return newFile;
+  }
+
+  async getFixedAsset(id: number): Promise<FixedAsset | undefined> {
+    const [asset] = await db
+      .select()
+      .from(fixedAssets)
+      .where(eq(fixedAssets.id, id));
+    return asset || undefined;
+  }
+
+  async getFixedAssets(entityId: number): Promise<FixedAsset[]> {
+    return await db
+      .select()
+      .from(fixedAssets)
+      .where(eq(fixedAssets.entityId, entityId));
+  }
+
+  async createFixedAsset(insertAsset: InsertFixedAsset): Promise<FixedAsset> {
+    const [asset] = await db
+      .insert(fixedAssets)
+      .values(insertAsset)
+      .returning();
+    return asset;
+  }
+
+  async updateFixedAsset(id: number, assetData: Partial<FixedAsset>): Promise<FixedAsset | undefined> {
+    const [asset] = await db
+      .update(fixedAssets)
+      .set(assetData)
+      .where(eq(fixedAssets.id, id))
+      .returning();
+    return asset || undefined;
+  }
+
+  async generateTrialBalance(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    // This is a more complex query that will need to aggregate data from journal entries
+    // For now, return a simple implementation
+    const accounts = await this.getAccounts(entityId);
+    const result = [];
+    
+    for (const account of accounts) {
+      const balance = await this.calculateAccountBalance(account.id, startDate, endDate);
+      
+      // Determine debit and credit columns based on balance
+      let debit = 0;
+      let credit = 0;
+      
+      if (balance > 0) {
+        if (account.type === AccountType.ASSET || account.type === AccountType.EXPENSE) {
+          debit = balance;
+        } else {
+          credit = balance;
+        }
+      } else if (balance < 0) {
+        if (account.type === AccountType.ASSET || account.type === AccountType.EXPENSE) {
+          credit = Math.abs(balance);
+        } else {
+          debit = Math.abs(balance);
+        }
+      }
+      
+      result.push({
+        accountId: account.id,
+        accountCode: account.code,
+        accountName: account.name,
+        debit,
+        credit
+      });
+    }
+    
+    return result;
+  }
+
+  async generateBalanceSheet(entityId: number, asOfDate?: Date): Promise<any> {
+    const assets = await this.getAccountsByType(entityId, AccountType.ASSET);
+    const liabilities = await this.getAccountsByType(entityId, AccountType.LIABILITY);
+    const equity = await this.getAccountsByType(entityId, AccountType.EQUITY);
+    
+    const assetItems = [];
+    const liabilityItems = [];
+    const equityItems = [];
+    
+    let totalAssets = 0;
+    let totalLiabilities = 0;
+    let totalEquity = 0;
+    
+    // Calculate assets
+    for (const account of assets) {
+      const balance = await this.calculateAccountBalance(account.id, undefined, asOfDate);
+      
+      assetItems.push({
+        accountId: account.id,
+        accountName: account.name,
+        accountCode: account.code,
+        balance
+      });
+      
+      totalAssets += balance;
+    }
+    
+    // Calculate liabilities
+    for (const account of liabilities) {
+      const balance = await this.calculateAccountBalance(account.id, undefined, asOfDate);
+      
+      liabilityItems.push({
+        accountId: account.id,
+        accountName: account.name,
+        accountCode: account.code,
+        balance
+      });
+      
+      totalLiabilities += balance;
+    }
+    
+    // Calculate equity
+    for (const account of equity) {
+      const balance = await this.calculateAccountBalance(account.id, undefined, asOfDate);
+      
+      equityItems.push({
+        accountId: account.id,
+        accountName: account.name,
+        accountCode: account.code,
+        balance
+      });
+      
+      totalEquity += balance;
+    }
+    
+    return {
+      assets: assetItems,
+      liabilities: liabilityItems,
+      equity: equityItems,
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
+      liabilitiesAndEquity: totalLiabilities + totalEquity
+    };
+  }
+
+  async generateIncomeStatement(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    const revenues = await this.getAccountsByType(entityId, AccountType.REVENUE);
+    const expenses = await this.getAccountsByType(entityId, AccountType.EXPENSE);
+    
+    const revenueItems = [];
+    const expenseItems = [];
+    
+    let totalRevenue = 0;
+    let totalExpenses = 0;
+    
+    // Calculate revenue
+    for (const account of revenues) {
+      const balance = await this.calculateAccountBalance(account.id, startDate, endDate);
+      
+      revenueItems.push({
+        accountId: account.id,
+        accountName: account.name,
+        accountCode: account.code,
+        balance: Math.abs(balance) // Revenue is normally credited, so positive balance is negative
+      });
+      
+      totalRevenue += Math.abs(balance);
+    }
+    
+    // Calculate expenses
+    for (const account of expenses) {
+      const balance = await this.calculateAccountBalance(account.id, startDate, endDate);
+      
+      expenseItems.push({
+        accountId: account.id,
+        accountName: account.name,
+        accountCode: account.code,
+        balance // Expenses are normally debited, so positive balance is positive
+      });
+      
+      totalExpenses += balance;
+    }
+    
+    const netIncome = totalRevenue - totalExpenses;
+    
+    return {
+      revenue: revenueItems,
+      expenses: expenseItems,
+      totalRevenue,
+      totalExpenses,
+      netIncome
+    };
+  }
+
+  async generateCashFlow(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    // This is a complex calculation that requires categorizing activities
+    // For now, return a simplified structure
+    return {
+      cashFlows: [
+        {
+          category: "Operating Activities",
+          items: [],
+          total: 0
+        },
+        {
+          category: "Investing Activities",
+          items: [],
+          total: 0
+        },
+        {
+          category: "Financing Activities",
+          items: [],
+          total: 0
+        }
+      ],
+      netCashFlow: 0
+    };
+  }
+
+  async getGeneralLedger(entityId: number, options?: GLOptions): Promise<GLEntry[]> {
+    // Base query selecting from journal entry lines
+    let query = db.select({
+      id: journalEntryLines.id,
+      date: journalEntries.date,
+      journalId: journalEntries.reference,
+      accountId: journalEntryLines.accountId,
+      accountCode: accounts.code,
+      accountName: accounts.name,
+      description: journalEntryLines.description,
+      debit: journalEntryLines.debit,
+      credit: journalEntryLines.credit,
+      status: journalEntries.status
+    })
+    .from(journalEntryLines)
+    .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+    .innerJoin(accounts, eq(journalEntryLines.accountId, accounts.id))
+    .where(eq(journalEntries.entityId, entityId));
+    
+    // Apply filters based on options
+    if (options) {
+      if (options.accountId) {
+        query = query.where(eq(journalEntryLines.accountId, options.accountId));
+      }
+      
+      if (options.startDate) {
+        query = query.where(gte(journalEntries.date, options.startDate));
+      }
+      
+      if (options.endDate) {
+        query = query.where(lte(journalEntries.date, options.endDate));
+      }
+      
+      if (options.status) {
+        query = query.where(eq(journalEntries.status, options.status));
+      }
+    }
+    
+    // Order by date and journal entry ID
+    query = query.orderBy(journalEntries.date, journalEntries.id, journalEntryLines.lineNo);
+    
+    // Execute query
+    const results = await query;
+    
+    // Calculate running balance
+    let balance = 0;
+    const entries: GLEntry[] = [];
+    
+    for (const row of results) {
+      // Calculate the impact on balance based on account type
+      const account = await this.getAccount(row.accountId);
+      if (!account) continue;
+      
+      const debitValue = parseFloat(row.debit as any) || 0;
+      const creditValue = parseFloat(row.credit as any) || 0;
+      
+      // Update balance based on account type
+      if (account.type === AccountType.ASSET || account.type === AccountType.EXPENSE) {
+        balance += debitValue - creditValue;
+      } else {
+        balance += creditValue - debitValue;
+      }
+      
+      entries.push({
+        ...row,
+        balance
+      } as GLEntry);
+    }
+    
+    return entries;
+  }
+
+  // Helper method to calculate account balance
+  private async calculateAccountBalance(accountId: number, startDate?: Date, endDate?: Date): Promise<number> {
+    const account = await this.getAccount(accountId);
+    if (!account) return 0;
+    
+    // Build a query to sum debits and credits for the account
+    let query = db.select({
+      totalDebit: sql<number>`COALESCE(SUM(${journalEntryLines.debit}), 0)`,
+      totalCredit: sql<number>`COALESCE(SUM(${journalEntryLines.credit}), 0)`
+    })
+    .from(journalEntryLines)
+    .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+    .where(and(
+      eq(journalEntryLines.accountId, accountId),
+      eq(journalEntries.status, JournalEntryStatus.POSTED)
+    ));
+    
+    // Apply date filters if provided
+    if (startDate) {
+      query = query.where(gte(journalEntries.date, startDate));
+    }
+    
+    if (endDate) {
+      query = query.where(lte(journalEntries.date, endDate));
+    }
+    
+    // Execute query
+    const [result] = await query;
+    
+    if (!result) return 0;
+    
+    const { totalDebit, totalCredit } = result;
+    
+    // Calculate balance based on account type
+    if (account.type === AccountType.ASSET || account.type === AccountType.EXPENSE) {
+      return totalDebit - totalCredit;
+    } else {
+      return totalCredit - totalDebit;
+    }
+  }
+}
+
+// Use the database storage implementation
+export const storage = new DatabaseStorage();
