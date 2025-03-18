@@ -467,6 +467,9 @@ export class MemStorage implements IStorage {
     const accounts = await this.getAccounts(entityId);
     const result = [];
     
+    let totalDebits = 0;
+    let totalCredits = 0;
+    
     for (const account of accounts) {
       const lines = Array.from(this.journalEntryLines.values())
         .filter(line => {
@@ -490,27 +493,45 @@ export class MemStorage implements IStorage {
           return true;
         });
       
+      // Calculate debits and credits - ensure proper parsing with defaults
       const totalDebit = lines.reduce(
-        (sum, line) => sum + parseFloat(line.debit), 0
+        (sum, line) => sum + (parseFloat(line.debit || "0") || 0), 0
       );
       
       const totalCredit = lines.reduce(
-        (sum, line) => sum + parseFloat(line.credit), 0
+        (sum, line) => sum + (parseFloat(line.credit || "0") || 0), 0
       );
       
-      const balance = totalDebit - totalCredit;
+      // Properly format numbers to 2 decimal places
+      const formattedDebit = Math.round(totalDebit * 100) / 100;
+      const formattedCredit = Math.round(totalCredit * 100) / 100;
       
-      if (totalDebit > 0 || totalCredit > 0) {
+      // Add to running totals
+      totalDebits += formattedDebit;
+      totalCredits += formattedCredit;
+      
+      // Only include accounts with activity or balances
+      if (formattedDebit > 0 || formattedCredit > 0) {
         result.push({
           accountId: account.id,
           accountCode: account.code,
           accountName: account.name,
-          debit: totalDebit,
-          credit: totalCredit,
-          balance
+          type: account.type,
+          debit: formattedDebit,
+          credit: formattedCredit
         });
       }
     }
+    
+    // Add a totals row to the result
+    result.push({
+      accountId: -1,
+      accountCode: "",
+      accountName: "TOTAL",
+      type: "TOTAL",
+      debit: Math.round(totalDebits * 100) / 100,
+      credit: Math.round(totalCredits * 100) / 100
+    });
     
     return result;
   }

@@ -31,9 +31,15 @@ function TrialBalance() {
   const processTrialBalanceData = () => {
     if (!trialBalanceData || !Array.isArray(trialBalanceData)) return { categories: [], totals: { debit: 0, credit: 0 } };
 
-    // The API is returning an array directly instead of an object with accounts property
-    const accounts = trialBalanceData;
-    const grouped = accounts.reduce((acc, account) => {
+    // The API is returning an array directly
+    const accounts = [...trialBalanceData];
+    
+    // Extract total row (last item in the array)
+    const totalRow = accounts.find(account => account.type === "TOTAL");
+    const regularAccounts = accounts.filter(account => account.type !== "TOTAL");
+    
+    // Group regular accounts by category
+    const grouped = regularAccounts.reduce((acc: Record<string, any[]>, account: any) => {
       let category;
       
       // Map account types to high-level categories
@@ -70,23 +76,21 @@ function TrialBalance() {
       return acc;
     }, {});
 
-    // Calculate totals
-    const totals = accounts.reduce((sum, account) => {
-      return {
-        debit: sum.debit + (account.debit || 0),
-        credit: sum.credit + (account.credit || 0)
-      };
-    }, { debit: 0, credit: 0 });
+    // Use the total row provided by the API instead of calculating
+    const totals = totalRow || {
+      debit: regularAccounts.reduce((sum, account) => sum + (parseFloat(account.debit) || 0), 0),
+      credit: regularAccounts.reduce((sum, account) => sum + (parseFloat(account.credit) || 0), 0)
+    };
 
     // Prepare categories array for display
-    const categories = Object.entries(grouped).map(([name, accounts]) => ({
+    const categories = Object.entries(grouped).map(([name, accounts]: [string, any[]]) => ({
       name,
       accounts,
       // Calculate subtotals for each category
       subtotals: accounts.reduce((sum, account) => {
         return {
-          debit: sum.debit + account.debit,
-          credit: sum.credit + account.credit
+          debit: sum.debit + parseFloat(account.debit || 0),
+          credit: sum.credit + parseFloat(account.credit || 0)
         };
       }, { debit: 0, credit: 0 })
     }));
@@ -96,12 +100,13 @@ function TrialBalance() {
 
   const { categories, totals } = processTrialBalanceData();
   
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number | string | undefined): string => {
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : (amount || 0);
     return new Intl.NumberFormat('en-US', { 
       style: 'currency', 
       currency: 'USD',
       minimumFractionDigits: 2
-    }).format(amount);
+    }).format(numericAmount);
   };
 
   // Export to CSV
