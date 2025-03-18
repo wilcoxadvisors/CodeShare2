@@ -1,0 +1,90 @@
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { apiRequest } from '@/lib/queryClient';
+
+interface User {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Failed to check authentication status:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    checkAuthStatus();
+  }, []);
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await apiRequest('POST', '/api/auth/login', { username, password });
+      const data = await response.json();
+      setUser(data.user);
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      await apiRequest('POST', '/api/auth/logout', {});
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const value = {
+    user,
+    isLoading,
+    login,
+    logout
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
