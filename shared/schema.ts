@@ -78,7 +78,10 @@ export const accounts = pgTable("accounts", {
 // Journal Entry Status
 export enum JournalEntryStatus {
   DRAFT = "draft",
+  PENDING_APPROVAL = "pending_approval",
+  APPROVED = "approved",
   POSTED = "posted",
+  REJECTED = "rejected",
   VOIDED = "voided"
 }
 
@@ -90,6 +93,13 @@ export const journalEntries = pgTable("journal_entries", {
   date: timestamp("date").notNull(),
   description: text("description"),
   status: text("status").$type<JournalEntryStatus>().notNull().default(JournalEntryStatus.DRAFT),
+  requestedBy: integer("requested_by").references(() => users.id),
+  requestedAt: timestamp("requested_at"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: integer("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
   postedBy: integer("posted_by").references(() => users.id),
   postedAt: timestamp("posted_at"),
   createdBy: integer("created_by").references(() => users.id).notNull(),
@@ -185,6 +195,9 @@ export const insertAccountSchema = createInsertSchema(accounts).omit({
 // Schema for Journal Entry insertion
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({
   id: true,
+  requestedAt: true,
+  approvedAt: true,
+  rejectedAt: true,
   postedAt: true,
   createdAt: true,
   updatedAt: true
