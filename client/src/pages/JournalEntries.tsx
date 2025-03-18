@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
+import { Link, useLocation } from "wouter";
 import PageHeader from "../components/PageHeader";
 import FilterSection from "../components/FilterSection";
 import DataTable from "../components/DataTable";
 import JournalEntryForm from "../components/JournalEntryForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { JournalEntryStatus } from "@shared/schema";
 
 function JournalEntries() {
@@ -35,8 +38,10 @@ function JournalEntries() {
     setFilters(filterData);
   };
 
+  const [, setLocation] = useLocation();
+  
   const handleNewJournalEntry = () => {
-    setShowJournalEntryForm(true);
+    setLocation("/journal-entries/new");
   };
 
   const handleJournalEntrySubmit = async () => {

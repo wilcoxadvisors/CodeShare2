@@ -16,6 +16,7 @@ import Reports from "./pages/Reports";
 import AccountsPayable from "./pages/AccountsPayable";
 import AccountsReceivable from "./pages/AccountsReceivable";
 import FixedAssets from "./pages/FixedAssets";
+import ManualJournalEntry from "./components/ManualJournalEntry";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 
@@ -77,6 +78,12 @@ function Router() {
       <Route path="/journal-entries">
         <AppLayout>
           <ProtectedRoute component={JournalEntries} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/journal-entries/new">
+        <AppLayout>
+          <ProtectedRoute component={ManualJournalEntry} />
         </AppLayout>
       </Route>
       

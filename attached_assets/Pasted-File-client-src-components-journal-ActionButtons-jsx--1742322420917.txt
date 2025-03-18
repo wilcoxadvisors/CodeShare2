@@ -1,0 +1,418 @@
+File: client/src/components/journal/ActionButtons.jsx
+================================================
+// src/components/journal/ActionButtons.jsx
+import React, { useRef } from 'react';
+import { PlusCircle, Upload, Save } from 'lucide-react';
+import SupportingDocuments from './SupportingDocuments';
+
+export default function ActionButtons({
+  addEntryRow,
+  supportingDocs,
+  handleFileUpload,
+  isSubmitting
+}) {
+  const fileInputRef = useRef(null);
+  
+  return (
+    <>
+      {/* Add Line Button and Supporting Documents */}
+      <div className="flex justify-between items-start">
+        <button
+          type="button"
+          onClick={addEntryRow}
+          className="flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <PlusCircle size={18} className="mr-1" /> Add Line
+        </button>
+        
+        <SupportingDocuments supportingDocs={supportingDocs} />
+      </div>
+      
+      {/* Submit and Upload Buttons */}
+      <div className="flex justify-between">
+        <div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => handleFileUpload(e.target.files[0])}
+            className="hidden"
+            accept=".pdf,.xls,.xlsx,.csv,.doc,.docx"
+          />
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current.click()}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-2 rounded-md transition duration-200 flex items-center justify-center"
+          >
+            <Upload className="mr-2 h-5 w-5" /> Upload Supporting Document
+          </button>
+        </div>
+        
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+          className={`${isSubmitting ? 'bg-blue-400' : 'bg-blue-800 hover:bg-blue-900'} text-white px-6 py-2 rounded-md transition duration-200 flex items-center justify-center`}
+        >
+          {isSubmitting ? 'Saving...' : 'Post Journal Entry'} <Save className="ml-2 h-5 w-5" />
+        </button>
+      </div>
+    </>
+  );
+}
+
+
+
+================================================
+File: client/src/components/journal/JournalEntriesTable.jsx
+================================================
+// src/components/journal/JournalEntriesTable.jsx
+import React from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import JournalEntryRow from './JournalEntryRow';
+
+export default function JournalEntriesTable({
+  journalData,
+  entryErrors,
+  handleEntryChange,
+  handleAccountSelect,
+  removeEntryRow,
+  totals,
+  errors,
+  showDetailFields,
+  setShowDetailFields,
+  showAdvancedFields,
+  accountsList,
+  getSubledgerBadge
+}) {
+  return (
+    <>
+      {/* Detail Fields Toggle */}
+      <div className="flex justify-end">
+        <button 
+          type="button"
+          onClick={() => setShowDetailFields(!showDetailFields)}
+          className="text-blue-600 hover:text-blue-800 flex items-center"
+        >
+          {showDetailFields ? <ChevronUp size={16} className="mr-1" /> : <ChevronDown size={16} className="mr-1" />}
+          {showDetailFields ? 'Hide Detail Fields' : 'Show Detail Fields'}
+        </button>
+      </div>
+      
+      {/* Journal Entries Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="py-2 px-3 text-left w-16">Line No</th>
+              <th className="py-2 px-3 text-left">Account No *</th>
+              <th className="py-2 px-3 text-left">Account Title *</th>
+              {showDetailFields && (
+                <>
+                  <th className="py-2 px-3 text-left">Vendor</th>
+                  <th className="py-2 px-3 text-left">Document No</th>
+                  {showAdvancedFields && (
+                    <>
+                      <th className="py-2 px-3 text-left">Department</th>
+                      <th className="py-2 px-3 text-left">Project</th>
+                    </>
+                  )}
+                </>
+              )}
+              <th className="py-2 px-3 text-right">Debit</th>
+              <th className="py-2 px-3 text-right">Credit</th>
+              <th className="py-2 px-3 text-left">Description</th>
+              <th className="py-2 px-3 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {journalData.entries.map((entry, index) => (
+              <JournalEntryRow
+                key={entry.id}
+                entry={entry}
+                entryErrors={entryErrors[index]}
+                handleEntryChange={handleEntryChange}
+                handleAccountSelect={handleAccountSelect}
+                removeEntryRow={removeEntryRow}
+                showDetailFields={showDetailFields}
+                showAdvancedFields={showAdvancedFields}
+                accountsList={accountsList}
+                getSubledgerBadge={getSubledgerBadge}
+              />
+            ))}
+            
+            {/* Totals row */}
+            <tr className="bg-gray-50 font-semibold">
+              <td colSpan={showDetailFields ? (showAdvancedFields ? 7 : 5) : 3} className="py-2 px-3 text-right">Totals</td>
+              <td className="py-2 px-3 text-right">${totals.debit.toFixed(2)}</td>
+              <td className="py-2 px-3 text-right">${totals.credit.toFixed(2)}</td>
+              <td colSpan={2}></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        {/* Balance check */}
+        {errors.balance && (
+          <p className="text-red-500 mt-2 font-medium">{errors.balance}</p>
+        )}
+        
+        {totals.isBalanced && totals.debit > 0 && (
+          <p className="text-green-600 mt-2 font-medium">✓ Debits and credits are balanced</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+
+
+================================================
+File: client/src/components/journal/JournalEntryRow.jsx
+================================================
+// src/components/journal/JournalEntryRow.jsx
+import React from 'react';
+import { Trash2 } from 'lucide-react';
+
+export default function JournalEntryRow({
+  entry,
+  entryErrors,
+  handleEntryChange,
+  handleAccountSelect,
+  removeEntryRow,
+  showDetailFields,
+  showAdvancedFields,
+  accountsList,
+  getSubledgerBadge
+}) {
+  return (
+    <tr className="border-b">
+      <td className="py-2 px-3">
+        <input
+          type="text"
+          value={entry.lineNo}
+          readOnly
+          className="w-full bg-gray-50 border border-gray-300 rounded-md p-2"
+        />
+      </td>
+      <td className="py-2 px-3">
+        <div className="relative">
+          <input
+            type="text"
+            value={entry.accountNo}
+            onChange={(e) => handleEntryChange(entry.id, 'accountNo', e.target.value)}
+            placeholder="1000"
+            className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            list={`accounts-${entry.id}`}
+          />
+          <datalist id={`accounts-${entry.id}`}>
+            {accountsList.map(account => (
+              <option key={account.accountNumber} value={account.accountNumber}>
+                {account.accountName}
+              </option>
+            ))}
+          </datalist>
+          {getSubledgerBadge(entry.accountNo)}
+        </div>
+        {entryErrors?.accountNo && (
+          <p className="text-red-500 text-sm">{entryErrors.accountNo}</p>
+        )}
+      </td>
+      <td className="py-2 px-3">
+        <input
+          type="text"
+          value={entry.accountTitle}
+          onChange={(e) => handleEntryChange(entry.id, 'accountTitle', e.target.value)}
+          placeholder="Cash"
+          className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {entryErrors?.accountTitle && (
+          <p className="text-red-500 text-sm">{entryErrors.accountTitle}</p>
+        )}
+      </td>
+      {showDetailFields && (
+        <>
+          <td className="py-2 px-3">
+            <input
+              type="text"
+              value={entry.vendor}
+              onChange={(e) => handleEntryChange(entry.id, 'vendor', e.target.value)}
+              placeholder="Vendor name"
+              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </td>
+          <td className="py-2 px-3">
+            <input
+              type="text"
+              value={entry.documentNo}
+              onChange={(e) => handleEntryChange(entry.id, 'documentNo', e.target.value)}
+              placeholder="INV-123"
+              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </td>
+          {showAdvancedFields && (
+            <>
+              <td className="py-2 px-3">
+                <input
+                  type="text"
+                  value={entry.department}
+                  onChange={(e) => handleEntryChange(entry.id, 'department', e.target.value)}
+                  placeholder="Dept."
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </td>
+              <td className="py-2 px-3">
+                <input
+                  type="text"
+                  value={entry.project}
+                  onChange={(e) => handleEntryChange(entry.id, 'project', e.target.value)}
+                  placeholder="Project"
+                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </td>
+            </>
+          )}
+        </>
+      )}
+      <td className="py-2 px-3">
+        <input
+          type="number"
+          value={entry.debit}
+          onChange={(e) => handleEntryChange(entry.id, 'debit', e.target.value)}
+          placeholder="0.00"
+          step="0.01"
+          min="0"
+          className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+        />
+      </td>
+      <td className="py-2 px-3">
+        <input
+          type="number"
+          value={entry.credit}
+          onChange={(e) => handleEntryChange(entry.id, 'credit', e.target.value)}
+          placeholder="0.00"
+          step="0.01"
+          min="0"
+          className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+        />
+        {entryErrors?.amount && (
+          <p className="text-red-500 text-sm">{entryErrors.amount}</p>
+        )}
+      </td>
+      <td className="py-2 px-3">
+        <input
+          type="text"
+          value={entry.description}
+          onChange={(e) => handleEntryChange(entry.id, 'description', e.target.value)}
+          placeholder="Line description"
+          className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </td>
+      <td className="py-2 px-3">
+        <button
+          type="button"
+          onClick={() => removeEntryRow(entry.id)}
+          className="text-red-500 hover:text-red-700 p-1"
+          title="Remove line"
+        >
+          <Trash2 size={18} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+
+
+================================================
+File: client/src/components/journal/JournalHeader.jsx
+================================================
+// src/components/journal/JournalHeader.jsx
+import React from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+
+export default function JournalHeader({ 
+  journalData, 
+  errors, 
+  handleChange, 
+  showAdvancedFields, 
+  setShowAdvancedFields 
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="flex flex-col">
+        <label htmlFor="date" className="text-gray-700 font-medium mb-1">Date *</label>
+        <input
+          type="date"
+          id="date"
+          name="date"
+          value={journalData.date}
+          onChange={handleChange}
+          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-required="true"
+        />
+        {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+      </div>
+      
+      <div className="flex flex-col">
+        <label htmlFor="transactionNo" className="text-gray-700 font-medium mb-1">Transaction No.</label>
+        <input
+          type="text"
+          id="transactionNo"
+          name="transactionNo"
+          value={journalData.transactionNo}
+          onChange={handleChange}
+          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      
+      <div className="flex flex-col md:col-span-1">
+        <button 
+          type="button"
+          onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+          className="text-blue-600 hover:text-blue-800 flex items-center self-end mt-2"
+        >
+          {showAdvancedFields ? <ChevronUp size={16} className="mr-1" /> : <ChevronDown size={16} className="mr-1" />}
+          {showAdvancedFields ? 'Hide Advanced Fields' : 'Show Advanced Fields'}
+        </button>
+      </div>
+      
+      <div className="flex flex-col md:col-span-3">
+        <label htmlFor="description" className="text-gray-700 font-medium mb-1">Description *</label>
+        <textarea
+          id="description"
+          name="description"
+          value={journalData.description}
+          onChange={handleChange}
+          rows={2}
+          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-required="true"
+        />
+        {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+File: client/src/components/journal/SupportingDocuments.jsx
+================================================
+// src/components/journal/SupportingDocuments.jsx
+import React from 'react';
+
+export default function SupportingDocuments({ supportingDocs }) {
+  if (supportingDocs.length === 0) return null;
+  
+  return (
+    <div className="bg-gray-50 p-3 rounded-lg">
+      <h3 className="text-sm font-medium mb-2">Supporting Documents:</h3>
+      <ul className="text-sm">
+        {supportingDocs.map((doc, idx) => (
+          <li key={idx} className="text-gray-700">
+            {doc.name} ({(doc.size / 1024).toFixed(1)} KB)
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
