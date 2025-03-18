@@ -14,6 +14,7 @@ import {
   insertJournalEntryLineSchema,
   JournalEntryStatus
 } from "@shared/schema";
+import { registerAIRoutes } from "./aiRoutes";
 
 interface AuthUser {
   id: number;
@@ -739,6 +740,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register the AI routes
+  registerAIRoutes(app);
+  
   const httpServer = createServer(app);
   return httpServer;
 }
