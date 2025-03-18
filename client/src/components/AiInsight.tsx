@@ -3,8 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, Lightbulb, Check, X } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  analyzeFinancialData, 
+  categorizeTransaction, 
+  generateReportSummary, 
+  explainAccountingConcept 
+} from '@/lib/ai';
 
 interface AiInsightProps {
   title?: string;
@@ -31,30 +36,6 @@ export function AiInsight({
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Map insight type to API endpoint
-  const endpointMap = {
-    analyze: '/api/ai/analyze',
-    categorize: '/api/ai/categorize',
-    summarize: '/api/ai/summarize',
-    explain: '/api/ai/explain'
-  };
-
-  // Map insight type to request body field name
-  const dataFieldMap = {
-    analyze: 'text',
-    categorize: 'description',
-    summarize: 'reportData',
-    explain: 'concept'
-  };
-
-  // Map insight type to response field name
-  const responseFieldMap = {
-    analyze: 'analysis',
-    categorize: 'category',
-    summarize: 'summary',
-    explain: 'explanation'
-  };
-
   const generateInsight = async () => {
     if (!input && !prompt) {
       toast({
@@ -69,18 +50,27 @@ export function AiInsight({
     setError(null);
     
     try {
-      const endpoint = endpointMap[insightType];
-      const dataField = dataFieldMap[insightType];
-      const responseField = responseFieldMap[insightType];
-      
       const textToAnalyze = prompt || input;
+      let insightResult = '';
       
-      const response = await apiRequest(endpoint, {
-        method: 'POST',
-        data: { [dataField]: textToAnalyze }
-      });
+      switch (insightType) {
+        case 'analyze':
+          insightResult = await analyzeFinancialData(textToAnalyze);
+          break;
+        case 'categorize':
+          const categoryResult = await categorizeTransaction(textToAnalyze);
+          insightResult = categoryResult.category;
+          break;
+        case 'summarize':
+          insightResult = await generateReportSummary(textToAnalyze);
+          break;
+        case 'explain':
+          insightResult = await explainAccountingConcept(textToAnalyze);
+          break;
+        default:
+          insightResult = 'No insight available for this type';
+      }
       
-      const insightResult = response[responseField] || 'No insight generated';
       setInsight(insightResult);
       
       if (onInsightGenerated) {

@@ -630,19 +630,19 @@ function ChartOfAccounts() {
       header: "Subledger", 
       accessor: "isSubledger", 
       type: "boolean",
-      render: (row) => row.isSubledger ? "Yes" : "No"
+      render: (row: Record<string, any>) => row.isSubledger ? "Yes" : "No"
     },
     { 
       header: "Active", 
       accessor: "active", 
       type: "boolean",
-      render: (row) => row.active ? "Yes" : "No"
+      render: (row: Record<string, any>) => row.active ? "Yes" : "No"
     },
     {
       header: "Actions",
       accessor: "id",
       type: "actions",
-      render: (row) => (
+      render: (row: Record<string, any>) => (
         <div className="flex justify-end space-x-2">
           <Button 
             variant="ghost" 
@@ -726,8 +726,8 @@ function ChartOfAccounts() {
           </Button>
           
           <Button
-            variant="primary"
-            className="inline-flex items-center text-sm font-medium text-white"
+            variant="default"
+            className="inline-flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             onClick={handleNewAccount}
           >
             <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -895,7 +895,7 @@ function ChartOfAccounts() {
                       id="isSubledger"
                       checked={accountData.isSubledger}
                       onCheckedChange={(checked) => 
-                        handleSelectChange("isSubledger", checked)
+                        handleSelectChange("isSubledger", String(checked === true))
                       }
                     />
                     <Label htmlFor="isSubledger">This is a subledger account</Label>
@@ -929,7 +929,7 @@ function ChartOfAccounts() {
                       id="active"
                       checked={accountData.active}
                       onCheckedChange={(checked) => 
-                        handleSelectChange("active", checked)
+                        handleSelectChange("active", String(checked === true))
                       }
                     />
                     <Label htmlFor="active">Active</Label>

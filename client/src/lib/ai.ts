@@ -1,5 +1,27 @@
 import { apiRequest } from './queryClient';
 
+interface AnalysisResponse {
+  analysis: string;
+}
+
+interface SentimentResponse {
+  rating: number;
+  confidence: number;
+}
+
+interface CategoryResponse {
+  category: string;
+  confidence: number;
+}
+
+interface SummaryResponse {
+  summary: string;
+}
+
+interface ExplanationResponse {
+  explanation: string;
+}
+
 /**
  * Analyze financial data and provide insights
  * @param text - The financial data text to analyze
@@ -7,9 +29,12 @@ import { apiRequest } from './queryClient';
  */
 export async function analyzeFinancialData(text: string): Promise<string> {
   try {
-    const response = await apiRequest('/api/ai/analyze', {
+    const response = await apiRequest<AnalysisResponse>('/api/ai/analyze', {
       method: 'POST',
-      data: { text }
+      body: JSON.stringify({ text }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     return response.analysis || 'No analysis available';
@@ -29,9 +54,12 @@ export async function analyzeSentiment(text: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await apiRequest('/api/ai/sentiment', {
+    const response = await apiRequest<SentimentResponse>('/api/ai/sentiment', {
       method: 'POST',
-      data: { text }
+      body: JSON.stringify({ text }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     if (!response.rating || !response.confidence) {
@@ -58,9 +86,12 @@ export async function categorizeTransaction(description: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await apiRequest('/api/ai/categorize', {
+    const response = await apiRequest<CategoryResponse>('/api/ai/categorize', {
       method: 'POST',
-      data: { description }
+      body: JSON.stringify({ description }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     return {
@@ -80,9 +111,12 @@ export async function categorizeTransaction(description: string): Promise<{
  */
 export async function generateReportSummary(reportData: string): Promise<string> {
   try {
-    const response = await apiRequest('/api/ai/summarize', {
+    const response = await apiRequest<SummaryResponse>('/api/ai/summarize', {
       method: 'POST',
-      data: { reportData }
+      body: JSON.stringify({ reportData }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     return response.summary || 'No summary available';
@@ -99,9 +133,12 @@ export async function generateReportSummary(reportData: string): Promise<string>
  */
 export async function explainAccountingConcept(concept: string): Promise<string> {
   try {
-    const response = await apiRequest('/api/ai/explain', {
+    const response = await apiRequest<ExplanationResponse>('/api/ai/explain', {
       method: 'POST',
-      data: { concept }
+      body: JSON.stringify({ concept }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     return response.explanation || 'No explanation available';
