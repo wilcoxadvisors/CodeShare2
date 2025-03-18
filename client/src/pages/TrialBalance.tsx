@@ -113,12 +113,23 @@ function TrialBalance() {
   const exportCSV = () => {
     if (!trialBalanceData || !Array.isArray(trialBalanceData)) return;
 
-    let csvContent = "Account Code,Account Name,Debit,Credit\n";
+    let csvContent = "Account Code,Account Name,Beginning Balance,Debit,Credit,Ending Balance\n";
     
     // The API is returning an array directly instead of an object with accounts property
     const accounts = trialBalanceData;
     accounts.forEach(account => {
-      csvContent += `${account.code},${account.name},${account.debit || 0},${account.credit || 0}\n`;
+      // Calculate beginning balance (either from API or use 0 for income statement accounts)
+      const beginningBalance = account.beginningBalance || 
+        (account.type === AccountType.REVENUE || account.type === AccountType.EXPENSE ? 0 : 
+         (account.normalBalance === 'debit' ? account.debit - account.credit : account.credit - account.debit));
+      
+      // Calculate ending balance
+      const isDebitNormal = account.type === AccountType.ASSET || account.type === AccountType.EXPENSE;
+      const endingBalance = isDebitNormal ? 
+        beginningBalance + account.debit - account.credit : 
+        beginningBalance + account.credit - account.debit;
+
+      csvContent += `${account.code},${account.name},${beginningBalance || 0},${account.debit || 0},${account.credit || 0},${endingBalance || 0}\n`;
     });
 
     // Create a blob and download
@@ -291,8 +302,10 @@ function TrialBalance() {
                       <tr className="border-b border-gray-200 text-left">
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Code</th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Name</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Beginning Balance</th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Debit</th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Credit</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Ending Balance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -300,33 +313,50 @@ function TrialBalance() {
                         <Fragment key={category.name}>
                           {/* Category Header */}
                           <tr className="bg-gray-100">
-                            <td colSpan={4} className="px-4 py-2 font-semibold">{category.name}</td>
+                            <td colSpan={6} className="px-4 py-2 font-semibold">{category.name}</td>
                           </tr>
                           
                           {/* Accounts in this category */}
-                          {category.accounts.map((account) => (
-                            <tr key={account.id} className="border-b border-gray-200">
-                              <td className="px-4 py-2">{account.code}</td>
-                              <td className="px-4 py-2">{account.name}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(account.debit)}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(account.credit)}</td>
-                            </tr>
-                          ))}
+                          {category.accounts.map((account) => {
+                            // Calculate beginning balance (either from API or use 0 for income statement accounts)
+                            const beginningBalance = account.beginningBalance || 
+                              (account.type === AccountType.REVENUE || account.type === AccountType.EXPENSE ? 0 : 
+                               (account.normalBalance === 'debit' ? account.debit - account.credit : account.credit - account.debit));
+                            
+                            // Calculate ending balance
+                            const isDebitNormal = account.type === AccountType.ASSET || account.type === AccountType.EXPENSE;
+                            const endingBalance = isDebitNormal ? 
+                              beginningBalance + account.debit - account.credit : 
+                              beginningBalance + account.credit - account.debit;
+                            
+                            return (
+                              <tr key={account.id} className="border-b border-gray-200">
+                                <td className="px-4 py-2">{account.code}</td>
+                                <td className="px-4 py-2">{account.name}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(beginningBalance)}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(account.debit)}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(account.credit)}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(endingBalance)}</td>
+                              </tr>
+                            );
+                          })}
                           
                           {/* Category Subtotal */}
                           <tr className="border-b border-gray-200 bg-gray-50">
-                            <td colSpan={2} className="px-4 py-2 font-medium text-right">Subtotal: {category.name}</td>
+                            <td colSpan={3} className="px-4 py-2 font-medium text-right">Subtotal: {category.name}</td>
                             <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.debit)}</td>
                             <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.credit)}</td>
+                            <td className="px-4 py-2 font-medium text-right"></td>
                           </tr>
                         </Fragment>
                       ))}
                       
                       {/* Total Row */}
                       <tr className="bg-gray-50 font-semibold">
-                        <td colSpan={2} className="px-4 py-3 text-right">Total</td>
+                        <td colSpan={3} className="px-4 py-3 text-right">Total</td>
                         <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
                         <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
+                        <td className="px-4 py-3 text-right"></td>
                       </tr>
                     </tbody>
                   </table>

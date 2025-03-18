@@ -1,20 +1,30 @@
 // src/components/journal/ActionButtons.tsx
 import React, { useRef } from 'react';
-import { PlusCircle, Upload, Save } from 'lucide-react';
+import { PlusCircle, Upload, Save, Check, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 type ActionButtonsProps = {
   addEntryRow: () => void;
   supportingDocs: Array<{name: string, size: number, file: File}>;
   handleFileUpload: (file: File) => void;
   isSubmitting: boolean;
+  submitStatus: 'draft' | 'pending_approval' | 'post_directly';
+  setSubmitStatus: (status: 'draft' | 'pending_approval' | 'post_directly') => void;
 };
 
 export default function ActionButtons({
   addEntryRow,
   supportingDocs,
   handleFileUpload,
-  isSubmitting
+  isSubmitting,
+  submitStatus,
+  setSubmitStatus
 }: ActionButtonsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -50,7 +60,7 @@ export default function ActionButtons({
       </div>
       
       {/* Submit and Upload Buttons */}
-      <div className="flex justify-between mt-6">
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
         <div>
           <input
             type="file"
@@ -69,13 +79,54 @@ export default function ActionButtons({
           </Button>
         </div>
         
-        <Button 
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-blue-800 hover:bg-blue-900"
-        >
-          {isSubmitting ? 'Saving...' : 'Post Journal Entry'} <Save className="ml-2 h-5 w-5" />
-        </Button>
+        <div className="flex gap-2">
+          {/* Status Selection Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-48"
+              >
+                {submitStatus === 'draft' && (
+                  <>
+                    <Save className="mr-2 h-4 w-4" /> Save as Draft
+                  </>
+                )}
+                {submitStatus === 'pending_approval' && (
+                  <>
+                    <Clock className="mr-2 h-4 w-4" /> Submit for Approval
+                  </>
+                )}
+                {submitStatus === 'post_directly' && (
+                  <>
+                    <Check className="mr-2 h-4 w-4" /> Post Directly
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setSubmitStatus('draft')}>
+                <Save className="mr-2 h-4 w-4" /> Save as Draft
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSubmitStatus('pending_approval')}>
+                <Clock className="mr-2 h-4 w-4" /> Submit for Approval
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSubmitStatus('post_directly')}>
+                <Check className="mr-2 h-4 w-4" /> Post Directly
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Submit Button */}
+          <Button 
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-blue-800 hover:bg-blue-900"
+          >
+            {isSubmitting ? 'Processing...' : 'Submit'} 
+          </Button>
+        </div>
       </div>
     </>
   );

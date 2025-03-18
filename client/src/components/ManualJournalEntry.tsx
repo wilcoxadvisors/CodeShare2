@@ -294,6 +294,9 @@ export default function ManualJournalEntry() {
     return isValid;
   };
   
+  // Determine if the user can submit directly for approval
+  const [submitStatus, setSubmitStatus] = useState<'draft' | 'pending_approval' | 'post_directly'>('draft');
+  
   // Submit the journal entry
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,14 +330,14 @@ export default function ManualJournalEntry() {
         credit: entry.credit || '0'
       }));
       
-      // Create journal entry
+      // Create journal entry with selected status
       const response = await apiRequest(`/api/entities/${currentEntity.id}/journal-entries`, {
         method: 'POST',
         data: {
           date: journalData.date,
           reference: journalData.reference,
           description: journalData.description,
-          status: 'draft', // Default status
+          status: submitStatus, // Use the selected status
           lines: formattedEntries
         }
       });
@@ -355,10 +358,20 @@ export default function ManualJournalEntry() {
         });
       }
       
+      let successMessage = "Journal entry saved as draft.";
+      if (submitStatus === 'pending_approval') {
+        successMessage = "Journal entry submitted for approval.";
+      } else if (submitStatus === 'post_directly') {
+        successMessage = "Journal entry posted successfully.";
+      }
+      
       toast({
         title: "Success",
-        description: "Journal entry created successfully",
+        description: successMessage,
       });
+      
+      // Invalidate queries to refresh journal entries list
+      queryClient.invalidateQueries({ queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] });
       
       // Navigate back to journal entries list
       setLocation("/journal-entries");
@@ -426,6 +439,8 @@ export default function ManualJournalEntry() {
           supportingDocs={supportingDocs}
           handleFileUpload={handleFileUpload}
           isSubmitting={isSubmitting}
+          submitStatus={submitStatus}
+          setSubmitStatus={setSubmitStatus}
         />
       </form>
     </div>
