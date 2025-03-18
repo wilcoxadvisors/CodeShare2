@@ -146,16 +146,30 @@ function JournalEntryDetail() {
 
   const uploadFileMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
+      // Read file as base64 string
+      const fileContent = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target && typeof e.target.result === 'string') {
+            resolve(e.target.result);
+          } else {
+            reject(new Error('Failed to read file'));
+          }
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
       
+      // Send file to server
       return apiRequest(
         `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/files`,
         { 
           method: "POST",
-          body: formData,
-          // Don't set Content-Type header, let browser set it with boundary for multipart/form-data
-          noContentType: true 
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type,
+            fileContent: fileContent
+          })
         }
       );
     },

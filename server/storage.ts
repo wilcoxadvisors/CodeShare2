@@ -93,6 +93,7 @@ export class MemStorage implements IStorage {
   private accounts: Map<number, Account>;
   private journalEntries: Map<number, JournalEntry>;
   private journalEntryLines: Map<number, JournalEntryLine>;
+  private journalEntryFiles: Map<number, any>; // Map for file attachments
   private fixedAssets: Map<number, FixedAsset>;
   private savedReports: Map<number, SavedReport>;
   private userEntityAccess: Map<string, string>; // key: userId-entityId, value: accessLevel
@@ -102,6 +103,7 @@ export class MemStorage implements IStorage {
   private currentAccountId: number = 1;
   private currentJournalEntryId: number = 1;
   private currentJournalEntryLineId: number = 1;
+  private currentJournalEntryFileId: number = 1;
   private currentFixedAssetId: number = 1;
   private currentSavedReportId: number = 1;
 
@@ -111,6 +113,7 @@ export class MemStorage implements IStorage {
     this.accounts = new Map();
     this.journalEntries = new Map();
     this.journalEntryLines = new Map();
+    this.journalEntryFiles = new Map();
     this.fixedAssets = new Map();
     this.savedReports = new Map();
     this.userEntityAccess = new Map();
@@ -408,6 +411,29 @@ export class MemStorage implements IStorage {
     const journalEntryLine: JournalEntryLine = { ...insertLine, id, createdAt: new Date() };
     this.journalEntryLines.set(id, journalEntryLine);
     return journalEntryLine;
+  }
+  
+  // Journal Entry File methods
+  async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
+    return Array.from(this.journalEntryFiles.values())
+      .filter(file => file.journalEntryId === journalEntryId);
+  }
+  
+  async createJournalEntryFile(journalEntryId: number, file: any): Promise<any> {
+    const id = this.currentJournalEntryFileId++;
+    const journalEntryFile = {
+      id,
+      journalEntryId,
+      filename: file.filename || `file-${id}`,
+      contentType: file.contentType || 'application/octet-stream',
+      size: file.size || 0,
+      data: file.data || null,
+      createdAt: new Date(),
+      uploadedBy: file.uploadedBy || null
+    };
+    
+    this.journalEntryFiles.set(id, journalEntryFile);
+    return journalEntryFile;
   }
   
   // Fixed Asset methods

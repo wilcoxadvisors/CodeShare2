@@ -424,9 +424,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      // This would call storage.getJournalEntryFiles() when implemented
-      // For now return empty array
-      res.json([]);
+      const files = await storage.getJournalEntryFiles(entryId);
+      
+      // Don't return the actual file data in the list response
+      const filesWithoutData = files.map(file => ({
+        id: file.id,
+        journalEntryId: file.journalEntryId,
+        filename: file.filename,
+        contentType: file.contentType,
+        size: file.size,
+        createdAt: file.createdAt,
+        uploadedBy: file.uploadedBy
+      }));
+      
+      res.json(filesWithoutData);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -448,9 +459,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot upload files to posted or voided journal entries" });
       }
       
-      // File upload would be implemented here
-      // For now, just return success
-      res.json({ message: "File uploaded successfully" });
+      if (!req.body.filename || !req.body.fileContent) {
+        return res.status(400).json({ message: "Filename and file content are required" });
+      }
+      
+      const fileData = {
+        filename: req.body.filename,
+        contentType: req.body.contentType || 'application/octet-stream',
+        size: req.body.fileContent.length,
+        data: req.body.fileContent,
+        uploadedBy: userId
+      };
+      
+      const file = await storage.createJournalEntryFile(entryId, fileData);
+      
+      // Return the file metadata without the actual data
+      const fileResponse = {
+        id: file.id,
+        journalEntryId: file.journalEntryId,
+        filename: file.filename,
+        contentType: file.contentType,
+        size: file.size,
+        createdAt: file.createdAt,
+        uploadedBy: file.uploadedBy
+      };
+      
+      res.json(fileResponse);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
