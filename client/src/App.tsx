@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -24,15 +25,21 @@ import Header from "./components/Header";
 
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, navigate] = useLocation();
+
+  // Use useEffect to handle navigation after render
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/login");
+    }
+  }, [isLoading, user, navigate]);
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
 
   if (!user) {
-    setLocation("/login");
-    return null;
+    return <div className="flex h-screen items-center justify-center">Redirecting to login...</div>;
   }
 
   if (adminOnly && user.role !== 'admin') {
