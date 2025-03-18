@@ -5,10 +5,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import PageHeader from "../components/PageHeader";
 import DataTable from "../components/DataTable";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
+} from "@/components/ui/dialog";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
-} from "@/components/ui/dialog";
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,7 +40,7 @@ function ChartOfAccounts() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [accountToDelete, setAccountToDelete] = useState(null);
+  const [accountToDelete, setAccountToDelete] = useState<any>(null);
   const [importMode, setImportMode] = useState(false);
   const [importData, setImportData] = useState("");
 
@@ -579,14 +581,46 @@ function ChartOfAccounts() {
               </Button>
               <Button 
                 type="submit"
-                disabled={createAccount.isPending}
+                disabled={isEditMode ? updateAccount.isPending : createAccount.isPending}
               >
-                {createAccount.isPending ? "Creating..." : "Create Account"}
+                {isEditMode 
+                  ? (updateAccount.isPending ? "Updating..." : "Update Account") 
+                  : (createAccount.isPending ? "Creating..." : "Create Account")
+                }
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the account 
+              {accountToDelete && <span className="font-semibold"> {accountToDelete.code} - {accountToDelete.name}</span>}.
+              <br /><br />
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
+                <span className="text-amber-800">
+                  Warning: If this account has been used in any transactions, deleting it may cause reporting issues.
+                  Consider marking it as inactive instead.
+                </span>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteAccount.isPending}
+            >
+              {deleteAccount.isPending ? "Deleting..." : "Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
