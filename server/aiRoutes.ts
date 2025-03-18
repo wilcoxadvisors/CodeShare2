@@ -33,7 +33,7 @@ export function registerAIRoutes(app: Express) {
       available: hasValidApiKey,
       message: hasValidApiKey 
         ? 'xAI integration is ready' 
-        : 'xAI API key is not configured. Please add the XAI_API_KEY to your environment variables.'
+        : API_KEY_MISSING_MESSAGE
     });
   });
 
@@ -90,7 +90,7 @@ export function registerAIRoutes(app: Express) {
         return res.json({ 
           category: "Other",
           confidence: 0,
-          message: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          message: API_KEY_MISSING_MESSAGE
         });
       }
 
@@ -142,7 +142,7 @@ export function registerAIRoutes(app: Express) {
       // Check if API key is available
       if (!hasValidApiKey || !openai) {
         return res.json({ 
-          summary: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          summary: API_KEY_MISSING_MESSAGE
         });
       }
       
@@ -182,7 +182,7 @@ export function registerAIRoutes(app: Express) {
       // Check if API key is available
       if (!hasValidApiKey || !openai) {
         return res.json({ 
-          explanation: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          explanation: API_KEY_MISSING_MESSAGE
         });
       }
       
@@ -224,7 +224,7 @@ export function registerAIRoutes(app: Express) {
         return res.json({ 
           rating: 3,
           confidence: 0,
-          message: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          message: API_KEY_MISSING_MESSAGE
         });
       }
       
@@ -276,7 +276,7 @@ export function registerAIRoutes(app: Express) {
       // Check if API key is available
       if (!hasValidApiKey || !openai) {
         return res.json({ 
-          analysis: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          analysis: API_KEY_MISSING_MESSAGE
         });
       }
       
@@ -325,7 +325,7 @@ export function registerAIRoutes(app: Express) {
       // Check if API key is available
       if (!hasValidApiKey || !openai) {
         return res.json({ 
-          suggestions: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+          suggestions: API_KEY_MISSING_MESSAGE
         });
       }
       

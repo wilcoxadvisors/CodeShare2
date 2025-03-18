@@ -12,7 +12,7 @@ async function handleApiRequest<T>(url: string, body: any, errorMessage: string,
     const apiKeyAvailable = await checkXaiApiKey();
     if (!apiKeyAvailable) {
       console.warn("XAI API key not available");
-      throw new Error("XAI API key not available. Please provide a valid API key.");
+      throw new Error("AI integration not available. Please add the XAI_API_KEY to your environment variables to enable AI features.");
     }
 
     const response = await fetch(url, {
@@ -139,7 +139,7 @@ export async function checkAiStatus(): Promise<{ available: boolean; message: st
     if (!apiKeyExists) {
       return { 
         available: false, 
-        message: 'xAI API key is not available. Please contact your administrator to set up the API key.' 
+        message: 'AI integration not available. Please add the XAI_API_KEY to your environment variables to enable AI features.' 
       };
     }
     
