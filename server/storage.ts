@@ -46,6 +46,10 @@ export interface IStorage {
   getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
   createJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
   
+  // Journal Entry File methods
+  getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
+  createJournalEntryFile(journalEntryId: number, file: any): Promise<any>;
+  
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
   getFixedAssets(entityId: number): Promise<FixedAsset[]>;

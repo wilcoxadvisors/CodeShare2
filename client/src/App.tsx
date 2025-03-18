@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import GeneralLedger from "./pages/GeneralLedger";
 import JournalEntries from "./pages/JournalEntries";
+import JournalEntryDetail from "./pages/JournalEntryDetail";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import Reports from "./pages/Reports";
 import AccountsPayable from "./pages/AccountsPayable";
@@ -76,6 +77,12 @@ function Router() {
       <Route path="/journal-entries">
         <AppLayout>
           <ProtectedRoute component={JournalEntries} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/journal-entries/:id">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntryDetail} />
         </AppLayout>
       </Route>
       

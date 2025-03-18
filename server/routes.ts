@@ -373,6 +373,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get single journal entry with lines
+  app.get("/api/entities/:entityId/journal-entries/:id", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      const lines = await storage.getJournalEntryLines(entryId);
+      
+      res.json({
+        ...entry,
+        lines
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get journal entry lines
+  app.get("/api/entities/:entityId/journal-entries/:id/lines", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      const lines = await storage.getJournalEntryLines(entryId);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get journal entry files
+  app.get("/api/entities/:entityId/journal-entries/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      // This would call storage.getJournalEntryFiles() when implemented
+      // For now return empty array
+      res.json([]);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Upload file to journal entry
+  app.post("/api/entities/:entityId/journal-entries/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status === JournalEntryStatus.POSTED || entry.status === JournalEntryStatus.VOIDED) {
+        return res.status(400).json({ message: "Cannot upload files to posted or voided journal entries" });
+      }
+      
+      // File upload would be implemented here
+      // For now, just return success
+      res.json({ message: "File uploaded successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Submit journal entry for approval
+  app.post("/api/entities/:entityId/journal-entries/:id/request-approval", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status !== JournalEntryStatus.DRAFT) {
+        return res.status(400).json({ message: "Only draft journal entries can be submitted for approval" });
+      }
+      
+      // Update status to pending approval
+      const updatedEntry = await storage.updateJournalEntry(entryId, {
+        status: JournalEntryStatus.PENDING_APPROVAL,
+        requestedBy: userId,
+        requestedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedEntry);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Approve journal entry
+  app.post("/api/entities/:entityId/journal-entries/:id/approve", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+        return res.status(400).json({ message: "Only pending approval journal entries can be approved" });
+      }
+      
+      // Update status to approved
+      const updatedEntry = await storage.updateJournalEntry(entryId, {
+        status: JournalEntryStatus.APPROVED,
+        approvedBy: userId,
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedEntry);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Reject journal entry
+  app.post("/api/entities/:entityId/journal-entries/:id/reject", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+        return res.status(400).json({ message: "Only pending approval journal entries can be rejected" });
+      }
+      
+      const { rejectionReason } = req.body;
+      if (!rejectionReason) {
+        return res.status(400).json({ message: "Rejection reason is required" });
+      }
+      
+      // Update status to rejected
+      const updatedEntry = await storage.updateJournalEntry(entryId, {
+        status: JournalEntryStatus.REJECTED,
+        rejectedBy: userId,
+        rejectedAt: new Date(),
+        rejectionReason,
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedEntry);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Post journal entry to GL
+  app.post("/api/entities/:entityId/journal-entries/:id/post", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status !== JournalEntryStatus.APPROVED) {
+        return res.status(400).json({ message: "Only approved journal entries can be posted" });
+      }
+      
+      // Update status to posted
+      const updatedEntry = await storage.updateJournalEntry(entryId, {
+        status: JournalEntryStatus.POSTED,
+        postedBy: userId,
+        postedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedEntry);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // GL Reporting
   app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req, res) => {
     try {

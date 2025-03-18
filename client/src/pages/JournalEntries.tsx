@@ -86,7 +86,12 @@ function JournalEntries() {
       type: "actions",
       render: (row) => (
         <div className="text-right">
-          <a href="#" className="text-primary-600 hover:text-primary-900">View</a>
+          <a 
+            href={`/journal-entries/${row.id}`} 
+            className="text-primary-600 hover:text-primary-900"
+          >
+            View
+          </a>
         </div>
       )
     }
