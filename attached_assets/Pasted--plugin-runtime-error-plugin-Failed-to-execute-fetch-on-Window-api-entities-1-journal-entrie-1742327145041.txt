@@ -1,0 +1,108 @@
+[plugin:runtime-error-plugin] Failed to execute 'fetch' on 'Window': '/api/entities/1/journal-entries/3/request-approval' is not a valid HTTP method.
+/home/runner/workspace/client/src/lib/queryClient.ts:15:21
+13 |    data?: unknown | undefined,
+14 |  ): Promise<Response> {
+15 |    const res = await fetch(url, {
+   |                      ^
+16 |      method,
+17 |      headers: data ? { "Content-Type": "application/json" } : {},
+
+    at apiRequest /home/runner/workspace/client/src/lib/queryClient.ts:15:21
+    at Object.mutationFn /home/runner/workspace/client/src/pages/JournalEntryDetail.tsx:53:14
+1.	Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.js.
+
+work on this:
+Implementing account edit functionality
+2.	Creating mass import capabilities for initial chart of accounts setup
+3.	Developing more sophisticated account hierarchies for parent/child relationships
+4.	Enhancing the Journal Entry interface to work with the improved account system
+And this 
+general change up styling to what was sent. Website is hard to read. Here is what I have built used.
+Color Palette
+•	Primary: Blue-800 (#1E3A8A) to Blue-900 (#1e3a8a) gradient
+•	Secondary: White (#FFFFFF)
+•	Accents: 
+o	Green-700 (#15803d) for success/positive actions
+o	Red-600 (#dc2626) for delete/warning actions
+o	Gray-50 to Gray-100 for backgrounds
+o	Gray-700/800 for text
+Typography
+•	Font Family: System font stack (Segoe UI, Roboto, Oxygen, etc.)
+•	Headings: 
+o	Page titles: 2xl (24px), font-bold, text-gray-800
+o	Section headings: xl (20px), font-semibold, text-gray-900
+o	Card headings: lg (18px), font-medium
+•	Body Text: text-sm (14px) or text-base (16px), text-gray-700
+Layout Structure
+•	Sidebar: Fixed width (w-64), bg-blue-900, full height
+•	Main Content: Flex-1, bg-gray-100, p-6
+•	Cards/Panels: bg-white, rounded-lg, shadow-md, p-6
+•	Spacing: Consistent 6px (p-6, m-6) padding and margin system
+Component Styling
+Cards & Panels
+•	White background
+•	Rounded corners (rounded-lg)
+•	Light shadow (shadow-md)
+•	Consistent padding (p-4 to p-6)
+•	Occasional header with bg-gray-50/100 separator
+Buttons
+•	Primary: bg-blue-800, text-white, hover:bg-blue-900, rounded-md, px-4, py-2
+•	Secondary: bg-gray-100, text-gray-800, hover:bg-gray-200, rounded-md
+•	Danger: bg-red-600, text-white, hover:bg-red-700
+•	Success: bg-green-700, text-white, hover:bg-green-800
+•	Icon Buttons: Paired with Lucide icons (16-18px)
+Tables
+•	Full width with border-collapse
+•	Header: bg-gray-100, text-left, text-xs, font-medium, text-gray-500, uppercase
+•	Rows: border-b, hover:bg-gray-50
+•	Cell padding: px-4, py-3
+•	Text styling: text-sm, text-gray-700
+Forms
+•	Labels: text-sm, font-medium, text-gray-700, block
+•	Inputs: border, rounded-md, shadow-sm, focus:ring-blue-500
+•	Spacing between fields: space-y-4 to space-y-6
+•	Required fields marked with red asterisk
+Navigation Elements
+•	Sidebar Menu: 
+o	Item padding: p-3
+o	Active: bg-blue-800
+o	Hover: hover:bg-blue-800
+o	Icon + text layout with icons on left (16-18px)
+•	Tab Navigation: 
+o	Border bottom style
+o	Active: border-b-2 border-blue-800 text-blue-800
+o	Inactive: text-gray-600 hover:text-blue-800
+Icons & Visual Elements
+•	Icon Library: Lucide React
+•	Icon Sizes: 16px for button/text companions, 24px for standalone
+•	Icon Colors: Match text color or use primary blue for emphasis
+•	Charts/Visualizations: Clean, minimal style with blue primary color
+•	Status Indicators: Rounded-full badges with appropriate colors
+Responsive Design
+•	Breakpoints: sm:640px, md:768px, lg:1024px, xl:1280px
+•	Mobile Adaptations: 
+o	Card grids change from multi-column to single column
+o	Tables become scrollable or convert to card view
+o	Sidebar collapses to icon-only or top navigation
+Modal Windows
+•	Fixed positioning with semi-transparent overlay (bg-black bg-opacity-50)
+•	White background, rounded-lg, shadow-xl
+•	Standard header/body/footer pattern with consistent padding
+•	Max width constraint with responsive sizing
+
+Login/:
+Get rid of professional accounting system statement. That’s not all this is,
+Manual journal entries
+1.	Still does not have a submit or post button to enter data.
+2.	Needs a back or cancel button to go back to previous screen
+3.	Auto generation does not work think this would be more AI based. Learning with the type of entry and past data.
+Download template:
+1. Still doesn’t have a template to download to test out feature. Needs a button to download the template.
+
+General ledger needs more detail. However this doesn’t need to be a tab this can just be a report that is ran.
+
+chart of accounts.
+
+Edit button does not work,
+Still no add or delete button or feature.

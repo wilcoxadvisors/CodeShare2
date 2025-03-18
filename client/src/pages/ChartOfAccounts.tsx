@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import PageHeader from "../components/PageHeader";
 import DataTable from "../components/DataTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Edit, Trash2, Download, Upload, Plus } from "lucide-react";
 
 function ChartOfAccounts() {
   const { currentEntity } = useEntity();
@@ -21,6 +22,7 @@ function ChartOfAccounts() {
   const [formTab, setFormTab] = useState("basic");
   const [accountCodePrefix, setAccountCodePrefix] = useState("");
   const [accountData, setAccountData] = useState({
+    id: null,
     code: "",
     name: "",
     type: "",
@@ -30,6 +32,11 @@ function ChartOfAccounts() {
     active: true,
     description: ""
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState(null);
+  const [importMode, setImportMode] = useState(false);
+  const [importData, setImportData] = useState("");
 
   // Get accounts data
   const { data: accounts = [], isLoading, refetch } = useQuery({
@@ -110,6 +117,7 @@ function ChartOfAccounts() {
 
   const handleNewAccount = () => {
     setAccountData({
+      id: null,
       code: "",
       name: "",
       type: "",
@@ -119,8 +127,31 @@ function ChartOfAccounts() {
       active: true,
       description: ""
     });
+    setIsEditMode(false);
     setFormTab("basic");
     setShowAccountForm(true);
+  };
+  
+  const handleEditAccount = (account) => {
+    setAccountData({
+      id: account.id,
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      subtype: account.subtype || "",
+      isSubledger: account.isSubledger,
+      subledgerType: account.subledgerType || "",
+      active: account.active,
+      description: account.description || ""
+    });
+    setIsEditMode(true);
+    setFormTab("basic");
+    setShowAccountForm(true);
+  };
+  
+  const handleDeleteClick = (account) => {
+    setAccountToDelete(account);
+    setShowDeleteConfirm(true);
   };
 
   const handleChange = (e) => {
@@ -179,12 +210,79 @@ function ChartOfAccounts() {
     }
   };
 
+  const updateAccount = useMutation({
+    mutationFn: async (data) => {
+      return await apiRequest(
+        `/api/entities/${currentEntity?.id}/accounts/${data.id}`, 
+        {
+          method: 'PATCH',
+          data
+        }
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account updated",
+        description: "The account has been updated successfully.",
+      });
+      setShowAccountForm(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update account: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const deleteAccount = useMutation({
+    mutationFn: async (id) => {
+      return await apiRequest(
+        `/api/entities/${currentEntity?.id}/accounts/${id}`, 
+        {
+          method: 'DELETE'
+        }
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account deleted",
+        description: "The account has been deleted successfully.",
+      });
+      setShowDeleteConfirm(false);
+      setAccountToDelete(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete account: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    createAccount.mutate({
-      ...accountData,
-      entityId: currentEntity?.id
-    });
+    if (isEditMode) {
+      updateAccount.mutate({
+        ...accountData,
+        entityId: currentEntity?.id
+      });
+    } else {
+      createAccount.mutate({
+        ...accountData,
+        entityId: currentEntity?.id
+      });
+    }
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (accountToDelete) {
+      deleteAccount.mutate(accountToDelete.id);
+    }
   };
 
   const columns = [
@@ -266,7 +364,7 @@ function ChartOfAccounts() {
       <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Create New Account</DialogTitle>
+            <DialogTitle>{isEditMode ? "Edit Account" : "Create New Account"}</DialogTitle>
           </DialogHeader>
           
           <form onSubmit={handleSubmit}>
