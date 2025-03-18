@@ -5,7 +5,6 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 type JournalHeaderProps = {
   journalData: {
     date: string;
-    transactionNo: string;
     reference: string;
     description: string | null;
   };
