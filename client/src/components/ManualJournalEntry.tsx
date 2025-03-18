@@ -49,6 +49,28 @@ interface SupportingDocument {
   file: File;
 }
 
+// Helper function to create an empty line (defined outside component to avoid circular reference)
+function createEmptyLineHelper(lineNo: number = 1): JournalEntryLine {
+  return {
+    id: uuidv4(),
+    accountId: 0,
+    description: null,
+    debit: '',
+    credit: '',
+    lineNo: lineNo
+  };
+}
+
+// Generate a reference number (defined outside to avoid circular reference issues)
+function generateReferenceHelper(): string {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `JE-${year}${month}${day}-${random}`;
+}
+
 export default function ManualJournalEntry() {
   const { currentEntity } = useEntity();
   const [, setLocation] = useLocation();
@@ -60,12 +82,15 @@ export default function ManualJournalEntry() {
     enabled: !!currentEntity
   });
   
+  // Initial state for journal entry form
+  const initialEntries = [createEmptyLineHelper(1), createEmptyLineHelper(2)];
+  
   // State for journal entry form
   const [journalData, setJournalData] = useState<JournalEntryData>({
     date: new Date().toISOString().split('T')[0],
-    reference: generateReference(),
+    reference: generateReferenceHelper(),
     description: null,
-    entries: [createEmptyLine(), createEmptyLine()],
+    entries: initialEntries,
     files: []
   });
   
@@ -96,14 +121,7 @@ export default function ManualJournalEntry() {
   
   // Create a new empty journal entry line
   function createEmptyLine(): JournalEntryLine {
-    return {
-      id: uuidv4(),
-      accountId: 0,
-      description: null,
-      debit: '',
-      credit: '',
-      lineNo: journalData.entries.length + 1
-    };
+    return createEmptyLineHelper(journalData.entries.length + 1);
   }
   
   // Generate a reference number for the journal entry
