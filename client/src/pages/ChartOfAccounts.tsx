@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Trash2, Download, Upload, Plus } from "lucide-react";
+import * as XLSX from "xlsx";
 
 function ChartOfAccounts() {
   const { currentEntity } = useEntity();
