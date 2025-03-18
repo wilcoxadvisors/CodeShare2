@@ -44,7 +44,7 @@ function ChartOfAccounts() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
+  const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string, code: string} | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -187,7 +187,8 @@ function ChartOfAccounts() {
   const handleDeleteClick = (account: Record<string, any>) => {
     setAccountToDelete({
       id: account.id,
-      name: account.name
+      name: account.name,
+      code: account.code
     });
     setShowDeleteConfirm(true);
   };
