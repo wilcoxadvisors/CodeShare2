@@ -1,5 +1,5 @@
 // src/components/ManualJournalEntry.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useLocation } from 'wouter';
 import { useEntity } from '../contexts/EntityContext';
@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import JournalEntriesTable from './journal/JournalEntriesTable';
 import ActionButtons from './journal/ActionButtons';
-import { AccountType } from '@shared/schema';
 
 interface JournalEntryLine {
   id: string;
@@ -287,6 +286,23 @@ export default function ManualJournalEntry() {
     }));
   };
   
+  // Handle file deletion
+  const handleDeleteFile = (index: number) => {
+    // Remove from supporting documents
+    setSupportingDocs(prev => prev.filter((_, i) => i !== index));
+    
+    // Remove from journalData.files
+    setJournalData(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
+    
+    toast({
+      title: "File removed",
+      description: "Supporting document has been removed",
+    });
+  };
+  
   // Optional: subledger badges for display
   const getSubledgerBadge = (accountNo?: string) => {
     if (!accountNo) return null;
@@ -503,6 +519,7 @@ export default function ManualJournalEntry() {
           addEntryRow={addEntryRow}
           supportingDocs={supportingDocs}
           handleFileUpload={handleFileUpload}
+          handleDeleteFile={handleDeleteFile}
           isSubmitting={isSubmitting}
           submitStatus={submitStatus}
           setSubmitStatus={setSubmitStatus}

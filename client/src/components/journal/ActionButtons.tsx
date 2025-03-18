@@ -1,6 +1,6 @@
 // src/components/journal/ActionButtons.tsx
 import React, { useRef } from 'react';
-import { PlusCircle, Upload, Save, Check, Clock, X } from 'lucide-react';
+import { PlusCircle, Upload, Save, Check, Clock, X, File } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
@@ -8,11 +8,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import SupportingDocuments from './SupportingDocuments';
 
 type ActionButtonsProps = {
   addEntryRow: () => void;
   supportingDocs: Array<{name: string, size: number, file: File}>;
   handleFileUpload: (file: File) => void;
+  handleDeleteFile?: (index: number) => void;
   isSubmitting: boolean;
   submitStatus: 'draft' | 'pending_approval' | 'post_directly';
   setSubmitStatus: (status: 'draft' | 'pending_approval' | 'post_directly') => void;
@@ -23,6 +25,7 @@ export default function ActionButtons({
   addEntryRow,
   supportingDocs,
   handleFileUpload,
+  handleDeleteFile,
   isSubmitting,
   submitStatus,
   setSubmitStatus,
@@ -45,19 +48,10 @@ export default function ActionButtons({
         
         {/* Supporting Documents */}
         <div className="flex flex-col">
-          <h3 className="text-sm font-medium text-gray-700">Supporting Documents</h3>
-          {supportingDocs.length > 0 ? (
-            <ul className="mt-1 text-sm text-gray-600">
-              {supportingDocs.map((doc, index) => (
-                <li key={index} className="flex items-center mb-1">
-                  <span className="mr-2">📎</span>
-                  <span>{doc.name} ({(doc.size / 1024).toFixed(1)} KB)</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-1 text-sm text-gray-500">No supporting documents attached</p>
-          )}
+          <SupportingDocuments 
+            supportingDocs={supportingDocs} 
+            onDelete={handleDeleteFile}
+          />
         </div>
       </div>
       
