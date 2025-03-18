@@ -411,32 +411,49 @@ export default function ManualJournalEntry() {
       }
       
       // Create journal entry with mapped status
-      const response = await apiRequest(`/api/entities/${currentEntity.id}/journal-entries`, {
+      const response = await fetch(`/api/entities/${currentEntity.id}/journal-entries`, {
         method: 'POST',
-        data: {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           date: journalData.date,
           reference: journalData.reference,
           description: journalData.description,
           status: journalStatus,
           createdBy: 1, // Default to admin user
           lines: formattedEntries
+        })
+      }).then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to create journal entry');
         }
+        return res.json();
       });
       
       // Upload supporting documents if any
       if (journalData.files.length > 0 && response.id) {
-        const formData = new FormData();
-        journalData.files.forEach(file => {
-          formData.append('files', file);
-        });
-        
-        await apiRequest(`/api/entities/${currentEntity.id}/journal-entries/${response.id}/files`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          data: formData
-        });
+        for (const file of journalData.files) {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            if (event.target?.result) {
+              const fileContent = event.target.result.toString().split(',')[1]; // Get base64 content
+              
+              await fetch(`/api/entities/${currentEntity.id}/journal-entries/${response.id}/files`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  filename: file.name,
+                  contentType: file.type,
+                  fileContent: fileContent
+                })
+              });
+            }
+          };
+          reader.readAsDataURL(file);
+        }
       }
       
       let successMessage = "Journal entry saved as draft.";
