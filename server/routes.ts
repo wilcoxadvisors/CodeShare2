@@ -224,6 +224,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/entities/:entityId/accounts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const entityId = parseInt(req.params.entityId);
+      
+      const account = await storage.getAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      if (account.entityId !== entityId) {
+        return res.status(403).json({ message: "Forbidden: Account does not belong to this entity" });
+      }
+      
+      res.json(account);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   app.post("/api/entities/:entityId/accounts", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.entityId);
@@ -289,7 +309,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Account does not belong to this entity" });
       }
       
-      // Delete the account
+      // Check if the account is used in any journal entries
+      const journalEntries = await storage.getJournalEntries(entityId);
+      const journalEntryIds = journalEntries.map(entry => entry.id);
+      
+      // Fetch all journal entry lines for these entries
+      const hasJournalEntryLines = [];
+      for (const entryId of journalEntryIds) {
+        const lines = await storage.getJournalEntryLines(entryId);
+        hasJournalEntryLines.push(...lines.filter(line => line.accountId === id));
+        if (hasJournalEntryLines.length > 0) break; // Stop checking once we find any
+      }
+      
+      if (hasJournalEntryLines.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete account as it is used in journal entries", 
+          canDeactivate: true 
+        });
+      }
+      
+      // If no journal entries use this account, delete it
       await storage.deleteAccount(id);
       
       res.status(204).end();

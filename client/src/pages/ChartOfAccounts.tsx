@@ -124,7 +124,7 @@ function ChartOfAccounts() {
   }, [accountData.type, isEditMode, currentEntity, accounts]);
 
   const createAccount = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: any) => {
       return await apiRequest(
         `/api/entities/${currentEntity?.id}/accounts`, 
         {
@@ -294,12 +294,62 @@ function ChartOfAccounts() {
       setAccountToDelete(null);
       refetch();
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to delete account: ${error.message}`,
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error.response?.data?.canDeactivate) {
+        // Show option to deactivate instead
+        toast({
+          title: "Cannot delete account",
+          description: "This account is used in journal entries and cannot be deleted. You can deactivate it instead.",
+        });
+        
+        setShowDeleteConfirm(false);
+        // Show deactivation dialog if we have the account details
+        if (accountToDelete) {
+          setAccountData({
+            id: accountToDelete.id,
+            code: accountToDelete.code,
+            name: accountToDelete.name,
+            type: "",  // Will be filled when fetching account details
+            subtype: "",
+            isSubledger: false,
+            subledgerType: "",
+            active: false,  // Set to inactive
+            description: ""
+          });
+          
+          // Get full account details before showing the form
+          apiRequest(`/api/entities/${currentEntity?.id}/accounts/${accountToDelete.id}`, {
+            method: 'GET'
+          })
+            .then((accountDetails: any) => {
+              setAccountData(prev => ({
+                ...prev,
+                type: accountDetails.type,
+                subtype: accountDetails.subtype || "",
+                isSubledger: accountDetails.isSubledger,
+                subledgerType: accountDetails.subledgerType || "",
+                description: accountDetails.description || ""
+              }));
+              setIsEditMode(true);
+              setFormTab("basic");
+              setShowAccountForm(true);
+            })
+            .catch(fetchError => {
+              console.error("Error fetching account details:", fetchError);
+              toast({
+                title: "Error",
+                description: "Could not fetch account details for deactivation",
+                variant: "destructive",
+              });
+            });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to delete account: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     }
   });
 
@@ -974,8 +1024,10 @@ function ChartOfAccounts() {
               <br /><br />
               <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
                 <span className="text-amber-800">
-                  Warning: If this account has been used in any transactions, deleting it may cause reporting issues.
-                  Consider marking it as inactive instead.
+                  <strong>Important:</strong> Accounts that have been used in journal entries cannot be deleted
+                  and will be automatically deactivated instead.
+                  <br /><br />
+                  Only accounts with no transaction history can be fully deleted from the system.
                 </span>
               </div>
             </AlertDialogDescription>
