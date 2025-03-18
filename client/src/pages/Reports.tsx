@@ -10,6 +10,60 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
 
+// Define types for report data structures
+interface FinancialItem {
+  accountId: number;
+  accountName: string;
+  accountCode?: string;
+  balance: number;
+}
+
+interface BalanceSheetData {
+  assets: FinancialItem[];
+  liabilities: FinancialItem[];
+  equity: FinancialItem[];
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquity: number;
+  liabilitiesAndEquity: number;
+}
+
+interface IncomeStatementData {
+  revenue: FinancialItem[];
+  expenses: FinancialItem[];
+  totalRevenue: number;
+  totalExpenses: number;
+  netIncome: number;
+}
+
+interface TrialBalanceItem extends FinancialItem {
+  debit: number;
+  credit: number;
+}
+
+interface CashFlowData {
+  cashFlows: {
+    category: string;
+    items: FinancialItem[];
+    total: number;
+  }[];
+  netCashFlow: number;
+}
+
+interface GLEntry {
+  id: number;
+  date: Date;
+  journalId: string;
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  status: string;
+}
+
 function Reports() {
   const { currentEntity } = useEntity();
   const [activeTab, setActiveTab] = useState("balance-sheet");
@@ -19,38 +73,38 @@ function Reports() {
     endDate: new Date().toISOString().split('T')[0]
   });
   
-  const { data: balanceSheetData, isLoading: balanceSheetLoading, refetch: refetchBalanceSheet } = useQuery({
+  const { data: balanceSheetData, isLoading: balanceSheetLoading, refetch: refetchBalanceSheet } = useQuery<BalanceSheetData>({
     queryKey: currentEntity && activeTab === "balance-sheet" 
-      ? [`/api/entities/${currentEntity.id}/reports/balance-sheet`, reportParams.asOfDate] 
-      : null,
+      ? [`/api/entities/${currentEntity.id}/reports/balance-sheet`, reportParams.asOfDate] as const
+      : ['balance-sheet-disabled'],
     enabled: !!currentEntity && activeTab === "balance-sheet"
   });
   
-  const { data: incomeStatementData, isLoading: incomeStatementLoading, refetch: refetchIncomeStatement } = useQuery({
+  const { data: incomeStatementData, isLoading: incomeStatementLoading, refetch: refetchIncomeStatement } = useQuery<IncomeStatementData>({
     queryKey: currentEntity && activeTab === "income-statement" 
-      ? [`/api/entities/${currentEntity.id}/reports/income-statement`, reportParams.startDate, reportParams.endDate] 
-      : null,
+      ? [`/api/entities/${currentEntity.id}/reports/income-statement`, reportParams.startDate, reportParams.endDate] as const
+      : ['income-statement-disabled'],
     enabled: !!currentEntity && activeTab === "income-statement"
   });
   
-  const { data: trialBalanceData, isLoading: trialBalanceLoading, refetch: refetchTrialBalance } = useQuery({
+  const { data: trialBalanceData, isLoading: trialBalanceLoading, refetch: refetchTrialBalance } = useQuery<TrialBalanceItem[]>({
     queryKey: currentEntity && activeTab === "trial-balance" 
-      ? [`/api/entities/${currentEntity.id}/reports/trial-balance`, reportParams.startDate, reportParams.endDate] 
-      : null,
+      ? [`/api/entities/${currentEntity.id}/reports/trial-balance`, reportParams.startDate, reportParams.endDate] as const
+      : ['trial-balance-disabled'],
     enabled: !!currentEntity && activeTab === "trial-balance"
   });
   
-  const { data: cashFlowData, isLoading: cashFlowLoading, refetch: refetchCashFlow } = useQuery({
+  const { data: cashFlowData, isLoading: cashFlowLoading, refetch: refetchCashFlow } = useQuery<CashFlowData>({
     queryKey: currentEntity && activeTab === "cash-flow" 
-      ? [`/api/entities/${currentEntity.id}/reports/cash-flow`, reportParams.startDate, reportParams.endDate] 
-      : null,
+      ? [`/api/entities/${currentEntity.id}/reports/cash-flow`, reportParams.startDate, reportParams.endDate] as const
+      : ['cash-flow-disabled'],
     enabled: !!currentEntity && activeTab === "cash-flow"
   });
   
-  const { data: generalLedgerData, isLoading: generalLedgerLoading, refetch: refetchGeneralLedger } = useQuery({
+  const { data: generalLedgerData, isLoading: generalLedgerLoading, refetch: refetchGeneralLedger } = useQuery<GLEntry[]>({
     queryKey: currentEntity && activeTab === "general-ledger" 
-      ? [`/api/entities/${currentEntity.id}/general-ledger`, reportParams.startDate, reportParams.endDate] 
-      : null,
+      ? [`/api/entities/${currentEntity.id}/general-ledger`, reportParams.startDate, reportParams.endDate] as const
+      : ['general-ledger-disabled'],
     enabled: !!currentEntity && activeTab === "general-ledger"
   });
   
