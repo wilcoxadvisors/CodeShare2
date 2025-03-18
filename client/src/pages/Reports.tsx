@@ -47,6 +47,13 @@ function Reports() {
     enabled: !!currentEntity && activeTab === "cash-flow"
   });
   
+  const { data: generalLedgerData, isLoading: generalLedgerLoading, refetch: refetchGeneralLedger } = useQuery({
+    queryKey: currentEntity && activeTab === "general-ledger" 
+      ? [`/api/entities/${currentEntity.id}/general-ledger`, reportParams.startDate, reportParams.endDate] 
+      : null,
+    enabled: !!currentEntity && activeTab === "general-ledger"
+  });
+  
   const handleParamChange = (name: string, value: string) => {
     setReportParams(prev => ({ ...prev, [name]: value }));
   };
@@ -64,6 +71,9 @@ function Reports() {
         break;
       case "cash-flow":
         refetchCashFlow();
+        break;
+      case "general-ledger":
+        refetchGeneralLedger();
         break;
     }
   };
@@ -111,6 +121,7 @@ function Reports() {
             <TabsTrigger value="income-statement">Income Statement</TabsTrigger>
             <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
             <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
+            <TabsTrigger value="general-ledger">General Ledger</TabsTrigger>
           </TabsList>
           
           <Card className="mb-6">
@@ -409,6 +420,65 @@ function Reports() {
                         </div>
                       </dl>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="general-ledger">
+            <Card>
+              <CardHeader>
+                <CardTitle>General Ledger</CardTitle>
+                <CardDescription>
+                  {new Date(reportParams.startDate).toLocaleDateString()} to {new Date(reportParams.endDate).toLocaleDateString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {generalLedgerLoading ? (
+                  <div className="flex justify-center py-8">Loading...</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Journal</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {generalLedgerData?.map((item: any, index: number) => (
+                          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {new Date(item.date).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {item.journalId}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.accountCode} - {item.accountName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {item.description}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              {item.debit > 0 ? `$${item.debit.toLocaleString()}` : ''}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              {item.credit > 0 ? `$${item.credit.toLocaleString()}` : ''}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              ${item.balance.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>
