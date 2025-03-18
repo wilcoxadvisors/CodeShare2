@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 
 function Login() {
@@ -47,19 +48,19 @@ function Login() {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md shadow-md">
+        <CardHeader className="space-y-1 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-t-lg">
           <CardTitle className="text-2xl font-bold text-center">Wilcox Advisors</CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
+          <CardDescription className="text-center text-gray-100">
+            Professional Accounting System
           </CardDescription>
         </CardHeader>
         
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="text-gray-700">Username</Label>
               <Input
                 id="username"
                 name="username"
@@ -68,16 +69,12 @@ function Login() {
                 onChange={handleChange}
                 required
                 placeholder="Enter your username"
+                className="focus:ring-blue-800 focus:border-blue-800"
               />
             </div>
             
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-xs text-primary-600 hover:underline">
-                  Forgot password?
-                </a>
-              </div>
+              <Label htmlFor="password" className="text-gray-700">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -86,27 +83,33 @@ function Login() {
                 onChange={handleChange}
                 required
                 placeholder="Enter your password"
+                className="focus:ring-blue-800 focus:border-blue-800"
               />
             </div>
             
             <div className="flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" 
+              <Checkbox 
+                id="remember"
+                className="text-blue-800 focus:ring-blue-800"
               />
-              <Label htmlFor="remember" className="text-sm">Remember me</Label>
+              <Label htmlFor="remember" className="text-sm text-gray-700">Remember me</Label>
             </div>
           </CardContent>
           
-          <CardFooter>
+          <CardFooter className="flex flex-col gap-4">
             <Button 
               type="submit" 
-              className="w-full"
+              className="w-full bg-blue-800 hover:bg-blue-900"
               disabled={isLoading}
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
+            
+            <div className="text-center w-full">
+              <a href="#" className="text-sm text-blue-800 hover:text-blue-900 hover:underline">
+                Forgot password?
+              </a>
+            </div>
           </CardFooter>
         </form>
         

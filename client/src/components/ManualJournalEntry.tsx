@@ -99,6 +99,7 @@ export default function ManualJournalEntry() {
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supportingDocs, setSupportingDocs] = useState<SupportingDocument[]>([]);
+  const [submitStatus, setSubmitStatus] = useState<'draft' | 'pending_approval' | 'post_directly'>('post_directly'); // Default to post directly
   
   // Validation errors
   const [errors, setErrors] = useState<{
@@ -311,9 +312,6 @@ export default function ManualJournalEntry() {
     setEntryErrors(newEntryErrors);
     return isValid;
   };
-  
-  // Determine if the user can submit directly for approval
-  const [submitStatus, setSubmitStatus] = useState<'draft' | 'pending_approval' | 'post_directly'>('draft');
   
   // Submit the journal entry
   const handleSubmit = async (e: React.FormEvent) => {

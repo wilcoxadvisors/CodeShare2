@@ -1,0 +1,109 @@
+Color Palette
+
+Primary: Blue-800 (#1E3A8A) to Blue-900 (#1e3a8a) gradient
+Secondary: White (#FFFFFF)
+Accents:
+
+Green-700 (#15803d) for success/positive actions
+Red-600 (#dc2626) for delete/warning actions
+Gray-50 to Gray-100 for backgrounds
+Gray-700/800 for text
+
+
+
+Typography
+
+Font Family: System font stack (Segoe UI, Roboto, Oxygen, etc.)
+Headings:
+
+Page titles: 2xl (24px), font-bold, text-gray-800
+Section headings: xl (20px), font-semibold, text-gray-900
+Card headings: lg (18px), font-medium
+
+
+Body Text: text-sm (14px) or text-base (16px), text-gray-700
+
+Layout Structure
+
+Sidebar: Fixed width (w-64), bg-blue-900, full height
+Main Content: Flex-1, bg-gray-100, p-6
+Cards/Panels: bg-white, rounded-lg, shadow-md, p-6
+Spacing: Consistent 6px (p-6, m-6) padding and margin system
+
+Component Styling
+Cards & Panels
+
+White background
+Rounded corners (rounded-lg)
+Light shadow (shadow-md)
+Consistent padding (p-4 to p-6)
+Occasional header with bg-gray-50/100 separator
+
+Buttons
+
+Primary: bg-blue-800, text-white, hover:bg-blue-900, rounded-md, px-4, py-2
+Secondary: bg-gray-100, text-gray-800, hover:bg-gray-200, rounded-md
+Danger: bg-red-600, text-white, hover:bg-red-700
+Success: bg-green-700, text-white, hover:bg-green-800
+Icon Buttons: Paired with Lucide icons (16-18px)
+
+Tables
+
+Full width with border-collapse
+Header: bg-gray-100, text-left, text-xs, font-medium, text-gray-500, uppercase
+Rows: border-b, hover:bg-gray-50
+Cell padding: px-4, py-3
+Text styling: text-sm, text-gray-700
+
+Forms
+
+Labels: text-sm, font-medium, text-gray-700, block
+Inputs: border, rounded-md, shadow-sm, focus:ring-blue-500
+Spacing between fields: space-y-4 to space-y-6
+Required fields marked with red asterisk
+
+Navigation Elements
+
+Sidebar Menu:
+
+Item padding: p-3
+Active: bg-blue-800
+Hover: hover:bg-blue-800
+Icon + text layout with icons on left (16-18px)
+
+
+Tab Navigation:
+
+Border bottom style
+Active: border-b-2 border-blue-800 text-blue-800
+Inactive: text-gray-600 hover:text-blue-800
+
+
+
+Icons & Visual Elements
+
+Icon Library: Lucide React
+Icon Sizes: 16px for button/text companions, 24px for standalone
+Icon Colors: Match text color or use primary blue for emphasis
+Charts/Visualizations: Clean, minimal style with blue primary color
+Status Indicators: Rounded-full badges with appropriate colors
+
+Responsive Design
+
+Breakpoints: sm:640px, md:768px, lg:1024px, xl:1280px
+Mobile Adaptations:
+
+Card grids change from multi-column to single column
+Tables become scrollable or convert to card view
+Sidebar collapses to icon-only or top navigation
+
+
+
+Modal Windows
+
+Fixed positioning with semi-transparent overlay (bg-black bg-opacity-50)
+White background, rounded-lg, shadow-xl
+Standard header/body/footer pattern with consistent padding
+Max width constraint with responsive sizing
+
+This design system emphasizes clarity, professionalism, and ease of use while maintaining a cohesive visual identity throughout the admin experience

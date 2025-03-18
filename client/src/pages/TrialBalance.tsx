@@ -113,10 +113,10 @@ function TrialBalance() {
   const exportCSV = () => {
     if (!trialBalanceData || !Array.isArray(trialBalanceData)) return;
 
-    let csvContent = "Account Code,Account Name,Beginning Balance,Debit,Credit,Ending Balance\n";
+    let csvContent = "Account Code,Account Name,Account Type,Beginning Balance,Debit,Credit,Ending Balance\n";
     
     // The API is returning an array directly instead of an object with accounts property
-    const accounts = trialBalanceData;
+    const accounts = trialBalanceData.filter(account => account.type !== "TOTAL");
     accounts.forEach(account => {
       // Calculate beginning balance (either from API or use 0 for income statement accounts)
       const beginningBalance = account.beginningBalance || 
@@ -129,7 +129,12 @@ function TrialBalance() {
         beginningBalance + account.debit - account.credit : 
         beginningBalance + account.credit - account.debit;
 
-      csvContent += `${account.code},${account.name},${beginningBalance || 0},${account.debit || 0},${account.credit || 0},${endingBalance || 0}\n`;
+      // Ensure account code and name are properly defined
+      const accountCode = account.code || '(No Code)';
+      const accountName = account.name || '(No Name)';
+      const accountType = account.type || 'Unknown';
+
+      csvContent += `"${accountCode}","${accountName}","${accountType}",${beginningBalance || 0},${account.debit || 0},${account.credit || 0},${endingBalance || 0}\n`;
     });
 
     // Create a blob and download
