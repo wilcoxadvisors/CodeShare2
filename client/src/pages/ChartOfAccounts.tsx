@@ -4,7 +4,11 @@ import { useEntity } from "../contexts/EntityContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import PageHeader from "../components/PageHeader";
 import DataTable from "../components/DataTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -307,8 +311,25 @@ function ChartOfAccounts() {
       accessor: "id",
       type: "actions",
       render: (row) => (
-        <div className="text-right">
-          <a href="#" className="text-primary-600 hover:text-primary-900">Edit</a>
+        <div className="flex justify-end space-x-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleEditAccount(row)}
+            className="text-blue-800 hover:text-blue-900 hover:bg-blue-50"
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleDeleteClick(row)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
         </div>
       )
     }
