@@ -119,19 +119,110 @@ export default function BatchJournalUpload() {
   };
 
   const downloadTemplate = () => {
-    // Create a simple CSV template
+    // Check if the xlsx library is available or if we need to fall back to CSV
+    try {
+      // Create an Excel template with comprehensive examples
+      import('xlsx').then(XLSX => {
+        // Create a workbook with two sheets - Template and Example
+        const wb = XLSX.utils.book_new();
+        
+        // Create the template sheet
+        const templateHeaders = [
+          "Date", "Reference", "Description", "Account Code", "Account Name", "Debit", "Credit", "Memo"
+        ];
+        
+        const templateData = [
+          templateHeaders,
+          // Leave some empty rows for the user to fill in
+          Array(8).fill(""),
+          Array(8).fill(""),
+          Array(8).fill(""),
+          Array(8).fill(""),
+          Array(8).fill("")
+        ];
+        
+        const templateSheet = XLSX.utils.aoa_to_sheet(templateData);
+        
+        // Add some cell styling - make the header row bold and add column width
+        templateSheet['!cols'] = [
+          { width: 12 }, // Date
+          { width: 15 }, // Reference
+          { width: 30 }, // Description
+          { width: 15 }, // Account Code
+          { width: 25 }, // Account Name
+          { width: 12 }, // Debit
+          { width: 12 }, // Credit
+          { width: 30 }  // Memo
+        ];
+        
+        // Create the example sheet
+        const exampleData = [
+          templateHeaders,
+          ["2025-03-18", "JE-001", "Office Supplies Purchase", "1000", "Cash", "", "500.00", "Payment for office supplies"],
+          ["2025-03-18", "JE-001", "Office Supplies Purchase", "6000", "Office Supplies", "500.00", "", "Purchase of office supplies"],
+          ["2025-03-19", "JE-002", "Client Invoice", "1100", "Accounts Receivable", "1200.00", "", "Invoice #INV-2025-001"],
+          ["2025-03-19", "JE-002", "Client Invoice", "4000", "Service Revenue", "", "1200.00", "Consulting services"],
+          ["2025-03-20", "JE-003", "Payroll Entry", "6500", "Salary Expense", "3000.00", "", "March payroll"],
+          ["2025-03-20", "JE-003", "Payroll Entry", "2100", "Payroll Liabilities", "", "650.00", "Taxes withheld"],
+          ["2025-03-20", "JE-003", "Payroll Entry", "1000", "Cash", "", "2350.00", "Net payroll paid"]
+        ];
+        
+        const exampleSheet = XLSX.utils.aoa_to_sheet(exampleData);
+        
+        // Apply the same column widths to the example sheet
+        exampleSheet['!cols'] = templateSheet['!cols'];
+        
+        // Add the sheets to the workbook
+        XLSX.utils.book_append_sheet(wb, templateSheet, "Template");
+        XLSX.utils.book_append_sheet(wb, exampleSheet, "Examples");
+        
+        // Add a Tips sheet with additional guidance
+        const tipsData = [
+          ["Journal Entry Upload Tips"],
+          [""],
+          ["1. Each journal entry (group of lines with the same Reference) must balance (total debits = total credits)"],
+          ["2. Use the date format YYYY-MM-DD (e.g., 2025-03-18)"],
+          ["3. All entries with the same Reference will be treated as a single journal entry"],
+          ["4. Account Codes must exactly match existing accounts in the system"],
+          ["5. Enter amounts without currency symbols or commas (e.g., 1250.00, not $1,250.00)"],
+          ["6. Leave either Debit OR Credit blank for each line, not both"],
+          ["7. Description is for the overall journal entry; Memo is for the specific line"],
+          [""]
+        ];
+        
+        const tipsSheet = XLSX.utils.aoa_to_sheet(tipsData);
+        XLSX.utils.book_append_sheet(wb, tipsSheet, "Tips");
+        
+        // Generate the Excel file and trigger download
+        XLSX.writeFile(wb, "journal_entries_template.xlsx");
+      }).catch(err => {
+        console.error("Error creating Excel template:", err);
+        // Fall back to CSV if Excel creation fails
+        createCSVTemplate();
+      });
+    } catch (err) {
+      console.error("XLSX library not available:", err);
+      // Fall back to CSV
+      createCSVTemplate();
+    }
+  };
+  
+  // Fallback function to create a CSV template
+  const createCSVTemplate = () => {
     const headers = "Date,Reference,Description,Account Code,Account Name,Debit,Credit,Memo\n";
     const exampleRow1 = "2025-03-18,JE-001,Office Supplies Purchase,1000,Cash,,500.00,Payment for office supplies\n";
     const exampleRow2 = "2025-03-18,JE-001,Office Supplies Purchase,6000,Office Supplies,500.00,,Purchase of office supplies\n";
+    const exampleRow3 = "2025-03-19,JE-002,Client Invoice,1100,Accounts Receivable,1200.00,,Invoice #INV-2025-001\n";
+    const exampleRow4 = "2025-03-19,JE-002,Client Invoice,4000,Service Revenue,,1200.00,Consulting services\n";
     
-    const csvContent = headers + exampleRow1 + exampleRow2;
+    const csvContent = headers + exampleRow1 + exampleRow2 + exampleRow3 + exampleRow4;
     
     // Create a blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `journal_entry_template.csv`);
+    link.setAttribute('download', `journal_entries_template.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

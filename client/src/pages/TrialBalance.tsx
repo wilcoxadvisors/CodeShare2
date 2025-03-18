@@ -348,20 +348,64 @@ function TrialBalance() {
                           
                           {/* Category Subtotal */}
                           <tr className="border-b border-gray-200 bg-gray-50">
-                            <td colSpan={3} className="px-4 py-2 font-medium text-right">Subtotal: {category.name}</td>
-                            <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.debit)}</td>
-                            <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.credit)}</td>
-                            <td className="px-4 py-2 font-medium text-right"></td>
+                            <td className="px-4 py-2 font-medium">Subtotal: {category.name}</td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2 text-right">
+                              {formatCurrency(
+                                category.accounts.reduce((sum, account) => {
+                                  const beginningBalance = account.beginningBalance || 0;
+                                  return sum + (parseFloat(beginningBalance.toString()) || 0);
+                                }, 0)
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.debit)}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.credit)}</td>
+                            <td className="px-4 py-2 text-right">
+                              {formatCurrency(
+                                category.accounts.reduce((sum, account) => {
+                                  const beginningBalance = account.beginningBalance || 0;
+                                  const isDebitNormal = account.type === AccountType.ASSET || account.type === AccountType.EXPENSE;
+                                  const accountEndingBalance = isDebitNormal ? 
+                                    beginningBalance + account.debit - account.credit : 
+                                    beginningBalance + account.credit - account.debit;
+                                  return sum + (parseFloat(accountEndingBalance.toString()) || 0);
+                                }, 0)
+                              )}
+                            </td>
                           </tr>
                         </Fragment>
                       ))}
                       
                       {/* Total Row */}
-                      <tr className="bg-gray-50 font-semibold">
-                        <td colSpan={3} className="px-4 py-3 text-right">Total</td>
+                      <tr className="bg-blue-50 font-semibold">
+                        <td className="px-4 py-3">TOTAL</td>
+                        <td className="px-4 py-3"></td>
+                        <td className="px-4 py-3 text-right">
+                          {formatCurrency(
+                            categories.reduce((sum, category) => {
+                              return sum + category.accounts.reduce((accountSum, account) => {
+                                const beginningBalance = account.beginningBalance || 0;
+                                return accountSum + (parseFloat(beginningBalance.toString()) || 0);
+                              }, 0);
+                            }, 0)
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
                         <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
-                        <td className="px-4 py-3 text-right"></td>
+                        <td className="px-4 py-3 text-right">
+                          {formatCurrency(
+                            categories.reduce((sum, category) => {
+                              return sum + category.accounts.reduce((accountSum, account) => {
+                                const beginningBalance = account.beginningBalance || 0;
+                                const isDebitNormal = account.type === AccountType.ASSET || account.type === AccountType.EXPENSE;
+                                const accountEndingBalance = isDebitNormal ? 
+                                  beginningBalance + account.debit - account.credit : 
+                                  beginningBalance + account.credit - account.debit;
+                                return accountSum + (parseFloat(accountEndingBalance.toString()) || 0);
+                              }, 0);
+                            }, 0)
+                          )}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
