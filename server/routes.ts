@@ -244,6 +244,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.put("/api/entities/:entityId/accounts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const entityId = parseInt(req.params.entityId);
+      
+      // Get the existing account first to validate entity ownership
+      const existingAccount = await storage.getAccount(id);
+      if (!existingAccount) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      if (existingAccount.entityId !== entityId) {
+        return res.status(403).json({ message: "Forbidden: Account does not belong to this entity" });
+      }
+      
+      // Update the account
+      const updatedAccount = await storage.updateAccount(id, req.body);
+      if (!updatedAccount) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      res.json(updatedAccount);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/entities/:entityId/accounts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const entityId = parseInt(req.params.entityId);
+      
+      // Get the existing account first to validate entity ownership
+      const existingAccount = await storage.getAccount(id);
+      if (!existingAccount) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      if (existingAccount.entityId !== entityId) {
+        return res.status(403).json({ message: "Forbidden: Account does not belong to this entity" });
+      }
+      
+      // Delete the account
+      await storage.deleteAccount(id);
+      
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // Journal Entry routes
   app.get("/api/entities/:entityId/journal-entries", isAuthenticated, async (req, res) => {
     try {

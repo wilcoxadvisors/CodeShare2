@@ -34,6 +34,7 @@ export interface IStorage {
   getAccountsByType(entityId: number, type: AccountType): Promise<Account[]>;
   createAccount(account: InsertAccount): Promise<Account>;
   updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
+  deleteAccount(id: number): Promise<void>;
   
   // Journal Entry methods
   getJournalEntry(id: number): Promise<JournalEntry | undefined>;
@@ -356,6 +357,12 @@ export class MemStorage implements IStorage {
     const updatedAccount = { ...account, ...accountData };
     this.accounts.set(id, updatedAccount);
     return updatedAccount;
+  }
+  
+  async deleteAccount(id: number): Promise<void> {
+    if (this.accounts.has(id)) {
+      this.accounts.delete(id);
+    }
   }
   
   // Journal Entry methods
