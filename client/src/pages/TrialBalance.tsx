@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import PageHeader from "../components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
 import { AccountType } from "@shared/schema";
@@ -30,9 +29,11 @@ function TrialBalance() {
 
   // Process data for report display
   const processTrialBalanceData = () => {
-    if (!trialBalanceData) return { categories: [], totals: { debit: 0, credit: 0 } };
+    if (!trialBalanceData || !Array.isArray(trialBalanceData)) return { categories: [], totals: { debit: 0, credit: 0 } };
 
-    const grouped = trialBalanceData.accounts.reduce((acc, account) => {
+    // The API is returning an array directly instead of an object with accounts property
+    const accounts = trialBalanceData;
+    const grouped = accounts.reduce((acc, account) => {
       let category;
       
       // Map account types to high-level categories
@@ -70,10 +71,10 @@ function TrialBalance() {
     }, {});
 
     // Calculate totals
-    const totals = trialBalanceData.accounts.reduce((sum, account) => {
+    const totals = accounts.reduce((sum, account) => {
       return {
-        debit: sum.debit + account.debit,
-        credit: sum.credit + account.credit
+        debit: sum.debit + (account.debit || 0),
+        credit: sum.credit + (account.credit || 0)
       };
     }, { debit: 0, credit: 0 });
 
@@ -105,12 +106,14 @@ function TrialBalance() {
 
   // Export to CSV
   const exportCSV = () => {
-    if (!trialBalanceData) return;
+    if (!trialBalanceData || !Array.isArray(trialBalanceData)) return;
 
     let csvContent = "Account Code,Account Name,Debit,Credit\n";
     
-    trialBalanceData.accounts.forEach(account => {
-      csvContent += `${account.code},${account.name},${account.debit},${account.credit}\n`;
+    // The API is returning an array directly instead of an object with accounts property
+    const accounts = trialBalanceData;
+    accounts.forEach(account => {
+      csvContent += `${account.code},${account.name},${account.debit || 0},${account.credit || 0}\n`;
     });
 
     // Create a blob and download
@@ -210,12 +213,22 @@ function TrialBalance() {
             </div>
           </div>
           
-          <Tabs value={reportTab} onValueChange={setReportTab} className="w-full md:w-auto">
-            <TabsList>
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="detail">Detail</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="w-full md:w-auto">
+            <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
+              <button
+                onClick={() => setReportTab("summary")}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${reportTab === "summary" ? "bg-background text-foreground shadow" : ""}`}
+              >
+                Summary
+              </button>
+              <button
+                onClick={() => setReportTab("detail")}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${reportTab === "detail" ? "bg-background text-foreground shadow" : ""}`}
+              >
+                Detail
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Report */}
@@ -225,101 +238,105 @@ function TrialBalance() {
             <p className="text-sm text-gray-500">As of {new Date(reportDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           </CardHeader>
           <CardContent>
-            <TabsContent value="summary" className="p-0 mt-0">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Category</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Debit</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Credit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categories.map((category) => (
-                      <tr key={category.name} className="border-b border-gray-200">
-                        <td className="px-4 py-2 font-medium">{category.name}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.debit)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.credit)}</td>
+            {reportTab === "summary" && (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left">
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">Category</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Debit</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Credit</th>
                       </tr>
-                    ))}
-                    {/* Total Row */}
-                    <tr className="bg-gray-50 font-semibold">
-                      <td className="px-4 py-3">Total</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {categories.map((category) => (
+                        <tr key={category.name} className="border-b border-gray-200">
+                          <td className="px-4 py-2 font-medium">{category.name}</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.debit)}</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(category.subtotals.credit)}</td>
+                        </tr>
+                      ))}
+                      {/* Total Row */}
+                      <tr className="bg-gray-50 font-semibold">
+                        <td className="px-4 py-3">Total</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Balanced Indicator */}
+                <div className="mt-4 text-right">
+                  {Math.abs(totals.debit - totals.credit) < 0.01 ? (
+                    <span className="text-green-600 font-medium">✓ Debits and Credits are balanced</span>
+                  ) : (
+                    <span className="text-red-600 font-medium">⚠ Debits and Credits are not balanced: {formatCurrency(Math.abs(totals.debit - totals.credit))} difference</span>
+                  )}
+                </div>
               </div>
-              
-              {/* Balanced Indicator */}
-              <div className="mt-4 text-right">
-                {Math.abs(totals.debit - totals.credit) < 0.01 ? (
-                  <span className="text-green-600 font-medium">✓ Debits and Credits are balanced</span>
-                ) : (
-                  <span className="text-red-600 font-medium">⚠ Debits and Credits are not balanced: {formatCurrency(Math.abs(totals.debit - totals.credit))} difference</span>
-                )}
-              </div>
-            </TabsContent>
+            )}
             
-            <TabsContent value="detail" className="p-0 mt-0">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Code</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Name</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Debit</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Credit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categories.map((category) => (
-                      <Fragment key={category.name}>
-                        {/* Category Header */}
-                        <tr className="bg-gray-100">
-                          <td colSpan={4} className="px-4 py-2 font-semibold">{category.name}</td>
-                        </tr>
-                        
-                        {/* Accounts in this category */}
-                        {category.accounts.map((account) => (
-                          <tr key={account.id} className="border-b border-gray-200">
-                            <td className="px-4 py-2">{account.code}</td>
-                            <td className="px-4 py-2">{account.name}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(account.debit)}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(account.credit)}</td>
+            {reportTab === "detail" && (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left">
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Code</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">Account Name</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Debit</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Credit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categories.map((category) => (
+                        <Fragment key={category.name}>
+                          {/* Category Header */}
+                          <tr className="bg-gray-100">
+                            <td colSpan={4} className="px-4 py-2 font-semibold">{category.name}</td>
                           </tr>
-                        ))}
-                        
-                        {/* Category Subtotal */}
-                        <tr className="border-b border-gray-200 bg-gray-50">
-                          <td colSpan={2} className="px-4 py-2 font-medium text-right">Subtotal: {category.name}</td>
-                          <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.debit)}</td>
-                          <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.credit)}</td>
-                        </tr>
-                      </Fragment>
-                    ))}
-                    
-                    {/* Total Row */}
-                    <tr className="bg-gray-50 font-semibold">
-                      <td colSpan={2} className="px-4 py-3 text-right">Total</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                          
+                          {/* Accounts in this category */}
+                          {category.accounts.map((account) => (
+                            <tr key={account.id} className="border-b border-gray-200">
+                              <td className="px-4 py-2">{account.code}</td>
+                              <td className="px-4 py-2">{account.name}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(account.debit)}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(account.credit)}</td>
+                            </tr>
+                          ))}
+                          
+                          {/* Category Subtotal */}
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            <td colSpan={2} className="px-4 py-2 font-medium text-right">Subtotal: {category.name}</td>
+                            <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.debit)}</td>
+                            <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.credit)}</td>
+                          </tr>
+                        </Fragment>
+                      ))}
+                      
+                      {/* Total Row */}
+                      <tr className="bg-gray-50 font-semibold">
+                        <td colSpan={2} className="px-4 py-3 text-right">Total</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(totals.debit)}</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(totals.credit)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Balanced Indicator */}
+                <div className="mt-4 text-right">
+                  {Math.abs(totals.debit - totals.credit) < 0.01 ? (
+                    <span className="text-green-600 font-medium">✓ Debits and Credits are balanced</span>
+                  ) : (
+                    <span className="text-red-600 font-medium">⚠ Debits and Credits are not balanced: {formatCurrency(Math.abs(totals.debit - totals.credit))} difference</span>
+                  )}
+                </div>
               </div>
-              
-              {/* Balanced Indicator */}
-              <div className="mt-4 text-right">
-                {Math.abs(totals.debit - totals.credit) < 0.01 ? (
-                  <span className="text-green-600 font-medium">✓ Debits and Credits are balanced</span>
-                ) : (
-                  <span className="text-red-600 font-medium">⚠ Debits and Credits are not balanced: {formatCurrency(Math.abs(totals.debit - totals.credit))} difference</span>
-                )}
-              </div>
-            </TabsContent>
+            )}
           </CardContent>
         </Card>
       </div>
