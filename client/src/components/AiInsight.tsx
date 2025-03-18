@@ -105,11 +105,20 @@ export function AiInsight({
     }
 
     if (error) {
+      const isApiKeyError = error.includes('API key') || error.includes('AI integration not available');
+      
       return (
-        <div className="bg-red-50 p-4 rounded-md border border-red-200">
+        <div className={`p-4 rounded-md border ${isApiKeyError ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
           <div className="flex">
-            <X className="h-5 w-5 text-red-500 mr-2" />
-            <p className="text-sm text-red-700">{error}</p>
+            <X className={`h-5 w-5 mr-2 ${isApiKeyError ? 'text-yellow-500' : 'text-red-500'}`} />
+            <div className={`text-sm ${isApiKeyError ? 'text-yellow-700' : 'text-red-700'}`}>
+              <p>{error}</p>
+              {isApiKeyError && (
+                <p className="mt-2 font-medium">
+                  Please contact your administrator to configure AI integration.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       );
