@@ -250,11 +250,11 @@ function ChartOfAccounts() {
   };
 
   const updateAccount = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: any) => {
       return await apiRequest(
         `/api/entities/${currentEntity?.id}/accounts/${data.id}`, 
         {
-          method: 'PATCH',
+          method: 'PUT',
           data
         }
       );
