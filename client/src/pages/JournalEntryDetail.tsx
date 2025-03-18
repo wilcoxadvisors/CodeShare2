@@ -31,19 +31,19 @@ function JournalEntryDetail() {
 
   // Query entry details
   const { data: journalEntry, isLoading: isLoadingEntry } = useQuery({
-    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}`] : null,
+    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
 
   // Query entry lines
   const { data: journalEntryLines, isLoading: isLoadingLines } = useQuery({
-    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/lines`] : null,
+    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/lines`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
 
   // Query entry files
   const { data: journalEntryFiles, isLoading: isLoadingFiles } = useQuery({
-    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/files`] : null,
+    queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/files`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
 

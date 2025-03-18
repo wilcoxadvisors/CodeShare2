@@ -23,7 +23,7 @@ export default function BatchJournalUpload() {
 
   // Query accounts for validation
   const { data: accounts } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : null,
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ["no-entity-selected"],
     enabled: !!currentEntity
   });
 
