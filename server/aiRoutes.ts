@@ -1,13 +1,37 @@
 import { Express, Request, Response } from 'express';
 import OpenAI from "openai";
 
-// Create xAI client according to the guidelines
-const openai = new OpenAI({ 
-  baseURL: "https://api.x.ai/v1", 
-  apiKey: process.env.XAI_API_KEY 
-});
+// Verify if xAI API key is available in environment
+const xaiApiKey = process.env.XAI_API_KEY;
+const hasValidApiKey = !!xaiApiKey;
+
+// Create xAI client according to the guidelines (if API key is available)
+let openai: OpenAI | null = null;
+if (hasValidApiKey) {
+  openai = new OpenAI({ 
+    baseURL: "https://api.x.ai/v1", 
+    apiKey: xaiApiKey 
+  });
+}
+
+// Fallback function for when API key is not available
+const generateFallbackResponse = (endpoint: string, message: string = 'API key not configured') => {
+  console.warn(`XAI integration failed for ${endpoint}: ${message}`);
+  return {
+    error: "XAI integration not available",
+    message: "Please provide a valid XAI API key to enable AI features."
+  };
+};
 
 export function registerAIRoutes(app: Express) {
+  // Check if XAI_API_KEY is available
+  app.get('/api/ai/status', async (_req: Request, res: Response) => {
+    res.json({ 
+      available: hasValidApiKey,
+      message: hasValidApiKey ? 'xAI integration is ready' : 'xAI API key is not configured'
+    });
+  });
+
   // Route for analyzing financial data - optimized for token efficiency
   app.post('/api/ai/analyze', async (req: Request, res: Response) => {
     try {
@@ -15,6 +39,13 @@ export function registerAIRoutes(app: Express) {
       
       if (!text) {
         return res.status(400).json({ error: 'Text data is required' });
+      }
+      
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          analysis: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
       }
       
       // Limit input text size to reduce token usage
@@ -47,6 +78,15 @@ export function registerAIRoutes(app: Express) {
       
       if (!description) {
         return res.status(400).json({ error: 'Transaction description is required' });
+      }
+
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          category: "Other",
+          confidence: 0,
+          message: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
       }
 
       // Limit description length to save tokens

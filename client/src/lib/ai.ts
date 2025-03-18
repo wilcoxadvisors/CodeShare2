@@ -146,7 +146,7 @@ export async function generateReportSummary(reportData: string): Promise<string>
  */
 export async function explainAccountingConcept(concept: string): Promise<string> {
   try {
-    const response = await apiRequest<ExplanationResponse>('/api/ai/explain', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/explain', {
       method: 'POST',
       body: JSON.stringify({ concept }),
       headers: {
@@ -168,7 +168,7 @@ export async function explainAccountingConcept(concept: string): Promise<string>
  */
 export async function analyzeDocumentImage(imageBase64: string): Promise<string> {
   try {
-    const response = await apiRequest<DocumentAnalysisResponse>('/api/ai/analyze-document', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/analyze-document', {
       method: 'POST',
       body: JSON.stringify({ image: imageBase64 }),
       headers: {
@@ -190,7 +190,7 @@ export async function analyzeDocumentImage(imageBase64: string): Promise<string>
  */
 export async function generateAuditSuggestions(transactionData: string): Promise<string> {
   try {
-    const response = await apiRequest<AuditSuggestionsResponse>('/api/ai/audit-suggestions', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/audit-suggestions', {
       method: 'POST',
       body: JSON.stringify({ transactionData }),
       headers: {

@@ -1,26 +1,37 @@
 import OpenAI from "openai";
 
-// Create OpenAI client but point it to xAI's API
-const openai = new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: import.meta.env.XAI_API_KEY });
+// Initialize OpenAI client with xAI's API base URL and API key from environment
+const openai = new OpenAI({ 
+  baseURL: "https://api.x.ai/v1", 
+  apiKey: import.meta.env.XAI_API_KEY || process.env.XAI_API_KEY 
+});
 
-// Article summarization for financial documents
+/**
+ * Summarize a financial document or text
+ * @param text - The text to summarize
+ * @returns Promise containing the summary
+ */
 export async function summarizeFinancialDocument(text: string): Promise<string> {
-  const prompt = `Please summarize the following financial document concisely while maintaining key points, numbers, and financial implications:\n\n${text}`;
-
   try {
+    const prompt = `Please summarize the following financial information concisely while maintaining key points:\n\n${text}`;
+
     const response = await openai.chat.completions.create({
       model: "grok-2-1212",
       messages: [{ role: "user", content: prompt }],
     });
 
-    return response.choices[0].message.content || 'Unable to generate a summary.';
-  } catch (error: any) {
-    console.error("Error in summarizeFinancialDocument:", error);
-    throw new Error(`Failed to summarize document: ${error.message}`);
+    return response.choices[0].message.content || "No summary available";
+  } catch (error) {
+    console.error("Failed to summarize financial document:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to summarize financial document");
   }
 }
 
-// Financial statement analysis
+/**
+ * Analyze a financial statement for insights and recommendations
+ * @param statementData - The financial statement data to analyze
+ * @returns Promise containing the analysis result
+ */
 export async function analyzeFinancialStatement(statementData: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
@@ -28,26 +39,30 @@ export async function analyzeFinancialStatement(statementData: string): Promise<
       messages: [
         {
           role: "system",
-          content: "You are a financial analyst expert. Analyze the financial statement data and provide insights on key financial metrics, trends, and potential areas of concern or opportunity."
+          content: "You are a financial analysis expert. Analyze the financial statement data and provide insights, trends, and recommendations."
         },
         {
           role: "user",
           content: statementData
-        },
+        }
       ],
     });
 
-    return response.choices[0].message.content || 'Unable to generate analysis.';
-  } catch (error: any) {
-    console.error("Error in analyzeFinancialStatement:", error);
-    throw new Error(`Failed to analyze financial statement: ${error.message}`);
+    return response.choices[0].message.content || "No analysis available";
+  } catch (error) {
+    console.error("Failed to analyze financial statement:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to analyze financial statement");
   }
 }
 
-// Transaction categorization with Grok
+/**
+ * Categorize a transaction based on its description
+ * @param description - The transaction description
+ * @returns Promise containing the suggested category and confidence
+ */
 export async function categorizeTransaction(description: string): Promise<{
-  category: string,
-  confidence: number
+  category: string;
+  confidence: number;
 }> {
   try {
     const response = await openai.chat.completions.create({
@@ -56,30 +71,34 @@ export async function categorizeTransaction(description: string): Promise<{
         {
           role: "system",
           content:
-            "You are a transaction categorization expert. Analyze the transaction description and provide the most appropriate accounting category and a confidence score between 0 and 1. Respond with JSON in this format: { 'category': string, 'confidence': number }",
+            "You are a transaction categorization expert. Analyze the transaction description and categorize it. " +
+            "Respond with JSON in this format: { 'category': string, 'confidence': number between 0 and 1 }"
         },
         {
           role: "user",
-          content: description,
-        },
+          content: description
+        }
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }
     });
 
-    const content = response.choices[0].message.content || '{"category": "Uncategorized", "confidence": 0}';
-    const result = JSON.parse(content);
+    const result = JSON.parse(response.choices[0].message.content || "{}");
 
     return {
       category: result.category || "Uncategorized",
-      confidence: Math.max(0, Math.min(1, result.confidence || 0)),
+      confidence: Math.max(0, Math.min(1, result.confidence || 0))
     };
-  } catch (error: any) {
-    console.error("Error in categorizeTransaction:", error);
-    throw new Error(`Failed to categorize transaction: ${error.message}`);
+  } catch (error) {
+    console.error("Failed to categorize transaction:", error);
+    return { category: "Uncategorized", confidence: 0 };
   }
 }
 
-// Financial concepts explanation
+/**
+ * Explain a financial or accounting concept
+ * @param concept - The concept to explain
+ * @returns Promise containing the explanation
+ */
 export async function explainFinancialConcept(concept: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
@@ -87,23 +106,27 @@ export async function explainFinancialConcept(concept: string): Promise<string> 
       messages: [
         {
           role: "system",
-          content: "You are a financial education expert. Explain the provided financial or accounting concept in clear, concise terms that a business professional would understand. Include practical examples where appropriate."
+          content: "You are an accounting and finance expert. Explain the following concept in clear, simple terms that a non-expert would understand."
         },
         {
           role: "user",
-          content: `Please explain this financial concept: ${concept}`
-        },
+          content: concept
+        }
       ],
     });
 
-    return response.choices[0].message.content || 'Unable to explain this concept.';
-  } catch (error: any) {
-    console.error("Error in explainFinancialConcept:", error);
-    throw new Error(`Failed to explain concept: ${error.message}`);
+    return response.choices[0].message.content || "No explanation available";
+  } catch (error) {
+    console.error("Failed to explain financial concept:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to explain financial concept");
   }
 }
 
-// Audit suggestion generator
+/**
+ * Generate audit suggestions based on transaction data
+ * @param transactionData - The transaction data to analyze
+ * @returns Promise containing the audit suggestions
+ */
 export async function generateAuditSuggestions(transactionData: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
@@ -111,23 +134,27 @@ export async function generateAuditSuggestions(transactionData: string): Promise
       messages: [
         {
           role: "system",
-          content: "You are an auditing expert. Review the provided transaction data and suggest potential audit procedures, areas of concern, or internal control improvements. Focus on practical, actionable suggestions."
+          content: "You are an expert auditor. Review the transaction data and provide audit suggestions, potential issues to investigate, and compliance considerations."
         },
         {
           role: "user",
           content: transactionData
-        },
+        }
       ],
     });
 
-    return response.choices[0].message.content || 'Unable to generate audit suggestions.';
-  } catch (error: any) {
-    console.error("Error in generateAuditSuggestions:", error);
-    throw new Error(`Failed to generate audit suggestions: ${error.message}`);
+    return response.choices[0].message.content || "No audit suggestions available";
+  } catch (error) {
+    console.error("Failed to generate audit suggestions:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to generate audit suggestions");
   }
 }
 
-// Image analysis for receipts and invoices
+/**
+ * Analyze document image (receipt/invoice) using vision capabilities
+ * @param base64Image - The base64-encoded image data
+ * @returns Promise containing the analysis
+ */
 export async function analyzeFinancialDocument(base64Image: string): Promise<string> {
   try {
     const visionResponse = await openai.chat.completions.create({
@@ -138,7 +165,7 @@ export async function analyzeFinancialDocument(base64Image: string): Promise<str
           content: [
             {
               type: "text",
-              text: "Extract the following information from this financial document (if visible):\n- Document type (invoice, receipt, statement, etc.)\n- Date\n- Total amount\n- Vendor/Payee name\n- Line items with amounts\n- Any tax information\n- Payment method\n\nFormat the information in a clear, structured way."
+              text: "Analyze this financial document in detail. Extract key information including dates, amounts, account numbers, counterparties, and any other relevant financial details."
             },
             {
               type: "image_url",
@@ -149,12 +176,12 @@ export async function analyzeFinancialDocument(base64Image: string): Promise<str
           ],
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 500,
     });
 
-    return visionResponse.choices[0].message.content || 'Unable to analyze document image.';
-  } catch (error: any) {
-    console.error("Error in analyzeFinancialDocument:", error);
-    throw new Error(`Failed to analyze document image: ${error.message}`);
+    return visionResponse.choices[0].message.content || "No document analysis available";
+  } catch (error) {
+    console.error("Failed to analyze financial document:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to analyze financial document");
   }
 }
