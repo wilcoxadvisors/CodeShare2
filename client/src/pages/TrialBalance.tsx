@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import PageHeader from "../components/PageHeader";
@@ -276,7 +276,7 @@ function TrialBalance() {
                   </thead>
                   <tbody>
                     {categories.map((category) => (
-                      <React.Fragment key={category.name}>
+                      <Fragment key={category.name}>
                         {/* Category Header */}
                         <tr className="bg-gray-100">
                           <td colSpan={4} className="px-4 py-2 font-semibold">{category.name}</td>
@@ -298,7 +298,7 @@ function TrialBalance() {
                           <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.debit)}</td>
                           <td className="px-4 py-2 font-medium text-right">{formatCurrency(category.subtotals.credit)}</td>
                         </tr>
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                     
                     {/* Total Row */}
