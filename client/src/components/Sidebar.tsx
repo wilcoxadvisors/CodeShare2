@@ -61,11 +61,7 @@ function Sidebar() {
               label="Dashboard" 
             />
             
-            <NavItem 
-              path="/general-ledger" 
-              icon={<BookOpen className="h-5 w-5 mr-2" />} 
-              label="General Ledger" 
-            />
+            {/* General Ledger moved to Reports tab */}
             
             <NavItem 
               path="/journal-entries" 

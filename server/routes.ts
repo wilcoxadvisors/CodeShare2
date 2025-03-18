@@ -767,6 +767,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // General Ledger API route
+  app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      if (isNaN(entityId)) {
+        return res.status(400).json({ message: "Invalid entity ID" });
+      }
+      
+      // Get filter parameters from query string
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : undefined;
+      
+      // Fetch general ledger data
+      const glEntries = await storage.getGeneralLedger(entityId, {
+        startDate,
+        endDate,
+        accountId
+      });
+      
+      res.json(glEntries);
+    } catch (error) {
+      console.error('Error fetching general ledger:', error);
+      res.status(500).json({ message: 'Failed to fetch general ledger' });
+    }
+  });
+  
   // API route to check for the existence of secrets - public access for pre-login availability checks
   app.post("/api/secrets/check", (req, res) => {
     try {

@@ -79,11 +79,7 @@ function Router() {
         </AppLayout>
       </Route>
       
-      <Route path="/general-ledger">
-        <AppLayout>
-          <ProtectedRoute component={GeneralLedger} />
-        </AppLayout>
-      </Route>
+      {/* General Ledger moved to Reports tab */}
       
       <Route path="/journal-entries">
         <AppLayout>
