@@ -346,14 +346,31 @@ export default function ManualJournalEntry() {
         credit: entry.credit || '0'
       }));
       
-      // Create journal entry with selected status
+      // Map the UI status to the JournalEntryStatus enum values
+      let journalStatus;
+      switch(submitStatus) {
+        case 'draft':
+          journalStatus = 'draft';
+          break;
+        case 'pending_approval':
+          journalStatus = 'pending_approval';
+          break;
+        case 'post_directly':
+          journalStatus = 'posted';
+          break;
+        default:
+          journalStatus = 'draft';
+      }
+      
+      // Create journal entry with mapped status
       const response = await apiRequest(`/api/entities/${currentEntity.id}/journal-entries`, {
         method: 'POST',
         data: {
           date: journalData.date,
           reference: journalData.reference,
           description: journalData.description,
-          status: submitStatus, // Use the selected status
+          status: journalStatus,
+          createdBy: 1, // Default to admin user
           lines: formattedEntries
         }
       });
