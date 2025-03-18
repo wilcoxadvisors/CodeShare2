@@ -81,8 +81,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return done(null, false, { message: "Invalid username or password" });
         }
         
-        // In a real app, we would use bcrypt.compare here
-        if (password === 'password123') {
+        // Use bcrypt to compare the password with the hash
+        const bcrypt = require('bcryptjs');
+        const isMatch = await bcrypt.compare(password, user.password);
+        
+        if (isMatch) {
           return done(null, {
             id: user.id,
             username: user.username,
