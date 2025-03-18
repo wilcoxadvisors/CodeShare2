@@ -1,6 +1,6 @@
 // src/components/journal/ActionButtons.tsx
 import React, { useRef } from 'react';
-import { PlusCircle, Upload, Save, Check, Clock } from 'lucide-react';
+import { PlusCircle, Upload, Save, Check, Clock, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
@@ -16,6 +16,7 @@ type ActionButtonsProps = {
   isSubmitting: boolean;
   submitStatus: 'draft' | 'pending_approval' | 'post_directly';
   setSubmitStatus: (status: 'draft' | 'pending_approval' | 'post_directly') => void;
+  onCancel?: () => void;
 };
 
 export default function ActionButtons({
@@ -24,7 +25,8 @@ export default function ActionButtons({
   handleFileUpload,
   isSubmitting,
   submitStatus,
-  setSubmitStatus
+  setSubmitStatus,
+  onCancel
 }: ActionButtonsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -61,7 +63,7 @@ export default function ActionButtons({
       
       {/* Submit and Upload Buttons */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
-        <div>
+        <div className="flex gap-2">
           <input
             type="file"
             ref={fileInputRef}
@@ -77,6 +79,18 @@ export default function ActionButtons({
           >
             <Upload className="mr-2 h-5 w-5" /> Upload Supporting Document
           </Button>
+          
+          {/* Cancel Button */}
+          {onCancel && (
+            <Button 
+              type="button"
+              onClick={onCancel}
+              variant="outline"
+              className="flex items-center justify-center border-red-300 text-red-500 hover:text-red-600 hover:bg-red-50"
+            >
+              <X className="mr-2 h-5 w-5" /> Cancel
+            </Button>
+          )}
         </div>
         
         <div className="flex gap-2">

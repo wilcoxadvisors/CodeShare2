@@ -11,6 +11,16 @@ import JournalHeader from './journal/JournalHeader';
 import JournalEntriesTable from './journal/JournalEntriesTable';
 import ActionButtons from './journal/ActionButtons';
 import { AccountType } from '@shared/schema';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface JournalEntryLine {
   id: string;
@@ -98,6 +108,7 @@ export default function ManualJournalEntry() {
   const [showDetailFields, setShowDetailFields] = useState(false);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [supportingDocs, setSupportingDocs] = useState<SupportingDocument[]>([]);
   const [submitStatus, setSubmitStatus] = useState<'draft' | 'pending_approval' | 'post_directly'>('post_directly'); // Default to post directly
   
