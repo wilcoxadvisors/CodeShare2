@@ -1,10 +1,39 @@
-import OpenAI from "openai";
+import { checkXaiApiKey } from './check-secrets';
 
-// Initialize OpenAI client with xAI's API base URL and API key from environment
-const openai = new OpenAI({ 
-  baseURL: "https://api.x.ai/v1", 
-  apiKey: import.meta.env.XAI_API_KEY || process.env.XAI_API_KEY 
-});
+// API response type for parsed JSON responses
+interface ApiResponse<T> {
+  [key: string]: T;
+}
+
+// Utility function to handle API errors and provide fallback messages
+async function handleApiRequest<T>(url: string, body: any, errorMessage: string, propertyName: string): Promise<T> {
+  try {
+    // Check if XAI API is available before making the request
+    const apiKeyAvailable = await checkXaiApiKey();
+    if (!apiKeyAvailable) {
+      console.warn("XAI API key not available");
+      throw new Error("XAI API key not available. Please provide a valid API key.");
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json() as ApiResponse<T>;
+    return data[propertyName] as T;
+  } catch (error) {
+    console.error(errorMessage, error);
+    throw new Error(error instanceof Error ? error.message : errorMessage);
+  }
+}
 
 /**
  * Summarize a financial document or text
@@ -12,19 +41,12 @@ const openai = new OpenAI({
  * @returns Promise containing the summary
  */
 export async function summarizeFinancialDocument(text: string): Promise<string> {
-  try {
-    const prompt = `Please summarize the following financial information concisely while maintaining key points:\n\n${text}`;
-
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    return response.choices[0].message.content || "No summary available";
-  } catch (error) {
-    console.error("Failed to summarize financial document:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to summarize financial document");
-  }
+  return handleApiRequest<string>(
+    '/api/ai/summarize',
+    { reportData: text },
+    "Failed to summarize financial document",
+    "summary"
+  );
 }
 
 /**
@@ -33,26 +55,12 @@ export async function summarizeFinancialDocument(text: string): Promise<string> 
  * @returns Promise containing the analysis result
  */
 export async function analyzeFinancialStatement(statementData: string): Promise<string> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content: "You are a financial analysis expert. Analyze the financial statement data and provide insights, trends, and recommendations."
-        },
-        {
-          role: "user",
-          content: statementData
-        }
-      ],
-    });
-
-    return response.choices[0].message.content || "No analysis available";
-  } catch (error) {
-    console.error("Failed to analyze financial statement:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to analyze financial statement");
-  }
+  return handleApiRequest<string>(
+    '/api/ai/analyze',
+    { text: statementData },
+    "Failed to analyze financial statement",
+    "analysis"
+  );
 }
 
 /**
@@ -65,29 +73,12 @@ export async function categorizeTransaction(description: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a transaction categorization expert. Analyze the transaction description and categorize it. " +
-            "Respond with JSON in this format: { 'category': string, 'confidence': number between 0 and 1 }"
-        },
-        {
-          role: "user",
-          content: description
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-
-    return {
-      category: result.category || "Uncategorized",
-      confidence: Math.max(0, Math.min(1, result.confidence || 0))
-    };
+    return await handleApiRequest<{ category: string; confidence: number }>(
+      '/api/ai/categorize',
+      { description },
+      "Failed to categorize transaction",
+      "category"
+    );
   } catch (error) {
     console.error("Failed to categorize transaction:", error);
     return { category: "Uncategorized", confidence: 0 };
@@ -100,26 +91,12 @@ export async function categorizeTransaction(description: string): Promise<{
  * @returns Promise containing the explanation
  */
 export async function explainFinancialConcept(concept: string): Promise<string> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content: "You are an accounting and finance expert. Explain the following concept in clear, simple terms that a non-expert would understand."
-        },
-        {
-          role: "user",
-          content: concept
-        }
-      ],
-    });
-
-    return response.choices[0].message.content || "No explanation available";
-  } catch (error) {
-    console.error("Failed to explain financial concept:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to explain financial concept");
-  }
+  return handleApiRequest<string>(
+    '/api/ai/explain',
+    { concept },
+    "Failed to explain financial concept",
+    "explanation"
+  );
 }
 
 /**
@@ -128,60 +105,46 @@ export async function explainFinancialConcept(concept: string): Promise<string> 
  * @returns Promise containing the audit suggestions
  */
 export async function generateAuditSuggestions(transactionData: string): Promise<string> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert auditor. Review the transaction data and provide audit suggestions, potential issues to investigate, and compliance considerations."
-        },
-        {
-          role: "user",
-          content: transactionData
-        }
-      ],
-    });
-
-    return response.choices[0].message.content || "No audit suggestions available";
-  } catch (error) {
-    console.error("Failed to generate audit suggestions:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to generate audit suggestions");
-  }
+  return handleApiRequest<string>(
+    '/api/ai/audit-suggestions',
+    { transactionData },
+    "Failed to generate audit suggestions",
+    "suggestions"
+  );
 }
 
 /**
- * Analyze document image (receipt/invoice) using vision capabilities
+ * Analyze document image (receipt/invoice)
  * @param base64Image - The base64-encoded image data
  * @returns Promise containing the analysis
  */
 export async function analyzeFinancialDocument(base64Image: string): Promise<string> {
-  try {
-    const visionResponse = await openai.chat.completions.create({
-      model: "grok-2-vision-1212",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analyze this financial document in detail. Extract key information including dates, amounts, account numbers, counterparties, and any other relevant financial details."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
-          ],
-        },
-      ],
-      max_tokens: 500,
-    });
+  return handleApiRequest<string>(
+    '/api/ai/analyze-document',
+    { image: base64Image },
+    "Failed to analyze financial document",
+    "analysis"
+  );
+}
 
-    return visionResponse.choices[0].message.content || "No document analysis available";
+/**
+ * Check if the AI features are available (API key is present)
+ * @returns Promise resolving to a boolean indicating whether AI features are available
+ */
+export async function checkAiStatus(): Promise<{ available: boolean; message: string }> {
+  try {
+    const response = await fetch('/api/ai/status');
+    
+    if (!response.ok) {
+      throw new Error(`AI status check failed: ${response.statusText}`);
+    }
+    
+    return await response.json() as { available: boolean; message: string };
   } catch (error) {
-    console.error("Failed to analyze financial document:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to analyze financial document");
+    console.error("Failed to check AI status:", error);
+    return { 
+      available: false, 
+      message: error instanceof Error ? error.message : "Failed to check AI status"
+    };
   }
 }

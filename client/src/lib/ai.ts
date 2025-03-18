@@ -1,37 +1,15 @@
-import { apiRequest } from './queryClient';
+import { 
+  summarizeFinancialDocument,
+  analyzeFinancialStatement,
+  categorizeTransaction as categorizeTxn,
+  explainFinancialConcept,
+  generateAuditSuggestions as genAuditSuggestions,
+  analyzeFinancialDocument,
+  checkAiStatus
+} from './grok';
 
-interface AnalysisResponse {
-  analysis: string;
-}
-
-interface SentimentResponse {
-  rating: number;
-  confidence: number;
-}
-
-interface CategoryResponse {
-  category: string;
-  confidence: number;
-}
-
-interface SummaryResponse {
-  summary: string;
-}
-
-interface ExplanationResponse {
-  explanation: string;
-}
-
-interface DocumentAnalysisResponse {
-  analysis: string;
-}
-
-interface AuditSuggestionsResponse {
-  suggestions: string;
-}
-
-// Generic type for all API responses to avoid type errors
-interface ApiResponse<T> {
+// For backward compatibility and maintaining the same API
+export interface ApiResponse<T> {
   [key: string]: T;
 }
 
@@ -41,20 +19,7 @@ interface ApiResponse<T> {
  * @returns Promise containing the analysis result
  */
 export async function analyzeFinancialData(text: string): Promise<string> {
-  try {
-    const response = await apiRequest<ApiResponse<string>>('/api/ai/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.analysis || 'No analysis available';
-  } catch (error) {
-    console.error('Failed to analyze financial data:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to analyze financial data');
-  }
+  return analyzeFinancialStatement(text);
 }
 
 /**
@@ -67,25 +32,27 @@ export async function analyzeSentiment(text: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/sentiment', {
+    const response = await fetch('/api/ai/sentiment', {
       method: 'POST',
-      body: JSON.stringify({ text }),
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ text })
     });
     
-    if (!response.rating || !response.confidence) {
-      return { rating: 0, confidence: 0 };
+    if (!response.ok) {
+      throw new Error(`Failed to analyze sentiment: ${response.statusText}`);
     }
     
+    const data = await response.json();
+    
     return {
-      rating: Math.max(1, Math.min(5, Math.round(response.rating))),
-      confidence: Math.max(0, Math.min(1, response.confidence))
+      rating: Math.max(1, Math.min(5, Math.round(data.rating || 3))),
+      confidence: Math.max(0, Math.min(1, data.confidence || 0))
     };
   } catch (error) {
     console.error('Failed to analyze sentiment:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to analyze sentiment');
+    return { rating: 3, confidence: 0 };
   }
 }
 
@@ -98,23 +65,7 @@ export async function categorizeTransaction(description: string): Promise<{
   category: string;
   confidence: number;
 }> {
-  try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/categorize', {
-      method: 'POST',
-      body: JSON.stringify({ description }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return {
-      category: response.category || 'Uncategorized',
-      confidence: response.confidence || 0
-    };
-  } catch (error) {
-    console.error('Failed to categorize transaction:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to categorize transaction');
-  }
+  return categorizeTxn(description);
 }
 
 /**
@@ -123,20 +74,7 @@ export async function categorizeTransaction(description: string): Promise<{
  * @returns Promise containing the summary
  */
 export async function generateReportSummary(reportData: string): Promise<string> {
-  try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/summarize', {
-      method: 'POST',
-      body: JSON.stringify({ reportData }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.summary || 'No summary available';
-  } catch (error) {
-    console.error('Failed to generate report summary:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to generate report summary');
-  }
+  return summarizeFinancialDocument(reportData);
 }
 
 /**
@@ -145,20 +83,7 @@ export async function generateReportSummary(reportData: string): Promise<string>
  * @returns Promise containing the explanation
  */
 export async function explainAccountingConcept(concept: string): Promise<string> {
-  try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/explain', {
-      method: 'POST',
-      body: JSON.stringify({ concept }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.explanation || 'No explanation available';
-  } catch (error) {
-    console.error('Failed to explain accounting concept:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to explain accounting concept');
-  }
+  return explainFinancialConcept(concept);
 }
 
 /**
@@ -167,20 +92,7 @@ export async function explainAccountingConcept(concept: string): Promise<string>
  * @returns Promise containing the analysis
  */
 export async function analyzeDocumentImage(imageBase64: string): Promise<string> {
-  try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/analyze-document', {
-      method: 'POST',
-      body: JSON.stringify({ image: imageBase64 }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.analysis || 'No document analysis available';
-  } catch (error) {
-    console.error('Failed to analyze document image:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to analyze document image');
-  }
+  return analyzeFinancialDocument(imageBase64);
 }
 
 /**
@@ -189,18 +101,13 @@ export async function analyzeDocumentImage(imageBase64: string): Promise<string>
  * @returns Promise containing the audit suggestions
  */
 export async function generateAuditSuggestions(transactionData: string): Promise<string> {
-  try {
-    const response = await apiRequest<ApiResponse<any>>('/api/ai/audit-suggestions', {
-      method: 'POST',
-      body: JSON.stringify({ transactionData }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.suggestions || 'No audit suggestions available';
-  } catch (error) {
-    console.error('Failed to generate audit suggestions:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to generate audit suggestions');
-  }
+  return genAuditSuggestions(transactionData);
+}
+
+/**
+ * Check if AI features are available
+ * @returns Promise resolving to object with availability status and message
+ */
+export async function checkAIAvailability(): Promise<{ available: boolean; message: string }> {
+  return checkAiStatus();
 }

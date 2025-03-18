@@ -134,6 +134,13 @@ export function registerAIRoutes(app: Express) {
         return res.status(400).json({ error: 'Report data is required' });
       }
       
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          summary: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
+      }
+      
       // Limit report data to save tokens
       const truncatedReportData = reportData.length > 3000 ? reportData.substring(0, 3000) + '...' : reportData;
       
@@ -167,6 +174,13 @@ export function registerAIRoutes(app: Express) {
         return res.status(400).json({ error: 'Concept to explain is required' });
       }
       
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          explanation: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
+      }
+      
       // Limit concept length to save tokens
       const truncatedConcept = concept.length > 100 ? concept.substring(0, 100) : concept;
       
@@ -198,6 +212,15 @@ export function registerAIRoutes(app: Express) {
       
       if (!text) {
         return res.status(400).json({ error: 'Text is required' });
+      }
+      
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          rating: 3,
+          confidence: 0,
+          message: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
       }
       
       // Limit text length to save tokens
@@ -245,6 +268,13 @@ export function registerAIRoutes(app: Express) {
         return res.status(400).json({ error: 'Document image is required' });
       }
       
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          analysis: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
+      }
+      
       const response = await openai.chat.completions.create({
         model: "grok-2-vision-1212",
         messages: [
@@ -285,6 +315,13 @@ export function registerAIRoutes(app: Express) {
       
       if (!transactionData) {
         return res.status(400).json({ error: 'Transaction data is required' });
+      }
+      
+      // Check if API key is available
+      if (!hasValidApiKey || !openai) {
+        return res.json({ 
+          suggestions: "AI integration not available. Please provide a valid XAI API key to enable this feature."
+        });
       }
       
       // Limit transaction data to save tokens
