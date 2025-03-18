@@ -19,7 +19,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash2, Download, Upload, Plus } from "lucide-react";
+import { 
+  Edit, Trash2, Download, Upload, Plus, FileSpreadsheet, 
+  FileText, Info, AlertTriangle
+} from "lucide-react";
 import * as XLSX from "xlsx";
 
 function ChartOfAccounts() {
@@ -41,9 +44,11 @@ function ChartOfAccounts() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [accountToDelete, setAccountToDelete] = useState<any>(null);
-  const [importMode, setImportMode] = useState(false);
-  const [importData, setImportData] = useState("");
+  const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get accounts data
   const { data: accounts = [], isLoading, refetch } = useQuery({
@@ -55,7 +60,7 @@ function ChartOfAccounts() {
   useEffect(() => {
     if (!isEditMode && accountData.type && currentEntity && Array.isArray(accounts)) {
       // Define account code prefixes
-      const typePrefixes = {
+      const typePrefixes: Record<string, string> = {
         'asset': "1",
         'liability': "2",
         'equity': "3",
@@ -64,9 +69,9 @@ function ChartOfAccounts() {
       };
       
       // For expense accounts, use more specific prefixes based on subtype
-      let prefix = typePrefixes[accountData.type] || "";
+      let prefix = typePrefixes[accountData.type as keyof typeof typePrefixes] || "";
       if (accountData.type === 'expense' && accountData.subtype) {
-        const expensePrefixes = {
+        const expensePrefixes: Record<string, string> = {
           'operating_expense': "5",
           'non_operating_expense': "5",
           'cost_of_goods_sold': "5",
@@ -162,7 +167,7 @@ function ChartOfAccounts() {
     setShowAccountForm(true);
   };
   
-  const handleEditAccount = (account) => {
+  const handleEditAccount = (account: Record<string, any>) => {
     setAccountData({
       id: account.id,
       code: account.code,
@@ -179,20 +184,23 @@ function ChartOfAccounts() {
     setShowAccountForm(true);
   };
   
-  const handleDeleteClick = (account) => {
-    setAccountToDelete(account);
+  const handleDeleteClick = (account: Record<string, any>) => {
+    setAccountToDelete({
+      id: account.id,
+      name: account.name
+    });
     setShowDeleteConfirm(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type, checked } = e.target as HTMLInputElement;
     
     // Special handling for account name standardization
     if (name === 'name' && value.length > 0) {
       // Capitalize first letter of each word and standardize spacing
       const standardizedName = value
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
         .trim();
       
@@ -208,7 +216,7 @@ function ChartOfAccounts() {
     }
   };
 
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     if (name === 'type') {
       // When account type changes, reset code to trigger auto-generation
       setAccountData(prev => ({
@@ -224,7 +232,7 @@ function ChartOfAccounts() {
     }
   };
 
-  const handleCodeManualChange = (e) => {
+  const handleCodeManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     // Keep the type prefix intact when manually editing
     if (accountCodePrefix && !value.startsWith(accountCodePrefix)) {
@@ -294,7 +302,7 @@ function ChartOfAccounts() {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditMode) {
       updateAccount.mutate({
@@ -312,6 +320,304 @@ function ChartOfAccounts() {
   const handleDeleteConfirm = () => {
     if (accountToDelete) {
       deleteAccount.mutate(accountToDelete.id);
+    }
+  };
+  
+  // Excel export functionality
+  const handleExportToExcel = () => {
+    if (!Array.isArray(accounts) || accounts.length === 0) {
+      toast({
+        title: "No accounts to export",
+        description: "Please add accounts to the chart of accounts before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Prepare data for export
+      const exportData = accounts.map(account => ({
+        Code: account.code,
+        Name: account.name,
+        Type: account.type,
+        Subtype: account.subtype || '',
+        IsSubledger: account.isSubledger ? 'Yes' : 'No',
+        SubledgerType: account.subledgerType || '',
+        Active: account.active ? 'Yes' : 'No',
+        Description: account.description || ''
+      }));
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Column widths for better readability
+      const columnWidths = [
+        { wch: 10 }, // Code
+        { wch: 30 }, // Name
+        { wch: 15 }, // Type
+        { wch: 20 }, // Subtype
+        { wch: 12 }, // IsSubledger
+        { wch: 20 }, // SubledgerType
+        { wch: 10 }, // Active
+        { wch: 40 }  // Description
+      ];
+      
+      worksheet['!cols'] = columnWidths;
+      
+      // Create workbook and add worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Chart of Accounts");
+      
+      // Generate filename with entity name and current date
+      const date = new Date().toISOString().split('T')[0];
+      const fileName = `${currentEntity?.name || 'Entity'}_ChartOfAccounts_${date}.xlsx`;
+      
+      // Download the file
+      XLSX.writeFile(workbook, fileName);
+      
+      toast({
+        title: "Export successful",
+        description: `Chart of accounts exported as ${fileName}`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: `Error exporting chart of accounts: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Create template for import
+  const handleGenerateTemplate = () => {
+    try {
+      // Create template headers
+      const templateHeaders = [
+        "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description"
+      ];
+      
+      // Create sample data (one row per account type)
+      const sampleData = [
+        { 
+          Code: "1001", 
+          Name: "Cash", 
+          Type: "asset", 
+          Subtype: "current_asset", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "Cash on hand" 
+        },
+        { 
+          Code: "2001", 
+          Name: "Accounts Payable", 
+          Type: "liability", 
+          Subtype: "current_liability", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "Short-term debt" 
+        },
+        { 
+          Code: "4001", 
+          Name: "Service Revenue", 
+          Type: "revenue", 
+          Subtype: "operating_revenue", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "Income from services" 
+        },
+        { 
+          Code: "5001", 
+          Name: "Office Supplies", 
+          Type: "expense", 
+          Subtype: "operating_expense", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "Office supplies expense" 
+        }
+      ];
+      
+      // Create worksheet with headers and sample data
+      const worksheet = XLSX.utils.json_to_sheet([...sampleData], { 
+        header: templateHeaders 
+      });
+      
+      // Column widths for better readability
+      const columnWidths = [
+        { wch: 10 }, // Code
+        { wch: 30 }, // Name
+        { wch: 15 }, // Type
+        { wch: 20 }, // Subtype
+        { wch: 12 }, // IsSubledger
+        { wch: 20 }, // SubledgerType
+        { wch: 10 }, // Active
+        { wch: 40 }  // Description
+      ];
+      
+      worksheet['!cols'] = columnWidths;
+      
+      // Create workbook and add worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+      
+      // Generate filename with entity name and current date
+      const date = new Date().toISOString().split('T')[0];
+      const fileName = `ChartOfAccounts_Template_${date}.xlsx`;
+      
+      // Download the file
+      XLSX.writeFile(workbook, fileName);
+      
+      toast({
+        title: "Template generated",
+        description: "Chart of accounts template has been downloaded. Fill in your accounts and use the Import function when ready.",
+      });
+    } catch (error) {
+      console.error("Template generation error:", error);
+      toast({
+        title: "Template generation failed",
+        description: `Error creating template: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Handle file selection for import
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (evt) => {
+      try {
+        const binaryString = evt.target?.result as string;
+        const workbook = XLSX.read(binaryString, { type: 'binary' });
+        
+        // Get first sheet
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON
+        const data = XLSX.utils.sheet_to_json(worksheet);
+        
+        // Validate and process data
+        validateAndProcessImportData(data);
+      } catch (error) {
+        console.error("Error processing Excel file:", error);
+        toast({
+          title: "Import failed",
+          description: `Error processing Excel file: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: "Import failed",
+        description: "Failed to read the Excel file. Please check the file format.",
+        variant: "destructive",
+      });
+    };
+    
+    reader.readAsBinaryString(file);
+  };
+  
+  // Validate and process import data
+  const validateAndProcessImportData = (data: any[]) => {
+    if (!data || data.length === 0) {
+      toast({
+        title: "Import failed",
+        description: "The Excel file contains no data. Please check the file content.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate required fields
+    const errors: string[] = [];
+    const processedData = data.map((row, index) => {
+      const rowNum = index + 2; // +2 for Excel row number (1-based + header row)
+      const validatedRow = {
+        code: row.Code?.toString().trim(),
+        name: row.Name?.toString().trim(),
+        type: row.Type?.toString().toLowerCase().trim(),
+        subtype: row.Subtype?.toString().trim() || null,
+        isSubledger: row.IsSubledger?.toString().toUpperCase() === 'YES',
+        subledgerType: row.SubledgerType?.toString().trim() || null,
+        active: row.Active?.toString().toUpperCase() !== 'NO', // Default to active if not specified
+        description: row.Description?.toString().trim() || null
+      };
+      
+      // Validate required fields
+      if (!validatedRow.code) {
+        errors.push(`Row ${rowNum}: Code is required`);
+      }
+      
+      if (!validatedRow.name) {
+        errors.push(`Row ${rowNum}: Name is required`);
+      }
+      
+      // Validate account type is one of the allowed values
+      const validTypes = ['asset', 'liability', 'equity', 'revenue', 'expense'];
+      if (!validatedRow.type || !validTypes.includes(validatedRow.type)) {
+        errors.push(`Row ${rowNum}: Invalid account type. Must be one of: ${validTypes.join(', ')}`);
+      }
+      
+      return validatedRow;
+    });
+    
+    // If validation errors, show them
+    if (errors.length > 0) {
+      setImportErrors(errors);
+      setImportData([]);
+    } else {
+      // No errors, prepare for import
+      setImportData(processedData);
+      setImportErrors([]);
+    }
+    
+    // Show import dialog
+    setShowImportDialog(true);
+  };
+  
+  // Import multiple accounts
+  const importAccounts = useMutation({
+    mutationFn: async (accounts: any[]) => {
+      return await apiRequest(
+        `/api/entities/${currentEntity?.id}/accounts/batch`, 
+        {
+          method: 'POST',
+          data: { accounts }
+        }
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Accounts imported",
+        description: `Successfully imported ${importData.length} accounts.`,
+      });
+      setShowImportDialog(false);
+      setImportData([]);
+      setImportErrors([]);
+      refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Import failed",
+        description: `Failed to import accounts: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const handleImportConfirm = () => {
+    if (importData.length > 0) {
+      importAccounts.mutate(importData);
     }
   };
 
@@ -380,23 +686,53 @@ function ChartOfAccounts() {
         description="Manage your chart of accounts"
       >
         <div className="flex space-x-3">
-          <button 
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          <div className="relative group">
+            <Button 
+              variant="outline" 
+              className="inline-flex items-center text-sm font-medium text-gray-700"
+              onClick={handleExportToExcel}
+            >
+              <FileSpreadsheet className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+              Export
+            </Button>
+          </div>
+          
+          <div className="relative group">
+            <input
+              type="file"
+              id="file-input"
+              className="hidden"
+              accept=".xlsx,.xls"
+              onChange={handleFileSelect}
+              ref={fileInputRef}
+            />
+            <Button 
+              variant="outline"
+              className="inline-flex items-center text-sm font-medium text-gray-700"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+              Import
+            </Button>
+          </div>
+          
+          <Button
+            variant="outline"
+            className="inline-flex items-center text-sm font-medium text-gray-700"
+            onClick={handleGenerateTemplate}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Export
-          </button>
-          <button 
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            <FileText className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+            Template
+          </Button>
+          
+          <Button
+            variant="primary"
+            className="inline-flex items-center text-sm font-medium text-white"
             onClick={handleNewAccount}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
             New Account
-          </button>
+          </Button>
         </div>
       </PageHeader>
 
@@ -655,6 +991,153 @@ function ChartOfAccounts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Import Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <FileSpreadsheet className="h-5 w-5 mr-2" />
+              Import Chart of Accounts
+            </DialogTitle>
+            <DialogDescription>
+              Import accounts from your Excel spreadsheet. The system will validate the data before importing.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {importErrors.length > 0 ? (
+            <div className="mt-4">
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-800">
+                      The following errors were found in your Excel file:
+                    </h3>
+                    <ul className="mt-2 text-sm text-red-700 space-y-1 list-disc pl-5">
+                      {importErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setImportErrors([]);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Select Different File
+                </Button>
+              </div>
+            </div>
+          ) : importData.length > 0 ? (
+            <div className="mt-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+                <div className="flex items-start">
+                  <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-800">
+                      Ready to import {importData.length} accounts
+                    </h3>
+                    <p className="mt-1 text-sm text-blue-700">
+                      The file has been validated and is ready to import. 
+                      Click "Import Accounts" to proceed or "Cancel" to abort.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 border rounded-md overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subtype</th>
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {importData.slice(0, 5).map((account, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.code}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.type}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.subtype || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.active ? 'Yes' : 'No'}</td>
+                      </tr>
+                    ))}
+                    {importData.length > 5 && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-2 text-sm text-gray-500 text-center">
+                          And {importData.length - 5} more accounts...
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setImportData([]);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImportConfirm}
+                  disabled={importAccounts.isPending}
+                >
+                  {importAccounts.isPending ? "Importing..." : "Import Accounts"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="mt-4 text-center py-8">
+              <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Select a file to import</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Upload an Excel file with your chart of accounts data.
+              </p>
+              <div className="mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mx-auto"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Select File
+                </Button>
+              </div>
+              <div className="mt-4">
+                <Button
+                  variant="link"
+                  onClick={handleGenerateTemplate}
+                  className="mx-auto text-blue-600"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download Template
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
