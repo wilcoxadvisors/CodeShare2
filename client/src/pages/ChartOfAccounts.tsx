@@ -53,15 +53,37 @@ function ChartOfAccounts() {
   // Auto-generate account code based on type selection
   useEffect(() => {
     if (!isEditMode && accountData.type && currentEntity && Array.isArray(accounts)) {
+      // Define account code prefixes
       const typePrefixes = {
         'asset': "1",
         'liability': "2",
         'equity': "3",
         'revenue': "4", 
-        'expense': "5"
+        'expense': "5" // Base expense prefix
       };
       
-      const prefix = typePrefixes[accountData.type] || "";
+      // For expense accounts, use more specific prefixes based on subtype
+      let prefix = typePrefixes[accountData.type] || "";
+      if (accountData.type === 'expense' && accountData.subtype) {
+        const expensePrefixes = {
+          'operating_expense': "5",
+          'non_operating_expense': "5",
+          'cost_of_goods_sold': "5",
+          'marketing': "6",
+          'rent': "6",
+          'payroll': "6",
+          'utilities': "7",
+          'equipment': "7",
+          'professional_services': "7",
+          'travel': "8",
+          'insurance': "8",
+          'taxes': "8",
+          'depreciation': "9"
+        };
+        if (expensePrefixes[accountData.subtype]) {
+          prefix = expensePrefixes[accountData.subtype];
+        }
+      }
       setAccountCodePrefix(prefix);
       
       // Only auto-generate code for new accounts, not when editing
@@ -468,6 +490,16 @@ function ChartOfAccounts() {
                               <SelectItem value="operating_expense">Operating Expense</SelectItem>
                               <SelectItem value="non_operating_expense">Non-operating Expense</SelectItem>
                               <SelectItem value="cost_of_goods_sold">Cost of Goods Sold</SelectItem>
+                              <SelectItem value="marketing">Marketing & Advertising</SelectItem>
+                              <SelectItem value="rent">Rent & Facilities</SelectItem>
+                              <SelectItem value="payroll">Payroll & Benefits</SelectItem>
+                              <SelectItem value="utilities">Utilities</SelectItem>
+                              <SelectItem value="equipment">Equipment & Supplies</SelectItem>
+                              <SelectItem value="professional_services">Professional Services</SelectItem>
+                              <SelectItem value="travel">Travel & Entertainment</SelectItem>
+                              <SelectItem value="insurance">Insurance</SelectItem>
+                              <SelectItem value="taxes">Taxes & Licenses</SelectItem>
+                              <SelectItem value="depreciation">Depreciation & Amortization</SelectItem>
                             </>
                           )}
                         </SelectContent>

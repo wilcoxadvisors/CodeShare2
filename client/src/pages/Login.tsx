@@ -53,7 +53,7 @@ function Login() {
         <CardHeader className="space-y-1 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-t-lg">
           <CardTitle className="text-2xl font-bold text-center">Wilcox Advisors</CardTitle>
           <CardDescription className="text-center text-gray-100">
-            Professional Accounting System
+            Financial Management Platform
           </CardDescription>
         </CardHeader>
         
