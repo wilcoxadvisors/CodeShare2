@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
-import { check } from '@/lib/check-secrets';
+import { check } from '../lib/check-secrets';
 
 export default function DocumentAnalysisPage() {
   const [analysis, setAnalysis] = useState<string | null>(null);

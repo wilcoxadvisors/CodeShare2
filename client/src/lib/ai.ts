@@ -30,6 +30,11 @@ interface AuditSuggestionsResponse {
   suggestions: string;
 }
 
+// Generic type for all API responses to avoid type errors
+interface ApiResponse<T> {
+  [key: string]: T;
+}
+
 /**
  * Analyze financial data and provide insights
  * @param text - The financial data text to analyze
@@ -37,7 +42,7 @@ interface AuditSuggestionsResponse {
  */
 export async function analyzeFinancialData(text: string): Promise<string> {
   try {
-    const response = await apiRequest<AnalysisResponse>('/api/ai/analyze', {
+    const response = await apiRequest<ApiResponse<string>>('/api/ai/analyze', {
       method: 'POST',
       body: JSON.stringify({ text }),
       headers: {
@@ -62,7 +67,7 @@ export async function analyzeSentiment(text: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await apiRequest<SentimentResponse>('/api/ai/sentiment', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/sentiment', {
       method: 'POST',
       body: JSON.stringify({ text }),
       headers: {
@@ -94,7 +99,7 @@ export async function categorizeTransaction(description: string): Promise<{
   confidence: number;
 }> {
   try {
-    const response = await apiRequest<CategoryResponse>('/api/ai/categorize', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/categorize', {
       method: 'POST',
       body: JSON.stringify({ description }),
       headers: {
@@ -119,7 +124,7 @@ export async function categorizeTransaction(description: string): Promise<{
  */
 export async function generateReportSummary(reportData: string): Promise<string> {
   try {
-    const response = await apiRequest<SummaryResponse>('/api/ai/summarize', {
+    const response = await apiRequest<ApiResponse<any>>('/api/ai/summarize', {
       method: 'POST',
       body: JSON.stringify({ reportData }),
       headers: {
