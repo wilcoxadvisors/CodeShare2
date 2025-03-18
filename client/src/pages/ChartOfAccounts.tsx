@@ -50,32 +50,24 @@ function ChartOfAccounts() {
     enabled: !!currentEntity,
   });
 
-  // Group accounts by type for code auto-generation
-  const accountsByType = Array.isArray(accounts) ? accounts.reduce((acc, account) => {
-    if (!acc[account.type]) {
-      acc[account.type] = [];
-    }
-    acc[account.type].push(account);
-    return acc;
-  }, {}) : {};
-
   // Auto-generate account code based on type selection
   useEffect(() => {
-    if (accountData.type && currentEntity) {
+    if (!isEditMode && accountData.type && currentEntity && Array.isArray(accounts)) {
       const typePrefixes = {
-        [AccountType.ASSET]: "1",
-        [AccountType.LIABILITY]: "2",
-        [AccountType.EQUITY]: "3",
-        [AccountType.REVENUE]: "4",
-        [AccountType.EXPENSE]: "5"
+        'asset': "1",
+        'liability': "2",
+        'equity': "3",
+        'revenue': "4", 
+        'expense': "5"
       };
       
       const prefix = typePrefixes[accountData.type] || "";
       setAccountCodePrefix(prefix);
       
-      // Auto-generate next available code
-      if (prefix && Array.isArray(accounts)) {
-        const accountsOfType = accountsByType[accountData.type] || [];
+      // Only auto-generate code for new accounts, not when editing
+      if (prefix && !accountData.id) {
+        // Get accounts of the current type
+        const accountsOfType = accounts.filter(account => account.type === accountData.type);
         const existingCodes = accountsOfType
           .map(a => a.code)
           .filter(code => code.startsWith(prefix))
@@ -85,14 +77,23 @@ function ChartOfAccounts() {
           const lastCode = existingCodes[existingCodes.length - 1];
           const numericPart = parseInt(lastCode.replace(/\D/g, ''));
           const newCode = `${prefix}${String(numericPart + 1).padStart(3, '0')}`;
-          setAccountData(prev => ({ ...prev, code: newCode }));
+          
+          // Only update if code is empty or doesn't match our format
+          if (!accountData.code || !accountData.code.startsWith(prefix)) {
+            setAccountData(prev => ({ ...prev, code: newCode }));
+          }
         } else {
           // No existing accounts of this type, start with 001
-          setAccountData(prev => ({ ...prev, code: `${prefix}001` }));
+          const newCode = `${prefix}001`;
+          
+          // Only update if code is empty or doesn't match our format  
+          if (!accountData.code || !accountData.code.startsWith(prefix)) {
+            setAccountData(prev => ({ ...prev, code: newCode }));
+          }
         }
       }
     }
-  }, [accountData.type, currentEntity, accounts, accountsByType]);
+  }, [accountData.type, isEditMode, currentEntity, accounts]);
 
   const createAccount = useMutation({
     mutationFn: async (data) => {

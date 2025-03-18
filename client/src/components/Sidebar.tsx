@@ -33,96 +33,96 @@ function Sidebar() {
 
   const NavItem = ({ path, icon, label }: { path: string, icon: React.ReactNode, label: string }) => (
     <div 
-      className={`flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer ${
+      className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer ${
         isActive(path) 
-          ? 'bg-secondary-800 text-white' 
-          : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
+          ? 'bg-primary-700 text-white font-semibold' 
+          : 'text-white hover:bg-primary-800/60 hover:text-white'
       }`}
       onClick={handleNavigation(path)}
     >
       {icon}
-      {label}
+      <span className="ml-1">{label}</span>
     </div>
   );
 
   return (
     <aside className="hidden md:flex md:flex-shrink-0">
-      <div className="flex flex-col w-64 bg-secondary-900">
-        <div className="flex items-center justify-center h-16 px-4 border-b border-secondary-800">
+      <div className="flex flex-col w-64 bg-gradient-to-b from-blue-800 to-blue-900 shadow-xl">
+        <div className="flex items-center justify-center h-16 px-4 border-b border-blue-700">
           <h1 className="text-xl font-bold text-white">Wilcox Advisors</h1>
         </div>
         
         <div className="flex flex-col flex-grow overflow-y-auto">
-          <nav className="flex-1 px-2 py-4 space-y-1">
+          <nav className="flex-1 px-3 py-4 space-y-1.5">
             <NavItem 
               path="/" 
-              icon={<LayoutDashboard className="h-5 w-5 mr-3" />} 
+              icon={<LayoutDashboard className="h-5 w-5 mr-2" />} 
               label="Dashboard" 
             />
             
             <NavItem 
               path="/general-ledger" 
-              icon={<BookOpen className="h-5 w-5 mr-3" />} 
+              icon={<BookOpen className="h-5 w-5 mr-2" />} 
               label="General Ledger" 
             />
             
             <NavItem 
               path="/journal-entries" 
-              icon={<ClipboardEdit className="h-5 w-5 mr-3" />} 
+              icon={<ClipboardEdit className="h-5 w-5 mr-2" />} 
               label="Journal Entries" 
             />
             
             <NavItem 
               path="/chart-of-accounts" 
-              icon={<BarChart2 className="h-5 w-5 mr-3" />} 
+              icon={<BarChart2 className="h-5 w-5 mr-2" />} 
               label="Chart of Accounts" 
             />
             
             <NavItem 
               path="/reports" 
-              icon={<Receipt className="h-5 w-5 mr-3" />} 
+              icon={<Receipt className="h-5 w-5 mr-2" />} 
               label="Reports" 
             />
             
             <NavItem 
               path="/trial-balance" 
-              icon={<BarChart2 className="h-5 w-5 mr-3" />} 
+              icon={<BarChart2 className="h-5 w-5 mr-2" />} 
               label="Trial Balance" 
             />
             
             <NavItem 
               path="/accounts-payable" 
-              icon={<Wallet className="h-5 w-5 mr-3" />} 
+              icon={<Wallet className="h-5 w-5 mr-2" />} 
               label="Accounts Payable" 
             />
             
             <NavItem 
               path="/accounts-receivable" 
-              icon={<Wallet className="h-5 w-5 mr-3" />} 
+              icon={<Wallet className="h-5 w-5 mr-2" />} 
               label="Accounts Receivable" 
             />
             
             <NavItem 
               path="/fixed-assets" 
-              icon={<Computer className="h-5 w-5 mr-3" />} 
+              icon={<Computer className="h-5 w-5 mr-2" />} 
               label="Fixed Assets" 
             />
             
-            <div className="mt-4 border-t border-secondary-800 pt-4">
+            <div className="mt-6 border-t border-blue-700 pt-4">
               <div 
-                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-secondary-800 hover:text-white cursor-pointer"
+                className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
                 onClick={handleNavigation("/settings")}
               >
-                <Settings className="h-5 w-5 mr-3" />
-                Settings
+                <Settings className="h-5 w-5 mr-2" />
+                <span className="ml-1">Settings</span>
               </div>
               
               <div 
-                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-secondary-800 hover:text-white cursor-pointer"
+                className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
                 onClick={handleLogout}
               >
-                <LogOut className="h-5 w-5 mr-3" />
-                Logout
+                <LogOut className="h-5 w-5 mr-2" />
+                <span className="ml-1">Logout</span>
               </div>
             </div>
           </nav>
