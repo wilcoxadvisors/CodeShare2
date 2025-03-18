@@ -18,6 +18,7 @@ import TrialBalance from "./pages/TrialBalance";
 import AccountsPayable from "./pages/AccountsPayable";
 import AccountsReceivable from "./pages/AccountsReceivable";
 import FixedAssets from "./pages/FixedAssets";
+import DocumentAnalysis from "./pages/DocumentAnalysis";
 import ManualJournalEntry from "./components/ManualJournalEntry";
 import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
@@ -141,6 +142,12 @@ function Router() {
       <Route path="/fixed-assets">
         <AppLayout>
           <ProtectedRoute component={FixedAssets} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/document-analysis">
+        <AppLayout>
+          <ProtectedRoute component={DocumentAnalysis} />
         </AppLayout>
       </Route>
       

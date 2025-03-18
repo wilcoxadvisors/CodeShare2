@@ -740,6 +740,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API route to check for the existence of secrets
+  app.post("/api/secrets/check", isAuthenticated, (req, res) => {
+    try {
+      const { secret } = req.body;
+      
+      if (!secret || typeof secret !== 'string') {
+        return res.status(400).json({ message: 'Invalid secret name provided' });
+      }
+      
+      // Check if the secret exists in the environment
+      const exists = !!process.env[secret];
+      
+      // Return existence flag but NEVER the actual value
+      return res.json({ exists });
+    } catch (error) {
+      console.error('Error checking secret:', error);
+      return res.status(500).json({ message: 'Failed to check secret existence' });
+    }
+  });
+
   // Register the AI routes
   registerAIRoutes(app);
   
