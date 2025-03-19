@@ -1314,7 +1314,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Order by date and journal entry ID
-    query = query.orderBy(journalEntries.date, journalEntries.id, journalEntryLines.lineNo);
+    query = query.orderBy(journalEntries.date, journalEntries.id);
     
     // Execute query
     const results = await query;
