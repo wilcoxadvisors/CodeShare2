@@ -53,11 +53,8 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ setShowCo
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const closeForm = () => {
-    if (setShowConsultationForm) {
-      setShowConsultationForm(false);
-    } else {
-      setShowConsultationFormContext(false);
-    }
+    // Always use the context version to ensure consistency
+    setShowConsultationFormContext(false);
   };
 
   const onSubmit = async (data: FormData) => {

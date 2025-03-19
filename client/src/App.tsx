@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "./contexts/AuthContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { EntityProvider } from "./contexts/EntityContext";
-import { UIProvider } from "./contexts/UIContext";
+import { UIProvider, useUI } from "./contexts/UIContext";
 import NotFound from "@/pages/not-found";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -29,12 +29,8 @@ import ChatWidget from "./components/common/ChatWidget";
 import ConsultationFormModal from "./components/ConsultationFormModal";
 
 // Public website header component
-// Define interface for header props
-interface PublicHeaderProps {
-  setShowConsultationForm: (show: boolean) => void;
-}
-
-const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) => {
+const PublicHeader: React.FC = () => {
+  const { setShowConsultationForm } = useUI();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -304,17 +300,17 @@ const PublicFooter = () => {
 
 // Public website layout
 function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [showConsultationForm, setShowConsultationForm] = useState(false);
+  const { showConsultationForm, setShowConsultationForm } = useUI();
 
   return (
     <div className="flex flex-col min-h-screen">
-      <PublicHeader setShowConsultationForm={setShowConsultationForm} />
+      <PublicHeader />
       <main className="flex-grow">
         {children}
       </main>
       <PublicFooter />
       {showConsultationForm && (
-        <ConsultationFormModal setShowConsultationForm={setShowConsultationForm} />
+        <ConsultationFormModal />
       )}
       {/* Chat widget will be handled by the Home component */}
     </div>
