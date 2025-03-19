@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import PublicHeader from '../components/common/PublicHeader.tsx';
-import PublicFooter from '../components/common/PublicFooter.tsx';
 import LoginModal from '../components/common/LoginModal.tsx';
 import HeroSection from '../components/sections/HeroSection.tsx';
 import ChecklistSection from '../components/sections/ChecklistSection.tsx';
@@ -41,9 +39,6 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <PublicHeader />
-      
       {/* Main content with padding for fixed header */}
       <div className="pt-16">
         <HeroSection />
@@ -53,7 +48,6 @@ const Home: React.FC = () => {
         <TestimonialsSection />
         <AboutSection aboutText={dashboardData.about} />
         <ContactSection />
-        <PublicFooter />
       </div>
       
       {/* Chat Widget */}
