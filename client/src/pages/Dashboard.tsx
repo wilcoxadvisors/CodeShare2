@@ -225,7 +225,7 @@ function Dashboard() {
     enabled: !!currentEntity
   });
   
-  // Admin dashboard specific state
+  // Admin dashboard specific state - start with client management tab selected
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
   // Filtered clients based on search and status
@@ -621,7 +621,12 @@ function Dashboard() {
                 </Card>
               </div>
 
-              {/* Admin Tabs */}
+              {/* Admin Dashboard Tabs */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold tracking-tight">Admin Dashboard</h2>
+                <p className="text-muted-foreground">Manage clients, employees, billing, and more.</p>
+              </div>
+              
               <Tabs value={adminActiveTab} onValueChange={setAdminActiveTab}>
                 <TabsList className="mb-4">
                   <TabsTrigger value="client-management">Client Management</TabsTrigger>
