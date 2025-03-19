@@ -360,3 +360,83 @@ export type InsertIndustryBenchmark = z.infer<typeof insertIndustryBenchmarkSche
 
 export type DataConsent = typeof dataConsent.$inferSelect;
 export type InsertDataConsent = z.infer<typeof insertDataConsentSchema>;
+
+// Contact Form Submissions
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  message: text("message").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  status: text("status").default("unread").notNull(), // unread, read, replied, archived
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Financial Checklist Form Submissions
+export const checklistSubmissions = pgTable("checklist_submissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  company: text("company").notNull(),
+  revenueRange: text("revenue_range").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  status: text("status").default("unread").notNull(), // unread, read, contacted, archived
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// Consultation Form Submissions
+export const consultationSubmissions = pgTable("consultation_submissions", {
+  id: serial("id").primaryKey(),
+  // Company Information
+  companyName: text("company_name").notNull(),
+  industry: text("industry").notNull(),
+  companySize: text("company_size").notNull(),
+  annualRevenue: text("annual_revenue").notNull(),
+  
+  // Services Selection (stored as JSON array)
+  services: json("services").notNull(),
+  
+  // Contact Information
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  preferredContact: text("preferred_contact").notNull(),
+  message: text("message"),
+  
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  status: text("status").default("unread").notNull(), // unread, read, scheduled, completed, archived
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// Schemas for form submission insertions
+export const insertContactSubmissionSchema = createInsertSchema(contactSubmissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertChecklistSubmissionSchema = createInsertSchema(checklistSubmissions).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertConsultationSubmissionSchema = createInsertSchema(consultationSubmissions).omit({
+  id: true,
+  createdAt: true
+});
+
+// Types for form submissions
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type InsertContactSubmission = z.infer<typeof insertContactSubmissionSchema>;
+
+export type ChecklistSubmission = typeof checklistSubmissions.$inferSelect;
+export type InsertChecklistSubmission = z.infer<typeof insertChecklistSubmissionSchema>;
+
+export type ConsultationSubmission = typeof consultationSubmissions.$inferSelect;
+export type InsertConsultationSubmission = z.infer<typeof insertConsultationSubmissionSchema>;

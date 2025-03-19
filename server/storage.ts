@@ -11,7 +11,10 @@ import {
   userActivityLogs, UserActivityLog, InsertUserActivityLog,
   featureUsage, FeatureUsage, InsertFeatureUsage,
   industryBenchmarks, IndustryBenchmark, InsertIndustryBenchmark,
-  dataConsent, DataConsent, InsertDataConsent
+  dataConsent, DataConsent, InsertDataConsent,
+  contactSubmissions, ContactSubmission, InsertContactSubmission,
+  checklistSubmissions, ChecklistSubmission, InsertChecklistSubmission,
+  consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not } from "drizzle-orm";
 import { db } from "./db";
@@ -100,6 +103,25 @@ export interface IStorage {
   getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined>;
   updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined>;
   hasUserConsented(userId: number, consentType: string): Promise<boolean>;
+  
+  // Form Submission methods
+  // Contact Form
+  createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
+  getContactSubmissions(limit?: number, offset?: number): Promise<ContactSubmission[]>;
+  getContactSubmissionById(id: number): Promise<ContactSubmission | undefined>;
+  updateContactSubmission(id: number, status: string): Promise<ContactSubmission | undefined>;
+  
+  // Checklist Form
+  createChecklistSubmission(submission: InsertChecklistSubmission): Promise<ChecklistSubmission>;
+  getChecklistSubmissions(limit?: number, offset?: number): Promise<ChecklistSubmission[]>;
+  getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined>;
+  updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined>;
+  
+  // Consultation Form
+  createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission>;
+  getConsultationSubmissions(limit?: number, offset?: number): Promise<ConsultationSubmission[]>;
+  getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined>;
+  updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined>;
 }
 
 export interface GLOptions {
@@ -152,6 +174,14 @@ export class MemStorage implements IStorage {
   private currentFeatureUsageId: number = 1;
   private currentIndustryBenchmarkId: number = 1;
   private currentDataConsentId: number = 1;
+  
+  // Form submission storage
+  private contactSubmissions: Map<number, ContactSubmission>;
+  private checklistSubmissions: Map<number, ChecklistSubmission>;
+  private consultationSubmissions: Map<number, ConsultationSubmission>;
+  private currentContactSubmissionId: number = 1;
+  private currentChecklistSubmissionId: number = 1;
+  private currentConsultationSubmissionId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -169,6 +199,11 @@ export class MemStorage implements IStorage {
     this.featureUsages = new Map();
     this.industryBenchmarks = new Map();
     this.dataConsents = new Map();
+    
+    // Initialize form submission tables
+    this.contactSubmissions = new Map();
+    this.checklistSubmissions = new Map();
+    this.consultationSubmissions = new Map();
     
     // Create default admin user
     const adminUser: User = {
