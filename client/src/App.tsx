@@ -30,42 +30,89 @@ import ChatWidget from "./components/common/ChatWidget";
 const PublicHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [_, navigate] = useLocation();
+
+  // Add scroll effect for better UX
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const openLoginModal = () => {
     setShowLoginModal(true);
+    setIsMenuOpen(false);
   };
 
   const closeLoginModal = () => {
     setShowLoginModal(false);
   };
 
+  const handleSectionClick = (section) => {
+    document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
+    setIsMenuOpen(false);
+  };
+
   return (
-    <header className="bg-white shadow-sm">
-      <div className="container mx-auto px-4 py-4">
+    <nav 
+      className={`bg-white shadow-md sticky top-0 z-50 transition-all duration-300 ${
+        scrolled ? 'py-2' : 'py-4'
+      }`}
+      role="navigation" 
+      aria-label="Main navigation"
+    >
+      <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <a href="/" className="text-2xl font-bold text-[#1E3A8A]">Wilcox Advisors</a>
+            <a href="/" className="text-xl md:text-2xl text-[#1E3A8A] font-bold hover:text-blue-900 transition duration-200">
+              WILCOX ADVISORS
+            </a>
           </div>
           
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            <a href="#services" className="text-gray-700 hover:text-[#1E3A8A]">Services</a>
-            <a href="#about" className="text-gray-700 hover:text-[#1E3A8A]">About Us</a>
-            <a href="#contact" className="text-gray-700 hover:text-[#1E3A8A]">Contact</a>
+          <div className="hidden md:flex items-center space-x-4 lg:space-x-8">
+            <button 
+              onClick={() => handleSectionClick('services')} 
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium px-2 py-1" 
+            >
+              Services
+            </button>
+            <button 
+              onClick={() => handleSectionClick('about')} 
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium px-2 py-1" 
+            >
+              About
+            </button>
+            <button 
+              onClick={() => handleSectionClick('contact')} 
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium px-2 py-1" 
+            >
+              Contact
+            </button>
             <button 
               onClick={openLoginModal} 
-              className="px-5 py-2 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-[#1E3A8A] text-white rounded-lg hover:bg-[#1E40AF] transition duration-200 shadow-sm" 
+              aria-label="Login"
             >
               Login
             </button>
-          </nav>
+          </div>
           
-          {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
           <div className="md:hidden">
             <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700"
+              onClick={() => setIsMenuOpen(!isMenuOpen)} 
+              className="text-gray-700 hover:text-[#1E3A8A] p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md" 
+              aria-label="Toggle mobile menu"
+              aria-expanded={isMenuOpen}
             >
               {isMenuOpen ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,26 +128,39 @@ const PublicHeader = () => {
         </div>
         
         {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden mt-4">
-            <div className="flex flex-col space-y-4">
-              <a href="#services" className="text-gray-700 hover:text-[#1E3A8A]">Services</a>
-              <a href="#about" className="text-gray-700 hover:text-[#1E3A8A]">About Us</a>
-              <a href="#contact" className="text-gray-700 hover:text-[#1E3A8A]">Contact</a>
-              <button 
-                onClick={openLoginModal} 
-                className="px-5 py-2 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
-              >
-                Login
-              </button>
-            </div>
+        <div className={`md:hidden transition-all duration-300 overflow-hidden ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="py-3 space-y-2 bg-white" role="menu">
+            <button 
+              onClick={() => handleSectionClick('services')} 
+              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+            >
+              Services
+            </button>
+            <button 
+              onClick={() => handleSectionClick('about')} 
+              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+            >
+              About
+            </button>
+            <button 
+              onClick={() => handleSectionClick('contact')} 
+              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+            >
+              Contact
+            </button>
+            <button 
+              onClick={openLoginModal} 
+              className="block w-full text-left px-4 py-3 bg-[#1E3A8A] text-white rounded-md hover:bg-[#1E40AF] mt-2"
+            >
+              Login
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Login Modal */}
         {showLoginModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full">
+          <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-[#1E3A8A]">Login</h3>
                 <button onClick={closeLoginModal} className="text-gray-500 hover:text-gray-700">
@@ -110,14 +170,14 @@ const PublicHeader = () => {
                 </button>
               </div>
               
-              <form className="space-y-4">
+              <form className="space-y-5">
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input 
-                    type="text" 
-                    id="username" 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent" 
-                    placeholder="Enter your username"
+                    type="email" 
+                    id="email" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                    placeholder="Enter your email"
                   />
                 </div>
                 
@@ -126,7 +186,7 @@ const PublicHeader = () => {
                   <input 
                     type="password" 
                     id="password" 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
                     placeholder="Enter your password"
                   />
                 </div>
@@ -143,9 +203,12 @@ const PublicHeader = () => {
                     </label>
                   </div>
                   
-                  <a href="#" className="text-sm text-[#1E3A8A] hover:underline">
-                    Forgot password?
-                  </a>
+                  <button 
+                    type="button"
+                    className="text-[#1E3A8A] hover:underline text-sm font-medium"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
                 
                 <button 
@@ -154,7 +217,7 @@ const PublicHeader = () => {
                     closeLoginModal();
                     navigate("/dashboard");
                   }} 
-                  className="w-full py-2 px-4 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
+                  className="w-full py-2 px-4 bg-[#1E3A8A] text-white rounded-lg hover:bg-[#1E40AF] transition duration-200 font-medium"
                 >
                   Sign In
                 </button>
@@ -163,7 +226,7 @@ const PublicHeader = () => {
           </div>
         )}
       </div>
-    </header>
+    </nav>
   );
 };
 
