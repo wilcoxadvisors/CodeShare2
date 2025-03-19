@@ -29,7 +29,12 @@ import ChatWidget from "./components/common/ChatWidget.tsx";
 import ConsultationFormModal from "./components/ConsultationFormModal";
 
 // Public website header component
-const PublicHeader = () => {
+// Define interface for header props
+interface PublicHeaderProps {
+  setShowConsultationForm: (show: boolean) => void;
+}
+
+const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -58,7 +63,7 @@ const PublicHeader = () => {
     setShowLoginModal(false);
   };
 
-  const handleSectionClick = (section) => {
+  const handleSectionClick = (section: string) => {
     document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
     setIsMenuOpen(false);
   };
@@ -322,7 +327,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <PublicHeader />
+      <PublicHeader setShowConsultationForm={setShowConsultationForm} />
       <main className="flex-grow">
         {children}
       </main>
