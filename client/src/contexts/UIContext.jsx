@@ -1,27 +1,17 @@
-// src/contexts/UIContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// src/contexts/UIContext.jsx
+import React, { createContext, useContext, useState } from 'react';
 
-// Context interface
-interface UIContextInterface {
-  showConsultationForm: boolean;
-  setShowConsultationForm: React.Dispatch<React.SetStateAction<boolean>>;
-  showLoginModal: boolean;
-  setShowLoginModal: React.Dispatch<React.SetStateAction<boolean>>;
-  isChatOpen: boolean;
-  setIsChatOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-// Create the context with a default value
-const UIContext = createContext<UIContextInterface | null>(null);
+// Create the context
+const UIContext = createContext(null);
 
 // Provider component
-export function UIProvider({ children }: { children: ReactNode }) {
+export function UIProvider({ children }) {
   const [showConsultationForm, setShowConsultationForm] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Value object to be provided to consumers
-  const value: UIContextInterface = {
+  const value = {
     showConsultationForm,
     setShowConsultationForm,
     showLoginModal,

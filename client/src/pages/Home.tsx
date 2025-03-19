@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import HeroSection from '../components/sections/HeroSection';
 import ServicesSection from '../components/sections/ServicesSection';
 import AboutSection from '../components/sections/AboutSection';
 import TestimonialsSection from '../components/sections/TestimonialsSection';
 import ContactSection from '../components/sections/ContactSection';
 import ChatWidget from '../components/common/ChatWidget';
+import { useUI } from '../contexts/UIContext';
 
 interface HomeProps {
   setShowConsultationForm?: (show: boolean) => void;
 }
 
 const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
-  const [showChat, setShowChat] = useState(false);
+  const { isChatOpen, setIsChatOpen } = useUI();
 
   const handleConsultClick = () => {
     if (setShowConsultationForm) {
@@ -26,13 +27,13 @@ const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
       <AboutSection />
       <TestimonialsSection />
       <ContactSection />
-      <ChatWidget isOpen={showChat} onClose={() => setShowChat(false)} />
+      <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       
       {/* Chat button */}
       <button 
-        onClick={() => setShowChat(true)}
+        onClick={() => setIsChatOpen(true)}
         className="fixed bottom-4 right-4 bg-blue-800 text-white p-4 rounded-full shadow-lg z-40 hover:bg-blue-900 transition-colors"
-        style={{ display: showChat ? 'none' : 'block' }}
+        style={{ display: isChatOpen ? 'none' : 'block' }}
         aria-label="Open chat"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

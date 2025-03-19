@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "./contexts/AuthContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { EntityProvider } from "./contexts/EntityContext";
+import { UIProvider } from "./contexts/UIContext";
 import NotFound from "@/pages/not-found";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -462,8 +463,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <EntityProvider>
-          <AppWithAuth />
-          <Toaster />
+          <UIProvider>
+            <AppWithAuth />
+            <Toaster />
+          </UIProvider>
         </EntityProvider>
       </AuthProvider>
     </QueryClientProvider>
