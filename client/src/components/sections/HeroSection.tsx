@@ -1,31 +1,46 @@
 import React from 'react';
+import { useUI } from '../../contexts/UIContext';
 
 interface HeroSectionProps {
   onConsultClick?: () => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
+  const { setShowConsultationForm } = useUI();
+  
+  const handleScheduleConsultation = () => {
+    // Use the context function if available
+    if (typeof setShowConsultationForm === 'function') {
+      setShowConsultationForm(true);
+    }
+    
+    // Also use prop if available (for backward compatibility)
+    if (typeof onConsultClick === 'function') {
+      onConsultClick();
+    }
+  };
+  
   return (
-    <section id="hero" className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-20">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Financial Solutions for Small Businesses
+    <section id="hero" className="bg-gradient-to-r from-blue-800 to-blue-900 text-white py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
+        <div className="w-full md:w-2/3">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            Financial Expertise for Your Business Success
           </h1>
           <p className="text-xl mb-8">
-            Professional accounting services tailored for your business needs.
-            Let us handle the numbers while you focus on growth.
+            Professional accounting and financial services tailored for small businesses. We
+            handle the numbers so you can focus on growth.
           </p>
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 justify-center">
-            <button 
-              onClick={onConsultClick}
-              className="bg-white text-blue-800 px-6 py-3 rounded-lg hover:bg-gray-100 transition duration-200 font-medium"
+          <div className="space-x-4">
+            <button
+              onClick={handleScheduleConsultation}
+              className="bg-white text-blue-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200"
             >
               Schedule Free Consultation
             </button>
             <a 
               href="#services" 
-              className="border-2 border-white text-white px-6 py-3 rounded-lg hover:bg-white hover:text-blue-800 transition duration-200 font-medium"
+              className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-800 transition duration-200"
             >
               Learn More
             </a>

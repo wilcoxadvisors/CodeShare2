@@ -289,7 +289,7 @@ const PublicFooter = () => {
               <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
               <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
               <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
-              <li><button onClick={() => navigate("/blog")} className="hover:text-white transition-colors">Blog</button></li>
+              <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
             </ul>
           </div>
         </div>
