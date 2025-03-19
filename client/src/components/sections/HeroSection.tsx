@@ -21,9 +21,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
   };
   
   return (
-    <section id="hero" className="bg-gradient-to-r from-blue-800 to-blue-900 text-white py-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
-        <div className="w-full md:w-2/3">
+    <section id="hero" className="bg-blue-800 text-white py-20">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-3xl">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
             Financial Expertise for Your Business Success
           </h1>
@@ -31,16 +31,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
             Professional accounting and financial services tailored for small businesses. We
             handle the numbers so you can focus on growth.
           </p>
-          <div className="space-x-4">
+          <div className="flex space-x-4">
             <button
               onClick={handleScheduleConsultation}
-              className="bg-white text-blue-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200"
+              className="bg-white text-blue-800 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium"
             >
               Schedule Free Consultation
             </button>
             <a 
               href="#services" 
-              className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-800 transition duration-200"
+              className="border-2 border-white text-white hover:bg-blue-800 px-6 py-3 rounded-lg font-medium"
             >
               Learn More
             </a>
