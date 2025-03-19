@@ -47,10 +47,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const response = await apiRequest('/api/auth/login', { 
-        method: 'POST', 
-        data: { username, password } 
+      // Use fetch directly with credentials included to properly handle session cookies
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include' // This is crucial for session cookies
       });
+      
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+      
       const data = await response.json();
       setUser(data.user);
       return true;
@@ -65,7 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      await apiRequest('/api/auth/logout', { method: 'POST' });
+      // Use fetch directly with credentials included to properly handle session cookies
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include' // This is crucial for session cookies
+      });
+      
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+      
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
