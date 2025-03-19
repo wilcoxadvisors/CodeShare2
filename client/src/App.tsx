@@ -24,8 +24,8 @@ import ManualJournalEntry from "./components/ManualJournalEntry";
 import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-import Home from "./pages/Home.tsx";
-import ChatWidget from "./components/common/ChatWidget.tsx";
+import Home from "./pages/Home";
+import ChatWidget from "./components/common/ChatWidget";
 import ConsultationFormModal from "./components/ConsultationFormModal";
 
 // Public website header component
