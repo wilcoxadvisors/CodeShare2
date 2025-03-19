@@ -1,23 +1,21 @@
 import React from 'react';
 import HeroSection from '../components/sections/HeroSection';
 import ServicesSection from '../components/sections/ServicesSection';
-import TestimonialsSection from '../components/sections/TestimonialsSection';
 import AboutSection from '../components/sections/AboutSection';
+import TestimonialsSection from '../components/sections/TestimonialsSection';
 import ContactSection from '../components/sections/ContactSection';
-import ChecklistSection from '../components/sections/ChecklistSection';
 import ChatWidget from '../components/common/ChatWidget';
 
-const Home = ({ setShowConsultationForm }) => {
+const Home = () => {
   return (
-    <main>
+    <div className="min-h-screen">
       <HeroSection />
-      <ChecklistSection />
       <ServicesSection />
-      <TestimonialsSection />
       <AboutSection />
+      <TestimonialsSection />
       <ContactSection />
       <ChatWidget />
-    </main>
+    </div>
   );
 };
 

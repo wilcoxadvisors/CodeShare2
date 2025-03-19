@@ -1,61 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'advisor',
-      text: 'Hi there! How can I help with your financial questions today?',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    { 
+      id: 1, 
+      sender: 'bot', 
+      text: 'Hi there! 👋 How can the Wilcox Advisors team help you today?',
+      timestamp: new Date()
     }
   ]);
-  const [newMessage, setNewMessage] = useState('');
-  
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!newMessage.trim()) return;
+    if (inputValue.trim() === '') return;
     
-    // Add user message
     const userMessage = {
       id: messages.length + 1,
       sender: 'user',
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      text: inputValue,
+      timestamp: new Date()
     };
     
-    setMessages([...messages, userMessage]);
-    setNewMessage('');
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsTyping(true);
     
-    // Simulate advisor response after a short delay
+    // Simulate bot response
     setTimeout(() => {
-      const advisorResponses = [
-        "I'd be happy to help with that. Could you provide more details about your business?",
-        "That's a great question. Our team specializes in this area and can provide custom solutions.",
-        "Thanks for sharing. The next step would be to schedule a consultation with one of our advisors.",
-        "I understand your concern. Many of our clients face similar challenges in this area."
-      ];
-      
-      const randomResponse = advisorResponses[Math.floor(Math.random() * advisorResponses.length)];
-      
-      const advisorMessage = {
-        id: messages.length + 2,
-        sender: 'advisor',
-        text: randomResponse,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      setMessages(prevMessages => [...prevMessages, advisorMessage]);
-    }, 1000);
+      const botResponse = generateBotResponse(inputValue);
+      setMessages(prev => [...prev, {
+        id: prev.length + 1,
+        sender: 'bot',
+        text: botResponse,
+        timestamp: new Date()
+      }]);
+      setIsTyping(false);
+    }, 1500);
   };
   
+  const generateBotResponse = (userMessage) => {
+    const lowercaseMessage = userMessage.toLowerCase();
+    
+    if (lowercaseMessage.includes('pricing') || lowercaseMessage.includes('cost') || lowercaseMessage.includes('fee')) {
+      return "Our pricing depends on the specific services you need. We offer customized packages for businesses of all sizes. Would you like to schedule a free consultation to discuss your needs?";
+    } else if (lowercaseMessage.includes('tax') || lowercaseMessage.includes('taxes')) {
+      return "We offer comprehensive tax planning and preparation services for businesses and individuals. Our tax experts can help minimize your tax liability while ensuring compliance with all regulations.";
+    } else if (lowercaseMessage.includes('bookkeeping') || lowercaseMessage.includes('accounting')) {
+      return "Our bookkeeping services include monthly financial statements, accounts payable/receivable management, bank reconciliations, and more. We can tailor our services to your specific needs.";
+    } else if (lowercaseMessage.includes('consultation') || lowercaseMessage.includes('meeting') || lowercaseMessage.includes('appointment')) {
+      return "We'd be happy to schedule a consultation with you! Please call us at (555) 123-4567 or fill out the contact form on this page, and we'll reach out to arrange a meeting.";
+    } else if (lowercaseMessage.includes('hello') || lowercaseMessage.includes('hi') || lowercaseMessage.includes('hey')) {
+      return "Hello! Thanks for reaching out. How can we assist you with your financial or accounting needs today?";
+    } else {
+      return "Thank you for your message. To better assist you, would you like to speak with a member of our team? You can schedule a call or fill out our contact form, and we'll get back to you promptly.";
+    }
+  };
+  
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+  
+  // Format timestamp
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
-    <>
-      {/* Chat Button */}
+    <div className="fixed bottom-5 right-5 z-40">
+      {/* Chat button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all ${
+        onClick={toggleChat}
+        className={`flex items-center justify-center w-16 h-16 rounded-full shadow-lg focus:outline-none transition-all duration-300 ${
           isOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-800 hover:bg-blue-700'
         }`}
       >
@@ -65,63 +96,77 @@ const ChatWidget = () => {
           </svg>
         ) : (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         )}
       </button>
       
-      {/* Chat Window */}
+      {/* Chat window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-80 h-96 bg-white rounded-lg shadow-xl flex flex-col">
-          {/* Header */}
-          <div className="bg-blue-800 text-white rounded-t-lg p-4">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
-                <span className="text-blue-800 font-bold text-sm">WA</span>
-              </div>
-              <div>
-                <h3 className="font-medium">Wilcox Advisors</h3>
-                <p className="text-xs text-blue-100">Financial Support</p>
-              </div>
-            </div>
+        <div className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white rounded-lg shadow-xl overflow-hidden max-h-[80vh] flex flex-col">
+          {/* Chat header */}
+          <div className="bg-blue-800 text-white p-4">
+            <h3 className="font-bold">Wilcox Advisors Support</h3>
+            <p className="text-sm text-blue-100">We typically reply within a few minutes</p>
           </div>
           
-          {/* Messages */}
-          <div className="flex-1 p-4 overflow-y-auto flex flex-col space-y-3">
+          {/* Messages container */}
+          <div className="flex-1 p-4 overflow-y-auto max-h-72">
             {messages.map(message => (
-              <div
+              <div 
                 key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                    message.sender === 'user'
-                      ? 'bg-blue-800 text-white'
-                      : 'bg-gray-100 text-gray-800'
+                {message.sender === 'bot' && (
+                  <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-white mr-2 flex-shrink-0">
+                    <span className="text-xs font-bold">WA</span>
+                  </div>
+                )}
+                <div 
+                  className={`max-w-[80%] p-3 rounded-lg ${
+                    message.sender === 'user' 
+                      ? 'bg-blue-600 text-white rounded-br-none' 
+                      : 'bg-gray-100 text-gray-800 rounded-bl-none'
                   }`}
                 >
                   <p className="text-sm">{message.text}</p>
-                  <span className={`text-xs ${message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'} block mt-1`}>
-                    {message.time}
+                  <span className={`text-xs mt-1 block ${message.sender === 'user' ? 'text-blue-200' : 'text-gray-500'}`}>
+                    {formatTime(message.timestamp)}
                   </span>
                 </div>
               </div>
             ))}
+            {isTyping && (
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-white mr-2 flex-shrink-0">
+                  <span className="text-xs font-bold">WA</span>
+                </div>
+                <div className="bg-gray-100 p-3 rounded-lg rounded-bl-none">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
           
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="p-3 border-t">
+          {/* Input form */}
+          <form onSubmit={handleSubmit} className="border-t p-4">
             <div className="flex">
               <input
                 type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                value={inputValue}
+                onChange={handleInputChange}
                 placeholder="Type your message..."
-                className="flex-1 border border-gray-300 rounded-l-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
-                className="bg-blue-800 text-white rounded-r-lg px-4 hover:bg-blue-700"
+                className="bg-blue-800 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors"
+                disabled={inputValue.trim() === ''}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -131,7 +176,7 @@ const ChatWidget = () => {
           </form>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

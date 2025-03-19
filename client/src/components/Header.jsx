@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'wouter';
 
-const Header = ({ setShowLoginModal }) => {
+const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -17,95 +18,95 @@ const Header = ({ setShowLoginModal }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
+  const navLinks = [
+    { text: 'Home', href: '/' },
+    { text: 'Services', href: '/#services' },
+    { text: 'About', href: '/#about' },
+    { text: 'Testimonials', href: '/#testimonials' },
+    { text: 'Contact', href: '/#contact' }
+  ];
+  
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        isScrolled ? 'bg-blue-800 py-2 shadow-md' : 'bg-transparent py-4'
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
       }`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <a href="/" className="flex items-center">
-              <img
-                src="/images/logo.svg" 
-                alt="Wilcox Advisors" 
-                className="h-10 w-auto"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.style.display = 'none';
-                }}
-              />
-              <span className="text-white text-xl font-bold ml-2">WILCOX ADVISORS</span>
+        <nav className="flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/">
+            <a className="flex items-center">
+              <div className="text-2xl font-bold text-blue-800">
+                Wilcox<span className="text-gray-800">Advisors</span>
+              </div>
             </a>
+          </Link>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link, index) => (
+              <a 
+                key={index}
+                href={link.href}
+                className={`font-medium transition-colors ${
+                  isScrolled ? 'text-gray-700 hover:text-blue-800' : 'text-gray-800 hover:text-blue-900'
+                }`}
+              >
+                {link.text}
+              </a>
+            ))}
+            
+            <Link href="/login">
+              <a className="bg-blue-800 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 transition-colors">
+                Client Login
+              </a>
+            </Link>
           </div>
           
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex space-x-8 text-white items-center">
-            <a href="/#services" className="hover:text-blue-200 transition-colors">Services</a>
-            <a href="/#about" className="hover:text-blue-200 transition-colors">About</a>
-            <a href="/#contact" className="hover:text-blue-200 transition-colors">Contact</a>
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="bg-white text-blue-800 px-4 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors"
-            >
-              Client Login
-            </button>
-          </nav>
-          
-          {/* Mobile Nav Toggle */}
+          {/* Mobile menu button */}
           <button 
-            className="md:hidden text-white"
+            className="md:hidden text-gray-700"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {isMobileMenuOpen ? (
+            {isMobileMenuOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+              </svg>
+            )}
           </button>
-        </div>
+        </nav>
+        
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden mt-4 py-4 border-t border-gray-200">
+            <div className="flex flex-col space-y-4">
+              {navLinks.map((link, index) => (
+                <a 
+                  key={index}
+                  href={link.href}
+                  className="font-medium text-gray-700 hover:text-blue-800"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.text}
+                </a>
+              ))}
+              <Link href="/login">
+                <a 
+                  className="bg-blue-800 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 transition-colors text-center"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Client Login
+                </a>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
-      
-      {/* Mobile Nav Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-blue-800 mt-2 px-4 py-5">
-          <nav className="flex flex-col space-y-4 text-white text-center">
-            <a 
-              href="/#services" 
-              className="hover:text-blue-200 transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Services
-            </a>
-            <a 
-              href="/#about" 
-              className="hover:text-blue-200 transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              About
-            </a>
-            <a 
-              href="/#contact" 
-              className="hover:text-blue-200 transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Contact
-            </a>
-            <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setShowLoginModal(true);
-              }}
-              className="bg-white text-blue-800 px-4 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors"
-            >
-              Client Login
-            </button>
-          </nav>
-        </div>
-      )}
     </header>
   );
 };
