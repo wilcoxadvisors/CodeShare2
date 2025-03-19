@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import session from "express-session";
@@ -14,7 +14,22 @@ import {
   insertJournalEntryLineSchema,
   JournalEntryStatus
 } from "@shared/schema";
+import { registerAccountRoutes } from "./accountRoutes";
+import { 
+  enhancedUserSchema,
+  enhancedEntitySchema,
+  journalEntryWithLinesSchema,
+  validateRequest 
+} from "@shared/validation";
 import { registerAIRoutes } from "./aiRoutes";
+import { 
+  asyncHandler, 
+  throwBadRequest, 
+  throwNotFound, 
+  throwForbidden, 
+  throwUnauthorized,
+  HttpStatus 
+} from "./errorHandling";
 
 interface AuthUser {
   id: number;
@@ -25,6 +40,8 @@ interface AuthUser {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register account routes with enhanced error handling
+  registerAccountRoutes(app);
   // Public routes for checking API availability - must be defined before auth middleware
   app.post("/api/public/check-api", (req, res) => {
     try {

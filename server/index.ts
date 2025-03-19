@@ -2,11 +2,24 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initDatabase } from "./initDb";
+import { errorHandler, notFoundHandler } from "./errorHandling";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({
+  limit: '10mb',
+  // More detailed error handling for JSON parsing errors
+  reviver: (key, value) => {
+    // Convert ISO 8601 date strings to Date objects
+    if (typeof value === 'string' && 
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(value)) {
+      return new Date(value);
+    }
+    return value;
+  }
+}));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -22,12 +35,23 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      
+      // For error responses (4xx, 5xx), log more details
+      if (res.statusCode >= 400 && capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+      // For successful responses, just log a brief summary or status
+      else if (capturedJsonResponse) {
+        if (typeof capturedJsonResponse === 'object' && capturedJsonResponse !== null) {
+          // Just log that there was a response, not the entire payload
+          logLine += ` :: Response sent`;
+        } else {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+      }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
       }
 
       log(logLine);
@@ -38,37 +62,42 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize database with default data
-  await initDatabase();
-  
-  const server = await registerRoutes(app);
+  try {
+    // Initialize database with default data
+    await initDatabase();
+    
+    const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // importantly set up vite or static serving before 404 handler
+    // so frontend routes are properly handled
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+    
+    // Add 404 handler for unmatched routes *after* frontend routing
+    app.use((req, res) => notFoundHandler(req, res));
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    // Add global error handler
+    app.use(errorHandler);
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    // ALWAYS serve the app on port 5000
+    // this serves both the API and the client.
+    // It is the only port that is not firewalled.
+    const port = 5000;
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`serving on port ${port}`);
+    });
+  } catch (error) {
+    log(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    if (error instanceof Error && error.stack) {
+      log(error.stack, 'error');
+    }
+    process.exit(1);
   }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
 })();
