@@ -1,9 +1,14 @@
 import React from 'react';
+import { MessageCircle } from 'lucide-react';
 import HeroSection from '../components/sections/HeroSection';
 import ServicesSection from '../components/sections/ServicesSection';
 import AboutSection from '../components/sections/AboutSection';
 import TestimonialsSection from '../components/sections/TestimonialsSection';
 import ContactSection from '../components/sections/ContactSection';
+import StatsSection from '../components/sections/StatsSection';
+import TrustedBySection from '../components/sections/TrustedBySection';
+import WhyChooseUsSection from '../components/sections/WhyChooseUsSection';
+import LeadershipSection from '../components/sections/LeadershipSection';
 import ChatWidget from '../components/common/ChatWidget';
 import { useUI } from '../contexts/UIContext';
 
@@ -21,12 +26,40 @@ const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
   };
 
   return (
-    <div>
-      <HeroSection onConsultClick={handleConsultClick} />
-      <ServicesSection />
-      <AboutSection />
-      <TestimonialsSection />
-      <ContactSection />
+    <div className="flex flex-col min-h-screen">
+      {/* Main content */}
+      <main>
+        {/* Hero Section */}
+        <HeroSection onConsultClick={handleConsultClick} />
+        
+        {/* Stats Cards */}
+        <StatsSection />
+        
+        {/* Trusted By */}
+        <TrustedBySection />
+        
+        {/* Services */}
+        <ServicesSection />
+        
+        {/* Why Choose Us */}
+        <WhyChooseUsSection />
+        
+        {/* Testimonials */}
+        <TestimonialsSection />
+        
+        {/* Leadership Team */}
+        <LeadershipSection />
+        
+        {/* About */}
+        <AboutSection />
+        
+        {/* Contact */}
+        <ContactSection />
+      </main>
+      
+      {/* Footer would go here */}
+      
+      {/* Chat Widget */}
       <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
       
       {/* Chat button */}
@@ -36,9 +69,7 @@ const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
         style={{ display: isChatOpen ? 'none' : 'block' }}
         aria-label="Open chat"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
+        <MessageCircle className="h-6 w-6" />
       </button>
     </div>
   );
