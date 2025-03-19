@@ -1,0 +1,286 @@
+Wilcox Advisors Homepage Specification
+Design & Branding
+Color Scheme
+
+Primary: Blue-800 (#1E3A8A) to Blue-900 gradient
+Text: Gray-700 for body, Gray-900 for headings
+Background: White primary, Gray-50 alternating sections
+Accents: Blue-100 for highlights
+
+Typography
+
+Font: System fonts (Segoe UI, Roboto, Oxygen, Ubuntu, etc.)
+Headings: Bold, Blue-800 color
+Body: Regular weight, line height 1.6
+
+Logo
+
+Text-based logo "WILCOX ADVISORS" in blue-800 color
+Font size: text-xl on mobile, text-2xl on desktop
+Positioned in header, links to homepage
+
+Layout Structure
+Header (Sticky)
+
+White background with shadow
+Logo on left
+Navigation links in center: Services, Blog, About, Contact
+Call-to-action: "Login" button (blue-800 background, white text)
+Mobile: Hamburger menu with slide-down navigation
+Changes size on scroll (py-2 when scrolled, py-4 when at top)
+
+Hero Section
+
+Blue gradient background (from-blue-800 to-blue-900)
+White text with large headline (text-4xl on mobile, text-5xl on desktop)
+Tagline: "Financial Solutions for Small Businesses"
+Subtext: Professional accounting services description
+Two buttons:
+
+Primary: "Schedule Free Consultation" (white background, blue text)
+Secondary: "Learn More" (white border, white text)
+
+
+Takes full width, py-20 padding
+
+Financial Checklist Section
+
+Gray-100 background (py-16)
+Heading: "Free Financial Checklist"
+Descriptive text about streamlining finances
+CTA button: "Get It Now" (blue background, white text)
+Opens modal form with required fields:
+
+Name, Email, Company Name, Revenue Range dropdown
+
+
+
+Services Section
+
+Gray-50 background (py-16)
+Heading: "Our Small Business Services"
+Grid of 6 service cards (1 column on mobile, 3 columns on desktop)
+Each card contains:
+
+Service title (text-xl, font-semibold)
+Service description (text-gray-600)
+White background, shadow, rounded corners
+Hover effect (shadow-lg)
+
+
+
+Testimonials Section
+
+White background (py-16)
+Heading: "What Small Businesses Say"
+Two testimonial cards in grid (1 column on mobile, 2 columns on desktop)
+Each testimonial contains:
+
+Quote text (italic, text-gray-700)
+Attribution (font-medium, text-gray-900)
+Gray-50 background, shadow-sm, rounded corners
+
+
+
+Blog Section
+
+White background (py-16)
+Heading: "Blog & Updates"
+Grid of blog posts (1 column on mobile, 2 columns on desktop)
+Each post contains:
+
+Title (text-xl, font-semibold)
+Content preview (text-gray-700)
+"Contact us to learn more" link
+Gray-50 background, rounded corners, shadow-sm
+
+
+
+About Section
+
+Gray-100 background (py-16)
+Heading: "About Wilcox Advisors"
+Paragraph describing company mission and services
+Centered text with max-width-3xl
+
+Contact Section
+
+Gray-50 background (py-16)
+Heading: "Contact Us"
+White form card with shadow-md
+Form fields:
+
+Name (required)
+Email (required)
+Company (required)
+Message (required)
+
+
+Submit button: "Send Message" (blue background, white text)
+Success alert after submission
+
+Footer
+
+Blue gradient background (from-blue-900 to-blue-800)
+White text, center-aligned
+Company name as heading (text-xl, font-bold)
+Tagline below heading
+Copyright text with current year
+Border-t for separation
+
+Interactive Features
+Chat Widget
+
+Fixed position (bottom-4, right-4)
+Blue circular button with plus icon
+Opens chat panel with:
+
+Header with title and close button
+Message history area
+Input field and send button
+Initial welcome message from AI
+
+
+
+Consultation Form Modal
+
+Triggered by "Schedule Free Consultation" button
+Full-screen overlay with semi-transparent background
+White card with rounded corners and shadow
+Multi-step form with progress indicator:
+
+Company Information (name, industry, years, revenue)
+Services Selection (checkboxes)
+Contact Information (name, email, phone, preferences)
+
+
+Next/Previous navigation
+Submit button on final step
+
+Mobile Responsiveness
+
+Fluid grid system using Tailwind's responsive classes
+Header collapses to hamburger menu on mobile
+Single column layouts on small screens
+Appropriate text sizing and spacing for mobile
+
+Technical Details
+
+Built with React and Tailwind CSS
+Sections have IDs for smooth scrolling (services, blog, about, contact)
+Form validation for all inputs
+API endpoints for form submissions
+JWT authentication for login functionality
+
+User Interactions
+
+Smooth scroll to sections when nav links clicked
+Form validation with error messages
+Success alerts after form submissions
+Modal opens/closes with animations
+Chat widget expansion/collapse
+Mobile menu toggle
+
+This specification covers all major components needed to recreate the Wilcox Advisors homepage with the exact same look, feel, and functionality.RetryGmake a summary of layout, design, buttons design, ui, etc so i can feed it to an AI agent to help with the designEditCrafted comprehensive design system specification for website implementation.2sThe user is asking for a concise summary of the design system for Wilcox Advisors' website that they can give to an AI agent to help with design implementation. They want me to focus on layout, design elements, button styles, UI components, etc.
+I should create a structured, technical design specification that focuses on:
+
+Layout fundamentals
+Color palette
+Typography system
+Component styles (buttons, cards, forms, etc.)
+Responsive behaviors
+
+I'll make it concise but comprehensive, avoiding marketing language and focusing on technical specifications that would be useful to implement the design.Wilcox Advisors Design System
+Layout Foundation
+
+Container: max-w-6xl mx-auto px-4
+Section padding: py-16
+Grid system: Tailwind grid with responsive breakpoints
+Spacing scale: Tailwind defaults (4=1rem)
+
+Color Palette
+
+Primary: Blue-800 (#1E3A8A)
+Secondary: Blue-900 (#1E40AF)
+Backgrounds: White, Gray-50 (#F9FAFB), Gray-100 (#F3F4F6)
+Text: Gray-700 (#374151), Gray-900 (#111827)
+Accents: Blue-100 (#DBEAFE)
+Success: Green-500 (#10B981)
+Error: Red-500 (#EF4444)
+
+Typography
+
+Font stack: system-ui (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, etc.)
+Headings: text-blue-800 font-bold
+
+H1: text-4xl md:text-5xl
+H2: text-3xl
+H3: text-xl
+
+
+Body: text-gray-700 leading-relaxed (1.6)
+Section titles: text-center mb-10
+
+Components
+Buttons
+
+Primary: bg-blue-800 text-white px-6 py-3 rounded-lg hover:bg-blue-900
+Secondary: border-2 border-white text-white px-6 py-3 rounded-lg hover:bg-blue-800
+Text button: text-blue-800 hover:underline
+Form submit: w-full bg-blue-800 text-white px-6 py-3 rounded-md
+
+Cards
+
+Service card: bg-white p-6 rounded-lg shadow-md hover:shadow-lg
+Testimonial card: bg-gray-50 p-6 rounded-lg shadow-sm
+Blog card: bg-gray-50 p-6 rounded-lg shadow-sm
+Form card: bg-white p-6 rounded-lg shadow-md
+
+Forms
+
+Input fields: w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500
+Labels: block text-sm font-medium text-gray-700 mb-1
+Required indicator: text-red-500
+Error message: text-red-500 text-sm mt-1
+Form spacing: space-y-6
+
+Modals
+
+Overlay: fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center
+Container: bg-white rounded-lg shadow-xl p-6 max-w-md/lg/3xl
+Header: text-2xl font-bold text-blue-800 mb-4
+Close button: absolute top-6 right-6 text-gray-500 hover:text-gray-700
+
+Navigation
+
+Desktop: hidden md:flex items-center space-x-8
+Mobile: flex flex-col py-3 space-y-2
+Active state: text-blue-800
+Inactive state: text-gray-700 hover:text-blue-800
+
+Responsive Behavior
+
+Mobile breakpoint: < 768px (md)
+Tablet breakpoint: 768px-1024px
+Desktop breakpoint: > 1024px
+Mobile adjustments:
+
+Single column layouts
+Smaller text (text-base vs text-lg)
+Hamburger menu
+Reduced padding (py-8 vs py-16)
+
+
+
+Special Elements
+
+Gradient backgrounds: bg-gradient-to-r from-blue-900 to-blue-800
+Chat widget: fixed bottom-4 right-4 z-40
+Form progress: flex justify-between mb-8 with numbered circles
+Multi-step navigation: flex justify-between mt-8
+
+Animation
+
+Hover transitions: transition duration-200
+Modal animations: fade-in/out
+Button hover: subtle background darkening
