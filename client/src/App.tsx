@@ -110,12 +110,12 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
             >
               Contact
             </button>
-            <a
-              href="/blog"
-              className="text-gray-700 hover:text-[#1E3A8A] font-medium"
+            <button 
+              onClick={() => navigate("/blog")} 
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium" 
             >
               Blog
-            </a>
+            </button>
             <button 
               onClick={openLoginModal} 
               className="px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E40AF] transition duration-200" 
@@ -173,12 +173,12 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
             >
               Contact
             </button>
-            <a
-              href="/blog"
+            <button 
+              onClick={() => navigate("/blog")} 
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
             >
               Blog
-            </a>
+            </button>
             <button 
               onClick={openLoginModal} 
               className="block w-full text-left px-4 py-2 mt-2 bg-[#1E3A8A] text-white hover:bg-[#1E40AF]"
@@ -289,7 +289,7 @@ const PublicFooter = () => {
               <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
               <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
               <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
-              <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
+              <li><button onClick={() => navigate("/blog")} className="hover:text-white transition-colors">Blog</button></li>
             </ul>
           </div>
         </div>
