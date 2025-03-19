@@ -391,14 +391,7 @@ const AboutSection = () => {
             </div>
           </div>
           
-          <div className="text-center mt-10">
-            <a 
-              href="#contact" 
-              className="inline-block bg-[#1E3A8A] text-white px-6 py-3 rounded-lg hover:bg-[#1E40AF] shadow-md transition duration-200 font-medium"
-            >
-              Meet Our Team
-            </a>
-          </div>
+          {/* No button here - removed Meet Our Team button */}
         </div>
       </div>
     </section>
@@ -419,7 +412,6 @@ const Home = ({ setShowConsultationForm }) => {
       <HeroSection onConsultClick={handleConsultClick} />
       <FreeFinancialChecklist />
       <ServicesSection />
-      <StatsSection />
       <AboutSection />
       <TestimonialsSection />
       <ContactSection />
