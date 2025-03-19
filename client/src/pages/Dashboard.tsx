@@ -307,148 +307,178 @@ function Dashboard() {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            {isAdmin && <TabsTrigger value="admin">Admin Dashboard</TabsTrigger>}
-          </TabsList>
-          
+        {/* Main Navigation Tabs */}
+        <div className="flex justify-between mb-6 border-b">
+          <div className="flex space-x-6">
+            <button 
+              onClick={() => setActiveTab("overview")} 
+              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "overview" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            >
+              Overview
+            </button>
+            <button 
+              onClick={() => setActiveTab("cashflow")} 
+              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "cashflow" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            >
+              Cash Flow
+            </button>
+            <button 
+              onClick={() => setActiveTab("reports")} 
+              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "reports" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            >
+              Reports
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setActiveTab("admin")} 
+                className={`py-3 px-1 font-medium border-b-2 ${activeTab === "admin" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              >
+                Admin Dashboard
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Tab Content Container */}
+        <div className="mt-6">
           {/* Original Dashboard - Overview Tab */}
-          <TabsContent value="overview">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Revenue YTD</CardTitle>
-                  <CardDescription>Total revenue for current fiscal year</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.totalRevenue?.toLocaleString() || "0.00"}</div>
-                  <div className="text-xs text-green-500 mt-1">↑ 12% from last year</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Net Income</CardTitle>
-                  <CardDescription>Year to date</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.netIncome?.toLocaleString() || "0.00"}</div>
-                  <div className="text-xs text-green-500 mt-1">↑ 8% from last year</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Cash Position</CardTitle>
-                  <CardDescription>Current balance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${cashFlowLoading ? "..." : (cashFlowData?.netCashFlow || 0).toLocaleString()}</div>
-                  <div className="text-xs text-red-500 mt-1">↓ 3% from last month</div>
-                </CardContent>
-              </Card>
-            </div>
+          {activeTab === "overview" && (
+            <div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Revenue YTD</CardTitle>
+                    <CardDescription>Total revenue for current fiscal year</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.totalRevenue?.toLocaleString() || "0.00"}</div>
+                    <div className="text-xs text-green-500 mt-1">↑ 12% from last year</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Net Income</CardTitle>
+                    <CardDescription>Year to date</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.netIncome?.toLocaleString() || "0.00"}</div>
+                    <div className="text-xs text-green-500 mt-1">↑ 8% from last year</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Cash Position</CardTitle>
+                    <CardDescription>Current balance</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${cashFlowLoading ? "..." : (cashFlowData?.netCashFlow || 0).toLocaleString()}</div>
+                    <div className="text-xs text-red-500 mt-1">↓ 3% from last month</div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Revenue</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyRevenue}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="revenue" fill="hsl(var(--chart-1))" name="Revenue" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Expense Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={expenseBreakdown} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="category" type="category" />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="hsl(var(--chart-2))" name="% of Total Expenses" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+          
+          {/* Original Dashboard - Cash Flow Tab */}
+          {activeTab === "cashflow" && (
+            <div>
               <Card>
                 <CardHeader>
-                  <CardTitle>Monthly Revenue</CardTitle>
+                  <CardTitle>Cash Flow Forecast</CardTitle>
+                  <CardDescription>Projected for next 6 months</CardDescription>
                 </CardHeader>
-                <CardContent className="h-80">
+                <CardContent className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyRevenue}>
+                    <LineChart data={cashFlowForecast}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="revenue" fill="hsl(var(--chart-1))" name="Revenue" />
-                    </BarChart>
+                      <Line type="monotone" dataKey="inflow" stroke="hsl(var(--chart-2))" name="Cash Inflow" />
+                      <Line type="monotone" dataKey="outflow" stroke="hsl(var(--chart-3))" name="Cash Outflow" />
+                    </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Expense Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={expenseBreakdown} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="category" type="category" />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="value" fill="hsl(var(--chart-2))" name="% of Total Expenses" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+              <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Average Monthly Inflow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">$14,866</div>
+                    <div className="text-xs text-green-500 mt-1">↑ 5% projected growth</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Average Monthly Outflow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">$10,900</div>
+                    <div className="text-xs text-red-500 mt-1">↑ 3% projected increase</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Projected Net Position</CardTitle>
+                    <CardDescription>End of year</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">$23,800</div>
+                    <div className="text-xs text-green-500 mt-1">↑ 15% from current</div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </TabsContent>
-          
-          {/* Original Dashboard - Cash Flow Tab */}
-          <TabsContent value="cashflow">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cash Flow Forecast</CardTitle>
-                <CardDescription>Projected for next 6 months</CardDescription>
-              </CardHeader>
-              <CardContent className="h-96">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={cashFlowForecast}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="inflow" stroke="hsl(var(--chart-2))" name="Cash Inflow" />
-                    <Line type="monotone" dataKey="outflow" stroke="hsl(var(--chart-3))" name="Cash Outflow" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            
-            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Average Monthly Inflow</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$14,866</div>
-                  <div className="text-xs text-green-500 mt-1">↑ 5% projected growth</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Average Monthly Outflow</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$10,900</div>
-                  <div className="text-xs text-red-500 mt-1">↑ 3% projected increase</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Projected Net Position</CardTitle>
-                  <CardDescription>End of year</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$23,800</div>
-                  <div className="text-xs text-green-500 mt-1">↑ 15% from current</div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          )}
           
           {/* Original Dashboard - Reports Tab */}
-          <TabsContent value="reports">
+          {activeTab === "reports" && (
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -565,11 +595,11 @@ function Dashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          )}
           
           {/* Admin Dashboard Tab */}
-          {isAdmin && (
-            <TabsContent value="admin">
+          {isAdmin && activeTab === "admin" && (
+            <div>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 <Card>
@@ -1484,9 +1514,9 @@ function Dashboard() {
                   </div>
                 </TabsContent>
               </Tabs>
-            </TabsContent>
+            </div>
           )}
-        </Tabs>
+        </div>
       </div>
     </>
   );
