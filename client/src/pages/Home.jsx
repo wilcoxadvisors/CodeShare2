@@ -255,7 +255,7 @@ const ServicesSection = () => {
         <div className="mt-12 text-center">
           <a 
             href="#contact" 
-            className="inline-block bg-[#1E3A8A] text-white px-6 py-3 rounded-lg hover:bg-[#1E40AF] transition duration-200 font-medium shadow-md"
+            className="inline-block bg-[#1E3A8A] text-white px-6 py-3 rounded hover:bg-[#1E40AF] transition duration-200 font-medium shadow-md"
           >
             Request a Consultation
           </a>
@@ -279,7 +279,7 @@ const FreeFinancialChecklist = () => {
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
               Download our checklist to streamline your small business finances—simple steps to save time and money!
             </p>
-            <button className="bg-[#1E3A8A] text-white px-8 py-4 rounded-full font-medium hover:bg-blue-700 transition-colors shadow-md">
+            <button className="bg-[#1E3A8A] text-white px-8 py-4 rounded font-medium hover:bg-blue-700 transition-colors shadow-md">
               Get It Now
             </button>
           </div>
@@ -420,7 +420,7 @@ const Home = ({ setShowConsultationForm }) => {
       {/* This button would typically be positioned in a fixed spot at bottom right */}
       <button 
         onClick={() => setShowChat(true)}
-        className="fixed bottom-4 right-4 bg-[#1E3A8A] text-white p-3 rounded-full shadow-lg z-40"
+        className="fixed bottom-4 right-4 bg-[#1E3A8A] text-white p-3 rounded shadow-lg z-40"
         style={{ display: showChat ? 'none' : 'block' }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

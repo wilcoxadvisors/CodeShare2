@@ -40,13 +40,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 justify-center">
               <button 
                 onClick={handleScheduleConsultation}
-                className="bg-white text-[#1E3A8A] hover:bg-blue-50 transition-colors px-8 py-4 rounded-full font-medium text-center shadow-lg"
+                className="bg-white text-[#1E3A8A] hover:bg-blue-50 transition-colors px-8 py-4 rounded font-medium text-center shadow-lg"
               >
                 Schedule Free Consultation
               </button>
               <a 
                 href="#services" 
-                className="border-2 border-white text-white hover:bg-white hover:text-[#1E3A8A] transition-colors px-8 py-4 rounded-full font-medium text-center"
+                className="border-2 border-white text-white hover:bg-white hover:text-[#1E3A8A] transition-colors px-8 py-4 rounded font-medium text-center"
               >
                 Learn More
               </a>

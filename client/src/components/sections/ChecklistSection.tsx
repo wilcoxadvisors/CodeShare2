@@ -57,7 +57,7 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
             </p>
             <button 
               onClick={() => setShowModal(true)}
-              className="bg-[#1E3A8A] text-white px-8 py-4 rounded-full font-medium hover:bg-blue-700 transition-colors shadow-md"
+              className="bg-[#1E3A8A] text-white px-8 py-4 rounded font-medium hover:bg-blue-700 transition-colors shadow-md"
             >
               Get It Now
             </button>
@@ -160,7 +160,7 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
                   
                   <button
                     type="submit"
-                    className="w-full bg-[#1E3A8A] text-white font-medium py-3 rounded-md hover:bg-blue-700 transition-colors"
+                    className="w-full bg-[#1E3A8A] text-white font-medium py-3 rounded hover:bg-blue-700 transition-colors"
                   >
                     Download Checklist
                   </button>

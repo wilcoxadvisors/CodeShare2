@@ -109,7 +109,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
         <div className="mt-12 text-center">
           <a 
             href="#contact" 
-            className="inline-block bg-[#1E3A8A] text-white px-6 py-3 rounded-lg hover:bg-[#1E40AF] transition duration-200 font-medium shadow-md"
+            className="inline-block bg-[#1E3A8A] text-white px-6 py-3 rounded hover:bg-[#1E40AF] transition duration-200 font-medium shadow-md"
           >
             Request a Consultation
           </a>
