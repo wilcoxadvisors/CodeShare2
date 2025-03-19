@@ -621,13 +621,13 @@ function Dashboard() {
                 </Card>
               </div>
 
-              {/* Admin Dashboard Tabs */}
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold tracking-tight">Admin Dashboard</h2>
-                <p className="text-muted-foreground">Manage clients, employees, billing, and more.</p>
-              </div>
-              
-              <Tabs value={adminActiveTab} onValueChange={setAdminActiveTab}>
+              {/* Admin Management Features */}
+              <Tabs value={adminActiveTab} onValueChange={setAdminActiveTab} className="mt-8">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold tracking-tight">Management Features</h2>
+                  <p className="text-muted-foreground mb-4">Manage clients, employees, billing, and more.</p>
+                </div>
+                
                 <TabsList className="mb-4">
                   <TabsTrigger value="client-management">Client Management</TabsTrigger>
                   <TabsTrigger value="employee-management">Employee Management</TabsTrigger>
