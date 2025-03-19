@@ -998,6 +998,279 @@ export class MemStorage implements IStorage {
     
     return result;
   }
+  
+  // User Activity Tracking methods
+  async logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog> {
+    const id = this.currentUserActivityLogId++;
+    const newActivity: UserActivityLog = {
+      id,
+      userId: activity.userId,
+      entityId: activity.entityId,
+      action: activity.action,
+      resourceType: activity.resourceType,
+      resourceId: activity.resourceId,
+      details: activity.details,
+      ipAddress: activity.ipAddress,
+      userAgent: activity.userAgent,
+      timestamp: new Date()
+    };
+    
+    this.userActivities.set(id, newActivity);
+    return newActivity;
+  }
+  
+  async getUserActivities(userId: number, limit: number = 100): Promise<UserActivityLog[]> {
+    return Array.from(this.userActivities.values())
+      .filter(activity => activity.userId === userId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getUserActivitiesByEntity(entityId: number, limit: number = 100): Promise<UserActivityLog[]> {
+    return Array.from(this.userActivities.values())
+      .filter(activity => activity.entityId === entityId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getUserActivitiesByResourceType(resourceType: string, limit: number = 100): Promise<UserActivityLog[]> {
+    return Array.from(this.userActivities.values())
+      .filter(activity => activity.resourceType === resourceType)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  // Feature Usage Analytics methods
+  async recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage> {
+    // Check if this feature has been used by this user before
+    const existingUsage = Array.from(this.featureUsages.values()).find(
+      fu => fu.userId === usage.userId && fu.featureName === usage.featureName
+    );
+    
+    if (existingUsage) {
+      // Update existing usage record
+      const updatedUsage: FeatureUsage = {
+        ...existingUsage,
+        usageCount: (existingUsage.usageCount || 0) + 1,
+        lastUsed: new Date(),
+        useTime: usage.useTime,
+        successful: usage.successful
+      };
+      
+      this.featureUsages.set(existingUsage.id, updatedUsage);
+      return updatedUsage;
+    } else {
+      // Create new usage record
+      const id = this.currentFeatureUsageId++;
+      const newUsage: FeatureUsage = {
+        id,
+        userId: usage.userId,
+        entityId: usage.entityId,
+        featureName: usage.featureName,
+        usageCount: 1,
+        firstUsed: new Date(),
+        lastUsed: new Date(),
+        useTime: usage.useTime,
+        successful: usage.successful !== undefined ? usage.successful : true
+      };
+      
+      this.featureUsages.set(id, newUsage);
+      return newUsage;
+    }
+  }
+  
+  async updateFeatureUsage(id: number, data: Partial<FeatureUsage>): Promise<FeatureUsage | undefined> {
+    const usage = this.featureUsages.get(id);
+    if (!usage) return undefined;
+    
+    const updatedUsage = { ...usage, ...data };
+    this.featureUsages.set(id, updatedUsage);
+    return updatedUsage;
+  }
+  
+  async getFeatureUsage(userId: number, featureName: string): Promise<FeatureUsage | undefined> {
+    return Array.from(this.featureUsages.values()).find(
+      fu => fu.userId === userId && fu.featureName === featureName
+    );
+  }
+  
+  async getFeatureUsageStats(featureName: string): Promise<{
+    totalUsageCount: number,
+    uniqueUsers: number,
+    avgUseTime?: number
+  }> {
+    const usages = Array.from(this.featureUsages.values())
+      .filter(fu => fu.featureName === featureName);
+    
+    if (usages.length === 0) {
+      return {
+        totalUsageCount: 0,
+        uniqueUsers: 0
+      };
+    }
+    
+    const totalUsageCount = usages.reduce((sum, fu) => sum + (fu.usageCount || 0), 0);
+    const uniqueUserIds = new Set(usages.map(fu => fu.userId));
+    
+    // Calculate average use time if available
+    const usagesWithTime = usages.filter(fu => fu.useTime !== null && fu.useTime !== undefined);
+    let avgUseTime: number | undefined = undefined;
+    
+    if (usagesWithTime.length > 0) {
+      const totalTime = usagesWithTime.reduce((sum, fu) => sum + (fu.useTime || 0), 0);
+      avgUseTime = totalTime / usagesWithTime.length;
+    }
+    
+    return {
+      totalUsageCount,
+      uniqueUsers: uniqueUserIds.size,
+      avgUseTime
+    };
+  }
+  
+  // Industry Benchmark methods
+  async addIndustryBenchmark(benchmark: InsertIndustryBenchmark): Promise<IndustryBenchmark> {
+    const id = this.currentIndustryBenchmarkId++;
+    const newBenchmark: IndustryBenchmark = {
+      id,
+      industry: benchmark.industry,
+      subIndustry: benchmark.subIndustry,
+      metricName: benchmark.metricName,
+      metricValue: benchmark.metricValue,
+      entitySizeRange: benchmark.entitySizeRange,
+      year: benchmark.year,
+      quarter: benchmark.quarter,
+      dataSource: benchmark.dataSource,
+      confidenceLevel: benchmark.confidenceLevel,
+      sampleSize: benchmark.sampleSize,
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.industryBenchmarks.set(id, newBenchmark);
+    return newBenchmark;
+  }
+  
+  async getIndustryBenchmarks(industry: string, year: number): Promise<IndustryBenchmark[]> {
+    return Array.from(this.industryBenchmarks.values())
+      .filter(benchmark => benchmark.industry === industry && benchmark.year === year);
+  }
+  
+  async getBenchmarksByMetric(metricName: string): Promise<IndustryBenchmark[]> {
+    return Array.from(this.industryBenchmarks.values())
+      .filter(benchmark => benchmark.metricName === metricName)
+      .sort((a, b) => {
+        // Sort by year descending, then by quarter descending if available
+        if (a.year !== b.year) return b.year - a.year;
+        const aQuarter = a.quarter || 0;
+        const bQuarter = b.quarter || 0;
+        return bQuarter - aQuarter;
+      });
+  }
+  
+  async getIndustryComparison(entityId: number, metricNames: string[]): Promise<any> {
+    // Get entity details to determine industry
+    const entity = await this.getEntity(entityId);
+    if (!entity || !entity.industry) {
+      return { 
+        entityMetrics: [],
+        industryBenchmarks: [],
+        comparison: {}
+      };
+    }
+    
+    // Find latest benchmarks for each requested metric
+    const benchmarks = [];
+    for (const metricName of metricNames) {
+      const metricBenchmarks = Array.from(this.industryBenchmarks.values())
+        .filter(bm => bm.industry === entity.industry && bm.metricName === metricName)
+        .sort((a, b) => {
+          // Sort by year descending, then by quarter descending
+          if (a.year !== b.year) return b.year - a.year;
+          const aQuarter = a.quarter || 0;
+          const bQuarter = b.quarter || 0;
+          return bQuarter - aQuarter;
+        });
+      
+      // Get the most recent benchmark for this metric
+      if (metricBenchmarks.length > 0) {
+        benchmarks.push(metricBenchmarks[0]);
+      }
+    }
+    
+    // Process the benchmarks for the comparison
+    const comparison = metricNames.reduce((result, metricName) => {
+      const benchmark = benchmarks.find(bm => bm.metricName === metricName);
+      if (benchmark) {
+        result[metricName] = {
+          entityValue: null, // Would need to calculate this based on entity data
+          benchmarkValue: benchmark.metricValue,
+          difference: null // Would calculate this once entity value is determined
+        };
+      }
+      return result;
+    }, {} as Record<string, any>);
+    
+    return {
+      entityMetrics: [], // Would contain entity-specific metric values
+      industryBenchmarks: benchmarks,
+      comparison
+    };
+  }
+  
+  // Data Consent methods
+  async recordDataConsent(consent: InsertDataConsent): Promise<DataConsent> {
+    const id = this.currentDataConsentId++;
+    const now = new Date();
+    
+    const newConsent: DataConsent = {
+      id,
+      userId: consent.userId,
+      entityId: consent.entityId,
+      consentType: consent.consentType,
+      granted: consent.granted || false,
+      grantedAt: consent.granted ? now : null,
+      revokedAt: !consent.granted ? now : null,
+      consentVersion: consent.consentVersion,
+      ipAddress: consent.ipAddress,
+      lastUpdated: now
+    };
+    
+    this.dataConsents.set(id, newConsent);
+    return newConsent;
+  }
+  
+  async getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined> {
+    // Get all consents for this user and type, sorted by last updated
+    const userConsents = Array.from(this.dataConsents.values())
+      .filter(consent => consent.userId === userId && consent.consentType === consentType)
+      .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+    
+    // Return the most recent consent record if any
+    return userConsents.length > 0 ? userConsents[0] : undefined;
+  }
+  
+  async updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined> {
+    const consent = this.dataConsents.get(id);
+    if (!consent) return undefined;
+    
+    const now = new Date();
+    const updatedConsent: DataConsent = {
+      ...consent,
+      granted,
+      lastUpdated: now,
+      grantedAt: granted ? now : consent.grantedAt,
+      revokedAt: !granted ? now : consent.revokedAt
+    };
+    
+    this.dataConsents.set(id, updatedConsent);
+    return updatedConsent;
+  }
+  
+  async hasUserConsented(userId: number, consentType: string): Promise<boolean> {
+    const consent = await this.getUserConsent(userId, consentType);
+    return !!consent && !!consent.granted;
+  }
 }
 
 // Database implementation
