@@ -363,19 +363,23 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">
-        {user ? <Dashboard /> : <Login />}
-      </Route>
-      
-      <Route path="/">
-        <PublicLayout>
-          <Home />
-        </PublicLayout>
+        {user ? (() => { 
+          const [, setLocation] = useLocation();
+          useEffect(() => { setLocation("/dashboard"); }, []);
+          return null;
+        })() : <Login />}
       </Route>
       
       <Route path="/dashboard">
         <AppLayout>
           <ProtectedRoute component={Dashboard} />
         </AppLayout>
+      </Route>
+      
+      <Route path="/">
+        <PublicLayout>
+          <Home />
+        </PublicLayout>
       </Route>
       
       {/* General Ledger moved to Reports tab */}

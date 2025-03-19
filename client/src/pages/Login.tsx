@@ -21,7 +21,7 @@ function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      setLocation('/');
+      setLocation('/dashboard');
     }
   }, [user, setLocation]);
   
@@ -61,7 +61,7 @@ function Login() {
         description: "Logged in successfully",
         variant: "default"
       });
-      setLocation('/');
+      setLocation('/dashboard');
     } else {
       toast({
         title: "Authentication Error",
