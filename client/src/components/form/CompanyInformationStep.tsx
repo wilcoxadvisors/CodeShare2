@@ -15,16 +15,34 @@ const CompanyInformationStep: React.FC<CompanyInformationStepProps> = ({
   formData,
   handleChange
 }) => {
+  const companySizeOptions = [
+    { value: '', label: 'Select company size' },
+    { value: '1-10', label: '1-10 employees' },
+    { value: '11-50', label: '11-50 employees' },
+    { value: '51-200', label: '51-200 employees' },
+    { value: '201-500', label: '201-500 employees' },
+    { value: '501+', label: 'More than 500 employees' }
+  ];
+
+  const revenueOptions = [
+    { value: '', label: 'Select annual revenue' },
+    { value: 'less-than-1m', label: 'Less than $1 million' },
+    { value: '1m-5m', label: '$1 million to $5 million' },
+    { value: '5m-10m', label: '$5 million to $10 million' },
+    { value: '10m-50m', label: '$10 million to $50 million' },
+    { value: '50m+', label: 'More than $50 million' }
+  ];
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold text-gray-800">Company Information</h3>
       <p className="text-gray-600">
-        Please provide some basic information about your company to help us better understand your needs.
+        Tell us about your business so we can better understand your needs.
       </p>
       
       <div className="space-y-4">
-        <div>
-          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-2">
+          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
             Company Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -33,39 +51,29 @@ const CompanyInformationStep: React.FC<CompanyInformationStepProps> = ({
             name="companyName"
             value={formData.companyName}
             onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="Your company name"
             required
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
         
-        <div>
-          <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-2">
+          <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
             Industry <span className="text-red-500">*</span>
           </label>
-          <select
+          <input
+            type="text"
             id="industry"
             name="industry"
             value={formData.industry}
             onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
-          >
-            <option value="">Select an industry</option>
-            <option value="accounting">Accounting & Finance</option>
-            <option value="construction">Construction</option>
-            <option value="consulting">Consulting</option>
-            <option value="education">Education</option>
-            <option value="healthcare">Healthcare</option>
-            <option value="manufacturing">Manufacturing</option>
-            <option value="retail">Retail</option>
-            <option value="technology">Technology</option>
-            <option value="other">Other</option>
-          </select>
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="e.g. Healthcare, Technology, Manufacturing"
+          />
         </div>
         
-        <div>
-          <label htmlFor="companySize" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-2">
+          <label htmlFor="companySize" className="block text-sm font-medium text-gray-700">
             Company Size <span className="text-red-500">*</span>
           </label>
           <select
@@ -73,21 +81,19 @@ const CompanyInformationStep: React.FC<CompanyInformationStepProps> = ({
             name="companySize"
             value={formData.companySize}
             onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select company size</option>
-            <option value="1-10">1-10 employees</option>
-            <option value="11-50">11-50 employees</option>
-            <option value="51-200">51-200 employees</option>
-            <option value="201-500">201-500 employees</option>
-            <option value="501-1000">501-1000 employees</option>
-            <option value="1000+">1000+ employees</option>
+            {companySizeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         
-        <div>
-          <label htmlFor="annualRevenue" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-2">
+          <label htmlFor="annualRevenue" className="block text-sm font-medium text-gray-700">
             Annual Revenue <span className="text-red-500">*</span>
           </label>
           <select
@@ -95,16 +101,14 @@ const CompanyInformationStep: React.FC<CompanyInformationStepProps> = ({
             name="annualRevenue"
             value={formData.annualRevenue}
             onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select annual revenue</option>
-            <option value="<500K">Less than $500K</option>
-            <option value="500K-1M">$500K - $1M</option>
-            <option value="1M-5M">$1M - $5M</option>
-            <option value="5M-10M">$5M - $10M</option>
-            <option value="10M-50M">$10M - $50M</option>
-            <option value="50M+">$50M+</option>
+            {revenueOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>

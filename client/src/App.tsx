@@ -311,6 +311,9 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <PublicFooter />
+      {showConsultationForm && (
+        <ConsultationFormModal setShowConsultationForm={setShowConsultationForm} />
+      )}
       {/* Chat widget will be handled by the Home component */}
     </div>
   );
@@ -358,7 +361,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
 function Router() {
   const { user } = useAuth();
-  const [showConsultationForm, setShowConsultationForm] = useState(false);
 
   return (
     <Switch>
@@ -368,7 +370,7 @@ function Router() {
       
       <Route path="/">
         <PublicLayout>
-          <Home setShowConsultationForm={setShowConsultationForm} />
+          <Home />
         </PublicLayout>
       </Route>
       
@@ -457,7 +459,6 @@ function AppWithAuth() {
   return (
     <>
       <Router />
-      <ConsultationFormModal />
     </>
   );
 }
