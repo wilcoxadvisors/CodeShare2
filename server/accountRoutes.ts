@@ -26,12 +26,15 @@ interface AuthUser {
   role: string;
 }
 
-// Authentication middleware
+// Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  if (req.isAuthenticated()) {
+  // If user exists in session, they're authenticated
+  if (req.user) {
     return next();
   }
-  res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
+  
+  // No authenticated user
+  return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
 };
 
 // Register account routes
