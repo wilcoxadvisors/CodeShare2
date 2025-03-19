@@ -12,119 +12,146 @@ const ServicesSelectionStep: React.FC<ServicesSelectionStepProps> = ({
   formData,
   handleChange
 }) => {
-  const services = [
-    {
-      id: 'financial-accounting',
-      label: 'Financial Accounting',
-      description: 'Record transactions, maintain financial records, and prepare accurate financial statements.'
-    },
-    {
-      id: 'tax-planning-preparation',
-      label: 'Tax Planning & Preparation',
-      description: 'Strategic tax planning and seamless tax return preparation for businesses and individuals.'
-    },
-    {
-      id: 'business-advisory',
-      label: 'Business Advisory',
-      description: 'Expert guidance on business strategy, growth planning, and operational improvements.'
-    },
-    {
-      id: 'audit-assurance',
-      label: 'Audit & Assurance',
-      description: 'Independent verification of financial statements and internal control assessments.'
-    },
-    {
-      id: 'wealth-management',
-      label: 'Wealth Management',
-      description: 'Comprehensive financial planning, investment advisory, and retirement planning.'
-    },
-    {
-      id: 'payroll-services',
-      label: 'Payroll Services',
-      description: 'Complete payroll processing, tax filings, and compliance management.'
-    },
-    {
-      id: 'forecasting-budgeting',
-      label: 'Forecasting & Budgeting',
-      description: 'Create realistic financial projections and develop actionable budgets.'
-    },
-    {
-      id: 'merger-acquisition',
-      label: 'Merger & Acquisition',
-      description: 'Due diligence, valuation, and strategic advisory for business transitions.'
-    }
-  ];
-
-  const handleCheckboxChange = (id: string) => {
-    const newServices = [...formData.services];
+  // Custom handler for checkboxes
+  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
+    let updatedServices = [...formData.services];
     
-    if (newServices.includes(id)) {
-      // Remove service if already selected
-      const updatedServices = newServices.filter(service => service !== id);
-      
-      // Create a synthetic event object to match the handleChange signature
-      const syntheticEvent = {
-        target: {
-          name: 'services',
-          value: updatedServices
-        }
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      
-      handleChange(syntheticEvent);
+    if (checked) {
+      updatedServices.push(value);
     } else {
-      // Add service if not already selected
-      newServices.push(id);
-      
-      // Create a synthetic event object to match the handleChange signature
-      const syntheticEvent = {
-        target: {
-          name: 'services',
-          value: newServices
-        }
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      
-      handleChange(syntheticEvent);
+      updatedServices = updatedServices.filter(service => service !== value);
     }
+    
+    // Create a synthetic event to match the handleChange function expected format
+    const syntheticEvent = {
+      target: {
+        name: 'services',
+        value: updatedServices
+      }
+    } as React.ChangeEvent<HTMLInputElement>;
+    
+    handleChange(syntheticEvent);
   };
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-semibold text-gray-800">Services</h3>
-      <p className="text-gray-600">
-        Select the services you're interested in. Choose all that apply to your business needs.
-      </p>
+      <h3 className="text-lg font-semibold text-gray-800">Services of Interest</h3>
+      <p className="text-gray-600 mb-6">Please select the services you're interested in. You can select multiple options.</p>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {services.map(service => (
-          <div 
-            key={service.id}
-            className={`relative p-4 border rounded-lg cursor-pointer transition-colors ${
-              formData.services.includes(service.id)
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-            }`}
-            onClick={() => handleCheckboxChange(service.id)}
-          >
-            <div className="flex items-start">
-              <div className="flex h-5 items-center">
-                <input
-                  type="checkbox"
-                  id={service.id}
-                  checked={formData.services.includes(service.id)}
-                  onChange={() => handleCheckboxChange(service.id)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                />
-              </div>
-              <div className="ml-3 text-sm">
-                <label htmlFor={service.id} className="font-medium text-gray-800">
-                  {service.label}
-                </label>
-                <p className="text-gray-500 mt-1">{service.description}</p>
-              </div>
-            </div>
+      <div className="space-y-4">
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="financial_planning"
+              name="financial_planning"
+              type="checkbox"
+              value="financial_planning"
+              checked={formData.services.includes('financial_planning')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
           </div>
-        ))}
+          <div className="ml-3 text-sm">
+            <label htmlFor="financial_planning" className="font-medium text-gray-700">Financial Planning</label>
+            <p className="text-gray-500">Comprehensive financial planning and wealth management</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="tax_services"
+              name="tax_services"
+              type="checkbox"
+              value="tax_services"
+              checked={formData.services.includes('tax_services')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="tax_services" className="font-medium text-gray-700">Tax Services</label>
+            <p className="text-gray-500">Tax planning, preparation, and compliance</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="accounting"
+              name="accounting"
+              type="checkbox"
+              value="accounting"
+              checked={formData.services.includes('accounting')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="accounting" className="font-medium text-gray-700">Accounting</label>
+            <p className="text-gray-500">Bookkeeping, financial statements, and accounting services</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="business_advisory"
+              name="business_advisory"
+              type="checkbox"
+              value="business_advisory"
+              checked={formData.services.includes('business_advisory')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="business_advisory" className="font-medium text-gray-700">Business Advisory</label>
+            <p className="text-gray-500">Strategic planning, business consulting, and growth advice</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="audit_assurance"
+              name="audit_assurance"
+              type="checkbox"
+              value="audit_assurance"
+              checked={formData.services.includes('audit_assurance')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="audit_assurance" className="font-medium text-gray-700">Audit & Assurance</label>
+            <p className="text-gray-500">Financial audit, internal controls, and compliance services</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="financial_systems"
+              name="financial_systems"
+              type="checkbox"
+              value="financial_systems"
+              checked={formData.services.includes('financial_systems')}
+              onChange={handleServiceChange}
+              className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="financial_systems" className="font-medium text-gray-700">Financial Systems Implementation</label>
+            <p className="text-gray-500">Setup and integration of accounting and financial software</p>
+          </div>
+        </div>
       </div>
+      
+      {formData.services.length === 0 && (
+        <p className="text-red-500 text-sm mt-2">Please select at least one service</p>
+      )}
     </div>
   );
 };

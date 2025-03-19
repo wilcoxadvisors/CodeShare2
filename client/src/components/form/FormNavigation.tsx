@@ -18,20 +18,17 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       <button
         type="button"
         onClick={onBack}
-        className={`px-6 py-2 rounded-md font-medium transition-colors duration-200 ${
-          isFirstStep
-            ? 'opacity-50 cursor-not-allowed bg-gray-300 text-gray-600'
-            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+        className={`px-6 py-2 border border-gray-300 rounded-lg text-gray-700 transition-colors duration-200 ${
+          isFirstStep ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
         }`}
         disabled={isFirstStep}
       >
         Back
       </button>
-      
       <button
         type="button"
         onClick={onNext}
-        className="px-6 py-2 bg-blue-800 text-white rounded-md font-medium hover:bg-blue-900 transition-colors duration-200"
+        className="px-6 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors duration-200 font-medium"
       >
         {isLastStep ? 'Submit' : 'Next'}
       </button>
