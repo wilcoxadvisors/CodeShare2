@@ -446,7 +446,9 @@ export class MemStorage implements IStorage {
   async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
     const id = this.currentJournalEntryId++;
     const now = new Date();
-    const journalEntry: JournalEntry = { 
+    
+    // Create base journal entry
+    const journalEntry = {
       id, 
       entityId: insertEntry.entityId,
       date: insertEntry.date,
@@ -455,14 +457,14 @@ export class MemStorage implements IStorage {
       status: insertEntry.status as JournalEntryStatus,
       createdBy: insertEntry.createdBy,
       requestedBy: insertEntry.requestedBy || null,
-      requestedAt: null,
+      requestedAt: null as Date | null,
       approvedBy: insertEntry.approvedBy || null,
-      approvedAt: null,
+      approvedAt: null as Date | null,
       rejectedBy: insertEntry.rejectedBy || null,
-      rejectedAt: null,
+      rejectedAt: null as Date | null,
       rejectionReason: insertEntry.rejectionReason || null,
       postedBy: insertEntry.postedBy || null,
-      postedAt: null,
+      postedAt: null as Date | null,
       createdAt: now,
       updatedAt: now
     };
@@ -552,6 +554,7 @@ export class MemStorage implements IStorage {
   
   async createFixedAsset(insertAsset: InsertFixedAsset): Promise<FixedAsset> {
     const id = this.currentFixedAssetId++;
+    const now = new Date();
     const fixedAsset: FixedAsset = { 
       id, 
       name: insertAsset.name,
@@ -567,10 +570,9 @@ export class MemStorage implements IStorage {
       accumulatedDepreciationAccountId: insertAsset.accumulatedDepreciationAccountId,
       depreciationExpenseAccountId: insertAsset.depreciationExpenseAccountId,
       salvageValue: insertAsset.salvageValue || "0",
-      lastDepreciationDate: insertAsset.lastDepreciationDate || null,
       disposalDate: insertAsset.disposalDate || null,
       disposalAmount: insertAsset.disposalAmount || null,
-      createdAt: new Date()
+      createdAt: now
     };
     this.fixedAssets.set(id, fixedAsset);
     return fixedAsset;
