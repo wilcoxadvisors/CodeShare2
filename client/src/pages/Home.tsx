@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
+import PublicHeader from '../components/common/PublicHeader.tsx';
+import PublicFooter from '../components/common/PublicFooter.tsx';
+import LoginModal from '../components/common/LoginModal.tsx';
 import HeroSection from '../components/sections/HeroSection.tsx';
 import ChecklistSection from '../components/sections/ChecklistSection.tsx';
 import ServicesSection from '../components/sections/ServicesSection.tsx';
@@ -38,14 +41,20 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main content */}
-      <HeroSection />
-      <ChecklistSection setShowChecklistForm={setShowChecklistForm} />
-      <ServicesSection />
-      <BlogSection blogPosts={blogPosts} />
-      <TestimonialsSection />
-      <AboutSection aboutText={dashboardData.about} />
-      <ContactSection />
+      {/* Header */}
+      <PublicHeader />
+      
+      {/* Main content with padding for fixed header */}
+      <div className="pt-16">
+        <HeroSection />
+        <ChecklistSection setShowChecklistForm={setShowChecklistForm} />
+        <ServicesSection />
+        <BlogSection blogPosts={blogPosts} />
+        <TestimonialsSection />
+        <AboutSection aboutText={dashboardData.about} />
+        <ContactSection />
+        <PublicFooter />
+      </div>
       
       {/* Chat Widget */}
       <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
@@ -59,6 +68,9 @@ const Home: React.FC = () => {
       >
         <MessageCircle className="h-6 w-6" />
       </button>
+      
+      {/* Login Modal */}
+      <LoginModal />
     </div>
   );
 };
