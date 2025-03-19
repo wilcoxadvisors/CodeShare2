@@ -1,41 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { Bell, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import EntitySelector from './EntitySelector';
+
+// Define section tabs outside the component for better performance
+const sectionTabs = {
+  '/reports': [
+    { path: '/reports', label: 'Overview' },
+    { path: '/reports/balance-sheet', label: 'Balance Sheet' },
+    { path: '/reports/income-statement', label: 'Income Statement' },
+    { path: '/reports/cash-flow', label: 'Cash Flow' }
+  ],
+  '/general-ledger': [
+    { path: '/general-ledger', label: 'General Ledger' },
+    { path: '/trial-balance', label: 'Trial Balance' },
+    { path: '/journal-entries', label: 'Journal Entries' }
+  ],
+  '/journal-entries': [
+    { path: '/journal-entries', label: 'All Entries' },
+    { path: '/journal-entries/create', label: 'Create Entry' },
+    { path: '/journal-entries/batch', label: 'Batch Upload' }
+  ],
+  '/chart-of-accounts': [
+    { path: '/chart-of-accounts', label: 'All Accounts' },
+    { path: '/chart-of-accounts/create', label: 'Create Account' }
+  ],
+  '/accounts-payable': [
+    { path: '/accounts-payable', label: 'Overview' },
+    { path: '/accounts-payable/vendors', label: 'Vendors' },
+    { path: '/accounts-payable/bills', label: 'Bills' },
+    { path: '/accounts-payable/payments', label: 'Payments' }
+  ],
+  '/accounts-receivable': [
+    { path: '/accounts-receivable', label: 'Overview' },
+    { path: '/accounts-receivable/customers', label: 'Customers' },
+    { path: '/accounts-receivable/invoices', label: 'Invoices' },
+    { path: '/accounts-receivable/receipts', label: 'Receipts' }
+  ],
+  '/fixed-assets': [
+    { path: '/fixed-assets', label: 'All Assets' },
+    { path: '/fixed-assets/add', label: 'Add Asset' },
+    { path: '/fixed-assets/depreciation', label: 'Depreciation' }
+  ],
+  '/document-analysis': [
+    { path: '/document-analysis', label: 'Document Analysis' },
+    { path: '/document-analysis/history', label: 'Analysis History' }
+  ]
+};
+
+// Main navigation items for mobile menu
+const mainNavItems = [
+  { path: '/', label: 'Dashboard' }
+];
 
 function Header() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Function to determine the base section of the current path
-  const getBaseSection = (path: string) => {
+  // Function to determine the base section of the current path (memoized)
+  const currentBaseSection = useMemo(() => {
     // Extract the base section (e.g., /reports/balance-sheet -> /reports)
-    const firstSlashIndex = path.indexOf('/', 1);
+    const firstSlashIndex = location.indexOf('/', 1);
     if (firstSlashIndex === -1) {
-      return path; // Already a base path
+      return location; // Already a base path
     }
-    return path.substring(0, firstSlashIndex);
-  };
-  
-  // Get the current base section for tab selection
-  const currentBaseSection = getBaseSection(location);
-
-  const getPageTitle = (path: string) => {
-    const routes = {
-      '/': 'Dashboard',
-      '/general-ledger': 'General Ledger',
-      '/journal-entries': 'Journal Entries',
-      '/chart-of-accounts': 'Chart of Accounts',
-      '/reports': 'Reports',
-      '/accounts-payable': 'Accounts Payable',
-      '/accounts-receivable': 'Accounts Receivable',
-      '/fixed-assets': 'Fixed Assets'
-    };
-    
-    return routes[path as keyof typeof routes] || '';
-  };
+    return location.substring(0, firstSlashIndex);
+  }, [location]);
 
   return (
     <header className="bg-white shadow-sm z-10">
