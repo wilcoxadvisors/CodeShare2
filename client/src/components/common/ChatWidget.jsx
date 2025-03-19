@@ -1,181 +1,96 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const ChatWidget = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
+const ChatWidget = ({ isOpen, onClose }) => {
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([
     { 
-      id: 1, 
       sender: 'bot', 
-      text: 'Hi there! 👋 How can the Wilcox Advisors team help you today?',
-      timestamp: new Date()
+      text: 'Hello! I\'m the Wilcox Advisors virtual assistant. How can I help you with your financial needs today?' 
     }
   ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
 
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const handleInputChange = (e) => {
-    setInputValue(e.target.value);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSendMessage = () => {
+    if (!message.trim()) return;
     
-    if (inputValue.trim() === '') return;
+    // Add user message to chat
+    setChatHistory([
+      ...chatHistory,
+      { sender: 'user', text: message }
+    ]);
     
-    const userMessage = {
-      id: messages.length + 1,
-      sender: 'user',
-      text: inputValue,
-      timestamp: new Date()
-    };
+    // Clear input
+    setMessage('');
     
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsTyping(true);
-    
-    // Simulate bot response
+    // Simulate bot response (would be replaced with actual API call)
     setTimeout(() => {
-      const botResponse = generateBotResponse(inputValue);
-      setMessages(prev => [...prev, {
-        id: prev.length + 1,
-        sender: 'bot',
-        text: botResponse,
-        timestamp: new Date()
-      }]);
-      setIsTyping(false);
-    }, 1500);
+      setChatHistory(prevChat => [
+        ...prevChat,
+        { 
+          sender: 'bot', 
+          text: "Thank you for your message. Our team will get back to you shortly. If you'd like to speak with someone directly, please call us at (555) 123-4567."
+        }
+      ]);
+    }, 1000);
   };
-  
-  const generateBotResponse = (userMessage) => {
-    const lowercaseMessage = userMessage.toLowerCase();
-    
-    if (lowercaseMessage.includes('pricing') || lowercaseMessage.includes('cost') || lowercaseMessage.includes('fee')) {
-      return "Our pricing depends on the specific services you need. We offer customized packages for businesses of all sizes. Would you like to schedule a free consultation to discuss your needs?";
-    } else if (lowercaseMessage.includes('tax') || lowercaseMessage.includes('taxes')) {
-      return "We offer comprehensive tax planning and preparation services for businesses and individuals. Our tax experts can help minimize your tax liability while ensuring compliance with all regulations.";
-    } else if (lowercaseMessage.includes('bookkeeping') || lowercaseMessage.includes('accounting')) {
-      return "Our bookkeeping services include monthly financial statements, accounts payable/receivable management, bank reconciliations, and more. We can tailor our services to your specific needs.";
-    } else if (lowercaseMessage.includes('consultation') || lowercaseMessage.includes('meeting') || lowercaseMessage.includes('appointment')) {
-      return "We'd be happy to schedule a consultation with you! Please call us at (555) 123-4567 or fill out the contact form on this page, and we'll reach out to arrange a meeting.";
-    } else if (lowercaseMessage.includes('hello') || lowercaseMessage.includes('hi') || lowercaseMessage.includes('hey')) {
-      return "Hello! Thanks for reaching out. How can we assist you with your financial or accounting needs today?";
-    } else {
-      return "Thank you for your message. To better assist you, would you like to speak with a member of our team? You can schedule a call or fill out our contact form, and we'll get back to you promptly.";
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
     }
   };
-  
-  // Auto-scroll to bottom of messages
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-  
-  // Format timestamp
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-40">
-      {/* Chat button */}
-      <button
-        onClick={toggleChat}
-        className={`flex items-center justify-center w-16 h-16 rounded-full shadow-lg focus:outline-none transition-all duration-300 ${
-          isOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-800 hover:bg-blue-700'
-        }`}
-      >
-        {isOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl w-80 z-50">
+      <div className="bg-[#1E3A8A] text-white p-4 rounded-t-lg flex justify-between items-center">
+        <h3 className="font-medium">Chat with Us</h3>
+        <button onClick={onClose} className="text-white hover:text-gray-200">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        )}
-      </button>
+        </button>
+      </div>
       
-      {/* Chat window */}
-      {isOpen && (
-        <div className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white rounded-lg shadow-xl overflow-hidden max-h-[80vh] flex flex-col">
-          {/* Chat header */}
-          <div className="bg-blue-800 text-white p-4">
-            <h3 className="font-bold">Wilcox Advisors Support</h3>
-            <p className="text-sm text-blue-100">We typically reply within a few minutes</p>
-          </div>
-          
-          {/* Messages container */}
-          <div className="flex-1 p-4 overflow-y-auto max-h-72">
-            {messages.map(message => (
-              <div 
-                key={message.id}
-                className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.sender === 'bot' && (
-                  <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-white mr-2 flex-shrink-0">
-                    <span className="text-xs font-bold">WA</span>
-                  </div>
-                )}
-                <div 
-                  className={`max-w-[80%] p-3 rounded-lg ${
-                    message.sender === 'user' 
-                      ? 'bg-blue-600 text-white rounded-br-none' 
-                      : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                  }`}
-                >
-                  <p className="text-sm">{message.text}</p>
-                  <span className={`text-xs mt-1 block ${message.sender === 'user' ? 'text-blue-200' : 'text-gray-500'}`}>
-                    {formatTime(message.timestamp)}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-white mr-2 flex-shrink-0">
-                  <span className="text-xs font-bold">WA</span>
-                </div>
-                <div className="bg-gray-100 p-3 rounded-lg rounded-bl-none">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          
-          {/* Input form */}
-          <form onSubmit={handleSubmit} className="border-t p-4">
-            <div className="flex">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={handleInputChange}
-                placeholder="Type your message..."
-                className="flex-1 border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                className="bg-blue-800 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors"
-                disabled={inputValue.trim() === ''}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
+      <div className="p-4 h-80 overflow-y-auto border-b">
+        {chatHistory.map((msg, index) => (
+          <div 
+            key={index} 
+            className={`mb-3 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div 
+              className={`p-3 rounded-lg inline-block max-w-[80%] ${
+                msg.sender === 'user' 
+                  ? 'bg-[#1E3A8A] text-white rounded-br-none' 
+                  : 'bg-gray-100 text-gray-800 rounded-bl-none'
+              }`}
+            >
+              <p className="text-sm">{msg.text}</p>
             </div>
-          </form>
+          </div>
+        ))}
+      </div>
+      
+      <div className="p-4">
+        <div className="flex items-center">
+          <input 
+            type="text" 
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..." 
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+          />
+          <button 
+            onClick={handleSendMessage}
+            className="ml-2 bg-[#1E3A8A] text-white p-2 rounded-lg hover:bg-blue-800 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+            </svg>
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

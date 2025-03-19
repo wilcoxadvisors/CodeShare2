@@ -163,7 +163,7 @@ const PublicFooter = () => {
 };
 
 // Public website layout
-function PublicLayout({ children }) {
+function PublicLayout({ children }: { children: React.ReactNode }) {
   const [showConsultationForm, setShowConsultationForm] = useState(false);
 
   return (
@@ -173,7 +173,7 @@ function PublicLayout({ children }) {
         {children}
       </main>
       <PublicFooter />
-      <ChatWidget />
+      <ChatWidget isOpen={false} onClose={() => {}} />
     </div>
   );
 }
@@ -228,7 +228,7 @@ function Router() {
         {user ? <Dashboard /> : <Login />}
       </Route>
       
-      <Route path="/" exact>
+      <Route path="/">
         <PublicLayout>
           <Home setShowConsultationForm={setShowConsultationForm} />
         </PublicLayout>
