@@ -24,16 +24,10 @@ interface BlogPost {
   image: string;
 }
 
-const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
-  const { isChatOpen, setIsChatOpen } = useUI();
+const Home: React.FC<HomeProps> = () => {
+  const { isChatOpen, setIsChatOpen, setShowConsultationForm } = useUI();
   const [showChecklistForm, setShowChecklistForm] = useState(false);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-
-  const handleConsultClick = () => {
-    if (setShowConsultationForm) {
-      setShowConsultationForm(true);
-    }
-  };
 
   // Simulating dashboard data that would normally come from an API
   const dashboardData = {
@@ -53,7 +47,7 @@ const Home: React.FC<HomeProps> = ({ setShowConsultationForm }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main content */}
-      <HeroSection onConsultClick={handleConsultClick} />
+      <HeroSection />
       <ChecklistSection setShowChecklistForm={setShowChecklistForm} />
       <ServicesSection />
       <BlogSection blogPosts={blogPosts} />
