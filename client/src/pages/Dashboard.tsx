@@ -203,7 +203,7 @@ const formatDate = (dateString: string) => {
 function Dashboard() {
   const { user } = useAuth();
   const { currentEntity } = useEntity();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("admin");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
@@ -296,37 +296,7 @@ function Dashboard() {
       <PageHeader title="Dashboard" description={`Welcome, ${user?.name || 'User'}!`} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* Main Navigation Tabs */}
-        <div className="flex justify-between mb-6 border-b">
-          <div className="flex space-x-6">
-            <button 
-              onClick={() => setActiveTab("overview")} 
-              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "overview" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-            >
-              Overview
-            </button>
-            <button 
-              onClick={() => setActiveTab("cashflow")} 
-              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "cashflow" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-            >
-              Cash Flow
-            </button>
-            <button 
-              onClick={() => setActiveTab("reports")} 
-              className={`py-3 px-1 font-medium border-b-2 ${activeTab === "reports" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-            >
-              Reports
-            </button>
-            {isAdmin && (
-              <button 
-                onClick={() => setActiveTab("admin")} 
-                className={`py-3 px-1 font-medium border-b-2 ${activeTab === "admin" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-              >
-                Admin Dashboard
-              </button>
-            )}
-          </div>
-        </div>
+        {/* No tabs - admin dashboard only */}
         
         {/* Tab Content Container */}
         <div className="mt-6">
@@ -586,8 +556,8 @@ function Dashboard() {
             </div>
           )}
           
-          {/* Admin Dashboard Tab */}
-          {isAdmin && activeTab === "admin" && (
+          {/* Admin Dashboard Tab - Always Shown */}
+          {(
             <div>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
