@@ -272,6 +272,54 @@ export async function migrateTables() {
       ADD COLUMN IF NOT EXISTS export_count INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS tags TEXT[];
+      
+      -- Create form submission tables
+      CREATE TABLE IF NOT EXISTS contact_submissions (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        message TEXT NOT NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        status TEXT NOT NULL DEFAULT 'unread',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS checklist_submissions (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        company TEXT NOT NULL,
+        revenue_range TEXT NOT NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        status TEXT NOT NULL DEFAULT 'unread',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      
+      -- Update the existing consultation_submissions table if it exists
+      DROP TABLE IF EXISTS consultation_submissions;
+      
+      CREATE TABLE IF NOT EXISTS consultation_submissions (
+        id SERIAL PRIMARY KEY,
+        company_name TEXT NOT NULL,
+        industry TEXT NOT NULL,
+        company_size TEXT NOT NULL,
+        annual_revenue TEXT NOT NULL,
+        services JSONB NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        preferred_contact TEXT NOT NULL,
+        message TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        status TEXT NOT NULL DEFAULT 'unread',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
     `);
 
     console.log("Database migration completed successfully!");

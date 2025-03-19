@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initDatabase } from "./initDb";
 import { errorHandler, notFoundHandler } from "./errorHandling";
+import { registerFormRoutes } from "./formRoutes";
 
 const app = express();
 app.use(express.json({
@@ -66,7 +67,11 @@ app.use((req, res, next) => {
     // Initialize database with default data
     await initDatabase();
     
+    // Register API routes
     const server = await registerRoutes(app);
+    
+    // Register form submission routes
+    registerFormRoutes(app);
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled

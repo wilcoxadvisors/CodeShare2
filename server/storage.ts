@@ -1306,10 +1306,286 @@ export class MemStorage implements IStorage {
     const consent = await this.getUserConsent(userId, consentType);
     return !!consent && !!consent.granted;
   }
+  
+  // Contact Form submission methods
+  async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const id = this.currentContactSubmissionId++;
+    const now = new Date();
+    
+    const newSubmission: ContactSubmission = {
+      id,
+      name: submission.name,
+      email: submission.email,
+      phone: submission.phone || null,
+      message: submission.message,
+      ipAddress: submission.ipAddress || null,
+      userAgent: submission.userAgent || null,
+      status: submission.status || 'unread',
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.contactSubmissions.set(id, newSubmission);
+    return newSubmission;
+  }
+  
+  async getContactSubmissions(limit: number = 100, offset: number = 0): Promise<ContactSubmission[]> {
+    return Array.from(this.contactSubmissions.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(offset, offset + limit);
+  }
+  
+  async getContactSubmissionById(id: number): Promise<ContactSubmission | undefined> {
+    return this.contactSubmissions.get(id);
+  }
+  
+  async updateContactSubmission(id: number, status: string): Promise<ContactSubmission | undefined> {
+    const submission = this.contactSubmissions.get(id);
+    if (!submission) return undefined;
+    
+    const updatedSubmission = { 
+      ...submission, 
+      status,
+      updatedAt: new Date()
+    };
+    
+    this.contactSubmissions.set(id, updatedSubmission);
+    return updatedSubmission;
+  }
+  
+  // Checklist Form submission methods
+  async createChecklistSubmission(submission: InsertChecklistSubmission): Promise<ChecklistSubmission> {
+    const id = this.currentChecklistSubmissionId++;
+    const now = new Date();
+    
+    const newSubmission: ChecklistSubmission = {
+      id,
+      name: submission.name,
+      email: submission.email,
+      company: submission.company,
+      revenueRange: submission.revenueRange,
+      ipAddress: submission.ipAddress || null,
+      userAgent: submission.userAgent || null,
+      status: submission.status || 'unread',
+      createdAt: now
+    };
+    
+    this.checklistSubmissions.set(id, newSubmission);
+    return newSubmission;
+  }
+  
+  async getChecklistSubmissions(limit: number = 100, offset: number = 0): Promise<ChecklistSubmission[]> {
+    return Array.from(this.checklistSubmissions.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(offset, offset + limit);
+  }
+  
+  async getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined> {
+    return this.checklistSubmissions.get(id);
+  }
+  
+  async updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined> {
+    const submission = this.checklistSubmissions.get(id);
+    if (!submission) return undefined;
+    
+    const updatedSubmission = { 
+      ...submission, 
+      status
+    };
+    
+    this.checklistSubmissions.set(id, updatedSubmission);
+    return updatedSubmission;
+  }
+  
+  // Consultation Form submission methods
+  async createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission> {
+    const id = this.currentConsultationSubmissionId++;
+    const now = new Date();
+    
+    const newSubmission: ConsultationSubmission = {
+      id,
+      companyName: submission.companyName,
+      industry: submission.industry,
+      companySize: submission.companySize,
+      annualRevenue: submission.annualRevenue,
+      services: submission.services,
+      firstName: submission.firstName,
+      lastName: submission.lastName,
+      email: submission.email,
+      phone: submission.phone || null,
+      preferredContact: submission.preferredContact,
+      message: submission.message || null,
+      ipAddress: submission.ipAddress || null,
+      userAgent: submission.userAgent || null,
+      status: submission.status || 'unread',
+      createdAt: now
+    };
+    
+    this.consultationSubmissions.set(id, newSubmission);
+    return newSubmission;
+  }
+  
+  async getConsultationSubmissions(limit: number = 100, offset: number = 0): Promise<ConsultationSubmission[]> {
+    return Array.from(this.consultationSubmissions.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(offset, offset + limit);
+  }
+  
+  async getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined> {
+    return this.consultationSubmissions.get(id);
+  }
+  
+  async updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined> {
+    const submission = this.consultationSubmissions.get(id);
+    if (!submission) return undefined;
+    
+    const updatedSubmission = { 
+      ...submission, 
+      status
+    };
+    
+    this.consultationSubmissions.set(id, updatedSubmission);
+    return updatedSubmission;
+  }
 }
 
 // Database implementation
 export class DatabaseStorage implements IStorage {
+  // Contact Form submission methods
+  async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const [result] = await db
+      .insert(contactSubmissions)
+      .values({
+        name: submission.name,
+        email: submission.email,
+        phone: submission.phone || null,
+        message: submission.message,
+        ipAddress: submission.ipAddress || null,
+        userAgent: submission.userAgent || null,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    return result;
+  }
+  
+  async getContactSubmissions(limit: number = 100, offset: number = 0): Promise<ContactSubmission[]> {
+    return await db
+      .select()
+      .from(contactSubmissions)
+      .orderBy(desc(contactSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+  
+  async getContactSubmissionById(id: number): Promise<ContactSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(contactSubmissions)
+      .where(eq(contactSubmissions.id, id));
+    return submission || undefined;
+  }
+  
+  async updateContactSubmission(id: number, status: string): Promise<ContactSubmission | undefined> {
+    const [submission] = await db
+      .update(contactSubmissions)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(contactSubmissions.id, id))
+      .returning();
+    return submission || undefined;
+  }
+  
+  // Checklist Form submission methods
+  async createChecklistSubmission(submission: InsertChecklistSubmission): Promise<ChecklistSubmission> {
+    const [result] = await db
+      .insert(checklistSubmissions)
+      .values({
+        name: submission.name,
+        email: submission.email,
+        company: submission.company,
+        revenueRange: submission.revenueRange,
+        ipAddress: submission.ipAddress || null,
+        userAgent: submission.userAgent || null,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    return result;
+  }
+  
+  async getChecklistSubmissions(limit: number = 100, offset: number = 0): Promise<ChecklistSubmission[]> {
+    return await db
+      .select()
+      .from(checklistSubmissions)
+      .orderBy(desc(checklistSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+  
+  async getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(checklistSubmissions)
+      .where(eq(checklistSubmissions.id, id));
+    return submission || undefined;
+  }
+  
+  async updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined> {
+    const [submission] = await db
+      .update(checklistSubmissions)
+      .set({ status })
+      .where(eq(checklistSubmissions.id, id))
+      .returning();
+    return submission || undefined;
+  }
+  
+  // Consultation Form submission methods
+  async createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission> {
+    const [result] = await db
+      .insert(consultationSubmissions)
+      .values({
+        companyName: submission.companyName,
+        industry: submission.industry,
+        companySize: submission.companySize,
+        annualRevenue: submission.annualRevenue,
+        services: submission.services,
+        firstName: submission.firstName,
+        lastName: submission.lastName,
+        email: submission.email,
+        phone: submission.phone || null,
+        preferredContact: submission.preferredContact,
+        message: submission.message || null,
+        ipAddress: submission.ipAddress || null,
+        userAgent: submission.userAgent || null,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    return result;
+  }
+  
+  async getConsultationSubmissions(limit: number = 100, offset: number = 0): Promise<ConsultationSubmission[]> {
+    return await db
+      .select()
+      .from(consultationSubmissions)
+      .orderBy(desc(consultationSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+  
+  async getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(consultationSubmissions)
+      .where(eq(consultationSubmissions.id, id));
+    return submission || undefined;
+  }
+  
+  async updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined> {
+    const [submission] = await db
+      .update(consultationSubmissions)
+      .set({ status })
+      .where(eq(consultationSubmissions.id, id))
+      .returning();
+    return submission || undefined;
+  }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
