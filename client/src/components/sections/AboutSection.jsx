@@ -1,76 +1,98 @@
 import React from 'react';
 
 const AboutSection = () => {
+  const teamMembers = [
+    {
+      id: 1,
+      name: 'David Wilcox',
+      role: 'Founder & Principal',
+      bio: 'With over 20 years of experience in financial management, David founded Wilcox Advisors to provide strategic financial support to small businesses.',
+      image: '/images/team/david.jpg'
+    },
+    {
+      id: 2,
+      name: 'Sarah Reynolds',
+      role: 'Financial Director',
+      bio: 'Sarah has spent 15 years helping businesses optimize their financial operations and implement efficient accounting systems.',
+      image: '/images/team/sarah.jpg'
+    },
+    {
+      id: 3,
+      name: 'Michael Chen',
+      role: 'Tax Specialist',
+      bio: 'As a Certified Public Accountant, Michael specializes in tax planning and compliance for small to medium-sized businesses.',
+      image: '/images/team/michael.jpg'
+    }
+  ];
+
   return (
-    <section id="about" className="py-16 bg-gray-50">
+    <section id="about" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-blue-800 mb-6">About Wilcox Advisors</h2>
-          
-          <p className="text-gray-700 text-lg mb-8">
-            At Wilcox Advisors, we specialize in financial solutions for small businesses. From startups to 
-            growing companies, we provide the expertise you need to succeed—built to scale with you 
-            every step of the way.
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">About Wilcox Advisors</h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            We're a team of financial experts committed to helping small businesses thrive through 
+            personalized accounting services and strategic financial guidance.
           </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Expert Team</h3>
-              <p className="text-gray-600">
-                Our team brings decades of financial expertise across multiple industries.
-              </p>
-            </div>
-            
-            <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Tailored Solutions</h3>
-              <p className="text-gray-600">
-                We customize our services to fit your business's unique financial needs.
-              </p>
-            </div>
-            
-            <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Responsive Support</h3>
-              <p className="text-gray-600">
-                We're always available to answer your questions and address your concerns.
-              </p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Story</h3>
+            <p className="text-gray-600 mb-4">
+              Founded in 2010, Wilcox Advisors began with a simple mission: to provide small businesses with the same 
+              quality financial expertise that large corporations enjoy, but with personalized service tailored to each 
+              client's unique needs.
+            </p>
+            <p className="text-gray-600 mb-4">
+              We understand the challenges that small business owners face in managing finances while growing their 
+              companies. Our team has helped hundreds of businesses streamline their accounting processes, make 
+              strategic financial decisions, and achieve sustainable growth.
+            </p>
+            <p className="text-gray-600">
+              Today, we continue to evolve our services to meet the changing needs of small businesses in an increasingly 
+              digital economy, offering cloud-based solutions and data-driven insights.
+            </p>
+          </div>
+          <div className="rounded-lg overflow-hidden shadow-xl">
+            <div className="bg-gray-300 w-full h-72 flex items-center justify-center">
+              <span className="text-gray-600 text-sm">Office Image</span>
             </div>
           </div>
-          
-          <a 
-            href="#contact" 
-            className="inline-flex items-center px-6 py-3 bg-blue-800 text-white font-medium rounded-md hover:bg-blue-700 transition-colors mt-12"
-          >
-            Meet Our Team
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 ml-2" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M14 5l7 7m0 0l-7 7m7-7H3" 
-              />
-            </svg>
-          </a>
+        </div>
+        
+        <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Our Leadership Team</h3>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {teamMembers.map(member => (
+            <div key={member.id} className="bg-white rounded-lg overflow-hidden shadow-md">
+              <div className="bg-gray-300 w-full h-64 flex items-center justify-center">
+                <span className="text-gray-600 text-sm">{member.name}</span>
+              </div>
+              <div className="p-6">
+                <h4 className="text-xl font-bold text-gray-900">{member.name}</h4>
+                <p className="text-blue-800 mb-3">{member.role}</p>
+                <p className="text-gray-600">{member.bio}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-16 text-center">
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Values</h3>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-blue-800 mb-2">Integrity</h4>
+              <p className="text-gray-600">We maintain the highest standards of professional ethics and transparency in all our client relationships.</p>
+            </div>
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-blue-800 mb-2">Excellence</h4>
+              <p className="text-gray-600">We are committed to delivering exceptional service and accurate financial guidance to every client.</p>
+            </div>
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-blue-800 mb-2">Partnership</h4>
+              <p className="text-gray-600">We view ourselves as growth partners for our clients, invested in their long-term success and prosperity.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
