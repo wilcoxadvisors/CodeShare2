@@ -43,108 +43,108 @@ const ServicesSelectionStep: React.FC<ServicesSelectionStepProps> = ({
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="financial_planning"
-              name="financial_planning"
+              id="bookkeeping"
+              name="bookkeeping"
               type="checkbox"
-              value="financial_planning"
-              checked={formData.services.includes('financial_planning')}
+              value="bookkeeping"
+              checked={formData.services.includes('bookkeeping')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="financial_planning" className="font-medium text-gray-700">Financial Planning</label>
-            <p className="text-gray-500">Comprehensive financial planning and wealth management</p>
+            <label htmlFor="bookkeeping" className="font-medium text-gray-700">Bookkeeping</label>
+            <p className="text-gray-500">Full-service bookkeeping including transaction coding and reconciliations</p>
           </div>
         </div>
         
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="tax_services"
-              name="tax_services"
+              id="monthly_financial_package"
+              name="monthly_financial_package"
               type="checkbox"
-              value="tax_services"
-              checked={formData.services.includes('tax_services')}
+              value="monthly_financial_package"
+              checked={formData.services.includes('monthly_financial_package')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="tax_services" className="font-medium text-gray-700">Tax Services</label>
-            <p className="text-gray-500">Tax planning, preparation, and compliance</p>
+            <label htmlFor="monthly_financial_package" className="font-medium text-gray-700">Monthly Financial Package</label>
+            <p className="text-gray-500">Comprehensive monthly financial statements with analysis</p>
           </div>
         </div>
         
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="accounting"
-              name="accounting"
+              id="cash_flow_management"
+              name="cash_flow_management"
               type="checkbox"
-              value="accounting"
-              checked={formData.services.includes('accounting')}
+              value="cash_flow_management"
+              checked={formData.services.includes('cash_flow_management')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="accounting" className="font-medium text-gray-700">Accounting</label>
-            <p className="text-gray-500">Bookkeeping, financial statements, and accounting services</p>
+            <label htmlFor="cash_flow_management" className="font-medium text-gray-700">Cash Flow Management</label>
+            <p className="text-gray-500">Detailed cash flow tracking and forecasting</p>
           </div>
         </div>
         
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="business_advisory"
-              name="business_advisory"
+              id="custom_reporting"
+              name="custom_reporting"
               type="checkbox"
-              value="business_advisory"
-              checked={formData.services.includes('business_advisory')}
+              value="custom_reporting"
+              checked={formData.services.includes('custom_reporting')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="business_advisory" className="font-medium text-gray-700">Business Advisory</label>
-            <p className="text-gray-500">Strategic planning, business consulting, and growth advice</p>
+            <label htmlFor="custom_reporting" className="font-medium text-gray-700">Custom Reporting</label>
+            <p className="text-gray-500">Tailored financial reports for your specific needs</p>
           </div>
         </div>
         
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="audit_assurance"
-              name="audit_assurance"
+              id="budgeting_forecasting"
+              name="budgeting_forecasting"
               type="checkbox"
-              value="audit_assurance"
-              checked={formData.services.includes('audit_assurance')}
+              value="budgeting_forecasting"
+              checked={formData.services.includes('budgeting_forecasting')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="audit_assurance" className="font-medium text-gray-700">Audit & Assurance</label>
-            <p className="text-gray-500">Financial audit, internal controls, and compliance services</p>
+            <label htmlFor="budgeting_forecasting" className="font-medium text-gray-700">Budgeting & Forecasting</label>
+            <p className="text-gray-500">Development and monitoring of budgets and forecasts</p>
           </div>
         </div>
         
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <input
-              id="financial_systems"
-              name="financial_systems"
+              id="outsourced_controller_cfo"
+              name="outsourced_controller_cfo"
               type="checkbox"
-              value="financial_systems"
-              checked={formData.services.includes('financial_systems')}
+              value="outsourced_controller_cfo"
+              checked={formData.services.includes('outsourced_controller_cfo')}
               onChange={handleServiceChange}
               className="h-4 w-4 rounded border-gray-300 text-blue-800 focus:ring-blue-500"
             />
           </div>
           <div className="ml-3 text-sm">
-            <label htmlFor="financial_systems" className="font-medium text-gray-700">Financial Systems Implementation</label>
-            <p className="text-gray-500">Setup and integration of accounting and financial software</p>
+            <label htmlFor="outsourced_controller_cfo" className="font-medium text-gray-700">Outsourced Controller/CFO Services</label>
+            <p className="text-gray-500">Strategic financial oversight and planning tailored to your business</p>
           </div>
         </div>
       </div>
