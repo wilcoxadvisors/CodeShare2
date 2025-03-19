@@ -117,6 +117,14 @@ export interface IStorage {
   getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined>;
   updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined>;
   
+  // Checklist Files
+  createChecklistFile(fileData: InsertChecklistFile): Promise<ChecklistFile>;
+  getChecklistFiles(): Promise<ChecklistFile[]>;
+  getActiveChecklistFile(): Promise<ChecklistFile | undefined>;
+  getChecklistFileById(id: number): Promise<ChecklistFile | undefined>;
+  updateChecklistFile(id: number, isActive: boolean): Promise<ChecklistFile | undefined>;
+  deleteChecklistFile(id: number): Promise<void>;
+  
   // Consultation Form
   createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission>;
   getConsultationSubmissions(limit?: number, offset?: number): Promise<ConsultationSubmission[]>;
@@ -178,9 +186,11 @@ export class MemStorage implements IStorage {
   // Form submission storage
   private contactSubmissions: Map<number, ContactSubmission>;
   private checklistSubmissions: Map<number, ChecklistSubmission>;
+  private checklistFiles: Map<number, ChecklistFile>;
   private consultationSubmissions: Map<number, ConsultationSubmission>;
   private currentContactSubmissionId: number = 1;
   private currentChecklistSubmissionId: number = 1;
+  private currentChecklistFileId: number = 1;
   private currentConsultationSubmissionId: number = 1;
 
   constructor() {
@@ -203,6 +213,7 @@ export class MemStorage implements IStorage {
     // Initialize form submission tables
     this.contactSubmissions = new Map();
     this.checklistSubmissions = new Map();
+    this.checklistFiles = new Map();
     this.consultationSubmissions = new Map();
     
     // Create default admin user
@@ -1447,6 +1458,78 @@ export class MemStorage implements IStorage {
     this.consultationSubmissions.set(id, updatedSubmission);
     return updatedSubmission;
   }
+
+  // Checklist Files methods
+  async createChecklistFile(fileData: InsertChecklistFile): Promise<ChecklistFile> {
+    const id = this.currentChecklistFileId++;
+    const now = new Date();
+    
+    // If this is set to be the active checklist, make sure to deactivate others
+    if (fileData.isActive) {
+      this.checklistFiles.forEach((file, key) => {
+        if (file.isActive) {
+          this.checklistFiles.set(key, { ...file, isActive: false, updatedAt: now });
+        }
+      });
+    }
+    
+    const checklistFile: ChecklistFile = {
+      id,
+      fileName: fileData.fileName,
+      fileSize: fileData.fileSize,
+      mimeType: fileData.mimeType,
+      fileData: fileData.fileData,
+      isActive: fileData.isActive,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.checklistFiles.set(id, checklistFile);
+    return checklistFile;
+  }
+  
+  async getChecklistFiles(): Promise<ChecklistFile[]> {
+    return Array.from(this.checklistFiles.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort by date descending
+  }
+  
+  async getActiveChecklistFile(): Promise<ChecklistFile | undefined> {
+    return Array.from(this.checklistFiles.values())
+      .find(file => file.isActive);
+  }
+  
+  async getChecklistFileById(id: number): Promise<ChecklistFile | undefined> {
+    return this.checklistFiles.get(id);
+  }
+  
+  async updateChecklistFile(id: number, isActive: boolean): Promise<ChecklistFile | undefined> {
+    const file = this.checklistFiles.get(id);
+    if (!file) return undefined;
+    
+    const now = new Date();
+    
+    // If setting this file as active, deactivate others
+    if (isActive) {
+      this.checklistFiles.forEach((f, key) => {
+        if (f.isActive && key !== id) {
+          this.checklistFiles.set(key, { ...f, isActive: false, updatedAt: now });
+        }
+      });
+    }
+    
+    const updatedFile = {
+      ...file,
+      isActive,
+      updatedAt: now
+    };
+    
+    this.checklistFiles.set(id, updatedFile);
+    return updatedFile;
+  }
+  
+  async deleteChecklistFile(id: number): Promise<void> {
+    this.checklistFiles.delete(id);
+  }
 }
 
 // Database implementation
@@ -1535,6 +1618,82 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistSubmissions.id, id))
       .returning();
     return submission || undefined;
+  }
+  
+  // Checklist Files methods
+  async createChecklistFile(fileData: InsertChecklistFile): Promise<ChecklistFile> {
+    // If setting this as active, deactivate all others first
+    if (fileData.isActive) {
+      await db
+        .update(checklistFiles)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(checklistFiles.isActive, true));
+    }
+    
+    const [file] = await db
+      .insert(checklistFiles)
+      .values({
+        fileName: fileData.fileName,
+        fileSize: fileData.fileSize,
+        mimeType: fileData.mimeType,
+        fileData: fileData.fileData,
+        isActive: fileData.isActive
+      })
+      .returning();
+    
+    return file;
+  }
+  
+  async getChecklistFiles(): Promise<ChecklistFile[]> {
+    return await db
+      .select()
+      .from(checklistFiles)
+      .orderBy(desc(checklistFiles.createdAt));
+  }
+  
+  async getActiveChecklistFile(): Promise<ChecklistFile | undefined> {
+    const [file] = await db
+      .select()
+      .from(checklistFiles)
+      .where(eq(checklistFiles.isActive, true));
+    
+    return file || undefined;
+  }
+  
+  async getChecklistFileById(id: number): Promise<ChecklistFile | undefined> {
+    const [file] = await db
+      .select()
+      .from(checklistFiles)
+      .where(eq(checklistFiles.id, id));
+    
+    return file || undefined;
+  }
+  
+  async updateChecklistFile(id: number, isActive: boolean): Promise<ChecklistFile | undefined> {
+    // If setting this as active, deactivate all others first
+    if (isActive) {
+      await db
+        .update(checklistFiles)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(
+          eq(checklistFiles.isActive, true),
+          ne(checklistFiles.id, id)
+        ));
+    }
+    
+    const [file] = await db
+      .update(checklistFiles)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(checklistFiles.id, id))
+      .returning();
+    
+    return file || undefined;
+  }
+  
+  async deleteChecklistFile(id: number): Promise<void> {
+    await db
+      .delete(checklistFiles)
+      .where(eq(checklistFiles.id, id));
   }
   
   // Consultation Form submission methods

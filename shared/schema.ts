@@ -388,6 +388,20 @@ export const checklistSubmissions = pgTable("checklist_submissions", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
+// Checklist Files
+export const checklistFiles = pgTable("checklist_files", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  path: text("path").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+});
+
 // Consultation Form Submissions
 export const consultationSubmissions = pgTable("consultation_submissions", {
   id: serial("id").primaryKey(),
@@ -431,6 +445,13 @@ export const insertConsultationSubmissionSchema = createInsertSchema(consultatio
   createdAt: true
 });
 
+// Insert schema for checklist files
+export const insertChecklistFileSchema = createInsertSchema(checklistFiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Types for form submissions
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type InsertContactSubmission = z.infer<typeof insertContactSubmissionSchema>;
@@ -440,3 +461,6 @@ export type InsertChecklistSubmission = z.infer<typeof insertChecklistSubmission
 
 export type ConsultationSubmission = typeof consultationSubmissions.$inferSelect;
 export type InsertConsultationSubmission = z.infer<typeof insertConsultationSubmissionSchema>;
+
+export type ChecklistFile = typeof checklistFiles.$inferSelect;
+export type InsertChecklistFile = z.infer<typeof insertChecklistFileSchema>;
