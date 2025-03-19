@@ -29,27 +29,35 @@ import ChatWidget from "./components/common/ChatWidget";
 // Public website header component
 const PublicHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [_, navigate] = useLocation();
+
+  const openLoginModal = () => {
+    setShowLoginModal(true);
+  };
+
+  const closeLoginModal = () => {
+    setShowLoginModal(false);
+  };
 
   return (
     <header className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <a href="/" className="text-2xl font-bold text-blue-800">Wilcox Advisors</a>
+            <a href="/" className="text-2xl font-bold text-[#1E3A8A]">Wilcox Advisors</a>
           </div>
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
-            <a href="#services" className="text-gray-700 hover:text-blue-800">Services</a>
-            <a href="#about" className="text-gray-700 hover:text-blue-800">About Us</a>
-            <a href="#blog" className="text-gray-700 hover:text-blue-800">Blog</a>
-            <a href="#contact" className="text-gray-700 hover:text-blue-800">Contact</a>
+            <a href="#services" className="text-gray-700 hover:text-[#1E3A8A]">Services</a>
+            <a href="#about" className="text-gray-700 hover:text-[#1E3A8A]">About Us</a>
+            <a href="#contact" className="text-gray-700 hover:text-[#1E3A8A]">Contact</a>
             <button 
-              onClick={() => navigate("/login")} 
-              className="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-700 transition-colors"
+              onClick={openLoginModal} 
+              className="px-5 py-2 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
             >
-              Client Login
+              Login
             </button>
           </nav>
           
@@ -76,16 +84,81 @@ const PublicHeader = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4">
             <div className="flex flex-col space-y-4">
-              <a href="#services" className="text-gray-700 hover:text-blue-800">Services</a>
-              <a href="#about" className="text-gray-700 hover:text-blue-800">About Us</a>
-              <a href="#blog" className="text-gray-700 hover:text-blue-800">Blog</a>
-              <a href="#contact" className="text-gray-700 hover:text-blue-800">Contact</a>
+              <a href="#services" className="text-gray-700 hover:text-[#1E3A8A]">Services</a>
+              <a href="#about" className="text-gray-700 hover:text-[#1E3A8A]">About Us</a>
+              <a href="#contact" className="text-gray-700 hover:text-[#1E3A8A]">Contact</a>
               <button 
-                onClick={() => navigate("/login")} 
-                className="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-700 transition-colors"
+                onClick={openLoginModal} 
+                className="px-5 py-2 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
               >
-                Client Login
+                Login
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Login Modal */}
+        {showLoginModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-[#1E3A8A]">Login</h3>
+                <button onClick={closeLoginModal} className="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <form className="space-y-4">
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    id="username" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent" 
+                    placeholder="Enter your username"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    id="password" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent" 
+                    placeholder="Enter your password"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <input 
+                      id="remember-me" 
+                      type="checkbox" 
+                      className="h-4 w-4 text-[#1E3A8A] focus:ring-[#1E3A8A] border-gray-300 rounded" 
+                    />
+                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                      Remember me
+                    </label>
+                  </div>
+                  
+                  <a href="#" className="text-sm text-[#1E3A8A] hover:underline">
+                    Forgot password?
+                  </a>
+                </div>
+                
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    closeLoginModal();
+                    navigate("/dashboard");
+                  }} 
+                  className="w-full py-2 px-4 bg-[#1E3A8A] text-white rounded-full hover:bg-blue-700 transition-colors"
+                >
+                  Sign In
+                </button>
+              </form>
             </div>
           </div>
         )}

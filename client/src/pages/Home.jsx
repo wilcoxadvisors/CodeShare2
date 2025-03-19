@@ -122,26 +122,32 @@ const ChatWidget = ({ isOpen, onClose }) => (
 
 const HeroSection = ({ onConsultClick }) => {
   return (
-    <section className="bg-[#1E3A8A] py-20">
-      <div className="container mx-auto px-4">
+    <section className="bg-[#1E3A8A] py-24 relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -mr-48 -mt-48"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full -ml-48 -mb-48"></div>
+      </div>
+      
+      <div className="container mx-auto px-4 relative z-10">
         <div className="grid md:grid-cols-1 gap-12 items-center">
           <div className="text-white text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
               Financial Expertise for Your Business Success
             </h1>
-            <p className="text-xl mb-8 text-blue-100">
+            <p className="text-xl mb-10 text-blue-100">
               Professional accounting and financial services tailored for small businesses. We handle the numbers so you can focus on growth.
             </p>
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
+            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 justify-center">
               <button 
                 onClick={onConsultClick}
-                className="bg-white text-[#1E3A8A] hover:bg-blue-100 transition-colors px-8 py-3 rounded-md font-medium text-center"
+                className="bg-white text-[#1E3A8A] hover:bg-blue-50 transition-colors px-8 py-4 rounded-full font-medium text-center shadow-lg"
               >
                 Schedule Free Consultation
               </button>
               <a 
                 href="#services" 
-                className="border border-white text-white hover:bg-white hover:text-[#1E3A8A] transition-colors px-8 py-3 rounded-md font-medium text-center"
+                className="border-2 border-white text-white hover:bg-white hover:text-[#1E3A8A] transition-colors px-8 py-4 rounded-full font-medium text-center"
               >
                 Learn More
               </a>
@@ -246,16 +252,22 @@ const ServicesSection = () => {
 
 const FreeFinancialChecklist = () => {
   return (
-    <section className="py-16 bg-gray-100">
-      <div className="container mx-auto px-4">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Free Financial Checklist</h2>
-          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            Download our checklist to streamline your small business finances—simple steps to save time and money!
-          </p>
-          <button className="bg-[#1E3A8A] text-white px-6 py-3 rounded-md font-medium hover:bg-blue-700 transition-colors">
-            Get It Now
-          </button>
+    <section className="py-20 bg-gray-50 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100 rounded-full opacity-20 -mr-32 -mt-32"></div>
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-100 rounded-full opacity-20 -ml-32 -mb-32"></div>
+      
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="bg-white rounded-2xl shadow-xl p-10 max-w-4xl mx-auto">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Free Financial Checklist</h2>
+            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+              Download our checklist to streamline your small business finances—simple steps to save time and money!
+            </p>
+            <button className="bg-[#1E3A8A] text-white px-8 py-4 rounded-full font-medium hover:bg-blue-700 transition-colors shadow-md">
+              Get It Now
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -264,24 +276,35 @@ const FreeFinancialChecklist = () => {
 
 const StatsSection = () => {
   return (
-    <section className="py-16 bg-[#1E3A8A] text-white">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-4 gap-8 text-center">
-          <div>
-            <div className="text-4xl font-bold mb-2">15+</div>
-            <p className="text-blue-200">Years in Business</p>
-          </div>
-          <div>
-            <div className="text-4xl font-bold mb-2">500+</div>
-            <p className="text-blue-200">Satisfied Clients</p>
-          </div>
-          <div>
-            <div className="text-4xl font-bold mb-2">$100M+</div>
-            <p className="text-blue-200">Tax Savings Delivered</p>
-          </div>
-          <div>
-            <div className="text-4xl font-bold mb-2">25+</div>
-            <p className="text-blue-200">Industry Experts</p>
+    <section className="py-20 bg-[#1E3A8A] text-white relative overflow-hidden">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-white rounded-full -mr-20 -mb-20"></div>
+        <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full -ml-20 -mt-20"></div>
+      </div>
+      
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="flex flex-wrap justify-center">
+          <div className="flex flex-col md:flex-row md:flex-wrap md:justify-around w-full">
+            <div className="text-center px-8 py-6 md:w-1/4">
+              <div className="text-5xl font-bold mb-3">15+</div>
+              <p className="text-blue-100 font-light text-lg">Years in Business</p>
+            </div>
+            
+            <div className="text-center px-8 py-6 md:w-1/4">
+              <div className="text-5xl font-bold mb-3">500+</div>
+              <p className="text-blue-100 font-light text-lg">Satisfied Clients</p>
+            </div>
+            
+            <div className="text-center px-8 py-6 md:w-1/4">
+              <div className="text-5xl font-bold mb-3">$100M+</div>
+              <p className="text-blue-100 font-light text-lg">Tax Savings Delivered</p>
+            </div>
+            
+            <div className="text-center px-8 py-6 md:w-1/4">
+              <div className="text-5xl font-bold mb-3">25+</div>
+              <p className="text-blue-100 font-light text-lg">Industry Experts</p>
+            </div>
           </div>
         </div>
       </div>
