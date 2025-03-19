@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,29 @@ import { useToast } from '@/hooks/use-toast';
 
 function Login() {
   const [, setLocation] = useLocation();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
+  const [loginAttempted, setLoginAttempted] = useState(false);
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      setLocation('/');
+    }
+  }, [user, setLocation]);
+  
+  // Auto-fill demo credentials (remove in production)
+  useEffect(() => {
+    // For demo purposes
+    setFormData({
+      username: 'admin',
+      password: 'password123'
+    });
+  }, []);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -24,6 +41,7 @@ function Login() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginAttempted(true);
     
     if (!formData.username || !formData.password) {
       toast({
@@ -34,9 +52,15 @@ function Login() {
       return;
     }
     
+    console.log('Attempting login with:', formData.username);
     const success = await login(formData.username, formData.password);
     
     if (success) {
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+        variant: "default"
+      });
       setLocation('/');
     } else {
       toast({
