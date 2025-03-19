@@ -26,16 +26,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function checkAuthStatus() {
       try {
+        // Use fetch with credentials explicitly included
         const response = await fetch('/api/auth/me', {
-          credentials: 'include'
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          credentials: 'include' // This is crucial for session cookies
         });
         
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+        } else {
+          // If not authenticated, make sure user is null
+          setUser(null);
+          console.log('Not authenticated:', response.status);
         }
       } catch (error) {
         console.error('Failed to check authentication status:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
