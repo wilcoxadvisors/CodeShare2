@@ -3,11 +3,15 @@ import { storage } from "./storage";
 import { 
   insertContactSubmissionSchema, 
   insertChecklistSubmissionSchema, 
-  insertConsultationSubmissionSchema 
+  insertConsultationSubmissionSchema,
+  insertChecklistFileSchema
 } from "@shared/schema";
 import { validateRequest } from "@shared/validation";
 import { asyncHandler, throwBadRequest } from "./errorHandling";
 import nodemailer from "nodemailer";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Email notification configuration
 const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || "garrettwilcox40@gmail.com";
@@ -42,6 +46,22 @@ async function sendEmailNotification(subject: string, text: string) {
     console.error("Failed to send email notification:", error);
   }
 }
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(), // Store files in memory
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB file size limit
+  },
+  fileFilter: (_req, file, cb) => {
+    // Accept only PDF files
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
 
 export function registerFormRoutes(app: Express) {
   // Contact Form Submission Route
@@ -260,5 +280,151 @@ export function registerFormRoutes(app: Express) {
     }
     
     res.json(updatedSubmission);
+  }));
+  
+  // Checklist PDF File Management Routes (admin only)
+  
+  // Upload a new checklist PDF file
+  app.post("/api/admin/checklist-files", upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      return throwBadRequest("No file uploaded");
+    }
+    
+    // Check if this should be the active file
+    const isActive = req.body.isActive === 'true';
+    
+    // Get file details
+    const fileData = {
+      filename: req.file.originalname,
+      originalFilename: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.originalname, // Just storing the name as path
+      fileData: req.file.buffer,  // Store the file in the database
+      isActive: isActive,
+      uploadedBy: null // In a real app, this would be set to the current user ID
+    };
+    
+    // Store the file in the database
+    const result = await storage.createChecklistFile(fileData);
+    
+    // Send email notification
+    await sendEmailNotification(
+      "New Checklist PDF Uploaded",
+      `A new checklist PDF file "${fileData.filename}" has been uploaded to the system.` +
+      `\nFile size: ${Math.round(fileData.size / 1024)} KB` +
+      `\nIs active: ${isActive ? 'Yes' : 'No'}`
+    );
+    
+    res.status(201).json({
+      id: result.id,
+      filename: result.filename,
+      originalFilename: result.originalFilename,
+      mimeType: result.mimeType,
+      size: result.size,
+      isActive: result.isActive,
+      createdAt: result.createdAt
+    });
+  }));
+  
+  // Get all checklist files (admin only)
+  app.get("/api/admin/checklist-files", asyncHandler(async (req: Request, res: Response) => {
+    const files = await storage.getChecklistFiles();
+    
+    // Don't return the actual file data in the list
+    const filesWithoutData = files.map(file => ({
+      id: file.id,
+      filename: file.filename,
+      originalFilename: file.originalFilename,
+      mimeType: file.mimeType,
+      size: file.size,
+      isActive: file.isActive,
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt
+    }));
+    
+    res.json(filesWithoutData);
+  }));
+  
+  // Get the active checklist file
+  app.get("/api/checklist-file", asyncHandler(async (req: Request, res: Response) => {
+    const file = await storage.getActiveChecklistFile();
+    
+    if (!file) {
+      return res.status(404).json({ message: "No active checklist file found" });
+    }
+    
+    // Set content-type and disposition headers
+    res.contentType(file.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    
+    // Send the file data
+    res.send(file.fileData);
+  }));
+  
+  // Get a specific checklist file by ID (admin only)
+  app.get("/api/admin/checklist-files/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const file = await storage.getChecklistFileById(id);
+    
+    if (!file) {
+      return res.status(404).json({ message: "Checklist file not found" });
+    }
+    
+    // Set content-type and disposition headers
+    res.contentType(file.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    
+    // Send the file data
+    res.send(file.fileData);
+  }));
+  
+  // Update checklist file status (set active/inactive) (admin only)
+  app.patch("/api/admin/checklist-files/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const { isActive } = req.body;
+    
+    if (isActive === undefined || typeof isActive !== "boolean") {
+      return throwBadRequest("isActive is required and must be a boolean");
+    }
+    
+    const updatedFile = await storage.updateChecklistFile(id, isActive);
+    
+    if (!updatedFile) {
+      return res.status(404).json({ message: "Checklist file not found" });
+    }
+    
+    res.json({
+      id: updatedFile.id,
+      filename: updatedFile.filename,
+      originalFilename: updatedFile.originalFilename,
+      mimeType: updatedFile.mimeType,
+      size: updatedFile.size,
+      isActive: updatedFile.isActive,
+      createdAt: updatedFile.createdAt,
+      updatedAt: updatedFile.updatedAt
+    });
+  }));
+  
+  // Delete a checklist file (admin only)
+  app.delete("/api/admin/checklist-files/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    
+    // Check if file exists
+    const file = await storage.getChecklistFileById(id);
+    if (!file) {
+      return res.status(404).json({ message: "Checklist file not found" });
+    }
+    
+    // Delete the file
+    await storage.deleteChecklistFile(id);
+    
+    // Send email notification
+    await sendEmailNotification(
+      "Checklist PDF Deleted",
+      `A checklist PDF file "${file.filename}" has been deleted from the system.`
+    );
+    
+    res.status(204).end();
   }));
 }

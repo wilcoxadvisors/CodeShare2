@@ -8,6 +8,7 @@ import {
   fixedAssets, FixedAsset, InsertFixedAsset,
   savedReports, SavedReport, ReportType,
   userEntityAccess,
+  checklistFiles, ChecklistFile, InsertChecklistFile,
   userActivityLogs, UserActivityLog, InsertUserActivityLog,
   featureUsage, FeatureUsage, InsertFeatureUsage,
   industryBenchmarks, IndustryBenchmark, InsertIndustryBenchmark,
