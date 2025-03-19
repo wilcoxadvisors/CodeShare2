@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUI } from '../contexts/UIContext';
 import useMultiStepForm from '../hooks/useMultiStepForm';
 import CompanyInformationStep from './form/CompanyInformationStep';
@@ -7,17 +7,31 @@ import ContactInformationStep from './form/ContactInformationStep';
 import FormNavigation from './form/FormNavigation';
 import FormProgress from './form/FormProgress';
 
-const initialFormData = {
-  // Company information
+interface FormData {
+  // Company Information
+  companyName: string;
+  industry: string;
+  companySize: string;
+  annualRevenue: string;
+  
+  // Services Selection
+  services: string[];
+  
+  // Contact Information
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  preferredContact: string;
+  message: string;
+}
+
+const INITIAL_DATA: FormData = {
   companyName: '',
   industry: '',
   companySize: '',
   annualRevenue: '',
-  
-  // Services needed
   services: [],
-  
-  // Contact information
   firstName: '',
   lastName: '',
   email: '',
@@ -28,108 +42,94 @@ const initialFormData = {
 
 const ConsultationFormModal: React.FC = () => {
   const { showConsultationForm, setShowConsultationForm } = useUI();
-
-  const handleClose = () => {
-    setShowConsultationForm(false);
-  };
-
-  const handleSubmit = (formData: any) => {
-    // In a real implementation, this would send data to the backend
-    console.log('Form submitted:', formData);
-    
-    // Show a success message
-    alert('Thank you for your interest! Our team will contact you shortly.');
-    
-    // Close the form
-    setShowConsultationForm(false);
-  };
-
-  const {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  
+  const steps = [
+    { title: 'Company', component: CompanyInformationStep },
+    { title: 'Services', component: ServicesSelectionStep },
+    { title: 'Contact', component: ContactInformationStep }
+  ];
+  
+  const { 
     step,
     currentStepIndex,
+    steps: formSteps,
     isFirstStep,
     isLastStep,
-    steps,
+    formData,
+    handleChange,
     goTo,
     next,
-    back,
-    formData,
-    setFormData,
-    handleChange,
-  } = useMultiStepForm(
-    [
-      { 
-        name: 'Company Information', 
-        component: (
-          <CompanyInformationStep 
-            formData={formData} 
-            handleChange={handleChange} 
-          />
-        ) 
-      },
-      { 
-        name: 'Services Selection', 
-        component: (
-          <ServicesSelectionStep 
-            formData={formData} 
-            handleChange={handleChange} 
-          />
-        ) 
-      },
-      { 
-        name: 'Contact Information', 
-        component: (
-          <ContactInformationStep 
-            formData={formData} 
-            handleChange={handleChange} 
-          />
-        ) 
-      }
-    ],
-    initialFormData,
-    handleSubmit
-  );
-
+    back 
+  } = useMultiStepForm(steps, INITIAL_DATA, onSubmit);
+  
+  function onSubmit(data: FormData) {
+    setIsSubmitting(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      console.log('Form submitted:', data);
+      setIsSubmitting(false);
+      setSubmissionSuccess(true);
+      
+      // Reset and close form after 2 seconds
+      setTimeout(() => {
+        setSubmissionSuccess(false);
+        setShowConsultationForm(false);
+      }, 2000);
+    }, 1500);
+  }
+  
   if (!showConsultationForm) return null;
-
+  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl relative">
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition-colors"
-          aria-label="Close form"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        
-        <div className="p-6 pb-2">
-          <h2 className="text-2xl font-bold text-[#1E3A8A] mb-2">Request a Consultation</h2>
-          <p className="text-gray-600 mb-6">
-            Fill out the form below to request a consultation with our financial advisors.
-          </p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Request a Consultation</h2>
+            <button 
+              onClick={() => setShowConsultationForm(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
           
-          <FormProgress
-            currentStep={currentStepIndex}
-            steps={steps.map(s => s.name)}
-            onStepClick={goTo}
-          />
-        </div>
-        
-        <div className="p-6 pt-2">
-          <form>
-            {step}
-            
-            <FormNavigation
-              isFirstStep={isFirstStep}
-              isLastStep={isLastStep}
-              onBack={back}
-              onNext={next}
-            />
-          </form>
+          {submissionSuccess ? (
+            <div className="text-center py-10">
+              <div className="mb-4 text-green-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Thank you for your request!</h3>
+              <p className="text-gray-600">
+                We have received your consultation request and will contact you shortly.
+              </p>
+            </div>
+          ) : (
+            <form>
+              <FormProgress 
+                currentStep={currentStepIndex} 
+                steps={steps.map(s => s.title)} 
+                onStepClick={goTo} 
+              />
+              
+              {step}
+              
+              <FormNavigation 
+                isFirstStep={isFirstStep}
+                isLastStep={isLastStep}
+                onBack={back}
+                onNext={next}
+              />
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -1,62 +1,52 @@
-// src/hooks/useMultiStepForm.js
 import { useState } from 'react';
 
 export default function useMultiStepForm(steps, initialData, onSubmit) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(initialData);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const step = steps[currentStepIndex].component;
+  
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === steps.length - 1;
 
-  const handleServiceToggle = (serviceId) => {
+  function handleChange(e) {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      services: prev.services.includes(serviceId) 
-        ? prev.services.filter(id => id !== serviceId) 
-        : [...prev.services, serviceId],
+      [name]: value
     }));
-  };
+  }
 
-  const isStepValid = () => {
-    const fields = steps[currentStep].fields;
-    return fields.every(field => 
-      field.required 
-        ? (field.type === 'services' ? formData.services.length > 0 : formData[field.name]?.trim() !== '') 
-        : true
-    );
-  };
-
-  const nextStep = () => {
-    if (currentStep < steps.length - 1 && isStepValid()) {
-      setCurrentStep(currentStep + 1);
+  function goTo(index) {
+    if (index >= 0 && index < steps.length) {
+      setCurrentStepIndex(index);
     }
-  };
+  }
 
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+  function next() {
+    if (isLastStep) {
+      return onSubmit(formData);
     }
-  };
+    setCurrentStepIndex(i => i + 1);
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (currentStep < steps.length - 1) {
-      if (isStepValid()) nextStep();
-    } else {
-      await onSubmit(formData);
+  function back() {
+    if (!isFirstStep) {
+      setCurrentStepIndex(i => i - 1);
     }
-  };
+  }
 
   return {
-    currentStep,
+    step,
+    currentStepIndex,
+    steps,
+    isFirstStep,
+    isLastStep,
     formData,
-    handleInputChange,
-    handleServiceToggle,
-    isStepValid,
-    nextStep,
-    prevStep,
-    handleSubmit
+    setFormData,
+    handleChange,
+    goTo,
+    next,
+    back
   };
 }

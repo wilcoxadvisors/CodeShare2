@@ -26,6 +26,7 @@ import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Home from "./pages/Home.tsx";
 import ChatWidget from "./components/common/ChatWidget.tsx";
+import ConsultationFormModal from "./components/ConsultationFormModal";
 
 // Public website header component
 const PublicHeader = () => {
@@ -454,7 +455,10 @@ function Router() {
 
 function AppWithAuth() {
   return (
-    <Router />
+    <>
+      <Router />
+      <ConsultationFormModal />
+    </>
   );
 }
 

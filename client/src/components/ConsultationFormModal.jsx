@@ -117,12 +117,10 @@ function ConsultationFormModal({ setShowConsultationForm }) { // Add prop
             )}
             
             <FormNavigation
-              currentStep={currentStep}
-              totalSteps={formSteps.length}
-              prevStep={prevStep}
-              nextStep={nextStep}
-              isStepValid={isStepValid}
-              isSubmitting={isSubmitting}
+              isFirstStep={currentStep === 0}
+              isLastStep={currentStep === formSteps.length - 1}
+              onBack={prevStep}
+              onNext={nextStep}
             />
           </form>
         </div>

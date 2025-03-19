@@ -1,12 +1,18 @@
-// src/components/form/FormNavigation.jsx
 import React from 'react';
 
-export default function FormNavigation({
+interface FormNavigationProps {
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  onBack: () => void;
+  onNext: () => void;
+}
+
+const FormNavigation: React.FC<FormNavigationProps> = ({
   isFirstStep,
   isLastStep,
   onBack,
   onNext
-}) {
+}) => {
   return (
     <div className="flex justify-between mt-8">
       <button
@@ -31,4 +37,6 @@ export default function FormNavigation({
       </button>
     </div>
   );
-}
+};
+
+export default FormNavigation;
