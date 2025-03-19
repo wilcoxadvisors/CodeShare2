@@ -53,20 +53,6 @@ function Header() {
             </div>
             
             <nav className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {/* Main Navigation Tabs - Always visible */}
-              <a href="/" className={`${location === '/' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                Dashboard
-              </a>
-              <a href="/chart-of-accounts" className={`${currentBaseSection === '/chart-of-accounts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                Accounts
-              </a>
-              <a href="/journal-entries" className={`${currentBaseSection === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                Journals
-              </a>
-              <a href="/reports" className={`${currentBaseSection === '/reports' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                Reports
-              </a>
-
               {/* Financial Reports Section Tabs */}
               {currentBaseSection === '/reports' && (
                 <>
@@ -223,15 +209,6 @@ function Header() {
             {/* Main navigation */}
             <a href="/" className={`${location === '/' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
               Dashboard
-            </a>
-            <a href="/chart-of-accounts" className={`${currentBaseSection === '/chart-of-accounts' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-              Accounts
-            </a>
-            <a href="/journal-entries" className={`${currentBaseSection === '/journal-entries' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-              Journals
-            </a>
-            <a href="/reports" className={`${currentBaseSection === '/reports' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-              Reports
             </a>
             
             {/* Financial accounting section */}
