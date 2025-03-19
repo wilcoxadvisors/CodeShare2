@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import HeroSection from '../components/sections/HeroSection';
-import ChecklistSection from '../components/sections/ChecklistSection';
-import ServicesSection from '../components/sections/ServicesSection';
-import BlogSection from '../components/sections/BlogSection';
-import TestimonialsSection from '../components/sections/TestimonialsSection';
-import AboutSection from '../components/sections/AboutSection';
-import ContactSection from '../components/sections/ContactSection';
-import ChatWidget from '../components/common/ChatWidget';
-import { useUI } from '../contexts/UIContext';
+import HeroSection from '../components/sections/HeroSection.tsx';
+import ChecklistSection from '../components/sections/ChecklistSection.tsx';
+import ServicesSection from '../components/sections/ServicesSection.tsx';
+import BlogSection from '../components/sections/BlogSection.tsx';
+import TestimonialsSection from '../components/sections/TestimonialsSection.tsx';
+import AboutSection from '../components/sections/AboutSection.tsx';
+import ContactSection from '../components/sections/ContactSection.tsx';
+import ChatWidget from '../components/common/ChatWidget.tsx';
+import { useUI } from '../contexts/UIContext.tsx';
 
 interface BlogPost {
   id: number;

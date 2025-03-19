@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "./contexts/AuthContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { EntityProvider } from "./contexts/EntityContext";
-import { UIProvider, useUI } from "./contexts/UIContext";
+import { UIProvider, useUI } from "./contexts/UIContext.tsx";
 import NotFound from "@/pages/not-found";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -23,10 +23,10 @@ import DocumentAnalysis from "./pages/DocumentAnalysis";
 import ManualJournalEntry from "./components/ManualJournalEntry";
 import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
-import Home from "./pages/Home";
-import ChatWidget from "./components/common/ChatWidget";
-import ConsultationFormModal from "./components/ConsultationFormModal";
+import Header from "./components/Header.tsx";
+import Home from "./pages/Home.tsx";
+import ChatWidget from "./components/common/ChatWidget.tsx";
+import ConsultationFormModal from "./components/ConsultationFormModal.tsx";
 
 // Public website header component
 const PublicHeader: React.FC = () => {
