@@ -7,9 +7,13 @@ import {
   journalEntryFiles,
   fixedAssets, FixedAsset, InsertFixedAsset,
   savedReports, SavedReport, ReportType,
-  userEntityAccess
+  userEntityAccess,
+  userActivityLogs, UserActivityLog, InsertUserActivityLog,
+  featureUsage, FeatureUsage, InsertFeatureUsage,
+  industryBenchmarks, IndustryBenchmark, InsertIndustryBenchmark,
+  dataConsent, DataConsent, InsertDataConsent
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, count, sum, isNull, not } from "drizzle-orm";
 import { db } from "./db";
 
 // Storage interface for data access
@@ -68,6 +72,34 @@ export interface IStorage {
   
   // GL reporting
   getGeneralLedger(entityId: number, options?: GLOptions): Promise<GLEntry[]>;
+
+  // User Activity Tracking methods
+  logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog>;
+  getUserActivities(userId: number, limit?: number): Promise<UserActivityLog[]>;
+  getUserActivitiesByEntity(entityId: number, limit?: number): Promise<UserActivityLog[]>;
+  getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]>;
+  
+  // Feature Usage Analytics methods
+  recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage>;
+  updateFeatureUsage(id: number, data: Partial<FeatureUsage>): Promise<FeatureUsage | undefined>;
+  getFeatureUsage(userId: number, featureName: string): Promise<FeatureUsage | undefined>;
+  getFeatureUsageStats(featureName: string): Promise<{
+    totalUsageCount: number,
+    uniqueUsers: number,
+    avgUseTime?: number
+  }>;
+  
+  // Industry Benchmark methods
+  addIndustryBenchmark(benchmark: InsertIndustryBenchmark): Promise<IndustryBenchmark>;
+  getIndustryBenchmarks(industry: string, year: number): Promise<IndustryBenchmark[]>;
+  getBenchmarksByMetric(metricName: string): Promise<IndustryBenchmark[]>;
+  getIndustryComparison(entityId: number, metricNames: string[]): Promise<any>;
+  
+  // Data Consent methods
+  recordDataConsent(consent: InsertDataConsent): Promise<DataConsent>;
+  getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined>;
+  updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined>;
+  hasUserConsented(userId: number, consentType: string): Promise<boolean>;
 }
 
 export interface GLOptions {
@@ -1564,6 +1596,272 @@ export class DatabaseStorage implements IStorage {
     } else {
       return totalCredit - totalDebit;
     }
+  }
+
+  // User Activity Tracking methods
+  async logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog> {
+    const [result] = await db.insert(userActivityLogs).values({
+      userId: activity.userId,
+      entityId: activity.entityId,
+      action: activity.action,
+      resourceType: activity.resourceType,
+      resourceId: activity.resourceId,
+      details: activity.details,
+      ipAddress: activity.ipAddress,
+      userAgent: activity.userAgent
+    }).returning();
+    
+    return result;
+  }
+  
+  async getUserActivities(userId: number, limit: number = 100): Promise<UserActivityLog[]> {
+    return await db.select()
+      .from(userActivityLogs)
+      .where(eq(userActivityLogs.userId, userId))
+      .orderBy(desc(userActivityLogs.timestamp))
+      .limit(limit);
+  }
+  
+  async getUserActivitiesByEntity(entityId: number, limit: number = 100): Promise<UserActivityLog[]> {
+    return await db.select()
+      .from(userActivityLogs)
+      .where(eq(userActivityLogs.entityId, entityId))
+      .orderBy(desc(userActivityLogs.timestamp))
+      .limit(limit);
+  }
+  
+  async getUserActivitiesByResourceType(resourceType: string, limit: number = 100): Promise<UserActivityLog[]> {
+    return await db.select()
+      .from(userActivityLogs)
+      .where(eq(userActivityLogs.resourceType, resourceType))
+      .orderBy(desc(userActivityLogs.timestamp))
+      .limit(limit);
+  }
+  
+  // Feature Usage Analytics methods
+  async recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage> {
+    // Check if this feature has been used by this user before
+    const [existingUsage] = await db.select()
+      .from(featureUsage)
+      .where(and(
+        eq(featureUsage.userId, usage.userId),
+        eq(featureUsage.featureName, usage.featureName)
+      ));
+    
+    if (existingUsage) {
+      // Update existing usage record
+      const [updatedUsage] = await db.update(featureUsage)
+        .set({
+          usageCount: Number(existingUsage.usageCount) + 1,
+          lastUsed: new Date(),
+          useTime: usage.useTime,
+          successful: usage.successful
+        })
+        .where(eq(featureUsage.id, existingUsage.id))
+        .returning();
+      
+      return updatedUsage;
+    } else {
+      // Create new usage record
+      const [newUsage] = await db.insert(featureUsage)
+        .values({
+          userId: usage.userId,
+          entityId: usage.entityId,
+          featureName: usage.featureName,
+          usageCount: 1,
+          useTime: usage.useTime,
+          successful: usage.successful !== undefined ? usage.successful : true
+        })
+        .returning();
+      
+      return newUsage;
+    }
+  }
+  
+  async updateFeatureUsage(id: number, data: Partial<FeatureUsage>): Promise<FeatureUsage | undefined> {
+    const [updatedUsage] = await db.update(featureUsage)
+      .set(data)
+      .where(eq(featureUsage.id, id))
+      .returning();
+    
+    return updatedUsage;
+  }
+  
+  async getFeatureUsage(userId: number, featureName: string): Promise<FeatureUsage | undefined> {
+    const [usage] = await db.select()
+      .from(featureUsage)
+      .where(and(
+        eq(featureUsage.userId, userId),
+        eq(featureUsage.featureName, featureName)
+      ));
+    
+    return usage;
+  }
+  
+  async getFeatureUsageStats(featureName: string): Promise<{
+    totalUsageCount: number,
+    uniqueUsers: number,
+    avgUseTime?: number
+  }> {
+    const [stats] = await db.select({
+      totalUsageCount: sum(featureUsage.usageCount),
+      uniqueUsers: count(featureUsage.userId, { distinct: true })
+    })
+    .from(featureUsage)
+    .where(eq(featureUsage.featureName, featureName));
+    
+    const [timeStats] = await db.select({
+      avgUseTime: sql`AVG(${featureUsage.useTime})`
+    })
+    .from(featureUsage)
+    .where(and(
+      eq(featureUsage.featureName, featureName),
+      not(isNull(featureUsage.useTime))
+    ));
+    
+    return {
+      totalUsageCount: Number(stats.totalUsageCount) || 0,
+      uniqueUsers: Number(stats.uniqueUsers) || 0,
+      avgUseTime: timeStats?.avgUseTime ? Number(timeStats.avgUseTime) : undefined
+    };
+  }
+  
+  // Industry Benchmark methods
+  async addIndustryBenchmark(benchmark: InsertIndustryBenchmark): Promise<IndustryBenchmark> {
+    const [result] = await db.insert(industryBenchmarks)
+      .values({
+        industry: benchmark.industry,
+        subIndustry: benchmark.subIndustry,
+        metricName: benchmark.metricName,
+        metricValue: benchmark.metricValue,
+        entitySizeRange: benchmark.entitySizeRange,
+        year: benchmark.year,
+        quarter: benchmark.quarter,
+        dataSource: benchmark.dataSource,
+        confidenceLevel: benchmark.confidenceLevel,
+        sampleSize: benchmark.sampleSize
+      })
+      .returning();
+    
+    return result;
+  }
+  
+  async getIndustryBenchmarks(industry: string, year: number): Promise<IndustryBenchmark[]> {
+    return await db.select()
+      .from(industryBenchmarks)
+      .where(and(
+        eq(industryBenchmarks.industry, industry),
+        eq(industryBenchmarks.year, year)
+      ));
+  }
+  
+  async getBenchmarksByMetric(metricName: string): Promise<IndustryBenchmark[]> {
+    return await db.select()
+      .from(industryBenchmarks)
+      .where(eq(industryBenchmarks.metricName, metricName))
+      .orderBy(desc(industryBenchmarks.year), desc(industryBenchmarks.quarter || 0));
+  }
+  
+  async getIndustryComparison(entityId: number, metricNames: string[]): Promise<any> {
+    // Get entity details to determine industry
+    const entity = await this.getEntity(entityId);
+    if (!entity || !entity.industry) {
+      return { 
+        entityMetrics: [],
+        industryBenchmarks: [],
+        comparison: {}
+      };
+    }
+    
+    // Get industry benchmarks for the requested metrics
+    const benchmarks = await Promise.all(
+      metricNames.map(metricName => 
+        db.select()
+          .from(industryBenchmarks)
+          .where(and(
+            eq(industryBenchmarks.industry, entity.industry as string),
+            eq(industryBenchmarks.metricName, metricName)
+          ))
+          .orderBy(desc(industryBenchmarks.year), desc(industryBenchmarks.quarter || 0))
+          .limit(1)
+      )
+    );
+    
+    // Process the benchmarks for the comparison
+    const comparison = metricNames.reduce((result, metricName, index) => {
+      const benchmark = benchmarks[index][0];
+      if (benchmark) {
+        result[metricName] = {
+          entityValue: null, // Would need to calculate this based on entity data
+          benchmarkValue: benchmark.metricValue,
+          difference: null // Would calculate this once entity value is determined
+        };
+      }
+      return result;
+    }, {} as Record<string, any>);
+    
+    return {
+      entityMetrics: [], // Would contain entity-specific metric values
+      industryBenchmarks: benchmarks.flatMap(b => b),
+      comparison
+    };
+  }
+  
+  // Data Consent methods
+  async recordDataConsent(consent: InsertDataConsent): Promise<DataConsent> {
+    const [result] = await db.insert(dataConsent)
+      .values({
+        userId: consent.userId,
+        entityId: consent.entityId,
+        consentType: consent.consentType,
+        granted: consent.granted,
+        grantedAt: consent.granted ? new Date() : null,
+        revokedAt: !consent.granted ? new Date() : null,
+        consentVersion: consent.consentVersion,
+        ipAddress: consent.ipAddress
+      })
+      .returning();
+    
+    return result;
+  }
+  
+  async getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined> {
+    const [consent] = await db.select()
+      .from(dataConsent)
+      .where(and(
+        eq(dataConsent.userId, userId),
+        eq(dataConsent.consentType, consentType)
+      ))
+      .orderBy(desc(dataConsent.lastUpdated))
+      .limit(1);
+    
+    return consent;
+  }
+  
+  async updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined> {
+    const updateData: any = {
+      granted,
+      lastUpdated: new Date()
+    };
+    
+    if (granted) {
+      updateData.grantedAt = new Date();
+      updateData.revokedAt = null;
+    } else {
+      updateData.revokedAt = new Date();
+    }
+    
+    const [updatedConsent] = await db.update(dataConsent)
+      .set(updateData)
+      .where(eq(dataConsent.id, id))
+      .returning();
+    
+    return updatedConsent;
+  }
+  
+  async hasUserConsented(userId: number, consentType: string): Promise<boolean> {
+    const consent = await this.getUserConsent(userId, consentType);
+    return !!consent && consent.granted;
   }
 }
 
