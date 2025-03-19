@@ -293,18 +293,7 @@ function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description={`Welcome, ${user?.name || 'User'}!`}>
-        <div className="flex space-x-3">
-          <Button variant="outline">
-            <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-            Export
-          </Button>
-          <Button>
-            <PlusCircle className="-ml-1 mr-2 h-5 w-5" />
-            New Journal Entry
-          </Button>
-        </div>
-      </PageHeader>
+      <PageHeader title="Dashboard" description={`Welcome, ${user?.name || 'User'}!`} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         {/* Main Navigation Tabs */}
