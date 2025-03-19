@@ -14,15 +14,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ services }) => {
   // Default services if none provided
   const defaultServices: Service[] = [
     {
-      title: "Tax Planning & Preparation",
-      description: "Strategic tax planning and preparation services for businesses and individuals to minimize tax liabilities while ensuring full compliance.",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 text-[#1E3A8A] mb-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
-        </svg>
-      )
-    },
-    {
       title: "Accounting & Bookkeeping",
       description: "Comprehensive accounting services including bookkeeping, financial statement preparation, and management reporting tailored to your business needs.",
       icon: (
