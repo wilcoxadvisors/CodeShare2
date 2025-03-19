@@ -1,5 +1,5 @@
 import { 
-  users, User, InsertUser, 
+  users, User, InsertUser, UserRole,
   entities, Entity, InsertEntity,
   accounts, Account, InsertAccount, AccountType,
   journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
@@ -129,8 +129,9 @@ export class MemStorage implements IStorage {
       password: '$2a$10$hACwQ5/HsFnbPzk1By9lUeal5o/NfAVe5pqc5vNjBEsVTkeJs6Z5u', // hashed 'password123'
       email: 'admin@example.com',
       name: 'Admin User',
-      role: 'admin',
+      role: UserRole.ADMIN,
       active: true,
+      lastLogin: null,
       createdAt: new Date()
     };
     this.users.set(adminUser.id, adminUser);
@@ -145,6 +146,11 @@ export class MemStorage implements IStorage {
       fiscalYearStart: '01-01',
       fiscalYearEnd: '12-31',
       currency: 'USD',
+      address: null,
+      email: null,
+      phone: null,
+      taxId: null,
+      website: null,
       createdAt: new Date()
     };
     this.entities.set(defaultEntity.id, defaultEntity);
@@ -170,7 +176,14 @@ export class MemStorage implements IStorage {
       const newAccount: Account = {
         id: this.currentAccountId++,
         entityId: defaultEntity.id,
-        ...account,
+        code: account.code,
+        name: account.name,
+        type: account.type,
+        subtype: account.subtype || null,
+        isSubledger: account.isSubledger || false,
+        subledgerType: account.subledgerType || null,
+        parentId: null,
+        description: null,
         active: true,
         createdAt: new Date()
       };
@@ -223,6 +236,15 @@ export class MemStorage implements IStorage {
         description: entry.description,
         status: entry.status,
         createdBy: entry.createdBy,
+        requestedBy: null,
+        requestedAt: null,
+        approvedBy: null,
+        approvedAt: null,
+        rejectedBy: null,
+        rejectedAt: null,
+        rejectionReason: null,
+        postedBy: null,
+        postedAt: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
