@@ -291,7 +291,14 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, createdAt: new Date() };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      role: (insertUser.role as UserRole) || UserRole.CLIENT,
+      active: insertUser.active !== undefined ? insertUser.active : true,
+      lastLogin: null,
+      createdAt: new Date() 
+    };
     this.users.set(id, user);
     return user;
   }
@@ -330,7 +337,23 @@ export class MemStorage implements IStorage {
   
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
     const id = this.currentEntityId++;
-    const entity: Entity = { ...insertEntity, id, createdAt: new Date() };
+    const entity: Entity = { 
+      ...insertEntity, 
+      id, 
+      name: insertEntity.name,
+      code: insertEntity.code,
+      ownerId: insertEntity.ownerId,
+      active: insertEntity.active !== undefined ? insertEntity.active : true,
+      fiscalYearStart: insertEntity.fiscalYearStart || '01-01',
+      fiscalYearEnd: insertEntity.fiscalYearEnd || '12-31',
+      currency: insertEntity.currency || 'USD',
+      email: insertEntity.email || null,
+      taxId: insertEntity.taxId || null,
+      address: insertEntity.address || null,
+      phone: insertEntity.phone || null,
+      website: insertEntity.website || null,
+      createdAt: new Date() 
+    };
     this.entities.set(id, entity);
     return entity;
   }
@@ -370,7 +393,20 @@ export class MemStorage implements IStorage {
   
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
     const id = this.currentAccountId++;
-    const account: Account = { ...insertAccount, id, createdAt: new Date() };
+    const account: Account = { 
+      id,
+      entityId: insertAccount.entityId,
+      name: insertAccount.name,
+      code: insertAccount.code,
+      type: insertAccount.type as AccountType,
+      subtype: insertAccount.subtype || null,
+      isSubledger: insertAccount.isSubledger || false,
+      subledgerType: insertAccount.subledgerType || null,
+      parentId: insertAccount.parentId || null,
+      description: insertAccount.description || null,
+      active: insertAccount.active !== undefined ? insertAccount.active : true,
+      createdAt: new Date()
+    };
     this.accounts.set(id, account);
     return account;
   }
@@ -409,12 +445,39 @@ export class MemStorage implements IStorage {
   
   async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
     const id = this.currentJournalEntryId++;
+    const now = new Date();
     const journalEntry: JournalEntry = { 
-      ...insertEntry, 
       id, 
-      createdAt: new Date(),
-      updatedAt: new Date()
+      entityId: insertEntry.entityId,
+      date: insertEntry.date,
+      reference: insertEntry.reference,
+      description: insertEntry.description || null,
+      status: insertEntry.status as JournalEntryStatus,
+      createdBy: insertEntry.createdBy,
+      requestedBy: insertEntry.requestedBy || null,
+      requestedAt: null,
+      approvedBy: insertEntry.approvedBy || null,
+      approvedAt: null,
+      rejectedBy: insertEntry.rejectedBy || null,
+      rejectedAt: null,
+      rejectionReason: insertEntry.rejectionReason || null,
+      postedBy: insertEntry.postedBy || null,
+      postedAt: null,
+      createdAt: now,
+      updatedAt: now
     };
+    
+    // Set status-related timestamps based on the initial status
+    if (journalEntry.status === JournalEntryStatus.PENDING_APPROVAL && journalEntry.requestedBy) {
+      journalEntry.requestedAt = now;
+    } else if (journalEntry.status === JournalEntryStatus.APPROVED && journalEntry.approvedBy) {
+      journalEntry.approvedAt = now;
+    } else if (journalEntry.status === JournalEntryStatus.REJECTED && journalEntry.rejectedBy) {
+      journalEntry.rejectedAt = now;
+    } else if (journalEntry.status === JournalEntryStatus.POSTED && journalEntry.postedBy) {
+      journalEntry.postedAt = now;
+    }
+    
     this.journalEntries.set(id, journalEntry);
     return journalEntry;
   }
@@ -440,7 +503,16 @@ export class MemStorage implements IStorage {
   
   async createJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
     const id = this.currentJournalEntryLineId++;
-    const journalEntryLine: JournalEntryLine = { ...insertLine, id, createdAt: new Date() };
+    const journalEntryLine: JournalEntryLine = { 
+      id,
+      journalEntryId: insertLine.journalEntryId,
+      accountId: insertLine.accountId,
+      entityId: insertLine.entityId,
+      description: insertLine.description || null,
+      debit: insertLine.debit || "0",
+      credit: insertLine.credit || "0",
+      createdAt: new Date() 
+    };
     this.journalEntryLines.set(id, journalEntryLine);
     return journalEntryLine;
   }
@@ -480,7 +552,26 @@ export class MemStorage implements IStorage {
   
   async createFixedAsset(insertAsset: InsertFixedAsset): Promise<FixedAsset> {
     const id = this.currentFixedAssetId++;
-    const fixedAsset: FixedAsset = { ...insertAsset, id, createdAt: new Date() };
+    const fixedAsset: FixedAsset = { 
+      id, 
+      name: insertAsset.name,
+      entityId: insertAsset.entityId,
+      description: insertAsset.description || null,
+      createdBy: insertAsset.createdBy,
+      status: insertAsset.status || "active",
+      acquisitionDate: insertAsset.acquisitionDate,
+      acquisitionCost: insertAsset.acquisitionCost,
+      depreciationMethod: insertAsset.depreciationMethod,
+      usefulLife: insertAsset.usefulLife,
+      assetAccountId: insertAsset.assetAccountId,
+      accumulatedDepreciationAccountId: insertAsset.accumulatedDepreciationAccountId,
+      depreciationExpenseAccountId: insertAsset.depreciationExpenseAccountId,
+      salvageValue: insertAsset.salvageValue || "0",
+      lastDepreciationDate: insertAsset.lastDepreciationDate || null,
+      disposalDate: insertAsset.disposalDate || null,
+      disposalAmount: insertAsset.disposalAmount || null,
+      createdAt: new Date()
+    };
     this.fixedAssets.set(id, fixedAsset);
     return fixedAsset;
   }
