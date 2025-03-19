@@ -70,7 +70,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
 
   return (
     <nav 
-      className={`bg-white shadow-md sticky top-0 z-50 transition-all duration-300 ${
+      className={`bg-white shadow-sm sticky top-0 z-50 transition-all duration-300 ${
         scrolled ? 'py-2' : 'py-4'
       }`}
       role="navigation" 
@@ -80,23 +80,17 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <a href="/" className="text-xl md:text-2xl text-[#1E3A8A] font-bold hover:text-blue-900 transition duration-200">
-              WILCOX ADVISORS
+              Wilcox Advisors
             </a>
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => handleSectionClick('services')} 
               className="text-gray-700 hover:text-[#1E3A8A] font-medium" 
             >
               Services
-            </button>
-            <button 
-              onClick={() => handleSectionClick('blog')} 
-              className="text-gray-700 hover:text-[#1E3A8A] font-medium" 
-            >
-              Blog
             </button>
             <button 
               onClick={() => handleSectionClick('about')} 
@@ -105,14 +99,26 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
               About
             </button>
             <button 
+              onClick={() => handleSectionClick('testimonials')} 
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium" 
+            >
+              Testimonials
+            </button>
+            <button 
               onClick={() => handleSectionClick('contact')} 
               className="text-gray-700 hover:text-[#1E3A8A] font-medium" 
             >
               Contact
             </button>
+            <a
+              href="/blog"
+              className="text-gray-700 hover:text-[#1E3A8A] font-medium"
+            >
+              Blog
+            </a>
             <button 
               onClick={openLoginModal} 
-              className="px-6 py-2 bg-[#1E3A8A] text-white rounded-lg hover:bg-[#1E40AF] transition duration-200 shadow-sm" 
+              className="px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E40AF] transition duration-200" 
               aria-label="Login"
             >
               Login
@@ -123,7 +129,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
           <div className="md:hidden">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)} 
-              className="text-gray-700 hover:text-[#1E3A8A] p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md" 
+              className="text-gray-700 hover:text-[#1E3A8A] p-2 focus:outline-none" 
               aria-label="Toggle mobile menu"
               aria-expanded={isMenuOpen}
             >
@@ -145,31 +151,37 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
           <div className="py-3 space-y-2 bg-white" role="menu">
             <button 
               onClick={() => handleSectionClick('services')} 
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
             >
               Services
             </button>
             <button 
-              onClick={() => handleSectionClick('blog')} 
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
-            >
-              Blog
-            </button>
-            <button 
               onClick={() => handleSectionClick('about')} 
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
             >
               About
             </button>
             <button 
+              onClick={() => handleSectionClick('testimonials')} 
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
+            >
+              Testimonials
+            </button>
+            <button 
               onClick={() => handleSectionClick('contact')} 
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
             >
               Contact
             </button>
+            <a
+              href="/blog"
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-[#1E3A8A]"
+            >
+              Blog
+            </a>
             <button 
               onClick={openLoginModal} 
-              className="block w-full text-left px-4 py-3 bg-[#1E3A8A] text-white rounded-md hover:bg-[#1E40AF] mt-2"
+              className="block w-full text-left px-4 py-2 mt-2 bg-[#1E3A8A] text-white hover:bg-[#1E40AF]"
             >
               Login
             </button>
@@ -236,7 +248,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ setShowConsultationForm }) 
                     closeLoginModal();
                     navigate("/dashboard");
                   }} 
-                  className="w-full py-2 px-4 bg-[#1E3A8A] text-white rounded-lg hover:bg-[#1E40AF] transition duration-200 font-medium"
+                  className="w-full py-2 px-4 bg-[#1E3A8A] text-white rounded hover:bg-[#1E40AF] transition duration-200 font-medium"
                 >
                   Sign In
                 </button>
@@ -254,12 +266,36 @@ const PublicFooter = () => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-12">
-      <div className="max-w-6xl mx-auto px-4 text-center">
-        <h3 className="text-xl font-bold">WILCOX ADVISORS</h3>
-        <p className="mt-2 text-gray-200">Financial Solutions for Small Businesses</p>
-        <div className="border-t border-blue-700 mt-8 pt-6">
-          <p className="text-gray-200">© {currentYear} Wilcox Advisors. All rights reserved.</p>
+    <footer className="bg-gray-900 text-white py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="grid md:grid-cols-3 gap-8">
+          <div>
+            <h3 className="text-lg font-medium mb-4">Wilcox Advisors</h3>
+            <p className="text-gray-400">
+              Professional accounting and financial services for small businesses.
+            </p>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium mb-4">Contact</h3>
+            <p className="text-gray-400 mb-2">123 Financial District</p>
+            <p className="text-gray-400 mb-2">New York, NY 10004</p>
+            <p className="text-gray-400">(212) 555-1234</p>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium mb-4">Links</h3>
+            <ul className="space-y-2 text-gray-400">
+              <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
+              <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
+              <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
+              <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="border-t border-gray-800 mt-8 pt-6 text-center">
+          <p className="text-gray-400">© {currentYear} Wilcox Advisors. All rights reserved.</p>
         </div>
       </div>
     </footer>
