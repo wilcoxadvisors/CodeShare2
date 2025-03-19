@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, User2, FileText, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2 } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText } from "lucide-react";
 import { UserRole } from "@shared/schema";
 
 // Sample data for our admin dashboard
@@ -203,11 +203,30 @@ const formatDate = (dateString: string) => {
 function Dashboard() {
   const { user } = useAuth();
   const { currentEntity } = useEntity();
-  const [activeTab, setActiveTab] = useState("client-management");
+  const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
+  
+  // Queries for financial data
+  const { data: incomeData, isLoading: incomeLoading } = useQuery({
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/income-statement`] : null,
+    enabled: !!currentEntity
+  });
+  
+  const { data: balanceSheetData, isLoading: balanceSheetLoading } = useQuery({
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/balance-sheet`] : null,
+    enabled: !!currentEntity
+  });
+  
+  const { data: cashFlowData, isLoading: cashFlowLoading } = useQuery({
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/cash-flow`] : null,
+    enabled: !!currentEntity
+  });
+  
+  // Admin dashboard specific state
+  const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
   // Filtered clients based on search and status
   const filteredClients = mockClients.filter(client => {
@@ -229,947 +248,1239 @@ function Dashboard() {
     { name: 'Pending', value: mockPayments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.amount, 0) },
     { name: 'Overdue', value: mockPayments.filter(p => p.status === 'Overdue').reduce((sum, p) => sum + p.amount, 0) }
   ];
+  
+  // Sample data for original dashboard charts
+  const monthlyRevenue = [
+    { month: 'Jan', revenue: 5000 },
+    { month: 'Feb', revenue: 7500 },
+    { month: 'Mar', revenue: 8000 },
+    { month: 'Apr', revenue: 6800 },
+    { month: 'May', revenue: 9200 },
+    { month: 'Jun', revenue: 10500 },
+  ];
+  
+  const cashFlowForecast = [
+    { month: 'Jul', inflow: 12000, outflow: 9500 },
+    { month: 'Aug', inflow: 14000, outflow: 10200 },
+    { month: 'Sep', inflow: 15500, outflow: 11000 },
+    { month: 'Oct', inflow: 13500, outflow: 10500 },
+    { month: 'Nov', inflow: 16200, outflow: 11200 },
+    { month: 'Dec', inflow: 18000, outflow: 13000 },
+  ];
+  
+  const expenseBreakdown = [
+    { category: 'Payroll', value: 45 },
+    { category: 'Rent', value: 20 },
+    { category: 'Utilities', value: 10 },
+    { category: 'Marketing', value: 15 },
+    { category: 'Other', value: 10 },
+  ];
 
   // Check if user is admin
   const isAdmin = user?.role === UserRole.ADMIN;
-
-  if (!isAdmin) {
+  
+  if (!currentEntity) {
     return (
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
           <div className="text-center py-10">
-            <h1 className="text-xl font-semibold text-gray-900">Admin access required</h1>
-            <p className="mt-2 text-gray-600">You need administrator privileges to view this dashboard.</p>
+            <h1 className="text-xl font-semibold text-gray-900">Please select an entity to continue</h1>
           </div>
         </div>
       </div>
     );
   }
 
-  // Main admin dashboard content
   return (
     <>
-      <PageHeader title="Admin Dashboard" description={`Welcome, ${user?.name || 'Admin'}!`}>
+      <PageHeader title="Dashboard" description={`Welcome, ${user?.name || 'User'}!`}>
         <div className="flex space-x-3">
           <Button variant="outline">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+            <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+            Export
           </Button>
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Client
+            <PlusCircle className="-ml-1 mr-2 h-5 w-5" />
+            New Journal Entry
           </Button>
         </div>
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* Dashboard Summary Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Clients</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsSummary.totalClients}</div>
-              <div className="text-sm text-gray-500">
-                {statsSummary.activeClients} active, {statsSummary.newClientsThisMonth} new this month
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Employees</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsSummary.totalEmployees}</div>
-              <div className="text-sm text-gray-500">
-                Managing {statsSummary.totalClients} clients
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${statsSummary.totalRevenue.toLocaleString()}</div>
-              <div className="text-sm text-gray-500">
-                ${statsSummary.outstandingPayments.toLocaleString()} outstanding
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Tasks</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsSummary.pendingTasks}</div>
-              <div className="text-sm text-gray-500">
-                Pending actions across all clients
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
-            <TabsTrigger value="client-management">Client Management</TabsTrigger>
-            <TabsTrigger value="employee-management">Employee Management</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="content-management">Website Content</TabsTrigger>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            {isAdmin && <TabsTrigger value="admin">Admin Dashboard</TabsTrigger>}
           </TabsList>
           
-          {/* Client Management Tab */}
-          <TabsContent value="client-management">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Client Status Overview</CardTitle>
-                      <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Client
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add New Client</DialogTitle>
-                            <DialogDescription>
-                              Enter the details for the new client.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="name" className="text-right">Company Name</Label>
-                              <Input id="name" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="contact" className="text-right">Contact Person</Label>
-                              <Input id="contact" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="email" className="text-right">Email</Label>
-                              <Input id="email" type="email" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="phone" className="text-right">Phone</Label>
-                              <Input id="phone" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="address" className="text-right">Address</Label>
-                              <Textarea id="address" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="notes" className="text-right">Notes</Label>
-                              <Textarea id="notes" className="col-span-3" />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddClientDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={() => setIsAddClientDialogOpen(false)}>Save Client</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    <div className="flex justify-between items-center mt-4">
-                      <div className="relative w-64">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search clients..."
-                          className="pl-8"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                      </div>
-                      <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Onboarding">Onboarding</SelectItem>
-                          <SelectItem value="Pending Review">Pending Review</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Client Name</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Progress</TableHead>
-                          <TableHead>Last Update</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredClients.map((client) => (
-                          <TableRow key={client.id}>
-                            <TableCell className="font-medium">{client.name}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(client.status)}>
-                                {client.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Progress value={client.progress} className="h-2 w-32" />
-                                <span className="ml-2 text-xs">{client.progress}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{formatDate(client.lastUpdate)}</TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">More options</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <MessageSquare className="mr-2 h-4 w-4" />
-                                    Send Message
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Pen className="mr-2 h-4 w-4" />
-                                    Edit Client
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Client Status Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={clientStatusData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {clientStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                <Card className="mt-6">
-                  <CardHeader className="pb-2">
-                    <CardTitle>Pending Tasks</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {mockClients.flatMap(client => 
-                        client.pendingActions.map((action, idx) => (
-                          <div key={`${client.id}-${idx}`} className="flex items-start">
-                            <CheckCircle2 className="mt-0.5 h-5 w-5 text-gray-400" />
-                            <div className="ml-3">
-                              <p className="text-sm font-medium">{action}</p>
-                              <p className="text-xs text-gray-500">{client.name}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      {mockClients.flatMap(client => client.pendingActions).length === 0 && (
-                        <div className="text-sm text-gray-500 text-center">No pending tasks</div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+          {/* Original Dashboard - Overview Tab */}
+          <TabsContent value="overview">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Revenue YTD</CardTitle>
+                  <CardDescription>Total revenue for current fiscal year</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.totalRevenue?.toLocaleString() || "0.00"}</div>
+                  <div className="text-xs text-green-500 mt-1">↑ 12% from last year</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Net Income</CardTitle>
+                  <CardDescription>Year to date</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${incomeLoading ? "..." : incomeData?.netIncome?.toLocaleString() || "0.00"}</div>
+                  <div className="text-xs text-green-500 mt-1">↑ 8% from last year</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Cash Position</CardTitle>
+                  <CardDescription>Current balance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${cashFlowLoading ? "..." : (cashFlowData?.netCashFlow || 0).toLocaleString()}</div>
+                  <div className="text-xs text-red-500 mt-1">↓ 3% from last month</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Revenue</CardTitle>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyRevenue}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="hsl(var(--chart-1))" name="Revenue" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Expense Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={expenseBreakdown} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="category" type="category" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="hsl(var(--chart-2))" name="% of Total Expenses" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
           
-          {/* Employee Management Tab */}
-          <TabsContent value="employee-management">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
+          {/* Original Dashboard - Cash Flow Tab */}
+          <TabsContent value="cashflow">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cash Flow Forecast</CardTitle>
+                <CardDescription>Projected for next 6 months</CardDescription>
+              </CardHeader>
+              <CardContent className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cashFlowForecast}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="inflow" stroke="hsl(var(--chart-2))" name="Cash Inflow" />
+                    <Line type="monotone" dataKey="outflow" stroke="hsl(var(--chart-3))" name="Cash Outflow" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Average Monthly Inflow</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">$14,866</div>
+                  <div className="text-xs text-green-500 mt-1">↑ 5% projected growth</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Average Monthly Outflow</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">$10,900</div>
+                  <div className="text-xs text-red-500 mt-1">↑ 3% projected increase</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Projected Net Position</CardTitle>
+                  <CardDescription>End of year</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">$23,800</div>
+                  <div className="text-xs text-green-500 mt-1">↑ 15% from current</div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          {/* Original Dashboard - Reports Tab */}
+          <TabsContent value="reports">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Balance Sheet Summary</CardTitle>
+                  <CardDescription>As of today</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {balanceSheetLoading ? (
+                    <div className="flex justify-center py-8">Loading...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-medium text-gray-900">Assets</h3>
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <dl className="divide-y divide-gray-200">
+                            {balanceSheetData?.assets?.map((asset) => (
+                              <div key={asset.accountId} className="flex justify-between py-1 text-sm">
+                                <dt className="text-gray-500">{asset.accountName}</dt>
+                                <dd className="text-gray-900">${asset.balance.toLocaleString()}</dd>
+                              </div>
+                            ))}
+                            <div className="flex justify-between py-1 font-medium">
+                              <dt>Total Assets</dt>
+                              <dd>${balanceSheetData?.totalAssets?.toLocaleString() || "0.00"}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-medium text-gray-900">Liabilities & Equity</h3>
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <dl className="divide-y divide-gray-200">
+                            {balanceSheetData?.liabilities?.map((liability) => (
+                              <div key={liability.accountId} className="flex justify-between py-1 text-sm">
+                                <dt className="text-gray-500">{liability.accountName}</dt>
+                                <dd className="text-gray-900">${liability.balance.toLocaleString()}</dd>
+                              </div>
+                            ))}
+                            {balanceSheetData?.equity?.map((equity) => (
+                              <div key={equity.accountId} className="flex justify-between py-1 text-sm">
+                                <dt className="text-gray-500">{equity.accountName}</dt>
+                                <dd className="text-gray-900">${equity.balance.toLocaleString()}</dd>
+                              </div>
+                            ))}
+                            <div className="flex justify-between py-1 font-medium">
+                              <dt>Total Liabilities & Equity</dt>
+                              <dd>${balanceSheetData?.liabilitiesAndEquity?.toLocaleString() || "0.00"}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Income Statement Summary</CardTitle>
+                  <CardDescription>Year to date</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {incomeLoading ? (
+                    <div className="flex justify-center py-8">Loading...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-medium text-gray-900">Revenue</h3>
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <dl className="divide-y divide-gray-200">
+                            {incomeData?.revenue?.map((rev) => (
+                              <div key={rev.accountId} className="flex justify-between py-1 text-sm">
+                                <dt className="text-gray-500">{rev.accountName}</dt>
+                                <dd className="text-gray-900">${rev.balance.toLocaleString()}</dd>
+                              </div>
+                            ))}
+                            <div className="flex justify-between py-1 font-medium">
+                              <dt>Total Revenue</dt>
+                              <dd>${incomeData?.totalRevenue?.toLocaleString() || "0.00"}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-medium text-gray-900">Expenses</h3>
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <dl className="divide-y divide-gray-200">
+                            {incomeData?.expenses?.map((expense) => (
+                              <div key={expense.accountId} className="flex justify-between py-1 text-sm">
+                                <dt className="text-gray-500">{expense.accountName}</dt>
+                                <dd className="text-gray-900">${expense.balance.toLocaleString()}</dd>
+                              </div>
+                            ))}
+                            <div className="flex justify-between py-1 font-medium">
+                              <dt>Total Expenses</dt>
+                              <dd>${incomeData?.totalExpenses?.toLocaleString() || "0.00"}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+                      
+                      <div className="border-t border-gray-200 pt-2">
+                        <dl>
+                          <div className="flex justify-between py-1 font-medium text-gray-900">
+                            <dt>Net Income</dt>
+                            <dd>${incomeData?.netIncome?.toLocaleString() || "0.00"}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          {/* Admin Dashboard Tab */}
+          {isAdmin && (
+            <TabsContent value="admin">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Employee Overview</CardTitle>
-                      <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Employee
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add New Employee</DialogTitle>
-                            <DialogDescription>
-                              Enter the details for the new employee.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="emp-name" className="text-right">Name</Label>
-                              <Input id="emp-name" className="col-span-3" />
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Clients</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statsSummary.totalClients}</div>
+                    <div className="text-sm text-gray-500">
+                      {statsSummary.activeClients} active, {statsSummary.newClientsThisMonth} new this month
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Employees</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statsSummary.totalEmployees}</div>
+                    <div className="text-sm text-gray-500">
+                      Managing {statsSummary.totalClients} clients
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Revenue</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${statsSummary.totalRevenue.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">
+                      ${statsSummary.outstandingPayments.toLocaleString()} outstanding
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Tasks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{statsSummary.pendingTasks}</div>
+                    <div className="text-sm text-gray-500">
+                      Pending actions across all clients
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Admin Tabs */}
+              <Tabs value={adminActiveTab} onValueChange={setAdminActiveTab}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="client-management">Client Management</TabsTrigger>
+                  <TabsTrigger value="employee-management">Employee Management</TabsTrigger>
+                  <TabsTrigger value="billing">Billing</TabsTrigger>
+                  <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                  <TabsTrigger value="content-management">Website Content</TabsTrigger>
+                </TabsList>
+                
+                {/* Client Management Tab */}
+                <TabsContent value="client-management">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Client Status Overview</CardTitle>
+                            <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button size="sm">
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Add Client
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Add New Client</DialogTitle>
+                                  <DialogDescription>
+                                    Enter the details for the new client.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="name" className="text-right">Company Name</Label>
+                                    <Input id="name" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="contact" className="text-right">Contact Person</Label>
+                                    <Input id="contact" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="email" className="text-right">Email</Label>
+                                    <Input id="email" type="email" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="phone" className="text-right">Phone</Label>
+                                    <Input id="phone" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="address" className="text-right">Address</Label>
+                                    <Textarea id="address" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="notes" className="text-right">Notes</Label>
+                                    <Textarea id="notes" className="col-span-3" />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setIsAddClientDialogOpen(false)}>Cancel</Button>
+                                  <Button onClick={() => setIsAddClientDialogOpen(false)}>Save Client</Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                          <div className="flex justify-between items-center mt-4">
+                            <div className="relative w-64">
+                              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Search clients..."
+                                className="pl-8"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                              />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="emp-email" className="text-right">Email</Label>
-                              <Input id="emp-email" type="email" className="col-span-3" />
+                            <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
+                              <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Filter by status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Onboarding">Onboarding</SelectItem>
+                                <SelectItem value="Pending Review">Pending Review</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Client Name</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Progress</TableHead>
+                                <TableHead>Last Update</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredClients.map((client) => (
+                                <TableRow key={client.id}>
+                                  <TableCell className="font-medium">{client.name}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getStatusColor(client.status)}>
+                                      {client.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center">
+                                      <Progress value={client.progress} className="h-2 w-32" />
+                                      <span className="ml-2 text-xs">{client.progress}%</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{formatDate(client.lastUpdate)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <MoreVertical className="h-4 w-4" />
+                                          <span className="sr-only">More options</span>
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem>
+                                          <Eye className="mr-2 h-4 w-4" />
+                                          View Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <MessageSquare className="mr-2 h-4 w-4" />
+                                          Send Message
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <Pen className="mr-2 h-4 w-4" />
+                                          Edit Client
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Client Status Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={clientStatusData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {clientStatusData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                      <Card className="mt-6">
+                        <CardHeader className="pb-2">
+                          <CardTitle>Pending Tasks</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {mockClients.flatMap(client => 
+                              client.pendingActions.map((action, idx) => (
+                                <div key={`${client.id}-${idx}`} className="flex items-start">
+                                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-gray-400" />
+                                  <div className="ml-3">
+                                    <p className="text-sm font-medium">{action}</p>
+                                    <p className="text-xs text-gray-500">{client.name}</p>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                            {mockClients.flatMap(client => client.pendingActions).length === 0 && (
+                              <div className="text-sm text-gray-500 text-center">No pending tasks</div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {/* Employee Management Tab */}
+                <TabsContent value="employee-management">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Employee Overview</CardTitle>
+                            <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button size="sm">
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Add Employee
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Add New Employee</DialogTitle>
+                                  <DialogDescription>
+                                    Enter the details for the new employee.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="emp-name" className="text-right">Name</Label>
+                                    <Input id="emp-name" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="emp-email" className="text-right">Email</Label>
+                                    <Input id="emp-email" type="email" className="col-span-3" />
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="emp-role" className="text-right">Role</Label>
+                                    <Select>
+                                      <SelectTrigger id="emp-role" className="col-span-3">
+                                        <SelectValue placeholder="Select role" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="accountant">Accountant</SelectItem>
+                                        <SelectItem value="support">Support</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Permissions</Label>
+                                    <div className="col-span-3 space-y-2">
+                                      <div className="flex items-center">
+                                        <input type="checkbox" id="perm-view" className="mr-2" />
+                                        <Label htmlFor="perm-view">View Data</Label>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <input type="checkbox" id="perm-edit" className="mr-2" />
+                                        <Label htmlFor="perm-edit">Edit Data</Label>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <input type="checkbox" id="perm-approve" className="mr-2" />
+                                        <Label htmlFor="perm-approve">Approve Transactions</Label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
+                                  <Button onClick={() => setIsAddEmployeeDialogOpen(false)}>Save Employee</Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Employee</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Assigned Clients</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {mockEmployees.map((employee) => (
+                                <TableRow key={employee.id}>
+                                  <TableCell>
+                                    <div className="flex items-center">
+                                      <Avatar className="h-8 w-8 mr-2">
+                                        <AvatarFallback>{employee.avatar}</AvatarFallback>
+                                      </Avatar>
+                                      <span className="font-medium">{employee.name}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{employee.role}</TableCell>
+                                  <TableCell>{employee.email}</TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-wrap gap-1">
+                                      {employee.assignedClients.map((client) => (
+                                        <Badge key={client} variant="outline">{client}</Badge>
+                                      ))}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <MoreVertical className="h-4 w-4" />
+                                          <span className="sr-only">More options</span>
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem>
+                                          <Eye className="mr-2 h-4 w-4" />
+                                          View Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <Pen className="mr-2 h-4 w-4" />
+                                          Edit Employee
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <Users className="mr-2 h-4 w-4" />
+                                          Assign Clients
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Workload Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={mockEmployees.map(e => ({ name: e.name, clients: e.assignedClients.length }))}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Bar dataKey="clients" fill="hsl(var(--chart-1))" name="Assigned Clients" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                      <Card className="mt-6">
+                        <CardHeader>
+                          <CardTitle>Recent Activity</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium">Jane Smith approved journal entries for Acme Corp</p>
+                                <p className="text-xs text-gray-500">Today at 10:30 AM</p>
+                              </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="emp-role" className="text-right">Role</Label>
+                            <div className="flex items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium">John Doe onboarded TechStart Inc</p>
+                                <p className="text-xs text-gray-500">Yesterday at 2:15 PM</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium">Emily Chen submitted quarterly report for Morning Star Co</p>
+                                <p className="text-xs text-gray-500">2 days ago</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {/* Billing Tab */}
+                <TabsContent value="billing">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Payment Status Overview</CardTitle>
+                            <Button size="sm">
+                              <FileText className="mr-2 h-4 w-4" />
+                              Generate Invoice
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Client</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {mockPayments.map((payment) => (
+                                <TableRow key={payment.id}>
+                                  <TableCell className="font-medium">{payment.client}</TableCell>
+                                  <TableCell>${payment.amount.toLocaleString()}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getStatusColor(payment.status)}>
+                                      {payment.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{formatDate(payment.date)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <MoreVertical className="h-4 w-4" />
+                                          <span className="sr-only">More options</span>
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem>
+                                          <Download className="mr-2 h-4 w-4" />
+                                          Download Invoice
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <Mail className="mr-2 h-4 w-4" />
+                                          Send Reminder
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                                          Mark as Paid
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Payment Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={paymentStatusData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, value }) => `${name}: $${value.toLocaleString()}`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {paymentStatusData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                        <CardFooter>
+                          <div className="w-full">
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium">Total Revenue</span>
+                              <span className="text-sm font-medium">${statsSummary.totalRevenue.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-red-600">Outstanding</span>
+                              <span className="text-sm font-medium text-red-600">${statsSummary.outstandingPayments.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                      <Card className="mt-6">
+                        <CardHeader>
+                          <CardTitle>Recent Transactions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Acme Corp</p>
+                                <p className="text-xs text-gray-500">Invoice #2025-001</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">$2,500.00</p>
+                                <p className="text-xs text-green-500">Paid</p>
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Bright Futures</p>
+                                <p className="text-xs text-gray-500">Invoice #2025-002</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">$1,500.00</p>
+                                <p className="text-xs text-green-500">Paid</p>
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Global Services LLC</p>
+                                <p className="text-xs text-gray-500">Invoice #2025-003</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">$3,200.00</p>
+                                <p className="text-xs text-red-500">Overdue</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {/* Notifications Tab */}
+                <TabsContent value="notifications">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Notification Center</CardTitle>
+                            <div className="flex space-x-2">
+                              <Button variant="outline" size="sm">
+                                <Bell className="mr-2 h-4 w-4" />
+                                Mark All as Read
+                              </Button>
+                              <Button size="sm">
+                                <Settings className="mr-2 h-4 w-4" />
+                                Notification Settings
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {mockNotifications.map((notification) => (
+                              <div key={notification.id} className={`flex p-3 rounded-md ${notification.read ? '' : 'bg-muted'}`}>
+                                {notification.type === 'message' && <MessageSquare className="h-6 w-6 text-blue-500 mr-3" />}
+                                {notification.type === 'task' && <FileCheck className="h-6 w-6 text-green-500 mr-3" />}
+                                {notification.type === 'alert' && <AlertCircle className="h-6 w-6 text-red-500 mr-3" />}
+                                {notification.type === 'system' && <Settings className="h-6 w-6 text-gray-500 mr-3" />}
+                                <div className="flex-1">
+                                  <div className="flex justify-between">
+                                    <h4 className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                                      {notification.content}
+                                    </h4>
+                                    <span className="text-xs text-gray-500">{notification.time}</span>
+                                  </div>
+                                  <div className="mt-1 flex space-x-2">
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                                      View
+                                    </Button>
+                                    {!notification.read && (
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                                        Mark as Read
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Notification Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Email Notifications</p>
+                                <p className="text-xs text-gray-500">Get email for important alerts</p>
+                              </div>
+                              <div>
+                                <input type="checkbox" id="email-notif" className="toggle" defaultChecked />
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Client Messages</p>
+                                <p className="text-xs text-gray-500">Notification when clients message you</p>
+                              </div>
+                              <div>
+                                <input type="checkbox" id="message-notif" className="toggle" defaultChecked />
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Task Reminders</p>
+                                <p className="text-xs text-gray-500">Get reminders for upcoming tasks</p>
+                              </div>
+                              <div>
+                                <input type="checkbox" id="task-notif" className="toggle" defaultChecked />
+                              </div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">System Updates</p>
+                                <p className="text-xs text-gray-500">Notifications about system changes</p>
+                              </div>
+                              <div>
+                                <input type="checkbox" id="system-notif" className="toggle" />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="mt-6">
+                        <CardHeader>
+                          <CardTitle>Message Templates</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Invoice Reminder</p>
+                                <p className="text-xs text-gray-500">Template for payment reminders</p>
+                              </div>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">Monthly Update</p>
+                                <p className="text-xs text-gray-500">Regular client update template</p>
+                              </div>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm font-medium">New Document Request</p>
+                                <p className="text-xs text-gray-500">Request additional documents</p>
+                              </div>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {/* Content Management Tab */}
+                <TabsContent value="content-management">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Website Content Management</CardTitle>
+                            <Button size="sm">
+                              <Eye className="mr-2 h-4 w-4" />
+                              Preview Site
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-6">
+                            <div>
+                              <h3 className="text-lg font-medium mb-3">Home Page Sections</h3>
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">Hero Section</p>
+                                    <p className="text-sm text-gray-500">Main banner and headline</p>
+                                  </div>
+                                  <Button variant="outline" size="sm">Edit</Button>
+                                </div>
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">Services Section</p>
+                                    <p className="text-sm text-gray-500">List of accounting services</p>
+                                  </div>
+                                  <Button variant="outline" size="sm">Edit</Button>
+                                </div>
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">Testimonials</p>
+                                    <p className="text-sm text-gray-500">Client reviews and feedback</p>
+                                  </div>
+                                  <Button variant="outline" size="sm">Edit</Button>
+                                </div>
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">Contact Form</p>
+                                    <p className="text-sm text-gray-500">Inquiry and contact information</p>
+                                  </div>
+                                  <Button variant="outline" size="sm">Edit</Button>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <Separator />
+                            
+                            <div>
+                              <h3 className="text-lg font-medium mb-3">Blog Management</h3>
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">AI-Generated Draft: 2025 Tax Planning Strategies</p>
+                                    <p className="text-sm text-gray-500">Generated on March 18, 2025</p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button variant="outline" size="sm">Edit</Button>
+                                    <Button size="sm">Approve & Publish</Button>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between items-center p-3 rounded-md border">
+                                  <div>
+                                    <p className="font-medium">AI-Generated Draft: Understanding Cash Flow Management</p>
+                                    <p className="text-sm text-gray-500">Generated on March 19, 2025</p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button variant="outline" size="sm">Edit</Button>
+                                    <Button size="sm">Approve & Publish</Button>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between items-center p-3 rounded-md border bg-gray-50">
+                                  <div>
+                                    <p className="font-medium">Published: Small Business Accounting Guide</p>
+                                    <p className="text-sm text-gray-500">Published on March 15, 2025</p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button variant="outline" size="sm">View Stats</Button>
+                                    <Button variant="outline" size="sm">Edit</Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>AI Content Generator</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="blog-topic">Blog Topic</Label>
                               <Select>
-                                <SelectTrigger id="emp-role" className="col-span-3">
-                                  <SelectValue placeholder="Select role" />
+                                <SelectTrigger id="blog-topic">
+                                  <SelectValue placeholder="Select topic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="accountant">Accountant</SelectItem>
-                                  <SelectItem value="support">Support</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="tax">Tax Planning</SelectItem>
+                                  <SelectItem value="cashflow">Cash Flow Management</SelectItem>
+                                  <SelectItem value="startup">Startup Finances</SelectItem>
+                                  <SelectItem value="retirement">Retirement Planning</SelectItem>
+                                  <SelectItem value="custom">Custom Topic</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label className="text-right">Permissions</Label>
-                              <div className="col-span-3 space-y-2">
-                                <div className="flex items-center">
-                                  <input type="checkbox" id="perm-view" className="mr-2" />
-                                  <Label htmlFor="perm-view">View Data</Label>
-                                </div>
-                                <div className="flex items-center">
-                                  <input type="checkbox" id="perm-edit" className="mr-2" />
-                                  <Label htmlFor="perm-edit">Edit Data</Label>
-                                </div>
-                                <div className="flex items-center">
-                                  <input type="checkbox" id="perm-approve" className="mr-2" />
-                                  <Label htmlFor="perm-approve">Approve Transactions</Label>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={() => setIsAddEmployeeDialogOpen(false)}>Save Employee</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Assigned Clients</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {mockEmployees.map((employee) => (
-                          <TableRow key={employee.id}>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Avatar className="h-8 w-8 mr-2">
-                                  <AvatarFallback>{employee.avatar}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{employee.name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{employee.role}</TableCell>
-                            <TableCell>{employee.email}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {employee.assignedClients.map((client) => (
-                                  <Badge key={client} variant="outline">{client}</Badge>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">More options</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Pen className="mr-2 h-4 w-4" />
-                                    Edit Employee
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Users className="mr-2 h-4 w-4" />
-                                    Assign Clients
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Workload Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={mockEmployees.map(e => ({ name: e.name, clients: e.assignedClients.length }))}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="clients" fill="hsl(var(--chart-1))" name="Assigned Clients" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">Jane Smith approved journal entries for Acme Corp</p>
-                          <p className="text-xs text-gray-500">Today at 10:30 AM</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">John Doe onboarded TechStart Inc</p>
-                          <p className="text-xs text-gray-500">Yesterday at 2:15 PM</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">Emily Chen submitted quarterly report for Morning Star Co</p>
-                          <p className="text-xs text-gray-500">2 days ago</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Billing Tab */}
-          <TabsContent value="billing">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Payment Status Overview</CardTitle>
-                      <Button size="sm">
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate Invoice
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {mockPayments.map((payment) => (
-                          <TableRow key={payment.id}>
-                            <TableCell className="font-medium">{payment.client}</TableCell>
-                            <TableCell>${payment.amount.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(payment.status)}>
-                                {payment.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{formatDate(payment.date)}</TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">More options</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download Invoice
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Mail className="mr-2 h-4 w-4" />
-                                    Send Reminder
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    Mark as Paid
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={paymentStatusData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value }) => `${name}: $${value.toLocaleString()}`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {paymentStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                  <CardFooter>
-                    <div className="w-full">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Total Revenue</span>
-                        <span className="text-sm font-medium">${statsSummary.totalRevenue.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium text-red-600">Outstanding</span>
-                        <span className="text-sm font-medium text-red-600">${statsSummary.outstandingPayments.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </CardFooter>
-                </Card>
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Recent Transactions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Acme Corp</p>
-                          <p className="text-xs text-gray-500">Invoice #2025-001</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">$2,500.00</p>
-                          <p className="text-xs text-green-500">Paid</p>
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Bright Futures</p>
-                          <p className="text-xs text-gray-500">Invoice #2025-002</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">$1,500.00</p>
-                          <p className="text-xs text-green-500">Paid</p>
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Global Services LLC</p>
-                          <p className="text-xs text-gray-500">Invoice #2025-003</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">$3,200.00</p>
-                          <p className="text-xs text-red-500">Overdue</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Notifications Tab */}
-          <TabsContent value="notifications">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Notification Center</CardTitle>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Bell className="mr-2 h-4 w-4" />
-                          Mark All as Read
-                        </Button>
-                        <Button size="sm">
-                          <Settings className="mr-2 h-4 w-4" />
-                          Notification Settings
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {mockNotifications.map((notification) => (
-                        <div key={notification.id} className={`flex p-3 rounded-md ${notification.read ? '' : 'bg-muted'}`}>
-                          {notification.type === 'message' && <MessageSquare className="h-6 w-6 text-blue-500 mr-3" />}
-                          {notification.type === 'task' && <FileCheck className="h-6 w-6 text-green-500 mr-3" />}
-                          {notification.type === 'alert' && <AlertCircle className="h-6 w-6 text-red-500 mr-3" />}
-                          {notification.type === 'system' && <Settings className="h-6 w-6 text-gray-500 mr-3" />}
-                          <div className="flex-1">
-                            <div className="flex justify-between">
-                              <h4 className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
-                                {notification.content}
-                              </h4>
-                              <span className="text-xs text-gray-500">{notification.time}</span>
-                            </div>
-                            <div className="mt-1 flex space-x-2">
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                                View
-                              </Button>
-                              {!notification.read && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                                  Mark as Read
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Notification Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Email Notifications</p>
-                          <p className="text-xs text-gray-500">Get email for important alerts</p>
-                        </div>
-                        <div>
-                          <input type="checkbox" id="email-notif" className="toggle" checked />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Client Messages</p>
-                          <p className="text-xs text-gray-500">Notification when clients message you</p>
-                        </div>
-                        <div>
-                          <input type="checkbox" id="message-notif" className="toggle" checked />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Task Reminders</p>
-                          <p className="text-xs text-gray-500">Get reminders for upcoming tasks</p>
-                        </div>
-                        <div>
-                          <input type="checkbox" id="task-notif" className="toggle" checked />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">System Updates</p>
-                          <p className="text-xs text-gray-500">Notifications about system changes</p>
-                        </div>
-                        <div>
-                          <input type="checkbox" id="system-notif" className="toggle" />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Message Templates</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Invoice Reminder</p>
-                          <p className="text-xs text-gray-500">Template for payment reminders</p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">Monthly Update</p>
-                          <p className="text-xs text-gray-500">Regular client update template</p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">New Document Request</p>
-                          <p className="text-xs text-gray-500">Request additional documents</p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Content Management Tab */}
-          <TabsContent value="content-management">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Website Content Management</CardTitle>
-                      <Button size="sm">
-                        <Eye className="mr-2 h-4 w-4" />
-                        Preview Site
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Home Page Sections</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center p-3 rounded-md border">
                             <div>
-                              <p className="font-medium">Hero Section</p>
-                              <p className="text-sm text-gray-500">Main banner and headline</p>
+                              <Label htmlFor="blog-keywords">Keywords (optional)</Label>
+                              <Input id="blog-keywords" placeholder="Enter keywords separated by commas" />
                             </div>
-                            <Button variant="outline" size="sm">Edit</Button>
-                          </div>
-                          <div className="flex justify-between items-center p-3 rounded-md border">
                             <div>
-                              <p className="font-medium">Services Section</p>
-                              <p className="text-sm text-gray-500">List of accounting services</p>
+                              <Label htmlFor="blog-audience">Target Audience</Label>
+                              <Select>
+                                <SelectTrigger id="blog-audience">
+                                  <SelectValue placeholder="Select audience" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="small-business">Small Business Owners</SelectItem>
+                                  <SelectItem value="startups">Startups</SelectItem>
+                                  <SelectItem value="individuals">Individual Taxpayers</SelectItem>
+                                  <SelectItem value="all">General Audience</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <Button variant="outline" size="sm">Edit</Button>
-                          </div>
-                          <div className="flex justify-between items-center p-3 rounded-md border">
                             <div>
-                              <p className="font-medium">Testimonials</p>
-                              <p className="text-sm text-gray-500">Client reviews and feedback</p>
+                              <Label htmlFor="blog-length">Article Length</Label>
+                              <Select>
+                                <SelectTrigger id="blog-length">
+                                  <SelectValue placeholder="Select length" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="short">Short (500 words)</SelectItem>
+                                  <SelectItem value="medium">Medium (1000 words)</SelectItem>
+                                  <SelectItem value="long">Long (1500+ words)</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <Button variant="outline" size="sm">Edit</Button>
+                            <Button className="w-full">
+                              Generate Blog Post
+                            </Button>
                           </div>
-                          <div className="flex justify-between items-center p-3 rounded-md border">
-                            <div>
-                              <p className="font-medium">Contact Form</p>
-                              <p className="text-sm text-gray-500">Inquiry and contact information</p>
-                            </div>
-                            <Button variant="outline" size="sm">Edit</Button>
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                       
-                      <Separator />
-                      
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Blog Management</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center p-3 rounded-md border">
-                            <div>
-                              <p className="font-medium">AI-Generated Draft: 2025 Tax Planning Strategies</p>
-                              <p className="text-sm text-gray-500">Generated on March 18, 2025</p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">Edit</Button>
-                              <Button size="sm">Approve & Publish</Button>
-                            </div>
+                      <Card className="mt-6">
+                        <CardHeader>
+                          <CardTitle>Blog Performance</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-52">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[
+                              { title: "Small Business Guide", views: 245 },
+                              { title: "Tax Tips 2025", views: 180 },
+                              { title: "Cloud Accounting", views: 120 }
+                            ]}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="title" />
+                              <YAxis />
+                              <Tooltip />
+                              <Bar dataKey="views" fill="hsl(var(--chart-2))" name="Views" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                        <CardFooter>
+                          <div className="w-full text-center text-sm text-muted-foreground">
+                            AI-generated posts have 35% higher engagement
                           </div>
-                          <div className="flex justify-between items-center p-3 rounded-md border">
-                            <div>
-                              <p className="font-medium">AI-Generated Draft: Understanding Cash Flow Management</p>
-                              <p className="text-sm text-gray-500">Generated on March 19, 2025</p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">Edit</Button>
-                              <Button size="sm">Approve & Publish</Button>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center p-3 rounded-md border bg-gray-50">
-                            <div>
-                              <p className="font-medium">Published: Small Business Accounting Guide</p>
-                              <p className="text-sm text-gray-500">Published on March 15, 2025</p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">View Stats</Button>
-                              <Button variant="outline" size="sm">Edit</Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        </CardFooter>
+                      </Card>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>AI Content Generator</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="blog-topic">Blog Topic</Label>
-                        <Select>
-                          <SelectTrigger id="blog-topic">
-                            <SelectValue placeholder="Select topic" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="tax">Tax Planning</SelectItem>
-                            <SelectItem value="cashflow">Cash Flow Management</SelectItem>
-                            <SelectItem value="startup">Startup Finances</SelectItem>
-                            <SelectItem value="retirement">Retirement Planning</SelectItem>
-                            <SelectItem value="custom">Custom Topic</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="blog-keywords">Keywords (optional)</Label>
-                        <Input id="blog-keywords" placeholder="Enter keywords separated by commas" />
-                      </div>
-                      <div>
-                        <Label htmlFor="blog-audience">Target Audience</Label>
-                        <Select>
-                          <SelectTrigger id="blog-audience">
-                            <SelectValue placeholder="Select audience" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="small-business">Small Business Owners</SelectItem>
-                            <SelectItem value="startups">Startups</SelectItem>
-                            <SelectItem value="individuals">Individual Taxpayers</SelectItem>
-                            <SelectItem value="all">General Audience</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="blog-length">Article Length</Label>
-                        <Select>
-                          <SelectTrigger id="blog-length">
-                            <SelectValue placeholder="Select length" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="short">Short (500 words)</SelectItem>
-                            <SelectItem value="medium">Medium (1000 words)</SelectItem>
-                            <SelectItem value="long">Long (1500+ words)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button className="w-full">
-                        Generate Blog Post
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Blog Performance</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-52">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[
-                        { title: "Small Business Guide", views: 245 },
-                        { title: "Tax Tips 2025", views: 180 },
-                        { title: "Cloud Accounting", views: 120 }
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="title" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="views" fill="hsl(var(--chart-2))" name="Views" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                  <CardFooter>
-                    <div className="w-full text-center text-sm text-muted-foreground">
-                      AI-generated posts have 35% higher engagement
-                    </div>
-                  </CardFooter>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </>
