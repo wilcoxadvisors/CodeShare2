@@ -100,6 +100,13 @@ const PublicHeader = () => {
               Contact
             </button>
             <button 
+              onClick={() => setShowConsultationForm(true)} 
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 shadow-sm font-medium" 
+              aria-label="Schedule Free Consultation"
+            >
+              Schedule Free Consultation
+            </button>
+            <button 
               onClick={openLoginModal} 
               className="px-6 py-2 bg-[#1E3A8A] text-white rounded-lg hover:bg-[#1E40AF] transition duration-200 shadow-sm" 
               aria-label="Login"
@@ -149,6 +156,15 @@ const PublicHeader = () => {
               className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-[#1E3A8A] rounded-md"
             >
               Contact
+            </button>
+            <button 
+              onClick={() => {
+                setShowConsultationForm(true);
+                setIsMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 mt-2"
+            >
+              Schedule Free Consultation
             </button>
             <button 
               onClick={openLoginModal} 
