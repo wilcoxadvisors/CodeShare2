@@ -967,7 +967,14 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({
+        username: insertUser.username,
+        password: insertUser.password,
+        email: insertUser.email,
+        name: insertUser.name,
+        role: insertUser.role,
+        active: insertUser.active ?? true
+      })
       .returning();
     return user;
   }
@@ -1019,7 +1026,20 @@ export class DatabaseStorage implements IStorage {
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
     const [entity] = await db
       .insert(entities)
-      .values(insertEntity)
+      .values({
+        name: insertEntity.name,
+        code: insertEntity.code,
+        ownerId: insertEntity.ownerId,
+        active: insertEntity.active ?? true,
+        fiscalYearStart: insertEntity.fiscalYearStart ?? "01-01",
+        fiscalYearEnd: insertEntity.fiscalYearEnd ?? "12-31",
+        taxId: insertEntity.taxId,
+        address: insertEntity.address,
+        phone: insertEntity.phone,
+        email: insertEntity.email,
+        website: insertEntity.website,
+        currency: insertEntity.currency ?? "USD"
+      })
       .returning();
     return entity;
   }
@@ -1084,7 +1104,18 @@ export class DatabaseStorage implements IStorage {
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
     const [account] = await db
       .insert(accounts)
-      .values(insertAccount)
+      .values({
+        name: insertAccount.name,
+        code: insertAccount.code,
+        type: insertAccount.type,
+        entityId: insertAccount.entityId,
+        active: insertAccount.active ?? true,
+        subtype: insertAccount.subtype,
+        isSubledger: insertAccount.isSubledger ?? false,
+        subledgerType: insertAccount.subledgerType,
+        parentId: insertAccount.parentId,
+        description: insertAccount.description
+      })
       .returning();
     return account;
   }
@@ -1134,7 +1165,23 @@ export class DatabaseStorage implements IStorage {
   async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
     const [entry] = await db
       .insert(journalEntries)
-      .values(insertEntry)
+      .values({
+        date: insertEntry.date,
+        entityId: insertEntry.entityId,
+        reference: insertEntry.reference,
+        createdBy: insertEntry.createdBy,
+        status: insertEntry.status || JournalEntryStatus.DRAFT,
+        description: insertEntry.description,
+        requestedBy: insertEntry.requestedBy || null,
+        approvedBy: insertEntry.approvedBy || null,
+        rejectedBy: insertEntry.rejectedBy || null,
+        rejectionReason: insertEntry.rejectionReason || null,
+        postedBy: insertEntry.postedBy || null,
+        postedAt: insertEntry.postedAt || null,
+        voidedBy: insertEntry.voidedBy || null,
+        voidedAt: insertEntry.voidedAt || null,
+        voidReason: insertEntry.voidReason || null
+      })
       .returning();
     return entry;
   }
@@ -1197,7 +1244,23 @@ export class DatabaseStorage implements IStorage {
   async createFixedAsset(insertAsset: InsertFixedAsset): Promise<FixedAsset> {
     const [asset] = await db
       .insert(fixedAssets)
-      .values(insertAsset)
+      .values({
+        name: insertAsset.name,
+        entityId: insertAsset.entityId,
+        description: insertAsset.description,
+        createdBy: insertAsset.createdBy,
+        status: insertAsset.status || "active",
+        acquisitionDate: insertAsset.acquisitionDate,
+        acquisitionCost: insertAsset.acquisitionCost,
+        depreciationMethod: insertAsset.depreciationMethod,
+        usefulLife: insertAsset.usefulLife,
+        assetAccountId: insertAsset.assetAccountId,
+        accumulatedDepreciationAccountId: insertAsset.accumulatedDepreciationAccountId,
+        depreciationExpenseAccountId: insertAsset.depreciationExpenseAccountId,
+        salvageValue: insertAsset.salvageValue || "0",
+        disposalDate: insertAsset.disposalDate,
+        disposalAmount: insertAsset.disposalAmount
+      })
       .returning();
     return asset;
   }

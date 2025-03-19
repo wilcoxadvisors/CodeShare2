@@ -19,7 +19,18 @@ export const users = pgTable("users", {
   role: text("role").$type<UserRole>().notNull().default(UserRole.CLIENT),
   active: boolean("active").notNull().default(true),
   lastLogin: timestamp("last_login"),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  loginCount: integer("login_count").default(0),
+  industry: text("industry"),
+  companySize: text("company_size"),
+  jobTitle: text("job_title"),
+  location: text("location"),
+  preferredLanguage: text("preferred_language").default("en"),
+  deviceInfo: text("device_info"),
+  lastSession: json("last_session"),
+  sessionCount: integer("session_count").default(0),
+  referralSource: text("referral_source"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // Entity (company) table
@@ -33,11 +44,27 @@ export const entities = pgTable("entities", {
   fiscalYearEnd: text("fiscal_year_end").notNull().default("12-31"),
   taxId: text("tax_id"),
   address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  postalCode: text("postal_code"),
   phone: text("phone"),
   email: text("email"),
   website: text("website"),
+  industry: text("industry"),
+  subIndustry: text("sub_industry"),
+  employeeCount: integer("employee_count"),
+  foundedYear: integer("founded_year"),
+  annualRevenue: text("annual_revenue"),
+  businessType: text("business_type"), // LLC, Corporation, Partnership, etc.
+  publiclyTraded: boolean("publicly_traded").default(false),
+  stockSymbol: text("stock_symbol"),
   currency: text("currency").notNull().default("USD"),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  timezone: text("timezone").default("UTC"),
+  dataCollectionConsent: boolean("data_collection_consent").default(false),
+  lastAuditDate: timestamp("last_audit_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // User Entity Access (for multi-entity support)
@@ -170,7 +197,69 @@ export const savedReports = pgTable("saved_reports", {
   filters: json("filters").notNull(),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  lastRun: timestamp("last_run")
+  lastRun: timestamp("last_run"),
+  runCount: integer("run_count").default(0),
+  exportCount: integer("export_count").default(0),
+  isPublic: boolean("is_public").default(false),
+  tags: text("tags").array()
+});
+
+// User Activity Tracking
+export const userActivityLogs = pgTable("user_activity_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(), // users, entities, accounts, journal_entries, etc.
+  resourceId: integer("resource_id"),
+  details: json("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow().notNull()
+});
+
+// Feature Usage Analytics
+export const featureUsage = pgTable("feature_usage", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id),
+  featureName: text("feature_name").notNull(),
+  usageCount: integer("usage_count").default(1),
+  firstUsed: timestamp("first_used").defaultNow().notNull(),
+  lastUsed: timestamp("last_used").defaultNow().notNull(),
+  useTime: integer("use_time"), // in seconds
+  successful: boolean("successful").default(true)
+});
+
+// Industry Benchmarks
+export const industryBenchmarks = pgTable("industry_benchmarks", {
+  id: serial("id").primaryKey(),
+  industry: text("industry").notNull(),
+  subIndustry: text("sub_industry"),
+  metricName: text("metric_name").notNull(), // revenue_growth, profit_margin, etc.
+  metricValue: numeric("metric_value").notNull(),
+  entitySizeRange: text("entity_size_range"), // small, medium, large
+  year: integer("year").notNull(),
+  quarter: integer("quarter"),
+  dataSource: text("data_source"),
+  confidenceLevel: numeric("confidence_level"), // 0-1 value representing statistical confidence
+  sampleSize: integer("sample_size"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Consent and Data Sharing Preferences
+export const dataConsent = pgTable("data_consent", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id),
+  consentType: text("consent_type").notNull(), // analytics, marketing, benchmarking, etc.
+  granted: boolean("granted").default(false),
+  grantedAt: timestamp("granted_at"),
+  revokedAt: timestamp("revoked_at"),
+  consentVersion: text("consent_version").notNull(),
+  ipAddress: text("ip_address"),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull()
 });
 
 // Schema for User insertion
@@ -215,6 +304,29 @@ export const insertFixedAssetSchema = createInsertSchema(fixedAssets).omit({
   createdAt: true
 });
 
+// Insert schemas for our analytics tables
+export const insertUserActivityLogSchema = createInsertSchema(userActivityLogs).omit({
+  id: true,
+  timestamp: true
+});
+
+export const insertFeatureUsageSchema = createInsertSchema(featureUsage).omit({
+  id: true,
+  firstUsed: true,
+  lastUsed: true
+});
+
+export const insertIndustryBenchmarkSchema = createInsertSchema(industryBenchmarks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertDataConsentSchema = createInsertSchema(dataConsent).omit({
+  id: true,
+  lastUpdated: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -235,3 +347,16 @@ export type FixedAsset = typeof fixedAssets.$inferSelect;
 export type InsertFixedAsset = z.infer<typeof insertFixedAssetSchema>;
 
 export type SavedReport = typeof savedReports.$inferSelect;
+
+// Additional types for analytics and data collection
+export type UserActivityLog = typeof userActivityLogs.$inferSelect;
+export type InsertUserActivityLog = z.infer<typeof insertUserActivityLogSchema>;
+
+export type FeatureUsage = typeof featureUsage.$inferSelect;
+export type InsertFeatureUsage = z.infer<typeof insertFeatureUsageSchema>;
+
+export type IndustryBenchmark = typeof industryBenchmarks.$inferSelect;
+export type InsertIndustryBenchmark = z.infer<typeof insertIndustryBenchmarkSchema>;
+
+export type DataConsent = typeof dataConsent.$inferSelect;
+export type InsertDataConsent = z.infer<typeof insertDataConsentSchema>;
