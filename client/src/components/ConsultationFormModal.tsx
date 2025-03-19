@@ -70,6 +70,8 @@ const ConsultationFormModal: React.FC = () => {
     }
   };
 
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+
   const {
     currentStepIndex,
     step,
@@ -82,6 +84,42 @@ const ConsultationFormModal: React.FC = () => {
     data,
     setData
   } = useMultiStepForm(FORM_STEPS, INITIAL_DATA, onSubmit);
+
+  const validateCurrentStep = () => {
+    const errors: string[] = [];
+    
+    if (currentStepIndex === 0) { // Company Information
+      if (!data.companyName) errors.push("Company Name is required");
+      if (!data.industry) errors.push("Industry is required");
+      if (!data.companySize) errors.push("Company Size is required");
+      if (!data.annualRevenue) errors.push("Annual Revenue is required");
+    } 
+    else if (currentStepIndex === 1) { // Services
+      if (data.services.length === 0) errors.push("Please select at least one service");
+    }
+    else if (currentStepIndex === 2) { // Contact Information
+      if (!data.firstName) errors.push("First Name is required");
+      if (!data.lastName) errors.push("Last Name is required");
+      if (!data.email) errors.push("Email Address is required");
+      if (!data.preferredContact) errors.push("Preferred Contact Method is required");
+    }
+    
+    setFormErrors(errors);
+    return errors.length === 0;
+  };
+
+  const handleNext = () => {
+    if (isLastStep) {
+      if (validateCurrentStep()) {
+        onSubmit(data);
+      }
+    } else {
+      if (validateCurrentStep()) {
+        next();
+        setFormErrors([]);
+      }
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -127,11 +165,23 @@ const ConsultationFormModal: React.FC = () => {
               />
             )}
             
+            {/* Display validation errors */}
+            {formErrors.length > 0 && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mt-6 mb-4">
+                <p className="font-medium mb-1">Please correct the following errors:</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {formErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
             <FormNavigation
               isFirstStep={isFirstStep}
               isLastStep={isLastStep}
               onBack={back}
-              onNext={isLastStep ? () => onSubmit(data) : next}
+              onNext={handleNext}
             />
           </form>
         </div>
