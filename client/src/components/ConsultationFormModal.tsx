@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import useMultiStepForm from '../hooks/useMultiStepForm';
-import CompanyInformationStep from './form/CompanyInformationStep';
-import ServicesSelectionStep from './form/ServicesSelectionStep';
-import ContactInformationStep from './form/ContactInformationStep';
-import FormNavigation from './form/FormNavigation';
-import FormProgress from './form/FormProgress';
-import { useUI } from '../contexts/UIContext';
+import useMultiStepForm from '../hooks/useMultiStepForm.ts';
+import CompanyInformationStep from './form/CompanyInformationStep.tsx';
+import ServicesSelectionStep from './form/ServicesSelectionStep.tsx';
+import ContactInformationStep from './form/ContactInformationStep.tsx';
+import FormNavigation from './form/FormNavigation.tsx';
+import FormProgress from './form/FormProgress.tsx';
+import { useUI } from '../contexts/UIContext.tsx';
 import axios from 'axios';
 
 interface FormData {

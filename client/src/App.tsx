@@ -454,9 +454,12 @@ function Router() {
 }
 
 function AppWithAuth() {
+  const { showConsultationForm } = useUI();
+  
   return (
     <>
       <Router />
+      {showConsultationForm && <ConsultationFormModal />}
     </>
   );
 }
