@@ -40,8 +40,6 @@ interface AuthUser {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Register account routes with enhanced error handling
-  registerAccountRoutes(app);
   // Public routes for checking API availability - must be defined before auth middleware
   app.post("/api/public/check-api", (req, res) => {
     try {
@@ -933,6 +931,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register account routes with enhanced error handling
+  registerAccountRoutes(app);
+  
   // Register the AI routes
   registerAIRoutes(app);
   
