@@ -10,10 +10,6 @@ import ContactSection from '../components/sections/ContactSection';
 import ChatWidget from '../components/common/ChatWidget';
 import { useUI } from '../contexts/UIContext';
 
-interface HomeProps {
-  setShowConsultationForm?: (show: boolean) => void;
-}
-
 interface BlogPost {
   id: number;
   title: string;
@@ -24,17 +20,13 @@ interface BlogPost {
   image: string;
 }
 
-const Home: React.FC<HomeProps> = () => {
-  const { isChatOpen, setIsChatOpen, setShowConsultationForm } = useUI();
+const Home: React.FC = () => {
+  const { isChatOpen, setIsChatOpen } = useUI();
   const [showChecklistForm, setShowChecklistForm] = useState(false);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
   // Simulating dashboard data that would normally come from an API
   const dashboardData = {
-    hero: { 
-      headline: "Financial Expertise for Your Business Success", 
-      subtext: "Professional accounting and financial services tailored for small businesses. We handle the numbers so you can focus on growth." 
-    },
     about: "At Wilcox Advisors, we specialize in financial solutions for small businesses. From startups to growing companies, we provide the expertise you need to succeed—built to scale with you every step of the way.",
   };
 

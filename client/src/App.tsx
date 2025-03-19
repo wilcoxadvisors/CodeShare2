@@ -300,7 +300,7 @@ const PublicFooter = () => {
 
 // Public website layout
 function PublicLayout({ children }: { children: React.ReactNode }) {
-  const { showConsultationForm, setShowConsultationForm } = useUI();
+  const { showConsultationForm } = useUI();
 
   return (
     <div className="flex flex-col min-h-screen">

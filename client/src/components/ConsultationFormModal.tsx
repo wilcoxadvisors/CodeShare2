@@ -44,17 +44,14 @@ const INITIAL_DATA: FormData = {
 
 const FORM_STEPS = ["Company Info", "Services", "Contact"];
 
-interface ConsultationFormModalProps {
-  setShowConsultationForm?: (show: boolean) => void;
-}
-
-const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ setShowConsultationForm }) => {
-  const { setShowConsultationForm: setShowConsultationFormContext } = useUI();
+// No props needed, we're using UIContext directly
+const ConsultationFormModal: React.FC = () => {
+  const { setShowConsultationForm } = useUI();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const closeForm = () => {
-    // Always use the context version to ensure consistency
-    setShowConsultationFormContext(false);
+    console.log("Closing consultation form via UIContext");
+    setShowConsultationForm(false);
   };
 
   const onSubmit = async (data: FormData) => {

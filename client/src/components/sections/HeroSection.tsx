@@ -1,23 +1,14 @@
 import React from 'react';
 import { useUI } from '../../contexts/UIContext';
 
-interface HeroSectionProps {
-  onConsultClick?: () => void;
-}
-
-const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
+// No props needed, we're using UIContext directly
+const HeroSection: React.FC = () => {
   const { setShowConsultationForm } = useUI();
   
-  const handleScheduleConsultation = () => {
-    // Use the context function if available
-    if (typeof setShowConsultationForm === 'function') {
-      setShowConsultationForm(true);
-    }
-    
-    // Also use prop if available (for backward compatibility)
-    if (typeof onConsultClick === 'function') {
-      onConsultClick();
-    }
+  // Simple direct function to open the consultation form
+  const openConsultationForm = () => {
+    console.log("Opening consultation form via UIContext");
+    setShowConsultationForm(true);
   };
   
   return (
@@ -39,7 +30,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onConsultClick }) => {
             </p>
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 justify-center">
               <button 
-                onClick={handleScheduleConsultation}
+                onClick={openConsultationForm}
                 className="bg-white text-[#1E3A8A] hover:bg-blue-50 transition-colors px-8 py-4 rounded font-medium text-center shadow-lg"
               >
                 Schedule Free Consultation
