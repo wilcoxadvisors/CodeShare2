@@ -27,6 +27,7 @@ import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Home from "./pages/Home";
+import Blog from "./pages/Blog";
 import ChatWidget from "./components/common/ChatWidget";
 import ConsultationFormModal from "./components/ConsultationFormModal";
 import LoginModal from "./components/LoginModal";
@@ -303,6 +304,12 @@ function Router() {
       <Route path="/">
         <PublicLayout>
           <Home />
+        </PublicLayout>
+      </Route>
+      
+      <Route path="/blog">
+        <PublicLayout>
+          <Blog />
         </PublicLayout>
       </Route>
       

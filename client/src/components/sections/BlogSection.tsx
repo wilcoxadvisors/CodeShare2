@@ -80,7 +80,7 @@ const BlogSection: React.FC<BlogSectionProps> = ({ blogPosts }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">By {post.author}</span>
                   <a 
-                    href="#" 
+                    href={`/blog`} 
                     className="text-blue-800 font-medium flex items-center hover:underline"
                   >
                     Read More
@@ -94,7 +94,7 @@ const BlogSection: React.FC<BlogSectionProps> = ({ blogPosts }) => {
         
         <div className="mt-16 text-center">
           <a 
-            href="#" 
+            href="/blog" 
             className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-blue-800 bg-white hover:bg-gray-50 transition-colors"
           >
             View All Articles
