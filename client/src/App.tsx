@@ -380,7 +380,7 @@ function Router() {
         </AppLayout>
       </Route>
       
-      <Route path="/budget-forecast">
+      <Route path="/budget-forecast-dashboard">
         <AppLayout>
           <ProtectedRoute component={BudgetForecastDashboard} />
         </AppLayout>
