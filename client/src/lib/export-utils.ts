@@ -25,8 +25,8 @@ export function exportToCSV<T>(
       })
     : data;
 
-  // Convert data to CSV
-  const csv = Papa.unparse(transformedData);
+  // Convert data to CSV using Papa.unparse with type assertion
+  const csv = Papa.unparse(transformedData as any);
   
   // Create a Blob containing the CSV data
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
