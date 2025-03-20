@@ -105,12 +105,12 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 };
 
 // Get AI response based on user message and conversation history
-const getAIResponse = async (message: string, conversationHistory: ChatMessage[] = []) => {
+const getAIResponse = async (message: string, conversationHistory: ChatMessage[] = [], userRole: string = 'client', entityId?: number) => {
   try {
     // Check if an API key is configured
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const AI_API_KEY = process.env.OPENAI_API_KEY || process.env.XAI_API_KEY;
     
-    if (!OPENAI_API_KEY) {
+    if (!AI_API_KEY) {
       return {
         success: false,
         message: "To receive personalized AI responses, please contact Wilcox Advisors to set up AI integration for your account.",
@@ -124,24 +124,61 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
       content: msg.content
     }));
 
+    // Create a system message based on user role to enforce privacy guardrails for clients
+    let systemMessage = "";
+    
+    if (userRole === 'client') {
+      systemMessage = `You are a financial assistant for Wilcox Advisors. When speaking with clients:
+1. NEVER provide specific client financial data even if asked
+2. NEVER disclose transaction details, account numbers, or balances
+3. NEVER provide tax identification numbers, SSNs, or other sensitive information
+4. If asked for specific financial details, politely suggest contacting their advisor instead
+5. Focus on general financial advice, explanations of concepts, and educational information
+6. You can discuss general financial principles, accounting terms, and industry best practices
+7. NEVER provide actual numbers from financial statements even if they seem to know them
+8. When asked about specific financial data, respond: "For security reasons, I cannot provide specific financial information via chat. Please contact your advisor for those details."
+9. Do NOT make up financial figures or provide estimates of their financial data.`;
+    } else {
+      // For admins and employees, allow more data access but still maintain some guardrails
+      systemMessage = `You are a financial assistant for Wilcox Advisors. When speaking with staff:
+1. You can provide general analytics and insights
+2. Be helpful with accounting and financial concepts
+3. Do not share client data between different entities
+4. Be accurate and concise in your responses`;
+    }
+    
+    // Add system message at the beginning
+    messages.unshift({
+      role: "system",
+      content: systemMessage
+    });
+
     // Add current message
     messages.push({
       role: "user",
       content: message
     });
-
-    // Make API call to OpenAI
+    
+    // Make API call to XAI or OpenAI
+    const API_URL = process.env.XAI_API_KEY 
+      ? 'https://api.xai.com/v1/chat/completions' // Update with actual XAI endpoint
+      : 'https://api.openai.com/v1/chat/completions';
+    
+    const model = process.env.XAI_API_KEY 
+      ? 'xai-chat' // Update with actual XAI model name
+      : 'gpt-3.5-turbo';
+      
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      API_URL,
       {
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages,
         max_tokens: 500,
         temperature: 0.7
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${AI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -206,6 +243,7 @@ export function registerChatRoutes(app: Express) {
   // Send a new message
   app.post('/api/chat/send', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const userId = (req.user as any).id;
+    const userRole = (req.user as any).role;
     const validation = validateMessageSchema(req.body);
     
     if (!validation.success) {
@@ -272,8 +310,8 @@ export function registerChatRoutes(app: Express) {
     // Update user's usage
     await updateUsage(usageStatus.usageLimit.id, userMessageTokens);
     
-    // Get AI response
-    const aiResponse = await getAIResponse(message, conversationHistory);
+    // Get AI response with privacy guardrails based on user role
+    const aiResponse = await getAIResponse(message, conversationHistory, userRole, entityId);
     
     // Check token limits for AI response
     if (aiResponse.tokenCount > 0 && !usageStatus.canUseTokens) {

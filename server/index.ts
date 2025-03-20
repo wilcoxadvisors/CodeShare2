@@ -5,6 +5,14 @@ import { initDatabase } from "./initDb";
 import { errorHandler, notFoundHandler } from "./errorHandling";
 import { registerFormRoutes } from "./formRoutes";
 import { registerChatRoutes } from "./chatRoutes";
+import { registerAIRoutes } from "./aiRoutes";
+import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
+import { DatabaseStorage, MemStorage, IStorage } from "./storage";
+
+// Create and export storage instance that will be used by other modules
+export const storage: IStorage = process.env.NODE_ENV === 'production' 
+  ? new DatabaseStorage()
+  : new MemStorage();
 
 const app = express();
 app.use(express.json({
@@ -76,6 +84,12 @@ app.use((req, res, next) => {
     
     // Register chat routes
     registerChatRoutes(app);
+    
+    // Register AI routes
+    registerAIRoutes(app);
+    
+    // Register AI analytics routes with broader data access
+    registerAIAnalyticsRoutes(app);
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
