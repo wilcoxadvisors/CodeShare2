@@ -21,6 +21,7 @@ import AccountsReceivable from "./pages/AccountsReceivable";
 import FixedAssets from "./pages/FixedAssets";
 import DocumentAnalysis from "./pages/DocumentAnalysis";
 import AIAnalytics from "./pages/AIAnalytics";
+import BudgetForecastDashboard from "./pages/BudgetForecastDashboard";
 import ManualJournalEntry from "./components/ManualJournalEntry";
 import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
@@ -375,6 +376,12 @@ function Router() {
       <Route path="/ai-analytics">
         <AppLayout>
           <ProtectedRoute component={AIAnalytics} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/budget-forecast">
+        <AppLayout>
+          <ProtectedRoute component={BudgetForecastDashboard} />
         </AppLayout>
       </Route>
       

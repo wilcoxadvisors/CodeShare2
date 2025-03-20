@@ -12,7 +12,9 @@ import {
   Settings,
   LogOut,
   FileText,
-  Sparkles
+  Sparkles,
+  LineChart,
+  BarChart
 } from 'lucide-react';
 
 function Sidebar() {
@@ -116,6 +118,12 @@ function Sidebar() {
               path="/ai-analytics" 
               icon={<Sparkles className="h-5 w-5 mr-2" />} 
               label="AI Analytics" 
+            />
+            
+            <NavItem 
+              path="/budget-forecast" 
+              icon={<BarChart className="h-5 w-5 mr-2" />} 
+              label="Budget & Forecast" 
             />
             
             <div className="mt-6 border-t border-blue-700 pt-4">
