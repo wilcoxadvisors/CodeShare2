@@ -348,7 +348,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
             onClick={startNewConversation} 
             className="text-blue-600 hover:text-blue-800"
           >
-            New Chat
+            {user ? 'New Chat' : 'Reset Chat'}
           </button>
         </div>
       </div>
@@ -381,8 +381,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
         </div>
       </div>
       
-      {/* Conversation sidebar for medium screens and up */}
-      {conversations.length > 0 && (
+      {/* Conversation sidebar for medium screens and up - only for authenticated users */}
+      {user && conversations.length > 0 && (
         <div className="hidden md:block border-l border-gray-200 w-1/3 absolute right-0 top-14 bottom-16 bg-gray-50 overflow-y-auto">
           <div className="p-2">
             <h4 className="font-semibold text-sm px-2 py-1">Conversations</h4>
