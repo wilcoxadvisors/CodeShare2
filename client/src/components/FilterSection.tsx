@@ -1,5 +1,22 @@
 import React, { useState, FormEvent } from 'react';
-import { Account } from '@shared/schema';
+import { AccountType } from '@shared/schema';
+
+// Define local Account interface compatible with the component needs
+interface Account {
+  id: number;
+  code: string;
+  name: string;
+  entityId: number;
+  type: AccountType;
+  description: string | null;
+  active: boolean;
+  createdAt?: Date;
+  subtype?: string | null;
+  isSubledger?: boolean;
+  subledgerType?: string | null;
+  parentId?: number | null;
+  [key: string]: any;
+};
 
 interface FilterSectionProps {
   accounts: Account[];

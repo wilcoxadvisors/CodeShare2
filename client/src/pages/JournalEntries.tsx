@@ -43,6 +43,11 @@ interface Account {
   type: AccountType;
   description: string | null;
   active: boolean;
+  createdAt: Date; // Make createdAt required, not optional
+  subtype: string | null;
+  isSubledger: boolean;
+  subledgerType: string | null;
+  parentId: number | null;
   [key: string]: any;
 }
 
@@ -65,10 +70,25 @@ function JournalEntries() {
     status: ""
   });
 
-  const { data: accounts } = useQuery<Account[]>({
+  // Query accounts from API and transform them to match our interface requirements
+  const { data: accountsData } = useQuery({
     queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ["no-entity-selected"],
     enabled: !!currentEntity
   });
+  
+  // Transform accounts data to ensure it matches our interface requirements
+  const accounts = useMemo(() => {
+    if (!accountsData) return [];
+    return accountsData.map(account => ({
+      ...account,
+      // Ensure required fields have values if they are null/undefined in the API response
+      createdAt: account.createdAt || new Date(),
+      subtype: account.subtype || null,
+      isSubledger: account.isSubledger || false,
+      subledgerType: account.subledgerType || null,
+      parentId: account.parentId || null
+    })) as Account[];
+  }, [accountsData]);
 
   const { data: journalEntries, isLoading, refetch } = useQuery<JournalEntry[]>({
     queryKey: [

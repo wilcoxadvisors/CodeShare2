@@ -1,7 +1,24 @@
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import { Account, JournalEntryStatus } from '@shared/schema';
+import { JournalEntryStatus, AccountType } from '@shared/schema';
+
+// Define local Account interface compatible with the component needs
+interface Account {
+  id: number;
+  code: string;
+  name: string;
+  entityId: number;
+  type: AccountType;
+  description: string | null;
+  active: boolean;
+  createdAt?: Date;
+  subtype?: string | null;
+  isSubledger?: boolean;
+  subledgerType?: string | null;
+  parentId?: number | null;
+  [key: string]: any;
+}
 import { X, Plus, FileUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,11 +115,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   
   const createEntry = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(
-        "POST", 
-        `/api/entities/${entityId}/journal-entries`, 
+      return await apiRequest({
+        method: "POST", 
+        url: `/api/entities/${entityId}/journal-entries`, 
         data
-      );
+      });
     },
     onSuccess: () => {
       toast({
@@ -153,11 +170,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(
-        "PUT", 
-        `/api/entities/${entityId}/journal-entries/${existingEntry.id}`, 
+      return await apiRequest({
+        method: "PUT", 
+        url: `/api/entities/${entityId}/journal-entries/${existingEntry?.id}`, 
         data
-      );
+      });
     },
     onSuccess: () => {
       toast({
