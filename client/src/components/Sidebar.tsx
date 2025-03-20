@@ -28,6 +28,7 @@ function Sidebar() {
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
     await logout();
+    navigate('/');
   };
 
   const handleNavigation = (path: string) => (e: React.MouseEvent) => {
@@ -59,7 +60,7 @@ function Sidebar() {
         <div className="flex flex-col flex-grow overflow-y-auto">
           <nav className="flex-1 px-3 py-4 space-y-1.5">
             <NavItem 
-              path="/" 
+              path="/dashboard" 
               icon={<LayoutDashboard className="h-5 w-5 mr-2" />} 
               label="Dashboard" 
             />
@@ -121,7 +122,7 @@ function Sidebar() {
             />
             
             <NavItem 
-              path="/budget-forecast" 
+              path="/budget-forecast-dashboard" 
               icon={<BarChart className="h-5 w-5 mr-2" />} 
               label="Budget & Forecast" 
             />
