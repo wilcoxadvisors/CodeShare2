@@ -327,6 +327,74 @@ export const insertDataConsentSchema = createInsertSchema(dataConsent).omit({
   lastUpdated: true
 });
 
+// Chat message roles
+export enum ChatMessageRole {
+  USER = "user",
+  ASSISTANT = "assistant"
+}
+
+// Chat conversation table
+export const chatConversations = pgTable("chat_conversations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id),
+  title: text("title"),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  totalMessages: integer("total_messages").default(0).notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Chat messages table
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => chatConversations.id).notNull(),
+  userId: integer("user_id").references(() => users.id),
+  role: text("role").$type<ChatMessageRole>().notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  tokenCount: integer("token_count").default(0)
+});
+
+// Chat usage limits table
+export const chatUsageLimits = pgTable("chat_usage_limits", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id),
+  maxMessagesPerDay: integer("max_messages_per_day").default(50).notNull(),
+  maxTokensPerDay: integer("max_tokens_per_day").default(5000).notNull(),
+  limitResetTime: timestamp("limit_reset_time").notNull(),
+  messagesUsedToday: integer("messages_used_today").default(0).notNull(),
+  tokensUsedToday: integer("tokens_used_today").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Insert schemas for chat tables
+export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({
+  id: true,
+  lastMessageAt: true,
+  totalMessages: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertChatUsageLimitSchema = createInsertSchema(chatUsageLimits).omit({
+  id: true,
+  messagesUsedToday: true,
+  tokensUsedToday: true,
+  lastUsedAt: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -360,6 +428,16 @@ export type InsertIndustryBenchmark = z.infer<typeof insertIndustryBenchmarkSche
 
 export type DataConsent = typeof dataConsent.$inferSelect;
 export type InsertDataConsent = z.infer<typeof insertDataConsentSchema>;
+
+// Chat types
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertChatConversation = z.infer<typeof insertChatConversationSchema>;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+export type ChatUsageLimit = typeof chatUsageLimits.$inferSelect;
+export type InsertChatUsageLimit = z.infer<typeof insertChatUsageLimitSchema>;
 
 // Contact Form Submissions
 export const contactSubmissions = pgTable("contact_submissions", {
