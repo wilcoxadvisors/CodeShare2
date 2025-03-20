@@ -330,32 +330,36 @@ export class MemStorage implements IStorage {
         code: 'SALE', 
         name: 'Sales Journal', 
         type: JournalType.SALE, 
-        description: 'For recording sales transactions'
+        description: 'For recording sales transactions',
+        defaultAccountId: null
       },
       { 
         code: 'PURCH', 
         name: 'Purchase Journal', 
         type: JournalType.PURCHASE, 
-        description: 'For recording purchase transactions'
+        description: 'For recording purchase transactions',
+        defaultAccountId: null
       },
       { 
         code: 'CASH', 
         name: 'Cash Journal', 
         type: JournalType.CASH, 
-        description: 'For recording cash transactions'
+        description: 'For recording cash transactions',
+        defaultAccountId: null
       },
       { 
         code: 'BANK', 
         name: 'Bank Journal', 
         type: JournalType.BANK, 
-        description: 'For recording bank transactions'
+        description: 'For recording bank transactions',
+        defaultAccountId: null
       },
       { 
         code: 'GEN', 
         name: 'General Journal', 
         type: JournalType.GENERAL, 
         description: 'For recording general transactions',
-        default: true
+        defaultAccountId: null
       }
     ];
     
@@ -367,25 +371,31 @@ export class MemStorage implements IStorage {
         name: journal.name,
         code: journal.code,
         type: journal.type,
-        active: true,
-        default: journal.default || false,
         description: journal.description || null,
-        sequence: null,
-        entryNumbering: 'auto',
-        prefixPattern: null,
-        nextNumber: 1,
-        useDates: true,
-        restrictToAccounts: false,
-        allowedAccountIds: [],
-        requireBalanced: true,
-        requireApproval: false,
+        defaultAccountId: journal.defaultAccountId,
+        suspenseAccountId: null,
+        isActive: true,
+        showInDashboard: true,
+        sequence: 10,
+        sequencePrefix: null,
+        color: "#4A6CF7",
+        createdBy: adminUser.id,
         createdAt: new Date(),
-        updatedAt: null
+        updatedAt: new Date()
       };
       this.journals.set(newJournal.id, newJournal);
     });
     
     // Create sample journal entries
+    // Get default journals for reference
+    const cashJournal = Array.from(this.journals.values()).find(j => j.type === JournalType.CASH);
+    const salesJournal = Array.from(this.journals.values()).find(j => j.type === JournalType.SALE);
+    const purchaseJournal = Array.from(this.journals.values()).find(j => j.type === JournalType.PURCHASE);
+    const generalJournal = Array.from(this.journals.values()).find(j => j.type === JournalType.GENERAL);
+    
+    // Default to general journal if others aren't found
+    const defaultJournalId = generalJournal ? generalJournal.id : 1;
+    
     const entries = [
       {
         reference: 'JE-2023-0045',
@@ -393,6 +403,7 @@ export class MemStorage implements IStorage {
         description: 'Client payment - ABC Corp',
         status: JournalEntryStatus.POSTED,
         createdBy: adminUser.id,
+        journalId: cashJournal ? cashJournal.id : defaultJournalId,
         lines: [
           { accountCode: '1000', debit: 5000, credit: 0, description: 'Client payment - ABC Corp' },
           { accountCode: '1200', debit: 0, credit: 5000, description: 'Client payment - ABC Corp' }
@@ -404,6 +415,7 @@ export class MemStorage implements IStorage {
         description: 'Office supplies - Vendor XYZ',
         status: JournalEntryStatus.POSTED,
         createdBy: adminUser.id,
+        journalId: purchaseJournal ? purchaseJournal.id : defaultJournalId,
         lines: [
           { accountCode: '2000', debit: 750, credit: 0, description: 'Office supplies - Vendor XYZ' },
           { accountCode: '6150', debit: 0, credit: 750, description: 'Office supplies - Vendor XYZ' }
@@ -415,6 +427,7 @@ export class MemStorage implements IStorage {
         description: 'New computer purchase',
         status: JournalEntryStatus.DRAFT,
         createdBy: adminUser.id,
+        journalId: generalJournal ? generalJournal.id : defaultJournalId,
         lines: [
           { accountCode: '1500', debit: 2200, credit: 0, description: 'New computer purchase' },
           { accountCode: '1000', debit: 0, credit: 2200, description: 'New computer purchase' }
@@ -426,10 +439,15 @@ export class MemStorage implements IStorage {
       const journalEntry: JournalEntry = {
         id: this.currentJournalEntryId++,
         entityId: defaultEntity.id,
+        journalId: entry.journalId,
         reference: entry.reference,
         date: entry.date,
         description: entry.description,
         status: entry.status,
+        needsReview: false,
+        isRecurring: false,
+        recurringFrequency: null,
+        recurringEndDate: null,
         createdBy: entry.createdBy,
         requestedBy: null,
         requestedAt: null,
@@ -465,6 +483,15 @@ export class MemStorage implements IStorage {
             debit: line.debit.toString(),
             credit: line.credit.toString(),
             entityId: defaultEntity.id,
+            date: null,
+            lineNo: null,
+            reference: null,
+            taxId: null,
+            taxAmount: null,
+            reconciled: false,
+            reconciledAt: null,
+            reconciledBy: null,
+            reconciledWith: null,
             createdAt: new Date()
           };
           this.journalEntryLines.set(journalEntryLine.id, journalEntryLine);
@@ -673,20 +700,17 @@ export class MemStorage implements IStorage {
       name: insertJournal.name,
       code: insertJournal.code,
       type: insertJournal.type as JournalType,
-      active: insertJournal.active !== undefined ? insertJournal.active : true,
-      default: insertJournal.default !== undefined ? insertJournal.default : false,
       description: insertJournal.description || null,
-      sequence: insertJournal.sequence || null,
-      entryNumbering: insertJournal.entryNumbering || 'auto',
-      prefixPattern: insertJournal.prefixPattern || null,
-      nextNumber: insertJournal.nextNumber || 1,
-      useDates: insertJournal.useDates !== undefined ? insertJournal.useDates : true,
-      restrictToAccounts: insertJournal.restrictToAccounts || false,
-      allowedAccountIds: insertJournal.allowedAccountIds || [],
-      requireBalanced: insertJournal.requireBalanced !== undefined ? insertJournal.requireBalanced : true,
-      requireApproval: insertJournal.requireApproval !== undefined ? insertJournal.requireApproval : false,
+      defaultAccountId: insertJournal.defaultAccountId || null,
+      suspenseAccountId: insertJournal.suspenseAccountId || null,
+      isActive: insertJournal.isActive !== undefined ? insertJournal.isActive : true,
+      showInDashboard: insertJournal.showInDashboard !== undefined ? insertJournal.showInDashboard : true,
+      sequence: insertJournal.sequence || 10,
+      sequencePrefix: insertJournal.sequencePrefix || null,
+      color: insertJournal.color || "#4A6CF7",
+      createdBy: insertJournal.createdBy,
       createdAt: new Date(),
-      updatedAt: null
+      updatedAt: new Date()
     };
     
     this.journals.set(id, journal);
@@ -742,10 +766,15 @@ export class MemStorage implements IStorage {
     const journalEntry = {
       id, 
       entityId: insertEntry.entityId,
+      journalId: insertEntry.journalId,
       date: insertEntry.date,
       reference: insertEntry.reference,
       description: insertEntry.description || null,
       status: insertEntry.status as JournalEntryStatus,
+      needsReview: insertEntry.needsReview || false,
+      isRecurring: insertEntry.isRecurring || false,
+      recurringFrequency: insertEntry.recurringFrequency || null,
+      recurringEndDate: insertEntry.recurringEndDate || null,
       createdBy: insertEntry.createdBy,
       requestedBy: insertEntry.requestedBy || null,
       requestedAt: null as Date | null,
@@ -804,6 +833,15 @@ export class MemStorage implements IStorage {
       description: insertLine.description || null,
       debit: insertLine.debit || "0",
       credit: insertLine.credit || "0",
+      date: insertLine.date || null,
+      lineNo: insertLine.lineNo || null,
+      reference: insertLine.reference || null,
+      taxId: insertLine.taxId || null,
+      taxAmount: insertLine.taxAmount || null,
+      reconciled: insertLine.reconciled || false,
+      reconciledAt: insertLine.reconciledAt || null,
+      reconciledBy: insertLine.reconciledBy || null,
+      reconciledWith: insertLine.reconciledWith || null,
       createdAt: new Date() 
     };
     this.journalEntryLines.set(id, journalEntryLine);
