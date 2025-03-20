@@ -431,9 +431,7 @@ export async function migrateTables() {
         updated_at TIMESTAMP
       );
       
-      -- Update the existing consultation_submissions table if it exists
-      DROP TABLE IF EXISTS consultation_submissions;
-      
+      -- Create consultation_submissions table if it doesn't exist
       CREATE TABLE IF NOT EXISTS consultation_submissions (
         id SERIAL PRIMARY KEY,
         company_name TEXT NOT NULL,
@@ -450,7 +448,8 @@ export async function migrateTables() {
         ip_address TEXT,
         user_agent TEXT,
         status TEXT NOT NULL DEFAULT 'unread',
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
       );
     `);
 
@@ -785,6 +784,87 @@ export async function migrateTables() {
         -- Rename updated_at to updatedAt
         BEGIN
           ALTER TABLE budget_documents RENAME COLUMN updated_at TO "updatedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Consultation submissions table fixes
+        -- Rename company_name to companyName
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN company_name TO "companyName";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename company_size to companySize
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN company_size TO "companySize";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename annual_revenue to annualRevenue
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN annual_revenue TO "annualRevenue";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename first_name to firstName
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN first_name TO "firstName";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename last_name to lastName
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN last_name TO "lastName";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename preferred_contact to preferredContact
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN preferred_contact TO "preferredContact";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename ip_address to ipAddress
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN ip_address TO "ipAddress";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename user_agent to userAgent
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN user_agent TO "userAgent";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_at to createdAt
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN created_at TO "createdAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename updated_at to updatedAt
+        BEGIN
+          ALTER TABLE consultation_submissions RENAME COLUMN updated_at TO "updatedAt";
         EXCEPTION
           WHEN undefined_column THEN NULL;
           WHEN duplicate_column THEN NULL;
