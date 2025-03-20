@@ -118,6 +118,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
       setUsageStats(stats);
     } catch (error) {
       console.error('Failed to load usage stats:', error);
+      // Set default generous limits for users when we can't load stats
+      setUsageStats({
+        remainingMessages: 1000,
+        remainingTokens: 100000,
+        maxMessagesPerDay: 1000,
+        maxTokensPerDay: 100000
+      });
     }
   };
   

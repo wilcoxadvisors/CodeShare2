@@ -96,8 +96,24 @@ const updateUsage = async (usageLimitId: number, messageTokens: number) => {
     .where(eq(chatUsageLimits.id, usageLimitId));
 };
 
-// Authentication middleware
+// Authentication middleware with fallback for public chatting
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
+  // Allow chat to work even if not authenticated
+  if (req.path === '/api/chat/send') {
+    // For unauthenticated users, use a guest user role
+    if (!req.isAuthenticated()) {
+      req.user = {
+        id: 0, // Guest user ID
+        role: 'guest', // Guest role
+        username: 'guest',
+        name: 'Guest User',
+        email: 'guest@example.com'
+      };
+    }
+    return next();
+  }
+  
+  // For other endpoints, require authentication as usual
   if (req.isAuthenticated()) {
     return next();
   }
@@ -242,8 +258,9 @@ export function registerChatRoutes(app: Express) {
 
   // Send a new message
   app.post('/api/chat/send', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req.user as any).id;
-    const userRole = (req.user as any).role;
+    // For unauthenticated guest users, provide defaults to make chat work
+    const userId = (req.user as any)?.id || 0;
+    const userRole = (req.user as any)?.role || 'guest';
     const validation = validateMessageSchema(req.body);
     
     if (!validation.success) {
