@@ -176,7 +176,7 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
     });
     
     // XAI specific implementation
-    const API_URL = 'https://api.x.ai/v1/chat/completions';
+    const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
     const model = 'grok-2-1212';
       
     const response = await axios.post(
@@ -189,7 +189,7 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
       },
       {
         headers: {
-          'Authorization': `Bearer ${XAI_API_KEY}`,
+          'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
