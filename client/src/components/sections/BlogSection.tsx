@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { Link } from 'wouter';
 
 interface BlogPost {
   id: number;
@@ -79,13 +80,13 @@ const BlogSection: React.FC<BlogSectionProps> = ({ blogPosts }) => {
                 <p className="text-gray-600 mb-4">{post.excerpt}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">By {post.author}</span>
-                  <a 
-                    href={`/blog`} 
+                  <Link 
+                    to="/blog" 
                     className="text-blue-800 font-medium flex items-center hover:underline"
                   >
                     Read More
                     <ChevronRight className="h-4 w-4 ml-1" />
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -93,13 +94,13 @@ const BlogSection: React.FC<BlogSectionProps> = ({ blogPosts }) => {
         </div>
         
         <div className="mt-16 text-center">
-          <a 
-            href="/blog" 
+          <Link 
+            to="/blog" 
             className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-blue-800 bg-white hover:bg-gray-50 transition-colors"
           >
             View All Articles
             <ChevronRight className="h-5 w-5 ml-2" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
