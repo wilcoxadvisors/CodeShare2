@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useEntity } from '../contexts/EntityContext';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { apiRequest } from '@/lib/queryClient';
 import { z } from 'zod';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, ArrowDownToLine, Trash2 } from 'lucide-react';
+import { PlusCircle, ArrowDownToLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AccountType } from '@shared/schema';
-import { FormContainer } from '@/components/common';
-import { TextField, SelectField } from '@/components/common';
+import { FormContainer, TextField, SelectField } from '@/components/common';
 import { useFormState } from '@/hooks/useFormState';
 
 function FixedAssets() {
@@ -307,6 +306,7 @@ function FixedAssets() {
           <FormContainer onSubmit={handleSubmit} formError={formError}>
             <div className="grid gap-4 py-4">
               <TextField
+                id="name"
                 name="name"
                 label="Asset Name"
                 value={formData.name}
@@ -316,6 +316,7 @@ function FixedAssets() {
               />
               
               <TextField
+                id="description"
                 name="description"
                 label="Description"
                 value={formData.description}
@@ -324,6 +325,7 @@ function FixedAssets() {
               
               <div className="grid grid-cols-2 gap-4">
                 <TextField
+                  id="acquisitionDate"
                   name="acquisitionDate"
                   label="Acquisition Date"
                   type="date"
