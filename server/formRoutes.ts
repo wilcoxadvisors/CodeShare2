@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { storage } from "./index";
+import { withTransaction } from "./db";
 import { 
   insertContactSubmissionSchema, 
   insertChecklistSubmissionSchema, 
@@ -468,7 +469,25 @@ export function registerFormRoutes(app: Express) {
       return throwBadRequest("isActive is required and must be a boolean");
     }
     
-    const updatedFile = await storage.updateChecklistFile(id, isActive);
+    // Use transaction to ensure data integrity when updating file status
+    const updatedFile = await withTransaction(async (tx: typeof db) => {
+      // If setting this file as active, deactivate all other files
+      if (isActive) {
+        // Get the current active files 
+        const activeFiles = await storage.getChecklistFiles();
+        
+        // Deactivate all other files
+        for (const activeFile of activeFiles) {
+          if (activeFile.id !== id && activeFile.isActive) {
+            await storage.updateChecklistFile(activeFile.id, false);
+          }
+        }
+      }
+      
+      // Update this file's status
+      const result = await storage.updateChecklistFile(id, isActive);
+      return result;
+    });
     
     if (!updatedFile) {
       return res.status(404).json({ message: "Checklist file not found" });
@@ -496,8 +515,23 @@ export function registerFormRoutes(app: Express) {
       return res.status(404).json({ message: "Checklist file not found" });
     }
     
-    // Delete the file
-    await storage.deleteChecklistFile(id);
+    // Use transaction to ensure data integrity when deleting a file
+    await withTransaction(async (tx) => {
+      // If this is the active file, we need to be careful
+      if (file.isActive) {
+        // Find another file to set as active (if any)
+        const otherFiles = await storage.getChecklistFiles();
+        const alternativeFile = otherFiles.find(f => f.id !== id);
+        
+        // If there's another file, make it active
+        if (alternativeFile) {
+          await storage.updateChecklistFile(alternativeFile.id, true);
+        }
+      }
+      
+      // Now delete the file
+      await storage.deleteChecklistFile(id);
+    });
     
     // Send email notification
     await sendEmailNotification(
