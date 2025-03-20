@@ -16,10 +16,10 @@ interface AuthUser {
 
 // Authentication middleware
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
   }
-  next();
+  return res.status(401).json({ message: 'Unauthorized' });
 };
 
 // Initialize ML Service with storage
@@ -57,7 +57,7 @@ export function registerForecastRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/entities/:entityId/forecasts', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
-    const user = req.session!.user as AuthUser;
+    const user = req.user as AuthUser;
     
     try {
       const forecastData = insertForecastSchema.parse({
@@ -81,7 +81,7 @@ export function registerForecastRoutes(app: Express, storage: IStorage) {
    */
   app.put('/api/entities/:entityId/forecasts/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const user = req.session!.user as AuthUser;
+    const user = req.user as AuthUser;
     
     // Check if the forecast exists
     const existingForecast = await storage.getForecast(id);
@@ -172,7 +172,7 @@ export function registerForecastRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/entities/:entityId/forecasts/create-from-generated', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
-    const user = req.session!.user as AuthUser;
+    const user = req.user as AuthUser;
     const { name, description, startDate, endDate, forecastData, scenarioType } = req.body;
     
     if (!forecastData) {

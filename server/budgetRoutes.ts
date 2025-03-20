@@ -15,10 +15,10 @@ interface AuthUser {
 
 // Authentication middleware
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
   }
-  next();
+  return res.status(401).json({ message: 'Unauthorized' });
 };
 
 export function registerBudgetRoutes(app: Express, storage: IStorage) {
@@ -58,7 +58,7 @@ export function registerBudgetRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/entities/:entityId/budgets', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
-    const user = req.session!.user as AuthUser;
+    const user = req.user as AuthUser;
     
     try {
       const budgetData = insertBudgetSchema.parse({
@@ -82,7 +82,7 @@ export function registerBudgetRoutes(app: Express, storage: IStorage) {
    */
   app.put('/api/entities/:entityId/budgets/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const user = req.session!.user as AuthUser;
+    const user = req.user as AuthUser;
     
     // Check if the budget exists
     const existingBudget = await storage.getBudget(id);
