@@ -74,7 +74,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
   // Load messages when active conversation changes
   useEffect(() => {
     if (activeConversation) {
-      loadMessages(activeConversation);
+      // Check if conversation exists in the list before trying to load messages
+      const conversationExists = conversations.some(convo => convo.id === activeConversation);
+      
+      if (conversationExists) {
+        loadMessages(activeConversation);
+      } else {
+        // If conversation doesn't exist (might have been deleted), start new conversation
+        startNewConversation();
+      }
     } else if (conversations.length > 0) {
       // Set first conversation as active if available
       setActiveConversation(conversations[0].id);
