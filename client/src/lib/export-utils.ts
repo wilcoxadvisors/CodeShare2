@@ -53,10 +53,138 @@ export function exportToCSV<T>(
 }
 
 /**
+ * Parse CSV file and return structured data
+ * Optimized for fast processing of large files using worker threads
+ * 
+ * @param file - The CSV file to import
+ * @param config - Configuration options for parsing
+ * @returns Promise resolving to the parsed data
+ */
+export function importFromCSV<T>(
+  file: File,
+  config: {
+    header?: boolean;
+    worker?: boolean;
+    transformHeader?: (header: string) => string;
+    skipFirstN?: number;
+    onProgress?: (progress: { processed: number; total: number }) => void;
+  } = {}
+): Promise<{
+  data: T[];
+  errors: Papa.ParseError[];
+  meta: Papa.ParseMeta;
+}> {
+  const {
+    header = true,
+    worker = true,
+    transformHeader,
+    skipFirstN = 0,
+    onProgress
+  } = config;
+  
+  return new Promise((resolve, reject) => {
+    let rowCount = 0;
+    const totalRows = 0; // Will be estimated by PapaParse
+    
+    Papa.parse(file, {
+      header,
+      worker, // Use worker threads for better performance with large files
+      skipEmptyLines: true,
+      delimiter: ",", // Explicitly set delimiter for better performance
+      dynamicTyping: true, // Automatically convert to numbers where appropriate
+      
+      // Transform headers if callback provided
+      transformHeader: transformHeader || undefined,
+      
+      // Called on each chunk when using worker threads
+      chunk: function(results: Papa.ParseResult<any>, parser: any) {
+        if (skipFirstN > 0 && rowCount < skipFirstN) {
+          // Skip initial rows if needed
+          results.data = results.data.slice(Math.min(skipFirstN - rowCount, results.data.length));
+          rowCount += skipFirstN;
+        }
+        
+        rowCount += results.data.length;
+        
+        if (onProgress) {
+          onProgress({
+            processed: rowCount,
+            total: totalRows || file.size / 100 // Rough estimate if totalRows not known
+          });
+        }
+      },
+      
+      // Triggered when parsing is complete
+      complete: function(results: Papa.ParseResult<any>) {
+        resolve({
+          data: results.data as T[],
+          errors: results.errors,
+          meta: results.meta
+        });
+      },
+      
+      // Triggered on error
+      error: function(error: Papa.ParseError) {
+        reject(error);
+      }
+    });
+  });
+}
+
+/**
  * Format date for use in filenames
  * @returns formatted date string (YYYY-MM-DD)
  */
 export function getFormattedDateForFilename(): string {
   const now = new Date();
   return now.toISOString().split('T')[0];
+}
+
+/**
+ * Generate a CSV template for journal entries
+ * @param accounts - List of accounts to include in the template
+ * @returns CSV template as string
+ */
+export function generateJournalEntryTemplate(accounts: { id: number; code: string; name: string }[]): string {
+  // Define the CSV header
+  const header = [
+    'Reference', 
+    'Date (YYYY-MM-DD)', 
+    'Description', 
+    'Account Code', 
+    'Account Name', 
+    'Debit Amount', 
+    'Credit Amount', 
+    'Line Description'
+  ];
+  
+  // Example template data
+  const templateData = [
+    [
+      'INV-2023-001', 
+      '2023-01-15', 
+      'Invoice payment', 
+      accounts.length > 0 ? accounts[0].code : '', 
+      accounts.length > 0 ? accounts[0].name : '', 
+      '1000.00', 
+      '', 
+      'Payment received'
+    ],
+    [
+      'INV-2023-001', 
+      '2023-01-15', 
+      'Invoice payment', 
+      accounts.length > 1 ? accounts[1].code : '', 
+      accounts.length > 1 ? accounts[1].name : '', 
+      '', 
+      '1000.00', 
+      'Revenue recorded'
+    ]
+  ];
+  
+  // Convert to CSV
+  return Papa.unparse({
+    fields: header,
+    data: templateData
+  });
 }

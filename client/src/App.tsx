@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import GeneralLedger from "./pages/GeneralLedger";
 import JournalEntries from "./pages/JournalEntries";
 import JournalEntryDetail from "./pages/JournalEntryDetail";
+import BatchUpload from "./pages/BatchUpload";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import Reports from "./pages/Reports";
 import TrialBalance from "./pages/TrialBalance";
@@ -23,7 +24,6 @@ import DocumentAnalysis from "./pages/DocumentAnalysis";
 import AIAnalytics from "./pages/AIAnalytics";
 import BudgetForecastDashboard from "./pages/BudgetForecastDashboard";
 import ManualJournalEntry from "./components/ManualJournalEntry";
-import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Home from "./pages/Home";
@@ -329,7 +329,7 @@ function Router() {
       
       <Route path="/journal-entries/batch-upload">
         <AppLayout>
-          <ProtectedRoute component={BatchJournalUpload} />
+          <ProtectedRoute component={BatchUpload} />
         </AppLayout>
       </Route>
       
