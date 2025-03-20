@@ -303,7 +303,12 @@ function FixedAssets() {
             </DialogTitle>
           </DialogHeader>
           
-          <FormContainer onSubmit={handleSubmit} formError={formError}>
+          <FormContainer 
+            id="assetForm" 
+            onSubmit={handleSubmit} 
+            formError={formError}
+            isSubmitting={isSubmitting}
+          >
             <div className="grid gap-4 py-4">
               <TextField
                 id="name"

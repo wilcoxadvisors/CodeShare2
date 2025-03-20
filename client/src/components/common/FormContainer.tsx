@@ -11,12 +11,14 @@ interface FormContainerProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   error?: string | null;
+  formError?: string | null; // Added for compatibility with useFormState
   submitLabel?: string;
   cancelLabel?: string;
   showSubmitButton?: boolean;
   showCancelButton?: boolean;
   footerContent?: React.ReactNode;
   className?: string;
+  id?: string;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({
@@ -27,12 +29,14 @@ const FormContainer: React.FC<FormContainerProps> = ({
   onCancel,
   isSubmitting = false,
   error = null,
+  formError = null,
   submitLabel = 'Submit',
   cancelLabel = 'Cancel',
   showSubmitButton = true,
   showCancelButton = true,
   footerContent,
   className = '',
+  id,
 }) => {
   return (
     <div className={`space-y-6 ${className}`}>
@@ -43,15 +47,15 @@ const FormContainer: React.FC<FormContainerProps> = ({
         </div>
       )}
 
-      {error && (
+      {(error || formError) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{error || formError}</AlertDescription>
         </Alert>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form id={id} onSubmit={onSubmit} className="space-y-6">
         {children}
 
         <div className="flex items-center justify-end space-x-4">
