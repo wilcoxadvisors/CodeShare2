@@ -24,6 +24,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
 import { db } from "./db";
+import { Json } from "drizzle-orm/pg-core";
 
 // Storage interface for data access
 export interface IStorage {
@@ -3917,7 +3918,271 @@ export class DatabaseStorage implements IStorage {
     
     return updatedConsent;
   }
+
+  // Form Submission methods
+  
+  // Contact Form submissions
+  async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const [result] = await db.insert(contactSubmissions)
+      .values({
+        name: submission.name,
+        email: submission.email,
+        phone: submission.phone,
+        message: submission.message,
+        ipAddress: submission.ipAddress,
+        userAgent: submission.userAgent,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async getContactSubmissions(limit: number = 100, offset: number = 0): Promise<ContactSubmission[]> {
+    const results = await db.select()
+      .from(contactSubmissions)
+      .orderBy(desc(contactSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return results;
+  }
+
+  async getContactSubmissionById(id: number): Promise<ContactSubmission | undefined> {
+    const [result] = await db.select()
+      .from(contactSubmissions)
+      .where(eq(contactSubmissions.id, id))
+      .limit(1);
+    
+    return result;
+  }
+
+  async updateContactSubmission(id: number, status: string): Promise<ContactSubmission | undefined> {
+    const [result] = await db.update(contactSubmissions)
+      .set({
+        status: status,
+        updatedAt: new Date()
+      })
+      .where(eq(contactSubmissions.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  // Checklist Form submissions
+  async createChecklistSubmission(submission: InsertChecklistSubmission): Promise<ChecklistSubmission> {
+    const [result] = await db.insert(checklistSubmissions)
+      .values({
+        name: submission.name,
+        email: submission.email,
+        company: submission.company,
+        revenueRange: submission.revenueRange,
+        ipAddress: submission.ipAddress,
+        userAgent: submission.userAgent,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async getChecklistSubmissions(limit: number = 100, offset: number = 0): Promise<ChecklistSubmission[]> {
+    const results = await db.select()
+      .from(checklistSubmissions)
+      .orderBy(desc(checklistSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return results;
+  }
+
+  async getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined> {
+    const [result] = await db.select()
+      .from(checklistSubmissions)
+      .where(eq(checklistSubmissions.id, id))
+      .limit(1);
+    
+    return result;
+  }
+
+  async updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined> {
+    const [result] = await db.update(checklistSubmissions)
+      .set({
+        status: status,
+        updatedAt: new Date()
+      })
+      .where(eq(checklistSubmissions.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  // Consultation Form submissions
+  async createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission> {
+    const [result] = await db.insert(consultationSubmissions)
+      .values({
+        firstName: submission.firstName,
+        lastName: submission.lastName,
+        email: submission.email,
+        phone: submission.phone,
+        companyName: submission.companyName,
+        industry: submission.industry,
+        companySize: submission.companySize,
+        annualRevenue: submission.annualRevenue,
+        preferredContact: submission.preferredContact,
+        message: submission.message,
+        services: submission.services,
+        ipAddress: submission.ipAddress,
+        userAgent: submission.userAgent,
+        status: submission.status || 'unread'
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async getConsultationSubmissions(limit: number = 100, offset: number = 0): Promise<ConsultationSubmission[]> {
+    const results = await db.select()
+      .from(consultationSubmissions)
+      .orderBy(desc(consultationSubmissions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return results;
+  }
+
+  async getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined> {
+    const [result] = await db.select()
+      .from(consultationSubmissions)
+      .where(eq(consultationSubmissions.id, id))
+      .limit(1);
+    
+    return result;
+  }
+
+  async updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined> {
+    const [result] = await db.update(consultationSubmissions)
+      .set({
+        status: status,
+        updatedAt: new Date()
+      })
+      .where(eq(consultationSubmissions.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  // Checklist Files methods
+  async createChecklistFile(fileData: any): Promise<any> {
+    const buffer = fileData.fileData;
+    delete fileData.fileData;
+
+    const [result] = await db.insert(checklistFiles)
+      .values({
+        filename: fileData.filename,
+        originalFilename: fileData.originalFilename,
+        mimeType: fileData.mimeType,
+        size: fileData.size,
+        path: fileData.path,
+        isActive: fileData.isActive ?? false,
+        uploadedBy: fileData.uploadedBy
+      })
+      .returning();
+
+    if (result) {
+      // Execute a raw SQL query to update the BYTEA column 'file_data'
+      await db.execute(
+        sql`UPDATE checklist_files SET file_data = ${buffer} WHERE id = ${result.id}`
+      );
+
+      // Retrieve the file again with the binary data
+      const fileRow = await db.execute(
+        sql`SELECT id, filename, originalFilename, mimeType, size, path, isActive, uploadedBy, 
+            created_at as "createdAt", file_data as "fileData" 
+            FROM checklist_files WHERE id = ${result.id}`
+      );
+
+      if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
+        return fileRow.rows[0];
+      }
+    }
+    
+    return result;
+  }
+
+  async getChecklistFiles(): Promise<any[]> {
+    // Don't fetch the binary data in the listing
+    const results = await db.select({
+      id: checklistFiles.id,
+      filename: checklistFiles.filename,
+      originalFilename: checklistFiles.originalFilename,
+      mimeType: checklistFiles.mimeType,
+      size: checklistFiles.size,
+      path: checklistFiles.path,
+      isActive: checklistFiles.isActive,
+      uploadedBy: checklistFiles.uploadedBy,
+      createdAt: checklistFiles.createdAt,
+      updatedAt: checklistFiles.updatedAt
+    })
+    .from(checklistFiles)
+    .orderBy(desc(checklistFiles.createdAt));
+    
+    return results;
+  }
+
+  async getActiveChecklistFile(): Promise<any | undefined> {
+    // Include binary data for the active file
+    const fileRow = await db.execute(
+      sql`SELECT id, filename, originalFilename, mimeType, size, path, isActive, uploadedBy, 
+          created_at as "createdAt", file_data as "fileData" 
+          FROM checklist_files WHERE is_active = true LIMIT 1`
+    );
+    
+    if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
+      return fileRow.rows[0];
+    }
+    
+    return undefined;
+  }
+
+  async getChecklistFileById(id: number): Promise<any | undefined> {
+    // Include binary data for specific file
+    const fileRow = await db.execute(
+      sql`SELECT id, filename, originalFilename, mimeType, size, path, isActive, uploadedBy, 
+          created_at as "createdAt", file_data as "fileData" 
+          FROM checklist_files WHERE id = ${id} LIMIT 1`
+    );
+    
+    if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
+      return fileRow.rows[0];
+    }
+    
+    return undefined;
+  }
+
+  async updateChecklistFile(id: number, isActive: boolean): Promise<any | undefined> {
+    // If marking as active, deactivate all other files
+    if (isActive) {
+      await db.update(checklistFiles)
+        .set({ isActive: false })
+        .where(ne(checklistFiles.id, id));
+    }
+    
+    const [result] = await db.update(checklistFiles)
+      .set({
+        isActive: isActive,
+        updatedAt: new Date()
+      })
+      .where(eq(checklistFiles.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  async deleteChecklistFile(id: number): Promise<void> {
+    await db.delete(checklistFiles)
+      .where(eq(checklistFiles.id, id));
+  }
 }
 
-// Use the database storage implementation
-export const storage = new DatabaseStorage();
+// Storage is initialized in index.ts, not here
