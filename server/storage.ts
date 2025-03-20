@@ -2559,25 +2559,48 @@ export class DatabaseStorage implements IStorage {
     
     // Extract the binary file data from the input
     const fileBuffer = fileData.fileData;
-    delete fileData.fileData; // Remove it from the object to avoid schema mismatch
     
-    const [file] = await db
-      .insert(checklistFiles)
-      .values({
-        filename: fileData.filename,
-        originalFilename: fileData.originalFilename,
-        mimeType: fileData.mimeType,
-        size: fileData.size,
-        path: fileData.path,
-        isActive: fileData.isActive,
-        uploadedBy: fileData.uploadedBy
-      })
-      .returning();
+    // Use raw SQL to insert the file with binary data
+    const result = await db.execute<any>(
+      `INSERT INTO checklist_files 
+       (filename, original_filename, mime_type, size, path, is_active, uploaded_by, file_data, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+       RETURNING id, filename, original_filename, mime_type, size, path, is_active, uploaded_by, created_at`,
+      [
+        fileData.filename,
+        fileData.originalFilename,
+        fileData.mimeType,
+        fileData.size,
+        fileData.path,
+        fileData.isActive,
+        fileData.uploadedBy,
+        fileBuffer, // This is a Buffer object that PostgreSQL will store as bytea
+        new Date()
+      ]
+    );
     
-    // Add the file data back (for memory storage compatibility)
-    file.fileData = fileBuffer;
+    // Get the first row from the result
+    const file = result[0];
     
-    return file;
+    if (!file) {
+      throw new Error("Failed to create checklist file");
+    }
+    
+    // Convert snake_case properties to camelCase
+    const camelCaseFile = {
+      id: file.id,
+      filename: file.filename,
+      originalFilename: file.original_filename,
+      mimeType: file.mime_type,
+      size: file.size,
+      path: file.path,
+      isActive: file.is_active,
+      uploadedBy: file.uploaded_by,
+      createdAt: file.created_at,
+      fileData: fileBuffer // Add the file data back for memory storage compatibility
+    };
+    
+    return camelCaseFile as ChecklistFile;
   }
   
   async getChecklistFiles(): Promise<ChecklistFile[]> {
@@ -2588,53 +2611,83 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getActiveChecklistFile(): Promise<ChecklistFile | undefined> {
-    const [file] = await db
-      .select()
-      .from(checklistFiles)
-      .where(eq(checklistFiles.isActive, true));
+    // Select everything including the file_data column
+    const [file] = await db.execute<any>(
+      `SELECT * FROM checklist_files WHERE is_active = true`,
+      []
+    );
     
     if (!file) {
       return undefined;
     }
     
-    // Retrieve all files from memory storage to find the matching active file
-    // with its fileData property
-    const memFiles = Array.from(this.checklistFiles.values());
-    const matchingFile = memFiles.find(f => f.isActive);
-    
-    if (matchingFile && matchingFile.fileData) {
-      // @ts-ignore: Adding fileData property to the DB record
-      file.fileData = matchingFile.fileData;
+    // Convert the bytea data to a Buffer
+    if (file.file_data) {
+      // @ts-ignore: Adding fileData property to match MemStorage implementation
+      file.fileData = Buffer.from(file.file_data);
     } else {
-      // Fallback for when no matching file is found in memory storage
-      // We create an empty buffer instead of mock data to comply with data integrity policy
+      // If no file data, create an empty buffer
       // @ts-ignore: Adding fileData property
       file.fileData = Buffer.alloc(0);
       console.warn(`No file data found for active checklist file (ID: ${file.id}).`);
     }
     
-    return file;
+    // Convert snake_case property names to camelCase for consistency
+    const camelCaseFile = {
+      id: file.id,
+      filename: file.filename,
+      originalFilename: file.original_filename,
+      mimeType: file.mime_type,
+      size: file.size,
+      path: file.path,
+      isActive: file.is_active,
+      uploadedBy: file.uploaded_by,
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      fileData: file.fileData
+    };
+    
+    return camelCaseFile as ChecklistFile;
   }
   
   async getChecklistFileById(id: number): Promise<ChecklistFile | undefined> {
-    const [file] = await db
-      .select()
-      .from(checklistFiles)
-      .where(eq(checklistFiles.id, id));
+    // Select everything including the file_data column
+    const [file] = await db.execute<any>(
+      `SELECT * FROM checklist_files WHERE id = $1`,
+      [id]
+    );
     
     if (file) {
-      // Fetch the file data from a separate table or storage mechanism
-      // For now, we'll use a mock implementation with a sample buffer
-      // @ts-ignore: Adding fileData property
-      file.fileData = Buffer.from("Sample PDF content for file ID: " + id);
+      // Convert the bytea data to a Buffer
+      if (file.file_data) {
+        // @ts-ignore: Adding fileData property to match MemStorage implementation
+        file.fileData = Buffer.from(file.file_data);
+      } else {
+        // If no file data, create an empty buffer
+        // @ts-ignore: Adding fileData property
+        file.fileData = Buffer.alloc(0);
+        console.warn(`No file data found for checklist file (ID: ${file.id}).`);
+      }
       
-      // In a real implementation, you would fetch the binary data from:
-      // 1. Another database table with a one-to-one relationship
-      // 2. A file storage system referenced by the file path
-      // 3. A binary column in the same table (if you're using bytea in PostgreSQL)
+      // Convert snake_case property names to camelCase for consistency
+      const camelCaseFile = {
+        id: file.id,
+        filename: file.filename,
+        originalFilename: file.original_filename,
+        mimeType: file.mime_type,
+        size: file.size,
+        path: file.path,
+        isActive: file.is_active,
+        uploadedBy: file.uploaded_by,
+        createdAt: file.created_at,
+        updatedAt: file.updated_at,
+        fileData: file.fileData
+      };
+      
+      return camelCaseFile as ChecklistFile;
     }
     
-    return file || undefined;
+    return undefined;
   }
   
   async updateChecklistFile(id: number, isActive: boolean): Promise<ChecklistFile | undefined> {

@@ -5,6 +5,8 @@ import * as schema from '@shared/schema';
 
 export async function migrateTables() {
   console.log("Starting database migration...");
+  // Make console.log output immediately visible
+  process.stdout.isTTY = true;
   
   try {
     // Add missing columns to users table
@@ -413,6 +415,20 @@ export async function migrateTables() {
         user_agent TEXT,
         status TEXT NOT NULL DEFAULT 'unread',
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS checklist_files (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL,
+        original_filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        path TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE NOT NULL,
+        uploaded_by INTEGER REFERENCES users(id),
+        file_data BYTEA,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
       );
       
       -- Update the existing consultation_submissions table if it exists
