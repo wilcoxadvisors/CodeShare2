@@ -14,9 +14,9 @@ import path from "path";
 import fs from "fs";
 
 // Email notification configuration
-const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || "garrettwilcox40@gmail.com";
-const EMAIL_USER = process.env.EMAIL_USER || "garrettwilcox40@gmail.com";
-const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD || "ywphiyzovqteiziu";
+const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
 
 // Email transport setup
 const transporter = nodemailer.createTransport({
@@ -29,8 +29,8 @@ const transporter = nodemailer.createTransport({
 
 // Helper function to send email notifications
 async function sendEmailNotification(subject: string, text: string) {
-  if (!EMAIL_PASSWORD) {
-    console.log("Email notifications disabled - password not set");
+  if (!EMAIL_PASSWORD || !EMAIL_USER || !NOTIFICATION_EMAIL) {
+    console.log("Email notifications disabled - email configuration not complete");
     return;
   }
   
