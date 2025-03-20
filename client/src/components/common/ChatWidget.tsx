@@ -1,26 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../hooks/use-toast';
+import chatService, { 
+  ChatMessage as ChatMessageType, 
+  ChatConversation,
+  SendMessageResponse,
+  ChatMessageRole
+} from '../../lib/chatService';
+import { Loader2, Send, XCircle, User, Bot } from 'lucide-react';
 
-interface ChatMessage {
+interface FormattedChatMessage {
+  id: number;
   isUser: boolean;
   text: string;
   timestamp: Date;
+  role: ChatMessageRole;
 }
 
 interface ChatWidgetProps {
   isOpen: boolean;
   onClose: () => void;
+  entityId?: number;
 }
 
-const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      isUser: false,
-      text: 'Hi there! How can I help with your financial needs today?',
-      timestamp: new Date()
-    }
-  ]);
+const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<FormattedChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<number | null>(null);
+  const [usageStats, setUsageStats] = useState({ 
+    remainingMessages: 0, 
+    maxMessagesPerDay: 0,
+    remainingTokens: 0,
+    maxTokensPerDay: 0 
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -28,49 +45,211 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
+  // Load conversations on open
+  useEffect(() => {
+    if (isOpen && user) {
+      loadConversations();
+      loadUsageStats();
+    }
+  }, [isOpen, user]);
+
+  // Load messages when active conversation changes
+  useEffect(() => {
+    if (activeConversation) {
+      loadMessages(activeConversation);
+    } else if (conversations.length > 0) {
+      // Set first conversation as active if available
+      setActiveConversation(conversations[0].id);
+    } else {
+      // Clear messages if no conversation is active
+      setMessages([
+        {
+          id: 0,
+          isUser: false,
+          text: 'Hi there! How can I help with your financial needs today?',
+          timestamp: new Date(),
+          role: ChatMessageRole.ASSISTANT
+        }
+      ]);
+    }
+  }, [activeConversation, conversations]);
+  
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const loadConversations = async () => {
+    try {
+      setIsLoading(true);
+      const convos = await chatService.getConversations();
+      setConversations(convos);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const loadMessages = async (conversationId: number) => {
+    try {
+      setIsLoading(true);
+      const chatMessages = await chatService.getMessages(conversationId);
+      
+      // Format messages for display
+      const formattedMessages: FormattedChatMessage[] = chatMessages.map(msg => ({
+        id: msg.id,
+        isUser: msg.role === ChatMessageRole.USER,
+        text: msg.content,
+        timestamp: new Date(msg.createdAt),
+        role: msg.role
+      }));
+      
+      setMessages(formattedMessages);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const loadUsageStats = async () => {
+    try {
+      const stats = await chatService.getUsageStatus(entityId);
+      setUsageStats(stats);
+    } catch (error) {
+      console.error('Failed to load usage stats:', error);
+    }
+  };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
   
   const sendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isSending) return;
     
-    // Add user message to chat
-    const userMessage: ChatMessage = {
+    // Add user message to chat immediately for better UX
+    const userMessage: FormattedChatMessage = {
+      id: -1, // Temporary ID
       isUser: true,
       text: inputValue.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
+      role: ChatMessageRole.USER
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsSending(true);
     
-    // Simulate response delay (in a real app, this would be an API call)
-    setTimeout(() => {
-      // Example automated response
-      const botResponses = [
-        "Thanks for reaching out! I'd be happy to help with your financial inquiries.",
-        "Great question. To provide the best assistance, could you provide more details about your business needs?",
-        "I recommend scheduling a consultation with one of our advisors for personalized guidance on this matter.",
-        "That's a common concern for many business owners. Our team has extensive experience handling this type of situation."
-      ];
+    try {
+      // Send message to server
+      const response: SendMessageResponse = await chatService.sendMessage(
+        userMessage.text, 
+        activeConversation || undefined,
+        entityId
+      );
       
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-      
-      const botMessage: ChatMessage = {
-        isUser: false,
-        text: randomResponse,
-        timestamp: new Date()
+      // Replace temporary message with actual one from server
+      const updatedUserMessage: FormattedChatMessage = {
+        id: response.userMessage.id,
+        isUser: true,
+        text: response.userMessage.content,
+        timestamp: new Date(response.userMessage.createdAt),
+        role: ChatMessageRole.USER
       };
       
-      setMessages(prev => [...prev, botMessage]);
+      // Add AI response
+      const aiMessage: FormattedChatMessage = {
+        id: response.aiMessage.id,
+        isUser: false,
+        text: response.aiMessage.content,
+        timestamp: new Date(response.aiMessage.createdAt),
+        role: ChatMessageRole.ASSISTANT
+      };
+      
+      // Update messages
+      setMessages(prev => [
+        ...prev.filter(m => m.id !== -1), // Remove temporary message
+        updatedUserMessage,
+        aiMessage
+      ]);
+      
+      // Update active conversation if this is a new conversation
+      if (!activeConversation) {
+        setActiveConversation(response.conversationId);
+        // Refresh conversations list
+        loadConversations();
+      }
+      
+      // Update usage stats
+      setUsageStats(prev => ({
+        ...prev,
+        remainingMessages: response.remainingMessages,
+        remainingTokens: response.remainingTokens
+      }));
+      
       setIsSending(false);
-    }, 1000);
+    } catch (error) {
+      let errorMessage = 'Failed to send message. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+      
+      // Remove the temporary message
+      setMessages(prev => prev.filter(m => m.id !== -1));
+      setIsSending(false);
+    }
+  };
+  
+  const startNewConversation = () => {
+    setActiveConversation(null);
+    setMessages([
+      {
+        id: 0,
+        isUser: false,
+        text: 'Hi there! How can I help with your financial needs today?',
+        timestamp: new Date(),
+        role: ChatMessageRole.ASSISTANT
+      }
+    ]);
+  };
+  
+  const selectConversation = (id: number) => {
+    setActiveConversation(id);
+  };
+  
+  const deleteConversation = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      await chatService.deleteConversation(id);
+      
+      // If the deleted conversation is the active one, start a new conversation
+      if (id === activeConversation) {
+        startNewConversation();
+      }
+      
+      // Refresh conversation list
+      loadConversations();
+      
+      toast({
+        title: 'Success',
+        description: 'Conversation deleted successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete conversation.',
+        variant: 'destructive'
+      });
+    }
   };
   
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -82,41 +261,71 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl w-80 z-50 overflow-hidden border border-gray-200">
+    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl md:w-96 w-80 z-50 overflow-hidden border border-gray-200 flex flex-col" style={{ height: '80vh', maxHeight: '600px' }}>
       <div className="bg-blue-800 text-white p-4 flex justify-between items-center">
-        <h3 className="font-semibold">Chat with Us</h3>
+        <h3 className="font-semibold">Wilcox AI Assistant</h3>
         <button 
           onClick={onClose} 
           className="text-white hover:text-gray-200 transition-colors"
           aria-label="Close chat"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <XCircle className="h-5 w-5" />
         </button>
       </div>
       
-      <div className="h-80 overflow-y-auto p-4 bg-gray-50">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`mb-4 ${message.isUser ? 'text-right' : ''}`}
-          >
-            <div
-              className={`${
-                message.isUser
-                  ? 'bg-blue-800 text-white'
-                  : 'bg-gray-200 text-gray-800'
-              } inline-block p-3 rounded-lg max-w-[80%]`}
-            >
-              <p className="text-sm">{message.text}</p>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-800" />
           </div>
-        ))}
-        <div ref={messagesEndRef} />
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <div
+                key={message.id || index}
+                className={`mb-4 ${message.isUser ? 'text-right' : ''}`}
+              >
+                <div
+                  className={`${
+                    message.isUser
+                      ? 'bg-blue-800 text-white'
+                      : 'bg-gray-200 text-gray-800'
+                  } inline-block p-3 rounded-lg max-w-[80%]`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {message.isUser ? (
+                      <User className="h-4 w-4" />
+                    ) : (
+                      <Bot className="h-4 w-4" />
+                    )}
+                    <span className="text-xs font-semibold">
+                      {message.isUser ? 'You' : 'Wilcox AI'}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+      
+      <div className="p-2 border-t border-gray-200">
+        <div className="flex items-center justify-between text-xs text-gray-500 px-2">
+          <div>
+            {usageStats.remainingMessages}/{usageStats.maxMessagesPerDay} messages left today
+          </div>
+          <button 
+            onClick={startNewConversation} 
+            className="text-blue-600 hover:text-blue-800"
+          >
+            New Chat
+          </button>
+        </div>
       </div>
       
       <div className="p-4 border-t border-gray-200 bg-white">
@@ -127,30 +336,55 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            disabled={isSending}
+            disabled={isSending || isLoading}
             className="flex-1 border border-gray-300 rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <button
             onClick={sendMessage}
-            disabled={isSending}
+            disabled={isSending || isLoading || !inputValue.trim()}
             className={`bg-blue-800 text-white p-2 rounded-r-lg ${
-              isSending ? 'opacity-70' : 'hover:bg-blue-900'
+              (isSending || isLoading || !inputValue.trim()) ? 'opacity-70' : 'hover:bg-blue-900'
             } transition-colors`}
             aria-label="Send message"
           >
             {isSending ? (
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
+              <Send className="h-5 w-5" />
             )}
           </button>
         </div>
       </div>
+      
+      {/* Conversation sidebar for medium screens and up */}
+      {conversations.length > 0 && (
+        <div className="hidden md:block border-l border-gray-200 w-1/3 absolute right-0 top-14 bottom-16 bg-gray-50 overflow-y-auto">
+          <div className="p-2">
+            <h4 className="font-semibold text-sm px-2 py-1">Conversations</h4>
+            <ul className="space-y-1">
+              {conversations.map((convo) => (
+                <li 
+                  key={convo.id}
+                  className={`flex justify-between items-center p-2 rounded text-sm cursor-pointer ${
+                    activeConversation === convo.id ? 'bg-blue-100' : 'hover:bg-gray-100'
+                  }`}
+                  onClick={() => selectConversation(convo.id)}
+                >
+                  <div className="truncate flex-1">
+                    {convo.title || 'New conversation'}
+                  </div>
+                  <button 
+                    onClick={(e) => deleteConversation(convo.id, e)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

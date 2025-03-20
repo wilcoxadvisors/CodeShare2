@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initDatabase } from "./initDb";
 import { errorHandler, notFoundHandler } from "./errorHandling";
 import { registerFormRoutes } from "./formRoutes";
+import { registerChatRoutes } from "./chatRoutes";
 
 const app = express();
 app.use(express.json({
@@ -72,6 +73,9 @@ app.use((req, res, next) => {
     
     // Register form submission routes
     registerFormRoutes(app);
+    
+    // Register chat routes
+    registerChatRoutes(app);
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
