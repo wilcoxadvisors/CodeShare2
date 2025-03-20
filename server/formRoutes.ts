@@ -66,11 +66,16 @@ const upload = multer({
 export function registerFormRoutes(app: Express) {
   // Contact Form Submission Route
   app.post("/api/contact", asyncHandler(async (req: Request, res: Response) => {
+    console.log("Received contact form data:", req.body);
+    
     // Validate the request
     const validation = validateRequest(insertContactSubmissionSchema, req.body);
     if (!validation.success) {
+      console.error("Validation error:", validation.error);
       return throwBadRequest("Invalid contact form data", validation.error);
     }
+    
+    console.log("Validation successful, data:", validation.data);
     
     // Add IP and user agent
     const submission = {
@@ -79,8 +84,18 @@ export function registerFormRoutes(app: Express) {
       userAgent: req.headers["user-agent"] || null
     };
     
+    console.log("Submission with IP and user agent:", submission);
+    
     // Store the submission
-    const result = await storage.createContactSubmission(submission);
+    let result;
+    try {
+      console.log("Storing contact form in database...");
+      result = await storage.createContactSubmission(submission);
+      console.log("Database storage result:", result);
+    } catch (error) {
+      console.error("Database storage error:", error);
+      throw error;
+    }
     
     // Send email notification
     await sendEmailNotification(
@@ -93,11 +108,16 @@ export function registerFormRoutes(app: Express) {
   
   // Checklist Form Submission Route
   app.post("/api/checklist", asyncHandler(async (req: Request, res: Response) => {
+    console.log("Received checklist form data:", req.body);
+    
     // Validate the request
     const validation = validateRequest(insertChecklistSubmissionSchema, req.body);
     if (!validation.success) {
+      console.error("Validation error:", validation.error);
       return throwBadRequest("Invalid checklist form data", validation.error);
     }
+    
+    console.log("Validation successful, data:", validation.data);
     
     // Add IP and user agent
     const submission = {
@@ -106,8 +126,18 @@ export function registerFormRoutes(app: Express) {
       userAgent: req.headers["user-agent"] || null
     };
     
+    console.log("Submission with IP and user agent:", submission);
+    
     // Store the submission
-    const result = await storage.createChecklistSubmission(submission);
+    let result;
+    try {
+      console.log("Storing checklist form in database...");
+      result = await storage.createChecklistSubmission(submission);
+      console.log("Database storage result:", result);
+    } catch (error) {
+      console.error("Database storage error:", error);
+      throw error;
+    }
     
     // Send email notification
     await sendEmailNotification(
@@ -120,11 +150,16 @@ export function registerFormRoutes(app: Express) {
   
   // Consultation Form Submission Route
   app.post("/api/consultation", asyncHandler(async (req: Request, res: Response) => {
+    console.log("Received consultation form data:", req.body);
+    
     // Validate the request
     const validation = validateRequest(insertConsultationSubmissionSchema, req.body);
     if (!validation.success) {
+      console.error("Validation error:", validation.error);
       return throwBadRequest("Invalid consultation form data", validation.error);
     }
+    
+    console.log("Validation successful, data:", validation.data);
     
     // Add IP and user agent
     const submission = {
@@ -133,13 +168,25 @@ export function registerFormRoutes(app: Express) {
       userAgent: req.headers["user-agent"] || null
     };
     
+    console.log("Submission with IP and user agent:", submission);
+    console.log("Services type:", typeof submission.services, "Value:", submission.services);
+    
     // Convert services array to JSON for database storage
     if (submission.services && Array.isArray(submission.services)) {
       submission.services = JSON.stringify(submission.services);
+      console.log("Services after stringify:", submission.services);
     }
     
     // Store the submission
-    const result = await storage.createConsultationSubmission(submission);
+    let result;
+    try {
+      console.log("Storing consultation in database...");
+      result = await storage.createConsultationSubmission(submission);
+      console.log("Database storage result:", result);
+    } catch (error) {
+      console.error("Database storage error:", error);
+      throw error;
+    }
     
     // Format selected services
     const services = Array.isArray(submission.services)
