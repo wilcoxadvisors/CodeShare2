@@ -10,9 +10,8 @@ import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { DatabaseStorage, MemStorage, IStorage } from "./storage";
 
 // Create and export storage instance that will be used by other modules
-export const storage: IStorage = process.env.NODE_ENV === 'production' 
-  ? new DatabaseStorage()
-  : new MemStorage();
+// Always use DatabaseStorage since we're using the PostgreSQL database
+export const storage: IStorage = new DatabaseStorage();
 
 const app = express();
 app.use(express.json({
