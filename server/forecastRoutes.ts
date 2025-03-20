@@ -4,6 +4,7 @@ import { asyncHandler, throwNotFound, throwBadRequest } from './errorHandling';
 import { insertForecastSchema } from '../shared/schema';
 import { ZodError } from 'zod';
 import { formatZodError } from '../shared/validation';
+import { MLService } from './mlService';
 
 interface AuthUser {
   id: number;
@@ -21,7 +22,12 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
   next();
 };
 
+// Initialize ML Service with storage
+import { mlService } from './mlService';
+
 export function registerForecastRoutes(app: Express, storage: IStorage) {
+  // Inject storage into ML service
+  (mlService as any).storage = storage;
   /**
    * Get all forecasts for an entity
    */
@@ -120,11 +126,45 @@ export function registerForecastRoutes(app: Express, storage: IStorage) {
       useSeasonality: req.body.useSeasonality !== undefined ? req.body.useSeasonality : true,
       growthFactors: req.body.growthFactors || {},
       basedOnBudgetId: req.body.basedOnBudgetId || null,
-      basedOnHistoricalPeriods: req.body.basedOnHistoricalPeriods || 6
+      basedOnHistoricalPeriods: req.body.basedOnHistoricalPeriods || 6,
+      frequency: req.body.frequency || 'M',
+      expenses: req.body.expenses || []
     };
     
-    const forecastData = await storage.generateForecast(entityId, config);
-    res.json(forecastData);
+    try {
+      // Try to use the ML service for advanced forecasting
+      const serviceRunning = await mlService.isServiceRunning();
+      if (!serviceRunning) {
+        // Try to start the service
+        const started = await mlService.startService();
+        if (!started) {
+          // Fall back to the storage implementation if ML service can't be started
+          const forecastData = await storage.generateForecast(entityId, config);
+          return res.json({ 
+            forecastData,
+            usingAdvancedML: false,
+            message: "Using basic forecasting (ML service unavailable)" 
+          });
+        }
+      }
+      
+      // ML Service is running, use it for advanced forecasting
+      const forecastData = await mlService.generateEntityForecast(entityId, config);
+      res.json({ 
+        ...forecastData,
+        usingAdvancedML: true,
+        message: "Using advanced ML forecasting"
+      });
+    } catch (error) {
+      console.error("Error using ML service:", error);
+      // Fall back to the storage implementation
+      const forecastData = await storage.generateForecast(entityId, config);
+      res.json({ 
+        forecastData,
+        usingAdvancedML: false,
+        message: "Using basic forecasting (ML service error)"
+      });
+    }
   }));
   
   /**

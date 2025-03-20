@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Trash2, MoreVertical, FileText, ChartLineUp, Sparkles } from 'lucide-react';
+import { Trash2, MoreVertical, FileText, LineChart, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import ForecastDetail from './ForecastDetail';
 
@@ -206,7 +206,7 @@ export default function ForecastList({
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => handleViewDetails(forecast.id)}>
-                        <ChartLineUp className="mr-2 h-4 w-4" />
+                        <LineChart className="mr-2 h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
                       
