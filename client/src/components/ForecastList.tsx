@@ -88,25 +88,36 @@ export default function ForecastList({
     },
   });
 
-  // Generate insights mutation
+  // Generate XAI insights mutation
   const generateInsightsMutation = useMutation({
     mutationFn: async (forecastId: number) => {
-      return apiRequest(`/api/entities/${entityId}/forecasts/${forecastId}/insights`, {
+      return apiRequest(`/api/entities/${entityId}/forecasts/${forecastId}/xai-insights`, {
         method: 'POST',
       });
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Insights generated',
-        description: 'AI insights have been generated for this forecast.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/entities', entityId, 'forecasts'] });
-      onRefresh();
+      if (data.success) {
+        toast({
+          title: 'XAI Insights generated',
+          description: 'AI insights have been generated for this forecast.',
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/entities', entityId, 'forecasts'] });
+        onRefresh();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to generate insights',
+          variant: 'destructive',
+        });
+      }
     },
-    onError: () => {
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error || 'There was an error generating insights';
+      const needsApiKey = error?.response?.data?.needsAPIKey;
+      
       toast({
-        title: 'Error',
-        description: 'There was an error generating insights. Please check XAI integration.',
+        title: needsApiKey ? 'XAI API Key Required' : 'Error',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
