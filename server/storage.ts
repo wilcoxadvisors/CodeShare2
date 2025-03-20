@@ -4133,7 +4133,7 @@ export class DatabaseStorage implements IStorage {
   async getActiveChecklistFile(): Promise<any | undefined> {
     // Include binary data for the active file
     const fileRow = await db.execute(
-      sql`SELECT id, filename, originalFilename, mimeType, size, path, isActive, uploadedBy, 
+      sql`SELECT id, filename, original_filename as "originalFilename", mime_type as "mimeType", size, path, is_active as "isActive", uploaded_by as "uploadedBy", 
           created_at as "createdAt", file_data as "fileData" 
           FROM checklist_files WHERE is_active = true LIMIT 1`
     );
@@ -4148,7 +4148,7 @@ export class DatabaseStorage implements IStorage {
   async getChecklistFileById(id: number): Promise<any | undefined> {
     // Include binary data for specific file
     const fileRow = await db.execute(
-      sql`SELECT id, filename, originalFilename, mimeType, size, path, isActive, uploadedBy, 
+      sql`SELECT id, filename, original_filename as "originalFilename", mime_type as "mimeType", size, path, is_active as "isActive", uploaded_by as "uploadedBy", 
           created_at as "createdAt", file_data as "fileData" 
           FROM checklist_files WHERE id = ${id} LIMIT 1`
     );

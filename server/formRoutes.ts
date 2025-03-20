@@ -363,8 +363,26 @@ export function registerFormRoutes(app: Express) {
       uploadedBy: null // In a real app, this would be set to the current user ID
     };
     
-    // Store the file in the database
-    const result = await storage.createChecklistFile(fileData);
+    // Store the file in the database using a transaction for data integrity
+    const result = await withTransaction(async (tx) => {
+      // Create the file entry in the database within a transaction
+      const file = await storage.createChecklistFile(fileData);
+      
+      // If this is marked as active, deactivate all other files
+      if (isActive) {
+        // Get the current active files (excluding the one we just created)
+        const activeFiles = await storage.getChecklistFiles();
+        
+        // Deactivate all other files
+        for (const activeFile of activeFiles) {
+          if (activeFile.id !== file.id && activeFile.isActive) {
+            await storage.updateChecklistFile(activeFile.id, false);
+          }
+        }
+      }
+      
+      return file;
+    });
     
     // Send email notification
     await sendEmailNotification(

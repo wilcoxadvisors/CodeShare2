@@ -1,5 +1,6 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
+import { sql } from 'drizzle-orm';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
@@ -31,3 +32,20 @@ pool.on('error', (err) => {
 
 // Create Drizzle ORM instance with our configured pool
 export const db = drizzle({ client: pool, schema });
+
+// Wrapper for handling transactions safely
+export async function withTransaction<T>(
+  callback: (tx: typeof db) => Promise<T>
+): Promise<T> {
+  // Using PostgreSQL's BEGIN/COMMIT mechanism
+  try {
+    await db.execute(sql`BEGIN`);
+    const result = await callback(db);
+    await db.execute(sql`COMMIT`);
+    return result;
+  } catch (error) {
+    // Always roll back on error to ensure data consistency
+    await db.execute(sql`ROLLBACK`);
+    throw error;
+  }
+}
