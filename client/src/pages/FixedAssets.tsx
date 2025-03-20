@@ -336,6 +336,7 @@ function FixedAssets() {
                 />
                 
                 <TextField
+                  id="acquisitionCost"
                   name="acquisitionCost"
                   label="Acquisition Cost"
                   type="number"
@@ -349,10 +350,11 @@ function FixedAssets() {
               
               <div className="grid grid-cols-2 gap-4">
                 <SelectField
+                  id="depreciationMethod"
                   name="depreciationMethod"
                   label="Depreciation Method"
                   value={formData.depreciationMethod}
-                  onChange={setSelectValue}
+                  onValueChange={(value) => setSelectValue("depreciationMethod", value)}
                   error={errors.depreciationMethod}
                   options={[
                     { value: "straight_line", label: "Straight Line" },
@@ -362,6 +364,7 @@ function FixedAssets() {
                 />
                 
                 <TextField
+                  id="usefulLife"
                   name="usefulLife"
                   label="Useful Life (months)"
                   type="number"
@@ -373,6 +376,7 @@ function FixedAssets() {
               </div>
               
               <TextField
+                id="salvageValue"
                 name="salvageValue"
                 label="Salvage Value"
                 type="number"
@@ -383,10 +387,11 @@ function FixedAssets() {
               />
               
               <SelectField
+                id="assetAccountId"
                 name="assetAccountId"
                 label="Asset Account"
                 value={formData.assetAccountId}
-                onChange={setSelectValue}
+                onValueChange={(value) => setSelectValue("assetAccountId", value)}
                 error={errors.assetAccountId}
                 options={[
                   { value: "", label: "Select Account" },
@@ -399,10 +404,11 @@ function FixedAssets() {
               />
               
               <SelectField
+                id="accumulatedDepreciationAccountId"
                 name="accumulatedDepreciationAccountId"
                 label="Accumulated Depreciation Account"
                 value={formData.accumulatedDepreciationAccountId}
-                onChange={setSelectValue}
+                onValueChange={(value) => setSelectValue("accumulatedDepreciationAccountId", value)}
                 error={errors.accumulatedDepreciationAccountId}
                 options={[
                   { value: "", label: "Select Account" },
@@ -415,10 +421,11 @@ function FixedAssets() {
               />
               
               <SelectField
+                id="depreciationExpenseAccountId"
                 name="depreciationExpenseAccountId"
                 label="Depreciation Expense Account"
                 value={formData.depreciationExpenseAccountId}
-                onChange={setSelectValue}
+                onValueChange={(value) => setSelectValue("depreciationExpenseAccountId", value)}
                 error={errors.depreciationExpenseAccountId}
                 options={[
                   { value: "", label: "Select Account" },
