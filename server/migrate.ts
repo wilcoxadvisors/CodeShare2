@@ -223,6 +223,9 @@ export async function migrateTables() {
         end_date TIMESTAMP NOT NULL,
         status TEXT NOT NULL DEFAULT 'draft',
         period_type TEXT NOT NULL DEFAULT 'monthly',
+        is_active BOOLEAN DEFAULT TRUE NOT NULL,
+        is_template BOOLEAN DEFAULT FALSE NOT NULL,
+        base_scenario BOOLEAN DEFAULT TRUE NOT NULL,
         approved_by INTEGER REFERENCES users(id),
         approved_at TIMESTAMP,
         notes TEXT,
@@ -274,14 +277,14 @@ export async function migrateTables() {
         start_date TIMESTAMP NOT NULL,
         end_date TIMESTAMP NOT NULL,
         period_type TEXT DEFAULT 'monthly',
-        base_scenario BOOLEAN DEFAULT false,
+        base_scenario BOOLEAN DEFAULT true,
         model_config JSONB,
         forecast_data JSONB,
         ai_insights TEXT,
         confidence_interval TEXT,
         created_by INTEGER NOT NULL REFERENCES users(id),
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP
+        last_updated TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
 
@@ -338,7 +341,9 @@ export async function migrateTables() {
         revoked_at TIMESTAMP,
         consent_version TEXT NOT NULL,
         ip_address TEXT,
-        last_updated TIMESTAMP NOT NULL DEFAULT NOW()
+        last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
       );
       
       -- Chat system tables
@@ -433,6 +438,344 @@ export async function migrateTables() {
       );
     `);
 
+    // Fix column naming inconsistencies between database and schema.ts
+    await drizzleDb.execute(`
+      DO $$ 
+      BEGIN 
+        -- Rename entity_id to entityId
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN entity_id TO "entityId";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN entity_id TO "entityId";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename start_date to startDate
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN start_date TO "startDate";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN start_date TO "startDate";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename end_date to endDate
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN end_date TO "endDate";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN end_date TO "endDate";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename fiscal_year to fiscalYear
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN fiscal_year TO "fiscalYear";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename period_type to periodType
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN period_type TO "periodType";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN period_type TO "periodType";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename total_amount to totalAmount
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN total_amount TO "totalAmount";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_by to createdBy
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN created_by TO "createdBy";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN created_by TO "createdBy";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_at to createdAt
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN created_at TO "createdAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN created_at TO "createdAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename updated_at to updatedAt for budgets
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN updated_at TO "updatedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename last_updated to lastUpdated for forecasts
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN last_updated TO "lastUpdated";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename approved_by to approvedBy
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN approved_by TO "approvedBy";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename approved_at to approvedAt
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN approved_at TO "approvedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename base_scenario to baseScenario
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN base_scenario TO "baseScenario";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename model_config to modelConfig
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN model_config TO "modelConfig";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename forecast_data to forecastData
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN forecast_data TO "forecastData";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename ai_insights to aiInsights
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN ai_insights TO "aiInsights";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename confidence_interval to confidenceInterval
+        BEGIN
+          ALTER TABLE forecasts RENAME COLUMN confidence_interval TO "confidenceInterval";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename is_active to isActive
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN is_active TO "isActive";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename is_template to isTemplate
+        BEGIN
+          ALTER TABLE budgets RENAME COLUMN is_template TO "isTemplate";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Budget items table fixes
+        -- Rename budget_id to budgetId
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN budget_id TO "budgetId";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename account_id to accountId
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN account_id TO "accountId";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename period_start to periodStart
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN period_start TO "periodStart";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename period_end to periodEnd
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN period_end TO "periodEnd";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_by to createdBy
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN created_by TO "createdBy";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_at to createdAt
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN created_at TO "createdAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename updated_at to updatedAt
+        BEGIN
+          ALTER TABLE budget_items RENAME COLUMN updated_at TO "updatedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Budget documents table fixes
+        -- Rename budget_id to budgetId
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN budget_id TO "budgetId";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename original_filename to originalFilename
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN original_filename TO "originalFilename";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename mime_type to mimeType
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN mime_type TO "mimeType";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename file_type to fileType
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN file_type TO "fileType";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename uploaded_by to uploadedBy
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN uploaded_by TO "uploadedBy";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename uploaded_at to uploadedAt
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN uploaded_at TO "uploadedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename processing_status to processingStatus
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN processing_status TO "processingStatus";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename extracted_data to extractedData
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN extracted_data TO "extractedData";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename created_at to createdAt
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN created_at TO "createdAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+        
+        -- Rename updated_at to updatedAt
+        BEGIN
+          ALTER TABLE budget_documents RENAME COLUMN updated_at TO "updatedAt";
+        EXCEPTION
+          WHEN undefined_column THEN NULL;
+          WHEN duplicate_column THEN NULL;
+        END;
+      END $$;
+    `);
+    
     console.log("Database migration completed successfully!");
     return true;
   } catch (error) {
