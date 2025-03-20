@@ -669,26 +669,27 @@ export const checklistFiles = pgTable("checklist_files", {
 export const consultationSubmissions = pgTable("consultation_submissions", {
   id: serial("id").primaryKey(),
   // Company Information
-  companyName: text("company_name").notNull(),
+  companyName: text("companyName").notNull(),
   industry: text("industry").notNull(),
-  companySize: text("company_size").notNull(),
-  annualRevenue: text("annual_revenue").notNull(),
+  companySize: text("companySize").notNull(),
+  annualRevenue: text("annualRevenue").notNull(),
   
   // Services Selection (stored as JSON array)
   services: json("services").notNull(),
   
   // Contact Information
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  firstName: text("firstName").notNull(),
+  lastName: text("lastName").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
-  preferredContact: text("preferred_contact").notNull(),
+  preferredContact: text("preferredContact").notNull(),
   message: text("message"),
   
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
+  ipAddress: text("ipAddress"),
+  userAgent: text("userAgent"),
   status: text("status").default("unread").notNull(), // unread, read, scheduled, completed, archived
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt")
 });
 
 // Schemas for form submission insertions
