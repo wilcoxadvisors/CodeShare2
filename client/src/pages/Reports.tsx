@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Download } from 'lucide-react';
+import { exportToCSV, getFormattedDateForFilename } from '../lib/export-utils';
 
 // Define types for report data structures
 interface FinancialItem {
@@ -132,9 +133,232 @@ function Reports() {
     }
   };
   
+  // Function to export the current report as CSV
   const handleExport = () => {
-    // Export functionality would go here
-    alert("Export functionality would be implemented here");
+    if (!currentEntity) return;
+    
+    let exportData: any[] = [];
+    let fileName = `${activeTab}_${currentEntity.name}_${getFormattedDateForFilename()}`;
+    let fields: { key: string; label: string }[] = [];
+    
+    // Prepare export data based on the active tab
+    switch (activeTab) {
+      case "balance-sheet":
+        if (!balanceSheetData) return;
+        
+        // Format balance sheet data for export
+        // Assets
+        const assetItems = balanceSheetData.assets.map(item => ({
+          section: 'Assets',
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          balance: item.balance.toFixed(2)
+        }));
+        
+        // Liabilities
+        const liabilityItems = balanceSheetData.liabilities.map(item => ({
+          section: 'Liabilities',
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          balance: item.balance.toFixed(2)
+        }));
+        
+        // Equity
+        const equityItems = balanceSheetData.equity.map(item => ({
+          section: 'Equity',
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          balance: item.balance.toFixed(2)
+        }));
+        
+        // Add totals
+        const totalItems = [
+          {
+            section: 'Totals',
+            account: 'Total Assets',
+            accountCode: '',
+            balance: balanceSheetData.totalAssets.toFixed(2)
+          },
+          {
+            section: 'Totals',
+            account: 'Total Liabilities',
+            accountCode: '',
+            balance: balanceSheetData.totalLiabilities.toFixed(2)
+          },
+          {
+            section: 'Totals',
+            account: 'Total Equity',
+            accountCode: '',
+            balance: balanceSheetData.totalEquity.toFixed(2)
+          },
+          {
+            section: 'Totals',
+            account: 'Total Liabilities & Equity',
+            accountCode: '',
+            balance: balanceSheetData.liabilitiesAndEquity.toFixed(2)
+          }
+        ];
+        
+        exportData = [...assetItems, ...liabilityItems, ...equityItems, ...totalItems];
+        fields = [
+          { key: 'section', label: 'Section' },
+          { key: 'account', label: 'Account' },
+          { key: 'accountCode', label: 'Account Code' },
+          { key: 'balance', label: 'Balance' }
+        ];
+        
+        fileName += `_as_of_${reportParams.asOfDate}`;
+        break;
+        
+      case "income-statement":
+        if (!incomeStatementData) return;
+        
+        // Format income statement data for export
+        // Revenue
+        const revenueItems = incomeStatementData.revenue.map(item => ({
+          section: 'Revenue',
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          balance: item.balance.toFixed(2)
+        }));
+        
+        // Expenses
+        const expenseItems = incomeStatementData.expenses.map(item => ({
+          section: 'Expenses',
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          balance: item.balance.toFixed(2)
+        }));
+        
+        // Add totals
+        const incomeTotals = [
+          {
+            section: 'Totals',
+            account: 'Total Revenue',
+            accountCode: '',
+            balance: incomeStatementData.totalRevenue.toFixed(2)
+          },
+          {
+            section: 'Totals',
+            account: 'Total Expenses',
+            accountCode: '',
+            balance: incomeStatementData.totalExpenses.toFixed(2)
+          },
+          {
+            section: 'Totals',
+            account: 'Net Income',
+            accountCode: '',
+            balance: incomeStatementData.netIncome.toFixed(2)
+          }
+        ];
+        
+        exportData = [...revenueItems, ...expenseItems, ...incomeTotals];
+        fields = [
+          { key: 'section', label: 'Section' },
+          { key: 'account', label: 'Account' },
+          { key: 'accountCode', label: 'Account Code' },
+          { key: 'balance', label: 'Balance' }
+        ];
+        
+        fileName += `_${reportParams.startDate}_to_${reportParams.endDate}`;
+        break;
+        
+      case "trial-balance":
+        if (!trialBalanceData) return;
+        
+        // Format trial balance data for export
+        exportData = trialBalanceData.map(item => ({
+          account: item.accountName,
+          accountCode: item.accountCode || '',
+          debit: item.debit.toFixed(2),
+          credit: item.credit.toFixed(2)
+        }));
+        
+        fields = [
+          { key: 'account', label: 'Account' },
+          { key: 'accountCode', label: 'Account Code' },
+          { key: 'debit', label: 'Debit' },
+          { key: 'credit', label: 'Credit' }
+        ];
+        
+        fileName += `_${reportParams.startDate}_to_${reportParams.endDate}`;
+        break;
+        
+      case "cash-flow":
+        if (!cashFlowData) return;
+        
+        // Format cash flow data for export
+        let cashFlowItems: any[] = [];
+        
+        cashFlowData.cashFlows.forEach(category => {
+          const categoryItems = category.items.map(item => ({
+            category: category.category,
+            account: item.accountName,
+            accountCode: item.accountCode || '',
+            amount: item.balance.toFixed(2)
+          }));
+          
+          cashFlowItems = [...cashFlowItems, ...categoryItems];
+        });
+        
+        // Add net cash flow
+        cashFlowItems.push({
+          category: 'Total',
+          account: 'Net Cash Flow',
+          accountCode: '',
+          amount: (cashFlowData.netCashFlow || 0).toFixed(2)
+        });
+        
+        exportData = cashFlowItems;
+        fields = [
+          { key: 'category', label: 'Category' },
+          { key: 'account', label: 'Account' },
+          { key: 'accountCode', label: 'Account Code' },
+          { key: 'amount', label: 'Amount' }
+        ];
+        
+        fileName += `_${reportParams.startDate}_to_${reportParams.endDate}`;
+        break;
+        
+      case "general-ledger":
+        if (!generalLedgerData) return;
+        
+        // Format general ledger data for export
+        exportData = generalLedgerData.map(entry => ({
+          date: entry.date instanceof Date ? entry.date.toLocaleDateString() : new Date(entry.date).toLocaleDateString(),
+          journalId: entry.journalId,
+          account: entry.accountName,
+          accountCode: entry.accountCode,
+          description: entry.description,
+          debit: entry.debit.toFixed(2),
+          credit: entry.credit.toFixed(2),
+          balance: entry.balance.toFixed(2),
+          status: entry.status
+        }));
+        
+        fields = [
+          { key: 'date', label: 'Date' },
+          { key: 'journalId', label: 'Journal ID' },
+          { key: 'account', label: 'Account' },
+          { key: 'accountCode', label: 'Account Code' },
+          { key: 'description', label: 'Description' },
+          { key: 'debit', label: 'Debit' },
+          { key: 'credit', label: 'Credit' },
+          { key: 'balance', label: 'Balance' },
+          { key: 'status', label: 'Status' }
+        ];
+        
+        fileName += `_${reportParams.startDate}_to_${reportParams.endDate}`;
+        break;
+        
+      default:
+        return;
+    }
+    
+    // Export data to CSV
+    if (exportData.length > 0) {
+      exportToCSV(exportData, fileName, fields);
+    }
   };
 
   if (!currentEntity) {
@@ -156,15 +380,18 @@ function Reports() {
         description="Generate and view financial reports"
       >
         <div className="flex space-x-3">
-          <button 
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          <Button 
             onClick={handleExport}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            disabled={(activeTab === "balance-sheet" && (!balanceSheetData || balanceSheetLoading)) ||
+                    (activeTab === "income-statement" && (!incomeStatementData || incomeStatementLoading)) ||
+                    (activeTab === "trial-balance" && (!trialBalanceData || trialBalanceLoading)) ||
+                    (activeTab === "cash-flow" && (!cashFlowData || cashFlowLoading)) ||
+                    (activeTab === "general-ledger" && (!generalLedgerData || generalLedgerLoading))}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Export
-          </button>
+            <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+            Export CSV
+          </Button>
         </div>
       </PageHeader>
 
@@ -467,9 +694,9 @@ function Reports() {
                       <dl>
                         <div className="flex justify-between py-2 font-medium text-gray-900">
                           <dt>Net Cash Flow</dt>
-                          <dd className={cashFlowData?.netCashFlow > 0 ? 'text-green-600' : 'text-red-600'}>
+                          <dd className={(cashFlowData?.netCashFlow || 0) > 0 ? 'text-green-600' : 'text-red-600'}>
                             ${Math.abs(cashFlowData?.netCashFlow || 0).toLocaleString()}
-                            {cashFlowData?.netCashFlow > 0 ? ' (increase)' : ' (decrease)'}
+                            {(cashFlowData?.netCashFlow || 0) > 0 ? ' (increase)' : ' (decrease)'}
                           </dd>
                         </div>
                       </dl>
