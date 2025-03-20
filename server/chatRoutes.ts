@@ -126,6 +126,8 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
     // Check if XAI API key is configured
     const XAI_API_KEY = process.env.XAI_API_KEY;
     
+    console.log('Checking XAI_API_KEY:', XAI_API_KEY ? 'API key exists' : 'API key missing');
+    
     if (!XAI_API_KEY) {
       return {
         success: false,
@@ -176,8 +178,8 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
     });
     
     // XAI specific implementation
-    const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    const model = 'grok-2-1212';
+    const API_URL = 'https://api.x.ai/v1/chat/completions';
+    const model = 'grok-2-latest';  // Updated to use latest model
       
     const response = await axios.post(
       API_URL,
@@ -205,6 +207,18 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
     };
   } catch (error) {
     console.error('AI response error:', error);
+    // Log detailed error information
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    console.error('Error config:', error.config);
+    
     return {
       success: false,
       message: "I'm having trouble connecting to my knowledge base. Let me relay your message to a human advisor who can help you.",
