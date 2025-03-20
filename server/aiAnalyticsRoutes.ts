@@ -65,7 +65,7 @@ async function processAiAnalyticsQuery(
     
     // Make API call to XAI/OpenAI
     const API_URL = process.env.XAI_API_KEY 
-      ? 'https://api.xai.com/v1/completions' // Update with actual XAI endpoint 
+      ? 'https://api.x.ai/v1/chat/completions' // Corrected X.AI endpoint
       : 'https://api.openai.com/v1/chat/completions';
     
     const headers = {
@@ -76,7 +76,17 @@ async function processAiAnalyticsQuery(
     // Format the request based on whether using XAI or OpenAI
     const apiRequest = process.env.XAI_API_KEY 
       ? {
-          prompt: `Context: ${context}\n\nQuestion: ${query}\n\nAnswer:`,
+          model: "grok-2-1212", // X.AI's model
+          messages: [
+            {
+              role: "system",
+              content: `You are a financial analytics AI with access to company data. Answer questions with detailed insights based on the provided data. The data will be provided as context.`
+            },
+            {
+              role: "user",
+              content: `Context: ${context}\n\nQuestion: ${query}`
+            }
+          ],
           max_tokens: 1000,
           temperature: 0.3
         }
@@ -98,10 +108,8 @@ async function processAiAnalyticsQuery(
     
     const response = await axios.post(API_URL, apiRequest, { headers });
     
-    // Extract response based on API used
-    const aiResponse = process.env.XAI_API_KEY
-      ? response.data.choices[0].text  // Adjust based on actual XAI response format
-      : response.data.choices[0].message.content;
+    // Extract response based on API used - X.AI format matches OpenAI's chat completions
+    const aiResponse = response.data.choices[0].message.content;
     
     return {
       success: true,
