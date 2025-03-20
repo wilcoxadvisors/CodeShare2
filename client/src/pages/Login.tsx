@@ -20,10 +20,15 @@ function Login() {
   
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      setLocation('/dashboard');
+    if (user && !isLoading) {
+      // Add a small delay to ensure all state is updated
+      const redirectTimer = setTimeout(() => {
+        setLocation('/dashboard');
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
     }
-  }, [user, setLocation]);
+  }, [user, isLoading, setLocation]);
   
   // Auto-fill demo credentials (remove in production)
   useEffect(() => {
@@ -61,7 +66,8 @@ function Login() {
         description: "Logged in successfully",
         variant: "default"
       });
-      setLocation('/dashboard');
+      // The useEffect will handle the redirect, so we don't need to do it here
+      // This prevents the double redirect
     } else {
       toast({
         title: "Authentication Error",
