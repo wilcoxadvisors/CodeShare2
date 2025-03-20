@@ -11,7 +11,8 @@ import {
   Computer,
   Settings,
   LogOut,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 
 function Sidebar() {
@@ -109,6 +110,12 @@ function Sidebar() {
               path="/document-analysis" 
               icon={<FileText className="h-5 w-5 mr-2" />} 
               label="Document Analysis" 
+            />
+            
+            <NavItem 
+              path="/ai-analytics" 
+              icon={<Sparkles className="h-5 w-5 mr-2" />} 
+              label="AI Analytics" 
             />
             
             <div className="mt-6 border-t border-blue-700 pt-4">

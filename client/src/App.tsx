@@ -20,6 +20,7 @@ import AccountsPayable from "./pages/AccountsPayable";
 import AccountsReceivable from "./pages/AccountsReceivable";
 import FixedAssets from "./pages/FixedAssets";
 import DocumentAnalysis from "./pages/DocumentAnalysis";
+import AIAnalytics from "./pages/AIAnalytics";
 import ManualJournalEntry from "./components/ManualJournalEntry";
 import BatchJournalUpload from "./components/BatchJournalUpload";
 import Sidebar from "./components/Sidebar";
@@ -368,6 +369,12 @@ function Router() {
       <Route path="/document-analysis">
         <AppLayout>
           <ProtectedRoute component={DocumentAnalysis} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/ai-analytics">
+        <AppLayout>
+          <ProtectedRoute component={AIAnalytics} />
         </AppLayout>
       </Route>
       
