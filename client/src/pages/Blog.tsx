@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Calendar, User, Clock, Tag } from 'lucide-react';
 
 // Sample blog post data
@@ -95,16 +95,16 @@ export default function Blog() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* Header section */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <button 
-            onClick={() => navigate('/')}
+      {/* Blog subheader section */}
+      <div className="bg-white shadow-sm pt-24 pb-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <Link 
+            to="/"
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to Home
-          </button>
+          </Link>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Wilcox Advisors Blog</h1>
           <p className="text-gray-600 text-lg max-w-3xl">
             Expert insights on accounting, tax planning, and financial management for small businesses and entrepreneurs.
