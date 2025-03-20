@@ -274,7 +274,7 @@ export default function DocumentUpload({ entityId, hasXaiIntegration }: Document
   };
 
   // Selected document details
-  const selectedDocument = documents?.find(doc => doc.id === selectedDocId);
+  const selectedDocument = Array.isArray(documents) ? documents.find(doc => doc.id === selectedDocId) : null;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
