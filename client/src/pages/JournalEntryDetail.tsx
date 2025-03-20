@@ -25,7 +25,9 @@ function JournalEntryDetail() {
   
   const [activeTab, setActiveTab] = useState("details");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [voidReason, setVoidReason] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -139,6 +141,57 @@ function JournalEntryDetail() {
       toast({
         title: "Error",
         description: error.message || "Failed to post journal entry",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest(
+        `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/void`,
+        { 
+          method: "POST",
+          body: JSON.stringify({ voidReason })
+        }
+      );
+    },
+    onSuccess: () => {
+      setShowVoidDialog(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}`] });
+      toast({
+        title: "Success",
+        description: "Journal entry voided",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to void journal entry",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest(
+        `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/duplicate`,
+        { method: "POST" }
+      );
+    },
+    onSuccess: (response) => {
+      toast({
+        title: "Success",
+        description: "Journal entry duplicated successfully",
+      });
+      // Navigate to the new entry
+      setLocation(`/journal-entries/${response.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to duplicate journal entry",
         variant: "destructive",
       });
     }
@@ -262,6 +315,12 @@ function JournalEntryDetail() {
 
   const canPost = journalEntry.status === JournalEntryStatus.APPROVED && 
     user?.role === 'admin';
+
+  const canVoid = journalEntry.status === JournalEntryStatus.POSTED && 
+    user?.role === 'admin';
+
+  const canDuplicate = journalEntry.status !== JournalEntryStatus.VOIDED && 
+    (journalEntry.createdBy === user?.id || user?.role === 'admin');
 
   const canUploadFiles = journalEntry.status !== JournalEntryStatus.POSTED && 
     journalEntry.status !== JournalEntryStatus.VOIDED &&
