@@ -1,11 +1,46 @@
 import React from 'react';
 
+// Define a custom event interface to support array values
+// Define a more comprehensive custom event interface that can be used where React.ChangeEvent is expected
+interface CustomChangeEventInit {
+  target: {
+    name: string;
+    value: any;
+  };
+}
+
+// This is a proper class implementation that can be used with the React event system
+class CustomChangeEvent implements CustomChangeEventInit {
+  target: {
+    name: string;
+    value: any;
+  };
+  
+  // Add these properties to satisfy the ChangeEvent interface expectations
+  type = 'change';
+  bubbles = true;
+  cancelable = false;
+  defaultPrevented = false;
+  isDefaultPrevented = () => false;
+  isPropagationStopped = () => false;
+  persist = () => {};
+  preventDefault = () => {};
+  stopPropagation = () => {};
+  nativeEvent = new Event('change');
+  currentTarget = window;
+  timeStamp = Date.now();
+  
+  constructor(init: CustomChangeEventInit) {
+    this.target = init.target;
+  }
+}
+
 interface ServicesSelectionStepProps {
   formData: {
     services: string[];
     [key: string]: any;
   };
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | CustomChangeEvent) => void;
 }
 
 const ServicesSelectionStep: React.FC<ServicesSelectionStepProps> = ({
@@ -23,15 +58,15 @@ const ServicesSelectionStep: React.FC<ServicesSelectionStepProps> = ({
       updatedServices = updatedServices.filter(service => service !== value);
     }
     
-    // Create a synthetic event to match the handleChange function expected format
-    const syntheticEvent = {
+    // Create a proper custom event object
+    const customEvent = new CustomChangeEvent({
       target: {
         name: 'services',
         value: updatedServices
       }
-    } as React.ChangeEvent<HTMLInputElement>;
+    });
     
-    handleChange(syntheticEvent);
+    handleChange(customEvent);
   };
 
   return (

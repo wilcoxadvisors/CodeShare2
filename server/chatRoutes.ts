@@ -205,19 +205,19 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
       message: aiResponse,
       tokenCount
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI response error:', error);
     // Log detailed error information
-    if (error.response) {
+    if (error?.response) {
       console.error('Error response data:', error.response.data);
       console.error('Error response status:', error.response.status);
       console.error('Error response headers:', error.response.headers);
-    } else if (error.request) {
+    } else if (error?.request) {
       console.error('No response received:', error.request);
     } else {
-      console.error('Error message:', error.message);
+      console.error('Error message:', error?.message || 'Unknown error');
     }
-    console.error('Error config:', error.config);
+    console.error('Error config:', error?.config);
     
     return {
       success: false,
