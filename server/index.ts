@@ -7,6 +7,7 @@ import { registerFormRoutes } from "./formRoutes";
 import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
+import { registerBatchUploadRoutes } from "./batchUploadRoutes";
 import { DatabaseStorage, MemStorage, IStorage } from "./storage";
 import { pool } from "./db";
 
@@ -90,6 +91,9 @@ app.use((req, res, next) => {
     
     // Register AI analytics routes with broader data access
     registerAIAnalyticsRoutes(app);
+    
+    // Register batch upload routes for optimized CSV imports
+    registerBatchUploadRoutes(app, storage);
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled

@@ -40,7 +40,9 @@ interface AuthUser {
 
 // Authentication middleware
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  if (!req.session.user) {
+  // TypeScript complains about req.session.user, but we know it exists
+  // because we set it during login in routes.ts
+  if (!req.session || !(req.session as any).user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
@@ -53,7 +55,7 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/entities/:entityId/journal-entries/batch', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
-    const userId = (req.session.user as AuthUser).id;
+    const userId = ((req.session as any).user as AuthUser).id;
     
     // Get entity to validate existence and user access
     const entity = await storage.getEntity(entityId);
@@ -91,6 +93,7 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
           // Prepare journal entry data
           const journalEntryData = {
             entityId,
+            journalId: 1, // Default to general journal ID 1, can be configured if needed
             reference: entry.reference,
             date: new Date(entry.date),
             description: entry.description || null,
