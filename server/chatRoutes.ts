@@ -98,8 +98,8 @@ const updateUsage = async (usageLimitId: number, messageTokens: number) => {
 
 // Authentication middleware with fallback for public chatting
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  // Allow chat endpoints to work even if not authenticated
-  if (req.path === '/api/chat/send' || req.path === '/api/chat/usage') {
+  // Allow all chat endpoints to work even if not authenticated
+  if (req.path.startsWith('/api/chat/')) {
     // For unauthenticated users, use a guest user role
     if (!req.isAuthenticated()) {
       req.user = {
