@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import LoginModal from '../components/common/LoginModal.tsx';
+import LoginModal from '../components/LoginModal.tsx';
 import HeroSection from '../components/sections/HeroSection.tsx';
 import ChecklistSection from '../components/sections/ChecklistSection.tsx';
 import ServicesSection from '../components/sections/ServicesSection.tsx';
