@@ -324,6 +324,67 @@ export class MemStorage implements IStorage {
       this.accounts.set(newAccount.id, newAccount);
     });
     
+    // Create default journals
+    const defaultJournals = [
+      { 
+        code: 'SALE', 
+        name: 'Sales Journal', 
+        type: JournalType.SALE, 
+        description: 'For recording sales transactions'
+      },
+      { 
+        code: 'PURCH', 
+        name: 'Purchase Journal', 
+        type: JournalType.PURCHASE, 
+        description: 'For recording purchase transactions'
+      },
+      { 
+        code: 'CASH', 
+        name: 'Cash Journal', 
+        type: JournalType.CASH, 
+        description: 'For recording cash transactions'
+      },
+      { 
+        code: 'BANK', 
+        name: 'Bank Journal', 
+        type: JournalType.BANK, 
+        description: 'For recording bank transactions'
+      },
+      { 
+        code: 'GEN', 
+        name: 'General Journal', 
+        type: JournalType.GENERAL, 
+        description: 'For recording general transactions',
+        default: true
+      }
+    ];
+    
+    // Create journals
+    defaultJournals.forEach(journal => {
+      const newJournal: Journal = {
+        id: this.currentJournalId++,
+        entityId: defaultEntity.id,
+        name: journal.name,
+        code: journal.code,
+        type: journal.type,
+        active: true,
+        default: journal.default || false,
+        description: journal.description || null,
+        sequence: null,
+        entryNumbering: 'auto',
+        prefixPattern: null,
+        nextNumber: 1,
+        useDates: true,
+        restrictToAccounts: false,
+        allowedAccountIds: [],
+        requireBalanced: true,
+        requireApproval: false,
+        createdAt: new Date(),
+        updatedAt: null
+      };
+      this.journals.set(newJournal.id, newJournal);
+    });
+    
     // Create sample journal entries
     const entries = [
       {
