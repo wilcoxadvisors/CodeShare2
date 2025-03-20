@@ -2593,19 +2593,27 @@ export class DatabaseStorage implements IStorage {
       .from(checklistFiles)
       .where(eq(checklistFiles.isActive, true));
     
-    if (file) {
-      // Fetch the file data from a separate table or storage mechanism
-      // For now, we'll use a mock implementation with a sample buffer
-      // @ts-ignore: Adding fileData property
-      file.fileData = Buffer.from("Sample PDF content");
-      
-      // In a real implementation, you would fetch the binary data from:
-      // 1. Another database table with a one-to-one relationship
-      // 2. A file storage system referenced by the file path
-      // 3. A binary column in the same table (if you're using bytea in PostgreSQL)
+    if (!file) {
+      return undefined;
     }
     
-    return file || undefined;
+    // Retrieve all files from memory storage to find the matching active file
+    // with its fileData property
+    const memFiles = Array.from(this.checklistFiles.values());
+    const matchingFile = memFiles.find(f => f.isActive);
+    
+    if (matchingFile && matchingFile.fileData) {
+      // @ts-ignore: Adding fileData property to the DB record
+      file.fileData = matchingFile.fileData;
+    } else {
+      // Fallback for when no matching file is found in memory storage
+      // We create an empty buffer instead of mock data to comply with data integrity policy
+      // @ts-ignore: Adding fileData property
+      file.fileData = Buffer.alloc(0);
+      console.warn(`No file data found for active checklist file (ID: ${file.id}).`);
+    }
+    
+    return file;
   }
   
   async getChecklistFileById(id: number): Promise<ChecklistFile | undefined> {
