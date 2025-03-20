@@ -267,6 +267,42 @@ export async function migrateTables() {
         last_updated TIMESTAMP NOT NULL DEFAULT NOW()
       );
       
+      -- Chat system tables
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        entity_id INTEGER,
+        title TEXT NOT NULL,
+        last_message_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        total_messages INTEGER NOT NULL DEFAULT 0,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL,
+        user_id INTEGER,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        token_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS chat_usage_limits (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        entity_id INTEGER,
+        messages_used INTEGER NOT NULL DEFAULT 0,
+        tokens_used INTEGER NOT NULL DEFAULT 0,
+        max_messages_per_day INTEGER NOT NULL DEFAULT 1000,
+        max_tokens_per_day INTEGER NOT NULL DEFAULT 100000,
+        reset_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
+      );
+      
       ALTER TABLE saved_reports 
       ADD COLUMN IF NOT EXISTS run_count INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS export_count INTEGER DEFAULT 0,
