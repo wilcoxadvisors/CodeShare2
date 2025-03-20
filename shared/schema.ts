@@ -688,8 +688,8 @@ export const consultationSubmissions = pgTable("consultation_submissions", {
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
   status: text("status").default("unread").notNull(), // unread, read, scheduled, completed, archived
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  createdAt: timestamp("createdAt").defaultNow().notNull()
+  // updatedAt column might not exist in the database yet, so we're not including it here
 });
 
 // Schemas for form submission insertions

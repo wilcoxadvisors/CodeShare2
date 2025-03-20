@@ -453,6 +453,11 @@ export async function migrateTables() {
       );
     `);
 
+    // Add missing updatedAt column to consultation_submissions table
+    await drizzleDb.execute(`
+      ALTER TABLE consultation_submissions ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP;
+    `);
+
     // Fix column naming inconsistencies between database and schema.ts
     await drizzleDb.execute(`
       DO $$ 
