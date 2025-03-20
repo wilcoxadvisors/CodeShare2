@@ -22,6 +22,8 @@ import {
   validateRequest 
 } from "@shared/validation";
 import { registerAIRoutes } from "./aiRoutes";
+import { registerBudgetRoutes } from "./budgetRoutes";
+import { registerForecastRoutes } from "./forecastRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -970,6 +972,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register the AI routes
   registerAIRoutes(app);
+  
+  // Register the Budget routes
+  registerBudgetRoutes(app, storage);
+  
+  // Register the Forecast routes
+  registerForecastRoutes(app, storage);
   
   const httpServer = createServer(app);
   return httpServer;
