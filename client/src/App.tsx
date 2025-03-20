@@ -29,6 +29,7 @@ import Header from "./components/Header";
 import Home from "./pages/Home";
 import ChatWidget from "./components/common/ChatWidget";
 import ConsultationFormModal from "./components/ConsultationFormModal";
+import LoginModal from "./components/LoginModal";
 import Redirect from "./components/Redirect";
 
 // Public website header component
@@ -393,12 +394,13 @@ function Router() {
 }
 
 function AppWithAuth() {
-  const { showConsultationForm } = useUI();
+  const { showConsultationForm, showLoginModal } = useUI();
   
   return (
     <>
       <Router />
       {showConsultationForm && <ConsultationFormModal />}
+      {showLoginModal && <LoginModal />}
     </>
   );
 }
