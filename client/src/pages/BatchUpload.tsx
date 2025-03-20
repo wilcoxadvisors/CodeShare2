@@ -13,9 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { importFromCSV, generateJournalEntryTemplate } from '@/lib/export-utils';
 import { AlertCircle, DownloadCloud, UploadCloud } from 'lucide-react';
-import { JournalEntryStatus } from '@/lib/types';
+import { JournalEntryStatus, AccountType } from '../lib/types';
 import PageHeader from '@/components/PageHeader';
-import { AccountType } from '@/lib/types';
 
 interface Account {
   id: number;

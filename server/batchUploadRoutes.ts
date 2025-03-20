@@ -3,29 +3,9 @@ import { Express, Request, Response } from 'express';
 import { db } from './db';
 import { IStorage } from './storage';
 import { asyncHandler, throwBadRequest, throwUnauthorized } from './errorHandling';
-import { z } from 'zod';
-import { enhancedJournalEntrySchema, enhancedJournalEntryLineSchema } from '../shared/validation';
 import { JournalEntryStatus } from '../shared/schema';
-
-// Define validator for the batch upload request body
-const batchJournalEntrySchema = z.object({
-  reference: z.string().min(1, "Reference is required"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-  description: z.string().optional(),
-  lines: z.array(
-    z.object({
-      accountId: z.number().int().positive("Account ID must be a positive integer"),
-      description: z.string().optional(),
-      debit: z.string().optional().default("0"),
-      credit: z.string().optional().default("0"),
-      entityId: z.number().int().positive()
-    })
-  ).min(2, "At least two lines are required for a journal entry")
-});
-
-const batchUploadSchema = z.object({
-  entries: z.array(batchJournalEntrySchema)
-});
+import { batchUploadSchema } from '../shared/validation';
+import { z } from 'zod';
 
 type BatchUploadRequest = z.infer<typeof batchUploadSchema>;
 
@@ -73,6 +53,11 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
     const validation = batchUploadSchema.safeParse(req.body);
     if (!validation.success) {
       throwBadRequest("Invalid request body", validation.error.format());
+    }
+    
+    // Safely access entries with type checking
+    if (!validation.data || !('entries' in validation.data) || !Array.isArray(validation.data.entries)) {
+      throwBadRequest("Invalid request body: 'entries' array is required");
     }
     
     const { entries } = validation.data;

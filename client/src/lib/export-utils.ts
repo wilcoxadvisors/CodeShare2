@@ -86,9 +86,12 @@ export function importFromCSV<T>(
     let rowCount = 0;
     const totalRows = 0; // Will be estimated by PapaParse
     
-    Papa.parse(file, {
+    // Use type assertion to work around TypeScript error 
+    // This is safe because PapaParse can handle File objects
+    Papa.parse(file as any, {
       header,
-      worker, // Use worker threads for better performance with large files
+      // Worker is a valid option in PapaParse but TypeScript doesn't know about it
+      ...(worker ? { worker } as any : {}),
       skipEmptyLines: true,
       delimiter: ",", // Explicitly set delimiter for better performance
       dynamicTyping: true, // Automatically convert to numbers where appropriate
