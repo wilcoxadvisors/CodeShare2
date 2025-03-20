@@ -102,11 +102,23 @@ export default function AIAnalyticsDashboard() {
       }
     } catch (error) {
       console.error('AI Analytics error:', error);
+      let errorMessage = "Failed to get AI analytics. Try again or contact support.";
+      
+      // Extract specific error message from the API response if available
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       toast({
         title: "Analytics Error",
-        description: "Failed to get AI analytics. Try again or contact support.",
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      // If the error is about API keys, show a helpful message
+      if (errorMessage.includes("not configured") || errorMessage.includes("API service")) {
+        setAiResponse("AI service is not configured. Please contact your administrator to set up the necessary API keys.");
+      }
     } finally {
       setIsLoading(false);
     }

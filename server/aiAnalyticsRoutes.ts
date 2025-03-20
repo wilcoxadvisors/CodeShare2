@@ -33,6 +33,7 @@ async function processAiAnalyticsQuery(
       return {
         success: false,
         message: "AI service is not configured. Contact your administrator to set up AI analytics.",
+        data: null // Ensure data is null when there's no API key
       };
     }
 
@@ -112,6 +113,7 @@ async function processAiAnalyticsQuery(
     return {
       success: false,
       message: "I couldn't analyze the data at this time. Please try again later or refine your question.",
+      data: null // Ensure data is null when there's an error
     };
   }
 }
@@ -137,7 +139,11 @@ export function registerAIAnalyticsRoutes(app: Express) {
         data: result.data
       });
     } else {
-      res.status(500).json({ message: result.message });
+      res.status(500).json({ 
+        message: result.message,
+        insight: null,
+        data: null
+      });
     }
   }));
   
@@ -162,7 +168,11 @@ export function registerAIAnalyticsRoutes(app: Express) {
         data: entityData
       });
     } else {
-      res.status(500).json({ message: result.message });
+      res.status(500).json({ 
+        message: result.message,
+        analysis: null,
+        data: null
+      });
     }
   }));
   
@@ -183,7 +193,10 @@ export function registerAIAnalyticsRoutes(app: Express) {
         anomalies: result.message
       });
     } else {
-      res.status(500).json({ message: result.message });
+      res.status(500).json({ 
+        message: result.message,
+        anomalies: null
+      });
     }
   }));
   
@@ -204,7 +217,10 @@ export function registerAIAnalyticsRoutes(app: Express) {
         suggestions: result.message
       });
     } else {
-      res.status(500).json({ message: result.message });
+      res.status(500).json({ 
+        message: result.message,
+        suggestions: null
+      });
     }
   }));
 }
