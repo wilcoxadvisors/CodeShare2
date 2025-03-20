@@ -115,11 +115,13 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   
   const createEntry = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest({
-        method: "POST", 
-        url: `/api/entities/${entityId}/journal-entries`, 
-        data
-      });
+      return await apiRequest(
+        `/api/entities/${entityId}/journal-entries`,
+        {
+          method: "POST",
+          data
+        }
+      );
     },
     onSuccess: () => {
       toast({
@@ -170,11 +172,13 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest({
-        method: "PUT", 
-        url: `/api/entities/${entityId}/journal-entries/${existingEntry?.id}`, 
-        data
-      });
+      return await apiRequest(
+        `/api/entities/${entityId}/journal-entries/${existingEntry?.id}`,
+        {
+          method: "PUT",
+          data
+        }
+      );
     },
     onSuccess: () => {
       toast({

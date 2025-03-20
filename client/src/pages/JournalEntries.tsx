@@ -78,11 +78,12 @@ function JournalEntries() {
   
   // Transform accounts data to ensure it matches our interface requirements
   const accounts = useMemo(() => {
-    if (!accountsData) return [];
-    return accountsData.map(account => ({
+    if (!accountsData || !Array.isArray(accountsData)) return [];
+    
+    return accountsData.map((account: any) => ({
       ...account,
       // Ensure required fields have values if they are null/undefined in the API response
-      createdAt: account.createdAt || new Date(),
+      createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
       subtype: account.subtype || null,
       isSubledger: account.isSubledger || false,
       subledgerType: account.subledgerType || null,
