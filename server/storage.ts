@@ -2,6 +2,7 @@ import {
   users, User, InsertUser, UserRole,
   entities, Entity, InsertEntity,
   accounts, Account, InsertAccount, AccountType,
+  journals, Journal, InsertJournal, JournalType,
   journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
   journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
   journalEntryFiles,
@@ -46,6 +47,14 @@ export interface IStorage {
   createAccount(account: InsertAccount): Promise<Account>;
   updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
   deleteAccount(id: number): Promise<void>;
+  
+  // Journal methods
+  getJournal(id: number): Promise<Journal | undefined>;
+  getJournals(entityId: number): Promise<Journal[]>;
+  getJournalsByType(entityId: number, type: JournalType): Promise<Journal[]>;
+  createJournal(journal: InsertJournal): Promise<Journal>;
+  updateJournal(id: number, journal: Partial<Journal>): Promise<Journal | undefined>;
+  deleteJournal(id: number): Promise<void>;
   
   // Journal Entry methods
   getJournalEntry(id: number): Promise<JournalEntry | undefined>;
@@ -158,6 +167,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private entities: Map<number, Entity>;
   private accounts: Map<number, Account>;
+  private journals: Map<number, Journal>;
   private journalEntries: Map<number, JournalEntry>;
   private journalEntryLines: Map<number, JournalEntryLine>;
   private journalEntryFiles: Map<number, any>; // Map for file attachments
@@ -174,6 +184,7 @@ export class MemStorage implements IStorage {
   private currentUserId: number = 1;
   private currentEntityId: number = 1;
   private currentAccountId: number = 1;
+  private currentJournalId: number = 1;
   private currentJournalEntryId: number = 1;
   private currentJournalEntryLineId: number = 1;
   private currentJournalEntryFileId: number = 1;
@@ -198,6 +209,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.entities = new Map();
     this.accounts = new Map();
+    this.journals = new Map();
     this.journalEntries = new Map();
     this.journalEntryLines = new Map();
     this.journalEntryFiles = new Map();
@@ -574,6 +586,73 @@ export class MemStorage implements IStorage {
   async deleteAccount(id: number): Promise<void> {
     if (this.accounts.has(id)) {
       this.accounts.delete(id);
+    }
+  }
+  
+  // Journal methods
+  async getJournal(id: number): Promise<Journal | undefined> {
+    return this.journals.get(id);
+  }
+  
+  async getJournals(entityId: number): Promise<Journal[]> {
+    return Array.from(this.journals.values())
+      .filter(journal => journal.entityId === entityId);
+  }
+  
+  async getJournalsByType(entityId: number, type: JournalType): Promise<Journal[]> {
+    return Array.from(this.journals.values())
+      .filter(journal => journal.entityId === entityId && journal.type === type);
+  }
+  
+  async createJournal(insertJournal: InsertJournal): Promise<Journal> {
+    const id = this.currentJournalId++;
+    const journal: Journal = {
+      id,
+      entityId: insertJournal.entityId,
+      name: insertJournal.name,
+      code: insertJournal.code,
+      type: insertJournal.type as JournalType,
+      active: insertJournal.active !== undefined ? insertJournal.active : true,
+      default: insertJournal.default !== undefined ? insertJournal.default : false,
+      description: insertJournal.description || null,
+      sequence: insertJournal.sequence || null,
+      entryNumbering: insertJournal.entryNumbering || 'auto',
+      prefixPattern: insertJournal.prefixPattern || null,
+      nextNumber: insertJournal.nextNumber || 1,
+      useDates: insertJournal.useDates !== undefined ? insertJournal.useDates : true,
+      restrictToAccounts: insertJournal.restrictToAccounts || false,
+      allowedAccountIds: insertJournal.allowedAccountIds || [],
+      requireBalanced: insertJournal.requireBalanced !== undefined ? insertJournal.requireBalanced : true,
+      requireApproval: insertJournal.requireApproval !== undefined ? insertJournal.requireApproval : false,
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.journals.set(id, journal);
+    return journal;
+  }
+  
+  async updateJournal(id: number, journalData: Partial<Journal>): Promise<Journal | undefined> {
+    const journal = this.journals.get(id);
+    if (!journal) return undefined;
+    
+    const updatedJournal = { ...journal, ...journalData, updatedAt: new Date() };
+    this.journals.set(id, updatedJournal);
+    return updatedJournal;
+  }
+  
+  async deleteJournal(id: number): Promise<void> {
+    if (this.journals.has(id)) {
+      // Check if any journal entries are linked to this journal
+      const linkedEntries = Array.from(this.journalEntries.values())
+        .filter(entry => 'journalId' in entry && entry.journalId === id);
+      
+      if (linkedEntries.length === 0) {
+        // Safe to delete if no entries are linked
+        this.journals.delete(id);
+      } else {
+        throw new Error('Cannot delete journal with linked entries');
+      }
     }
   }
   
