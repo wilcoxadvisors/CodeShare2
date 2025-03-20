@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { DatabaseStorage, MemStorage, IStorage } from "./storage";
+import { pool } from "./db";
 
 // Create and export storage instance that will be used by other modules
 // Always use DatabaseStorage since we're using the PostgreSQL database
@@ -115,6 +116,35 @@ app.use((req, res, next) => {
     }, () => {
       log(`serving on port ${port}`);
     });
+
+    // Setup graceful shutdown to properly close database connections
+    const gracefulShutdown = async (signal: string) => {
+      log(`Received ${signal}, gracefully shutting down...`);
+      
+      // Close HTTP server first to stop accepting new connections
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          log('HTTP server closed');
+          resolve();
+        });
+      });
+      
+      // Then close all database connections
+      try {
+        await pool.end();
+        log('Database connections closed');
+      } catch (err) {
+        log(`Error closing database connections: ${err}`, 'error');
+      }
+      
+      log('Shutdown complete');
+      process.exit(0);
+    };
+
+    // Listen for termination signals
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
   } catch (error) {
     log(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`, 'error');
     if (error instanceof Error && error.stack) {
