@@ -86,6 +86,15 @@ export enum AccountType {
   EXPENSE = "expense"
 }
 
+// Journal Types
+export enum JournalType {
+  SALE = "sale",
+  PURCHASE = "purchase",
+  CASH = "cash",
+  BANK = "bank",
+  GENERAL = "general"
+}
+
 // Chart of Accounts
 export const accounts = pgTable("accounts", {
   id: serial("id").primaryKey(),
@@ -102,6 +111,26 @@ export const accounts = pgTable("accounts", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
+// Journals
+export const journals = pgTable("journals", {
+  id: serial("id").primaryKey(),
+  entityId: integer("entity_id").references(() => entities.id).notNull(),
+  name: text("name").notNull(),
+  code: text("code").notNull(), // Short code like "SALE", "BANK", etc.
+  type: text("type").$type<JournalType>().notNull(),
+  description: text("description"),
+  defaultAccountId: integer("default_account_id").references(() => accounts.id),
+  suspenseAccountId: integer("suspense_account_id").references(() => accounts.id),
+  isActive: boolean("is_active").default(true).notNull(),
+  showInDashboard: boolean("show_in_dashboard").default(true).notNull(),
+  sequence: integer("sequence").default(10),
+  sequencePrefix: text("sequence_prefix"), // E.g., "INV-{YYYY}-"
+  color: text("color").default("#4A6CF7"), // For visual display
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Journal Entry Status
 export enum JournalEntryStatus {
   DRAFT = "draft",
@@ -116,10 +145,15 @@ export enum JournalEntryStatus {
 export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
   entityId: integer("entity_id").references(() => entities.id).notNull(),
+  journalId: integer("journal_id").references(() => journals.id).notNull(),
   reference: text("reference").notNull(), // JE-2023-0001
   date: timestamp("date").notNull(),
   description: text("description"),
   status: text("status").$type<JournalEntryStatus>().notNull().default(JournalEntryStatus.DRAFT),
+  needsReview: boolean("needs_review").default(false), // Flag for entries that need additional review
+  isRecurring: boolean("is_recurring").default(false), // Flag for recurring entries
+  recurringFrequency: text("recurring_frequency"), // monthly, quarterly, etc.
+  recurringEndDate: timestamp("recurring_end_date"),
   requestedBy: integer("requested_by").references(() => users.id),
   requestedAt: timestamp("requested_at"),
   approvedBy: integer("approved_by").references(() => users.id),
@@ -143,6 +177,15 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
   debit: numeric("debit").notNull().default("0"),
   credit: numeric("credit").notNull().default("0"),
   entityId: integer("entity_id").references(() => entities.id).notNull(),
+  lineNo: integer("line_no"), // For ordering lines within a journal entry
+  reference: text("reference"), // Line-specific reference (e.g., invoice number)
+  date: timestamp("date"), // Line-specific date if different from journal entry
+  taxId: integer("tax_id"), // For tax-related entries
+  taxAmount: numeric("tax_amount"), // Amount of tax
+  reconciled: boolean("reconciled").default(false), // Whether this line has been reconciled
+  reconciledAt: timestamp("reconciled_at"), // When it was reconciled
+  reconciledBy: integer("reconciled_by").references(() => users.id), // Who reconciled it
+  reconciledWith: integer("reconciled_with"), // ID of the matching entry line
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
@@ -273,6 +316,13 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertEntitySchema = createInsertSchema(entities).omit({
   id: true,
   createdAt: true
+});
+
+// Schema for Journal insertion
+export const insertJournalSchema = createInsertSchema(journals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 // Schema for Account insertion
