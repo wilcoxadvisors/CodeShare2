@@ -211,6 +211,80 @@ export async function migrateTables() {
       END $$;
     `);
 
+    // Create budget and forecast tables
+    await drizzleDb.execute(`
+      CREATE TABLE IF NOT EXISTS budgets (
+        id SERIAL PRIMARY KEY,
+        entity_id INTEGER NOT NULL REFERENCES entities(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        fiscal_year INTEGER NOT NULL,
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        period_type TEXT NOT NULL DEFAULT 'monthly',
+        approved_by INTEGER REFERENCES users(id),
+        approved_at TIMESTAMP,
+        notes TEXT,
+        total_amount TEXT DEFAULT '0',
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP,
+        metadata JSONB
+      );
+
+      CREATE TABLE IF NOT EXISTS budget_items (
+        id SERIAL PRIMARY KEY,
+        budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+        account_id INTEGER NOT NULL REFERENCES accounts(id),
+        period_start TIMESTAMP NOT NULL,
+        period_end TIMESTAMP NOT NULL,
+        amount TEXT NOT NULL,
+        description TEXT,
+        tags TEXT[],
+        notes TEXT,
+        category TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS budget_documents (
+        id SERIAL PRIMARY KEY,
+        budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,
+        original_filename TEXT NOT NULL,
+        path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        file_type TEXT NOT NULL,
+        uploaded_by INTEGER NOT NULL REFERENCES users(id),
+        uploaded_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        processing_status TEXT DEFAULT 'pending',
+        extracted_data JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS forecasts (
+        id SERIAL PRIMARY KEY,
+        entity_id INTEGER NOT NULL REFERENCES entities(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP NOT NULL,
+        period_type TEXT DEFAULT 'monthly',
+        base_scenario BOOLEAN DEFAULT false,
+        model_config JSONB,
+        forecast_data JSONB,
+        ai_insights TEXT,
+        confidence_interval TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP
+      );
+    `);
+
     // Create new analytics tables
     await drizzleDb.execute(`
       CREATE TABLE IF NOT EXISTS user_activity_logs (
