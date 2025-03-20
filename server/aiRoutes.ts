@@ -59,7 +59,7 @@ export function registerAIRoutes(app: Express) {
       const prompt = `Please analyze this financial data concisely, focusing on key insights:\n\n${truncatedText}`;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 500, // Limit response size to reduce costs
@@ -98,7 +98,7 @@ export function registerAIRoutes(app: Express) {
       const truncatedDescription = description.length > 300 ? description.substring(0, 300) : description;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [
           {
             role: "system",
@@ -150,7 +150,7 @@ export function registerAIRoutes(app: Express) {
       const truncatedReportData = reportData.length > 3000 ? reportData.substring(0, 3000) + '...' : reportData;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [{ 
           role: "user", 
           content: `Summarize this financial report briefly (3-5 bullet points):\n\n${truncatedReportData}`
@@ -190,7 +190,7 @@ export function registerAIRoutes(app: Express) {
       const truncatedConcept = concept.length > 100 ? concept.substring(0, 100) : concept;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [{ 
           role: "user", 
           content: `Explain briefly in 2-3 sentences: ${truncatedConcept}`
@@ -232,7 +232,7 @@ export function registerAIRoutes(app: Express) {
       const truncatedText = text.length > 500 ? text.substring(0, 500) : text;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [
           {
             role: "system",
@@ -281,7 +281,7 @@ export function registerAIRoutes(app: Express) {
       }
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-vision-1212",
+        model: "grok-2-vision-latest",
         messages: [
           {
             role: "user",
@@ -333,7 +333,7 @@ export function registerAIRoutes(app: Express) {
       const truncatedData = transactionData.length > 3000 ? transactionData.substring(0, 3000) + '...' : transactionData;
       
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "grok-2-latest",
         messages: [
           {
             role: "system",
