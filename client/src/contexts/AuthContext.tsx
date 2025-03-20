@@ -39,9 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await response.json();
           setUser(data.user);
         } else {
-          // If not authenticated, make sure user is null
-          setUser(null);
-          console.log('Not authenticated:', response.status);
+          // Check if we're on the home page, which allows guest access
+          const isHomePage = window.location.pathname === '/';
+          
+          if (isHomePage) {
+            // Create a guest user for home page
+            setUser({
+              id: 0,
+              username: 'guest',
+              name: 'Guest User',
+              email: 'guest@example.com',
+              role: 'guest'
+            });
+          } else {
+            // For other pages, require login
+            setUser(null);
+            console.log('Not authenticated:', response.status);
+          }
         }
       } catch (error) {
         console.error('Failed to check authentication status:', error);

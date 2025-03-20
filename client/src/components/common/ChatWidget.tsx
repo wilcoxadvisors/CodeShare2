@@ -45,11 +45,29 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
-  // Load conversations on open
+  // Load conversations on open - allow guest users too
   useEffect(() => {
-    if (isOpen && user) {
-      loadConversations();
+    if (isOpen) {
+      // For authenticated users, load conversations
+      if (user) {
+        loadConversations();
+      }
+      
+      // For everyone, load usage stats and show welcome message
       loadUsageStats();
+      
+      // If no messages are loaded yet, show welcome message
+      if (messages.length === 0) {
+        setMessages([
+          {
+            id: 0,
+            isUser: false,
+            text: 'Hi there! How can I help with your financial needs today?',
+            timestamp: new Date(),
+            role: ChatMessageRole.ASSISTANT
+          }
+        ]);
+      }
     }
   }, [isOpen, user]);
 
