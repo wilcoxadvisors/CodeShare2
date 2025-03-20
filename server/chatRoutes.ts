@@ -161,11 +161,11 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
     
     // Make API call to XAI or OpenAI
     const API_URL = process.env.XAI_API_KEY 
-      ? 'https://api.xai.com/v1/chat/completions' // Update with actual XAI endpoint
+      ? 'https://api.x.ai/v1/chat/completions' // XAI endpoint
       : 'https://api.openai.com/v1/chat/completions';
     
     const model = process.env.XAI_API_KEY 
-      ? 'xai-chat' // Update with actual XAI model name
+      ? 'grok-2-1212' // XAI model name
       : 'gpt-3.5-turbo';
       
     const response = await axios.post(
