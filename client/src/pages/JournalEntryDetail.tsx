@@ -15,6 +15,51 @@ import { JournalEntryStatus } from "@shared/schema";
 import { Loader2, Check, X, Upload, FileText, Ban, Copy } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+// Define TypeScript interfaces for the data
+interface JournalEntryLine {
+  id: number;
+  journalEntryId: number;
+  accountId: number;
+  description: string | null;
+  debit: string;
+  credit: string;
+  lineNo?: number;
+}
+
+interface JournalEntryFile {
+  id: number;
+  journalEntryId: number;
+  filename: string;
+  contentType: string;
+  fileUrl: string;
+  createdAt: string;
+  uploadedBy: number | null;
+}
+
+interface JournalEntry {
+  id: number;
+  entityId: number;
+  reference: string;
+  date: string;
+  description: string | null;
+  status: JournalEntryStatus;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string | null;
+  requestedBy: number | null;
+  requestedAt: string | null;
+  approvedBy: number | null;
+  approvedAt: string | null;
+  rejectedBy: number | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  postedBy: number | null;
+  postedAt: string | null;
+  voidedBy: number | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+}
+
 function JournalEntryDetail() {
   const { currentEntity } = useEntity();
   const { user } = useAuth();
@@ -32,19 +77,19 @@ function JournalEntryDetail() {
   const [isUploading, setIsUploading] = useState(false);
 
   // Query entry details
-  const { data: journalEntry, isLoading: isLoadingEntry } = useQuery({
+  const { data: journalEntry, isLoading: isLoadingEntry } = useQuery<JournalEntry>({
     queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
 
   // Query entry lines
-  const { data: journalEntryLines, isLoading: isLoadingLines } = useQuery({
+  const { data: journalEntryLines, isLoading: isLoadingLines } = useQuery<JournalEntryLine[]>({
     queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/lines`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
 
   // Query entry files
-  const { data: journalEntryFiles, isLoading: isLoadingFiles } = useQuery({
+  const { data: journalEntryFiles, isLoading: isLoadingFiles } = useQuery<JournalEntryFile[]>({
     queryKey: journalEntryId ? [`/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/files`] : ["no-journal-selected"],
     enabled: !!currentEntity && !!journalEntryId
   });
@@ -102,7 +147,7 @@ function JournalEntryDetail() {
         `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/reject`,
         { 
           method: "POST",
-          body: JSON.stringify({ rejectionReason })
+          data: { rejectionReason }
         }
       );
     },
@@ -152,7 +197,7 @@ function JournalEntryDetail() {
         `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/void`,
         { 
           method: "POST",
-          body: JSON.stringify({ voidReason })
+          data: { voidReason }
         }
       );
     },
@@ -180,13 +225,19 @@ function JournalEntryDetail() {
         { method: "POST" }
       );
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       toast({
         title: "Success",
         description: "Journal entry duplicated successfully",
       });
+      
+      // Get JSON data from response
+      const data = await response.json();
+      
       // Navigate to the new entry
-      setLocation(`/journal-entries/${response.id}`);
+      if (data && data.id) {
+        setLocation(`/journal-entries/${data.id}`);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -218,11 +269,11 @@ function JournalEntryDetail() {
         `/api/entities/${currentEntity?.id}/journal-entries/${journalEntryId}/files`,
         { 
           method: "POST",
-          body: JSON.stringify({
+          data: {
             filename: file.name,
             contentType: file.type,
             fileContent: fileContent
-          })
+          }
         }
       );
     },
