@@ -1,4 +1,4 @@
-import { Express, Request, Response } from "express";
+import express, { Express, Request, Response } from "express";
 import { storage } from "./index";
 import { 
   insertContactSubmissionSchema, 
@@ -145,8 +145,18 @@ export function registerFormRoutes(app: Express) {
       `New checklist form submission from ${submission.name} (${submission.email}):\n\nCompany: ${submission.company}\nRevenue Range: ${submission.revenueRange}`
     );
     
-    res.status(201).json(result);
+    // Include download URL with the response
+    res.status(201).json({
+      ...result,
+      downloadUrl: "/files/financial_checklist.pdf"
+    });
   }));
+  
+  // Serve the static PDF files
+  app.use('/files', (req, res, next) => {
+    console.log("Serving file:", req.path);
+    next();
+  }, express.static('public/files'));
   
   // Consultation Form Submission Route
   app.post("/api/consultation", asyncHandler(async (req: Request, res: Response) => {
