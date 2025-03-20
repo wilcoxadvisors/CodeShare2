@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { storage } from "./index";
-import { withTransaction } from "./db";
+import { withTransaction, db } from "./db";
 import { 
   insertContactSubmissionSchema, 
   insertChecklistSubmissionSchema, 
@@ -365,7 +365,7 @@ export function registerFormRoutes(app: Express) {
     };
     
     // Store the file in the database using a transaction for data integrity
-    const result = await withTransaction(async (tx) => {
+    const result = await withTransaction(async (tx: typeof db) => {
       // Create the file entry in the database within a transaction
       const file = await storage.createChecklistFile(fileData);
       
@@ -516,7 +516,7 @@ export function registerFormRoutes(app: Express) {
     }
     
     // Use transaction to ensure data integrity when deleting a file
-    await withTransaction(async (tx) => {
+    await withTransaction(async (tx: typeof db) => {
       // If this is the active file, we need to be careful
       if (file.isActive) {
         // Find another file to set as active (if any)
