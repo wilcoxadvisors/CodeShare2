@@ -37,9 +37,23 @@ const ContactSection: React.FC<ContactSectionProps> = ({ onSubmit }) => {
     setSubmitError('');
     
     try {
+      // Submit to our backend API
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
+      
       if (onSubmit) {
         await onSubmit(formData);
       }
+      
       setSubmitSuccess(true);
       setFormData({
         name: '',

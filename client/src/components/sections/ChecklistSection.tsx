@@ -24,22 +24,40 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
     }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    setSubmitted(true);
-    
-    // Reset after 5 seconds
-    setTimeout(() => {
-      setSubmitted(false);
-      setShowModal(false);
-      setFormData({
-        name: '',
-        email: '',
-        company: '',
-        revenueRange: ''
+    try {
+      // Submit to our backend API
+      const response = await fetch('/api/checklist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-    }, 5000);
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
+      
+      console.log('Form submitted successfully:', formData);
+      setSubmitted(true);
+      
+      // Reset after 5 seconds
+      setTimeout(() => {
+        setSubmitted(false);
+        setShowModal(false);
+        setFormData({
+          name: '',
+          email: '',
+          company: '',
+          revenueRange: ''
+        });
+      }, 5000);
+    } catch (error) {
+      console.error('Error submitting checklist form:', error);
+      alert('There was an error submitting the form. Please try again.');
+    }
   };
   
   return (
