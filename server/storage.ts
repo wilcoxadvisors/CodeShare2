@@ -2187,6 +2187,280 @@ export class MemStorage implements IStorage {
 
 // Database implementation
 export class DatabaseStorage implements IStorage {
+  // Budget methods
+  async getBudget(id: number): Promise<Budget | undefined> {
+    const result = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.id, id))
+      .limit(1);
+      
+    return result[0];
+  }
+  
+  async getBudgets(entityId: number): Promise<Budget[]> {
+    return await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.entityId, entityId))
+      .orderBy(desc(budgets.createdAt));
+  }
+  
+  async getBudgetsByStatus(entityId: number, status: BudgetStatus): Promise<Budget[]> {
+    return await db
+      .select()
+      .from(budgets)
+      .where(and(
+        eq(budgets.entityId, entityId),
+        eq(budgets.status, status)
+      ))
+      .orderBy(desc(budgets.createdAt));
+  }
+  
+  async createBudget(budget: InsertBudget): Promise<Budget> {
+    const [result] = await db
+      .insert(budgets)
+      .values({
+        name: budget.name,
+        entityId: budget.entityId,
+        createdBy: budget.createdBy,
+        fiscalYear: budget.fiscalYear,
+        startDate: budget.startDate,
+        endDate: budget.endDate,
+        description: budget.description || null,
+        status: budget.status as BudgetStatus || BudgetStatus.DRAFT,
+        periodType: budget.periodType as BudgetPeriodType || BudgetPeriodType.MONTHLY,
+        approvedBy: budget.approvedBy || null,
+        approvedAt: budget.approvedAt || null,
+        notes: budget.notes || null,
+        totalAmount: budget.totalAmount || "0", 
+        metadata: budget.metadata || null
+      })
+      .returning();
+    return result;
+  }
+  
+  async updateBudget(id: number, budget: Partial<Budget>): Promise<Budget | undefined> {
+    const [result] = await db
+      .update(budgets)
+      .set({
+        ...budget,
+        updatedAt: new Date()
+      })
+      .where(eq(budgets.id, id))
+      .returning();
+    return result;
+  }
+  
+  async deleteBudget(id: number): Promise<void> {
+    // First delete all budget items associated with this budget
+    await db
+      .delete(budgetItems)
+      .where(eq(budgetItems.budgetId, id));
+      
+    // Then delete all budget documents associated with this budget
+    await db
+      .delete(budgetDocuments)
+      .where(eq(budgetDocuments.budgetId, id));
+      
+    // Finally delete the budget
+    await db
+      .delete(budgets)
+      .where(eq(budgets.id, id));
+  }
+  
+  // Budget Item methods
+  async getBudgetItem(id: number): Promise<BudgetItem | undefined> {
+    const result = await db
+      .select()
+      .from(budgetItems)
+      .where(eq(budgetItems.id, id))
+      .limit(1);
+      
+    return result[0];
+  }
+  
+  async getBudgetItems(budgetId: number): Promise<BudgetItem[]> {
+    return await db
+      .select()
+      .from(budgetItems)
+      .where(eq(budgetItems.budgetId, budgetId))
+      .orderBy(asc(budgetItems.periodStart));
+  }
+  
+  async getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]> {
+    return await db
+      .select()
+      .from(budgetItems)
+      .where(and(
+        eq(budgetItems.budgetId, budgetId),
+        eq(budgetItems.accountId, accountId)
+      ))
+      .orderBy(asc(budgetItems.periodStart));
+  }
+  
+  async createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem> {
+    const [result] = await db
+      .insert(budgetItems)
+      .values({
+        createdBy: item.createdBy,
+        accountId: item.accountId,
+        budgetId: item.budgetId,
+        periodStart: item.periodStart,
+        periodEnd: item.periodEnd,
+        description: item.description || null,
+        tags: item.tags || null,
+        notes: item.notes || null,
+        amount: item.amount || "0",
+        category: item.category || null
+      })
+      .returning();
+    return result;
+  }
+  
+  async updateBudgetItem(id: number, item: Partial<BudgetItem>): Promise<BudgetItem | undefined> {
+    const [result] = await db
+      .update(budgetItems)
+      .set({
+        ...item,
+        updatedAt: new Date()
+      })
+      .where(eq(budgetItems.id, id))
+      .returning();
+    return result;
+  }
+  
+  async deleteBudgetItem(id: number): Promise<void> {
+    await db
+      .delete(budgetItems)
+      .where(eq(budgetItems.id, id));
+  }
+  
+  // Budget Document methods
+  async getBudgetDocument(id: number): Promise<BudgetDocument | undefined> {
+    const result = await db
+      .select()
+      .from(budgetDocuments)
+      .where(eq(budgetDocuments.id, id))
+      .limit(1);
+      
+    return result[0];
+  }
+  
+  async getBudgetDocuments(budgetId: number): Promise<BudgetDocument[]> {
+    return await db
+      .select()
+      .from(budgetDocuments)
+      .where(eq(budgetDocuments.budgetId, budgetId))
+      .orderBy(desc(budgetDocuments.uploadedAt));
+  }
+  
+  async createBudgetDocument(document: InsertBudgetDocument): Promise<BudgetDocument> {
+    const [result] = await db
+      .insert(budgetDocuments)
+      .values({
+        filename: document.filename,
+        path: document.path,
+        mimeType: document.mimeType,
+        size: document.size,
+        uploadedBy: document.uploadedBy,
+        budgetId: document.budgetId,
+        originalFilename: document.originalFilename,
+        fileType: document.fileType,
+        extractedData: document.extractedData || null,
+        processingStatus: document.processingStatus || "pending"
+      })
+      .returning();
+    return result;
+  }
+  
+  async updateBudgetDocument(id: number, processingStatus: string, extractedData?: any): Promise<BudgetDocument | undefined> {
+    const [result] = await db
+      .update(budgetDocuments)
+      .set({
+        processingStatus,
+        extractedData: extractedData || null,
+        updatedAt: new Date()
+      })
+      .where(eq(budgetDocuments.id, id))
+      .returning();
+    return result;
+  }
+  
+  async deleteBudgetDocument(id: number): Promise<void> {
+    await db
+      .delete(budgetDocuments)
+      .where(eq(budgetDocuments.id, id));
+  }
+  
+  // Forecast methods
+  async getForecast(id: number): Promise<Forecast | undefined> {
+    const result = await db
+      .select()
+      .from(forecasts)
+      .where(eq(forecasts.id, id))
+      .limit(1);
+      
+    return result[0];
+  }
+  
+  async getForecasts(entityId: number): Promise<Forecast[]> {
+    return await db
+      .select()
+      .from(forecasts)
+      .where(eq(forecasts.entityId, entityId))
+      .orderBy(desc(forecasts.createdAt));
+  }
+  
+  async createForecast(forecast: InsertForecast): Promise<Forecast> {
+    const [result] = await db
+      .insert(forecasts)
+      .values({
+        name: forecast.name,
+        entityId: forecast.entityId,
+        createdBy: forecast.createdBy,
+        startDate: forecast.startDate,
+        endDate: forecast.endDate,
+        description: forecast.description || null,
+        periodType: forecast.periodType || BudgetPeriodType.MONTHLY,
+        baseScenario: forecast.baseScenario || false,
+        modelConfig: forecast.modelConfig || null,
+        forecastData: forecast.forecastData || null,
+        aiInsights: forecast.aiInsights || null,
+        confidenceInterval: forecast.confidenceInterval || null
+      })
+      .returning();
+    return result;
+  }
+  
+  async updateForecast(id: number, forecast: Partial<Forecast>): Promise<Forecast | undefined> {
+    const [result] = await db
+      .update(forecasts)
+      .set({
+        ...forecast,
+        updatedAt: new Date()
+      })
+      .where(eq(forecasts.id, id))
+      .returning();
+    return result;
+  }
+  
+  async deleteForecast(id: number): Promise<void> {
+    await db
+      .delete(forecasts)
+      .where(eq(forecasts.id, id));
+  }
+  
+  async generateForecast(entityId: number, config: any): Promise<any> {
+    // This method would typically call the ML service
+    // For now, return sample data that would come from the ML service
+    return {
+      forecastData: [],
+      modelConfig: config,
+      message: "Forecast generated successfully"
+    };
+  }
+  
   // Contact Form submission methods
   async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
     const [result] = await db
