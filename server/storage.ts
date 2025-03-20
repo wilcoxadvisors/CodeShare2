@@ -1745,6 +1745,373 @@ export class MemStorage implements IStorage {
     return updatedSubmission;
   }
 
+  // Budget methods
+  async getBudget(id: number): Promise<Budget | undefined> {
+    return this.budgets.get(id);
+  }
+  
+  async getBudgets(entityId: number): Promise<Budget[]> {
+    return Array.from(this.budgets.values())
+      .filter(budget => budget.entityId === entityId);
+  }
+  
+  async getBudgetsByStatus(entityId: number, status: BudgetStatus): Promise<Budget[]> {
+    return Array.from(this.budgets.values())
+      .filter(budget => budget.entityId === entityId && budget.status === status);
+  }
+  
+  async createBudget(budget: InsertBudget): Promise<Budget> {
+    const id = this.currentBudgetId++;
+    const newBudget: Budget = {
+      id,
+      entityId: budget.entityId,
+      name: budget.name,
+      description: budget.description || null,
+      fiscalYear: budget.fiscalYear,
+      startDate: budget.startDate,
+      endDate: budget.endDate,
+      status: budget.status as BudgetStatus || BudgetStatus.DRAFT,
+      periodType: budget.periodType as BudgetPeriodType || BudgetPeriodType.MONTHLY,
+      versionNumber: budget.versionNumber || 1,
+      basedOnPreviousBudget: budget.basedOnPreviousBudget || false,
+      previousBudgetId: budget.previousBudgetId || null,
+      departmentId: budget.departmentId || null,
+      projectId: budget.projectId || null,
+      approvedById: budget.approvedById || null,
+      approvedAt: budget.approvedAt || null,
+      notes: budget.notes || null,
+      totalAmount: budget.totalAmount || 0,
+      aiAssisted: budget.aiAssisted || false,
+      createdBy: budget.createdBy,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.budgets.set(id, newBudget);
+    return newBudget;
+  }
+  
+  async updateBudget(id: number, budgetData: Partial<Budget>): Promise<Budget | undefined> {
+    const budget = this.budgets.get(id);
+    if (!budget) return undefined;
+    
+    const updatedBudget = { 
+      ...budget, 
+      ...budgetData,
+      updatedAt: new Date()
+    };
+    this.budgets.set(id, updatedBudget);
+    return updatedBudget;
+  }
+  
+  async deleteBudget(id: number): Promise<void> {
+    this.budgets.delete(id);
+    
+    // Delete all associated budget items
+    const budgetItems = Array.from(this.budgetItems.values())
+      .filter(item => item.budgetId === id);
+    
+    budgetItems.forEach(item => {
+      this.budgetItems.delete(item.id);
+    });
+    
+    // Delete all associated budget documents
+    const budgetDocuments = Array.from(this.budgetDocuments.values())
+      .filter(doc => doc.budgetId === id);
+    
+    budgetDocuments.forEach(doc => {
+      this.budgetDocuments.delete(doc.id);
+    });
+  }
+
+  // Budget Item methods
+  async getBudgetItem(id: number): Promise<BudgetItem | undefined> {
+    return this.budgetItems.get(id);
+  }
+  
+  async getBudgetItems(budgetId: number): Promise<BudgetItem[]> {
+    return Array.from(this.budgetItems.values())
+      .filter(item => item.budgetId === budgetId);
+  }
+  
+  async getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]> {
+    return Array.from(this.budgetItems.values())
+      .filter(item => item.budgetId === budgetId && item.accountId === accountId);
+  }
+  
+  async createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem> {
+    const id = this.currentBudgetItemId++;
+    const newItem: BudgetItem = {
+      id,
+      budgetId: item.budgetId,
+      accountId: item.accountId,
+      periodNumber: item.periodNumber,
+      amount: item.amount,
+      description: item.description || null,
+      notes: item.notes || null,
+      isRecurring: item.isRecurring || false,
+      variance: item.variance || null,
+      actualAmount: item.actualAmount || null,
+      variancePercentage: item.variancePercentage || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.budgetItems.set(id, newItem);
+    
+    // Update total budget amount
+    const budget = this.budgets.get(item.budgetId);
+    if (budget) {
+      const totalAmount = Array.from(this.budgetItems.values())
+        .filter(bi => bi.budgetId === item.budgetId)
+        .reduce((sum, bi) => sum + bi.amount, 0);
+      
+      this.budgets.set(budget.id, {
+        ...budget,
+        totalAmount,
+        updatedAt: new Date()
+      });
+    }
+    
+    return newItem;
+  }
+  
+  async updateBudgetItem(id: number, itemData: Partial<BudgetItem>): Promise<BudgetItem | undefined> {
+    const item = this.budgetItems.get(id);
+    if (!item) return undefined;
+    
+    const updatedItem = { 
+      ...item, 
+      ...itemData,
+      updatedAt: new Date()
+    };
+    this.budgetItems.set(id, updatedItem);
+    
+    // If amount changed, update budget total amount
+    if (itemData.amount !== undefined && item.amount !== itemData.amount) {
+      const budget = this.budgets.get(item.budgetId);
+      if (budget) {
+        const totalAmount = Array.from(this.budgetItems.values())
+          .filter(bi => bi.budgetId === item.budgetId)
+          .reduce((sum, bi) => sum + bi.amount, 0);
+        
+        this.budgets.set(budget.id, {
+          ...budget,
+          totalAmount,
+          updatedAt: new Date()
+        });
+      }
+    }
+    
+    return updatedItem;
+  }
+  
+  async deleteBudgetItem(id: number): Promise<void> {
+    const item = this.budgetItems.get(id);
+    if (!item) return;
+    
+    this.budgetItems.delete(id);
+    
+    // Update total budget amount
+    const budget = this.budgets.get(item.budgetId);
+    if (budget) {
+      const totalAmount = Array.from(this.budgetItems.values())
+        .filter(bi => bi.budgetId === item.budgetId)
+        .reduce((sum, bi) => sum + bi.amount, 0);
+      
+      this.budgets.set(budget.id, {
+        ...budget,
+        totalAmount,
+        updatedAt: new Date()
+      });
+    }
+  }
+
+  // Budget Document methods
+  async getBudgetDocument(id: number): Promise<BudgetDocument | undefined> {
+    return this.budgetDocuments.get(id);
+  }
+  
+  async getBudgetDocuments(budgetId: number): Promise<BudgetDocument[]> {
+    return Array.from(this.budgetDocuments.values())
+      .filter(doc => doc.budgetId === budgetId);
+  }
+  
+  async createBudgetDocument(document: InsertBudgetDocument): Promise<BudgetDocument> {
+    const id = this.currentBudgetDocumentId++;
+    const newDocument: BudgetDocument = {
+      id,
+      budgetId: document.budgetId,
+      filename: document.filename,
+      originalFilename: document.originalFilename,
+      fileType: document.fileType,
+      fileSize: document.fileSize,
+      uploadedBy: document.uploadedBy,
+      processingStatus: document.processingStatus || 'pending',
+      extractedData: document.extractedData || null,
+      uploadedAt: new Date()
+    };
+    this.budgetDocuments.set(id, newDocument);
+    return newDocument;
+  }
+  
+  async updateBudgetDocument(id: number, processingStatus: string, extractedData?: any): Promise<BudgetDocument | undefined> {
+    const document = this.budgetDocuments.get(id);
+    if (!document) return undefined;
+    
+    const updatedDocument = { 
+      ...document, 
+      processingStatus,
+      extractedData: extractedData || document.extractedData
+    };
+    this.budgetDocuments.set(id, updatedDocument);
+    return updatedDocument;
+  }
+  
+  async deleteBudgetDocument(id: number): Promise<void> {
+    this.budgetDocuments.delete(id);
+  }
+
+  // Forecast methods
+  async getForecast(id: number): Promise<Forecast | undefined> {
+    return this.forecasts.get(id);
+  }
+  
+  async getForecasts(entityId: number): Promise<Forecast[]> {
+    return Array.from(this.forecasts.values())
+      .filter(forecast => forecast.entityId === entityId);
+  }
+  
+  async createForecast(forecast: InsertForecast): Promise<Forecast> {
+    const id = this.currentForecastId++;
+    const newForecast: Forecast = {
+      id,
+      entityId: forecast.entityId,
+      name: forecast.name,
+      description: forecast.description || null,
+      startDate: forecast.startDate,
+      endDate: forecast.endDate,
+      budgetId: forecast.budgetId || null,
+      basedOn: forecast.basedOn || 'historical_data',
+      createdBy: forecast.createdBy,
+      aiGenerated: forecast.aiGenerated || false,
+      scenarioType: forecast.scenarioType || 'base_case',
+      assumptions: forecast.assumptions || null,
+      forecastData: forecast.forecastData || null,
+      lastUpdatedBy: forecast.lastUpdatedBy || null,
+      createdAt: new Date(),
+      lastUpdated: new Date()
+    };
+    this.forecasts.set(id, newForecast);
+    return newForecast;
+  }
+  
+  async updateForecast(id: number, forecastData: Partial<Forecast>): Promise<Forecast | undefined> {
+    const forecast = this.forecasts.get(id);
+    if (!forecast) return undefined;
+    
+    const updatedForecast = { 
+      ...forecast, 
+      ...forecastData,
+      lastUpdated: new Date()
+    };
+    this.forecasts.set(id, updatedForecast);
+    return updatedForecast;
+  }
+  
+  async deleteForecast(id: number): Promise<void> {
+    this.forecasts.delete(id);
+  }
+  
+  async generateForecast(entityId: number, config: any): Promise<any> {
+    // This implements a simple forecasting algorithm based on historical data
+    const forecastData = {
+      periods: [],
+      accounts: [],
+      data: {}
+    };
+    
+    // Get accounts to forecast
+    const accounts = Array.from(this.accounts.values())
+      .filter(account => account.entityId === entityId)
+      .filter(account => account.type === AccountType.REVENUE || account.type === AccountType.EXPENSE);
+    
+    // Add accounts to forecast
+    forecastData.accounts = accounts.map(account => ({
+      id: account.id,
+      name: account.name,
+      code: account.code,
+      type: account.type
+    }));
+    
+    // Generate periods based on config
+    const startDate = config.startDate ? new Date(config.startDate) : new Date();
+    const periods = config.periods || 12;
+    for (let i = 0; i < periods; i++) {
+      const periodDate = new Date(startDate);
+      periodDate.setMonth(startDate.getMonth() + i);
+      
+      const period = {
+        index: i,
+        name: periodDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        date: periodDate
+      };
+      
+      forecastData.periods.push(period);
+      
+      // Generate forecast values for each account using previous data
+      accounts.forEach(account => {
+        const accountId = account.id;
+        if (!forecastData.data[accountId]) {
+          forecastData.data[accountId] = [];
+        }
+        
+        // Find previous 6 months of data for this account
+        const journalLines = Array.from(this.journalEntryLines.values())
+          .filter(line => line.accountId === account.id)
+          .filter(line => {
+            const entry = this.journalEntries.get(line.journalEntryId);
+            return entry && entry.status === JournalEntryStatus.POSTED;
+          });
+          
+        // Calculate the trend
+        let baseValue = 0;
+        
+        if (journalLines.length > 0) {
+          // Get average value from journal lines
+          const total = journalLines.reduce((sum, line) => {
+            if (account.type === AccountType.REVENUE) {
+              return sum + parseFloat(line.credit);
+            } else {
+              return sum + parseFloat(line.debit);
+            }
+          }, 0);
+          
+          baseValue = total / Math.max(1, journalLines.length);
+        } else {
+          // No historical data, use placeholder
+          baseValue = account.type === AccountType.REVENUE ? 5000 : 3000;
+        }
+        
+        // Apply growth factor (5% monthly growth for revenue, 3% for expenses)
+        const growthFactor = account.type === AccountType.REVENUE ? 0.05 : 0.03;
+        
+        // Apply seasonal adjustments if enabled
+        const useSeasonality = config.useSeasonality === undefined ? true : config.useSeasonality;
+        
+        // Generate amount with trend and seasonality
+        const amount = baseValue * Math.pow(1 + growthFactor, i) * 
+          (useSeasonality ? (1 + 0.1 * Math.sin(i * Math.PI / 6)) : 1); // Simple seasonal pattern
+        
+        forecastData.data[accountId].push({
+          periodIndex: i,
+          amount: Math.round(amount * 100) / 100,
+          confidence: 0.9 - (i * 0.05) // Confidence decreases for further periods
+        });
+      });
+    }
+    
+    return forecastData;
+  }
+
   // Checklist Files methods
   async createChecklistFile(fileData: InsertChecklistFile): Promise<ChecklistFile> {
     const id = this.currentChecklistFileId++;
