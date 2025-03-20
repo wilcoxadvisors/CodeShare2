@@ -52,8 +52,8 @@ const checkUsageLimits = async (userId: number, entityId: number | null = null) 
     const [newUsageLimit] = await db.insert(chatUsageLimits).values({
       userId,
       entityId,
-      maxMessagesPerDay: 1000, // Increased limits for better usability
-      maxTokensPerDay: 100000,
+      maxMessagesPerDay: 10000, // Significantly increased limits for public users
+      maxTokensPerDay: 1000000,
       limitResetTime,
       messagesUsedToday: 0,
       tokensUsedToday: 0

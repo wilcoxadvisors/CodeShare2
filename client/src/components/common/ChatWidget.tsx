@@ -141,15 +141,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
   const loadUsageStats = async () => {
     try {
       const stats = await chatService.getUsageStatus(entityId);
-      setUsageStats(stats);
+      // Set very high limits for public users to essentially make it unlimited
+      setUsageStats({
+        remainingMessages: 10000,
+        remainingTokens: 1000000,
+        maxMessagesPerDay: 10000,
+        maxTokensPerDay: 1000000
+      });
     } catch (error) {
       console.error('Failed to load usage stats:', error);
-      // Set default generous limits for users when we can't load stats
+      // Set default very generous limits for users when we can't load stats
       setUsageStats({
-        remainingMessages: 1000,
-        remainingTokens: 100000,
-        maxMessagesPerDay: 1000,
-        maxTokensPerDay: 100000
+        remainingMessages: 10000,
+        remainingTokens: 1000000,
+        maxMessagesPerDay: 10000,
+        maxTokensPerDay: 1000000
       });
     }
   };
@@ -348,10 +354,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, entityId }) =>
       </div>
       
       <div className="p-2 border-t border-gray-200">
-        <div className="flex items-center justify-between text-xs text-gray-500 px-2">
-          <div>
-            {usageStats.remainingMessages}/{usageStats.maxMessagesPerDay} messages left today
-          </div>
+        <div className="flex items-center justify-end text-xs text-gray-500 px-2">
           <button 
             onClick={startNewConversation} 
             className="text-blue-600 hover:text-blue-800"
