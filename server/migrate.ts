@@ -299,6 +299,7 @@ export async function migrateTables() {
         max_messages_per_day INTEGER NOT NULL DEFAULT 1000,
         max_tokens_per_day INTEGER NOT NULL DEFAULT 100000,
         reset_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        limit_reset_time TIMESTAMP NOT NULL DEFAULT NOW(),
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP
       );
