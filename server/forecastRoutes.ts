@@ -200,4 +200,42 @@ export function registerForecastRoutes(app: Express, storage: IStorage) {
       throw error;
     }
   }));
+  
+  /**
+   * Generate XAI insights for a forecast
+   */
+  app.post('/api/entities/:entityId/forecasts/:id/xai-insights', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const forecastId = parseInt(req.params.id);
+    
+    // Check if the forecast exists
+    const forecast = await storage.getForecast(forecastId);
+    if (!forecast) {
+      throwNotFound('Forecast');
+    }
+    
+    // Check if XAI is available
+    const xaiStatus = await mlService.isXaiAvailable();
+    if (!xaiStatus.available) {
+      return res.status(400).json({ 
+        success: false, 
+        error: xaiStatus.message,
+        needsAPIKey: true 
+      });
+    }
+    
+    try {
+      // Generate XAI insights
+      const insights = await mlService.generateXaiInsights(forecastId);
+      res.json({
+        success: true,
+        data: insights
+      });
+    } catch (error) {
+      console.error("Error generating XAI insights:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: (error as Error).message 
+      });
+    }
+  }));
 }

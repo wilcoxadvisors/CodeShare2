@@ -422,6 +422,108 @@ def check_xai_integration():
         "message": "XAI integration is available" if api_key else "XAI integration is not available. Please set XAI_API_KEY."
     })
 
+@app.route('/xai/insights', methods=['POST'])
+def generate_xai_insights():
+    """
+    Generate insights from forecast data using XAI
+    
+    Expected JSON payload:
+    {
+        "forecast_data": [...],  # forecast data from Prophet
+        "historical_data": [...],  # historical financial data
+        "expenses": [...],  # known expenses
+        "documents": [...],  # extracted document data
+    }
+    """
+    try:
+        api_key = os.environ.get('XAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                "success": False,
+                "error": "XAI API key not configured. Please set XAI_API_KEY environment variable."
+            }), 400
+        
+        data = request.json
+        
+        # Extract data elements
+        forecast_data = data.get('forecast_data', [])
+        historical_data = data.get('historical_data', [])
+        expenses = data.get('expenses', [])
+        documents = data.get('documents', [])
+        
+        # Generate a detailed prompt for XAI
+        prompt = f"""Analyze the following financial data and generate insights:
+        
+Historical Financial Data:
+{json.dumps(historical_data, indent=2)}
+
+Known Expenses:
+{json.dumps(expenses, indent=2)}
+
+Forecast Data:
+{json.dumps(forecast_data, indent=2)}
+
+Document Analysis:
+{json.dumps(documents, indent=2)}
+
+Please provide:
+1. Key observations from the data
+2. Budget optimization recommendations
+3. Potential financial risks
+4. Growth opportunities
+5. Cash flow implications
+"""
+        
+        # In a real implementation, we would make an API call to XAI service here
+        # For this exercise, we'll simulate it with a mock response since we don't have actual XAI access
+        
+        # For development only! In production, we would use the actual XAI API
+        import requests
+        try:
+            # This would be the actual XAI API call
+            response = requests.post(
+                'https://api.x.ai/v1/chat', 
+                json={
+                    "prompt": prompt,
+                    "model": "grok-2-latest",
+                },
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                ai_response = response.json()
+                insights = ai_response.get('choices', [{}])[0].get('text', '')
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": f"XAI API returned an error: {response.status_code} - {response.text}"
+                }), 400
+                
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": f"Error calling XAI API: {str(e)}"
+            }), 400
+        
+        return jsonify({
+            "success": True,
+            "insights": insights,
+            "forecast_analysis": {
+                "trend": "increasing" if len(forecast_data) > 1 and forecast_data[-1].get('yhat', 0) > forecast_data[0].get('yhat', 0) else "decreasing",
+                "volatility": "high" if any(item.get('yhat_upper', 0) - item.get('yhat_lower', 0) > 1000 for item in forecast_data) else "low"
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
 if __name__ == '__main__':
     port = int(os.environ.get('PYTHON_SERVICE_PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=True)

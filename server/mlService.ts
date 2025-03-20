@@ -294,6 +294,92 @@ export class MLService {
       config
     };
   }
+  
+  /**
+   * Generate XAI insights for a forecast
+   * Uses the XAI API to analyze forecast data and provide insights
+   */
+  async generateXaiInsights(forecastId: number): Promise<any> {
+    try {
+      await this.ensureServiceRunning();
+      
+      // 1. Get the forecast and related data
+      const forecast = await this.storage.getForecast(forecastId);
+      if (!forecast) {
+        throw new Error(`Forecast with ID ${forecastId} not found`);
+      }
+      
+      // 2. Get historical data for context
+      const entityId = forecast.entityId;
+      const journalEntries = await this.storage.getJournalEntries(entityId);
+      const historicalData = journalEntries.map(entry => {
+        return {
+          date: entry.date.toISOString().split('T')[0],
+          amount: entry.amount || 0
+        };
+      });
+      
+      // 3. Get any known expenses (budget items)
+      const budgets = await this.storage.getBudgets(entityId);
+      let expenses: any[] = [];
+      if (budgets && budgets.length > 0) {
+        // Use the most recent budget
+        const latestBudget = budgets.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        
+        const budgetItems = await this.storage.getBudgetItems(latestBudget.id);
+        expenses = budgetItems.map(item => ({
+          name: item.description || `Item ${item.id}`,
+          amount: parseFloat(item.amount || '0'),
+          date: item.periodStart.toISOString().split('T')[0],
+          category: item.category
+        }));
+      }
+      
+      // 4. Get any document data if available
+      const documents: any[] = [];
+      if (this.storage.getBudgetDocuments) {
+        try {
+          const budgetDocs = await this.storage.getBudgetDocuments(budgets[0]?.id);
+          if (budgetDocs) {
+            documents.push(...budgetDocs.map(doc => ({
+              filename: doc.filename,
+              extractedData: doc.extractedData
+            })));
+          }
+        } catch (e) {
+          console.log('No budget documents available');
+        }
+      }
+      
+      // 5. Call the ML service to generate insights
+      const response = await axios.post(`${ML_SERVICE_URL}/xai/insights`, {
+        forecast_data: forecast.forecastData,
+        historical_data: historicalData,
+        expenses: expenses,
+        documents: documents
+      });
+      
+      // 6. Store the insights in the forecast
+      if (response.data && response.data.success) {
+        const insights = response.data.insights;
+        await this.storage.updateForecast(forecastId, {
+          aiInsights: insights
+        });
+        
+        return {
+          success: true,
+          insights: insights,
+          forecast_analysis: response.data.forecast_analysis
+        };
+      } else {
+        throw new Error(`Failed to generate insights: ${response.data?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      throw new Error(`XAI insights generation error: ${(error as Error).message}`);
+    }
+  }
 }
 
 // Create and export a singleton instance
