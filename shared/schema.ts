@@ -470,6 +470,30 @@ export const insertDataConsentSchema = createInsertSchema(dataConsent).omit({
   lastUpdated: true
 });
 
+// Budget insertion schemas
+export const insertBudgetSchema = createInsertSchema(budgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertBudgetDocumentSchema = createInsertSchema(budgetDocuments).omit({
+  id: true,
+  uploadedAt: true
+});
+
+export const insertForecastSchema = createInsertSchema(forecasts).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true
+});
+
 // Chat message roles
 export enum ChatMessageRole {
   USER = "user",
@@ -584,6 +608,19 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 export type ChatUsageLimit = typeof chatUsageLimits.$inferSelect;
 export type InsertChatUsageLimit = z.infer<typeof insertChatUsageLimitSchema>;
+
+// Budget and Forecast types
+export type Budget = typeof budgets.$inferSelect;
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+
+export type BudgetItem = typeof budgetItems.$inferSelect;
+export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
+
+export type BudgetDocument = typeof budgetDocuments.$inferSelect;
+export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
+
+export type Forecast = typeof forecasts.$inferSelect;
+export type InsertForecast = z.infer<typeof insertForecastSchema>;
 
 // Contact Form Submissions
 export const contactSubmissions = pgTable("contact_submissions", {

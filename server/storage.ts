@@ -16,7 +16,11 @@ import {
   dataConsent, DataConsent, InsertDataConsent,
   contactSubmissions, ContactSubmission, InsertContactSubmission,
   checklistSubmissions, ChecklistSubmission, InsertChecklistSubmission,
-  consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission
+  consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission,
+  budgets, Budget, InsertBudget, BudgetStatus, BudgetPeriodType,
+  budgetItems, BudgetItem, InsertBudgetItem,
+  budgetDocuments, BudgetDocument, InsertBudgetDocument,
+  forecasts, Forecast, InsertForecast
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
 import { db } from "./db";
@@ -140,6 +144,37 @@ export interface IStorage {
   getConsultationSubmissions(limit?: number, offset?: number): Promise<ConsultationSubmission[]>;
   getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined>;
   updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined>;
+  
+  // Budget methods
+  getBudget(id: number): Promise<Budget | undefined>;
+  getBudgets(entityId: number): Promise<Budget[]>;
+  getBudgetsByStatus(entityId: number, status: BudgetStatus): Promise<Budget[]>;
+  createBudget(budget: InsertBudget): Promise<Budget>;
+  updateBudget(id: number, budget: Partial<Budget>): Promise<Budget | undefined>;
+  deleteBudget(id: number): Promise<void>;
+  
+  // Budget Item methods
+  getBudgetItem(id: number): Promise<BudgetItem | undefined>;
+  getBudgetItems(budgetId: number): Promise<BudgetItem[]>;
+  getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]>;
+  createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem>;
+  updateBudgetItem(id: number, item: Partial<BudgetItem>): Promise<BudgetItem | undefined>;
+  deleteBudgetItem(id: number): Promise<void>;
+  
+  // Budget Document methods
+  getBudgetDocument(id: number): Promise<BudgetDocument | undefined>;
+  getBudgetDocuments(budgetId: number): Promise<BudgetDocument[]>;
+  createBudgetDocument(document: InsertBudgetDocument): Promise<BudgetDocument>;
+  updateBudgetDocument(id: number, processingStatus: string, extractedData?: any): Promise<BudgetDocument | undefined>;
+  deleteBudgetDocument(id: number): Promise<void>;
+  
+  // Forecast methods
+  getForecast(id: number): Promise<Forecast | undefined>;
+  getForecasts(entityId: number): Promise<Forecast[]>;
+  createForecast(forecast: InsertForecast): Promise<Forecast>;
+  updateForecast(id: number, forecast: Partial<Forecast>): Promise<Forecast | undefined>;
+  deleteForecast(id: number): Promise<void>;
+  generateForecast(entityId: number, config: any): Promise<any>;
 }
 
 export interface GLOptions {
@@ -195,6 +230,16 @@ export class MemStorage implements IStorage {
   private currentIndustryBenchmarkId: number = 1;
   private currentDataConsentId: number = 1;
   
+  // Budget and forecast storage
+  private budgets: Map<number, Budget>;
+  private budgetItems: Map<number, BudgetItem>;
+  private budgetDocuments: Map<number, BudgetDocument>;
+  private forecasts: Map<number, Forecast>;
+  private currentBudgetId: number = 1;
+  private currentBudgetItemId: number = 1;
+  private currentBudgetDocumentId: number = 1;
+  private currentForecastId: number = 1;
+  
   // Form submission storage
   private contactSubmissions: Map<number, ContactSubmission>;
   private checklistSubmissions: Map<number, ChecklistSubmission>;
@@ -228,6 +273,12 @@ export class MemStorage implements IStorage {
     this.checklistSubmissions = new Map();
     this.checklistFiles = new Map();
     this.consultationSubmissions = new Map();
+    
+    // Initialize budget and forecast tables
+    this.budgets = new Map();
+    this.budgetItems = new Map();
+    this.budgetDocuments = new Map();
+    this.forecasts = new Map();
     
     // Create default admin user
     const adminUser: User = {
