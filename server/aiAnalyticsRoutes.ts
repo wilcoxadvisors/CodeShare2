@@ -76,7 +76,7 @@ async function processAiAnalyticsQuery(
     // Format the request based on whether using XAI or OpenAI
     const apiRequest = process.env.XAI_API_KEY 
       ? {
-          model: "grok-2-1212", // X.AI's model
+          model: "grok-2-latest", // X.AI's model
           messages: [
             {
               role: "system",
