@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import { Link, useLocation } from "wouter";
@@ -78,23 +78,24 @@ function JournalEntries() {
     enabled: !!currentEntity,
   });
 
-  const handleApplyFilters = (filterData: FilterData) => {
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleApplyFilters = useCallback((filterData: FilterData) => {
     setFilters(filterData);
-  };
+  }, []);
 
   const [, setLocation] = useLocation();
   
-  const handleNewJournalEntry = () => {
+  const handleNewJournalEntry = useCallback(() => {
     setLocation("/journal-entries/new");
-  };
+  }, [setLocation]);
 
-  const handleJournalEntrySubmit = async () => {
+  const handleJournalEntrySubmit = useCallback(async () => {
     setShowJournalEntryForm(false);
     refetch();
-  };
+  }, [refetch]);
   
   // Function to export journal entries to CSV with applied filters
-  const handleExportToCSV = () => {
+  const handleExportToCSV = useCallback(() => {
     if (!journalEntries || !Array.isArray(journalEntries) || journalEntries.length === 0) return;
     
     // Prepare data for export
@@ -145,9 +146,10 @@ function JournalEntries() {
     
     // Export to CSV
     exportToCSV(exportData, fileName, fields);
-  };
+  }, [journalEntries, currentEntity?.name, filters]);
 
-  const columns = [
+  // Memoize columns configuration to prevent unnecessary re-renders
+  const columns = useMemo(() => [
     { header: "Reference", accessor: "reference", type: "text" },
     { header: "Date", accessor: "date", type: "date" },
     { header: "Description", accessor: "description", type: "text" },
@@ -202,7 +204,7 @@ function JournalEntries() {
         </div>
       )
     }
-  ];
+  ], []);
 
   if (!currentEntity) {
     return (
