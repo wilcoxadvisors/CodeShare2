@@ -57,9 +57,10 @@ const ConsultationFormModal: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      // In a real implementation, this would send the data to a server
-      console.log('Form submitted with data:', data);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network request
+      // Send the form data to the actual backend API
+      console.log('Submitting form data:', data);
+      const response = await axios.post('/api/consultation', data);
+      console.log('Form submission successful:', response.data);
       alert('Thank you for your interest! We will contact you shortly to schedule a consultation.');
       closeForm();
     } catch (error) {

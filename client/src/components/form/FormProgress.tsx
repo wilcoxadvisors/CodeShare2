@@ -19,7 +19,7 @@ const FormProgress: React.FC<FormProgressProps> = ({
           const isCompleted = index < currentStep;
           
           return (
-            <React.Fragment key={index}>
+            <div key={index} className="flex items-center flex-1">
               {/* Step Button */}
               <div>
                 <button
@@ -66,7 +66,7 @@ const FormProgress: React.FC<FormProgressProps> = ({
                   }`}
                 ></div>
               )}
-            </React.Fragment>
+            </div>
           );
         })}
       </div>
