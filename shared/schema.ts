@@ -661,6 +661,8 @@ export const checklistFiles = pgTable("checklist_files", {
   uploadedBy: integer("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
+  // Note: fileData is stored in the database as BYTEA column but not included in the schema
+  // as it's handled specially in the storage implementation
 });
 
 // Consultation Form Submissions

@@ -2128,13 +2128,17 @@ export class MemStorage implements IStorage {
     
     const checklistFile: ChecklistFile = {
       id,
-      fileName: fileData.fileName,
-      fileSize: fileData.fileSize,
+      filename: fileData.filename,
+      originalFilename: fileData.originalFilename,
       mimeType: fileData.mimeType,
-      fileData: fileData.fileData,
-      isActive: fileData.isActive,
+      size: fileData.size,
+      path: fileData.path,
+      isActive: fileData.isActive ?? true,
+      uploadedBy: fileData.uploadedBy ?? null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      // Add fileData as a non-schema property
+      fileData: fileData.fileData
     };
     
     this.checklistFiles.set(id, checklistFile);
