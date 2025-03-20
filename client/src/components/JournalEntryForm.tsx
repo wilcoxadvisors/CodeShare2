@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Account, JournalEntryStatus } from '@shared/schema';
-import { X, Plus, FileUp } from 'lucide-react';
+import { X, Plus, FileUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { z } from 'zod';
+import { validateForm } from '@/lib/validation';
 
 interface JournalEntryFormProps {
   entityId: number;
@@ -27,10 +30,43 @@ interface JournalLine {
   credit: string;
 }
 
+// Form validation schema
+const FormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  reference: z.string().min(3, "Reference must be at least 3 characters"),
+  description: z.string().optional(),
+  lines: z.array(z.object({
+    accountId: z.string().min(1, "Account is required"),
+    description: z.string().optional(),
+    debit: z.string(),
+    credit: z.string()
+  }))
+  .min(2, "Journal entry must have at least 2 lines")
+  .refine(lines => {
+    // Check if there's at least one debit and one credit line
+    const hasDebit = lines.some(line => parseFloat(line.debit) > 0);
+    const hasCredit = lines.some(line => parseFloat(line.credit) > 0);
+    return hasDebit && hasCredit;
+  }, {
+    message: "Journal entry must have at least one debit and one credit line"
+  })
+  .refine(lines => {
+    // Check if debits equal credits
+    const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+    const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+    return Math.abs(totalDebit - totalCredit) < 0.001;
+  }, {
+    message: "Total debits must equal total credits"
+  })
+});
+
 function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
     date: existingEntry?.date ? new Date(existingEntry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -77,12 +113,41 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
       onSubmit();
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to create journal entry: ${error.message}`,
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Handle structured API errors
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        
+        // Format field errors from API
+        const formattedErrors: Record<string, string> = {};
+        
+        apiErrors.forEach((err: any) => {
+          const path = err.path.split('.');
+          
+          // Handle array paths like lines[0].accountId
+          if (path[0] === 'lines' && path.length > 1) {
+            const match = path[1].match(/\[(\d+)\]/);
+            if (match) {
+              const lineIndex = parseInt(match[1]);
+              const fieldName = path[2] || 'field';
+              formattedErrors[`line_${lineIndex}_${fieldName}`] = err.message;
+            }
+          } else {
+            formattedErrors[path[0]] = err.message;
+          }
+        });
+        
+        setFieldErrors(formattedErrors);
+        setFormError("Please correct the errors in the form.");
+      } else {
+        // Generic error
+        toast({
+          title: "Error",
+          description: `Failed to create journal entry: ${error.message}`,
+          variant: "destructive",
+        });
+        setFormError(error.message || "An error occurred while creating the journal entry.");
+      }
     }
   });
   
@@ -103,44 +168,60 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
       onSubmit();
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to update journal entry: ${error.message}`,
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Similar error handling as in createEntry
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        const formattedErrors: Record<string, string> = {};
+        
+        apiErrors.forEach((err: any) => {
+          const path = err.path.split('.');
+          if (path[0] === 'lines' && path.length > 1) {
+            const match = path[1].match(/\[(\d+)\]/);
+            if (match) {
+              const lineIndex = parseInt(match[1]);
+              const fieldName = path[2] || 'field';
+              formattedErrors[`line_${lineIndex}_${fieldName}`] = err.message;
+            }
+          } else {
+            formattedErrors[path[0]] = err.message;
+          }
+        });
+        
+        setFieldErrors(formattedErrors);
+        setFormError("Please correct the errors in the form.");
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to update journal entry: ${error.message}`,
+          variant: "destructive",
+        });
+        setFormError(error.message || "An error occurred while updating the journal entry.");
+      }
     }
   });
 
   const handleSubmit = (saveAsDraft: boolean = true) => {
-    // Validate form
-    if (!journalData.date) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a date for this journal entry.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Clear previous errors
+    setFormError(null);
+    setFieldErrors({});
     
-    // Validate lines
-    const validLines = lines.filter(line => line.accountId && (parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0));
-    if (validLines.length < 2) {
-      toast({
-        title: "Validation Error",
-        description: "You need at least two lines for a valid journal entry.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Prepare data for validation
+    const validLines = lines.filter(line => 
+      line.accountId || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
+    );
     
-    // Check if balanced
-    if (!isBalanced) {
-      toast({
-        title: "Validation Error",
-        description: "Journal entry is unbalanced. Total debits must equal total credits.",
-        variant: "destructive",
-      });
+    const formData = {
+      ...journalData,
+      lines: validLines
+    };
+    
+    // Validate form data
+    const validation = validateForm(formData, FormSchema);
+    
+    if (!validation.success) {
+      setFieldErrors(validation.errors || {});
+      setFormError("Please correct the errors in the form.");
       return;
     }
     
@@ -170,6 +251,15 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setJournalData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear field error when user changes the value
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
   
   const handleLineChange = (index: number, field: string, value: string) => {
@@ -187,6 +277,16 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
     }
     
     setLines(updatedLines);
+    
+    // Clear field error when user changes the value
+    const errorKey = `line_${index}_${field}`;
+    if (fieldErrors[errorKey]) {
+      setFieldErrors(prev => {
+        const updated = { ...prev };
+        delete updated[errorKey];
+        return updated;
+      });
+    }
   };
   
   const addLine = () => {
@@ -206,11 +306,58 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
     const updatedLines = [...lines];
     updatedLines.splice(index, 1);
     setLines(updatedLines);
+    
+    // Remove any errors associated with this line
+    const updatedErrors = { ...fieldErrors };
+    Object.keys(updatedErrors).forEach(key => {
+      if (key.startsWith(`line_${index}_`)) {
+        delete updatedErrors[key];
+      }
+      
+      // Reindex higher indexed errors
+      for (let i = index + 1; i < lines.length; i++) {
+        const oldKey = `line_${i}_`;
+        const newKey = `line_${i-1}_`;
+        
+        Object.keys(updatedErrors).forEach(errKey => {
+          if (errKey.startsWith(oldKey)) {
+            const field = errKey.substring(oldKey.length);
+            updatedErrors[`${newKey}${field}`] = updatedErrors[errKey];
+            delete updatedErrors[errKey];
+          }
+        });
+      }
+    });
+    
+    setFieldErrors(updatedErrors);
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSupportingDoc(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "The file size cannot exceed 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Only JPEG, PNG, and PDF files are supported.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSupportingDoc(file);
     }
   };
   
@@ -220,6 +367,14 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
         {isEditing ? 'Edit Journal Entry' : 'Manual Journal Entry'}
       </h3>
       
+      {formError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <Label htmlFor="reference">Journal ID</Label>
@@ -228,9 +383,12 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
             name="reference"
             value={journalData.reference}
             onChange={handleChange}
-            className="mt-1"
+            className={`mt-1 ${fieldErrors.reference ? 'border-red-500' : ''}`}
             readOnly
           />
+          {fieldErrors.reference && (
+            <p className="text-red-500 text-sm mt-1">{fieldErrors.reference}</p>
+          )}
         </div>
         
         <div>
@@ -241,8 +399,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
             type="date"
             value={journalData.date}
             onChange={handleChange}
-            className="mt-1"
+            className={`mt-1 ${fieldErrors.date ? 'border-red-500' : ''}`}
           />
+          {fieldErrors.date && (
+            <p className="text-red-500 text-sm mt-1">{fieldErrors.date}</p>
+          )}
         </div>
         
         <div>
@@ -265,8 +426,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
           onChange={handleChange}
           rows={2}
           placeholder="Enter a description for this journal entry"
-          className="mt-1"
+          className={`mt-1 ${fieldErrors.description ? 'border-red-500' : ''}`}
         />
+        {fieldErrors.description && (
+          <p className="text-red-500 text-sm mt-1">{fieldErrors.description}</p>
+        )}
       </div>
       
       <div className="overflow-x-auto mb-4">
@@ -291,7 +455,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                     value={line.accountId} 
                     onValueChange={(value) => handleLineChange(index, 'accountId', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={fieldErrors[`line_${index}_accountId`] ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select Account" />
                     </SelectTrigger>
                     <SelectContent>
@@ -303,6 +467,9 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                       ))}
                     </SelectContent>
                   </Select>
+                  {fieldErrors[`line_${index}_accountId`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_accountId`]}</p>
+                  )}
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -310,7 +477,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                     value={line.description}
                     onChange={(e) => handleLineChange(index, 'description', e.target.value)}
                     placeholder="Line description"
+                    className={fieldErrors[`line_${index}_description`] ? 'border-red-500' : ''}
                   />
+                  {fieldErrors[`line_${index}_description`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_description`]}</p>
+                  )}
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -320,7 +491,11 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                     value={line.debit}
                     onChange={(e) => handleLineChange(index, 'debit', e.target.value)}
                     placeholder="0.00"
+                    className={fieldErrors[`line_${index}_debit`] ? 'border-red-500' : ''}
                   />
+                  {fieldErrors[`line_${index}_debit`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_debit`]}</p>
+                  )}
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -330,13 +505,18 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                     value={line.credit}
                     onChange={(e) => handleLineChange(index, 'credit', e.target.value)}
                     placeholder="0.00"
+                    className={fieldErrors[`line_${index}_credit`] ? 'border-red-500' : ''}
                   />
+                  {fieldErrors[`line_${index}_credit`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_credit`]}</p>
+                  )}
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button 
                     className="text-red-600 hover:text-red-900"
                     onClick={() => removeLine(index)}
+                    aria-label="Remove line"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -396,6 +576,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                   type="file"
                   onChange={handleFileChange}
                   className="sr-only" 
+                  accept="image/jpeg,image/png,application/pdf"
                 />
               </label>
               <p className="pl-1">or drag and drop</p>

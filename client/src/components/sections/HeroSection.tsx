@@ -46,11 +46,7 @@ const FORM_STEPS = ["Company Info", "Services", "Contact"];
 const HeroSection: React.FC = () => {
   const { setShowConsultationForm } = useUI();
   
-  // Log each render for debugging purposes
-  console.log("HeroSection rendering...");
-  
   const openConsultationForm = () => {
-    console.log("Opening consultation form via UIContext");
     setShowConsultationForm(true);
   };
 

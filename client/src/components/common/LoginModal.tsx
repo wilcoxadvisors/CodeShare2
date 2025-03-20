@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
+import { useLocation } from 'wouter';
 
 const LoginModal: React.FC = () => {
   const { login } = useAuth();
   const { showLoginModal, setShowLoginModal } = useUI();
+  const [_, navigate] = useLocation();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +30,8 @@ const LoginModal: React.FC = () => {
       
       if (success) {
         setShowLoginModal(false);
-        window.location.href = '/dashboard'; // Redirect to dashboard after successful login
+        // Use the navigate function instead of changing window.location directly
+        navigate('/dashboard');
       } else {
         setErrorMessage('Invalid username or password');
       }
@@ -40,10 +43,21 @@ const LoginModal: React.FC = () => {
     }
   };
   
+  // Early return if modal is not visible
   if (!showLoginModal) return null;
   
+  // Handle click outside to close modal
+  const handleClickOutside = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      setShowLoginModal(false);
+    }
+  };
+  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center overflow-y-auto"
+      onClick={handleClickOutside}
+    >
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full relative animate-fadeIn">
         <button 
           onClick={() => setShowLoginModal(false)}
@@ -73,6 +87,7 @@ const LoginModal: React.FC = () => {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent"
               disabled={isLoading}
+              autoComplete="username"
             />
           </div>
           
@@ -87,6 +102,7 @@ const LoginModal: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent"
               disabled={isLoading}
+              autoComplete="current-password"
             />
           </div>
           
@@ -98,6 +114,11 @@ const LoginModal: React.FC = () => {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+        
+        {/* Default credentials helper (for development purposes) */}
+        <div className="mt-4 text-center text-xs text-gray-500">
+          <p>Default admin: admin / password</p>
+        </div>
       </div>
     </div>
   );
