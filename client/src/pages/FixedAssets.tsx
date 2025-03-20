@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useEntity } from '../contexts/EntityContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { z } from 'zod';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlusCircle, ArrowDownToLine, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { AccountType } from '@shared/schema';
+import { FormContainer } from '@/components/common';
+import { TextField, SelectField } from '@/components/common';
+import { useFormState } from '@/hooks/useFormState';
 
 function FixedAssets() {
   const { currentEntity } = useEntity();
@@ -84,63 +85,70 @@ function FixedAssets() {
     }
   });
 
+  // Fixed asset validation schema
+  const assetFormSchema = z.object({
+    name: z.string().min(1, "Asset name is required"),
+    description: z.string().optional(),
+    acquisitionDate: z.string().min(1, "Acquisition date is required"),
+    acquisitionCost: z.string().min(1, "Acquisition cost is required"),
+    depreciationMethod: z.string().min(1, "Depreciation method is required"),
+    usefulLife: z.string().min(1, "Useful life is required"),
+    salvageValue: z.string().optional(),
+    assetAccountId: z.string().min(1, "Asset account is required"),
+    accumulatedDepreciationAccountId: z.string().min(1, "Accumulated depreciation account is required"),
+    depreciationExpenseAccountId: z.string().min(1, "Depreciation expense account is required")
+  });
+
+  // Use our custom form state hook
+  const initialAssetForm = {
+    name: '',
+    description: '',
+    acquisitionDate: new Date().toISOString().split('T')[0],
+    acquisitionCost: '',
+    depreciationMethod: 'straight_line',
+    usefulLife: '',
+    salvageValue: '',
+    assetAccountId: '',
+    accumulatedDepreciationAccountId: '',
+    depreciationExpenseAccountId: ''
+  };
+
+  const {
+    data: formData,
+    errors,
+    formError,
+    isSubmitting,
+    setFieldValue,
+    setSelectValue,
+    handleSubmit,
+    resetForm,
+    setFormData
+  } = useFormState({
+    initialData: initialAssetForm,
+    schema: assetFormSchema,
+    onSubmit: async (data) => {
+      // Convert numeric fields
+      const formattedData = {
+        ...data,
+        acquisitionCost: parseFloat(data.acquisitionCost),
+        usefulLife: parseInt(data.usefulLife),
+        salvageValue: parseFloat(data.salvageValue || '0'),
+        assetAccountId: parseInt(data.assetAccountId),
+        accumulatedDepreciationAccountId: parseInt(data.accumulatedDepreciationAccountId),
+        depreciationExpenseAccountId: parseInt(data.depreciationExpenseAccountId),
+        entityId: currentEntity?.id,
+        createdBy: 1 // Current user ID would come from auth context
+      };
+      
+      await createAsset.mutateAsync(formattedData);
+      setShowAssetForm(false);
+    }
+  });
+
   const handleNewAsset = () => {
     setSelectedAsset(null);
-    setAssetFormData({
-      name: '',
-      description: '',
-      acquisitionDate: new Date().toISOString().split('T')[0],
-      acquisitionCost: '',
-      depreciationMethod: 'straight_line',
-      usefulLife: '',
-      salvageValue: '',
-      assetAccountId: '',
-      accumulatedDepreciationAccountId: '',
-      depreciationExpenseAccountId: ''
-    });
+    resetForm();
     setShowAssetForm(true);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setAssetFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setAssetFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!assetFormData.name || !assetFormData.acquisitionDate || !assetFormData.acquisitionCost || 
-        !assetFormData.depreciationMethod || !assetFormData.usefulLife || 
-        !assetFormData.assetAccountId || !assetFormData.accumulatedDepreciationAccountId || 
-        !assetFormData.depreciationExpenseAccountId) {
-      
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Convert numeric fields
-    const formattedData = {
-      ...assetFormData,
-      acquisitionCost: parseFloat(assetFormData.acquisitionCost),
-      usefulLife: parseInt(assetFormData.usefulLife),
-      salvageValue: parseFloat(assetFormData.salvageValue || '0'),
-      assetAccountId: parseInt(assetFormData.assetAccountId),
-      accumulatedDepreciationAccountId: parseInt(assetFormData.accumulatedDepreciationAccountId),
-      depreciationExpenseAccountId: parseInt(assetFormData.depreciationExpenseAccountId),
-      entityId: currentEntity?.id,
-      createdBy: 1 // Current user ID would come from auth context
-    };
-    
-    createAsset.mutate(formattedData);
   };
   
   const assetColumns = [
@@ -296,157 +304,129 @@ function FixedAssets() {
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit}>
+          <FormContainer onSubmit={handleSubmit} formError={formError}>
             <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Asset Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={assetFormData.name}
-                  onChange={handleChange}
+              <TextField
+                name="name"
+                label="Asset Name"
+                value={formData.name}
+                onChange={setFieldValue}
+                error={errors.name}
+                required
+              />
+              
+              <TextField
+                name="description"
+                label="Description"
+                value={formData.description}
+                onChange={setFieldValue}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <TextField
+                  name="acquisitionDate"
+                  label="Acquisition Date"
+                  type="date"
+                  value={formData.acquisitionDate}
+                  onChange={setFieldValue}
+                  error={errors.acquisitionDate}
+                  required
+                />
+                
+                <TextField
+                  name="acquisitionCost"
+                  label="Acquisition Cost"
+                  type="number"
+                  step="0.01"
+                  value={formData.acquisitionCost}
+                  onChange={setFieldValue}
+                  error={errors.acquisitionCost}
                   required
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  name="description"
-                  value={assetFormData.description}
-                  onChange={handleChange}
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField
+                  name="depreciationMethod"
+                  label="Depreciation Method"
+                  value={formData.depreciationMethod}
+                  onChange={setSelectValue}
+                  error={errors.depreciationMethod}
+                  options={[
+                    { value: "straight_line", label: "Straight Line" },
+                    { value: "declining_balance", label: "Declining Balance" }
+                  ]}
+                  required
                 />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="acquisitionDate">Acquisition Date</Label>
-                  <Input
-                    id="acquisitionDate"
-                    name="acquisitionDate"
-                    type="date"
-                    value={assetFormData.acquisitionDate}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="acquisitionCost">Acquisition Cost</Label>
-                  <Input
-                    id="acquisitionCost"
-                    name="acquisitionCost"
-                    type="number"
-                    step="0.01"
-                    value={assetFormData.acquisitionCost}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="depreciationMethod">Depreciation Method</Label>
-                  <Select 
-                    value={assetFormData.depreciationMethod} 
-                    onValueChange={(value) => handleSelectChange("depreciationMethod", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="straight_line">Straight Line</SelectItem>
-                      <SelectItem value="declining_balance">Declining Balance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="usefulLife">Useful Life (months)</Label>
-                  <Input
-                    id="usefulLife"
-                    name="usefulLife"
-                    type="number"
-                    value={assetFormData.usefulLife}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="salvageValue">Salvage Value</Label>
-                <Input
-                  id="salvageValue"
-                  name="salvageValue"
+                <TextField
+                  name="usefulLife"
+                  label="Useful Life (months)"
                   type="number"
-                  step="0.01"
-                  value={assetFormData.salvageValue}
-                  onChange={handleChange}
+                  value={formData.usefulLife}
+                  onChange={setFieldValue}
+                  error={errors.usefulLife}
+                  required
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="assetAccountId">Asset Account</Label>
-                <Select 
-                  value={assetFormData.assetAccountId} 
-                  onValueChange={(value) => handleSelectChange("assetAccountId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Select Account</SelectItem>
-                    {assetAccounts.map(account => (
-                      <SelectItem key={account.id} value={account.id.toString()}>
-                        {account.code} - {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <TextField
+                name="salvageValue"
+                label="Salvage Value"
+                type="number"
+                step="0.01"
+                value={formData.salvageValue}
+                onChange={setFieldValue}
+                error={errors.salvageValue}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="accumulatedDepreciationAccountId">Accumulated Depreciation Account</Label>
-                <Select 
-                  value={assetFormData.accumulatedDepreciationAccountId} 
-                  onValueChange={(value) => handleSelectChange("accumulatedDepreciationAccountId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Select Account</SelectItem>
-                    {depreciationAccounts.map(account => (
-                      <SelectItem key={account.id} value={account.id.toString()}>
-                        {account.code} - {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                name="assetAccountId"
+                label="Asset Account"
+                value={formData.assetAccountId}
+                onChange={setSelectValue}
+                error={errors.assetAccountId}
+                options={[
+                  { value: "", label: "Select Account" },
+                  ...assetAccounts.map(account => ({
+                    value: account.id.toString(),
+                    label: `${account.code} - ${account.name}`
+                  }))
+                ]}
+                required
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="depreciationExpenseAccountId">Depreciation Expense Account</Label>
-                <Select 
-                  value={assetFormData.depreciationExpenseAccountId} 
-                  onValueChange={(value) => handleSelectChange("depreciationExpenseAccountId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Select Account</SelectItem>
-                    {expenseAccounts.map(account => (
-                      <SelectItem key={account.id} value={account.id.toString()}>
-                        {account.code} - {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                name="accumulatedDepreciationAccountId"
+                label="Accumulated Depreciation Account"
+                value={formData.accumulatedDepreciationAccountId}
+                onChange={setSelectValue}
+                error={errors.accumulatedDepreciationAccountId}
+                options={[
+                  { value: "", label: "Select Account" },
+                  ...depreciationAccounts.map(account => ({
+                    value: account.id.toString(),
+                    label: `${account.code} - ${account.name}`
+                  }))
+                ]}
+                required
+              />
+              
+              <SelectField
+                name="depreciationExpenseAccountId"
+                label="Depreciation Expense Account"
+                value={formData.depreciationExpenseAccountId}
+                onChange={setSelectValue}
+                error={errors.depreciationExpenseAccountId}
+                options={[
+                  { value: "", label: "Select Account" },
+                  ...expenseAccounts.map(account => ({
+                    value: account.id.toString(),
+                    label: `${account.code} - ${account.name}`
+                  }))
+                ]}
+                required
+              />
             </div>
             
             <DialogFooter>
@@ -459,12 +439,12 @@ function FixedAssets() {
               </Button>
               <Button 
                 type="submit"
-                disabled={createAsset.isPending}
+                disabled={isSubmitting || createAsset.isPending}
               >
-                {createAsset.isPending ? "Saving..." : (selectedAsset ? "Update Asset" : "Create Asset")}
+                {isSubmitting || createAsset.isPending ? "Saving..." : (selectedAsset ? "Update Asset" : "Create Asset")}
               </Button>
             </DialogFooter>
-          </form>
+          </FormContainer>
         </DialogContent>
       </Dialog>
     </>
