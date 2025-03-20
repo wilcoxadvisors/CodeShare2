@@ -40,7 +40,8 @@ interface ServicesSelectionStepProps {
     services: string[];
     [key: string]: any;
   };
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | CustomChangeEvent) => void;
+  // Update to accept the interface from ConsultationFormModal
+  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: any } }) => void;
 }
 
 const ServicesSelectionStep: React.FC<ServicesSelectionStepProps> = ({

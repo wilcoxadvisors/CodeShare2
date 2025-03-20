@@ -121,7 +121,10 @@ const ConsultationFormModal: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  // Import the CustomChangeEvent type from ServicesSelectionStep
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: any } }
+  ) => {
     const { name, value } = e.target;
     setData({ ...data, [name]: value });
   };

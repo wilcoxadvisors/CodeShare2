@@ -35,35 +35,38 @@ function FixedAssets() {
   });
   
   // Get accounts for fixed assets
-  const { data: accounts } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : null,
+  const { data: accounts = [] } = useQuery({
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ['accounts', 'empty'],
     enabled: !!currentEntity
   });
   
   // Filter accounts by type
-  const assetAccounts = accounts?.filter(acc => 
+  const assetAccounts = Array.isArray(accounts) ? accounts.filter(acc => 
     acc.type === AccountType.ASSET && acc.subtype === 'fixed_asset'
-  ) || [];
+  ) : [];
   
-  const depreciationAccounts = accounts?.filter(acc => 
+  const depreciationAccounts = Array.isArray(accounts) ? accounts.filter(acc => 
     acc.type === AccountType.ASSET && acc.code.includes('Accumulated Depreciation')
-  ) || [];
+  ) : [];
   
-  const expenseAccounts = accounts?.filter(acc => 
+  const expenseAccounts = Array.isArray(accounts) ? accounts.filter(acc => 
     acc.type === AccountType.EXPENSE
-  ) || [];
+  ) : [];
   
   // Get fixed assets
-  const { data: fixedAssets, isLoading, refetch } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/fixed-assets`] : null,
+  const { data: fixedAssets = [], isLoading, refetch } = useQuery({
+    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/fixed-assets`] : ['fixed-assets', 'empty'],
     enabled: !!currentEntity,
   });
 
   const createAsset = useMutation({
     mutationFn: async (data: any) => {
+      if (!currentEntity?.id) {
+        throw new Error("No entity selected");
+      }
       return await apiRequest(
         "POST", 
-        `/api/entities/${currentEntity?.id}/fixed-assets`, 
+        `/api/entities/${currentEntity.id}/fixed-assets`, 
         data
       );
     },
@@ -280,7 +283,7 @@ function FixedAssets() {
           <TabsContent value="assets">
             <DataTable 
               columns={assetColumns} 
-              data={fixedAssets || []} 
+              data={Array.isArray(fixedAssets) ? fixedAssets : []} 
               isLoading={isLoading} 
             />
           </TabsContent>
