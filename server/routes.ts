@@ -843,121 +843,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Void a posted journal entry
-  app.post("/api/entities/:entityId/journal-entries/:id/void", isAuthenticated, hasRole("admin"), async (req, res) => {
-    try {
-      const entityId = parseInt(req.params.entityId);
-      const entryId = parseInt(req.params.id);
-      const userId = (req.user as AuthUser).id;
-      
-      const entry = await storage.getJournalEntry(entryId);
-      if (!entry || entry.entityId !== entityId) {
-        return res.status(404).json({ message: "Journal entry not found" });
-      }
-      
-      if (entry.status !== JournalEntryStatus.POSTED) {
-        return res.status(400).json({ message: "Only posted journal entries can be voided" });
-      }
-      
-      const { voidReason } = req.body;
-      if (!voidReason) {
-        return res.status(400).json({ message: "Void reason is required" });
-      }
-      
-      // Update status to voided
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.VOIDED,
-        rejectionReason: voidReason, // Reuse the rejection reason field to store void reason
-        rejectedBy: userId, // Reuse the rejected by field to store who voided
-        rejectedAt: new Date(), // Reuse the rejected at field to store when voided
-        updatedAt: new Date()
-      });
-      
-      res.json(updatedEntry);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
-  // Duplicate a journal entry
-  app.post("/api/entities/:entityId/journal-entries/:id/duplicate", isAuthenticated, async (req, res) => {
-    try {
-      const entityId = parseInt(req.params.entityId);
-      const entryId = parseInt(req.params.id);
-      const userId = (req.user as AuthUser).id;
-      
-      // Get the original entry
-      const originalEntry = await storage.getJournalEntry(entryId);
-      if (!originalEntry || originalEntry.entityId !== entityId) {
-        return res.status(404).json({ message: "Journal entry not found" });
-      }
-      
-      // Generate new reference number (increment counter from original)
-      const match = originalEntry.reference.match(/(\D+)(\d+)/);
-      let newReference = originalEntry.reference;
-      if (match) {
-        const prefix = match[1];
-        const number = parseInt(match[2]);
-        newReference = `${prefix}${number + 1}`;
-      }
-      
-      // Create new entry with duplicated data but as draft
-      const newEntryData = {
-        entityId: entityId,
-        reference: newReference,
-        date: new Date(), // Use current date
-        description: `Copy of: ${originalEntry.description || originalEntry.reference}`,
-        status: JournalEntryStatus.DRAFT,
-        createdBy: userId
-      };
-      
-      const newEntry = await storage.createJournalEntry(newEntryData);
-      
-      // Get original lines
-      const originalLines = await storage.getJournalEntryLines(entryId);
-      
-      // Duplicate each line
-      for (const line of originalLines) {
-        await storage.createJournalEntryLine({
-          journalEntryId: newEntry.id,
-          accountId: line.accountId,
-          description: line.description,
-          debit: line.debit,
-          credit: line.credit
-        });
-      }
-      
-      // Return the complete new entry
-      const newEntryWithLines = {
-        ...newEntry,
-        lines: await storage.getJournalEntryLines(newEntry.id)
-      };
-      
-      res.json(newEntryWithLines);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
   
-  // GL Reporting
-  app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req, res) => {
-    try {
-      const entityId = parseInt(req.params.entityId);
-      const { accountId, startDate, endDate, status } = req.query;
-      
-      const options = {
-        accountId: accountId ? parseInt(accountId as string) : undefined,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-        status: status as JournalEntryStatus | undefined
-      };
-      
-      const glEntries = await storage.getGeneralLedger(entityId, options);
-      res.json(glEntries);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
+
   
   // Reports
   app.get("/api/entities/:entityId/reports/trial-balance", isAuthenticated, async (req, res) => {
@@ -1019,48 +907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/entities/:entityId/reports/trial-balance", isAuthenticated, async (req, res) => {
-    try {
-      const entityId = parseInt(req.params.entityId);
-      const { asOfDate } = req.query;
-      const date = asOfDate ? new Date(asOfDate as string) : new Date();
-      
-      const accounts = await storage.getAccounts(entityId);
-      const generalLedger = await storage.getGeneralLedger(entityId, {
-        endDate: date
-      });
-      
-      // Calculate account balances
-      const accountBalances = accounts.map(account => {
-        // Filter GL entries for this account and calculate totals
-        const entries = generalLedger.filter(entry => entry.accountId === account.id);
-        const debit = entries.reduce((sum, entry) => sum + parseFloat(entry.debit || '0'), 0);
-        const credit = entries.reduce((sum, entry) => sum + parseFloat(entry.credit || '0'), 0);
-        
-        // Return account with balances
-        return {
-          ...account,
-          debit,
-          credit,
-          balance: account.type === AccountType.ASSET || account.type === AccountType.EXPENSE 
-            ? debit - credit  // Debit balance accounts
-            : credit - debit  // Credit balance accounts
-        };
-      });
-      
-      const result = {
-        asOfDate: date,
-        accounts: accountBalances,
-        totalDebits: accountBalances.reduce((sum, account) => sum + account.debit, 0),
-        totalCredits: accountBalances.reduce((sum, account) => sum + account.credit, 0)
-      };
-      
-      res.json(result);
-    } catch (error) {
-      console.error('Error generating trial balance:', error);
-      res.status(500).json({ message: 'Failed to generate trial balance' });
-    }
-  });
+
 
   // General Ledger API route
   app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req: Request, res: Response) => {
@@ -1074,12 +921,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : undefined;
+      const status = req.query.status as JournalEntryStatus | undefined;
       
       // Fetch general ledger data
       const glEntries = await storage.getGeneralLedger(entityId, {
         startDate,
         endDate,
-        accountId
+        accountId,
+        status
       });
       
       res.json(glEntries);
