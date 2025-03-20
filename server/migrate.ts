@@ -294,14 +294,14 @@ export async function migrateTables() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         entity_id INTEGER,
-        messages_used INTEGER NOT NULL DEFAULT 0,
-        tokens_used INTEGER NOT NULL DEFAULT 0,
-        max_messages_per_day INTEGER NOT NULL DEFAULT 1000,
-        max_tokens_per_day INTEGER NOT NULL DEFAULT 100000,
-        reset_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        max_messages_per_day INTEGER NOT NULL DEFAULT 50,
+        max_tokens_per_day INTEGER NOT NULL DEFAULT 5000,
+        messages_used_today INTEGER NOT NULL DEFAULT 0,
+        tokens_used_today INTEGER NOT NULL DEFAULT 0,
         limit_reset_time TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_used_at TIMESTAMP DEFAULT NOW(),
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP
+        updated_at TIMESTAMP DEFAULT NOW()
       );
       
       ALTER TABLE saved_reports 
