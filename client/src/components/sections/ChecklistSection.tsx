@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, Download } from 'lucide-react';
 
 interface ChecklistSectionProps {
   setShowChecklistForm?: (show: boolean) => void;
@@ -15,6 +15,7 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
   
   const [showModal, setShowModal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -40,20 +41,28 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
         throw new Error('Failed to submit form');
       }
       
-      console.log('Form submitted successfully:', formData);
+      const data = await response.json();
+      console.log('Form submitted successfully:', data);
+      
+      // Store the download URL if provided
+      if (data.downloadUrl) {
+        setDownloadUrl(data.downloadUrl);
+      }
+      
       setSubmitted(true);
       
-      // Reset after 5 seconds
+      // Only reset form after 10 seconds, keeping the download URL available
       setTimeout(() => {
         setSubmitted(false);
         setShowModal(false);
+        setDownloadUrl(null);
         setFormData({
           name: '',
           email: '',
           company: '',
           revenueRange: ''
         });
-      }, 5000);
+      }, 10000);
     } catch (error) {
       console.error('Error submitting checklist form:', error);
       alert('There was an error submitting the form. Please try again.');
@@ -99,8 +108,19 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ setShowChecklistFor
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Thank You!</h3>
                 <p className="text-gray-600 mb-4">
-                  Your financial checklist is on the way to your inbox!
+                  Your financial checklist is ready for download!
                 </p>
+                {downloadUrl && (
+                  <a 
+                    href={downloadUrl}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center bg-[#1E3A8A] text-white px-6 py-3 rounded font-medium hover:bg-blue-700 transition-colors shadow-md"
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download Your Checklist
+                  </a>
+                )}
               </div>
             ) : (
               <>
