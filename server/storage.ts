@@ -227,7 +227,18 @@ export class MemStorage implements IStorage {
       role: UserRole.ADMIN,
       active: true,
       lastLogin: null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: null,
+      loginCount: 0,
+      industry: null,
+      companySize: null,
+      jobTitle: null,
+      location: null,
+      preferredLanguage: 'en',
+      deviceInfo: null,
+      lastSession: null,
+      sessionCount: 0,
+      referralSource: null
     };
     this.users.set(adminUser.id, adminUser);
     
@@ -246,7 +257,23 @@ export class MemStorage implements IStorage {
       phone: null,
       taxId: null,
       website: null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: null,
+      city: null,
+      state: null,
+      country: null,
+      postalCode: null,
+      industry: null,
+      subIndustry: null,
+      employeeCount: null,
+      foundedYear: null,
+      annualRevenue: null,
+      businessType: null,
+      publiclyTraded: false,
+      stockSymbol: null,
+      timezone: 'UTC',
+      dataCollectionConsent: false,
+      lastAuditDate: null
     };
     this.entities.set(defaultEntity.id, defaultEntity);
     
@@ -387,12 +414,26 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = { 
-      ...insertUser, 
       id, 
+      username: insertUser.username, 
+      password: insertUser.password,
+      email: insertUser.email,
+      name: insertUser.name,
       role: (insertUser.role as UserRole) || UserRole.CLIENT,
       active: insertUser.active !== undefined ? insertUser.active : true,
       lastLogin: null,
-      createdAt: new Date() 
+      loginCount: 0,
+      industry: insertUser.industry || null,
+      companySize: insertUser.companySize || null,
+      jobTitle: insertUser.jobTitle || null,
+      location: insertUser.location || null,
+      preferredLanguage: insertUser.preferredLanguage || 'en',
+      deviceInfo: insertUser.deviceInfo || null,
+      lastSession: insertUser.lastSession || null,
+      sessionCount: 0,
+      referralSource: insertUser.referralSource || null,
+      createdAt: new Date(),
+      updatedAt: null
     };
     this.users.set(id, user);
     return user;
@@ -433,7 +474,6 @@ export class MemStorage implements IStorage {
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
     const id = this.currentEntityId++;
     const entity: Entity = { 
-      ...insertEntity, 
       id, 
       name: insertEntity.name,
       code: insertEntity.code,
@@ -447,7 +487,23 @@ export class MemStorage implements IStorage {
       address: insertEntity.address || null,
       phone: insertEntity.phone || null,
       website: insertEntity.website || null,
-      createdAt: new Date() 
+      createdAt: new Date(),
+      updatedAt: null,
+      city: insertEntity.city || null,
+      state: insertEntity.state || null,
+      country: insertEntity.country || null,
+      postalCode: insertEntity.postalCode || null,
+      industry: insertEntity.industry || null,
+      subIndustry: insertEntity.subIndustry || null,
+      employeeCount: insertEntity.employeeCount || null,
+      foundedYear: insertEntity.foundedYear || null,
+      annualRevenue: insertEntity.annualRevenue || null,
+      businessType: insertEntity.businessType || null,
+      publiclyTraded: insertEntity.publiclyTraded || false,
+      stockSymbol: insertEntity.stockSymbol || null,
+      timezone: insertEntity.timezone || 'UTC',
+      dataCollectionConsent: insertEntity.dataCollectionConsent || false,
+      lastAuditDate: insertEntity.lastAuditDate || null
     };
     this.entities.set(id, entity);
     return entity;
