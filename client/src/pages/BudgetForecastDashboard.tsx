@@ -39,8 +39,8 @@ export default function BudgetForecastDashboard() {
     error: budgetsError,
     refetch: refetchBudgets
   } = useQuery({
-    queryKey: ['/api/entities', currentEntity?.id, 'budgets'],
-    enabled: !!currentEntity?.id,
+    queryKey: [`/api/entities/${currentEntity?.id}/budgets`],
+    enabled: !!currentEntity?.id && !!user,
   });
 
   // Query for forecasts
@@ -50,8 +50,8 @@ export default function BudgetForecastDashboard() {
     error: forecastsError,
     refetch: refetchForecasts
   } = useQuery({
-    queryKey: ['/api/entities', currentEntity?.id, 'forecasts'],
-    enabled: !!currentEntity?.id,
+    queryKey: [`/api/entities/${currentEntity?.id}/forecasts`],
+    enabled: !!currentEntity?.id && !!user,
   });
 
   // Handle errors
