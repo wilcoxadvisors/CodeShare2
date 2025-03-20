@@ -34,6 +34,8 @@ interface JournalEntryFile {
   fileUrl: string;
   createdAt: string;
   uploadedBy: number | null;
+  size: number;
+  uploadedAt: string;
 }
 
 interface JournalEntry {
@@ -349,8 +351,12 @@ function JournalEntryDetail() {
   };
 
   // Calculate totals
-  const totalDebit = journalEntryLines?.reduce((sum, line) => sum + parseFloat(line.debit || '0'), 0) || 0;
-  const totalCredit = journalEntryLines?.reduce((sum, line) => sum + parseFloat(line.credit || '0'), 0) || 0;
+  const totalDebit = Array.isArray(journalEntryLines) 
+    ? journalEntryLines.reduce((sum: number, line: JournalEntryLine) => sum + parseFloat(line.debit || '0'), 0) 
+    : 0;
+  const totalCredit = Array.isArray(journalEntryLines) 
+    ? journalEntryLines.reduce((sum: number, line: JournalEntryLine) => sum + parseFloat(line.credit || '0'), 0) 
+    : 0;
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001; // Account for floating point precision
 
   // Check if user can perform specific actions
@@ -552,7 +558,7 @@ function JournalEntryDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {journalEntryLines?.map((line) => (
+                        {Array.isArray(journalEntryLines) && journalEntryLines.map((line: JournalEntryLine) => (
                           <tr key={line.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {/* Ideally, we would show account name here. Would need to fetch account details or have them included in line data */}
@@ -630,14 +636,14 @@ function JournalEntryDetail() {
                   </div>
                 ) : journalEntryFiles && journalEntryFiles.length > 0 ? (
                   <div className="grid gap-3">
-                    {journalEntryFiles.map((file) => (
+                    {Array.isArray(journalEntryFiles) && journalEntryFiles.map((file: JournalEntryFile) => (
                       <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                         <div className="flex items-center">
                           <FileText className="h-5 w-5 text-gray-500 mr-2" />
                           <div>
                             <p className="font-medium text-sm">{file.filename}</p>
                             <p className="text-xs text-gray-500">
-                              {new Date(file.uploadedAt).toLocaleDateString()} • {(file.size / 1024).toFixed(1)} KB
+                              {new Date(file.uploadedAt || file.createdAt).toLocaleDateString()} • {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Unknown size'}
                             </p>
                           </div>
                         </div>
