@@ -123,10 +123,10 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 // Get AI response based on user message and conversation history
 const getAIResponse = async (message: string, conversationHistory: ChatMessage[] = [], userRole: string = 'client', entityId?: number) => {
   try {
-    // Check if an API key is configured
-    const AI_API_KEY = process.env.OPENAI_API_KEY || process.env.XAI_API_KEY;
+    // Check if XAI API key is configured
+    const XAI_API_KEY = process.env.XAI_API_KEY;
     
-    if (!AI_API_KEY) {
+    if (!XAI_API_KEY) {
       return {
         success: false,
         message: "To receive personalized AI responses, please contact Wilcox Advisors to set up AI integration for your account.",
@@ -175,14 +175,9 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
       content: message
     });
     
-    // Make API call to XAI or OpenAI
-    const API_URL = process.env.XAI_API_KEY 
-      ? 'https://api.x.ai/v1/chat/completions' // XAI endpoint
-      : 'https://api.openai.com/v1/chat/completions';
-    
-    const model = process.env.XAI_API_KEY 
-      ? 'grok-2-1212' // XAI model name
-      : 'gpt-3.5-turbo';
+    // XAI specific implementation
+    const API_URL = 'https://api.x.ai/v1/chat/completions';
+    const model = 'grok-2-1212';
       
     const response = await axios.post(
       API_URL,
@@ -194,7 +189,7 @@ const getAIResponse = async (message: string, conversationHistory: ChatMessage[]
       },
       {
         headers: {
-          'Authorization': `Bearer ${AI_API_KEY}`,
+          'Authorization': `Bearer ${XAI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
