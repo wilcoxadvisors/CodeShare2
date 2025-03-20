@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { useParams, useLocation } from "wouter";
 import { JournalEntryStatus } from "@shared/schema";
-import { Loader2, Check, X, Upload, FileText } from "lucide-react";
+import { Loader2, Check, X, Upload, FileText, Ban, Copy } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 function JournalEntryDetail() {
@@ -440,9 +440,38 @@ function JournalEntryDetail() {
                     </Button>
                   )}
                   
+                  {/* Add Void button for posted entries */}
+                  {canVoid && (
+                    <Button 
+                      onClick={() => setShowVoidDialog(true)}
+                      variant="outline" 
+                      className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
+                      <Ban className="mr-2 h-4 w-4" /> Void Journal Entry
+                    </Button>
+                  )}
+
+                  {/* Add Duplicate button */}
+                  {canDuplicate && (
+                    <Button 
+                      onClick={() => duplicateMutation.mutate()}
+                      disabled={duplicateMutation.isPending} 
+                      variant="outline"
+                      className="w-full">
+                      {duplicateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Copy className="mr-2 h-4 w-4" /> Duplicate
+                    </Button>
+                  )}
+                  
                   {journalEntry.status === JournalEntryStatus.REJECTED && journalEntry.rejectionReason && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-md mt-2">
                       <p className="text-sm font-medium text-red-800">Rejection Reason:</p>
+                      <p className="text-sm text-red-700">{journalEntry.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {journalEntry.status === JournalEntryStatus.VOIDED && journalEntry.rejectionReason && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md mt-2">
+                      <p className="text-sm font-medium text-red-800">Void Reason:</p>
                       <p className="text-sm text-red-700">{journalEntry.rejectionReason}</p>
                     </div>
                   )}
@@ -697,6 +726,43 @@ function JournalEntryDetail() {
             >
               {rejectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm Rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Void Dialog */}
+      <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Void Journal Entry</DialogTitle>
+            <DialogDescription>
+              Voiding a posted journal entry cannot be undone. This action will permanently change the status of this entry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label htmlFor="voidReason" className="block text-sm font-medium text-gray-700 mb-1">
+              Void Reason <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              id="voidReason"
+              placeholder="Enter the reason for voiding this entry..."
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => voidMutation.mutate()}
+              disabled={!voidReason.trim() || voidMutation.isPending}
+              variant="destructive"
+            >
+              {voidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Void Journal Entry
             </Button>
           </DialogFooter>
         </DialogContent>

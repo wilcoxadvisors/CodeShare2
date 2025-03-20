@@ -754,6 +754,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Void journal entry
+  app.post("/api/entities/:entityId/journal-entries/:id/void", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status !== JournalEntryStatus.POSTED) {
+        return res.status(400).json({ message: "Only posted journal entries can be voided" });
+      }
+      
+      const { voidReason } = req.body;
+      if (!voidReason) {
+        return res.status(400).json({ message: "Void reason is required" });
+      }
+      
+      // Update status to voided
+      const updatedEntry = await storage.updateJournalEntry(entryId, {
+        status: JournalEntryStatus.VOIDED,
+        rejectedBy: userId, // Use rejectedBy for void as well
+        rejectedAt: new Date(),
+        rejectionReason: voidReason, // Use rejectionReason for void reason
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedEntry);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Duplicate journal entry
+  app.post("/api/entities/:entityId/journal-entries/:id/duplicate", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      const entry = await storage.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      if (entry.status === JournalEntryStatus.VOIDED) {
+        return res.status(400).json({ message: "Voided journal entries cannot be duplicated" });
+      }
+      
+      // Get lines of the original entry
+      const lines = await storage.getJournalEntryLines(entryId);
+      
+      // Create a new journal entry as draft
+      const now = new Date();
+      const newEntryData = {
+        entityId,
+        createdBy: userId,
+        date: new Date(),
+        reference: `COPY-${entry.reference}`,
+        description: entry.description,
+        status: JournalEntryStatus.DRAFT,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      const newEntry = await storage.createJournalEntry(newEntryData);
+      
+      // Duplicate all lines
+      for (const line of lines) {
+        await storage.createJournalEntryLine({
+          journalEntryId: newEntry.id,
+          entityId,
+          accountId: line.accountId,
+          description: line.description,
+          debit: line.debit,
+          credit: line.credit
+        });
+      }
+      
+      res.json(newEntry);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // Void a posted journal entry
   app.post("/api/entities/:entityId/journal-entries/:id/void", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
