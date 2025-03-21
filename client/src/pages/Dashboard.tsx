@@ -368,19 +368,19 @@ function Dashboard() {
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
   const { toast } = useToast();
   
-  // Queries for financial data
-  const { data: incomeData, isLoading: incomeLoading } = useQuery({
-    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/income-statement'] : null,
+  // Queries for financial data - only enabled when entity is selected
+  const { data: incomeData = {}, isLoading: incomeLoading } = useQuery({
+    queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'income-statement'] : ['skip-query-income'],
     enabled: !!currentEntity
   });
   
-  const { data: balanceSheetData, isLoading: balanceSheetLoading } = useQuery({
-    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/balance-sheet'] : null,
+  const { data: balanceSheetData = {}, isLoading: balanceSheetLoading } = useQuery({
+    queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'balance-sheet'] : ['skip-query-balance'],
     enabled: !!currentEntity
   });
   
-  const { data: cashFlowData, isLoading: cashFlowLoading } = useQuery({
-    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/cash-flow'] : null,
+  const { data: cashFlowData = {}, isLoading: cashFlowLoading } = useQuery({
+    queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'cash-flow'] : ['skip-query-cashflow'],
     enabled: !!currentEntity
   });
   
@@ -494,7 +494,8 @@ function Dashboard() {
     { category: 'Other', value: 10 },
   ];
 
-  if (!currentEntity) {
+  // For admin users, don't require entity selection to show dashboard
+  if (!currentEntity && !isAdmin) {
     return (
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
