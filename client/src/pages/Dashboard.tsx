@@ -384,6 +384,9 @@ function Dashboard() {
     enabled: !!currentEntity
   });
   
+  // Check if user is admin
+  const isAdmin = user?.role === UserRole.ADMIN;
+  
   // Admin API data
   const { data: adminDashboardData, isLoading: adminDataLoading } = useQuery({
     queryKey: ['/api/admin/dashboard'],
@@ -491,9 +494,6 @@ function Dashboard() {
     { category: 'Other', value: 10 },
   ];
 
-  // Check if user is admin
-  const isAdmin = user?.role === UserRole.ADMIN;
-  
   if (!currentEntity) {
     return (
       <div className="py-6">

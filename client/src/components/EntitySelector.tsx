@@ -32,21 +32,21 @@ interface EntitySelectorProps {
 }
 
 export default function EntitySelector({ 
-  entities, 
+  entities = [], 
   selectedEntityIds = [], 
   onChange 
 }: EntitySelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const filteredEntities = entities.filter(entity => {
+  const filteredEntities = entities?.filter(entity => {
     const query = searchQuery.toLowerCase();
     return (
-      entity.name.toLowerCase().includes(query) ||
+      entity.name?.toLowerCase().includes(query) ||
       (entity.legalName && entity.legalName.toLowerCase().includes(query)) ||
       (entity.industry && entity.industry.toLowerCase().includes(query)) ||
       (entity.entityType && entity.entityType.toLowerCase().includes(query))
     );
-  });
+  }) || [];
 
   const handleToggleEntity = (entityId: number) => {
     let newSelectedIds;
@@ -109,7 +109,7 @@ export default function EntitySelector({
               {filteredEntities.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                    {entities.length === 0 
+                    {!entities || entities.length === 0 
                       ? "No entities available. Create entities first."
                       : "No entities match your search query."}
                   </TableCell>
