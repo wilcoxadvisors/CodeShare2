@@ -14,31 +14,39 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Search } from "lucide-react";
+import { useEntity } from '../contexts/EntityContext';
 
+// Entity interface that matches the context type
 interface Entity {
   id: number;
   name: string;
-  legalName?: string;
+  legalName?: string | null;
   taxId?: string | null;
-  entityType?: string;
+  entityType?: string | null;
   industry?: string | null;
   isActive?: boolean;
+  [key: string]: any;
 }
 
 interface EntitySelectorProps {
-  entities: Entity[];
-  selectedEntityIds: number[];
-  onChange: (entityIds: number[]) => void;
+  entities?: Entity[];
+  selectedEntityIds?: number[];
+  onChange?: (entityIds: number[]) => void;
 }
 
 export default function EntitySelector({ 
-  entities, 
+  entities: propEntities, 
   selectedEntityIds = [], 
   onChange 
 }: EntitySelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const { entities: contextEntities = [] } = useEntity();
   
-  const filteredEntities = entities.filter(entity => {
+  // Use props entities if provided, otherwise use entities from context
+  const entities = propEntities || contextEntities || [];
+  
+  // Only filter if entities is defined and not empty
+  const filteredEntities = entities && entities.length > 0 ? entities.filter(entity => {
     const query = searchQuery.toLowerCase();
     return (
       entity.name.toLowerCase().includes(query) ||
@@ -46,9 +54,12 @@ export default function EntitySelector({
       (entity.industry && entity.industry.toLowerCase().includes(query)) ||
       (entity.entityType && entity.entityType.toLowerCase().includes(query))
     );
-  });
+  }) : [];
 
   const handleToggleEntity = (entityId: number) => {
+    // If no onChange handler provided, do nothing
+    if (!onChange) return;
+    
     let newSelectedIds;
     
     if (selectedEntityIds.includes(entityId)) {
@@ -63,6 +74,9 @@ export default function EntitySelector({
   };
 
   const handleSelectAll = () => {
+    // If no onChange handler provided, do nothing
+    if (!onChange) return;
+    
     if (filteredEntities.length === selectedEntityIds.length) {
       // If all are selected, deselect all
       onChange([]);
