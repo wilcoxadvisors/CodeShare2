@@ -1,0 +1,51 @@
+🚧 Next Recommended Actions (In Priority Order):
+① ✅ Fix the Remaining TypeScript Errors in the Migration File
+Reason:
+Resolving TypeScript errors ensures your migration scripts run reliably and prevents runtime issues during deployment.
+
+Recommended Action:
+
+Clearly define the expected structure (interface/type) of the results returned by your raw SQL queries.
+Example:
+typescript
+Copy
+Edit
+type MigrationResult = { id: number; entity_ids: number[] };
+
+const results = await db.execute<MigrationResult>(sql`SELECT id, entity_ids FROM consolidation_groups WHERE entity_ids IS NOT NULL`);
+Annotate raw SQL result types explicitly to eliminate errors.
+② ✅ Update Consolidation Group Methods to Use the Junction Table
+Reason:
+Immediately updating methods to interact with the junction table ensures your code matches your database schema, providing immediate performance improvements and consistency.
+
+Recommended Action:
+
+Refactor CRUD operations and queries to rely on the junction table:
+typescript
+Copy
+Edit
+async getGroupsByEntity(entityId: number) {
+  return await db.select()
+    .from(consolidationGroups)
+    .innerJoin(consolidationGroupEntities, eq(consolidationGroups.id, consolidationGroupEntities.groupId))
+    .where(eq(consolidationGroupEntities.entityId, entityId));
+}
+Fully remove entity_ids array references once confirmed safe.
+③ ✅ Add a Test Suite for the Junction Table Implementation
+Reason:
+A thorough test suite ensures data integrity and confirms your migration and refactor are stable and robust.
+
+Recommended Action:
+
+Add tests specifically validating:
+Entity-group associations via the junction table.
+CRUD operations.
+Data integrity post-migration.
+Proper transaction handling.
+✅ Recommended Immediate Next Step:
+Prioritize fixing TypeScript errors in the migration file.
+Immediately afterward, move on to updating your consolidation group methods.
+📌 Concise Checklist for your Agent:
+ Fix TypeScript errors (migration file)
+ Update methods to junction table (high-priority)
+ Add robust junction-table-specific tests

@@ -15,6 +15,8 @@ import { sql } from "drizzle-orm";
 import { db } from "../server/db";
 import { addJunctionTable } from "../server/migrations/add-junction-table";
 
+// No need for explicit interface definition since we're using direct type assertions
+
 async function migrateConsolidationGroupEntities() {
   console.log("Starting migration from entity_ids array to junction table");
   
@@ -26,22 +28,31 @@ async function migrateConsolidationGroupEntities() {
     
     // Verify that the junction table has the correct data
     const junctionCount = await db.execute(sql`
-      SELECT COUNT(*) FROM consolidation_group_entities
+      SELECT COUNT(*) AS count FROM consolidation_group_entities
     `);
     
-    console.log(`Verification: ${junctionCount.rows[0].count} relationships in junction table`);
+    const relationshipCount = Number(junctionCount.rows[0]?.count || 0);
+    console.log(`Verification: ${relationshipCount} relationships in junction table`);
     
     // Verify all groups are migrated
     const unmigrated = await db.execute(sql`
-      SELECT COUNT(*) FROM consolidation_groups 
+      SELECT COUNT(*) AS count FROM consolidation_groups 
       WHERE is_active = true AND migrated_to_junction = false
     `);
     
-    if (Number(unmigrated.rows[0].count) > 0) {
-      console.log(`Warning: ${unmigrated.rows[0].count} active groups are not marked as migrated`);
+    const count = Number(unmigrated.rows[0]?.count || 0);
+    if (count > 0) {
+      console.log(`Warning: ${count} active groups are not marked as migrated`);
     } else {
       console.log("Verification: All active groups are successfully migrated");
     }
+    
+    // Return success status
+    return {
+      success: true,
+      relationshipCount: Number(junctionCount.rows[0]?.count || 0),
+      unmigratedGroups: count
+    };
   } catch (error) {
     console.error("Migration failed:", error);
     throw error;
@@ -51,8 +62,8 @@ async function migrateConsolidationGroupEntities() {
 // Run the migration if invoked directly
 if (require.main === module) {
   migrateConsolidationGroupEntities()
-    .then(() => {
-      console.log("Migration script completed");
+    .then((result) => {
+      console.log("Migration script completed successfully!");
       process.exit(0);
     })
     .catch((error) => {

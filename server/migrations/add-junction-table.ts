@@ -3,9 +3,10 @@ import { boolean, integer, pgTable, primaryKey, timestamp } from "drizzle-orm/pg
 import { db } from "../db";
 import { consolidationGroups, entities } from "../../shared/schema";
 
+// No need for explicit interface definition since we're using direct type assertions
+
 // Migration to add the consolidation_group_entities junction table
 // and migrate data from entity_ids arrays
-
 export async function addJunctionTable() {
   console.log("Starting migration: Adding consolidation_group_entities junction table");
   
@@ -42,20 +43,29 @@ export async function addJunctionTable() {
   console.log("Migrating existing data to junction table...");
   
   // Get all active consolidation groups that have not been migrated yet
-  const groups = await db.execute(sql`
-    SELECT * FROM consolidation_groups 
+  const groupResult = await db.execute(sql`
+    SELECT id, name, entity_ids, is_active, migrated_to_junction 
+    FROM consolidation_groups 
     WHERE is_active = true AND migrated_to_junction = false
   `);
   
-  console.log(`Found ${groups.rows.length} groups to migrate`);
+  // Type assertion to ensure TypeScript knows the structure
+  const groups = groupResult.rows as Array<{
+    id: number;
+    name: string;
+    entity_ids: number[] | null;
+    is_active: boolean;
+    migrated_to_junction: boolean;
+  }>;
+  console.log(`Found ${groups.length} groups to migrate`);
   
   let migratedGroups = 0;
   let totalRelationships = 0;
   
   // Migrate each group's entity_ids to the junction table
-  for (const group of groups.rows) {
+  for (const group of groups) {
     // Skip if entity_ids is null, empty or not an array
-    if (!group.entity_ids || !Array.isArray(group.entity_ids) || group.entity_ids.length === 0) {
+    if (!group.entity_ids || group.entity_ids.length === 0) {
       console.log(`Group ${group.id} has no entities to migrate`);
       continue;
     }
