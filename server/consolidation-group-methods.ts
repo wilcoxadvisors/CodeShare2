@@ -1,6 +1,27 @@
 // consolidation-group-methods.ts
 // Enhanced implementation of consolidation group database methods
 
+/**
+ * IMPORTANT: TRANSITION PLAN FOR ENTITY-GROUP RELATIONSHIPS
+ * 
+ * Current Implementation:
+ * - Using entity_ids array field in consolidation_groups table
+ * - Soft deletion via isActive flag
+ * 
+ * Future Implementation (Phase 2):
+ * - Will use the consolidation_group_entities junction table for many-to-many relationships
+ * - The junction table is already defined in schema.ts but not yet created in the database
+ * - A database migration will be required to create the junction table
+ * - During migration, entity_ids data will be copied to the junction table
+ * - Code already includes conditional logic for handling both implementations
+ * 
+ * Benefits of Junction Table:
+ * - Proper data integrity with foreign key constraints
+ * - More efficient queries for entity-group relationships
+ * - Support for relationship metadata (e.g., consolidation rules per entity)
+ * - Better handling of many-to-many relationships
+ */
+
 import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { consolidationGroups, consolidationGroupEntities, entities } from "../shared/schema";
@@ -46,7 +67,7 @@ const createConsolidationGroupSchema = z.object({
 
 /**
  * Creates a new consolidation group with validation
- * Uses the junction table approach for entity relationships
+ * Uses array-based approach with future compatibility for junction table
  */
 export async function createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
   try {
@@ -61,13 +82,13 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
                         validatedData.entityIds || 
                         [];
       
-      // Insert the consolidation group without entity_ids (to be stored in junction table)
+      // Insert the consolidation group with entity_ids (array-based approach)
       const [newGroup] = await tx.insert(consolidationGroups)
         .values({
           name: validatedData.name,
           description: validatedData.description || null,
           ownerId: validatedData.ownerId,
-          entity_ids: [], // Empty array for backward compatibility
+          entity_ids: entityIds, // Store entity IDs in array field
           currency: validatedData.currency || 'USD',
           startDate: validatedData.startDate,
           endDate: validatedData.endDate,
@@ -80,21 +101,8 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
         })
         .returning();
       
-      // Add entities to the junction table
-      if (entityIds.length > 0) {
-        const entityRelations = entityIds.map(entityId => ({
-          groupId: newGroup.id,
-          entityId: entityId
-        }));
-        
-        await tx.insert(consolidationGroupEntities)
-          .values(entityRelations);
-          
-        // Also update the entity_ids field for backward compatibility
-        await tx.update(consolidationGroups)
-          .set({ entity_ids: entityIds })
-          .where(eq(consolidationGroups.id, newGroup.id));
-      }
+      // Note: We're not using the junction table yet as it doesn't exist in the database
+      // This will be implemented in a future migration
       
       return newGroup;
     });
@@ -149,7 +157,7 @@ export async function deleteConsolidationGroup(id: number): Promise<void> {
 }
 
 /**
- * Adds an entity to a consolidation group using the junction table
+ * Adds an entity to a consolidation group using the array-based approach
  */
 export async function addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
   await db.transaction(async (tx) => {
@@ -171,40 +179,21 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
       throw new NotFoundError(`Entity ${entityId} not found`);
     }
     
-    // Check if the relation already exists in the junction table
-    const existingRelation = await tx.select()
-      .from(consolidationGroupEntities)
-      .where(
-        eq(consolidationGroupEntities.groupId, groupId) && 
-        eq(consolidationGroupEntities.entityId, entityId)
-      )
-      .limit(1);
-    
-    // Only add if the relation doesn't exist
-    if (!existingRelation || existingRelation.length === 0) {
-      // Add to junction table
-      await tx.insert(consolidationGroupEntities)
-        .values({
-          groupId,
-          entityId
-        });
-      
-      // Also update the array field for backward compatibility
-      const currentEntityIds = group.entity_ids || [];
-      if (!currentEntityIds.includes(entityId)) {
-        await tx.update(consolidationGroups)
-          .set({ 
-            entity_ids: [...currentEntityIds, entityId], 
-            updatedAt: new Date() 
-          })
-          .where(eq(consolidationGroups.id, groupId));
-      }
+    // Update the array field if entity is not already included
+    const currentEntityIds = group.entity_ids || [];
+    if (!currentEntityIds.includes(entityId)) {
+      await tx.update(consolidationGroups)
+        .set({ 
+          entity_ids: [...currentEntityIds, entityId], 
+          updatedAt: new Date() 
+        })
+        .where(eq(consolidationGroups.id, groupId));
     }
   });
 }
 
 /**
- * Removes an entity from a consolidation group using the junction table
+ * Removes an entity from a consolidation group using the array-based approach
  */
 export async function removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
   await db.transaction(async (tx) => {
@@ -217,14 +206,7 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
       throw new NotFoundError(`Group ${groupId} not found`);
     }
     
-    // Delete from junction table
-    await tx.delete(consolidationGroupEntities)
-      .where(and(
-        eq(consolidationGroupEntities.groupId, groupId),
-        eq(consolidationGroupEntities.entityId, entityId)
-      ));
-    
-    // Also update the array field for backward compatibility
+    // Update the array field by filtering out the entity ID
     const currentEntityIds = group.entity_ids || [];
     if (currentEntityIds.includes(entityId)) {
       await tx.update(consolidationGroups)
@@ -240,7 +222,7 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
 /**
  * Generates a consolidated report for a group, using transactions
  * to ensure consistency between fetches and updates
- * Uses the junction table to get associated entities
+ * Uses the entity_ids array to get associated entities
  */
 export async function generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
   return await db.transaction(async (tx) => {
@@ -257,31 +239,8 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
     
     const group = groupResult[0];
     
-    // Get associated entities using the junction table
-    const relations = await tx
-      .select()
-      .from(consolidationGroupEntities)
-      .where(eq(consolidationGroupEntities.groupId, groupId));
-    
-    // Extract entity IDs from relations
-    const entityIds = relations.map(relation => relation.entityId);
-    
-    // For backward compatibility, if no entities in junction table but there are in entity_ids array
-    if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
-      // Migrate the entity_ids array to the junction table
-      const entityRelations = group.entity_ids.map(entityId => ({
-        groupId: groupId,
-        entityId: entityId
-      }));
-      
-      if (entityRelations.length > 0) {
-        await tx.insert(consolidationGroupEntities)
-          .values(entityRelations);
-      }
-      
-      // Use the array values
-      entityIds.push(...group.entity_ids);
-    }
+    // Get entity IDs from the entity_ids array
+    const entityIds = group.entity_ids || [];
     
     if (entityIds.length === 0) {
       throw new ValidationError('No entities associated with this consolidation group');
@@ -292,9 +251,9 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
       .select()
       .from(entities)
       .where(
-        // Using in operator to select entities where ID is in our entityIds array
+        // Using inArray operator to select entities where ID is in our entityIds array
         // This is more efficient than multiple individual queries
-        entities.id.in(entityIds)
+        inArray(entities.id, entityIds)
       );
     
     // Generate individual entity reports
