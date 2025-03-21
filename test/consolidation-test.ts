@@ -8,7 +8,9 @@ import {
   entities, 
   consolidationGroups, 
   consolidationGroupEntities,
-  ReportType 
+  ReportType,
+  UserRole,
+  BudgetPeriodType
 } from "../shared/schema";
 import { 
   createConsolidationGroup, 
@@ -34,7 +36,7 @@ async function setupTestData() {
       password: "password123",
       email: `test_${Date.now()}@example.com`,
       name: "Test User",
-      role: "admin"
+      role: UserRole.ADMIN
     })
     .returning();
   
@@ -125,7 +127,8 @@ async function testConsolidationGroupsOperations() {
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
       entity_ids: [entity1Id], // Initially add only the first entity
-      currency: "USD"
+      currency: "USD",
+      periodType: BudgetPeriodType.MONTHLY
     });
     
     console.log('Group created:', createdGroup);
