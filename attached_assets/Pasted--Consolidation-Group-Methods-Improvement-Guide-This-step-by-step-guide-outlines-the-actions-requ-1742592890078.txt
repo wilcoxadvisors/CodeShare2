@@ -1,0 +1,99 @@
+# Consolidation Group Methods Improvement Guide
+
+This step-by-step guide outlines the actions required to finalize and stabilize the consolidation group methods implementation:
+
+## ✅ Step 1: Implement Soft Deletes
+
+Replace the existing hard delete operations with soft deletes to ensure data safety.
+
+**Action:**
+
+- Update `deleteConsolidationGroup`:
+
+```typescript
+await db.update(consolidationGroups)
+  .set({ isActive: false, updatedAt: new DatConsolidation Group Methods Improvement Guidee() })
+  .where(eq(consolidationGroups.id, id));
+```
+
+## ✅ Step 2: Fully Transition to Junction Table
+
+Move all entity-group relationship handling away from the `entity_ids` array to the junction table (`consolidation_group_entities`).
+
+**Actions:**
+
+- Update `addEntityToConsolidationGroup`:
+
+```typescript
+await db.insert(consolidationGroupEntities)
+  .values({ groupId, entityId })
+  .onConflictDoNothing();
+```
+
+- Update `removeEntityFromConsolidationGroup`:
+
+```typescript
+await db.delete(consolidationGroupEntities)
+  .where(and(
+    eq(consolidationGroupEntities.groupId, groupId),
+    eq(consolidationGroupEntities.entityId, entityId)
+  ));
+```
+
+- Update `getConsolidationGroupsByEntity`:
+
+```typescript
+return await db.select()
+  .from(consolidationGroups)
+  .innerJoin(consolidationGroupEntities, eq(consolidationGroups.id, consolidationGroupEntities.groupId))
+  .where(eq(consolidationGroupEntities.entityId, entityId));
+```
+
+## ✅ Step 3: Implement Transactional Integrity
+
+Wrap database operations in transactions to ensure atomicity and data consistency.
+
+**Example:**
+
+```typescript
+await db.transaction(async (tx) => {
+  // Your transactional database operations here
+});
+```
+
+## ✅ Step 4: Restore Input Validation with Zod
+
+Reintroduce explicit data validation using Zod schemas for all inputs.
+
+**Action:**
+
+```typescript
+import { z } from 'zod';
+
+const createConsolidationGroupSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  ownerId: z.number().int().positive(),
+  createdBy: z.number().int().positive(),
+  startDate: z.date(),
+  endDate: z.date(),
+});
+
+const validatedGroup = createConsolidationGroupSchema.parse(group);
+```
+
+## ✅ Step 5: Restore Custom Error Handling
+
+Use custom, descriptive error types to simplify debugging and enhance clarity.
+
+**Example:**
+
+```typescript
+class NotFoundError extends Error {}
+
+if (!group) throw new NotFoundError(`Consolidation group with ID ${groupId} not found`);
+```
+
+---
+
+Complete these steps sequentially, verifying each implementation thoroughly before proceeding. Ensure comprehensive testing coverage is maintained throughout.
+
