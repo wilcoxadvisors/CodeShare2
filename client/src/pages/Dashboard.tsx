@@ -388,7 +388,7 @@ function Dashboard() {
   const isAdmin = user?.role === UserRole.ADMIN;
   
   // Admin API data
-  const { data: adminDashboardData, isLoading: adminDataLoading } = useQuery({
+  const { data: adminDashboardData = {}, isLoading: adminDataLoading } = useQuery({
     queryKey: ['/api/admin/dashboard'],
     enabled: isAdmin
   });
@@ -441,9 +441,9 @@ function Dashboard() {
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
   // Load entities and users from admin dashboard data
-  const entities = adminDashboardData?.data?.entities || [];
-  const users = adminDashboardData?.data?.users || [];
-  const consolidationGroups = adminDashboardData?.data?.consolidationGroups || [];
+  const entities = adminDashboardData?.entities || [];
+  const users = adminDashboardData?.users || [];
+  const consolidationGroups = adminDashboardData?.consolidationGroups || [];
   
   // Filtered entities based on search (replacing mock clients)
   const filteredClients = entities.filter(entity => {
@@ -773,7 +773,7 @@ function Dashboard() {
           )}
           
           {/* Admin Dashboard Tab - Always Shown */}
-          {(
+          {isAdmin && (
             <div>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
