@@ -14,7 +14,10 @@ import {
   FileText,
   Sparkles,
   LineChart,
-  BarChart
+  BarChart,
+  Users,
+  FolderOpen,
+  Briefcase
 } from 'lucide-react';
 
 function Sidebar() {

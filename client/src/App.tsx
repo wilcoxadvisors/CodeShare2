@@ -23,6 +23,8 @@ import FixedAssets from "./pages/FixedAssets";
 import DocumentAnalysis from "./pages/DocumentAnalysis";
 import AIAnalytics from "./pages/AIAnalytics";
 import BudgetForecastDashboard from "./pages/BudgetForecastDashboard";
+import ClientOnboarding from "./pages/ClientOnboarding";
+import ConsolidationManagement from "./pages/ConsolidationManagement";
 import ManualJournalEntry from "./components/ManualJournalEntry";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -401,6 +403,18 @@ function Router() {
       <Route path="/budget-forecast-dashboard">
         <AppLayout>
           <ProtectedRoute component={BudgetForecastDashboard} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/client-onboarding">
+        <AppLayout>
+          <ProtectedRoute component={ClientOnboarding} adminOnly={true} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/consolidation-management">
+        <AppLayout>
+          <ProtectedRoute component={ConsolidationManagement} />
         </AppLayout>
       </Route>
       
