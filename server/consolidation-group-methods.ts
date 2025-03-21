@@ -83,7 +83,17 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
                         validatedData.entityIds || 
                         [];
       
+      // Log usage of entity_ids in creation
+      if (validatedData.entity_ids) {
+        logEntityIdsDeprecation('createConsolidationGroup', { 
+          entityCount: validatedData.entity_ids.length 
+        });
+      }
+      
       // Insert the consolidation group with entity_ids (array-based approach for backward compatibility)
+      // We log this even if entityIds was used instead of entity_ids
+      logEntityIdsUpdate('createConsolidationGroup');
+      
       const [newGroup] = await tx.insert(consolidationGroups)
         .values({
           name: validatedData.name,
@@ -150,6 +160,16 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
   return await db.transaction(async (tx) => {
     // Set the updated timestamp
     data.updatedAt = new Date();
+    
+    // Check if entity_ids is being updated directly (should be using junction table instead)
+    if ('entity_ids' in data) {
+      // Log direct modification of entity_ids field as high-priority deprecation warning
+      logEntityIdsDeprecation('updateConsolidationGroup', { 
+        id,
+        directModification: true,
+        entityCount: Array.isArray(data.entity_ids) ? data.entity_ids.length : 0
+      });
+    }
     
     // Update the consolidation group
     const [updatedGroup] = await tx.update(consolidationGroups)
@@ -273,6 +293,9 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
       // Second approach: Also update the array field for backward compatibility
       const currentEntityIds = group.entity_ids || [];
       if (currentEntityIds.includes(entityId)) {
+        // Log the update to entity_ids array for tracking usage
+        logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
+        
         await tx.update(consolidationGroups)
           .set({ 
             entity_ids: currentEntityIds.filter(id => id !== entityId), 
