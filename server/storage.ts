@@ -22,7 +22,8 @@ import {
   budgetDocuments, BudgetDocument, InsertBudgetDocument,
   forecasts, Forecast, InsertForecast,
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
-  consolidationGroups, ConsolidationGroup, InsertConsolidationGroup
+  consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
+  consolidationGroupEntities, InsertConsolidationGroupEntity
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
 import { db } from "./db";
@@ -4867,7 +4868,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(consolidationGroups.id, id));
   }
 
-  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
+  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
     // Check if group exists
     const group = await this.getConsolidationGroup(groupId);
     if (!group) {
@@ -4878,9 +4879,25 @@ export class DatabaseStorage implements IStorage {
     await db.insert(consolidationGroupEntities)
       .values({ groupId, entityId })
       .onConflictDoNothing(); // In case the association already exists
+      
+    // Get the updated group with entities
+    const updatedGroup = await this.getConsolidationGroup(groupId);
+    
+    // Get all entities associated with this group
+    const entities = await db
+      .select({ entityId: consolidationGroupEntities.entityId })
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, groupId));
+      
+    // Create a combined result that includes the group's data and its associated entities
+    const entityIds = entities.map(e => e.entityId);
+    return {
+      ...updatedGroup!,
+      entityIds
+    } as ConsolidationGroup;
   }
 
-  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
+  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
     // Check if group exists
     const group = await this.getConsolidationGroup(groupId);
     if (!group) {
@@ -4895,6 +4912,22 @@ export class DatabaseStorage implements IStorage {
           eq(consolidationGroupEntities.entityId, entityId)
         )
       );
+      
+    // Get the updated group with entities
+    const updatedGroup = await this.getConsolidationGroup(groupId);
+    
+    // Get all entities associated with this group
+    const entities = await db
+      .select({ entityId: consolidationGroupEntities.entityId })
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, groupId));
+      
+    // Create a combined result that includes the group's data and its associated entities
+    const entityIds = entities.map(e => e.entityId);
+    return {
+      ...updatedGroup!,
+      entityIds
+    } as ConsolidationGroup;
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {

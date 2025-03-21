@@ -66,7 +66,7 @@ async function testConsolidationGroupsOperations() {
       const groupWithNewEntity = await storage.addEntityToConsolidationGroup(createdGroup.id, entityId);
       
       // Verify entity was added
-      if (groupWithNewEntity && groupWithNewEntity.entityIds.includes(entityId)) {
+      if (groupWithNewEntity && groupWithNewEntity.entityIds && groupWithNewEntity.entityIds.includes(entityId)) {
         console.log('Entity addition test passed!');
       } else {
         console.error('Entity addition test failed!');
@@ -77,7 +77,7 @@ async function testConsolidationGroupsOperations() {
       const groupWithEntityRemoved = await storage.removeEntityFromConsolidationGroup(createdGroup.id, entityId);
       
       // Verify entity was removed
-      if (groupWithEntityRemoved && !groupWithEntityRemoved.entityIds.includes(entityId)) {
+      if (groupWithEntityRemoved && groupWithEntityRemoved.entityIds && !groupWithEntityRemoved.entityIds.includes(entityId)) {
         console.log('Entity removal test passed!');
       } else {
         console.error('Entity removal test failed!');
@@ -106,7 +106,7 @@ async function testConsolidationGroupsOperations() {
       const deletedGroup = await db.select().from(consolidationGroups)
         .where(eq(consolidationGroups.id, createdGroup.id));
       
-      if (deletedGroup.length > 0 && !deletedGroup[0].is_active) {
+      if (deletedGroup.length > 0 && !deletedGroup[0].isActive) {
         console.log('Soft deletion test passed!');
       } else {
         console.error('Soft deletion test failed!');

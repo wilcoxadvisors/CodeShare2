@@ -25,7 +25,6 @@ async function testConsolidationGroupsOperations() {
     const testGroup = {
       name: 'Test Client Group Beta',
       description: 'An isolated test group with multiple entities',
-      entityIds: [1, 2], // Assuming these entity IDs exist
       ownerId: 1, // Assuming admin user with ID 1 exists
       currency: 'USD',
       startDate: new Date(),
@@ -69,7 +68,7 @@ async function testConsolidationGroupsOperations() {
       const groupWithNewEntity = await storage.addEntityToConsolidationGroup(createdGroup.id, entityId);
       
       // Verify entity was added
-      if (groupWithNewEntity && groupWithNewEntity.entityIds.includes(entityId)) {
+      if (groupWithNewEntity && groupWithNewEntity.entityIds && groupWithNewEntity.entityIds.includes(entityId)) {
         console.log('Entity addition test passed!');
       } else {
         console.error('Entity addition test failed!');
@@ -80,7 +79,7 @@ async function testConsolidationGroupsOperations() {
       const groupWithEntityRemoved = await storage.removeEntityFromConsolidationGroup(createdGroup.id, entityId);
       
       // Verify entity was removed
-      if (groupWithEntityRemoved && !groupWithEntityRemoved.entityIds.includes(entityId)) {
+      if (groupWithEntityRemoved && groupWithEntityRemoved.entityIds && !groupWithEntityRemoved.entityIds.includes(entityId)) {
         console.log('Entity removal test passed!');
       } else {
         console.error('Entity removal test failed!');
