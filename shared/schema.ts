@@ -394,8 +394,6 @@ export const consolidationGroups = pgTable("consolidation_groups", {
   rules: json("rules"), // Rules for consolidation (e.g., intercompany eliminations)
   isActive: boolean("is_active").default(true).notNull(),
   lastRun: timestamp("last_run"),
-  color: text("color").default("#4A6CF7"),
-  icon: text("icon"),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow()

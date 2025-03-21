@@ -51,7 +51,6 @@ async createConsolidationGroup(group: InsertConsolidationGroup): Promise<Consoli
       rules: group.rules || {},
       isActive: group.isActive !== undefined ? group.isActive : true,
       entity_ids: group.entity_ids || [],
-      color: group.color || '#4A6CF7',
       icon: group.icon || null
     }).returning();
 
