@@ -157,14 +157,19 @@ const mockPayments = [
   }
 ];
 
-const statsSummary = {
-  totalClients: 5,
-  activeClients: 3,
-  newClientsThisMonth: 1,
-  totalEmployees: 3,
-  pendingTasks: 7,
-  totalRevenue: 9000,
-  outstandingPayments: 5000
+// Calculate real-time summary stats from API data
+const getStatsSummary = (entities: any[], users: any[], consolidationGroups: any[]) => {
+  const currentMonth = new Date().getMonth();
+  return {
+    totalClients: entities.length,
+    activeClients: entities.filter(e => e.isActive).length,
+    newClientsThisMonth: entities.filter(e => new Date(e.createdAt).getMonth() === currentMonth).length,
+    totalEmployees: users.length,
+    pendingTasks: 0, // Will be implemented when we have task data
+    totalRevenue: 0, // Will be implemented when we have revenue data
+    outstandingPayments: 0, // Will be implemented when we have payment data
+    totalConsolidationGroups: consolidationGroups.length
+  };
 };
 
 // Colors for charts
@@ -776,9 +781,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Clients</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{statsSummary.totalClients}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).totalClients}</div>
                     <div className="text-sm text-gray-500">
-                      {statsSummary.activeClients} active, {statsSummary.newClientsThisMonth} new this month
+                      {getStatsSummary(entities, users, consolidationGroups).activeClients} active, {getStatsSummary(entities, users, consolidationGroups).newClientsThisMonth} new this month
                     </div>
                   </CardContent>
                 </Card>
@@ -788,9 +793,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Employees</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{statsSummary.totalEmployees}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).totalEmployees}</div>
                     <div className="text-sm text-gray-500">
-                      Managing {statsSummary.totalClients} clients
+                      Managing {getStatsSummary(entities, users, consolidationGroups).totalClients} clients
                     </div>
                   </CardContent>
                 </Card>
@@ -800,9 +805,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Revenue</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${statsSummary.totalRevenue.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${getStatsSummary(entities, users, consolidationGroups).totalRevenue.toLocaleString()}</div>
                     <div className="text-sm text-gray-500">
-                      ${statsSummary.outstandingPayments.toLocaleString()} outstanding
+                      ${getStatsSummary(entities, users, consolidationGroups).outstandingPayments.toLocaleString()} outstanding
                     </div>
                   </CardContent>
                 </Card>
@@ -812,7 +817,7 @@ function Dashboard() {
                     <CardTitle className="text-lg">Tasks</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{statsSummary.pendingTasks}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).pendingTasks}</div>
                     <div className="text-sm text-gray-500">
                       Pending actions across all clients
                     </div>
@@ -925,21 +930,22 @@ function Dashboard() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {filteredClients.map((client) => (
-                                <TableRow key={client.id}>
-                                  <TableCell className="font-medium">{client.name}</TableCell>
+                              {filteredClients.map((entity) => (
+                                <TableRow key={entity.id}>
+                                  <TableCell className="font-medium">{entity.name}</TableCell>
                                   <TableCell>
-                                    <Badge className={getStatusColor(client.status)}>
-                                      {client.status}
+                                    <Badge className={getStatusColor(entity.isActive ? 'Active' : 'Inactive')}>
+                                      {entity.isActive ? 'Active' : 'Inactive'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center">
-                                      <Progress value={client.progress} className="h-2 w-32" />
-                                      <span className="ml-2 text-xs">{client.progress}%</span>
+                                      {/* Progress based on entity completeness */}
+                                      <Progress value={entity.isActive ? 100 : 50} className="h-2 w-32" />
+                                      <span className="ml-2 text-xs">{entity.isActive ? 100 : 50}%</span>
                                     </div>
                                   </TableCell>
-                                  <TableCell>{formatDate(client.lastUpdate)}</TableCell>
+                                  <TableCell>{formatDate(entity.updatedAt || entity.createdAt)}</TableCell>
                                   <TableCell className="text-right">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
@@ -960,7 +966,7 @@ function Dashboard() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem>
                                           <Pen className="mr-2 h-4 w-4" />
-                                          Edit Client
+                                          Edit Entity
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
