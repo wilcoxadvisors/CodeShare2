@@ -31,7 +31,9 @@ async function testConsolidationGroupsOperations() {
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // One year from now
       periodType: 'monthly',
       rules: {},
-      createdBy: 1
+      createdBy: 1,
+      // Note: primaryEntityId and other fields are not included to match actual DB schema
+      isActive: true
     };
     
     console.log('Creating test consolidation group...');
@@ -65,10 +67,13 @@ async function testConsolidationGroupsOperations() {
       // Test adding an entity to the group
       console.log('Testing adding entity to group...');
       const entityId = 3; // Assuming entity ID 3 exists
-      const groupWithNewEntity = await storage.addEntityToConsolidationGroup(createdGroup.id, entityId);
+      await storage.addEntityToConsolidationGroup(createdGroup.id, entityId);
       
-      // Verify entity was added
-      if (groupWithNewEntity && groupWithNewEntity.entityIds && groupWithNewEntity.entityIds.includes(entityId)) {
+      // Verify entity was added by checking the database directly
+      console.log('Verifying entity was added to group...');
+      const groupsWithEntity = await storage.getConsolidationGroupsByEntity(entityId);
+      
+      if (groupsWithEntity && groupsWithEntity.some(g => g.id === createdGroup.id)) {
         console.log('Entity addition test passed!');
       } else {
         console.error('Entity addition test failed!');
@@ -76,10 +81,13 @@ async function testConsolidationGroupsOperations() {
       
       // Test removing an entity from the group
       console.log('Testing removing entity from group...');
-      const groupWithEntityRemoved = await storage.removeEntityFromConsolidationGroup(createdGroup.id, entityId);
+      await storage.removeEntityFromConsolidationGroup(createdGroup.id, entityId);
       
       // Verify entity was removed
-      if (groupWithEntityRemoved && groupWithEntityRemoved.entityIds && !groupWithEntityRemoved.entityIds.includes(entityId)) {
+      console.log('Verifying entity was removed from group...');
+      const groupsAfterRemoval = await storage.getConsolidationGroupsByEntity(entityId);
+      
+      if (!groupsAfterRemoval.some(g => g.id === createdGroup.id)) {
         console.log('Entity removal test passed!');
       } else {
         console.error('Entity removal test failed!');
