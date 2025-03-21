@@ -2258,33 +2258,33 @@ export class MemStorage implements IStorage {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Add entity to group's entityIds array if not already there
-    if (!group.entityIds.includes(entityId)) {
-      group.entityIds.push(entityId);
-      await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
+    // Add entity to group's entity_ids array if not already there
+    if (!group.entity_ids.includes(entityId)) {
+      group.entity_ids.push(entityId);
+      await this.updateConsolidationGroup(groupId, { entity_ids: group.entity_ids });
     }
     
     // No need to update a separate relationship map
-    // The entityIds array is the single source of truth
+    // The entity_ids array is the single source of truth
   }
 
   async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Remove entity from group's entityIds array
-    group.entityIds = group.entityIds.filter(id => id !== entityId);
-    await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
+    // Remove entity from group's entity_ids array
+    group.entity_ids = group.entity_ids.filter(id => id !== entityId);
+    await this.updateConsolidationGroup(groupId, { entity_ids: group.entity_ids });
     
     // No need to update a separate relationship map
-    // The entityIds array is the single source of truth
+    // The entity_ids array is the single source of truth
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    if (group.entityIds.length === 0) {
+    if (!group.entity_ids || group.entity_ids.length === 0) {
       throw new Error('Cannot generate consolidated report for an empty group');
     }
     
@@ -2294,9 +2294,9 @@ export class MemStorage implements IStorage {
     
     if (!effectiveStartDate) {
       // Default to beginning of fiscal year
-      // Use the first entity in the group's entityIds array as the primary entity
-      const primaryEntity = group.entityIds.length > 0 
-        ? await this.getEntity(group.entityIds[0])
+      // Use the first entity in the group's entity_ids array as the primary entity
+      const primaryEntity = group.entity_ids.length > 0 
+        ? await this.getEntity(group.entity_ids[0])
         : null;
       
       if (primaryEntity) {
@@ -2316,7 +2316,7 @@ export class MemStorage implements IStorage {
     }
     
     // Generate reports for each entity in the group
-    const entityReports = await Promise.all(group.entityIds.map(async (entityId) => {
+    const entityReports = await Promise.all(group.entity_ids.map(async (entityId) => {
       let report;
       
       switch (reportType) {
@@ -2360,11 +2360,11 @@ export class MemStorage implements IStorage {
     }
     
     // Update last run timestamp
-    await this.updateConsolidationGroup(groupId, { last_run: new Date() });
+    await this.updateConsolidationGroup(groupId, { lastRun: new Date() });
     
     return {
       ...consolidatedReport,
-      entities: group.entityIds,
+      entities: group.entity_ids,
       groupName: group.name,
       groupId: group.id,
       reportType,
