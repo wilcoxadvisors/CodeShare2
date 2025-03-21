@@ -37,26 +37,38 @@ interface Entity {
   updatedAt: string | null;
 }
 
+// Response interfaces
+interface ApiResponse<T> {
+  status: string;
+  data: T;
+}
+
 export default function ConsolidationManagement() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('groups');
 
   // Fetch consolidation groups
-  const { data: consolidationGroups = [], isLoading: isLoadingGroups } = useQuery<ConsolidationGroup[]>({
+  const { data: consolidationGroupsResponse, isLoading: isLoadingGroups } = useQuery<ApiResponse<ConsolidationGroup[]>>({
     queryKey: ['/api/consolidation-groups'],
     retry: 1,
   });
 
+  // Extract consolidation groups from the response
+  const consolidationGroups = consolidationGroupsResponse?.data || [];
+
   // Fetch entities for selection
-  const { data: entities = [], isLoading: isLoadingEntities } = useQuery<Entity[]>({
+  const { data: entitiesResponse, isLoading: isLoadingEntities } = useQuery<ApiResponse<Entity[]>>({
     queryKey: ['/api/entities'],
     retry: 1,
   });
 
+  // Extract entities from the response
+  const entities = entitiesResponse?.data || [];
+
   // Function to generate a consolidated report
   const generateConsolidatedReport = async (groupId: number, reportType: string) => {
     try {
-      const response = await apiRequest(
+      const response = await apiRequest<ApiResponse<any>>(
         `/api/consolidation-groups/${groupId}/reports/${reportType}`,
         { method: 'GET' }
       );
@@ -67,7 +79,7 @@ export default function ConsolidationManagement() {
         description: 'The consolidated report has been generated successfully',
       });
       
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error generating report:', error);
       toast({

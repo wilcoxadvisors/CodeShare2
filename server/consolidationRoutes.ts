@@ -26,7 +26,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
   app.get('/api/consolidation-groups', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const authUser = req.user as AuthUser;
     const groups = await storage.getConsolidationGroups(authUser.id);
-    res.json(groups);
+    res.json({
+      status: "success",
+      data: groups
+    });
   }));
 
   /**
@@ -46,7 +49,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwUnauthorized('You do not have access to this consolidation group');
     }
 
-    res.json(group);
+    res.json({
+      status: "success",
+      data: group
+    });
   }));
 
   /**
@@ -62,7 +68,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     };
     
     const newGroup = await storage.createConsolidationGroup(groupData);
-    res.status(201).json(newGroup);
+    res.status(201).json({
+      status: "success",
+      data: newGroup
+    });
   }));
 
   /**
@@ -83,7 +92,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
 
     const updatedGroup = await storage.updateConsolidationGroup(groupId, req.body);
-    res.json(updatedGroup);
+    res.json({
+      status: "success",
+      data: updatedGroup
+    });
   }));
 
   /**
@@ -135,7 +147,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     
     // Return the updated group
     const updatedGroup = await storage.getConsolidationGroup(groupId);
-    res.json(updatedGroup);
+    res.json({
+      status: "success",
+      data: updatedGroup
+    });
   }));
 
   /**
@@ -160,7 +175,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     
     // Return the updated group
     const updatedGroup = await storage.getConsolidationGroup(groupId);
-    res.json(updatedGroup);
+    res.json({
+      status: "success",
+      data: updatedGroup
+    });
   }));
 
   /**
@@ -194,7 +212,10 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
 
     const report = await storage.generateConsolidatedReport(groupId, reportType, startDate, endDate);
-    res.json(report);
+    res.json({
+      status: "success",
+      data: report
+    });
   }));
 
   /**
@@ -218,6 +239,9 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
     
     const groups = await storage.getConsolidationGroupsByEntity(entityId);
-    res.json(groups);
+    res.json({
+      status: "success",
+      data: groups
+    });
   }));
 }
