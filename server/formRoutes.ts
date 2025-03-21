@@ -542,4 +542,113 @@ export function registerFormRoutes(app: Express) {
     
     res.status(204).end();
   }));
+
+  // Blog Subscriber Routes
+
+  // Subscribe to blog updates
+  app.post("/api/blog/subscribe", asyncHandler(async (req: Request, res: Response) => {
+    console.log("Received blog subscription:", req.body);
+    
+    // Validate the request
+    const validation = validateRequest(insertBlogSubscriberSchema, req.body);
+    if (!validation.success) {
+      console.error("Validation error:", validation.error);
+      return throwBadRequest("Invalid subscription data", validation.error);
+    }
+    
+    // Check if the email already exists
+    const existingSubscriber = await storage.getBlogSubscriberByEmail(validation.data.email);
+    if (existingSubscriber) {
+      // If already subscribed and active, just return success
+      if (existingSubscriber.active) {
+        return res.json({
+          message: "You're already subscribed to our blog updates",
+          subscribed: true
+        });
+      }
+      
+      // If inactive, reactivate the subscription
+      const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
+        active: true,
+        unsubscribedAt: null
+      });
+      
+      // Send welcome back email
+      await sendEmailNotification(
+        "Blog Subscription Reactivated",
+        `A previously unsubscribed user has reactivated their blog subscription: ${updatedSubscriber.email}`
+      );
+      
+      return res.json({
+        message: "Your subscription has been reactivated",
+        subscribed: true
+      });
+    }
+    
+    // Add IP and user agent
+    const subscriber = {
+      ...validation.data,
+      ipAddress: req.ip || null,
+      userAgent: req.headers["user-agent"] || null
+    };
+    
+    // Store the new subscription
+    const result = await storage.createBlogSubscriber(subscriber);
+    
+    // Send confirmation to admin
+    await sendEmailNotification(
+      "New Blog Subscription",
+      `New blog subscription from ${result.email}\nName: ${result.name || 'Not provided'}`
+    );
+    
+    // Return success
+    res.status(201).json({
+      message: "Successfully subscribed to blog updates",
+      subscribed: true
+    });
+  }));
+
+  // Unsubscribe from blog updates
+  app.post("/api/blog/unsubscribe", asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+    
+    if (!email || typeof email !== "string") {
+      return throwBadRequest("Email is required");
+    }
+    
+    // Find the subscriber
+    const subscriber = await storage.getBlogSubscriberByEmail(email);
+    
+    if (!subscriber) {
+      return res.status(404).json({
+        message: "Email not found in our subscriber list",
+        unsubscribed: false
+      });
+    }
+    
+    // Update to inactive
+    await storage.updateBlogSubscriber(subscriber.id, {
+      active: false,
+      unsubscribedAt: new Date()
+    });
+    
+    res.json({
+      message: "Successfully unsubscribed from blog updates",
+      unsubscribed: true
+    });
+  }));
+
+  // Get all blog subscribers (admin only)
+  app.get("/api/admin/blog-subscribers", asyncHandler(async (req: Request, res: Response) => {
+    const includeInactive = req.query.includeInactive === 'true';
+    const subscribers = await storage.getBlogSubscribers(includeInactive);
+    res.json(subscribers);
+  }));
+
+  // Delete a blog subscriber (admin only)
+  app.delete("/api/admin/blog-subscribers/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    await storage.deleteBlogSubscriber(id);
+    res.status(204).end();
+  }));
 }

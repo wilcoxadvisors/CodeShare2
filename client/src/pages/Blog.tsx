@@ -80,6 +80,12 @@ export default function Blog() {
   const [_, navigate] = useLocation();
   const [selectedCategory, setSelectedCategory] = React.useState("All");
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [subscribing, setSubscribing] = React.useState(false);
+  const [subscriptionResult, setSubscriptionResult] = React.useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   // Filter posts based on category and search term
   const filteredPosts = blogPosts.filter((post) => {
@@ -91,6 +97,51 @@ export default function Blog() {
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
+  };
+  
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      setSubscriptionResult({
+        success: false,
+        message: "Please enter a valid email address"
+      });
+      return;
+    }
+    
+    try {
+      setSubscribing(true);
+      
+      const response = await fetch('/api/blog/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await response.json();
+      
+      setSubscriptionResult({
+        success: response.ok,
+        message: data.message || (response.ok ? 
+          "Successfully subscribed to blog updates!" : 
+          "Failed to subscribe. Please try again.")
+      });
+      
+      if (response.ok) {
+        setEmail(''); // Clear the email field on success
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      setSubscriptionResult({
+        success: false,
+        message: "An error occurred. Please try again later."
+      });
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   return (
@@ -149,14 +200,42 @@ export default function Blog() {
               <div className="mt-8 p-4 bg-blue-50 rounded-lg">
                 <h3 className="font-semibold text-gray-900 mb-2">Subscribe to Updates</h3>
                 <p className="text-sm text-gray-600 mb-4">Get our latest articles and insights delivered to your inbox.</p>
-                <input
-                  type="email"
-                  placeholder="Your email address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button className="w-full px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900 transition">
-                  Subscribe
-                </button>
+                {subscriptionResult ? (
+                  <div className={`p-3 mb-4 rounded-md ${subscriptionResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <p className="text-sm">{subscriptionResult.message}</p>
+                    {subscriptionResult.success && (
+                      <button 
+                        onClick={() => setSubscriptionResult(null)} 
+                        className="text-xs underline mt-1"
+                      >
+                        Subscribe another email
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubscribe}>
+                    <input
+                      type="email"
+                      placeholder="Your email address"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                    <button 
+                      type="submit" 
+                      className="w-full px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900 transition flex items-center justify-center"
+                      disabled={subscribing}
+                    >
+                      {subscribing ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Subscribing...
+                        </>
+                      ) : 'Subscribe'}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
