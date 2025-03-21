@@ -1,17 +1,20 @@
 /**
- * Test script for consolidation group database operations
+ * Isolated test script for consolidation group database operations
  * 
- * This script tests all CRUD operations against the database
- * to ensure our implementation is working correctly.
+ * This script tests CRUD operations against the database
+ * without starting the server to avoid port conflicts.
  */
 
 import { db } from '../../server/db';
-import { storage } from '../../server/index';
+import { DatabaseStorage } from '../../server/storage';
 import { consolidationGroups } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 
 async function testConsolidationGroupsOperations() {
-  console.log('Starting consolidation group database operations test...');
+  console.log('Starting isolated consolidation group database test...');
+  
+  // Create an isolated storage instance without starting the server
+  const storage = new DatabaseStorage();
   
   try {
     // First, check if we have any existing data
@@ -20,8 +23,8 @@ async function testConsolidationGroupsOperations() {
     
     // Create a test consolidation group
     const testGroup = {
-      name: 'Test Client Group Alpha',
-      description: 'A test group for client Alpha with multiple entities',
+      name: 'Test Client Group Beta',
+      description: 'An isolated test group with multiple entities',
       entityIds: [1, 2], // Assuming these entity IDs exist
       ownerId: 1, // Assuming admin user with ID 1 exists
       currency: 'USD',
@@ -47,14 +50,14 @@ async function testConsolidationGroupsOperations() {
       // Test updating the group
       console.log('Testing group update...');
       const updatedGroup = await storage.updateConsolidationGroup(createdGroup.id, {
-        name: 'Updated Test Group',
-        description: 'Updated for testing purposes'
+        name: 'Updated Isolated Test Group',
+        description: 'Updated for isolated testing purposes'
       });
       console.log('Updated group:', updatedGroup);
       
       // Verify the update
       const verifyUpdate = await storage.getConsolidationGroup(createdGroup.id);
-      if (verifyUpdate?.name === 'Updated Test Group') {
+      if (verifyUpdate?.name === 'Updated Isolated Test Group') {
         console.log('Group update test passed!');
       } else {
         console.error('Group update test failed!');
@@ -88,16 +91,6 @@ async function testConsolidationGroupsOperations() {
       const groupsByEntity = await storage.getConsolidationGroupsByEntity(1);
       console.log(`Found ${groupsByEntity.length} groups containing entity ID 1`);
       
-      // Test generating a consolidated report - SKIPPING SERVER START
-      console.log('Skipping consolidated report generation test (requires running server)');
-      // Commenting this out to avoid port conflict
-      // try {
-      //   const report = await storage.generateConsolidatedReport(createdGroup.id, 'balance_sheet');
-      //   console.log('Report generation successful:', report ? 'Yes' : 'No');
-      // } catch (error) {
-      //   console.error('Report generation failed:', error);
-      // }
-      
       // Clean up - soft delete the test group
       console.log('Testing soft deletion...');
       await storage.deleteConsolidationGroup(createdGroup.id);
@@ -106,7 +99,7 @@ async function testConsolidationGroupsOperations() {
       const deletedGroup = await db.select().from(consolidationGroups)
         .where(eq(consolidationGroups.id, createdGroup.id));
       
-      if (deletedGroup.length > 0 && !deletedGroup[0].is_active) {
+      if (deletedGroup.length > 0 && !deletedGroup[0].isActive) {
         console.log('Soft deletion test passed!');
       } else {
         console.error('Soft deletion test failed!');
