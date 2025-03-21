@@ -22,7 +22,7 @@
  * - Better handling of many-to-many relationships
  */
 
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
 import { consolidationGroups, consolidationGroupEntities, entities } from "../shared/schema";
 import { ConsolidationGroup, InsertConsolidationGroup, ReportType, BudgetPeriodType } from "../shared/schema";
@@ -440,15 +440,15 @@ export async function getEntityConsolidationGroups(entityId: number): Promise<Co
         );
     } else {
       // Priority 2: If no groups found in junction table, fall back to legacy array approach
-      groups = await tx
-        .select()
-        .from(consolidationGroups)
-        .where(
-          and(
-            sql`${entityId} = ANY(${consolidationGroups.entity_ids})`,
-            eq(consolidationGroups.isActive, true)
-          )
-        );
+      // Use raw SQL for the ANY operation with proper type safety
+      const rawResult = await tx.execute(
+        sql`SELECT * FROM consolidation_groups 
+            WHERE ${entityId} = ANY(entity_ids) 
+            AND is_active = true`
+      );
+      
+      // Convert raw result to ConsolidationGroup objects
+      groups = rawResult.rows as unknown as ConsolidationGroup[];
     }
     
     return groups;

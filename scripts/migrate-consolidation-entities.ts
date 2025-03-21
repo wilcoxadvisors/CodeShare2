@@ -18,10 +18,13 @@ import { addJunctionTable } from "../server/migrations/add-junction-table";
 import { consolidationGroups, consolidationGroupEntities } from "../shared/schema";
 import { inArray, eq, and, isNull } from "drizzle-orm";
 
+// Define a more explicit interface that matches the raw SQL result structure
 interface ConsolidationGroupRecord {
   id: number;
-  entity_ids: number[];
+  entity_ids: number[] | null;
   is_active: boolean;
+  name?: string; // Optional fields that might be returned
+  migrated_to_junction?: boolean;
 }
 
 async function migrateConsolidationGroupEntities() {
@@ -43,7 +46,7 @@ async function migrateConsolidationGroupEntities() {
           AND array_length(entity_ids, 1) > 0
       `);
       
-      const groups = result.rows as ConsolidationGroupRecord[];
+      const groups = result.rows as unknown as ConsolidationGroupRecord[];
       console.log(`Found ${groups.length} groups to migrate`);
       
       let totalRelationships = 0;
