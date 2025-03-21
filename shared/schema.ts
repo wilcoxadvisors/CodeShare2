@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -384,8 +384,9 @@ export const consolidationGroups = pgTable("consolidation_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  entityIds: integer("entity_ids").array().notNull(), // Array of entity IDs in the consolidation
+  // Removed entityIds array field as it will be replaced by a junction table
   ownerId: integer("owner_id").references(() => users.id).notNull(),
+  primaryEntityId: integer("primary_entity_id").references(() => entities.id),
   currency: text("currency").notNull().default("USD"),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
@@ -393,10 +394,22 @@ export const consolidationGroups = pgTable("consolidation_groups", {
   rules: json("rules"), // Rules for consolidation (e.g., intercompany eliminations)
   isActive: boolean("is_active").default(true).notNull(),
   lastRun: timestamp("last_run"),
+  lastGeneratedAt: timestamp("last_generated_at"),
+  reportTypes: json("report_types").default([]),
+  color: text("color").default("#4A6CF7"),
+  icon: text("icon"),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
+
+// Entity-Group Junction Table
+export const consolidationGroupEntities = pgTable("consolidation_group_entities", {
+  groupId: integer("group_id").references(() => consolidationGroups.id).notNull(),
+  entityId: integer("entity_id").references(() => entities.id).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.groupId, table.entityId] }),
+}));
 
 // Forecasts table
 export const forecasts = pgTable("forecasts", {
@@ -648,6 +661,11 @@ export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
 
 export type ConsolidationGroup = typeof consolidationGroups.$inferSelect;
 export type InsertConsolidationGroup = z.infer<typeof insertConsolidationGroupSchema>;
+
+export type ConsolidationGroupEntity = typeof consolidationGroupEntities.$inferSelect;
+// Create insert schema for the junction table
+export const insertConsolidationGroupEntitySchema = createInsertSchema(consolidationGroupEntities);
+export type InsertConsolidationGroupEntity = z.infer<typeof insertConsolidationGroupEntitySchema>;
 
 export type Forecast = typeof forecasts.$inferSelect;
 export type InsertForecast = z.infer<typeof insertForecastSchema>;

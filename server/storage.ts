@@ -4785,39 +4785,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // Query for groups that include this entity in their entityIds array
+    // Use join to find all groups that include this entity
     const result = await db
-      .select()
+      .select({
+        consolidationGroup: consolidationGroups
+      })
       .from(consolidationGroups)
+      .innerJoin(
+        consolidationGroupEntities,
+        and(
+          eq(consolidationGroups.id, consolidationGroupEntities.groupId),
+          eq(consolidationGroupEntities.entityId, entityId)
+        )
+      )
       .where(eq(consolidationGroups.isActive, true));
     
-    // Filter on the application side since it's an array field
-    return result.filter(group => 
-      group.entityIds && Array.isArray(group.entityIds) && 
-      group.entityIds.includes(entityId)
-    );
+    return result.map(row => row.consolidationGroup);
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
-    const [result] = await db.insert(consolidationGroups)
-      .values({
-        name: group.name,
-        description: group.description || null,
-        entityIds: group.entityIds || [],
-        ownerId: group.ownerId,
-        currency: group.currency || 'USD',
-        startDate: group.startDate,
-        endDate: group.endDate,
-        periodType: group.periodType,
-        rules: group.rules || null,
-        isActive: group.isActive !== undefined ? group.isActive : true,
-        createdBy: group.createdBy,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
-      .returning();
-    
-    return result;
+    // Start a transaction to ensure both the group and entity associations are created atomically
+    return await db.transaction(async (tx) => {
+      // Create the consolidation group first
+      const [result] = await tx.insert(consolidationGroups)
+        .values({
+          name: group.name,
+          description: group.description || null,
+          ownerId: group.ownerId,
+          primaryEntityId: group.primaryEntityId || null,
+          currency: group.currency || 'USD',
+          startDate: group.startDate,
+          endDate: group.endDate,
+          periodType: group.periodType,
+          rules: group.rules || null,
+          reportTypes: group.reportTypes || [],
+          color: group.color || '#4A6CF7',
+          icon: group.icon || null,
+          isActive: group.isActive !== undefined ? group.isActive : true,
+          createdBy: group.createdBy,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      // If entities were provided, create the entity associations
+      if (group.entityIds && group.entityIds.length > 0) {
+        const entityAssociations = group.entityIds.map(entityId => ({
+          groupId: result.id,
+          entityId
+        }));
+        
+        // Insert entity associations in the junction table
+        await tx.insert(consolidationGroupEntities)
+          .values(entityAssociations)
+          .onConflictDoNothing();
+      }
+      
+      return result;
+    });
   }
 
   async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
@@ -4842,41 +4867,50 @@ export class DatabaseStorage implements IStorage {
       .where(eq(consolidationGroups.id, id));
   }
 
-  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup | undefined> {
+  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
+    // Check if group exists
     const group = await this.getConsolidationGroup(groupId);
-    if (!group) return undefined;
-    
-    const entityIds = [...(group.entityIds || [])];
-    
-    // Check if entity is already in the group
-    if (!entityIds.includes(entityId)) {
-      entityIds.push(entityId);
-      
-      // Update the group with the new entity array
-      return this.updateConsolidationGroup(groupId, { entityIds });
+    if (!group) {
+      throw new Error(`Consolidation group with ID ${groupId} not found`);
     }
     
-    return group;
+    // Insert entity association into junction table
+    await db.insert(consolidationGroupEntities)
+      .values({ groupId, entityId })
+      .onConflictDoNothing(); // In case the association already exists
   }
 
-  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup | undefined> {
+  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
+    // Check if group exists
     const group = await this.getConsolidationGroup(groupId);
-    if (!group) return undefined;
+    if (!group) {
+      throw new Error(`Consolidation group with ID ${groupId} not found`);
+    }
     
-    const entityIds = [...(group.entityIds || [])].filter(id => id !== entityId);
-    
-    // Update the group with the filtered entity array
-    return this.updateConsolidationGroup(groupId, { entityIds });
+    // Remove entity association from junction table
+    await db.delete(consolidationGroupEntities)
+      .where(
+        and(
+          eq(consolidationGroupEntities.groupId, groupId),
+          eq(consolidationGroupEntities.entityId, entityId)
+        )
+      );
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error('Consolidation group not found');
     
+    // Get all entity IDs associated with this group from the junction table
+    const groupEntities = await db
+      .select({ entityId: consolidationGroupEntities.entityId })
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, groupId));
+    
     const reports = [];
     
     // Generate reports for each entity in the group
-    for (const entityId of group.entityIds) {
+    for (const { entityId } of groupEntities) {
       let report;
       
       switch (reportType) {
