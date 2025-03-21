@@ -103,14 +103,13 @@ export async function addJunctionTable() {
 }
 
 // Allow running this migration directly
-if (require.main === module) {
-  addJunctionTable()
-    .then(() => {
-      console.log("Migration completed");
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Migration failed:", error);
-      process.exit(1);
-    });
-}
+// For ESM compatibility, always run the migration
+addJunctionTable()
+  .then(() => {
+    console.log("Migration completed");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Migration failed:", error);
+    process.exit(1);
+  });
