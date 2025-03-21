@@ -40,11 +40,14 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       const adminUser = req.user as any;
       const consolidationGroups = await storage.getConsolidationGroups(adminUser.id);
       
-      // Return structured data for admin dashboard
+      // Return structured data for admin dashboard with the expected format
       return res.json({
-        entities,
-        users,
-        consolidationGroups
+        status: "success",
+        data: {
+          entities,
+          users,
+          consolidationGroups
+        }
       });
     } catch (error) {
       console.error("Error fetching admin dashboard data:", error);

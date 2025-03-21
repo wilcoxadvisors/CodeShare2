@@ -441,9 +441,9 @@ function Dashboard() {
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
   // Load entities and users from admin dashboard data
-  const entities = adminDashboardData?.entities || [];
-  const users = adminDashboardData?.users || [];
-  const consolidationGroups = adminDashboardData?.consolidationGroups || [];
+  const entities = adminDashboardData?.data?.entities || [];
+  const users = adminDashboardData?.data?.users || [];
+  const consolidationGroups = adminDashboardData?.data?.consolidationGroups || [];
   
   // Filtered entities based on search (replacing mock clients)
   const filteredClients = entities.filter(entity => {
