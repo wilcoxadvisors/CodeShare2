@@ -158,13 +158,13 @@ const mockPayments = [
 ];
 
 // Calculate real-time summary stats from API data
-const getStatsSummary = (entities: any[], users: any[], consolidationGroups: any[]) => {
+const getStatsSummary = (entities: any[], dashboardUsers: any[], consolidationGroups: any[]) => {
   const currentMonth = new Date().getMonth();
   return {
     totalClients: entities.length,
     activeClients: entities.filter(e => e.isActive).length,
     newClientsThisMonth: entities.filter(e => new Date(e.createdAt).getMonth() === currentMonth).length,
-    totalEmployees: users.length,
+    totalEmployees: dashboardUsers.length,
     pendingTasks: 0, // Will be implemented when we have task data
     totalRevenue: 0, // Will be implemented when we have revenue data
     outstandingPayments: 0, // Will be implemented when we have payment data
@@ -505,6 +505,12 @@ function Dashboard() {
     enabled: isAdmin
   });
   
+  // Fetch admin users list for entity owner assignment (admin only)
+  const { data: usersList = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['/api/admin/users'],
+    enabled: isAdmin
+  });
+  
   // Handle export of subscribers to CSV
   const handleExportSubscribers = async () => {
     try {
@@ -552,9 +558,9 @@ function Dashboard() {
   // Admin dashboard specific state - start with client management tab selected
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
-  // Load entities and users from admin dashboard data
+  // Load entities and data from admin dashboard data
   const entities = adminDashboardData?.data?.entities || [];
-  const users = adminDashboardData?.data?.users || [];
+  const dashboardUsers = adminDashboardData?.data?.users || [];
   const consolidationGroups = adminDashboardData?.data?.consolidationGroups || [];
   
   // Filtered entities based on search (replacing mock clients)
