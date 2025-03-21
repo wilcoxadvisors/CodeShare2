@@ -185,6 +185,17 @@ export interface IStorage {
   updateForecast(id: number, forecast: Partial<Forecast>): Promise<Forecast | undefined>;
   deleteForecast(id: number): Promise<void>;
   generateForecast(entityId: number, config: any): Promise<any>;
+  
+  // Consolidation Group methods
+  getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined>;
+  getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]>;
+  getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]>;
+  createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup>;
+  updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined>;
+  deleteConsolidationGroup(id: number): Promise<void>;
+  addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void>;
+  removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void>;
+  generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any>;
 }
 
 export interface GLOptions {
@@ -252,10 +263,13 @@ export class MemStorage implements IStorage {
   private budgetItems: Map<number, BudgetItem>;
   private budgetDocuments: Map<number, BudgetDocument>;
   private forecasts: Map<number, Forecast>;
+  private consolidationGroups: Map<number, ConsolidationGroup>;
+  private consolidationGroupEntities: Map<string, boolean>; // key: groupId-entityId, value: true if entity is in group
   private currentBudgetId: number = 1;
   private currentBudgetItemId: number = 1;
   private currentBudgetDocumentId: number = 1;
   private currentForecastId: number = 1;
+  private currentConsolidationGroupId: number = 1;
   
   // Form submission IDs
   private currentContactSubmissionId: number = 1;
@@ -294,6 +308,8 @@ export class MemStorage implements IStorage {
     this.budgetItems = new Map();
     this.budgetDocuments = new Map();
     this.forecasts = new Map();
+    this.consolidationGroups = new Map();
+    this.consolidationGroupEntities = new Map();
     
     // Create default admin user
     const adminUser: User = {
