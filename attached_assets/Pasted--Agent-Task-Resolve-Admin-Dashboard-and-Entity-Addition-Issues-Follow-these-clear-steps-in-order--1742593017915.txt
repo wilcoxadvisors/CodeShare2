@@ -1,0 +1,56 @@
+ Agent Task: Resolve Admin Dashboard and Entity Addition Issues
+Follow these clear steps in order:
+
+Step 1: Diagnose Dashboard Loading Issue
+
+Review the server-side logs (console.log, console.error) when the admin attempts to log in and access the dashboard.
+Identify any authentication or permission errors.
+Verify admin authentication middleware/routes, ensuring the currentUser object is properly populated.
+Action (agent should):
+
+Clearly log errors in authentication middleware or dashboard route handlers.
+Step 2: Verify Dashboard API Endpoints
+
+Check the API endpoint (GET /api/admin/dashboard) for data fetching issues.
+Ensure it returns correct, expected data in the format:
+json
+Copy
+Edit
+{
+  "status": "success",
+  "data": {
+    "entities": [],
+    "consolidationGroups": []
+  }
+}
+Action (agent should):
+
+Fix any API response errors or incorrect data structure.
+Ensure proper handling of empty states or missing data.
+Step 3: Resolve Entity Addition Issue
+
+Verify the API endpoint responsible for adding entities (POST /api/entities) is correctly configured.
+Confirm Zod input validation and correct junction-table insertion logic is in place:
+typescript
+Copy
+Edit
+await db.insert(consolidationGroupEntities)
+  .values({ groupId, entityId })
+  .onConflictDoNothing();
+Action (agent should):
+
+Implement clear error logging for validation or insertion issues.
+Test the endpoint separately using known valid data.
+Step 4: Integrate Frontend and Backend Logic
+
+Ensure the frontend dashboard form submissions (to add entities) properly call the updated backend API.
+Confirm all frontend API calls include correct payloads and handle API responses properly.
+Action (agent should):
+
+Verify frontend forms send accurate data payloads.
+Clearly log frontend API errors.
+🛠️ Agent Completion Checklist
+ Check and resolve authentication middleware issues.
+ Confirm dashboard API returns correct, consistent data.
+ Validate the entity-addition endpoint is fully functional (junction table integration).
+ Ensure frontend integration correctly interacts with backend endpoints.

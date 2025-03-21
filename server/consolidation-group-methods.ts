@@ -316,72 +316,110 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
  * Uses both the junction table and entity_ids array to get associated entities
  */
 export async function generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
-  return await db.transaction(async (tx) => {
-    // Get the consolidation group
-    const groupResult = await tx
-      .select()
-      .from(consolidationGroups)
-      .where(eq(consolidationGroups.id, groupId))
-      .limit(1);
+  try {
+    return await db.transaction(async (tx) => {
+      // Get the consolidation group
+      const groupResult = await tx
+        .select()
+        .from(consolidationGroups)
+        .where(
+          and(
+            eq(consolidationGroups.id, groupId),
+            eq(consolidationGroups.isActive, true)
+          )
+        )
+        .limit(1);
+        
+      if (!groupResult || groupResult.length === 0) {
+        throw new NotFoundError(`Consolidation group ${groupId} not found`);
+      }
       
-    if (!groupResult || groupResult.length === 0) {
-      throw new NotFoundError(`Consolidation group ${groupId} not found`);
-    }
-    
-    const group = groupResult[0];
-    
-    // Priority 1: Get entity IDs from the junction table (primary approach)
-    const junctionEntities = await tx
-      .select()
-      .from(consolidationGroupEntities)
-      .where(eq(consolidationGroupEntities.groupId, groupId));
-    
-    let entityIds: number[] = junctionEntities.map(je => je.entityId);
-    
-    // Priority 2: If no entities found in junction table, fall back to legacy array approach
-    if (entityIds.length === 0) {
-      // Log the fallback to entity_ids array
-      logEntityIdsFallback('generateConsolidatedReport', groupId);
+      const group = groupResult[0];
       
-      // Fall back to entity_ids array for backward compatibility
-      entityIds = group.entity_ids || [];
-    }
-    
-    if (entityIds.length === 0) {
-      throw new ValidationError('No entities associated with this consolidation group');
-    }
-    
-    // Get detailed entity information
-    const entitiesDetails = await tx
-      .select()
-      .from(entities)
-      .where(
-        // Using inArray operator to select entities where ID is in our entityIds array
-        // This is more efficient than multiple individual queries
-        inArray(entities.id, entityIds)
+      // Priority 1: Get entity IDs from the junction table (primary approach)
+      const junctionEntities = await tx
+        .select()
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, groupId));
+      
+      let entityIds: number[] = junctionEntities.map(je => je.entityId);
+      
+      // Priority 2: If no entities found in junction table, fall back to legacy array approach
+      if (entityIds.length === 0) {
+        // Log the fallback to entity_ids array
+        logEntityIdsFallback('generateConsolidatedReport', groupId);
+        
+        // Fall back to entity_ids array for backward compatibility
+        entityIds = group.entity_ids || [];
+      }
+      
+      if (entityIds.length === 0) {
+        throw new ValidationError('No entities associated with this consolidation group');
+      }
+      
+      // Get detailed entity information including only active entities
+      const entitiesDetails = await tx
+        .select()
+        .from(entities)
+        .where(
+          and(
+            inArray(entities.id, entityIds),
+            eq(entities.active, true)
+          )
+        );
+      
+      // Extract active entity IDs only
+      const activeEntityIds = entitiesDetails.map(entity => entity.id);
+      
+      if (activeEntityIds.length === 0) {
+        throw new ValidationError('No active entities found in this consolidation group');
+      }
+      
+      // Effective date handling
+      const effectiveStartDate = startDate || group.startDate;
+      const effectiveEndDate = endDate || group.endDate || new Date();
+      
+      // Generate individual entity reports
+      // Here we would call separate report generation functions based on reportType
+      const entityReports = await Promise.all(
+        activeEntityIds.map(async (entityId) => {
+          // This would be replaced with actual report generation logic
+          // Placeholder for demonstration
+          return {
+            entityId,
+            report: { /* report data would go here */ }
+          };
+        })
       );
-    
-    // Generate individual entity reports
-    // Implementation depends on the specific report generation methods
-    // which would need to be adapted to work with the transaction context
-    
-    // Mark last run timestamp
-    await tx.update(consolidationGroups)
-      .set({ lastRun: new Date() })
-      .where(eq(consolidationGroups.id, groupId));
       
-    // This would be the actual consolidated report
-    return {
-      groupId,
-      reportType,
-      startDate,
-      endDate,
-      generatedAt: new Date(),
-      entityInfo: entitiesDetails,
-      // Actual report data would be here
-      // In the future, this would include actual financial data
-    };
-  });
+      // Consolidate the reports based on report type
+      let consolidatedReport = {};
+      
+      // Update last run timestamp
+      await tx.update(consolidationGroups)
+        .set({ lastRun: new Date(), updatedAt: new Date() })
+        .where(eq(consolidationGroups.id, groupId));
+        
+      return {
+        groupId,
+        groupName: group.name,
+        reportType,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+        generatedAt: new Date(),
+        currency: group.currency,
+        entityInfo: entitiesDetails,
+        consolidatedData: consolidatedReport,
+        entities: activeEntityIds
+      };
+    });
+  } catch (err) {
+    console.error('Error generating consolidated report:', err);
+    if (err instanceof NotFoundError || err instanceof ValidationError) {
+      throw err;
+    }
+    throw new Error('Failed to generate consolidated report');
+  }
 }
 
 /**
@@ -447,48 +485,65 @@ export async function getConsolidationGroupEntities(groupId: number): Promise<nu
  * Primarily uses the junction table, falls back to filtering on entity_ids array if needed
  */
 export async function getEntityConsolidationGroups(entityId: number): Promise<ConsolidationGroup[]> {
-  return await db.transaction(async (tx) => {
-    // Priority 1: Get groups from the junction table (primary approach)
-    const junctionGroups = await tx
-      .select({
-        groupId: consolidationGroupEntities.groupId
-      })
-      .from(consolidationGroupEntities)
-      .where(eq(consolidationGroupEntities.entityId, entityId));
-    
-    const groupIds = junctionGroups.map(jg => jg.groupId);
-    
-    // Get groups by IDs from the junction table results
-    let groups: ConsolidationGroup[] = [];
-    
-    if (groupIds.length > 0) {
-      groups = await tx
-        .select()
-        .from(consolidationGroups)
-        .where(
-          and(
-            inArray(consolidationGroups.id, groupIds),
-            eq(consolidationGroups.isActive, true)
-          )
+  try {
+    return await db.transaction(async (tx) => {
+      // Validate that the entity exists
+      const entityExists = await tx.query.entities.findFirst({
+        where: eq(entities.id, entityId)
+      });
+      
+      if (!entityExists) {
+        throw new NotFoundError(`Entity ${entityId} not found`);
+      }
+      
+      // Priority 1: Get groups from the junction table (primary approach)
+      const junctionGroups = await tx
+        .select({
+          groupId: consolidationGroupEntities.groupId
+        })
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.entityId, entityId));
+      
+      const groupIds = junctionGroups.map(jg => jg.groupId);
+      
+      // Get groups by IDs from the junction table results
+      let groups: ConsolidationGroup[] = [];
+      
+      if (groupIds.length > 0) {
+        groups = await tx
+          .select()
+          .from(consolidationGroups)
+          .where(
+            and(
+              inArray(consolidationGroups.id, groupIds),
+              eq(consolidationGroups.isActive, true)
+            )
+          );
+      } else {
+        // Priority 2: If no groups found in junction table, fall back to legacy array approach
+        // Log the fallback to entity_ids array
+        logEntityIdsFallback('getEntityConsolidationGroups', entityId);
+        
+        // Use raw SQL for the ANY operation with proper type safety
+        const rawResult = await tx.execute(
+          sql`SELECT * FROM consolidation_groups 
+              WHERE ${entityId} = ANY(entity_ids) 
+              AND is_active = true`
         );
-    } else {
-      // Priority 2: If no groups found in junction table, fall back to legacy array approach
-      // Log the fallback to entity_ids array
-      logEntityIdsFallback('getEntityConsolidationGroups', entityId);
+        
+        // Convert raw result to ConsolidationGroup objects
+        groups = rawResult.rows as unknown as ConsolidationGroup[];
+      }
       
-      // Use raw SQL for the ANY operation with proper type safety
-      const rawResult = await tx.execute(
-        sql`SELECT * FROM consolidation_groups 
-            WHERE ${entityId} = ANY(entity_ids) 
-            AND is_active = true`
-      );
-      
-      // Convert raw result to ConsolidationGroup objects
-      groups = rawResult.rows as unknown as ConsolidationGroup[];
+      return groups;
+    });
+  } catch (err) {
+    console.error('Error getting consolidation groups for entity:', err);
+    if (err instanceof NotFoundError) {
+      throw err;
     }
-    
-    return groups;
-  });
+    throw new Error('Failed to get consolidation groups for entity');
+  }
 }
 
 /**
