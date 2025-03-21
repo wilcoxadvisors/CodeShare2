@@ -1065,7 +1065,7 @@ function Dashboard() {
                                       onChange={handleEntityFormChange}
                                     />
                                   </div>
-                                  {isAdmin && dashboardUsers && dashboardUsers.length > 0 && (
+                                  {isAdmin && adminUsers && adminUsers.length > 0 && (
                                     <div className="grid grid-cols-4 items-center gap-4">
                                       <Label htmlFor="ownerId" className="text-right">Owner</Label>
                                       <Select 
@@ -1076,7 +1076,7 @@ function Dashboard() {
                                           <SelectValue placeholder="Select user" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {dashboardUsers.map(u => (
+                                          {adminUsers.map(u => (
                                             <SelectItem key={u.id} value={u.id.toString()}>
                                               {u.name} ({u.email})
                                             </SelectItem>
