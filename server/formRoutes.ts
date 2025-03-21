@@ -6,7 +6,8 @@ import {
   insertChecklistSubmissionSchema, 
   insertConsultationSubmissionSchema,
   insertChecklistFileSchema,
-  insertBlogSubscriberSchema
+  insertBlogSubscriberSchema,
+  blogSubscribers
 } from "@shared/schema";
 import { validateRequest } from "@shared/validation";
 import { asyncHandler, throwBadRequest } from "./errorHandling";
@@ -14,6 +15,8 @@ import nodemailer from "nodemailer";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+import { eq } from "drizzle-orm";
 
 // Email notification configuration
 const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL;
@@ -30,20 +33,28 @@ const transporter = nodemailer.createTransport({
 });
 
 // Helper function to send email notifications
-async function sendEmailNotification(subject: string, text: string) {
-  if (!EMAIL_PASSWORD || !EMAIL_USER || !NOTIFICATION_EMAIL) {
+async function sendEmailNotification(subject: string, text: string, recipient?: string) {
+  if (!EMAIL_PASSWORD || !EMAIL_USER) {
     console.log("Email notifications disabled - email configuration not complete");
+    return;
+  }
+
+  // If no specific recipient is provided, use the admin notification email
+  const to = recipient || NOTIFICATION_EMAIL;
+  
+  if (!to) {
+    console.log("No recipient email specified");
     return;
   }
   
   try {
     await transporter.sendMail({
       from: EMAIL_USER,
-      to: NOTIFICATION_EMAIL,
+      to: to,
       subject,
       text,
     });
-    console.log("Email notification sent successfully");
+    console.log("Email notification sent successfully to", to);
   } catch (error) {
     console.error("Failed to send email notification:", error);
   }
@@ -547,6 +558,7 @@ export function registerFormRoutes(app: Express) {
 
   // Helper function to generate random token
   function generateVerificationToken(): string {
+    // Use a secure random method for token generation
     return crypto.randomBytes(32).toString('hex');
   }
   
@@ -567,6 +579,7 @@ export function registerFormRoutes(app: Express) {
     Wilcox Advisors Team
     `;
     
+    // Send the verification email directly to the subscriber
     await sendEmailNotification(
       "Confirm Your Blog Subscription",
       emailContent,
@@ -669,7 +682,8 @@ export function registerFormRoutes(app: Express) {
     // Send notification to admin
     await sendEmailNotification(
       "New Blog Subscription Request",
-      `New blog subscription request from ${result.email}\nName: ${result.name || 'Not provided'}\nPending confirmation.`
+      `New blog subscription request from ${result.email}\nName: ${result.name || 'Not provided'}\nPending confirmation.`,
+      process.env.ADMIN_EMAIL
     );
     
     // Return success but make it clear confirmation is needed
@@ -733,7 +747,8 @@ export function registerFormRoutes(app: Express) {
     // Notify admin
     await sendEmailNotification(
       "Blog Subscription Confirmed",
-      `A subscriber has confirmed their blog subscription: ${subscriber.email}`
+      `A subscriber has confirmed their blog subscription: ${subscriber.email}`,
+      process.env.ADMIN_EMAIL
     );
     
     // Redirect to confirmation page
