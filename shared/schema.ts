@@ -737,12 +737,17 @@ export const blogSubscribers = pgTable("blog_subscribers", {
   subscriptionDate: timestamp("subscription_date").defaultNow().notNull(),
   confirmedAt: timestamp("confirmed_at"),
   confirmed: boolean("confirmed").default(false).notNull(),
+  verificationToken: text("verification_token"),
+  verificationExpires: timestamp("verification_expires"),
   unsubscribedAt: timestamp("unsubscribed_at"),
   active: boolean("active").default(true).notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   lastEmailSent: timestamp("last_email_sent"),
-  emailCount: integer("email_count").default(0)
+  emailCount: integer("email_count").default(0),
+  industry: text("industry"),
+  source: text("source"),
+  unsubscribeToken: text("unsubscribe_token").notNull()
 });
 
 // Schema for blog subscriber insertion
@@ -751,6 +756,7 @@ export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).om
   subscriptionDate: true,
   confirmedAt: true,
   confirmed: true,
+  verificationExpires: true,
   unsubscribedAt: true,
   lastEmailSent: true,
   emailCount: true

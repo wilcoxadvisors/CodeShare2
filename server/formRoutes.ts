@@ -545,7 +545,36 @@ export function registerFormRoutes(app: Express) {
 
   // Blog Subscriber Routes
 
-  // Subscribe to blog updates
+  // Helper function to generate random token
+  function generateVerificationToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+  
+  // Helper function to send verification email
+  async function sendVerificationEmail(email: string, name: string | null, token: string): Promise<void> {
+    const verificationLink = `${process.env.APP_URL || 'http://localhost:5000'}/api/blog/verify?token=${token}`;
+    
+    const emailContent = `
+    Hello ${name || 'there'},
+    
+    Thank you for subscribing to our blog updates. Please confirm your subscription by clicking the link below:
+    
+    ${verificationLink}
+    
+    If you did not request this subscription, you can safely ignore this email.
+    
+    Best regards,
+    Wilcox Advisors Team
+    `;
+    
+    await sendEmailNotification(
+      "Confirm Your Blog Subscription",
+      emailContent,
+      email
+    );
+  }
+
+  // Subscribe to blog updates with double opt-in
   app.post("/api/blog/subscribe", asyncHandler(async (req: Request, res: Response) => {
     console.log("Received blog subscription:", req.body);
     
@@ -559,53 +588,156 @@ export function registerFormRoutes(app: Express) {
     // Check if the email already exists
     const existingSubscriber = await storage.getBlogSubscriberByEmail(validation.data.email);
     if (existingSubscriber) {
-      // If already subscribed and active, just return success
-      if (existingSubscriber.active) {
+      // If already subscribed, confirmed and active, just return success
+      if (existingSubscriber.active && existingSubscriber.confirmed) {
         return res.json({
           message: "You're already subscribed to our blog updates",
           subscribed: true
         });
       }
       
-      // If inactive, reactivate the subscription
-      const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
-        active: true,
-        unsubscribedAt: null
-      });
+      // If subscription exists but not confirmed, resend verification email
+      if (!existingSubscriber.confirmed) {
+        // Generate new verification token
+        const verificationToken = generateVerificationToken();
+        const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
+        
+        // Update with new verification token
+        const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
+          verificationToken,
+          verificationExpires,
+          active: true
+        });
+        
+        // Send verification email
+        await sendVerificationEmail(
+          updatedSubscriber.email,
+          updatedSubscriber.name,
+          verificationToken
+        );
+        
+        return res.json({
+          message: "Please check your email to confirm your subscription",
+          subscribed: false,
+          pendingConfirmation: true
+        });
+      }
       
-      // Send welcome back email
-      await sendEmailNotification(
-        "Blog Subscription Reactivated",
-        `A previously unsubscribed user has reactivated their blog subscription: ${updatedSubscriber.email}`
-      );
-      
-      return res.json({
-        message: "Your subscription has been reactivated",
-        subscribed: true
-      });
+      // If inactive but confirmed previously, just reactivate
+      if (!existingSubscriber.active && existingSubscriber.confirmed) {
+        const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
+          active: true,
+          unsubscribedAt: null
+        });
+        
+        // Send welcome back email
+        await sendEmailNotification(
+          "Blog Subscription Reactivated",
+          `Thank you for reactivating your subscription to our blog updates.`,
+          updatedSubscriber.email
+        );
+        
+        return res.json({
+          message: "Your subscription has been reactivated",
+          subscribed: true
+        });
+      }
     }
     
-    // Add IP and user agent
+    // Generate unique tokens
+    const verificationToken = generateVerificationToken();
+    const unsubscribeToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
+    
+    // Add IP, user agent, and tokens to subscriber data
     const subscriber = {
       ...validation.data,
       ipAddress: req.ip || null,
-      userAgent: req.headers["user-agent"] || null
+      userAgent: req.headers["user-agent"] || null,
+      verificationToken,
+      verificationExpires,
+      unsubscribeToken,
+      confirmed: false
     };
     
     // Store the new subscription
     const result = await storage.createBlogSubscriber(subscriber);
     
-    // Send confirmation to admin
+    // Send verification email
+    await sendVerificationEmail(result.email, result.name, verificationToken);
+    
+    // Send notification to admin
     await sendEmailNotification(
-      "New Blog Subscription",
-      `New blog subscription from ${result.email}\nName: ${result.name || 'Not provided'}`
+      "New Blog Subscription Request",
+      `New blog subscription request from ${result.email}\nName: ${result.name || 'Not provided'}\nPending confirmation.`
     );
     
-    // Return success
+    // Return success but make it clear confirmation is needed
     res.status(201).json({
-      message: "Successfully subscribed to blog updates",
-      subscribed: true
+      message: "Please check your email to confirm your subscription",
+      subscribed: false,
+      pendingConfirmation: true
     });
+  }));
+
+  // Verify email subscription (from email link)
+  app.get("/api/blog/verify", asyncHandler(async (req: Request, res: Response) => {
+    const { token } = req.query;
+    
+    if (!token || typeof token !== "string") {
+      return res.redirect("/blog?verification=failed&reason=missing_token");
+    }
+    
+    // Find subscriber with this verification token
+    const subscribers = await db
+      .select()
+      .from(blogSubscribers)
+      .where(eq(blogSubscribers.verificationToken, token))
+      .limit(1);
+    
+    if (subscribers.length === 0) {
+      return res.redirect("/blog?verification=failed&reason=invalid_token");
+    }
+    
+    const subscriber = subscribers[0];
+    
+    // Check if token has expired
+    if (subscriber.verificationExpires && subscriber.verificationExpires < new Date()) {
+      return res.redirect("/blog?verification=failed&reason=token_expired");
+    }
+    
+    // Update subscriber to confirmed
+    await storage.updateBlogSubscriber(subscriber.id, {
+      confirmed: true,
+      confirmedAt: new Date(),
+      verificationToken: null, // Clear the token after use
+      active: true
+    });
+    
+    // Send welcome email
+    await sendEmailNotification(
+      "Welcome to Wilcox Advisors Blog!",
+      `
+      Hello ${subscriber.name || 'there'},
+      
+      Thank you for confirming your subscription to our blog. You will now receive updates whenever we publish new content.
+      
+      You can unsubscribe at any time by clicking the unsubscribe link in our emails or by visiting our website.
+      
+      Best regards,
+      Wilcox Advisors Team
+      `,
+      subscriber.email
+    );
+    
+    // Notify admin
+    await sendEmailNotification(
+      "Blog Subscription Confirmed",
+      `A subscriber has confirmed their blog subscription: ${subscriber.email}`
+    );
+    
+    // Redirect to confirmation page
+    return res.redirect("/blog?verification=success");
   }));
 
   // Unsubscribe from blog updates
@@ -636,6 +768,37 @@ export function registerFormRoutes(app: Express) {
       message: "Successfully unsubscribed from blog updates",
       unsubscribed: true
     });
+  }));
+  
+  // Unsubscribe from blog updates via token (direct link from email)
+  app.get("/api/blog/unsubscribe", asyncHandler(async (req: Request, res: Response) => {
+    const { token } = req.query;
+    
+    if (!token || typeof token !== "string") {
+      return res.redirect("/blog?unsubscribe=failed&reason=missing_token");
+    }
+    
+    // Find subscriber with this unsubscribe token
+    const subscribers = await db
+      .select()
+      .from(blogSubscribers)
+      .where(eq(blogSubscribers.unsubscribeToken, token))
+      .limit(1);
+    
+    if (subscribers.length === 0) {
+      return res.redirect("/blog?unsubscribe=failed&reason=invalid_token");
+    }
+    
+    const subscriber = subscribers[0];
+    
+    // Update to inactive
+    await storage.updateBlogSubscriber(subscriber.id, {
+      active: false,
+      unsubscribedAt: new Date()
+    });
+    
+    // Redirect to confirmation page
+    return res.redirect("/blog?unsubscribe=success");
   }));
 
   // Get all blog subscribers (admin only)
