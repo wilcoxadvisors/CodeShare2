@@ -1,255 +1,190 @@
 import { z } from 'zod';
-import { toast } from '@/hooks/use-toast';
+import { AccountType, UserRole, BudgetPeriodType, ReportType, JournalType, JournalEntryStatus } from './types';
 
-/**
- * Validate data against a schema and handle errors
- * 
- * @param schema ZodSchema to validate against
- * @param data Data to validate
- * @param options Options for error handling
- * @returns Validated data or null if validation failed
- */
-export function validateData<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-  options: {
-    showToast?: boolean;
-    toastTitle?: string;
-  } = { showToast: true, toastTitle: 'Validation Error' }
-): T | null {
-  try {
-    return schema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      // Format error messages
-      const formattedErrors = formatZodErrors(error);
-      
-      // Show toast if requested
-      if (options.showToast) {
-        toast({
-          title: options.toastTitle || 'Validation Error',
-          description: formattedErrors.join('\n'),
-          variant: 'destructive',
-        });
-      }
-      
-      // Log errors to console in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Validation errors:', error.errors);
-      }
-    }
-    
-    return null;
+// Basic schema definitions
+
+export const enhancedUserSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters long"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
+  role: z.enum([UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENT]).default(UserRole.CLIENT),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  jobTitle: z.string().optional(),
+  department: z.string().optional(),
+  profileImage: z.string().optional(),
+  bio: z.string().optional(),
+  preferences: z.record(z.any()).optional(),
+  lastLoginAt: z.date().optional(),
+  active: z.boolean().default(true),
+  resetPasswordToken: z.string().optional(),
+  resetPasswordExpires: z.date().optional(),
+  verificationToken: z.string().optional(),
+  verified: z.boolean().default(false),
+  referralSource: z.string().optional(),
+});
+
+export const enhancedEntitySchema = z.object({
+  name: z.string().min(2, "Entity name must be at least 2 characters long"),
+  code: z.string().min(2, "Entity code must be at least 2 characters long"),
+  fiscalYearStart: z.string().min(1, "Please enter fiscal year start date"),
+  fiscalYearEnd: z.string().min(1, "Please enter fiscal year end date"),
+  taxId: z.string().optional(),
+  address: z.string().optional(),
+  email: z.string().email("Please enter a valid email address").optional().nullable(),
+  phone: z.string().optional().nullable(),
+  website: z.string().url("Please enter a valid website URL").optional().nullable(),
+  industry: z.string().min(1, "Please select an industry"),
+  subIndustry: z.string().optional().nullable(),
+  currency: z.string().min(1, "Please select a currency"),
+  timezone: z.string().min(1, "Please select a timezone"),
+  businessType: z.string().min(1, "Please select a business type"),
+  publiclyTraded: z.boolean().default(false),
+  stockSymbol: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  logoUrl: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+  ownerId: z.number().optional(),
+});
+
+export const enhancedAccountSchema = z.object({
+  code: z.string().min(3, "Account code must be at least 3 characters long"),
+  name: z.string().min(2, "Account name must be at least 2 characters long"),
+  type: z.enum([AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY, AccountType.REVENUE, AccountType.EXPENSE]),
+  entityId: z.number(),
+  description: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+  subtype: z.string().optional().nullable(),
+  isSubledger: z.boolean().default(false),
+  subledgerType: z.string().optional().nullable(),
+  parentId: z.number().optional().nullable(),
+});
+
+export const enhancedJournalEntrySchema = z.object({
+  reference: z.string().min(1, "Reference is required"),
+  date: z.coerce.date(),
+  description: z.string().optional().nullable(),
+  status: z.enum([
+    JournalEntryStatus.DRAFT,
+    JournalEntryStatus.PENDING_APPROVAL,
+    JournalEntryStatus.APPROVED,
+    JournalEntryStatus.POSTED,
+    JournalEntryStatus.REJECTED,
+    JournalEntryStatus.VOIDED
+  ]).default(JournalEntryStatus.DRAFT),
+  entityId: z.number(),
+  journalId: z.number(),
+  createdBy: z.number(),
+  needsReview: z.boolean().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional().nullable(),
+  attachments: z.array(z.string()).optional().nullable(),
+  requestedBy: z.number().optional().nullable(),
+  approvedBy: z.number().optional().nullable(),
+  rejectedBy: z.number().optional().nullable(),
+  rejectionReason: z.string().optional().nullable(),
+  postedBy: z.number().optional().nullable(),
+  voidedBy: z.number().optional().nullable(),
+  voidReason: z.string().optional().nullable(),
+});
+
+export const enhancedJournalEntryLineSchema = z.object({
+  journalEntryId: z.number(),
+  accountId: z.number(),
+  description: z.string().optional().nullable(),
+  debit: z.union([z.string(), z.number()]).transform(val => val.toString()),
+  credit: z.union([z.string(), z.number()]).transform(val => val.toString()),
+  lineNo: z.number().optional(),
+  memo: z.string().optional().nullable(),
+  reference: z.string().optional().nullable(),
+  dimensions: z.record(z.any()).optional().nullable(),
+});
+
+export const batchUploadSchema = z.object({
+  entries: z.array(
+    z.object({
+      reference: z.string().min(1, "Reference is required"),
+      date: z.string().min(1, "Date is required"),
+      description: z.string().optional(),
+      lines: z.array(
+        z.object({
+          accountId: z.number().int().positive(),
+          description: z.string().optional(),
+          debit: z.string(),
+          credit: z.string()
+        })
+      ).min(1, "At least one journal entry line is required")
+    })
+  ).min(1, "At least one journal entry is required")
+});
+
+export const journalEntryWithLinesSchema = enhancedJournalEntrySchema.extend({
+  lines: z.array(enhancedJournalEntryLineSchema)
+});
+
+export const enhancedFixedAssetSchema = z.object({
+  name: z.string().min(2, "Asset name must be at least 2 characters long"),
+  entityId: z.number(),
+  accountId: z.number(),
+  acquisitionDate: z.coerce.date(),
+  acquisitionCost: z.union([z.string(), z.number()]).transform(val => val.toString()),
+  usefulLife: z.number().int().positive("Useful life must be a positive integer"),
+  residualValue: z.union([z.string(), z.number()]).transform(val => val.toString()).optional(),
+  depreciationMethod: z.string().optional().nullable(),
+  status: z.string().default('active'),
+  location: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  serialNumber: z.string().optional().nullable(),
+  category: z.string().optional().nullable(),
+  disposalDate: z.coerce.date().optional().nullable(),
+  disposalAmount: z.union([z.string(), z.number()]).transform(val => val.toString()).optional().nullable(),
+});
+
+export const enhancedConsolidationGroupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  description: z.string().optional().nullable(),
+  currency: z.string().min(1, "Please select a currency"),
+  periodType: z.string().min(1, "Please select a period type"),
+  startDate: z.string().min(1, "Please select a start date"),
+  endDate: z.string().min(1, "Please select an end date"),
+  isActive: z.boolean().default(true),
+  ownerId: z.number().optional(),
+  createdBy: z.number().optional(),
+  entityIds: z.array(z.number()).min(1, "At least one entity must be selected"),
+  reportTypes: z.array(z.string()).optional(),
+  rules: z.record(z.any()).optional(),
+});
+
+export function formatZodError(error: z.ZodError) {
+  return error.errors.reduce((acc, curr) => {
+    const path = curr.path.join('.');
+    acc[path] = curr.message;
+    return acc;
+  }, {} as Record<string, string>);
+}
+
+export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: ReturnType<typeof formatZodError> } {
+  const result = schema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  } else {
+    return { success: false, error: formatZodError(result.error) };
   }
 }
 
 /**
- * Format ZodError into user-friendly messages
+ * Validate form data against a schema
+ * Returns an object with success status and either the validated data or an error
  */
-export function formatZodErrors(error: z.ZodError): string[] {
-  return error.errors.map(err => {
-    const path = err.path.length > 0 ? `${err.path.join('.')}` : 'Field';
-    const message = err.message;
-    return `${path}: ${message}`;
-  });
-}
-
-/**
- * General validation schemas
- */
-
-// Basic text input validation
-export const textFieldSchema = (options: { 
-  min?: number; 
-  max?: number;
-  required?: boolean;
-  fieldName?: string;
-}) => {
-  const { min, max, required = true, fieldName = 'Field' } = options;
-  let schema = z.string();
-  
-  if (required) {
-    schema = schema.min(1, `${fieldName} is required`);
-  } else {
-    schema = schema.optional();
-  }
-  
-  if (min !== undefined) {
-    schema = schema.min(min, `${fieldName} must be at least ${min} characters`);
-  }
-  
-  if (max !== undefined) {
-    schema = schema.max(max, `${fieldName} cannot exceed ${max} characters`);
-  }
-  
-  return schema;
-};
-
-// Email validation
-export const emailSchema = z.string()
-  .min(1, "Email is required")
-  .email("Please enter a valid email address");
-
-// Password validation
-export const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number");
-
-// Numeric validation
-export const numericSchema = (options: {
-  min?: number;
-  max?: number;
-  required?: boolean;
-  allowNegative?: boolean;
-  fieldName?: string;
-}) => {
-  const { min, max, required = true, allowNegative = false, fieldName = 'Number' } = options;
-  
-  let schema = z.string()
-    .refine(val => val === '' || !isNaN(parseFloat(val)), {
-      message: `${fieldName} must be a valid number`
-    });
-  
-  if (required) {
-    schema = schema.min(1, `${fieldName} is required`);
-  } else {
-    schema = schema.optional();
-  }
-  
-  schema = schema.refine(val => {
-    if (val === '' && !required) return true;
-    const num = parseFloat(val as string);
-    return allowNegative || num >= 0;
-  }, {
-    message: `${fieldName} must be ${allowNegative ? 'a' : 'a non-negative'} number`
-  });
-  
-  if (min !== undefined) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      return parseFloat(val as string) >= min;
-    }, {
-      message: `${fieldName} must be greater than or equal to ${min}`
-    });
-  }
-  
-  if (max !== undefined) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      return parseFloat(val as string) <= max;
-    }, {
-      message: `${fieldName} must be less than or equal to ${max}`
-    });
-  }
-  
-  return schema;
-};
-
-// Date validation
-export const dateSchema = (options: {
-  required?: boolean;
-  pastOnly?: boolean;
-  futureOnly?: boolean;
-  minDate?: Date;
-  maxDate?: Date;
-  fieldName?: string;
-}) => {
-  const { 
-    required = true, 
-    pastOnly = false, 
-    futureOnly = false,
-    minDate,
-    maxDate,
-    fieldName = 'Date'
-  } = options;
-  
-  let schema = z.string();
-  
-  if (required) {
-    schema = schema.min(1, `${fieldName} is required`);
-  } else {
-    schema = schema.optional();
-  }
-  
-  schema = schema.refine(val => {
-    if (val === '' && !required) return true;
-    const date = new Date(val as string);
-    return !isNaN(date.getTime());
-  }, {
-    message: `${fieldName} must be a valid date`
-  });
-  
-  if (pastOnly) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      const date = new Date(val as string);
-      return date <= new Date();
-    }, {
-      message: `${fieldName} must be in the past`
-    });
-  }
-  
-  if (futureOnly) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      const date = new Date(val as string);
-      return date > new Date();
-    }, {
-      message: `${fieldName} must be in the future`
-    });
-  }
-  
-  if (minDate) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      const date = new Date(val as string);
-      return date >= minDate;
-    }, {
-      message: `${fieldName} must be on or after ${minDate.toLocaleDateString()}`
-    });
-  }
-  
-  if (maxDate) {
-    schema = schema.refine(val => {
-      if (val === '' && !required) return true;
-      const date = new Date(val as string);
-      return date <= maxDate;
-    }, {
-      message: `${fieldName} must be on or before ${maxDate.toLocaleDateString()}`
-    });
-  }
-  
-  return schema;
-};
-
-// Form validation helpers
-export const validateForm = (formData: object, schema: z.ZodSchema<any>): { 
-  success: boolean; 
-  data?: any; 
-  errors?: Record<string, string>; 
-} => {
+export function validateForm<T>(data: unknown, schema: z.ZodSchema<T>): { valid: boolean; data?: T; errors?: Record<string, string> } {
   try {
-    const validData = schema.parse(formData);
-    return { success: true, data: validData };
+    const validated = schema.parse(data);
+    return { valid: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Convert zod errors to form-friendly format
-      const errors: Record<string, string> = {};
-      
-      error.errors.forEach(err => {
-        const path = err.path.join('.');
-        errors[path] = err.message;
-      });
-      
-      return { success: false, errors };
+      return { valid: false, errors: formatZodError(error) };
     }
-    
-    // Unexpected error
-    return { 
-      success: false, 
-      errors: { _form: 'An unexpected error occurred during validation' } 
-    };
+    // Handle other types of errors
+    return { valid: false, errors: { _form: 'Validation failed' } };
   }
-};
+}

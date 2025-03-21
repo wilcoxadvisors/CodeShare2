@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { enhancedUserSchema, enhancedEntitySchema } from '../../../shared/validation';
+import { enhancedUserSchema, enhancedEntitySchema } from '@/lib/validation';
 import { apiRequest } from '@/lib/queryClient';
 
 // Define Industry Options
