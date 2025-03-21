@@ -506,7 +506,7 @@ function Dashboard() {
   });
   
   // Fetch admin users list for entity owner assignment (admin only)
-  const { data: usersList = [], isLoading: usersLoading } = useQuery({
+  const { data: adminUsers = [], isLoading: usersLoading } = useQuery({
     queryKey: ['/api/admin/users'],
     enabled: isAdmin
   });
@@ -1525,11 +1525,11 @@ function Dashboard() {
                           <div className="w-full">
                             <div className="flex justify-between mb-1">
                               <span className="text-sm font-medium">Total Revenue</span>
-                              <span className="text-sm font-medium">${getStatsSummary(entities, users, consolidationGroups).totalRevenue.toLocaleString()}</span>
+                              <span className="text-sm font-medium">${getStatsSummary(entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm font-medium text-red-600">Outstanding</span>
-                              <span className="text-sm font-medium text-red-600">${getStatsSummary(entities, users, consolidationGroups).outstandingPayments.toLocaleString()}</span>
+                              <span className="text-sm font-medium text-red-600">${getStatsSummary(entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()}</span>
                             </div>
                           </div>
                         </CardFooter>
