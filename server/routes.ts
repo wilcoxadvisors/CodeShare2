@@ -25,6 +25,7 @@ import { registerAIRoutes } from "./aiRoutes";
 import { registerBudgetRoutes } from "./budgetRoutes";
 import { registerForecastRoutes } from "./forecastRoutes";
 import { registerConsolidationRoutes } from "./consolidationRoutes";
+import { registerAdminRoutes } from "./adminRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -983,6 +984,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register the Consolidation routes
   registerConsolidationRoutes(app, storage);
+  
+  // Register the Admin routes
+  registerAdminRoutes(app, storage);
   
   const httpServer = createServer(app);
   return httpServer;
