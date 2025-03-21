@@ -131,22 +131,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
    */
   app.get("/api/admin/users", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
-      // For now, we'll use a simplified approach since we don't have a direct getUsers method
-      // This is a workaround until we implement a full getUsers method in the storage interface
-      
-      // Get users who own entities
-      const entities = await storage.getEntities();
-      const userIds = new Set(entities.map(entity => entity.ownerId));
-      
-      // Create a list of unique users
-      const users: any[] = [];
-      const userIdsArray = Array.from(userIds);
-      for (const userId of userIdsArray) {
-        const user = await storage.getUser(userId);
-        if (user) {
-          users.push(user);
-        }
-      }
+      // Use the new getUsers method implemented in the storage
+      const users = await storage.getUsers();
       
       // Filter out sensitive info
       const safeUsers = users.map((user: any) => ({

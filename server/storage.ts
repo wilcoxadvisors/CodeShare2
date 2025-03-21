@@ -588,6 +588,10 @@ export class MemStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
+  
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
@@ -3278,6 +3282,11 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
+  }
+
+  async getUsers(): Promise<User[]> {
+    const result = await db.select().from(users);
+    return result;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
