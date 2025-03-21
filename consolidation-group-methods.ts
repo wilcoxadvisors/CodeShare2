@@ -31,7 +31,6 @@ async createConsolidationGroup(group: InsertConsolidationGroup): Promise<Consoli
     description: group.description || null,
     createdBy: group.createdBy,
     entityIds: group.entityIds || [],
-    primaryEntityId: group.primaryEntityId || null,
     isActive: group.isActive !== undefined ? group.isActive : true,
     createdAt: new Date(),
     updatedAt: null,
@@ -129,9 +128,10 @@ async generateConsolidatedReport(groupId: number, reportType: ReportType, startD
   
   if (!effectiveStartDate) {
     // Default to beginning of fiscal year
-    const primaryEntity = group.primaryEntityId 
-      ? await this.getEntity(group.primaryEntityId)
-      : await this.getEntity(group.entityIds[0]);
+    // Use the first entity in the group's entityIds array as the primary entity
+    const primaryEntity = group.entityIds.length > 0 
+      ? await this.getEntity(group.entityIds[0])
+      : null;
     
     if (primaryEntity) {
       const fiscalYearStart = primaryEntity.fiscalYearStart || '01-01'; // Default to Jan 1

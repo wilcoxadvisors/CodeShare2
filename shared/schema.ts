@@ -384,9 +384,9 @@ export const consolidationGroups = pgTable("consolidation_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  // Removed entityIds array field as it will be replaced by a junction table
+  // Using entity_ids array field to store entity IDs
   ownerId: integer("owner_id").references(() => users.id).notNull(),
-  primaryEntityId: integer("primary_entity_id").references(() => entities.id),
+  entity_ids: integer("entity_ids").array(), // Store entity IDs as an array
   currency: text("currency").notNull().default("USD"),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
