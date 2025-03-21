@@ -379,6 +379,12 @@ function Dashboard() {
     enabled: !!currentEntity
   });
   
+  // Admin API data
+  const { data: adminDashboardData, isLoading: adminDataLoading } = useQuery({
+    queryKey: ['/api/admin/dashboard'],
+    enabled: isAdmin
+  });
+  
   // Handle export of subscribers to CSV
   const handleExportSubscribers = async () => {
     try {
@@ -426,18 +432,24 @@ function Dashboard() {
   // Admin dashboard specific state - start with client management tab selected
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
-  // Filtered clients based on search and status
-  const filteredClients = mockClients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = clientStatusFilter === "all" || client.status === clientStatusFilter;
+  // Load entities and users from admin dashboard data
+  const entities = adminDashboardData?.entities || [];
+  const users = adminDashboardData?.users || [];
+  const consolidationGroups = adminDashboardData?.consolidationGroups || [];
+  
+  // Filtered entities based on search (replacing mock clients)
+  const filteredClients = entities.filter(entity => {
+    const matchesSearch = entity.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = clientStatusFilter === "all" || 
+      (clientStatusFilter === "Active" && entity.isActive) ||
+      (clientStatusFilter === "Inactive" && !entity.isActive);
     return matchesSearch && matchesStatus;
   });
 
-  // Data for client status pie chart
+  // Data for client status pie chart using real entity data
   const clientStatusData = [
-    { name: 'Active', value: mockClients.filter(c => c.status === 'Active').length },
-    { name: 'Onboarding', value: mockClients.filter(c => c.status === 'Onboarding').length },
-    { name: 'Pending Review', value: mockClients.filter(c => c.status === 'Pending Review').length }
+    { name: 'Active', value: entities.filter(e => e.isActive).length },
+    { name: 'Inactive', value: entities.filter(e => !e.isActive).length }
   ];
 
   // Data for payment status
