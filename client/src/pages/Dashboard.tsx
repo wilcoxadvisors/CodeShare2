@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText } from "lucide-react";
 import { UserRole } from "@shared/schema";
+import { exportToCSV } from "../lib/export-utils";
+import { useToast } from "@/hooks/use-toast";
 
 // Sample data for our admin dashboard
 // In a real application, this would come from API calls
@@ -200,6 +202,157 @@ const formatDate = (dateString: string) => {
   });
 };
 
+// Subscriber Management Component
+interface BlogSubscriber {
+  id: number;
+  email: string;
+  name: string | null;
+  industry: string | null;
+  isActive: boolean;
+  createdAt: string;
+  source: string | null;
+  unsubscribeToken: string;
+}
+
+function SubscriberManagement() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterActive, setFilterActive] = useState(true);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch blog subscribers
+  const { data: subscribers, isLoading } = useQuery({
+    queryKey: ['/api/admin/blog-subscribers'],
+    enabled: true
+  });
+
+  // Delete subscriber mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (subscriberId: number) => {
+      return await fetch(`/api/admin/blog-subscribers/${subscriberId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/blog-subscribers'] });
+      toast({
+        title: "Subscriber removed",
+        description: "The subscriber has been successfully removed.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove subscriber. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Delete error:", error);
+    }
+  });
+
+  // Filter subscribers based on search and active state
+  const filteredSubscribers = subscribers?.filter((subscriber: BlogSubscriber) => {
+    const matchesSearch = 
+      subscriber.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (subscriber.name && subscriber.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subscriber.industry && subscriber.industry.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesActive = filterActive ? subscriber.isActive : true;
+    
+    return matchesSearch && matchesActive;
+  }) || [];
+
+  const handleDeleteSubscriber = (id: number) => {
+    if (window.confirm("Are you sure you want to remove this subscriber?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-64">
+          <Input
+            placeholder="Search subscribers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="filter-active" className="text-sm font-medium">
+            Active Only
+          </Label>
+          <input
+            type="checkbox"
+            id="filter-active"
+            checked={filterActive}
+            onChange={() => setFilterActive(!filterActive)}
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+        </div>
+      </div>
+
+      {filteredSubscribers.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No subscribers found.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Email</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>Subscribed On</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSubscribers.map((subscriber: BlogSubscriber) => (
+                <TableRow key={subscriber.id}>
+                  <TableCell className="font-medium">{subscriber.email}</TableCell>
+                  <TableCell>{subscriber.name || 'N/A'}</TableCell>
+                  <TableCell>{subscriber.industry || 'N/A'}</TableCell>
+                  <TableCell>{new Date(subscriber.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={subscriber.isActive ? "default" : "outline"}>
+                      {subscriber.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{subscriber.source || 'Website'}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteSubscriber(subscriber.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Dashboard() {
   const { user } = useAuth();
   const { currentEntity } = useEntity();
@@ -208,22 +361,67 @@ function Dashboard() {
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
+  const { toast } = useToast();
   
   // Queries for financial data
   const { data: incomeData, isLoading: incomeLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/income-statement`] : null,
+    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/income-statement'] : null,
     enabled: !!currentEntity
   });
   
   const { data: balanceSheetData, isLoading: balanceSheetLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/balance-sheet`] : null,
+    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/balance-sheet'] : null,
     enabled: !!currentEntity
   });
   
   const { data: cashFlowData, isLoading: cashFlowLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/reports/cash-flow`] : null,
+    queryKey: currentEntity ? ['/api/entities/', currentEntity.id, '/reports/cash-flow'] : null,
     enabled: !!currentEntity
   });
+  
+  // Handle export of subscribers to CSV
+  const handleExportSubscribers = async () => {
+    try {
+      const response = await fetch('/api/admin/blog-subscribers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscribers');
+      }
+      const subscribers = await response.json();
+      
+      if (subscribers && subscribers.length > 0) {
+        exportToCSV(
+          subscribers, 
+          `blog-subscribers-${new Date().toISOString().split('T')[0]}.csv`,
+          [
+            { key: 'email', header: 'Email' },
+            { key: 'name', header: 'Name' },
+            { key: 'industry', header: 'Industry' },
+            { key: 'createdAt', header: 'Subscribed Date' },
+            { key: 'isActive', header: 'Active' },
+            { key: 'source', header: 'Source' }
+          ]
+        );
+        
+        toast({
+          title: "Export Successful",
+          description: `${subscribers.length} subscribers exported to CSV.`,
+        });
+      } else {
+        toast({
+          title: "No Subscribers",
+          description: "There are no subscribers to export.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export subscribers. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Admin dashboard specific state - start with client management tab selected
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
@@ -1378,6 +1576,25 @@ function Dashboard() {
                                     <Button variant="outline" size="sm">Edit</Button>
                                   </div>
                                 </div>
+                              </div>
+                              
+                              <div className="mt-6">
+                                <div className="flex justify-between items-center mb-3">
+                                  <h3 className="text-lg font-medium">Blog Subscribers</h3>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleExportSubscribers()}
+                                  >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export List
+                                  </Button>
+                                </div>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <SubscriberManagement />
+                                  </CardContent>
+                                </Card>
                               </div>
                             </div>
                           </div>
