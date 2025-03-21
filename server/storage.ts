@@ -4749,6 +4749,364 @@ export class DatabaseStorage implements IStorage {
     await db.delete(checklistFiles)
       .where(eq(checklistFiles.id, id));
   }
+
+  // Consolidation Group methods
+  async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
+    const result = await db
+      .select()
+      .from(consolidationGroups)
+      .where(eq(consolidationGroups.id, id))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async getConsolidationGroups(): Promise<ConsolidationGroup[]> {
+    const result = await db
+      .select()
+      .from(consolidationGroups)
+      .where(eq(consolidationGroups.isActive, true));
+    
+    return result;
+  }
+
+  async getConsolidationGroupsByUser(userId: number): Promise<ConsolidationGroup[]> {
+    const result = await db
+      .select()
+      .from(consolidationGroups)
+      .where(
+        and(
+          eq(consolidationGroups.ownerId, userId),
+          eq(consolidationGroups.isActive, true)
+        )
+      );
+    
+    return result;
+  }
+
+  async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
+    // Query for groups that include this entity in their entityIds array
+    const result = await db
+      .select()
+      .from(consolidationGroups)
+      .where(eq(consolidationGroups.isActive, true));
+    
+    // Filter on the application side since it's an array field
+    return result.filter(group => 
+      group.entityIds && Array.isArray(group.entityIds) && 
+      group.entityIds.includes(entityId)
+    );
+  }
+
+  async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
+    const [result] = await db.insert(consolidationGroups)
+      .values({
+        name: group.name,
+        description: group.description || null,
+        entityIds: group.entityIds || [],
+        ownerId: group.ownerId,
+        currency: group.currency || 'USD',
+        startDate: group.startDate,
+        endDate: group.endDate,
+        periodType: group.periodType,
+        rules: group.rules || null,
+        isActive: group.isActive !== undefined ? group.isActive : true,
+        createdBy: group.createdBy,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
+    const [result] = await db.update(consolidationGroups)
+      .set({
+        ...group,
+        updatedAt: new Date()
+      })
+      .where(eq(consolidationGroups.id, id))
+      .returning();
+    
+    return result;
+  }
+
+  async deleteConsolidationGroup(id: number): Promise<void> {
+    // Soft delete by setting isActive to false
+    await db.update(consolidationGroups)
+      .set({
+        isActive: false,
+        updatedAt: new Date()
+      })
+      .where(eq(consolidationGroups.id, id));
+  }
+
+  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup | undefined> {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) return undefined;
+    
+    const entityIds = [...(group.entityIds || [])];
+    
+    // Check if entity is already in the group
+    if (!entityIds.includes(entityId)) {
+      entityIds.push(entityId);
+      
+      // Update the group with the new entity array
+      return this.updateConsolidationGroup(groupId, { entityIds });
+    }
+    
+    return group;
+  }
+
+  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup | undefined> {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) return undefined;
+    
+    const entityIds = [...(group.entityIds || [])].filter(id => id !== entityId);
+    
+    // Update the group with the filtered entity array
+    return this.updateConsolidationGroup(groupId, { entityIds });
+  }
+
+  async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) throw new Error('Consolidation group not found');
+    
+    const reports = [];
+    
+    // Generate reports for each entity in the group
+    for (const entityId of group.entityIds) {
+      let report;
+      
+      switch (reportType) {
+        case ReportType.BALANCE_SHEET:
+          report = await this.generateBalanceSheet(entityId, endDate);
+          break;
+        case ReportType.INCOME_STATEMENT:
+          report = await this.generateIncomeStatement(entityId, startDate, endDate);
+          break;
+        case ReportType.CASH_FLOW:
+          report = await this.generateCashFlow(entityId, startDate, endDate);
+          break;
+        case ReportType.TRIAL_BALANCE:
+          report = await this.generateTrialBalance(entityId, startDate, endDate);
+          break;
+        default:
+          throw new Error('Unsupported report type for consolidation');
+      }
+      
+      reports.push(report);
+    }
+    
+    // Consolidate reports
+    let consolidatedReport;
+    
+    switch (reportType) {
+      case ReportType.BALANCE_SHEET:
+        consolidatedReport = this.consolidateBalanceSheets(reports);
+        break;
+      case ReportType.INCOME_STATEMENT:
+        consolidatedReport = this.consolidateIncomeStatements(reports);
+        break;
+      case ReportType.CASH_FLOW:
+        consolidatedReport = this.consolidateCashFlows(reports);
+        break;
+      case ReportType.TRIAL_BALANCE:
+        consolidatedReport = this.consolidateTrialBalances(reports);
+        break;
+      default:
+        throw new Error('Unsupported report type for consolidation');
+    }
+    
+    // Update last run date
+    await this.updateConsolidationGroup(groupId, { lastRun: new Date() });
+    
+    return consolidatedReport;
+  }
+
+  private consolidateBalanceSheets(reports: any[]): any {
+    // Implementation similar to MemoryStorage
+    const consolidatedReport = {
+      assets: [],
+      liabilities: [],
+      equity: [],
+      totalAssets: 0,
+      totalLiabilities: 0,
+      totalEquity: 0,
+      liabilitiesAndEquity: 0
+    };
+
+    // Process each entity's balance sheet
+    reports.forEach(report => {
+      // Consolidate assets
+      report.assets.forEach((asset: any) => {
+        const existingAsset = consolidatedReport.assets.find(a => a.accountId === asset.accountId);
+        if (existingAsset) {
+          existingAsset.balance += asset.balance;
+        } else {
+          consolidatedReport.assets.push({ ...asset });
+        }
+      });
+
+      // Consolidate liabilities
+      report.liabilities.forEach((liability: any) => {
+        const existingLiability = consolidatedReport.liabilities.find(l => l.accountId === liability.accountId);
+        if (existingLiability) {
+          existingLiability.balance += liability.balance;
+        } else {
+          consolidatedReport.liabilities.push({ ...liability });
+        }
+      });
+
+      // Consolidate equity
+      report.equity.forEach((equity: any) => {
+        const existingEquity = consolidatedReport.equity.find(e => e.accountId === equity.accountId);
+        if (existingEquity) {
+          existingEquity.balance += equity.balance;
+        } else {
+          consolidatedReport.equity.push({ ...equity });
+        }
+      });
+    });
+
+    // Recalculate totals
+    consolidatedReport.totalAssets = consolidatedReport.assets.reduce((sum: number, asset: any) => sum + asset.balance, 0);
+    consolidatedReport.totalLiabilities = consolidatedReport.liabilities.reduce((sum: number, liability: any) => sum + liability.balance, 0);
+    consolidatedReport.totalEquity = consolidatedReport.equity.reduce((sum: number, equity: any) => sum + equity.balance, 0);
+    consolidatedReport.liabilitiesAndEquity = consolidatedReport.totalLiabilities + consolidatedReport.totalEquity;
+
+    return consolidatedReport;
+  }
+
+  private consolidateIncomeStatements(reports: any[]): any {
+    // Implement income statement consolidation
+    const consolidatedReport = {
+      revenue: [],
+      expenses: [],
+      totalRevenue: 0,
+      totalExpenses: 0,
+      netIncome: 0
+    };
+
+    // Process each entity's income statement
+    reports.forEach(report => {
+      // Consolidate revenue
+      report.revenue.forEach((revenue: any) => {
+        const existingRevenue = consolidatedReport.revenue.find(r => r.accountId === revenue.accountId);
+        if (existingRevenue) {
+          existingRevenue.balance += revenue.balance;
+        } else {
+          consolidatedReport.revenue.push({ ...revenue });
+        }
+      });
+
+      // Consolidate expenses
+      report.expenses.forEach((expense: any) => {
+        const existingExpense = consolidatedReport.expenses.find(e => e.accountId === expense.accountId);
+        if (existingExpense) {
+          existingExpense.balance += expense.balance;
+        } else {
+          consolidatedReport.expenses.push({ ...expense });
+        }
+      });
+    });
+
+    // Recalculate totals
+    consolidatedReport.totalRevenue = consolidatedReport.revenue.reduce((sum: number, revenue: any) => sum + revenue.balance, 0);
+    consolidatedReport.totalExpenses = consolidatedReport.expenses.reduce((sum: number, expense: any) => sum + expense.balance, 0);
+    consolidatedReport.netIncome = consolidatedReport.totalRevenue - consolidatedReport.totalExpenses;
+
+    return consolidatedReport;
+  }
+
+  private consolidateCashFlows(reports: any[]): any {
+    // Implement cash flow consolidation
+    const consolidatedReport = {
+      cashFlows: [],
+      netCashFlow: 0
+    };
+
+    // Map to keep track of categories we've processed
+    const categoryMap = new Map();
+
+    // Process each entity's cash flow
+    reports.forEach(report => {
+      report.cashFlows.forEach((categoryGroup: any) => {
+        const { category, items, total } = categoryGroup;
+        
+        // If we've already processed this category, update it
+        if (categoryMap.has(category)) {
+          const existingCategory = categoryMap.get(category);
+          
+          // Merge items
+          items.forEach((item: any) => {
+            const existingItem = existingCategory.items.find((i: any) => i.accountId === item.accountId);
+            if (existingItem) {
+              existingItem.balance += item.balance;
+            } else {
+              existingCategory.items.push({ ...item });
+            }
+          });
+          
+          // Update total
+          existingCategory.total += total;
+        } else {
+          // New category, clone the items and add to our map
+          categoryMap.set(category, {
+            category,
+            items: items.map((item: any) => ({ ...item })),
+            total
+          });
+        }
+      });
+    });
+
+    // Convert the map back to an array
+    consolidatedReport.cashFlows = Array.from(categoryMap.values());
+    
+    // Calculate the total net cash flow
+    consolidatedReport.netCashFlow = consolidatedReport.cashFlows.reduce((sum: number, flow: any) => sum + flow.total, 0);
+
+    return consolidatedReport;
+  }
+
+  private consolidateTrialBalances(reports: any[]): any {
+    // Implement trial balance consolidation
+    const consolidatedReport = {
+      entries: [],
+      totalDebit: 0,
+      totalCredit: 0
+    };
+
+    // Map to track accounts we've processed
+    const accountMap = new Map();
+
+    // Process each entity's trial balance
+    reports.forEach(report => {
+      report.entries.forEach((entry: any) => {
+        const key = `${entry.accountCode}-${entry.accountName}`;
+        
+        if (accountMap.has(key)) {
+          const existingEntry = accountMap.get(key);
+          existingEntry.debit += entry.debit;
+          existingEntry.credit += entry.credit;
+          existingEntry.balance += entry.balance;
+        } else {
+          accountMap.set(key, { ...entry });
+        }
+      });
+    });
+
+    // Convert the map to an array
+    consolidatedReport.entries = Array.from(accountMap.values());
+    
+    // Recalculate totals
+    consolidatedReport.totalDebit = consolidatedReport.entries.reduce((sum: number, entry: any) => sum + entry.debit, 0);
+    consolidatedReport.totalCredit = consolidatedReport.entries.reduce((sum: number, entry: any) => sum + entry.credit, 0);
+
+    return consolidatedReport;
+  }
 }
 
 // Storage is initialized in index.ts, not here
