@@ -136,12 +136,6 @@ function Sidebar() {
               label="Consolidation" 
             />
             
-            <NavItem 
-              path="/client-onboarding" 
-              icon={<Briefcase className="h-5 w-5 mr-2" />} 
-              label="Client Onboarding" 
-            />
-            
             <div className="mt-6 border-t border-blue-700 pt-4">
               <div 
                 className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
