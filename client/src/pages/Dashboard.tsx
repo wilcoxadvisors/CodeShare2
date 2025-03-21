@@ -372,6 +372,29 @@ function Dashboard() {
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Form state for adding a new entity
+  const [entityForm, setEntityForm] = useState({
+    name: "",
+    legalName: "",
+    taxId: "",
+    entityType: "company",
+    industry: "",
+    address: "",
+    phone: "",
+    email: "",
+    ownerId: user?.id || 0
+  });
+  
+  // Handle input changes for entity form
+  const handleEntityFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { id, value } = e.target;
+    setEntityForm(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
   
   // Queries for financial data - only enabled when entity is selected
   const { data: incomeData = {}, isLoading: incomeLoading } = useQuery({
