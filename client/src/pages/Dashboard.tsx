@@ -361,7 +361,12 @@ function SubscriberManagement() {
 function Dashboard() {
   const { user } = useAuth();
   const { currentEntity } = useEntity();
-  const [activeTab, setActiveTab] = useState("admin");
+  
+  // Check if user is admin early
+  const isAdmin = user?.role === UserRole.ADMIN;
+  
+  // Set default active tab based on user role
+  const [activeTab, setActiveTab] = useState(isAdmin ? "admin" : "overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
@@ -383,9 +388,6 @@ function Dashboard() {
     queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'cash-flow'] : ['skip-query-cashflow'],
     enabled: !!currentEntity
   });
-  
-  // Check if user is admin
-  const isAdmin = user?.role === UserRole.ADMIN;
   
   // Admin API data
   const { data: adminDashboardData = {}, isLoading: adminDataLoading } = useQuery({
