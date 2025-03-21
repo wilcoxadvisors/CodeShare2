@@ -1,193 +1,156 @@
-import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { 
+  Card, 
+  CardContent
+} from "@/components/ui/card";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Search } from "lucide-react";
 
 interface Entity {
   id: number;
   name: string;
-  code: string;
-  [key: string]: any;
+  legalName?: string;
+  taxId?: string | null;
+  entityType?: string;
+  industry?: string | null;
+  isActive?: boolean;
 }
 
 interface EntitySelectorProps {
   entities: Entity[];
   selectedEntityIds: number[];
-  onChange: (selectedIds: number[]) => void;
-  allowMultiple?: boolean;
-  disabled?: boolean;
-  placeholder?: string;
+  onChange: (entityIds: number[]) => void;
 }
 
-export default function EntitySelector({
-  entities,
-  selectedEntityIds,
-  onChange,
-  allowMultiple = false,
-  disabled = false,
-  placeholder = 'Select entities...'
+export default function EntitySelector({ 
+  entities, 
+  selectedEntityIds = [], 
+  onChange 
 }: EntitySelectorProps) {
-  const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   
-  // Filter entities based on search query
-  const filteredEntities = entities.filter(
-    entity =>
-      entity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entity.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  // Get selected entity names for display
-  const selectedEntities = entities.filter(entity => 
-    selectedEntityIds.includes(entity.id)
-  );
-  
-  // Handle entity selection
-  const handleSelect = (id: number) => {
-    if (allowMultiple) {
-      // If already selected, remove it; otherwise, add it
-      if (selectedEntityIds.includes(id)) {
-        onChange(selectedEntityIds.filter(entityId => entityId !== id));
-      } else {
-        onChange([...selectedEntityIds, id]);
-      }
+  const filteredEntities = entities.filter(entity => {
+    const query = searchQuery.toLowerCase();
+    return (
+      entity.name.toLowerCase().includes(query) ||
+      (entity.legalName && entity.legalName.toLowerCase().includes(query)) ||
+      (entity.industry && entity.industry.toLowerCase().includes(query)) ||
+      (entity.entityType && entity.entityType.toLowerCase().includes(query))
+    );
+  });
+
+  const handleToggleEntity = (entityId: number) => {
+    let newSelectedIds;
+    
+    if (selectedEntityIds.includes(entityId)) {
+      // Remove if already selected
+      newSelectedIds = selectedEntityIds.filter(id => id !== entityId);
     } else {
-      // Single select mode
-      onChange([id]);
-      setOpen(false);
+      // Add if not selected
+      newSelectedIds = [...selectedEntityIds, entityId];
+    }
+    
+    onChange(newSelectedIds);
+  };
+
+  const handleSelectAll = () => {
+    if (filteredEntities.length === selectedEntityIds.length) {
+      // If all are selected, deselect all
+      onChange([]);
+    } else {
+      // Select all filtered entities
+      onChange(filteredEntities.map(entity => entity.id));
     }
   };
-  
-  // Clear all selections
-  const clearSelections = () => {
-    onChange([]);
-  };
-  
-  // Remove a specific entity from selection
-  const removeEntity = (id: number) => {
-    onChange(selectedEntityIds.filter(entityId => entityId !== id));
-  };
-  
+
+  const areAllSelected = filteredEntities.length > 0 && 
+    filteredEntities.every(entity => selectedEntityIds.includes(entity.id));
+
   return (
-    <div className="space-y-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="justify-between w-full"
-            disabled={disabled}
-          >
-            {selectedEntityIds.length > 0
-              ? allowMultiple
-                ? `${selectedEntityIds.length} entity(s) selected`
-                : `${selectedEntities[0]?.name} (${selectedEntities[0]?.code})`
-              : placeholder}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="p-0 w-full min-w-[300px]">
-          <Command>
-            <CommandInput 
-              placeholder="Search entities..." 
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-            />
-            <CommandList>
-              <CommandEmpty>No entities found.</CommandEmpty>
-              <CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  {filteredEntities.map((entity) => (
-                    <CommandItem
-                      key={entity.id}
-                      value={`${entity.name}-${entity.code}`}
-                      onSelect={() => handleSelect(entity.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="flex items-center">
-                        {entity.name} 
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({entity.code})
-                        </span>
-                      </span>
-                      {selectedEntityIds.includes(entity.id) && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </CommandItem>
-                  ))}
-                </ScrollArea>
-              </CommandGroup>
-              {allowMultiple && selectedEntityIds.length > 0 && (
-                <div className="border-t p-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => {
-                      clearSelections();
-                      setOpen(false);
-                    }}
-                    className="text-xs text-destructive hover:text-destructive"
-                  >
-                    Clear all
-                  </Button>
-                </div>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      
-      {/* Show selected entities as badges when in multi-select mode */}
-      {allowMultiple && selectedEntityIds.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {selectedEntities.map((entity) => (
-            <Badge 
-              key={entity.id} 
-              variant="secondary"
-              className="flex items-center gap-1 text-sm"
-            >
-              {entity.name} ({entity.code})
-              <button
-                type="button"
-                className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-offset-2"
-                onClick={() => removeEntity(entity.id)}
-              >
-                <span className="sr-only">Remove</span>
-                <svg
-                  className="h-3 w-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </Badge>
-          ))}
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center mb-4 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search entities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
         </div>
-      )}
-    </div>
+        
+        <div className="border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox 
+                    id="select-all"
+                    checked={areAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all entities"
+                  />
+                </TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden md:table-cell">Type</TableHead>
+                <TableHead className="hidden md:table-cell">Industry</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredEntities.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                    {entities.length === 0 
+                      ? "No entities available. Create entities first."
+                      : "No entities match your search query."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredEntities.map(entity => (
+                  <TableRow key={entity.id} className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleToggleEntity(entity.id)}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedEntityIds.includes(entity.id)}
+                        onCheckedChange={() => handleToggleEntity(entity.id)}
+                        aria-label={`Select ${entity.name}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{entity.name}</div>
+                      <div className="text-sm text-muted-foreground md:hidden">
+                        {entity.entityType}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {entity.entityType}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {entity.industry || "—"}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        <div className="mt-2 text-sm text-muted-foreground">
+          {selectedEntityIds.length > 0 
+            ? `${selectedEntityIds.length} ${selectedEntityIds.length === 1 ? 'entity' : 'entities'} selected` 
+            : 'No entities selected'}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
