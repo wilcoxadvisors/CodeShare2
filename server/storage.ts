@@ -1763,6 +1763,55 @@ export class MemStorage implements IStorage {
     return updatedSubmission;
   }
 
+  // Blog Subscribers methods
+  async createBlogSubscriber(subscriber: InsertBlogSubscriber): Promise<BlogSubscriber> {
+    const id = this.currentBlogSubscriberId++;
+    const newSubscriber: BlogSubscriber = {
+      id,
+      email: subscriber.email,
+      name: subscriber.name || null,
+      subscriptionDate: new Date(),
+      confirmedAt: null,
+      confirmed: false,
+      unsubscribedAt: null,
+      active: true,
+      ipAddress: subscriber.ipAddress || null,
+      userAgent: subscriber.userAgent || null,
+      lastEmailSent: null,
+      emailCount: 0
+    };
+    
+    this.blogSubscribers.set(id, newSubscriber);
+    return newSubscriber;
+  }
+  
+  async getBlogSubscribers(includeInactive: boolean = false): Promise<BlogSubscriber[]> {
+    if (includeInactive) {
+      return Array.from(this.blogSubscribers.values());
+    } else {
+      return Array.from(this.blogSubscribers.values())
+        .filter(subscriber => subscriber.active);
+    }
+  }
+  
+  async getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined> {
+    return Array.from(this.blogSubscribers.values())
+      .find(subscriber => subscriber.email.toLowerCase() === email.toLowerCase());
+  }
+  
+  async updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined> {
+    const subscriber = this.blogSubscribers.get(id);
+    if (!subscriber) return undefined;
+    
+    const updatedSubscriber = { ...subscriber, ...data };
+    this.blogSubscribers.set(id, updatedSubscriber);
+    return updatedSubscriber;
+  }
+  
+  async deleteBlogSubscriber(id: number): Promise<void> {
+    this.blogSubscribers.delete(id);
+  }
+
   // Budget methods
   async getBudget(id: number): Promise<Budget | undefined> {
     return this.budgets.get(id);

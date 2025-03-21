@@ -5,7 +5,8 @@ import {
   insertContactSubmissionSchema, 
   insertChecklistSubmissionSchema, 
   insertConsultationSubmissionSchema,
-  insertChecklistFileSchema
+  insertChecklistFileSchema,
+  insertBlogSubscriberSchema
 } from "@shared/schema";
 import { validateRequest } from "@shared/validation";
 import { asyncHandler, throwBadRequest } from "./errorHandling";
