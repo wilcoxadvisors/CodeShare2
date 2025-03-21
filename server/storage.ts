@@ -224,6 +224,13 @@ export class MemStorage implements IStorage {
   private industryBenchmarks: Map<number, IndustryBenchmark>;
   private dataConsents: Map<number, DataConsent>;
   
+  // Form submissions and blog subscribers
+  private contactSubmissions: Map<number, ContactSubmission>;
+  private checklistSubmissions: Map<number, ChecklistSubmission>;
+  private consultationSubmissions: Map<number, ConsultationSubmission>;
+  private checklistFiles: Map<number, ChecklistFile>;
+  private blogSubscribers: Map<number, BlogSubscriber>;
+  
   private currentUserId: number = 1;
   private currentEntityId: number = 1;
   private currentAccountId: number = 1;
@@ -4080,6 +4087,55 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return result;
+  }
+
+  // Blog subscriber methods
+  async createBlogSubscriber(subscriber: InsertBlogSubscriber): Promise<BlogSubscriber> {
+    const [result] = await db
+      .insert(blogSubscribers)
+      .values({
+        email: subscriber.email,
+        name: subscriber.name || null,
+        ipAddress: subscriber.ipAddress || null,
+        userAgent: subscriber.userAgent || null,
+        active: true
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async getBlogSubscribers(includeInactive: boolean = false): Promise<BlogSubscriber[]> {
+    const query = includeInactive 
+      ? db.select().from(blogSubscribers)
+      : db.select().from(blogSubscribers).where(eq(blogSubscribers.active, true));
+    
+    return await query;
+  }
+
+  async getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined> {
+    const [result] = await db
+      .select()
+      .from(blogSubscribers)
+      .where(eq(blogSubscribers.email, email));
+    
+    return result;
+  }
+
+  async updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined> {
+    const [updatedSubscriber] = await db
+      .update(blogSubscribers)
+      .set(data)
+      .where(eq(blogSubscribers.id, id))
+      .returning();
+    
+    return updatedSubscriber;
+  }
+
+  async deleteBlogSubscriber(id: number): Promise<void> {
+    await db
+      .delete(blogSubscribers)
+      .where(eq(blogSubscribers.id, id));
   }
 
   // Checklist Files methods

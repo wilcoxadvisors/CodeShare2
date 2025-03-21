@@ -457,6 +457,24 @@ export async function migrateTables() {
     await drizzleDb.execute(`
       ALTER TABLE consultation_submissions ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP;
     `);
+    
+    // Create blog_subscribers table if it doesn't exist
+    await drizzleDb.execute(`
+      CREATE TABLE IF NOT EXISTS blog_subscribers (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT,
+        subscription_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        confirmed_at TIMESTAMP,
+        confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+        unsubscribed_at TIMESTAMP,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        ip_address TEXT,
+        user_agent TEXT,
+        last_email_sent TIMESTAMP,
+        email_count INTEGER NOT NULL DEFAULT 0
+      );
+    `);
 
     // Fix column naming inconsistencies between database and schema.ts
     await drizzleDb.execute(`
