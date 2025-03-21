@@ -10,6 +10,7 @@ import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
 import { DatabaseStorage, MemStorage, IStorage } from "./storage";
 import { pool } from "./db";
+import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
 
 // Create and export storage instance that will be used by other modules
 // Always use DatabaseStorage since we're using the PostgreSQL database
@@ -76,6 +77,10 @@ app.use((req, res, next) => {
   try {
     // Initialize database with default data
     await initDatabase();
+    
+    // Initialize entity_ids usage monitoring
+    startEntityIdsMonitoring();
+    log('Entity IDs usage monitoring initialized');
     
     // Register API routes
     const server = await registerRoutes(app);

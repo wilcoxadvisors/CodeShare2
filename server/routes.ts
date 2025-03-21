@@ -33,6 +33,7 @@ import {
   throwUnauthorized,
   HttpStatus 
 } from "./errorHandling";
+import { generateUsageReport } from "../shared/deprecation-monitor";
 
 interface AuthUser {
   id: number;
