@@ -1,0 +1,76 @@
+Immediate Next Priority Tasks (Agent to tackle now)
+1. Dashboard Entity Addition Issue
+ Verify React frontend (EntitySelector.tsx) state management and entity filtering:
+tsx
+Copy
+Edit
+const filteredEntities = entities?.filter(entity => {
+  const query = searchQuery.toLowerCase();
+  return entity.name.toLowerCase().includes(query);
+}) ?? [];
+ Confirm frontend sends the correct payload to backend API.
+ Validate backend API (POST /api/entities) inserts correctly into junction table:
+typescript
+Copy
+Edit
+await db.insert(consolidationGroupEntities)
+  .values({ groupId, entityId })
+  .onConflictDoNothing();
+ Perform integration testing to ensure seamless frontend/backend interaction.
+2. Complete Junction Table Migration
+ Fully remove the old entity_ids array-based approach.
+ Ensure all CRUD methods and consolidated reporting exclusively use junction tables.
+ Run migration verification scripts thoroughly and document the process clearly.
+🛠️ High-Priority Tasks (Next after immediate issues)
+3. AI/ML Integration Verification
+ Verify existing Python ML forecasting tool securely connects to the database using environment variables and SQLAlchemy:
+python
+Copy
+Edit
+from sqlalchemy import create_engine
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
+ Confirm ML forecasting can read/write forecasts, budgets, and financial data from the database.
+ Verify backend API endpoints (aiRoutes.ts, aiAnalyticsRoutes.ts) correctly interface with frontend React components (AIAnalyticsDashboard.tsx, BudgetForecastDashboard.tsx).
+4. Accounting Module (Chart of Accounts & Journal Entries)
+ Finalize Drizzle ORM schemas clearly (chartOfAccounts, journalEntries).
+ Implement and document CRUD API endpoints for Chart of Accounts and Journal Entries.
+ Create manual import scripts for parsed Excel data (agent receives pre-parsed data, not Excel directly).
+📌 Medium Priority Tasks (To address soon)
+5. Consolidated Financial Reporting
+ Verify full implementation of financial reports (Balance Sheet, Income Statement, Trial Balance, Cash Flow).
+ Optimize report generation performance (optional caching strategy).
+6. Enhanced Error Handling & Logging
+ Expand centralized logging (deprecation-logger.ts, error monitoring).
+ Consistent detailed logging across all backend/frontend modules.
+7. Frontend Stability and Enhancements
+ Ensure React components (ForecastGeneration.tsx, BudgetForecastDashboard.tsx) correctly interact with updated backend APIs.
+ Perform detailed manual UI testing and resolve any minor frontend bugs.
+📝 Lower Priority Tasks (Future Enhancements)
+ Expanded comprehensive test suite (unit, integration, end-to-end testing).
+ Detailed and centralized project documentation (schemas, APIs, integrations).
+ Further UI/UX improvements based on user feedback.
+🚦 Full Project Agent Checklist (Copy-Paste Ready)
+Immediate Next Tasks
+
+ Resolve dashboard entity-addition issues (frontend/backend integration).
+ Complete junction table migration; fully remove legacy data fields.
+High Priority Next Steps
+
+ Verify and finalize AI/ML database integration.
+ Define, migrate, and implement accounting module schemas and APIs.
+ Create manual Excel data import scripts (parsed data provided manually).
+Medium Priority Enhancements
+
+ Complete robust consolidated financial reporting.
+ Expand centralized logging and error monitoring.
+ Finalize frontend React integration with backend APIs.
+Future Tasks
+
+ Extend test coverage comprehensively.
+ Enhance detailed documentation across the project.
+ Continue frontend UI/UX improvements based on user insights.
+✅ Important Notes for Agent
+Excel files: Agent does not process Excel directly. User will provide parsed data manually.
+AI tools exist: Python ML module (ml_service.py) already in place; your task is verification, integration, and testing, not creating from scratch.
+Currency: Currently, only USD is used. No immediate currency conversion implementation required.
