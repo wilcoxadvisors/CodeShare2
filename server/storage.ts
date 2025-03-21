@@ -21,7 +21,8 @@ import {
   budgetItems, BudgetItem, InsertBudgetItem,
   budgetDocuments, BudgetDocument, InsertBudgetDocument,
   forecasts, Forecast, InsertForecast,
-  blogSubscribers, BlogSubscriber, InsertBlogSubscriber
+  blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
+  consolidationGroups, ConsolidationGroup, InsertConsolidationGroup
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
 import { db } from "./db";

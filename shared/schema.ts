@@ -379,6 +379,25 @@ export const budgetDocuments = pgTable("budget_documents", {
   processingStatus: text("processing_status").default("pending").notNull() // pending, processed, failed
 });
 
+// Consolidation Groups table
+export const consolidationGroups = pgTable("consolidation_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  entityIds: integer("entity_ids").array().notNull(), // Array of entity IDs in the consolidation
+  ownerId: integer("owner_id").references(() => users.id).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  periodType: text("period_type").$type<BudgetPeriodType>().notNull().default(BudgetPeriodType.MONTHLY),
+  rules: json("rules"), // Rules for consolidation (e.g., intercompany eliminations)
+  isActive: boolean("is_active").default(true).notNull(),
+  lastRun: timestamp("last_run"),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Forecasts table
 export const forecasts = pgTable("forecasts", {
   id: serial("id").primaryKey(),
@@ -486,6 +505,14 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
 export const insertBudgetDocumentSchema = createInsertSchema(budgetDocuments).omit({
   id: true,
   uploadedAt: true
+});
+
+// Schema for Consolidation Group insertion
+export const insertConsolidationGroupSchema = createInsertSchema(consolidationGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastRun: true
 });
 
 export const insertForecastSchema = createInsertSchema(forecasts).omit({
@@ -618,6 +645,9 @@ export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
 
 export type BudgetDocument = typeof budgetDocuments.$inferSelect;
 export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
+
+export type ConsolidationGroup = typeof consolidationGroups.$inferSelect;
+export type InsertConsolidationGroup = z.infer<typeof insertConsolidationGroupSchema>;
 
 export type Forecast = typeof forecasts.$inferSelect;
 export type InsertForecast = z.infer<typeof insertForecastSchema>;
