@@ -2359,8 +2359,8 @@ export class MemStorage implements IStorage {
         throw new Error(`Unsupported report type: ${reportType}`);
     }
     
-    // Update last generated timestamp
-    await this.updateConsolidationGroup(groupId, { lastGeneratedAt: new Date() });
+    // Update last run timestamp
+    await this.updateConsolidationGroup(groupId, { last_run: new Date() });
     
     return {
       ...consolidatedReport,
