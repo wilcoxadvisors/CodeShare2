@@ -126,19 +126,35 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   }));
   
   /**
-   * Get users (for entity assignment)
+   * Get all users (for entity assignment)
    */
   app.get("/api/admin/users", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
-      // Get all users - filtering out sensitive info
-      const users = await storage.getUsers();
-      const safeUsers = users.map(user => ({
+      // For now, we'll use a simplified approach since we don't have a direct getUsers method
+      // This is a workaround until we implement a full getUsers method in the storage interface
+      
+      // Get users who own entities
+      const entities = await storage.getEntities();
+      const userIds = new Set(entities.map(entity => entity.ownerId));
+      
+      // Create a list of unique users
+      const users: any[] = [];
+      const userIdsArray = Array.from(userIds);
+      for (const userId of userIdsArray) {
+        const user = await storage.getUser(userId);
+        if (user) {
+          users.push(user);
+        }
+      }
+      
+      // Filter out sensitive info
+      const safeUsers = users.map((user: any) => ({
         id: user.id,
-        username: user.username,
+        username: user.username || '',
         name: user.name,
         email: user.email,
         role: user.role,
-        isActive: user.isActive
+        isActive: user.active !== false // Using active property instead of isActive
       }));
       
       return res.json({
