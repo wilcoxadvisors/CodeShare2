@@ -20,11 +20,12 @@ import {
   budgets, Budget, InsertBudget, BudgetStatus, BudgetPeriodType,
   budgetItems, BudgetItem, InsertBudgetItem,
   budgetDocuments, BudgetDocument, InsertBudgetDocument,
-  forecasts, Forecast, InsertForecast
+  forecasts, Forecast, InsertForecast,
+  blogSubscribers, BlogSubscriber, InsertBlogSubscriber
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
 import { db } from "./db";
-import { Json } from "drizzle-orm/pg-core";
+import { json } from "drizzle-orm/pg-core";
 
 // Storage interface for data access
 export interface IStorage {
@@ -255,12 +256,7 @@ export class MemStorage implements IStorage {
   private currentBudgetDocumentId: number = 1;
   private currentForecastId: number = 1;
   
-  // Form submission storage
-  private contactSubmissions: Map<number, ContactSubmission>;
-  private checklistSubmissions: Map<number, ChecklistSubmission>;
-  private checklistFiles: Map<number, ChecklistFile>;
-  private consultationSubmissions: Map<number, ConsultationSubmission>;
-  private blogSubscribers: Map<number, BlogSubscriber>;
+  // Form submission IDs
   private currentContactSubmissionId: number = 1;
   private currentChecklistSubmissionId: number = 1;
   private currentChecklistFileId: number = 1;
