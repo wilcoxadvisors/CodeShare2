@@ -2323,9 +2323,10 @@ export class MemStorage implements IStorage {
     
     if (!effectiveStartDate) {
       // Default to beginning of fiscal year
-      const primaryEntity = group.primaryEntityId 
-        ? await this.getEntity(group.primaryEntityId)
-        : await this.getEntity(group.entityIds[0]);
+      // Use the first entity in the group's entityIds array as the primary entity
+      const primaryEntity = group.entityIds.length > 0 
+        ? await this.getEntity(group.entityIds[0])
+        : null;
       
       if (primaryEntity) {
         const fiscalYearStart = primaryEntity.fiscalYearStart || '01-01'; // Default to Jan 1
