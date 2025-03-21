@@ -146,6 +146,13 @@ export interface IStorage {
   getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined>;
   updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined>;
   
+  // Blog Subscribers
+  createBlogSubscriber(subscriber: InsertBlogSubscriber): Promise<BlogSubscriber>;
+  getBlogSubscribers(includeInactive?: boolean): Promise<BlogSubscriber[]>;
+  getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined>;
+  updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined>;
+  deleteBlogSubscriber(id: number): Promise<void>;
+  
   // Budget methods
   getBudget(id: number): Promise<Budget | undefined>;
   getBudgets(entityId: number): Promise<Budget[]>;
@@ -246,10 +253,12 @@ export class MemStorage implements IStorage {
   private checklistSubmissions: Map<number, ChecklistSubmission>;
   private checklistFiles: Map<number, ChecklistFile>;
   private consultationSubmissions: Map<number, ConsultationSubmission>;
+  private blogSubscribers: Map<number, BlogSubscriber>;
   private currentContactSubmissionId: number = 1;
   private currentChecklistSubmissionId: number = 1;
   private currentChecklistFileId: number = 1;
   private currentConsultationSubmissionId: number = 1;
+  private currentBlogSubscriberId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -274,6 +283,7 @@ export class MemStorage implements IStorage {
     this.checklistSubmissions = new Map();
     this.checklistFiles = new Map();
     this.consultationSubmissions = new Map();
+    this.blogSubscribers = new Map();
     
     // Initialize budget and forecast tables
     this.budgets = new Map();

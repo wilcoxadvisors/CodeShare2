@@ -728,3 +728,34 @@ export type InsertConsultationSubmission = z.infer<typeof insertConsultationSubm
 
 export type ChecklistFile = typeof checklistFiles.$inferSelect;
 export type InsertChecklistFile = z.infer<typeof insertChecklistFileSchema>;
+
+// Blog Subscribers table
+export const blogSubscribers = pgTable("blog_subscribers", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  subscriptionDate: timestamp("subscription_date").defaultNow().notNull(),
+  confirmedAt: timestamp("confirmed_at"),
+  confirmed: boolean("confirmed").default(false).notNull(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  active: boolean("active").default(true).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  lastEmailSent: timestamp("last_email_sent"),
+  emailCount: integer("email_count").default(0)
+});
+
+// Schema for blog subscriber insertion
+export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).omit({
+  id: true,
+  subscriptionDate: true,
+  confirmedAt: true,
+  confirmed: true,
+  unsubscribedAt: true,
+  lastEmailSent: true,
+  emailCount: true
+});
+
+// Types for blog subscribers
+export type BlogSubscriber = typeof blogSubscribers.$inferSelect;
+export type InsertBlogSubscriber = z.infer<typeof insertBlogSubscriberSchema>;
