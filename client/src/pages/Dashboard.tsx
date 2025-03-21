@@ -900,9 +900,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Clients</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).totalClients}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).totalClients}</div>
                     <div className="text-sm text-gray-500">
-                      {getStatsSummary(entities, users, consolidationGroups).activeClients} active, {getStatsSummary(entities, users, consolidationGroups).newClientsThisMonth} new this month
+                      {getStatsSummary(entities, dashboardUsers, consolidationGroups).activeClients} active, {getStatsSummary(entities, dashboardUsers, consolidationGroups).newClientsThisMonth} new this month
                     </div>
                   </CardContent>
                 </Card>
@@ -912,9 +912,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Employees</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).totalEmployees}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).totalEmployees}</div>
                     <div className="text-sm text-gray-500">
-                      Managing {getStatsSummary(entities, users, consolidationGroups).totalClients} clients
+                      Managing {getStatsSummary(entities, dashboardUsers, consolidationGroups).totalClients} clients
                     </div>
                   </CardContent>
                 </Card>
@@ -924,9 +924,9 @@ function Dashboard() {
                     <CardTitle className="text-lg">Revenue</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${getStatsSummary(entities, users, consolidationGroups).totalRevenue.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${getStatsSummary(entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</div>
                     <div className="text-sm text-gray-500">
-                      ${getStatsSummary(entities, users, consolidationGroups).outstandingPayments.toLocaleString()} outstanding
+                      ${getStatsSummary(entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()} outstanding
                     </div>
                   </CardContent>
                 </Card>
@@ -936,7 +936,7 @@ function Dashboard() {
                     <CardTitle className="text-lg">Tasks</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, users, consolidationGroups).pendingTasks}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).pendingTasks}</div>
                     <div className="text-sm text-gray-500">
                       Pending actions across all clients
                     </div>
@@ -1065,7 +1065,7 @@ function Dashboard() {
                                       onChange={handleEntityFormChange}
                                     />
                                   </div>
-                                  {isAdmin && users && users.length > 0 && (
+                                  {isAdmin && dashboardUsers && dashboardUsers.length > 0 && (
                                     <div className="grid grid-cols-4 items-center gap-4">
                                       <Label htmlFor="ownerId" className="text-right">Owner</Label>
                                       <Select 
@@ -1076,7 +1076,7 @@ function Dashboard() {
                                           <SelectValue placeholder="Select user" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {users.map(u => (
+                                          {dashboardUsers.map(u => (
                                             <SelectItem key={u.id} value={u.id.toString()}>
                                               {u.name} ({u.email})
                                             </SelectItem>
