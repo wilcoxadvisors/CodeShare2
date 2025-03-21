@@ -461,7 +461,7 @@ export class MemStorage implements IStorage {
         showInDashboard: true,
         sequence: 10,
         sequencePrefix: null,
-        color: "#4A6CF7",
+        // Note: 'color' field removed as it doesn't exist in the database schema
         createdBy: adminUser.id,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -790,7 +790,7 @@ export class MemStorage implements IStorage {
       showInDashboard: insertJournal.showInDashboard !== undefined ? insertJournal.showInDashboard : true,
       sequence: insertJournal.sequence || 10,
       sequencePrefix: insertJournal.sequencePrefix || null,
-      color: insertJournal.color || "#4A6CF7",
+      // Note: 'color' field removed as it doesn't exist in the database schema
       createdBy: insertJournal.createdBy,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -2204,9 +2204,9 @@ export class MemStorage implements IStorage {
   }
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // Directly use the entityIds array from each group instead of the map
+    // Directly use the entity_ids array from each group instead of the map
     return Array.from(this.consolidationGroups.values())
-      .filter(group => group.entityIds && group.entityIds.includes(entityId));
+      .filter(group => group.entity_ids && group.entity_ids.includes(entityId));
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
@@ -2216,20 +2216,20 @@ export class MemStorage implements IStorage {
       name: group.name,
       description: group.description || null,
       createdBy: group.createdBy,
-      entityIds: group.entityIds || [],
+      entity_ids: group.entity_ids || [],
       isActive: group.isActive !== undefined ? group.isActive : true,
       createdAt: new Date(),
       updatedAt: null,
-      lastGeneratedAt: null,
-      reportTypes: group.reportTypes || [],
-      color: group.color || '#4A6CF7',
-      icon: group.icon || null
+      lastRun: null,
+      // Note: field references aligned with database schema
+      periodType: group.periodType || 'monthly',
+      rules: group.rules || {}
     };
     
     this.consolidationGroups.set(id, newGroup);
     
     // No need to maintain separate consolidationGroupEntities map
-    // All entity relationships are tracked in the entityIds array
+    // All entity relationships are tracked in the entity_ids array
     
     return newGroup;
   }
@@ -4839,7 +4839,9 @@ export class DatabaseStorage implements IStorage {
             isActive: group.isActive !== undefined ? group.isActive : true,
             createdBy: group.createdBy,
             createdAt: new Date(),
-            updatedAt: null
+            updatedAt: null,
+            // We intentionally don't include the 'color' field as it doesn't exist in the database schema
+            icon: group.icon || null
           })
           .returning();
         
