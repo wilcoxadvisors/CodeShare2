@@ -27,6 +27,7 @@ import { db } from "./db";
 import { consolidationGroups, consolidationGroupEntities, entities } from "../shared/schema";
 import { ConsolidationGroup, InsertConsolidationGroup, ReportType, BudgetPeriodType } from "../shared/schema";
 import { z } from "zod";
+import { logEntityIdsDeprecation, logEntityIdsFallback, logEntityIdsUpdate } from "../shared/deprecation-logger";
 
 // Custom error classes for better error handling
 export class NotFoundError extends Error {
@@ -226,6 +227,9 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
       // Second approach: Also update the array field for backward compatibility
       const currentEntityIds = group.entity_ids || [];
       if (!currentEntityIds.includes(entityId)) {
+        // Log the update to entity_ids array for tracking usage
+        logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
+        
         await tx.update(consolidationGroups)
           .set({ 
             entity_ids: [...currentEntityIds, entityId], 
@@ -313,6 +317,9 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
     
     // Priority 2: If no entities found in junction table, fall back to legacy array approach
     if (entityIds.length === 0) {
+      // Log the fallback to entity_ids array
+      logEntityIdsFallback('generateConsolidatedReport', groupId);
+      
       // Fall back to entity_ids array for backward compatibility
       entityIds = group.entity_ids || [];
     }
@@ -401,6 +408,9 @@ export async function getConsolidationGroupEntities(groupId: number): Promise<nu
     
     // Priority 2: If no entities found in junction table, fall back to legacy array approach
     if (entityIds.length === 0) {
+      // Log the fallback to entity_ids array
+      logEntityIdsFallback('getConsolidationGroupEntities', groupId);
+      
       // Fall back to entity_ids array for backward compatibility
       entityIds = group.entity_ids || [];
     }
@@ -440,6 +450,9 @@ export async function getEntityConsolidationGroups(entityId: number): Promise<Co
         );
     } else {
       // Priority 2: If no groups found in junction table, fall back to legacy array approach
+      // Log the fallback to entity_ids array
+      logEntityIdsFallback('getEntityConsolidationGroups', entityId);
+      
       // Use raw SQL for the ANY operation with proper type safety
       const rawResult = await tx.execute(
         sql`SELECT * FROM consolidation_groups 

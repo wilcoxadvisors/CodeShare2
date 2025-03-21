@@ -53,18 +53,41 @@ We are transitioning to a junction table approach for entity-group relationships
 
 We've implemented a phased approach to ensure backward compatibility:
 
-1. **Phase 1: Dual Storage (Current)**
+1. **Phase 1: Dual Storage (Current - Q1-Q2 2025)**
    - All methods support both the junction table and entity_ids array
    - New data is written to both the junction table and entity_ids array
    - Read operations prioritize the junction table, falling back to the array if needed
+   - Added comprehensive logging for entity_ids usage to track dependencies
 
-2. **Phase 2: Junction Table Primary (Future)**
-   - After confirming all data is migrated, update methods to primarily use the junction table
-   - Deprecate array-based operations while maintaining backward compatibility
+2. **Phase 2: Junction Table Primary with Deprecation Notice (Q3 2025)**
+   - Mark entity_ids array as officially deprecated in code and documentation
+   - Add deprecation warnings/logs whenever entity_ids array is accessed directly
+   - Continue maintaining backward compatibility
+   - Audit logs to identify code that still relies on entity_ids array
+   - Begin planning database migration to remove the column
 
-3. **Phase 3: Junction Table Only (Final)**
-   - Eventually, remove array-based operations entirely
-   - Consider removing or deprecating the entity_ids column in a future migration
+3. **Phase 3: Junction Table Only with entity_ids Hidden (Q4 2025)**
+   - Remove entity_ids from returned data objects but keep in database
+   - Stop writing to entity_ids in all methods while maintaining the column 
+   - Update all documentation to only reference junction table approach
+   - Perform database query performance optimizations
+
+4. **Phase 4: Complete Removal (Q1 2026)**
+   - After verifying zero reliance on entity_ids (min. 3 months with no logs)
+   - Execute database migration to remove entity_ids column
+   - Remove all legacy code related to entity_ids array
+
+### Deprecation Timeline Milestones
+
+| Milestone | Expected Date | Description |
+|-----------|---------------|-------------|
+| Initial Implementation | Q1 2025 | Junction table with backward compatibility |
+| Migration Completion | Q2 2025 | All data migrated to junction table |
+| Deprecation Notice | July 2025 | Official announcement of entity_ids deprecation |
+| Monitoring Period | Q3 2025 | Enhanced logging and audit of entity_ids usage |
+| Hidden Phase | Q4 2025 | entity_ids removed from API responses |
+| Verification Period | Jan-Mar 2026 | 3-month monitoring for zero entity_ids usage |
+| Final Removal | April 2026 | Complete removal of entity_ids from database |
 
 ## Code Implementation Details
 
