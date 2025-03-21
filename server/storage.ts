@@ -265,7 +265,7 @@ export class MemStorage implements IStorage {
   private budgetDocuments: Map<number, BudgetDocument>;
   private forecasts: Map<number, Forecast>;
   private consolidationGroups: Map<number, ConsolidationGroup>;
-  private consolidationGroupEntities: Map<string, boolean>; // key: groupId-entityId, value: true if entity is in group
+  // No longer needed: private consolidationGroupEntities: Map<string, boolean>;
   private currentBudgetId: number = 1;
   private currentBudgetItemId: number = 1;
   private currentBudgetDocumentId: number = 1;
@@ -310,7 +310,7 @@ export class MemStorage implements IStorage {
     this.budgetDocuments = new Map();
     this.forecasts = new Map();
     this.consolidationGroups = new Map();
-    this.consolidationGroupEntities = new Map();
+    // No longer needed: this.consolidationGroupEntities = new Map();
     
     // Create default admin user
     const adminUser: User = {
@@ -2204,18 +2204,9 @@ export class MemStorage implements IStorage {
   }
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    const groupIds = Array.from(this.consolidationGroupEntities.entries())
-      .filter(([key, value]) => {
-        const parts = key.split('-');
-        return parts[1] === entityId.toString() && value === true;
-      })
-      .map(([key]) => {
-        const parts = key.split('-');
-        return parseInt(parts[0]);
-      });
-    
+    // Directly use the entityIds array from each group instead of the map
     return Array.from(this.consolidationGroups.values())
-      .filter(group => groupIds.includes(group.id));
+      .filter(group => group.entityIds && group.entityIds.includes(entityId));
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
@@ -2237,12 +2228,8 @@ export class MemStorage implements IStorage {
     
     this.consolidationGroups.set(id, newGroup);
     
-    // Add entity relationships
-    if (group.entityIds && group.entityIds.length > 0) {
-      group.entityIds.forEach(entityId => {
-        this.consolidationGroupEntities.set(`${id}-${entityId}`, true);
-      });
-    }
+    // No need to maintain separate consolidationGroupEntities map
+    // All entity relationships are tracked in the entityIds array
     
     return newGroup;
   }
@@ -2251,20 +2238,8 @@ export class MemStorage implements IStorage {
     const existingGroup = this.consolidationGroups.get(id);
     if (!existingGroup) return undefined;
     
-    // Handle entity membership changes if entityIds is provided
-    if (group.entityIds) {
-      // Remove old entity associations
-      Array.from(this.consolidationGroupEntities.entries())
-        .filter(([key]) => key.startsWith(`${id}-`))
-        .forEach(([key]) => {
-          this.consolidationGroupEntities.delete(key);
-        });
-      
-      // Add new entity associations
-      group.entityIds.forEach(entityId => {
-        this.consolidationGroupEntities.set(`${id}-${entityId}`, true);
-      });
-    }
+    // No need to manage the separate consolidationGroupEntities map
+    // The entityIds array is the single source of truth for entity membership
     
     const updatedGroup = { ...existingGroup, ...group, updatedAt: new Date() };
     this.consolidationGroups.set(id, updatedGroup);
@@ -2272,12 +2247,8 @@ export class MemStorage implements IStorage {
   }
 
   async deleteConsolidationGroup(id: number): Promise<void> {
-    // Remove all entity associations
-    Array.from(this.consolidationGroupEntities.entries())
-      .filter(([key]) => key.startsWith(`${id}-`))
-      .forEach(([key]) => {
-        this.consolidationGroupEntities.delete(key);
-      });
+    // No need to remove entity associations from a separate map
+    // Just delete the group - all entity relationships are stored in the entityIds array
     
     // Delete the group
     this.consolidationGroups.delete(id);
@@ -2293,8 +2264,8 @@ export class MemStorage implements IStorage {
       await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
     }
     
-    // Add entry to relationship map
-    this.consolidationGroupEntities.set(`${groupId}-${entityId}`, true);
+    // No need to update a separate relationship map
+    // The entityIds array is the single source of truth
   }
 
   async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
@@ -2305,8 +2276,8 @@ export class MemStorage implements IStorage {
     group.entityIds = group.entityIds.filter(id => id !== entityId);
     await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
     
-    // Remove entry from relationship map
-    this.consolidationGroupEntities.delete(`${groupId}-${entityId}`);
+    // No need to update a separate relationship map
+    // The entityIds array is the single source of truth
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
