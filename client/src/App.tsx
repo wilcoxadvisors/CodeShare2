@@ -55,7 +55,14 @@ const PublicHeader: React.FC = () => {
   }, []);
 
   const handleSectionClick = (section: string) => {
-    document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
+    // Check if we're on the home page
+    if (window.location.pathname === '/' || window.location.pathname === '') {
+      // If on home page, scroll to section
+      document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // If not on home page, navigate to home page with section hash
+      navigate(`/#${section}`);
+    }
     setIsMenuOpen(false);
   };
 
@@ -211,9 +218,9 @@ const PublicFooter = () => {
           <div>
             <h3 className="text-lg font-medium mb-4">Links</h3>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
-              <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
-              <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
+              <li><a href="/#services" className="hover:text-white transition-colors">Services</a></li>
+              <li><a href="/#about" className="hover:text-white transition-colors">About</a></li>
+              <li><a href="/#contact" className="hover:text-white transition-colors">Contact</a></li>
               <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
             </ul>
           </div>
