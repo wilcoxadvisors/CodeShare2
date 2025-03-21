@@ -1,211 +1,238 @@
 // Consolidation Group methods
 async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
-  return this.consolidationGroups.get(id);
+  try {
+    const result = await db.query.consolidationGroups.findFirst({
+      where: eq(consolidationGroups.id, id)
+    });
+    return result;
+  } catch (err) {
+    console.error('Error getting consolidation group:', err);
+    throwInternal('Failed to get consolidation group');
+  }
 }
 
 async getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]> {
-  return Array.from(this.consolidationGroups.values())
-    .filter(group => group.createdBy === userId);
+  try {
+    const result = await db.query.consolidationGroups.findMany({
+      where: eq(consolidationGroups.createdBy, userId)
+    });
+    return result;
+  } catch (err) {
+    console.error('Error getting consolidation groups:', err);
+    throwInternal('Failed to get consolidation groups');
+  }
 }
 
 async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-  const groupIds = Array.from(this.consolidationGroupEntities.entries())
-    .filter(([key, value]) => {
-      const parts = key.split('-');
-      return parts[1] === entityId.toString() && value === true;
-    })
-    .map(([key]) => {
-      const parts = key.split('-');
-      return parseInt(parts[0]);
+  try {
+    // Find all groups where the entity_ids array contains the entityId
+    const result = await db.query.consolidationGroups.findMany({
+      where: sql`${entityId} = ANY(${consolidationGroups.entity_ids})`
     });
-  
-  return Array.from(this.consolidationGroups.values())
-    .filter(group => groupIds.includes(group.id));
+    return result;
+  } catch (err) {
+    console.error('Error getting consolidation groups by entity:', err);
+    throwInternal('Failed to get consolidation groups by entity');
+  }
 }
 
 async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
-  const id = this.currentConsolidationGroupId++;
-  const newGroup: ConsolidationGroup = {
-    id,
-    name: group.name,
-    description: group.description || null,
-    createdBy: group.createdBy,
-    entityIds: group.entityIds || [],
-    isActive: group.isActive !== undefined ? group.isActive : true,
-    createdAt: new Date(),
-    updatedAt: null,
-    lastGeneratedAt: null,
-    reportTypes: group.reportTypes || [],
-    color: group.color || '#4A6CF7',
-    icon: group.icon || null
-  };
-  
-  this.consolidationGroups.set(id, newGroup);
-  
-  // Add entity relationships
-  if (group.entityIds && group.entityIds.length > 0) {
-    group.entityIds.forEach(entityId => {
-      this.consolidationGroupEntities.set(`${id}-${entityId}`, true);
-    });
+  try {
+    // Insert the group
+    const [newGroup] = await db.insert(consolidationGroups).values({
+      name: group.name,
+      ownerId: group.ownerId,
+      createdBy: group.createdBy,
+      startDate: group.startDate,
+      endDate: group.endDate,
+      description: group.description || null,
+      currency: group.currency || 'USD',
+      periodType: group.periodType || 'monthly',
+      rules: group.rules || {},
+      isActive: group.isActive !== undefined ? group.isActive : true,
+      entity_ids: group.entity_ids || [],
+      color: group.color || '#4A6CF7',
+      icon: group.icon || null
+    }).returning();
+
+    return newGroup;
+  } catch (err) {
+    console.error('Error creating consolidation group:', err);
+    throwInternal('Failed to create consolidation group');
   }
-  
-  return newGroup;
 }
 
 async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
-  const existingGroup = this.consolidationGroups.get(id);
-  if (!existingGroup) return undefined;
-  
-  // Handle entity membership changes if entityIds is provided
-  if (group.entityIds) {
-    // Remove old entity associations
-    Array.from(this.consolidationGroupEntities.entries())
-      .filter(([key]) => key.startsWith(`${id}-`))
-      .forEach(([key]) => {
-        this.consolidationGroupEntities.delete(key);
-      });
+  try {
+    const existingGroup = await this.getConsolidationGroup(id);
+    if (!existingGroup) return undefined;
     
-    // Add new entity associations
-    group.entityIds.forEach(entityId => {
-      this.consolidationGroupEntities.set(`${id}-${entityId}`, true);
-    });
+    // Make sure we're using entity_ids not entityIds
+    let updateData: any = { ...group, updatedAt: new Date() };
+    if (group.entityIds) {
+      updateData.entity_ids = group.entityIds;
+      delete updateData.entityIds;
+    }
+    
+    const [updatedGroup] = await db.update(consolidationGroups)
+      .set(updateData)
+      .where(eq(consolidationGroups.id, id))
+      .returning();
+    
+    return updatedGroup;
+  } catch (err) {
+    console.error('Error updating consolidation group:', err);
+    throwInternal('Failed to update consolidation group');
   }
-  
-  const updatedGroup = { ...existingGroup, ...group, updatedAt: new Date() };
-  this.consolidationGroups.set(id, updatedGroup);
-  return updatedGroup;
 }
 
 async deleteConsolidationGroup(id: number): Promise<void> {
-  // Remove all entity associations
-  Array.from(this.consolidationGroupEntities.entries())
-    .filter(([key]) => key.startsWith(`${id}-`))
-    .forEach(([key]) => {
-      this.consolidationGroupEntities.delete(key);
-    });
-  
-  // Delete the group
-  this.consolidationGroups.delete(id);
+  try {
+    await db.delete(consolidationGroups)
+      .where(eq(consolidationGroups.id, id));
+  } catch (err) {
+    console.error('Error deleting consolidation group:', err);
+    throwInternal('Failed to delete consolidation group');
+  }
 }
 
 async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
-  const group = await this.getConsolidationGroup(groupId);
-  if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
-  
-  // Add entity to group's entityIds array if not already there
-  if (!group.entityIds.includes(entityId)) {
-    group.entityIds.push(entityId);
-    await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
+  try {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
+    
+    // Get existing entity_ids array or initialize an empty one
+    const entity_ids = group.entity_ids || [];
+    
+    // Add entity to group's entity_ids array if not already there
+    if (!entity_ids.includes(entityId)) {
+      entity_ids.push(entityId);
+      await db.update(consolidationGroups)
+        .set({ entity_ids })
+        .where(eq(consolidationGroups.id, groupId));
+    }
+  } catch (err) {
+    console.error('Error adding entity to consolidation group:', err);
+    throwInternal('Failed to add entity to consolidation group');
   }
-  
-  // Add entry to relationship map
-  this.consolidationGroupEntities.set(`${groupId}-${entityId}`, true);
 }
 
 async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
-  const group = await this.getConsolidationGroup(groupId);
-  if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
-  
-  // Remove entity from group's entityIds array
-  group.entityIds = group.entityIds.filter(id => id !== entityId);
-  await this.updateConsolidationGroup(groupId, { entityIds: group.entityIds });
-  
-  // Remove entry from relationship map
-  this.consolidationGroupEntities.delete(`${groupId}-${entityId}`);
+  try {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
+    
+    // Filter the entity out of the entity_ids array
+    const entity_ids = (group.entity_ids || []).filter(id => id !== entityId);
+    
+    await db.update(consolidationGroups)
+      .set({ entity_ids })
+      .where(eq(consolidationGroups.id, groupId));
+  } catch (err) {
+    console.error('Error removing entity from consolidation group:', err);
+    throwInternal('Failed to remove entity from consolidation group');
+  }
 }
 
 async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
-  const group = await this.getConsolidationGroup(groupId);
-  if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
-  
-  if (group.entityIds.length === 0) {
-    throw new Error('Cannot generate consolidated report for an empty group');
-  }
-  
-  // Set default dates if not provided
-  const effectiveEndDate = endDate || new Date();
-  let effectiveStartDate = startDate;
-  
-  if (!effectiveStartDate) {
-    // Default to beginning of fiscal year
-    // Use the first entity in the group's entityIds array as the primary entity
-    const primaryEntity = group.entityIds.length > 0 
-      ? await this.getEntity(group.entityIds[0])
-      : null;
+  try {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    if (primaryEntity) {
-      const fiscalYearStart = primaryEntity.fiscalYearStart || '01-01'; // Default to Jan 1
-      const [month, day] = fiscalYearStart.split('-').map(Number);
+    if (!group.entity_ids || group.entity_ids.length === 0) {
+      throw new Error('Cannot generate consolidated report for an empty group');
+    }
+    
+    // Set default dates if not provided
+    const effectiveEndDate = endDate || new Date();
+    let effectiveStartDate = startDate;
+    
+    if (!effectiveStartDate) {
+      // Default to beginning of fiscal year
+      // Use the first entity in the group's entity_ids array as the primary entity
+      const primaryEntity = group.entity_ids.length > 0 
+        ? await this.getEntity(group.entity_ids[0])
+        : null;
       
-      effectiveStartDate = new Date(effectiveEndDate.getFullYear(), month - 1, day);
-      if (effectiveStartDate > effectiveEndDate) {
-        // If fiscal year start is after the end date, use previous year
+      if (primaryEntity) {
+        const fiscalYearStart = primaryEntity.fiscalYearStart || '01-01'; // Default to Jan 1
+        const [month, day] = fiscalYearStart.split('-').map(Number);
+        
+        effectiveStartDate = new Date(effectiveEndDate.getFullYear(), month - 1, day);
+        if (effectiveStartDate > effectiveEndDate) {
+          // If fiscal year start is after the end date, use previous year
+          effectiveStartDate.setFullYear(effectiveStartDate.getFullYear() - 1);
+        }
+      } else {
+        // Default to 1 year ago
+        effectiveStartDate = new Date(effectiveEndDate);
         effectiveStartDate.setFullYear(effectiveStartDate.getFullYear() - 1);
       }
-    } else {
-      // Default to 1 year ago
-      effectiveStartDate = new Date(effectiveEndDate);
-      effectiveStartDate.setFullYear(effectiveStartDate.getFullYear() - 1);
     }
-  }
-  
-  // Generate reports for each entity in the group
-  const entityReports = await Promise.all(group.entityIds.map(async (entityId) => {
-    let report;
+    
+    // Generate reports for each entity in the group
+    const entityReports = await Promise.all(group.entity_ids.map(async (entityId) => {
+      let report;
+      
+      switch (reportType) {
+        case ReportType.BALANCE_SHEET:
+          report = await this.generateBalanceSheet(entityId, effectiveEndDate);
+          break;
+        case ReportType.INCOME_STATEMENT:
+          report = await this.generateIncomeStatement(entityId, effectiveStartDate, effectiveEndDate);
+          break;
+        case ReportType.CASH_FLOW:
+          report = await this.generateCashFlow(entityId, effectiveStartDate, effectiveEndDate);
+          break;
+        case ReportType.TRIAL_BALANCE:
+          report = await this.generateTrialBalance(entityId, effectiveStartDate, effectiveEndDate);
+          break;
+        default:
+          throw new Error(`Unsupported report type: ${reportType}`);
+      }
+      
+      return { entityId, report };
+    }));
+    
+    // Consolidate the reports based on report type
+    let consolidatedReport;
     
     switch (reportType) {
       case ReportType.BALANCE_SHEET:
-        report = await this.generateBalanceSheet(entityId, effectiveEndDate);
+        consolidatedReport = this.consolidateBalanceSheets(entityReports.map(er => er.report));
         break;
       case ReportType.INCOME_STATEMENT:
-        report = await this.generateIncomeStatement(entityId, effectiveStartDate, effectiveEndDate);
+        consolidatedReport = this.consolidateIncomeStatements(entityReports.map(er => er.report));
         break;
       case ReportType.CASH_FLOW:
-        report = await this.generateCashFlow(entityId, effectiveStartDate, effectiveEndDate);
+        consolidatedReport = this.consolidateCashFlows(entityReports.map(er => er.report));
         break;
       case ReportType.TRIAL_BALANCE:
-        report = await this.generateTrialBalance(entityId, effectiveStartDate, effectiveEndDate);
+        consolidatedReport = this.consolidateTrialBalances(entityReports.map(er => er.report));
         break;
       default:
         throw new Error(`Unsupported report type: ${reportType}`);
     }
     
-    return { entityId, report };
-  }));
-  
-  // Consolidate the reports based on report type
-  let consolidatedReport;
-  
-  switch (reportType) {
-    case ReportType.BALANCE_SHEET:
-      consolidatedReport = this.consolidateBalanceSheets(entityReports.map(er => er.report));
-      break;
-    case ReportType.INCOME_STATEMENT:
-      consolidatedReport = this.consolidateIncomeStatements(entityReports.map(er => er.report));
-      break;
-    case ReportType.CASH_FLOW:
-      consolidatedReport = this.consolidateCashFlows(entityReports.map(er => er.report));
-      break;
-    case ReportType.TRIAL_BALANCE:
-      consolidatedReport = this.consolidateTrialBalances(entityReports.map(er => er.report));
-      break;
-    default:
-      throw new Error(`Unsupported report type: ${reportType}`);
+    // Update last run timestamp
+    await db.update(consolidationGroups)
+      .set({ lastRun: new Date() })
+      .where(eq(consolidationGroups.id, groupId));
+    
+    return {
+      ...consolidatedReport,
+      entities: group.entity_ids,
+      groupName: group.name,
+      groupId: group.id,
+      reportType,
+      startDate: effectiveStartDate,
+      endDate: effectiveEndDate,
+      generatedAt: new Date()
+    };
+  } catch (err) {
+    console.error('Error generating consolidated report:', err);
+    throwInternal('Failed to generate consolidated report');
   }
-  
-  // Update last generated timestamp
-  await this.updateConsolidationGroup(groupId, { lastGeneratedAt: new Date() });
-  
-  return {
-    ...consolidatedReport,
-    entities: group.entityIds,
-    groupName: group.name,
-    groupId: group.id,
-    reportType,
-    startDate: effectiveStartDate,
-    endDate: effectiveEndDate,
-    generatedAt: new Date()
-  };
 }
 
 // Helper methods for consolidation
