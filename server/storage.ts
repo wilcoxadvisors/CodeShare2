@@ -2214,6 +2214,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.consolidationGroups.values())
       .filter(group => group.entity_ids && group.entity_ids.includes(entityId));
   }
+  
+  async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
+    const group = await this.getConsolidationGroup(groupId);
+    if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
+    
+    // In MemStorage, we simply use the entity_ids array as the source of truth
+    // In a real database implementation, this would use the junction table
+    return group.entity_ids || [];
+  }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
     const id = this.currentConsolidationGroupId++;
@@ -2296,7 +2305,10 @@ export class MemStorage implements IStorage {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    if (!group.entity_ids || group.entity_ids.length === 0) {
+    // Get entity IDs from the consolidation group entities
+    const entityIds = await this.getConsolidationGroupEntities(groupId);
+    
+    if (entityIds.length === 0) {
       throw new Error('Cannot generate consolidated report for an empty group');
     }
     
@@ -2306,9 +2318,9 @@ export class MemStorage implements IStorage {
     
     if (!effectiveStartDate) {
       // Default to beginning of fiscal year
-      // Use the first entity in the group's entity_ids array as the primary entity
-      const primaryEntity = group.entity_ids.length > 0 
-        ? await this.getEntity(group.entity_ids[0])
+      // Use the first entity in the group's entities as the primary entity
+      const primaryEntity = entityIds.length > 0 
+        ? await this.getEntity(entityIds[0])
         : null;
       
       if (primaryEntity) {
@@ -2328,7 +2340,7 @@ export class MemStorage implements IStorage {
     }
     
     // Generate reports for each entity in the group
-    const entityReports = await Promise.all(group.entity_ids.map(async (entityId) => {
+    const entityReports = await Promise.all(entityIds.map(async (entityId) => {
       let report;
       
       switch (reportType) {
@@ -2376,7 +2388,7 @@ export class MemStorage implements IStorage {
     
     return {
       ...consolidatedReport,
-      entities: group.entity_ids,
+      entities: entityIds, // Use the junction table entities instead of entity_ids
       groupName: group.name,
       groupId: group.id,
       reportType,
