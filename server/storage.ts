@@ -2211,14 +2211,23 @@ export class MemStorage implements IStorage {
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
     // In a real database implementation, this would use a join with the junction table
-    // For MemStorage, we still use entity_ids for backward compatibility
-    // But we add a deprecation warning to track usage
+    // For MemStorage, we retrieve all consolidation groups and check if the entity
+    // is associated with each group through our getConsolidationGroupEntities method
     
-    // Log the deprecation for monitoring purposes
-    logEntityIdsDeprecation('getConsolidationGroupsByEntity', { entityId });
+    const activeGroups = Array.from(this.consolidationGroups.values())
+      .filter(group => group.isActive);
     
-    return Array.from(this.consolidationGroups.values())
-      .filter(group => group.entity_ids && group.entity_ids.includes(entityId) && group.isActive);
+    // Check each active group to see if it contains this entity
+    const result: ConsolidationGroup[] = [];
+    
+    for (const group of activeGroups) {
+      const entities = await this.getConsolidationGroupEntities(group.id);
+      if (entities.includes(entityId)) {
+        result.push(group);
+      }
+    }
+    
+    return result;
   }
   
   async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
@@ -2289,11 +2298,25 @@ export class MemStorage implements IStorage {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Add entity to group's entity_ids array if not already there
-    if (!group.entity_ids || !group.entity_ids.includes(entityId)) {
+    // Check if entity exists
+    const entity = await this.getEntity(entityId);
+    if (!entity) throw new Error(`Entity with ID ${entityId} not found`);
+    
+    // First check if entity already exists in the group
+    const existingEntities = await this.getConsolidationGroupEntities(groupId);
+    if (!existingEntities.includes(entityId)) {
+      // For backward compatibility, we still update the entity_ids array
+      // but log this for deprecation tracking
+      logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
+      
+      // Update the entity_ids array
       const newEntityIds = group.entity_ids ? [...group.entity_ids, entityId] : [entityId];
       const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
       if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
+      
+      // In a real database implementation with a junction table, this would insert a new
+      // record into the consolidation_group_entities table
+      
       return updatedGroup;
     }
     
@@ -2305,15 +2328,27 @@ export class MemStorage implements IStorage {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Remove entity from group's entity_ids array if it exists
-    if (group.entity_ids) {
-      const newEntityIds = group.entity_ids.filter(id => id !== entityId);
-      const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
-      if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
-      return updatedGroup;
+    // Check if entity exists in the group
+    const existingEntities = await this.getConsolidationGroupEntities(groupId);
+    if (existingEntities.includes(entityId)) {
+      // For backward compatibility, we still update the entity_ids array
+      // but log this for deprecation tracking
+      logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
+      
+      // Update the entity_ids array if it exists
+      if (group.entity_ids) {
+        const newEntityIds = group.entity_ids.filter(id => id !== entityId);
+        const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
+        if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
+        
+        // In a real database implementation with a junction table, this would delete
+        // the record from the consolidation_group_entities table
+        
+        return updatedGroup;
+      }
     }
     
-    // If entity_ids is null, just return the group unchanged
+    // If entity doesn't exist in the group or entity_ids is null, just return the group unchanged
     return group;
   }
 

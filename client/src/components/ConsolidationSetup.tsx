@@ -30,14 +30,14 @@ const consolidationGroupSchema = z.object({
   name: z.string().min(2, { message: "Group name must be at least 2 characters." }),
   description: z.string().optional(),
   currency: z.string().min(1, { message: "Currency is required." }),
-  entityIds: z.array(z.number()).min(1, { message: "Select at least one entity." }),
+  entity_ids: z.array(z.number()).min(1, { message: "Select at least one entity." }),
 });
 
 interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entityIds: number[];
+  entity_ids: number[] | null; // Match the database schema name
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -69,7 +69,7 @@ export default function ConsolidationSetup() {
       name: "",
       description: "",
       currency: "USD",
-      entityIds: [],
+      entity_ids: [],
     },
   });
 
@@ -79,7 +79,7 @@ export default function ConsolidationSetup() {
       name: "",
       description: "",
       currency: "USD",
-      entityIds: [],
+      entity_ids: [],
     });
     setEditingGroupId(null);
     setActiveTab("create");
@@ -91,7 +91,7 @@ export default function ConsolidationSetup() {
       name: group.name,
       description: group.description || "",
       currency: group.currency,
-      entityIds: group.entityIds,
+      entity_ids: group.entity_ids || [],
     });
     setEditingGroupId(group.id);
     setActiveTab("create");
@@ -272,7 +272,7 @@ export default function ConsolidationSetup() {
 
                   <FormField
                     control={form.control}
-                    name="entityIds"
+                    name="entity_ids"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
