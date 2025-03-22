@@ -25,9 +25,10 @@ import {
   consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
   consolidationGroupEntities, InsertConsolidationGroupEntity
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
+import { logEntityIdsFallback, logEntityIdsUpdate } from "../shared/deprecation-logger";
 
 // Storage interface for data access
 export interface IStorage {
@@ -4929,42 +4930,51 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Consolidation group with ID ${groupId} not found`);
       }
       
-      // Get the current entity_ids array from the database
-      const existingGroup = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, groupId))
-        .limit(1);
+      return await db.transaction(async (tx) => {
+        // First, add the entity to the junction table if it doesn't already exist
+        await tx.insert(consolidationGroupEntities)
+          .values({
+            groupId,
+            entityId,
+            createdAt: new Date()
+          })
+          .onConflictDoNothing(); // Prevent duplicate entries
         
-      if (!existingGroup || existingGroup.length === 0) {
-        throw new Error(`Consolidation group with ID ${groupId} not found in database`);
-      }
-      
-      // Get existing entity_ids array or initialize an empty one
-      const currentEntityIds = existingGroup[0].entity_ids || [];
-      
-      // Check if the entity is already in the array to avoid duplicates
-      if (!currentEntityIds.includes(entityId)) {
-        // Add the new entity ID to the array
-        const updatedEntityIds = [...currentEntityIds, entityId];
-        
-        // Update the group's entity_ids field in the database
-        await db.update(consolidationGroups)
-          .set({
-            entity_ids: updatedEntityIds,
-            updatedAt: new Date()
+        // Update the timestamp on the group
+        await tx.update(consolidationGroups)
+          .set({ 
+            updatedAt: new Date() 
           })
           .where(eq(consolidationGroups.id, groupId));
-      }
-      
-      // Get the updated group with entities
-      const updatedGroup = await this.getConsolidationGroup(groupId);
-      
-      // Create a result that includes the virtual entityIds property
-      // This maintains compatibility with the expected API
-      return {
-        ...updatedGroup!,
-        entityIds: existingGroup[0].entity_ids ? [...existingGroup[0].entity_ids, entityId] : [entityId]
-      } as ConsolidationGroup;
+        
+        // Get all entities for this group from the junction table
+        const junctionEntities = await tx
+          .select({
+            entityId: consolidationGroupEntities.entityId
+          })
+          .from(consolidationGroupEntities)
+          .where(eq(consolidationGroupEntities.groupId, groupId));
+        
+        const entityIds = junctionEntities.map(je => je.entityId);
+        
+        // For backward compatibility, also update the entity_ids array
+        await tx.update(consolidationGroups)
+          .set({
+            entity_ids: entityIds
+          })
+          .where(eq(consolidationGroups.id, groupId));
+        
+        // Log this update for our deprecation monitoring
+        logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
+        
+        // Get the updated group
+        const [updatedGroup] = await tx.select()
+          .from(consolidationGroups)
+          .where(eq(consolidationGroups.id, groupId))
+          .limit(1);
+        
+        return updatedGroup;
+      });
     } catch (error) {
       console.error('Error adding entity to consolidation group:', error);
       throw error;
@@ -4979,39 +4989,51 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Consolidation group with ID ${groupId} not found`);
       }
       
-      // Get the current entity_ids array from the database
-      const existingGroup = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, groupId))
-        .limit(1);
+      return await db.transaction(async (tx) => {
+        // Remove the entity from the junction table
+        await tx.delete(consolidationGroupEntities)
+          .where(
+            and(
+              eq(consolidationGroupEntities.groupId, groupId),
+              eq(consolidationGroupEntities.entityId, entityId)
+            )
+          );
         
-      if (!existingGroup || existingGroup.length === 0) {
-        throw new Error(`Consolidation group with ID ${groupId} not found in database`);
-      }
-      
-      // Get existing entity_ids array or initialize an empty one
-      const currentEntityIds = existingGroup[0].entity_ids || [];
-      
-      // Remove the entity ID from the array (if it exists)
-      const updatedEntityIds = currentEntityIds.filter(id => id !== entityId);
-      
-      // Update the group's entity_ids field in the database
-      await db.update(consolidationGroups)
-        .set({
-          entity_ids: updatedEntityIds,
-          updatedAt: new Date()
-        })
-        .where(eq(consolidationGroups.id, groupId));
-      
-      // Get the updated group with entities
-      const updatedGroup = await this.getConsolidationGroup(groupId);
-      
-      // Create a result that includes the virtual entityIds property
-      // This maintains compatibility with the expected API
-      return {
-        ...updatedGroup!,
-        entityIds: updatedEntityIds
-      } as ConsolidationGroup;
+        // Update the timestamp on the group
+        await tx.update(consolidationGroups)
+          .set({ 
+            updatedAt: new Date() 
+          })
+          .where(eq(consolidationGroups.id, groupId));
+        
+        // Get all entities for this group from the junction table after removal
+        const junctionEntities = await tx
+          .select({
+            entityId: consolidationGroupEntities.entityId
+          })
+          .from(consolidationGroupEntities)
+          .where(eq(consolidationGroupEntities.groupId, groupId));
+        
+        const entityIds = junctionEntities.map(je => je.entityId);
+        
+        // For backward compatibility, also update the entity_ids array
+        await tx.update(consolidationGroups)
+          .set({
+            entity_ids: entityIds
+          })
+          .where(eq(consolidationGroups.id, groupId));
+        
+        // Log this update for our deprecation monitoring
+        logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
+        
+        // Get the updated group
+        const [updatedGroup] = await tx.select()
+          .from(consolidationGroups)
+          .where(eq(consolidationGroups.id, groupId))
+          .limit(1);
+        
+        return updatedGroup;
+      });
     } catch (error) {
       console.error('Error removing entity from consolidation group:', error);
       throw error;
@@ -5020,7 +5042,7 @@ export class DatabaseStorage implements IStorage {
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
     try {
-      // Get consolidation group with entity_ids array directly from the database
+      // Get consolidation group directly from the database
       const groupResult = await db
         .select()
         .from(consolidationGroups)
@@ -5033,8 +5055,20 @@ export class DatabaseStorage implements IStorage {
       
       const group = groupResult[0];
       
-      // Get entity IDs from the entity_ids array column in the database
-      const entityIds = group.entity_ids || [];
+      // Get entity IDs from the junction table
+      const junctionEntities = await db
+        .select()
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, groupId));
+      
+      const entityIds: number[] = junctionEntities.map(je => je.entityId);
+      
+      // Log fallback attempt to maintain backward compatibility if needed
+      if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
+        // Fallback to legacy entity_ids if junction table has no entries
+        logEntityIdsFallback('generateConsolidatedReport', groupId);
+        entityIds.push(...group.entity_ids);
+      }
       
       if (entityIds.length === 0) {
         throw new Error('No entities associated with this consolidation group');
