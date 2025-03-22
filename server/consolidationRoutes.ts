@@ -143,10 +143,8 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwNotFound('Entity');
     }
 
-    await storage.addEntityToConsolidationGroup(groupId, entityId);
-    
-    // Return the updated group
-    const updatedGroup = await storage.getConsolidationGroup(groupId);
+    // Add entity and get updated group in one operation
+    const updatedGroup = await storage.addEntityToConsolidationGroup(groupId, entityId);
     res.json({
       status: "success",
       data: updatedGroup
@@ -171,10 +169,8 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwUnauthorized('You do not have permission to modify this consolidation group');
     }
 
-    await storage.removeEntityFromConsolidationGroup(groupId, entityId);
-    
-    // Return the updated group
-    const updatedGroup = await storage.getConsolidationGroup(groupId);
+    // Remove entity and get updated group in one operation
+    const updatedGroup = await storage.removeEntityFromConsolidationGroup(groupId, entityId);
     res.json({
       status: "success",
       data: updatedGroup
