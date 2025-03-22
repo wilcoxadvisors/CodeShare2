@@ -333,7 +333,7 @@ export default function ConsolidationSetup() {
                       <div className="grid gap-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Entities:</span>
-                          <span className="font-medium">{group.entityIds.length}</span>
+                          <span className="font-medium">{group.entity_ids ? group.entity_ids.length : 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Currency:</span>
