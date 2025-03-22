@@ -142,6 +142,7 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
 
 /**
  * Updates a consolidation group
+ * Ignores any direct entity_ids modifications (use junction table methods instead)
  */
 export async function updateConsolidationGroup(id: number, data: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
   // Get existing group to verify it exists
@@ -167,6 +168,11 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
         directModification: true,
         entityCount: Array.isArray(data.entity_ids) ? data.entity_ids.length : 0
       });
+      
+      // Remove entity_ids from the update data
+      // This forces proper usage of addEntityToConsolidationGroup and removeEntityFromConsolidationGroup
+      const { entity_ids, ...cleanData } = data;
+      data = cleanData;
     }
     
     // Update the consolidation group
@@ -253,9 +259,8 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
 }
 
 /**
- * Removes an entity from a consolidation group using both approaches for compatibility
- * - Removes from junction table (primary approach now that it exists)
- * - Also updates the entity_ids array for backward compatibility
+ * Removes an entity from a consolidation group
+ * Uses only the junction table approach for entity relationships
  */
 export async function removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
   await db.transaction(async (tx) => {
