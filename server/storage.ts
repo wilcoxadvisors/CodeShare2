@@ -196,8 +196,8 @@ export interface IStorage {
   createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup>;
   updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined>;
   deleteConsolidationGroup(id: number): Promise<void>;
-  addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void>;
-  removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void>;
+  addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup>;
+  removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup>;
   generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any>;
 }
 
