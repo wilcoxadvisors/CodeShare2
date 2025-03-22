@@ -217,9 +217,10 @@ export async function deleteConsolidationGroup(id: number): Promise<void> {
 /**
  * Adds an entity to a consolidation group
  * Uses only the junction table approach for entity relationships
+ * Returns the updated consolidation group
  */
-export async function addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
-  await db.transaction(async (tx) => {
+export async function addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
+  return await db.transaction(async (tx) => {
     // Check if the group exists
     const group = await tx.query.consolidationGroups.findFirst({
       where: eq(consolidationGroups.id, groupId)
@@ -247,10 +248,17 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
         })
         .onConflictDoNothing(); // Prevent duplicate entries
       
-      // Update the timestamp on the group
-      await tx.update(consolidationGroups)
+      // Update the timestamp on the group and return the updated group
+      const updatedGroups = await tx.update(consolidationGroups)
         .set({ updatedAt: new Date() })
-        .where(eq(consolidationGroups.id, groupId));
+        .where(eq(consolidationGroups.id, groupId))
+        .returning();
+      
+      if (updatedGroups.length === 0) {
+        throw new Error("Failed to update consolidation group");
+      }
+      
+      return updatedGroups[0];
     } catch (error) {
       console.error('Error adding entity to consolidation group:', error);
       throw error;
@@ -261,9 +269,10 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
 /**
  * Removes an entity from a consolidation group
  * Uses only the junction table approach for entity relationships
+ * Returns the updated consolidation group
  */
-export async function removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
-  await db.transaction(async (tx) => {
+export async function removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
+  return await db.transaction(async (tx) => {
     // Check if the group exists
     const group = await tx.query.consolidationGroups.findFirst({
       where: eq(consolidationGroups.id, groupId)
@@ -283,10 +292,17 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
           )
         );
       
-      // Update the timestamp on the group
-      await tx.update(consolidationGroups)
+      // Update the timestamp on the group and return the updated group
+      const updatedGroups = await tx.update(consolidationGroups)
         .set({ updatedAt: new Date() })
-        .where(eq(consolidationGroups.id, groupId));
+        .where(eq(consolidationGroups.id, groupId))
+        .returning();
+      
+      if (updatedGroups.length === 0) {
+        throw new Error("Failed to update consolidation group");
+      }
+      
+      return updatedGroups[0];
     } catch (error) {
       console.error('Error removing entity from consolidation group:', error);
       throw error;

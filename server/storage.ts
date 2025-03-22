@@ -2260,18 +2260,20 @@ export class MemStorage implements IStorage {
     this.consolidationGroups.delete(id);
   }
 
-  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
+  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
     // Add entity to group's entity_ids array if not already there
-    if (!group.entity_ids.includes(entityId)) {
-      group.entity_ids.push(entityId);
-      await this.updateConsolidationGroup(groupId, { entity_ids: group.entity_ids });
+    if (!group.entity_ids || !group.entity_ids.includes(entityId)) {
+      const newEntityIds = group.entity_ids ? [...group.entity_ids, entityId] : [entityId];
+      const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
+      if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
+      return updatedGroup;
     }
     
-    // No need to update a separate relationship map
-    // The entity_ids array is the single source of truth
+    // Return the group if entity was already in the group
+    return group;
   }
 
   async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
