@@ -1,0 +1,57 @@
+Agent Task: Finalize Junction Table Migration
+Please fully complete the migration from the legacy entity_ids array to exclusively using the junction table (consolidation_group_entities). Specifically, address these clear action items:
+
+✅ 1. Update Backend (server/storage.ts):
+Method to Update:
+
+getConsolidationGroupsByEntity
+Current Implementation (legacy array-based):
+
+typescript
+Copy
+Edit
+const result = await db.query.consolidationGroups.findMany({
+  where: sql`${entityId} = ANY(${consolidationGroups.entity_ids})`
+});
+New Required Implementation (junction table-based):
+typescript
+Copy
+Edit
+return await db.select()
+  .from(consolidationGroups)
+  .innerJoin(consolidationGroupEntities, eq(consolidationGroups.id, consolidationGroupEntities.groupId))
+  .where(eq(consolidationGroupEntities.entityId, entityId));
+✅ 2. Update Consolidation Group Methods (consolidation-group-methods.ts):
+Completely remove legacy entity_ids array logic.
+
+Ensure all methods (addEntityToConsolidationGroup, removeEntityFromConsolidationGroup, etc.) rely entirely on the junction table.
+
+Example for Adding Entities:
+
+typescript
+Copy
+Edit
+await db.insert(consolidationGroupEntities)
+  .values({ groupId, entityId })
+  .onConflictDoNothing();
+Example for Removing Entities:
+typescript
+Copy
+Edit
+await db.delete(consolidationGroupEntities).where(and(
+  eq(consolidationGroupEntities.groupId, groupId),
+  eq(consolidationGroupEntities.entityId, entityId)
+));
+✅ 3. Update Frontend (ConsolidationManagement.tsx):
+Remove references to the entity_ids array entirely.
+Update frontend logic/API calls to exclusively use junction-table-based APIs.
+Verify the frontend dashboard reflects these changes correctly.
+✅ 4. Comprehensive Testing:
+Perform thorough integration tests:
+Ensure data integrity post-migration.
+Verify all CRUD operations, frontend-to-backend interactions, and reporting features function seamlessly.
+📌 Agent-Ready Task Checklist:
+ Backend Storage Method (getConsolidationGroupsByEntity) updated to junction table
+ All Consolidation group methods fully transitioned to junction table
+ Frontend (ConsolidationManagement.tsx) exclusively referencing junction-table-based APIs
+ Full integration testing and validation

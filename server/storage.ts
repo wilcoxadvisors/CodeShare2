@@ -4800,23 +4800,46 @@ export class DatabaseStorage implements IStorage {
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
     try {
-      // Find all groups where the entity is included in the entity_ids array
+      // Use the junction table to find all groups that contain this entity
       const result = await db
-        .select()
-        .from(consolidationGroups)
+        .select({
+          group: consolidationGroups
+        })
+        .from(consolidationGroupEntities)
+        .innerJoin(
+          consolidationGroups,
+          eq(consolidationGroupEntities.groupId, consolidationGroups.id)
+        )
         .where(
           and(
-            sql`${entityId} = ANY(${consolidationGroups.entity_ids})`,
+            eq(consolidationGroupEntities.entityId, entityId),
             eq(consolidationGroups.isActive, true)
           )
         );
       
-      // Create ConsolidationGroup objects with the entityIds virtual property
-      // populated from the entity_ids array in the database
-      return result.map(group => ({
-        ...group,
-        entityIds: group.entity_ids || []
-      }) as ConsolidationGroup);
+      // Extract the group objects and get all associated entities for each group
+      const groups = result.map(row => row.group);
+      
+      // For each group, fetch all associated entity IDs from the junction table
+      const groupsWithEntityIds = await Promise.all(
+        groups.map(async (group) => {
+          const entityRelations = await db
+            .select({
+              entityId: consolidationGroupEntities.entityId
+            })
+            .from(consolidationGroupEntities)
+            .where(eq(consolidationGroupEntities.groupId, group.id));
+          
+          const entityIds = entityRelations.map(relation => relation.entityId);
+          
+          return {
+            ...group,
+            entityIds // Add virtual property for backward compatibility
+          } as ConsolidationGroup;
+        })
+      );
+      
+      return groupsWithEntityIds;
     } catch (error) {
       console.error('Error retrieving entity consolidation groups:', error);
       throw error;
