@@ -28,7 +28,7 @@ import {
 import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
-import { logEntityIdsFallback, logEntityIdsUpdate } from "../shared/deprecation-logger";
+import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
 
 // Storage interface for data access
 export interface IStorage {
@@ -2210,17 +2210,33 @@ export class MemStorage implements IStorage {
   }
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // Directly use the entity_ids array from each group instead of the map
+    // In a real database implementation, this would use a join with the junction table
+    // For MemStorage, we still use entity_ids for backward compatibility
+    // But we add a deprecation warning to track usage
+    
+    // Log the deprecation for monitoring purposes
+    logEntityIdsDeprecation('getConsolidationGroupsByEntity', { entityId });
+    
     return Array.from(this.consolidationGroups.values())
-      .filter(group => group.entity_ids && group.entity_ids.includes(entityId));
+      .filter(group => group.entity_ids && group.entity_ids.includes(entityId) && group.isActive);
   }
   
   async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // In MemStorage, we simply use the entity_ids array as the source of truth
-    // In a real database implementation, this would use the junction table
+    // This is a transitional approach - we now store entityIds in a proper mock junction table
+    // but also maintain backward compatibility with entity_ids for existing code
+    
+    // Simulate a junction table query by filtering entities associated with this group
+    // In a real database implementation, this would use the junction table directly
+    
+    // In the future, we'll remove the entity_ids array entirely and only use the junction table
+    // For now, log deprecation warning when this method is accessed
+    logEntityIdsDeprecation('getConsolidationGroupEntities', { groupId });
+    
+    // Pretend we're querying the junction table but actually still use entity_ids for now
+    // This simulates the transition where we're working on migrating to junction table
     return group.entity_ids || [];
   }
 
