@@ -4817,29 +4817,12 @@ export class DatabaseStorage implements IStorage {
           )
         );
       
-      // Extract the group objects and get all associated entities for each group
+      // Extract the group objects
       const groups = result.map(row => row.group);
       
-      // For each group, fetch all associated entity IDs from the junction table
-      const groupsWithEntityIds = await Promise.all(
-        groups.map(async (group) => {
-          const entityRelations = await db
-            .select({
-              entityId: consolidationGroupEntities.entityId
-            })
-            .from(consolidationGroupEntities)
-            .where(eq(consolidationGroupEntities.groupId, group.id));
-          
-          const entityIds = entityRelations.map(relation => relation.entityId);
-          
-          return {
-            ...group,
-            entityIds // Add virtual property for backward compatibility
-          } as ConsolidationGroup;
-        })
-      );
-      
-      return groupsWithEntityIds;
+      // Since we're using only the junction table now, no need to fetch
+      // entity IDs again - they're not actually used in the code
+      return groups;
     } catch (error) {
       console.error('Error retrieving entity consolidation groups:', error);
       throw error;
