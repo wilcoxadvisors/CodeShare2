@@ -59,7 +59,7 @@ const createConsolidationGroupSchema = z.object({
   rules: z.any().optional(),
   isActive: z.boolean().default(true),
   createdBy: z.number().int().positive("Created by is required"),
-  entityIds: z.array(z.number()).optional()
+  // entityIds property has been removed as we now use the junction table
 });
 
 /**
@@ -70,15 +70,13 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
   try {
     // Validate the input data using Zod
     const validatedData = createConsolidationGroupSchema.parse({
-      ...group,
-      // Handle entityIds properly
-      entityIds: group.entityIds || []
+      ...group
     });
     
     // Use a transaction to ensure data consistency
     return await db.transaction(async (tx) => {
-      // Extract entity IDs
-      const entityIds = validatedData.entityIds || [];
+      // Get entity IDs if provided in the request for backward compatibility
+      const entityIds = group.entityIds || [];
       
       // Insert the consolidation group
       const [newGroup] = await tx.insert(consolidationGroups)
