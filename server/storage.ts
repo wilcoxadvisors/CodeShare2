@@ -4808,6 +4808,7 @@ export class DatabaseStorage implements IStorage {
   // Consolidation Group methods
   async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
     try {
+      // Get the consolidation group data
       const result = await db
         .select()
         .from(consolidationGroups)
@@ -4816,11 +4817,20 @@ export class DatabaseStorage implements IStorage {
       
       if (!result || result.length === 0) return undefined;
       
+      // Get all associated entities from the junction table
+      const entityRelations = await db
+        .select()
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, id));
+      
+      // Extract entity IDs from the junction table
+      const entityIds = entityRelations.map(relation => relation.entityId);
+      
       // Create a ConsolidationGroup object with the entityIds virtual property
-      // populated from the entity_ids array in the database
+      // populated from the junction table relationships
       return {
         ...result[0],
-        entityIds: result[0].entity_ids || []
+        entityIds: entityIds
       } as ConsolidationGroup;
     } catch (error) {
       console.error('Error retrieving consolidation group:', error);
@@ -4830,16 +4840,31 @@ export class DatabaseStorage implements IStorage {
 
   async getConsolidationGroups(): Promise<ConsolidationGroup[]> {
     try {
-      const result = await db
+      // Get all active consolidation groups
+      const groups = await db
         .select()
         .from(consolidationGroups)
         .where(eq(consolidationGroups.isActive, true));
       
+      // Get entity relationships for all groups
+      const entityRelations = await db
+        .select()
+        .from(consolidationGroupEntities);
+      
+      // Group entity relationships by group ID
+      const entityRelationsByGroup = entityRelations.reduce((acc, relation) => {
+        if (!acc[relation.groupId]) {
+          acc[relation.groupId] = [];
+        }
+        acc[relation.groupId].push(relation.entityId);
+        return acc;
+      }, {} as Record<number, number[]>);
+      
       // Create ConsolidationGroup objects with the entityIds virtual property
-      // populated from the entity_ids array in the database
-      return result.map(group => ({
+      // populated from the junction table relationships
+      return groups.map(group => ({
         ...group,
-        entityIds: group.entity_ids || []
+        entityIds: entityRelationsByGroup[group.id] || []
       }) as ConsolidationGroup);
     } catch (error) {
       console.error('Error retrieving consolidation groups:', error);
@@ -4849,7 +4874,8 @@ export class DatabaseStorage implements IStorage {
 
   async getConsolidationGroupsByUser(userId: number): Promise<ConsolidationGroup[]> {
     try {
-      const result = await db
+      // Get all active consolidation groups owned by the user
+      const groups = await db
         .select()
         .from(consolidationGroups)
         .where(
@@ -4859,11 +4885,33 @@ export class DatabaseStorage implements IStorage {
           )
         );
       
+      if (groups.length === 0) {
+        return [];
+      }
+      
+      // Get group IDs
+      const groupIds = groups.map(g => g.id);
+      
+      // Get entity relationships for these groups from the junction table
+      const entityRelations = await db
+        .select()
+        .from(consolidationGroupEntities)
+        .where(inArray(consolidationGroupEntities.groupId, groupIds));
+      
+      // Group entity relationships by group ID
+      const entityRelationsByGroup = entityRelations.reduce((acc, relation) => {
+        if (!acc[relation.groupId]) {
+          acc[relation.groupId] = [];
+        }
+        acc[relation.groupId].push(relation.entityId);
+        return acc;
+      }, {} as Record<number, number[]>);
+      
       // Create ConsolidationGroup objects with the entityIds virtual property
-      // populated from the entity_ids array in the database
-      return result.map(group => ({
+      // populated from the junction table relationships
+      return groups.map(group => ({
         ...group,
-        entityIds: group.entity_ids || []
+        entityIds: entityRelationsByGroup[group.id] || []
       }) as ConsolidationGroup);
     } catch (error) {
       console.error('Error retrieving user consolidation groups:', error);
