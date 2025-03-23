@@ -656,7 +656,11 @@ export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
 export type BudgetDocument = typeof budgetDocuments.$inferSelect;
 export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
 
-export type ConsolidationGroup = typeof consolidationGroups.$inferSelect;
+// The base ConsolidationGroup type from the database
+export type ConsolidationGroup = typeof consolidationGroups.$inferSelect & {
+  // Add the entities property for junction table relationships
+  entities?: number[];
+};
 // We extend the schema to allow specifying an initial entity when creating a group
 export const extendedInsertConsolidationGroupSchema = insertConsolidationGroupSchema.extend({
   initialEntityId: z.number().optional(), // For creating a group with a single initial entity

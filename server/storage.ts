@@ -4812,13 +4812,13 @@ export class DatabaseStorage implements IStorage {
         .where(eq(consolidationGroupEntities.groupId, id));
       
       // Extract entity IDs from the junction table
-      const entityIds = entityRelations.map(relation => relation.entityId);
+      const entities = entityRelations.map(relation => relation.entityId);
       
-      // Create a ConsolidationGroup object with the entityIds virtual property
+      // Create a ConsolidationGroup object with the entities property
       // populated from the junction table relationships
       return {
         ...result[0],
-        entityIds: entityIds
+        entities: entities
       } as ConsolidationGroup;
     } catch (error) {
       console.error('Error retrieving consolidation group:', error);
@@ -4848,11 +4848,11 @@ export class DatabaseStorage implements IStorage {
         return acc;
       }, {} as Record<number, number[]>);
       
-      // Create ConsolidationGroup objects with the entityIds virtual property
+      // Create ConsolidationGroup objects with the entities property
       // populated from the junction table relationships
       return groups.map(group => ({
         ...group,
-        entityIds: entityRelationsByGroup[group.id] || []
+        entities: entityRelationsByGroup[group.id] || []
       }) as ConsolidationGroup);
     } catch (error) {
       console.error('Error retrieving consolidation groups:', error);
@@ -4895,11 +4895,11 @@ export class DatabaseStorage implements IStorage {
         return acc;
       }, {} as Record<number, number[]>);
       
-      // Create ConsolidationGroup objects with the entityIds virtual property
+      // Create ConsolidationGroup objects with the entities property
       // populated from the junction table relationships
       return groups.map(group => ({
         ...group,
-        entityIds: entityRelationsByGroup[group.id] || []
+        entities: entityRelationsByGroup[group.id] || []
       }) as ConsolidationGroup);
     } catch (error) {
       console.error('Error retrieving user consolidation groups:', error);
