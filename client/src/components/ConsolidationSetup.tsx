@@ -169,9 +169,9 @@ export default function ConsolidationSetup() {
 
   return (
     <div>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="create">
+      <Tabs defaultValue="create" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="create" className="font-medium">
             {editingGroupId ? "Edit Group" : "Create Group"}
           </TabsTrigger>
           <TabsTrigger value="manage">Manage Groups</TabsTrigger>
