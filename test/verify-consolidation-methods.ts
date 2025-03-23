@@ -133,8 +133,8 @@ async function verifyImprovedImplementation() {
         currency: 'USD',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days in the future
-        periodType: BudgetPeriodType.MONTHLY,
-        entity_ids: [entity1Id] // Use entity_ids directly as that's what the schema expects
+        periodType: BudgetPeriodType.MONTHLY
+        // We'll add the entity using addEntityToConsolidationGroup instead of entity_ids
       });
       
       console.log('✅ createConsolidationGroup test passed');
@@ -180,10 +180,9 @@ async function verifyImprovedImplementation() {
         
       if (
         group && 
-        group.entity_ids && 
-        group.entity_ids.includes(entity1Id) && 
-        group.entity_ids.includes(entity2Id) &&
-        junctionEntries.length === 2
+        junctionEntries.length === 2 &&
+        junctionEntries.some(entry => entry.entityId === entity1Id) &&
+        junctionEntries.some(entry => entry.entityId === entity2Id)
       ) {
         console.log('✅ addEntityToConsolidationGroup test passed');
         passCount++;
@@ -252,9 +251,6 @@ async function verifyImprovedImplementation() {
         
       if (
         group && 
-        group.entity_ids && 
-        !group.entity_ids.includes(entity1Id) && 
-        group.entity_ids.includes(entity2Id) &&
         junctionEntries.length === 1 &&
         junctionEntries[0].entityId === entity2Id
       ) {
