@@ -97,27 +97,29 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
         .returning();
       
       // If we have an initial entity, add it to the junction table
+      // Process entities to add to the group
+      const entitiesToAdd: number[] = [];
+      
+      // Add initialEntityId if provided
       if (initialEntityId) {
-        try {
-          // Add the initial entity to the junction table
-          await tx.insert(consolidationGroupEntities)
-            .values({
-              groupId: newGroup.id,
-              entityId: initialEntityId
-            })
-            .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] });
-        } catch (junctionError) {
-          console.error('Error inserting into junction table:', junctionError);
-          throw new Error('Failed to add entity to consolidation group');
-        }
+        entitiesToAdd.push(initialEntityId);
       }
       
       // Handle entityIds from frontend components that still use this approach
       // This is for backward compatibility with frontend code
       if (group.entityIds && Array.isArray(group.entityIds) && group.entityIds.length > 0) {
+        for (const entityId of group.entityIds) {
+          if (!entitiesToAdd.includes(entityId)) {
+            entitiesToAdd.push(entityId);
+          }
+        }
+      }
+      
+      // Add all entities to the junction table
+      if (entitiesToAdd.length > 0) {
         try {
           // Create entries in the junction table for each entity
-          const junctionRecords = group.entityIds.map((entityId: number) => ({
+          const junctionRecords = entitiesToAdd.map(entityId => ({
             groupId: newGroup.id,
             entityId: entityId
           }));
