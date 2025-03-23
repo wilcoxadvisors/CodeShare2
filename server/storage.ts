@@ -2231,22 +2231,25 @@ export class MemStorage implements IStorage {
   }
   
   async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
-    const group = await this.getConsolidationGroup(groupId);
-    if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
-    
-    // This is a transitional approach - we now store entityIds in a proper mock junction table
-    // but also maintain backward compatibility with entity_ids for existing code
-    
-    // Simulate a junction table query by filtering entities associated with this group
-    // In a real database implementation, this would use the junction table directly
-    
-    // In the future, we'll remove the entity_ids array entirely and only use the junction table
-    // For now, log deprecation warning when this method is accessed
-    logEntityIdsDeprecation('getConsolidationGroupEntities', { groupId });
-    
-    // Pretend we're querying the junction table but actually still use entity_ids for now
-    // This simulates the transition where we're working on migrating to junction table
-    return group.entity_ids || [];
+    try {
+      // Check if the group exists
+      const group = await this.getConsolidationGroup(groupId);
+      if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
+      
+      // Get entity IDs from the junction table directly
+      const junctionEntities = await db
+        .select({
+          entityId: consolidationGroupEntities.entityId
+        })
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, groupId));
+      
+      // Extract entity IDs from junction table results
+      return junctionEntities.map(je => je.entityId);
+    } catch (error) {
+      console.error('Error getting consolidation group entities:', error);
+      throw error;
+    }
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
@@ -4903,44 +4906,43 @@ export class DatabaseStorage implements IStorage {
     try {
       // Start a transaction to ensure both the group and entity associations are created atomically
       return await db.transaction(async (tx) => {
-        // Handle database schema differences
-        // The actual database has an entity_ids array instead of using a junction table
-        // and doesn't have a primary_entity_id field
+        // Extract entity IDs if provided
         const initialEntityIds = (group.entityIds && group.entityIds.length > 0) ? group.entityIds : [];
         
-        // Create the consolidation group using the actual database schema
+        // Create the consolidation group without entity_ids field
         const [result] = await tx.insert(consolidationGroups)
           .values({
             name: group.name,
             description: group.description || null,
             ownerId: group.ownerId,
-            // Use entity_ids array for backward compatibility with the current database schema
-            entity_ids: initialEntityIds,
             currency: group.currency || 'USD',
             startDate: group.startDate,
             endDate: group.endDate,
             periodType: group.periodType,
             rules: group.rules || null,
-            // Don't include reportTypes and other fields that might not exist in the actual table
             isActive: group.isActive !== undefined ? group.isActive : true,
             createdBy: group.createdBy,
             createdAt: new Date(),
             updatedAt: null,
-            // We intentionally don't include the 'color' field as it doesn't exist in the database schema
             icon: group.icon || null
           })
           .returning();
         
-        // Future enhancement: Use junction table for entity associations
-        // For now, we will maintain backward compatibility with existing database
+        // Create entity associations in the junction table
+        if (initialEntityIds.length > 0) {
+          const junctionValues = initialEntityIds.map(entityId => ({
+            groupId: result.id,
+            entityId: entityId,
+            createdAt: new Date()
+          }));
+          
+          await tx.insert(consolidationGroupEntities)
+            .values(junctionValues)
+            .onConflictDoNothing();
+        }
         
-        // Add entityIds property to match expected type structure
-        const enhancedResult = {
-          ...result,
-          entityIds: initialEntityIds
-        };
-        
-        return enhancedResult;
+        // The result already has the correct structure expected by the application
+        return result;
       });
     } catch (error) {
       console.error('Error creating consolidation group:', error);
@@ -4950,31 +4952,57 @@ export class DatabaseStorage implements IStorage {
 
   async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
     try {
-      // Handle entityIds update if it's present
-      // since it needs to be mapped to the entity_ids array in the database
+      // Create update data without entity relationships (handled separately if needed)
       const updateData: any = { ...group };
-      delete updateData.entityIds; // Remove virtual property from update data
-
-      // If entityIds was provided, use it to update entity_ids array in the database
-      if (group.entityIds !== undefined) {
-        updateData.entity_ids = group.entityIds;
-      }
-
+      
+      // Remove entityIds and entity_ids virtual properties from update data
+      delete updateData.entityIds;
+      delete updateData.entity_ids;
+      
       // Add the updated timestamp
       updateData.updatedAt = new Date();
       
-      const [result] = await db.update(consolidationGroups)
-        .set(updateData)
-        .where(eq(consolidationGroups.id, id))
-        .returning();
+      // If entityIds was provided, handle entity relationships separately using junction table
+      let handleEntityUpdate = false;
+      let newEntityIds: number[] = [];
       
-      if (!result) return undefined;
+      if (group.entityIds !== undefined) {
+        handleEntityUpdate = true;
+        newEntityIds = group.entityIds || [];
+      }
       
-      // Return result with entityIds virtual property
-      return {
-        ...result,
-        entityIds: result.entity_ids || []
-      } as ConsolidationGroup;
+      return await db.transaction(async (tx) => {
+        // Update the group metadata
+        const [result] = await tx.update(consolidationGroups)
+          .set(updateData)
+          .where(eq(consolidationGroups.id, id))
+          .returning();
+        
+        if (!result) return undefined;
+        
+        // If entity relationships need updating
+        if (handleEntityUpdate) {
+          // Clear existing relationships
+          await tx.delete(consolidationGroupEntities)
+            .where(eq(consolidationGroupEntities.groupId, id));
+          
+          // Insert new relationships if any
+          if (newEntityIds.length > 0) {
+            const junctionValues = newEntityIds.map(entityId => ({
+              groupId: id,
+              entityId: entityId,
+              createdAt: new Date()
+            }));
+            
+            await tx.insert(consolidationGroupEntities)
+              .values(junctionValues)
+              .onConflictDoNothing();
+          }
+        }
+        
+        // Return the updated group
+        return result;
+      });
     } catch (error) {
       console.error('Error updating consolidation group:', error);
       throw error;
@@ -5000,7 +5028,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       return await db.transaction(async (tx) => {
-        // First, add the entity to the junction table if it doesn't already exist
+        // Add the entity to the junction table if it doesn't already exist
         await tx.insert(consolidationGroupEntities)
           .values({
             groupId,
@@ -5015,26 +5043,6 @@ export class DatabaseStorage implements IStorage {
             updatedAt: new Date() 
           })
           .where(eq(consolidationGroups.id, groupId));
-        
-        // Get all entities for this group from the junction table
-        const junctionEntities = await tx
-          .select({
-            entityId: consolidationGroupEntities.entityId
-          })
-          .from(consolidationGroupEntities)
-          .where(eq(consolidationGroupEntities.groupId, groupId));
-        
-        const entityIds = junctionEntities.map(je => je.entityId);
-        
-        // For backward compatibility, also update the entity_ids array
-        await tx.update(consolidationGroups)
-          .set({
-            entity_ids: entityIds
-          })
-          .where(eq(consolidationGroups.id, groupId));
-        
-        // Log this update for our deprecation monitoring
-        logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
         
         // Get the updated group
         const [updatedGroup] = await tx.select()
@@ -5075,26 +5083,6 @@ export class DatabaseStorage implements IStorage {
           })
           .where(eq(consolidationGroups.id, groupId));
         
-        // Get all entities for this group from the junction table after removal
-        const junctionEntities = await tx
-          .select({
-            entityId: consolidationGroupEntities.entityId
-          })
-          .from(consolidationGroupEntities)
-          .where(eq(consolidationGroupEntities.groupId, groupId));
-        
-        const entityIds = junctionEntities.map(je => je.entityId);
-        
-        // For backward compatibility, also update the entity_ids array
-        await tx.update(consolidationGroups)
-          .set({
-            entity_ids: entityIds
-          })
-          .where(eq(consolidationGroups.id, groupId));
-        
-        // Log this update for our deprecation monitoring
-        logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
-        
         // Get the updated group
         const [updatedGroup] = await tx.select()
           .from(consolidationGroups)
@@ -5131,13 +5119,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(consolidationGroupEntities.groupId, groupId));
       
       const entityIds: number[] = junctionEntities.map(je => je.entityId);
-      
-      // Log fallback attempt to maintain backward compatibility if needed
-      if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
-        // Fallback to legacy entity_ids if junction table has no entries
-        logEntityIdsFallback('generateConsolidatedReport', groupId);
-        entityIds.push(...group.entity_ids);
-      }
       
       if (entityIds.length === 0) {
         throw new Error('No entities associated with this consolidation group');
