@@ -12,7 +12,9 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entityIds: number[]; // Entity IDs from junction table
+  // We no longer use entityIds directly, but frontend components expect this property
+  // The backend API will populate this from the junction table data
+  entityIds: number[];
   ownerId: number;
   currency: string;
   isActive: boolean;
