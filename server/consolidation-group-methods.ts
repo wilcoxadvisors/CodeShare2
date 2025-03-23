@@ -22,7 +22,7 @@
  * - Better handling of many-to-many relationships
  */
 
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, not } from "drizzle-orm";
 import { db } from "./db";
 import { consolidationGroups, consolidationGroupEntities, entities } from "../shared/schema";
 import { ConsolidationGroup, InsertConsolidationGroup, ReportType, BudgetPeriodType } from "../shared/schema";
@@ -374,7 +374,7 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
 /**
  * Generates a consolidated report for a group, using transactions
  * to ensure consistency between fetches and updates
- * Uses only the junction table to get associated entities
+ * Primarily uses the junction table but falls back to entity_ids array if needed
  */
 export async function generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
   try {
@@ -403,7 +403,15 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
         .from(consolidationGroupEntities)
         .where(eq(consolidationGroupEntities.groupId, groupId));
       
-      const entityIds: number[] = junctionEntities.map(je => je.entityId);
+      let entityIds: number[] = junctionEntities.map(je => je.entityId);
+      
+      // If no entities found in junction table, fall back to entity_ids array
+      if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
+        // Log that we're falling back to entity_ids
+        logEntityIdsFallback('generateConsolidatedReport', groupId);
+        
+        entityIds = group.entity_ids;
+      }
       
       if (entityIds.length === 0) {
         throw new ValidationError('No entities associated with this consolidation group');
