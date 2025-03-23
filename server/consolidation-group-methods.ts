@@ -25,7 +25,7 @@ import { db } from "./db";
 import { consolidationGroups, consolidationGroupEntities, entities } from "../shared/schema";
 import { ConsolidationGroup, InsertConsolidationGroup, ReportType, BudgetPeriodType } from "../shared/schema";
 import { z } from "zod";
-import { logEntityIdsDeprecation, logEntityIdsFallback, logEntityIdsUpdate } from "../shared/deprecation-logger";
+// Deprecation logging no longer needed since entity_ids has been fully removed
 
 // Custom error classes for better error handling
 export class NotFoundError extends Error {
@@ -150,19 +150,7 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
     // Handle any attempts to update entity relationships directly
     // We want to force the use of addEntityToConsolidationGroup/removeEntityFromConsolidationGroup instead
     
-    // Handle legacy entity_ids attempts
-    if ('entity_ids' in data) {
-      // Log direct modification of entity_ids field as high-priority deprecation warning
-      logEntityIdsDeprecation('updateConsolidationGroup', { 
-        id,
-        directModification: true,
-        entityCount: Array.isArray(data.entity_ids) ? data.entity_ids.length : 0
-      });
-      
-      // Remove entity_ids from the update data
-      const { entity_ids, ...cleanData } = data;
-      data = cleanData;
-    }
+    // entity_ids field has been fully removed from the database schema
     
     // Also prevent entityIds direct updates (proper way is to use the junction table methods)
     if ('entityIds' in data) {
