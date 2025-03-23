@@ -14,7 +14,7 @@ import {
 // Start monitoring on import
 // This ensures monitoring begins as soon as the application starts
 // Comment this out during testing to avoid duplicate monitoring
-// startEntityIdsMonitoring();
+startEntityIdsMonitoring();
 
 /**
  * Log a deprecation warning for entity_ids usage

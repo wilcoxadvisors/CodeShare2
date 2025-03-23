@@ -73,11 +73,15 @@ const createConsolidationGroupSchema = z.object({
 export async function createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
   try {
     // Validate the input data using Zod
-    const validatedData = createConsolidationGroupSchema.parse(group);
+    const validatedData = createConsolidationGroupSchema.parse({
+      ...group,
+      // Handle potential entityIds in the input data
+      entityIds: group.entityIds || group.entity_ids || []
+    });
     
     // Use a transaction to ensure data consistency
     return await db.transaction(async (tx) => {
-      // Only use entityIds from now on, entity_ids is fully deprecated
+      // Extract entity IDs from either the entityIds property or entity_ids array
       const entityIds = validatedData.entityIds || [];
       
       // Insert the consolidation group with both entity_ids array and junction table approach
