@@ -45,16 +45,14 @@ interface ConsolidationGroup {
   updatedAt: string | null;
 }
 
-export default function ConsolidationSetup() {
+interface ConsolidationSetupProps {
+  entities: any[];
+}
+
+export default function ConsolidationSetup({ entities = [] }: ConsolidationSetupProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("create");
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
-
-  // Fetch entities for selection
-  const { data: entities = [] } = useQuery<any[]>({
-    queryKey: ['/api/entities'],
-    retry: 1,
-  });
 
   // Fetch consolidation groups
   const { data: groups = [], refetch: refetchGroups } = useQuery<ConsolidationGroup[]>({
@@ -271,25 +269,37 @@ export default function ConsolidationSetup() {
                   <Separator />
                   <h3 className="text-lg font-medium">Select Entities to Include</h3>
 
-                  <FormField
-                    control={form.control}
-                    name="entityIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <EntitySelector
-                            entities={entities}
-                            selectedEntityIds={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Select the business entities to include in this consolidation group
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {entities.length === 0 ? (
+                    <div className="text-center p-6 border rounded-lg bg-muted/50">
+                      <h3 className="text-lg font-medium mb-2">No Entities Available</h3>
+                      <p className="text-muted-foreground mb-4">
+                        You need to create at least one entity before you can set up consolidation groups.
+                      </p>
+                      <Button variant="outline" onClick={() => window.location.href = '/client-onboarding'}>
+                        Add Entities
+                      </Button>
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="entityIds"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <EntitySelector
+                              entities={entities}
+                              selectedEntityIds={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Select the business entities to include in this consolidation group
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex justify-end space-x-2">
                     {editingGroupId && (
@@ -301,7 +311,7 @@ export default function ConsolidationSetup() {
                         Cancel
                       </Button>
                     )}
-                    <Button type="submit">
+                    <Button type="submit" disabled={entities.length === 0}>
                       {editingGroupId ? "Update Group" : "Create Group"}
                     </Button>
                   </div>
