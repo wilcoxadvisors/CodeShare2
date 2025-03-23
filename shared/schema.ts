@@ -401,10 +401,12 @@ export const consolidationGroups = pgTable("consolidation_groups", {
 
 // Entity-Group Junction Table
 export const consolidationGroupEntities = pgTable("consolidation_group_entities", {
+  id: serial("id").primaryKey(),
   groupId: integer("group_id").references(() => consolidationGroups.id).notNull(),
   entityId: integer("entity_id").references(() => entities.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.groupId, table.entityId] }),
+  unq: uniqueIndex("group_entity_idx").on(table.groupId, table.entityId),
 }));
 
 // Forecasts table

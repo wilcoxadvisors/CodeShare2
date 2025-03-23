@@ -110,7 +110,7 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
           // Insert all records into the junction table
           await tx.insert(consolidationGroupEntities)
             .values(junctionRecords)
-            .onConflictDoNothing(); // Prevent duplicate entries
+            .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] }); // Prevent duplicate entries
         } catch (junctionError) {
           console.error('Error inserting into junction table:', junctionError);
           throw new Error('Failed to add entities to consolidation group');
@@ -147,7 +147,10 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
     // Set the updated timestamp
     data.updatedAt = new Date();
     
-    // Check if entity_ids is being updated directly (should be using junction table instead)
+    // Handle any attempts to update entity relationships directly
+    // We want to force the use of addEntityToConsolidationGroup/removeEntityFromConsolidationGroup instead
+    
+    // Handle legacy entity_ids attempts
     if ('entity_ids' in data) {
       // Log direct modification of entity_ids field as high-priority deprecation warning
       logEntityIdsDeprecation('updateConsolidationGroup', { 
@@ -157,8 +160,16 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
       });
       
       // Remove entity_ids from the update data
-      // This forces proper usage of addEntityToConsolidationGroup and removeEntityFromConsolidationGroup
       const { entity_ids, ...cleanData } = data;
+      data = cleanData;
+    }
+    
+    // Also prevent entityIds direct updates (proper way is to use the junction table methods)
+    if ('entityIds' in data) {
+      console.warn(`Direct entityIds updates are not allowed - use addEntityToConsolidationGroup/removeEntityFromConsolidationGroup instead`);
+      
+      // Remove entityIds from the update data
+      const { entityIds, ...cleanData } = data;
       data = cleanData;
     }
     
@@ -233,7 +244,7 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
           groupId,
           entityId
         })
-        .onConflictDoNothing(); // Prevent duplicate entries
+        .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] }); // Prevent duplicate entries
       
       // Update the timestamp on the group and return the updated group
       const updatedGroups = await tx.update(consolidationGroups)
