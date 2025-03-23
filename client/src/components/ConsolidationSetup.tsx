@@ -37,8 +37,7 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entity_ids: number[] | null; // Legacy field maintained for backward compatibility
-  entityIds?: number[];        // New field for entity IDs from junction table
+  entityIds: number[];        // Entity IDs from junction table
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -92,8 +91,8 @@ export default function ConsolidationSetup() {
       name: group.name,
       description: group.description || "",
       currency: group.currency,
-      // Use entityIds if available, fallback to entity_ids for backward compatibility
-      entityIds: group.entityIds || group.entity_ids || [],
+      // Use the entityIds from junction table
+      entityIds: group.entityIds || [],
     });
     setEditingGroupId(group.id);
     setActiveTab("create");
@@ -335,7 +334,7 @@ export default function ConsolidationSetup() {
                       <div className="grid gap-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Entities:</span>
-                          <span className="font-medium">{group.entityIds?.length || group.entity_ids?.length || 0}</span>
+                          <span className="font-medium">{group.entityIds?.length || 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Currency:</span>
