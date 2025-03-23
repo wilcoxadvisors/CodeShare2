@@ -96,23 +96,12 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
         })
         .returning();
       
-      // If we have an initial entity, add it to the junction table
-      // Process entities to add to the group
+      // Process initial entity if provided
       const entitiesToAdd: number[] = [];
       
       // Add initialEntityId if provided
       if (initialEntityId) {
         entitiesToAdd.push(initialEntityId);
-      }
-      
-      // Handle entityIds from frontend components that still use this approach
-      // This is for backward compatibility with frontend code
-      if (group.entityIds && Array.isArray(group.entityIds) && group.entityIds.length > 0) {
-        for (const entityId of group.entityIds) {
-          if (!entitiesToAdd.includes(entityId)) {
-            entitiesToAdd.push(entityId);
-          }
-        }
       }
       
       // Add all entities to the junction table
@@ -164,19 +153,8 @@ export async function updateConsolidationGroup(id: number, data: Partial<Consoli
     // Set the updated timestamp
     data.updatedAt = new Date();
     
-    // Handle any attempts to update entity relationships directly
-    // We want to force the use of addEntityToConsolidationGroup/removeEntityFromConsolidationGroup instead
-    
     // entity_ids field has been fully removed from the database schema
-    
-    // Also prevent entityIds direct updates (proper way is to use the junction table methods)
-    if ('entityIds' in data) {
-      console.warn(`Direct entityIds updates are not allowed - use addEntityToConsolidationGroup/removeEntityFromConsolidationGroup instead`);
-      
-      // Remove entityIds from the update data
-      const { entityIds, ...cleanData } = data;
-      data = cleanData;
-    }
+    // All entity-group relationships are managed through the junction table
     
     // Update the consolidation group
     const [updatedGroup] = await tx.update(consolidationGroups)
