@@ -267,6 +267,7 @@ export class MemStorage implements IStorage {
   private budgetDocuments: Map<number, BudgetDocument>;
   private forecasts: Map<number, Forecast>;
   private consolidationGroups: Map<number, ConsolidationGroup>;
+  private consolidationGroupEntitiesMap: Map<number, Set<number>>; // Map storing group-entity relationships
   // No longer needed: private consolidationGroupEntities: Map<string, boolean>;
   private currentBudgetId: number = 1;
   private currentBudgetItemId: number = 1;
@@ -312,6 +313,7 @@ export class MemStorage implements IStorage {
     this.budgetDocuments = new Map();
     this.forecasts = new Map();
     this.consolidationGroups = new Map();
+    this.consolidationGroupEntitiesMap = new Map();
     // No longer needed: this.consolidationGroupEntities = new Map();
     
     // Create default admin user
@@ -2259,22 +2261,35 @@ export class MemStorage implements IStorage {
       name: group.name,
       description: group.description || null,
       createdBy: group.createdBy,
-      entity_ids: group.entity_ids || [],
+      ownerId: group.ownerId, 
+      currency: group.currency || 'USD',
+      startDate: group.startDate,
+      endDate: group.endDate,
       isActive: group.isActive !== undefined ? group.isActive : true,
       createdAt: new Date(),
       updatedAt: null,
       lastRun: null,
-      // Note: field references aligned with database schema
-      periodType: group.periodType || 'monthly',
+      periodType: group.periodType || BudgetPeriodType.MONTHLY,
       rules: group.rules || {}
     };
     
     this.consolidationGroups.set(id, newGroup);
     
-    // No need to maintain separate consolidationGroupEntities map
-    // All entity relationships are tracked in the entity_ids array
+    // Handle entity relationships with entityIds
+    if (group.entityIds && group.entityIds.length > 0) {
+      // Create associations in the entityGroupMap
+      group.entityIds.forEach(entityId => {
+        if (!this.consolidationGroupEntitiesMap.has(id)) {
+          this.consolidationGroupEntitiesMap.set(id, new Set());
+        }
+        this.consolidationGroupEntitiesMap.get(id)?.add(entityId);
+      });
+    }
     
-    return newGroup;
+    return {
+      ...newGroup,
+      entityIds: Array.from(this.consolidationGroupEntitiesMap.get(id) || [])
+    } as ConsolidationGroup;
   }
 
   async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
@@ -2308,23 +2323,28 @@ export class MemStorage implements IStorage {
     // First check if entity already exists in the group
     const existingEntities = await this.getConsolidationGroupEntities(groupId);
     if (!existingEntities.includes(entityId)) {
-      // For backward compatibility, we still update the entity_ids array
-      // but log this for deprecation tracking
-      logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
+      // Add entity to the consolidation group via the junction table map
+      if (!this.consolidationGroupEntitiesMap.has(groupId)) {
+        this.consolidationGroupEntitiesMap.set(groupId, new Set());
+      }
+      this.consolidationGroupEntitiesMap.get(groupId)?.add(entityId);
       
-      // Update the entity_ids array
-      const newEntityIds = group.entity_ids ? [...group.entity_ids, entityId] : [entityId];
-      const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
+      // Update the group's updatedAt timestamp
+      const updatedGroup = await this.updateConsolidationGroup(groupId, { updatedAt: new Date() });
       if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
       
-      // In a real database implementation with a junction table, this would insert a new
-      // record into the consolidation_group_entities table
-      
-      return updatedGroup;
+      // Add the entityIds virtual property for consistent API
+      return {
+        ...updatedGroup,
+        entityIds: Array.from(this.consolidationGroupEntitiesMap.get(groupId) || [])
+      } as ConsolidationGroup;
     }
     
     // Return the group if entity was already in the group
-    return group;
+    return {
+      ...group,
+      entityIds: existingEntities
+    } as ConsolidationGroup;
   }
 
   async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
@@ -2334,25 +2354,30 @@ export class MemStorage implements IStorage {
     // Check if entity exists in the group
     const existingEntities = await this.getConsolidationGroupEntities(groupId);
     if (existingEntities.includes(entityId)) {
-      // For backward compatibility, we still update the entity_ids array
-      // but log this for deprecation tracking
-      logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
-      
-      // Update the entity_ids array if it exists
-      if (group.entity_ids) {
-        const newEntityIds = group.entity_ids.filter(id => id !== entityId);
-        const updatedGroup = await this.updateConsolidationGroup(groupId, { entity_ids: newEntityIds });
-        if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
-        
-        // In a real database implementation with a junction table, this would delete
-        // the record from the consolidation_group_entities table
-        
-        return updatedGroup;
+      // Remove entity from the consolidation group via the junction table map
+      if (this.consolidationGroupEntitiesMap.has(groupId)) {
+        const entitySet = this.consolidationGroupEntitiesMap.get(groupId);
+        if (entitySet) {
+          entitySet.delete(entityId);
+        }
       }
+      
+      // Update the group's updatedAt timestamp
+      const updatedGroup = await this.updateConsolidationGroup(groupId, { updatedAt: new Date() });
+      if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
+      
+      // Add the entityIds virtual property for consistent API
+      return {
+        ...updatedGroup,
+        entityIds: Array.from(this.consolidationGroupEntitiesMap.get(groupId) || [])
+      } as ConsolidationGroup;
     }
     
-    // If entity doesn't exist in the group or entity_ids is null, just return the group unchanged
-    return group;
+    // Return the group if entity was not in the group
+    return {
+      ...group,
+      entityIds: existingEntities
+    } as ConsolidationGroup;
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
