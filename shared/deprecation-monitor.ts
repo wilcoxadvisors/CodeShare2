@@ -57,12 +57,17 @@ export function logEntityIdsUsage(
   method: string,
   context?: any
 ): void {
+  const timestamp = new Date();
   usageStats.push({
-    timestamp: new Date(),
+    timestamp,
     type,
     method,
     context
   });
+  
+  // Log for debugging
+  console.log(`[ENTITY_IDS_USAGE] Logged ${type} in ${method} at ${timestamp.toISOString()}`);
+  console.log(`[ENTITY_IDS_USAGE] Current stats count: ${usageStats.length}`);
   
   // Check thresholds for alerting
   checkUsageThresholds();

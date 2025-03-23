@@ -11,7 +11,25 @@
  *   days - Number of days to include in the report (default: 7)
  */
 
-import { generateUsageReport } from '../shared/deprecation-monitor';
+import { generateUsageReport, logEntityIdsUsage, EntityIdsUsageType } from '../shared/deprecation-monitor';
+
+// Create some sample usage data for testing if we're in development/testing mode
+function generateSampleData() {
+  // Add some sample entries for testing the report
+  logEntityIdsUsage(EntityIdsUsageType.DIRECT_ACCESS, 'getConsolidationGroupById', { groupId: 1 });
+  logEntityIdsUsage(EntityIdsUsageType.DIRECT_ACCESS, 'getConsolidationGroupById', { groupId: 2 });
+  logEntityIdsUsage(EntityIdsUsageType.FALLBACK, 'getConsolidationGroupEntities', { groupId: 1 });
+  logEntityIdsUsage(EntityIdsUsageType.COMPATIBILITY_UPDATE, 'addEntityToConsolidationGroup', { groupId: 1, entityId: 3 });
+  logEntityIdsUsage(EntityIdsUsageType.COMPATIBILITY_UPDATE, 'createConsolidationGroup', { groupId: 3 });
+  logEntityIdsUsage(EntityIdsUsageType.COMPATIBILITY_UPDATE, 'removeEntityFromConsolidationGroup', { groupId: 1, entityId: 4 });
+  
+  console.log('Added sample usage data for testing');
+}
+
+// Only add sample data if --sample-data flag is provided
+if (process.argv.includes('--sample-data')) {
+  generateSampleData();
+}
 
 // Get number of days from command line arguments or use default
 const args = process.argv.slice(2);
