@@ -37,7 +37,8 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entity_ids: number[] | null; // Match the database schema name
+  entity_ids: number[] | null; // Legacy field maintained for backward compatibility
+  entityIds?: number[];        // New field for entity IDs from junction table
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -91,7 +92,8 @@ export default function ConsolidationSetup() {
       name: group.name,
       description: group.description || "",
       currency: group.currency,
-      entityIds: group.entity_ids || [],
+      // Use entityIds if available, fallback to entity_ids for backward compatibility
+      entityIds: group.entityIds || group.entity_ids || [],
     });
     setEditingGroupId(group.id);
     setActiveTab("create");

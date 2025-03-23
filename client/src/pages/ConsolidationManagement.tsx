@@ -12,7 +12,9 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entity_ids: number[] | null; // Match the database schema name
+  entity_ids: number[] | null; // Legacy field maintained for backward compatibility
+  // New field for entity IDs from junction table
+  entityIds?: number[];
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -172,7 +174,7 @@ export default function ConsolidationManagement() {
                           <div className="grid gap-2">
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Entities:</span>
-                              <span className="font-medium">{group.entity_ids?.length || 0}</span>
+                              <span className="font-medium">{group.entityIds?.length || group.entity_ids?.length || 0}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Currency:</span>
