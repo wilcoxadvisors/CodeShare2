@@ -37,9 +37,6 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  // We no longer use entityIds directly in the database, but frontend components expect this property
-  // The backend API will populate this from the junction table data
-  entityIds: number[];
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -55,11 +52,28 @@ export default function ConsolidationSetup({ entities = [] }: ConsolidationSetup
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("create");
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
+  const [entityCounts, setEntityCounts] = useState<Record<number, number>>({});
 
   // Fetch consolidation groups
   const { data: groups = [], refetch: refetchGroups } = useQuery<ConsolidationGroup[]>({
     queryKey: ['/api/consolidation-groups'],
     retry: 1,
+    onSuccess: async (data) => {
+      // After fetching groups, get entity counts for each group
+      const counts: Record<number, number> = {};
+      for (const group of data) {
+        try {
+          const response = await apiRequest(`/api/consolidation-groups/${group.id}/entities`, {
+            method: 'GET',
+          });
+          counts[group.id] = response?.data?.length || 0;
+        } catch (error) {
+          console.error(`Error fetching entities for group ${group.id}:`, error);
+          counts[group.id] = 0;
+        }
+      }
+      setEntityCounts(counts);
+    }
   });
 
   // Form for creating/editing consolidation groups
@@ -86,37 +100,102 @@ export default function ConsolidationSetup({ entities = [] }: ConsolidationSetup
   };
 
   // Load a group for editing
-  const editGroup = (group: ConsolidationGroup) => {
-    form.reset({
-      name: group.name,
-      description: group.description || "",
-      currency: group.currency,
-      // Use the entityIds from junction table
-      entityIds: group.entityIds || [],
-    });
-    setEditingGroupId(group.id);
-    setActiveTab("create");
+  const editGroup = async (group: ConsolidationGroup) => {
+    try {
+      // Fetch entities belonging to this group from the backend
+      const response = await apiRequest(`/api/consolidation-groups/${group.id}/entities`, {
+        method: 'GET',
+      });
+      
+      const entitiesIds = response?.data || [];
+      
+      form.reset({
+        name: group.name,
+        description: group.description || "",
+        currency: group.currency,
+        entityIds: entitiesIds,
+      });
+      
+      setEditingGroupId(group.id);
+      setActiveTab("create");
+    } catch (error) {
+      console.error("Error fetching group entities:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load entities for this group.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Submit the form to create or update a consolidation group
   const onSubmit = async (data: z.infer<typeof consolidationGroupSchema>) => {
     try {
+      const selectedEntityIds = data.entityIds || [];
+      
       if (editingGroupId) {
-        // Update existing group
+        // First update group basic information (without entities)
+        const groupData = {
+          name: data.name,
+          description: data.description,
+          currency: data.currency
+        };
+        
         await apiRequest(`/api/consolidation-groups/${editingGroupId}`, {
           method: 'PUT',
-          data,
+          data: groupData,
         });
+
+        // Get current entity IDs to determine which ones to add/remove
+        const currentEntitiesResponse = await apiRequest(`/api/consolidation-groups/${editingGroupId}/entities`, {
+          method: 'GET',
+        });
+        const currentEntityIds = currentEntitiesResponse?.data || [];
+
+        // Determine which entities to add and remove
+        const entitiesToAdd = selectedEntityIds.filter((id: number) => !currentEntityIds.includes(id));
+        const entitiesToRemove = currentEntityIds.filter((id: number) => !selectedEntityIds.includes(id));
+
+        // Add new entities
+        for (const entityId of entitiesToAdd) {
+          await apiRequest(`/api/consolidation-groups/${editingGroupId}/entities/${entityId}`, {
+            method: 'POST',
+          });
+        }
+        
+        // Remove entities that are no longer selected
+        for (const entityId of entitiesToRemove) {
+          await apiRequest(`/api/consolidation-groups/${editingGroupId}/entities/${entityId}`, {
+            method: 'DELETE',
+          });
+        }
+        
         toast({
           title: "Success",
           description: "Consolidation group updated successfully.",
         });
       } else {
         // Create new group
-        await apiRequest('/api/consolidation-groups', {
+        const response = await apiRequest('/api/consolidation-groups', {
           method: 'POST',
-          data,
+          data: {
+            name: data.name,
+            description: data.description,
+            currency: data.currency
+          },
         });
+        
+        const newGroupId = response?.data?.id;
+        
+        if (newGroupId && selectedEntityIds.length > 0) {
+          // Add each entity to the new group
+          for (const entityId of selectedEntityIds) {
+            await apiRequest(`/api/consolidation-groups/${newGroupId}/entities/${entityId}`, {
+              method: 'POST',
+            });
+          }
+        }
+        
         toast({
           title: "Success",
           description: "Consolidation group created successfully.",
@@ -346,7 +425,7 @@ export default function ConsolidationSetup({ entities = [] }: ConsolidationSetup
                       <div className="grid gap-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Entities:</span>
-                          <span className="font-medium">{group.entityIds?.length || 0}</span>
+                          <span className="font-medium">{entityCounts[group.id] || 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Currency:</span>

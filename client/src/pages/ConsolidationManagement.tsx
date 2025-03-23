@@ -12,9 +12,6 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  // We no longer use entityIds directly, but frontend components expect this property
-  // The backend API will populate this from the junction table data
-  entityIds: number[];
   ownerId: number;
   currency: string;
   isActive: boolean;
@@ -162,10 +159,6 @@ export default function ConsolidationManagement() {
                         </CardHeader>
                         <CardContent className="pt-4">
                           <div className="grid gap-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Entities:</span>
-                              <span className="font-medium">{group.entityIds?.length || 0}</span>
-                            </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-muted-foreground">Currency:</span>
                               <span className="font-medium">{group.currency}</span>
