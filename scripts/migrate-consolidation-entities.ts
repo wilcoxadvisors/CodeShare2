@@ -12,13 +12,10 @@
  * via a database migration.
  */
 
-import { sql } from "drizzle-orm";
-import { db } from "../server/db";
-import { addJunctionTable } from "../server/migrations/add-junction-table";
-import { consolidationGroups, consolidationGroupEntities } from "../shared/schema";
-import { inArray, eq, and, isNull } from "drizzle-orm";
+import { db } from '../server/db';
+import { logEntityIdsDeprecation } from '../shared/deprecation-logger';
+import { sql } from 'drizzle-orm';
 
-// Define a more explicit interface that matches the raw SQL result structure
 interface ConsolidationGroupRecord {
   id: number;
   entity_ids: number[] | null;
@@ -28,115 +25,111 @@ interface ConsolidationGroupRecord {
 }
 
 async function migrateConsolidationGroupEntities() {
-  console.log("Starting migration from entity_ids array to junction table");
+  console.log("Starting migration from entity_ids to junction table...");
   
   try {
-    // First, add the junction table if it doesn't exist already
-    await addJunctionTable();
-    console.log("Junction table created or verified");
+    // Check if the table exists first
+    const tableCheck = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'consolidation_group_entities'
+      );
+    `);
     
-    // Use a transaction to ensure data consistency
-    await db.transaction(async (tx) => {
-      // Get all consolidation groups that have not been migrated yet
-      const result = await tx.execute(sql`
-        SELECT id, entity_ids, is_active 
-        FROM consolidation_groups 
-        WHERE (migrated_to_junction IS NULL OR migrated_to_junction = false)
-          AND entity_ids IS NOT NULL
-          AND array_length(entity_ids, 1) > 0
-      `);
+    if (!tableCheck.rows[0].exists) {
+      console.error("Error: consolidation_group_entities table doesn't exist. Run migrations first.");
+      return;
+    }
+    
+    // 1. Get all consolidation groups with entity_ids that haven't been migrated yet
+    const groups = await db.execute<ConsolidationGroupRecord>(sql`
+      SELECT id, entity_ids, is_active, name, migrated_to_junction 
+      FROM consolidation_groups 
+      WHERE is_active = true 
+        AND (migrated_to_junction IS NULL OR migrated_to_junction = false)
+        AND entity_ids IS NOT NULL
+    `);
+    
+    console.log(`Found ${groups.rows.length} consolidation groups to migrate`);
+    
+    // 2. For each group with entity_ids, create entries in junction table
+    for (const group of groups.rows) {
+      if (!group.entity_ids || !group.entity_ids.length) {
+        console.log(`Skipping group ${group.id} (${group.name || 'unnamed'}) - no entity_ids`);
+        continue;
+      }
       
-      const groups = result.rows as unknown as ConsolidationGroupRecord[];
-      console.log(`Found ${groups.length} groups to migrate`);
+      console.log(`Processing group ${group.id} (${group.name || 'unnamed'}) with ${group.entity_ids.length} entities`);
       
-      let totalRelationships = 0;
+      // Log the deprecation to track usage
+      logEntityIdsDeprecation('migrate-consolidation-entities.ts', {
+        groupId: group.id,
+        entities: group.entity_ids
+      });
       
-      // Process each group
-      for (const group of groups) {
-        const { id, entity_ids } = group;
-        
-        if (entity_ids && entity_ids.length > 0) {
-          console.log(`Processing group ${id} with ${entity_ids.length} entities`);
-          
-          // Create junction records for each entity in the array
-          const junctionValues = entity_ids.map(entityId => ({
-            groupId: id,
-            entityId
-          }));
-          
-          // Insert records into junction table if they don't already exist
-          for (const value of junctionValues) {
-            await tx.execute(sql`
-              INSERT INTO consolidation_group_entities (group_id, entity_id)
-              VALUES (${value.groupId}, ${value.entityId})
-              ON CONFLICT (group_id, entity_id) DO NOTHING
-            `);
-          }
-          
-          totalRelationships += entity_ids.length;
-          
-          // Mark this group as migrated
-          await tx.execute(sql`
-            UPDATE consolidation_groups
-            SET migrated_to_junction = true
-            WHERE id = ${id}
+      // Create junction table entries for each entity in entity_ids
+      for (const entityId of group.entity_ids) {
+        try {
+          // Check if the relationship already exists to avoid duplicates
+          const existingCheck = await db.execute(sql`
+            SELECT EXISTS (
+              SELECT 1 FROM consolidation_group_entities 
+              WHERE group_id = ${group.id} AND entity_id = ${entityId}
+            );
           `);
           
-          console.log(`Group ${id} successfully migrated`);
+          if (!existingCheck.rows[0].exists) {
+            await db.execute(sql`
+              INSERT INTO consolidation_group_entities (group_id, entity_id)
+              VALUES (${group.id}, ${entityId})
+            `);
+            console.log(`Added entity ${entityId} to junction table for group ${group.id}`);
+          } else {
+            console.log(`Entity ${entityId} already exists in junction table for group ${group.id}`);
+          }
+        } catch (error) {
+          console.error(`Error adding entity ${entityId} to group ${group.id}:`, error);
         }
       }
       
-      console.log(`Total relationships migrated: ${totalRelationships}`);
-    });
-    
-    console.log("Migration completed successfully!");
-    
-    // Verify that the junction table has the correct data
-    const junctionCount = await db.execute(sql`
-      SELECT COUNT(*) AS count FROM consolidation_group_entities
-    `);
-    
-    const relationshipCount = Number(junctionCount.rows[0]?.count || 0);
-    console.log(`Verification: ${relationshipCount} relationships in junction table`);
-    
-    // Verify all active groups are migrated
-    const unmigrated = await db.execute(sql`
-      SELECT COUNT(*) AS count FROM consolidation_groups 
-      WHERE is_active = true AND (migrated_to_junction IS NULL OR migrated_to_junction = false)
-        AND entity_ids IS NOT NULL
-        AND array_length(entity_ids, 1) > 0
-    `);
-    
-    const count = Number(unmigrated.rows[0]?.count || 0);
-    if (count > 0) {
-      console.log(`Warning: ${count} active groups with entities are not marked as migrated`);
-    } else {
-      console.log("Verification: All active groups with entities are successfully migrated");
+      // 3. Verify migration was successful
+      const junctionEntities = await db.execute(sql`
+        SELECT entity_id FROM consolidation_group_entities WHERE group_id = ${group.id}
+      `);
+      
+      const junctionEntityIds = junctionEntities.rows.map(row => row.entity_id);
+      
+      // Check if all entity_ids exist in the junction table
+      const allMigrated = group.entity_ids.every(entityId => 
+        junctionEntityIds.includes(entityId)
+      );
+      
+      if (allMigrated) {
+        // 4. Mark as migrated to prevent future migrations
+        await db.execute(sql`
+          UPDATE consolidation_groups 
+          SET migrated_to_junction = true, updatedAt = NOW()
+          WHERE id = ${group.id}
+        `);
+        console.log(`Group ${group.id} (${group.name || 'unnamed'}) successfully migrated`);
+      } else {
+        console.error(`Migration verification failed for group ${group.id} (${group.name || 'unnamed'})`);
+      }
     }
     
-    // Return success status
-    return {
-      success: true,
-      relationshipCount,
-      unmigratedGroups: count
-    };
+    console.log("Migration completed successfully!");
   } catch (error) {
-    console.error("Migration failed:", error);
-    throw error;
+    console.error("Error during migration:", error);
   }
 }
 
-// Run the migration if invoked directly
-if (require.main === module) {
-  migrateConsolidationGroupEntities()
-    .then((result) => {
-      console.log("Migration script completed successfully!");
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error("Migration script failed:", error);
-      process.exit(1);
-    });
-}
-
-export default migrateConsolidationGroupEntities;
+// Run the migration
+migrateConsolidationGroupEntities()
+  .then(() => {
+    console.log("Migration script completed.");
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error("Unhandled error in migration script:", error);
+    process.exit(1);
+  });

@@ -1,5 +1,6 @@
 import { db as drizzleDb } from './db';
 import * as schema from '@shared/schema';
+import { updateJunctionTableSchema } from './migrations/update-junction-table-schema';
 
 // Database schema migration utility
 
@@ -894,6 +895,9 @@ export async function migrateTables() {
         END;
       END $$;
     `);
+    
+    // Apply junction table schema update for consolidation_group_entities
+    await updateJunctionTableSchema();
     
     console.log("Database migration completed successfully!");
     return true;
