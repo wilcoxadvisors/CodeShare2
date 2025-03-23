@@ -1,0 +1,65 @@
+Final Migration Validation Checklist
+🛠️ 1. Database Integrity Checks
+ Ensure no lingering references in the junction table (consolidation_group_entities) point to invalid, inactive, or deleted entities:
+
+sql
+Copy
+Edit
+SELECT * FROM consolidation_group_entities cge
+LEFT JOIN entities e ON cge.entity_id = e.id
+WHERE e.id IS NULL OR e.active = false;
+Expected: Zero rows.
+
+ Confirm the legacy entity_ids arrays no longer contain active data (optional, but recommended for validation):
+
+sql
+Copy
+Edit
+SELECT id FROM consolidation_groups WHERE entity_ids IS NOT NULL AND array_length(entity_ids, 1) > 0;
+Expected: Ideally zero rows or only deprecated historical data.
+
+📌 2. Backend API Testing
+ Test all CRUD operations through backend APIs:
+
+Create consolidation group
+
+Add/remove entities
+
+Fetch consolidation groups (by user, by entity, etc.)
+
+Generate consolidated reports (Balance Sheet, Income Statement, etc.)
+
+ Verify junction table usage exclusively (enable logging temporarily to validate database queries if necessary).
+
+🎯 3. Frontend Integration Testing
+ Test Admin Dashboard thoroughly:
+
+Ensure entity selection, addition, and removal work seamlessly.
+
+Verify immediate UI reflection of changes.
+
+Check stability with various edge cases (e.g., adding/removing rapidly, empty groups).
+
+ Review the frontend console logs for any unexpected warnings or errors related to the migration.
+
+🔍 4. Comprehensive End-to-End Testing
+ Perform complete end-to-end testing scenarios, including:
+
+Creating new consolidation groups.
+
+Modifying entities within groups via Admin UI.
+
+Generating reports and ensuring data accuracy.
+
+Checking persistence and consistency after page refresh or re-login.
+
+🚦 Final Agent Task Checklist (copy-paste ready)
+ Run final database integrity SQL checks.
+
+ Perform full backend API validation tests.
+
+ Conduct comprehensive frontend integration tests.
+
+ Complete end-to-end functional validation scenarios.
+
+These final validation steps will firmly confirm your migration’s success and ensure complete confidence in your application's stability.
