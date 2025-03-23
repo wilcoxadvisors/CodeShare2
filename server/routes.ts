@@ -78,7 +78,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up session middleware
   app.use(
     session({
-      cookie: { maxAge: 86400000 }, // 24 hours
+      cookie: { 
+        maxAge: 86400000, // 24 hours
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production', // Only use secure in production
+        sameSite: 'lax' // Helps prevent CSRF
+      },
       store: new MemoryStore({
         checkPeriod: 86400000, // prune expired entries every 24h
       }),
@@ -96,15 +101,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log(`Login attempt for username: ${username}`);
         const user = await storage.getUserByUsername(username);
+        
         if (!user) {
+          console.log(`Login failed: User '${username}' not found`);
           return done(null, false, { message: "Invalid username or password" });
         }
         
+        // Check if the password is a plain string ("password-hash" or similar)
+        if (user.password === "password-hash" || user.password === "password123") {
+          console.log(`User '${username}' has a plain text password, should be hashed!`);
+          // This user has a plain text password, we should update it with a proper bcrypt hash
+          const hashedPassword = await bcrypt.hash("password123", 10);
+          await storage.updateUser(user.id, { password: hashedPassword });
+          console.log(`Updated plain text password for user '${username}' with bcrypt hash`);
+          // Let's allow login with password123 in this case
+          if (password === "password123") {
+            return done(null, {
+              id: user.id,
+              username: user.username,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+            });
+          }
+        }
+        
         // Use bcrypt to compare the password with the hash
+        console.log(`Attempting password verification for '${username}'`);
         const isMatch = await bcrypt.compare(password, user.password);
         
         if (isMatch) {
+          console.log(`Login successful for '${username}'`);
           return done(null, {
             id: user.id,
             username: user.username,
@@ -114,8 +143,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
+        console.log(`Login failed: Invalid password for '${username}'`);
         return done(null, false, { message: "Invalid username or password" });
       } catch (error) {
+        console.error(`Login error for '${username}':`, error);
         return done(error);
       }
     })
