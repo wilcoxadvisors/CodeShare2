@@ -12,9 +12,7 @@ interface ConsolidationGroup {
   id: number;
   name: string;
   description: string | null;
-  entity_ids: number[] | null; // Legacy field maintained for backward compatibility
-  // New field for entity IDs from junction table
-  entityIds?: number[];
+  entityIds: number[]; // Entity IDs from junction table
   ownerId: number;
   currency: string;
   isActive: boolean;
