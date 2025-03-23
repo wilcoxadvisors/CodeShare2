@@ -70,6 +70,19 @@ async function migrateConsolidationGroupEntities() {
       // Create junction table entries for each entity in entity_ids
       for (const entityId of group.entity_ids) {
         try {
+          // First, check if the entity exists
+          const entityCheck = await db.execute(sql`
+            SELECT EXISTS (
+              SELECT 1 FROM entities 
+              WHERE id = ${entityId} AND active = true
+            );
+          `);
+          
+          if (!entityCheck.rows[0].exists) {
+            console.log(`Skipping entity ${entityId} - entity doesn't exist in entities table or is inactive`);
+            continue;
+          }
+          
           // Check if the relationship already exists to avoid duplicates
           const existingCheck = await db.execute(sql`
             SELECT EXISTS (
@@ -92,26 +105,48 @@ async function migrateConsolidationGroupEntities() {
         }
       }
       
-      // 3. Verify migration was successful
+      // 3. Verify migration was successful by checking valid entities only
+      // First, get all valid entity IDs from the entity_ids array
+      const validEntityIds: number[] = [];
+      
+      for (const entityId of group.entity_ids) {
+        const entityCheck = await db.execute(sql`
+          SELECT EXISTS (
+            SELECT 1 FROM entities 
+            WHERE id = ${entityId} AND active = true
+          );
+        `);
+        
+        if (entityCheck.rows[0].exists) {
+          validEntityIds.push(entityId);
+        }
+      }
+      
+      // Now get the entities in the junction table
       const junctionEntities = await db.execute(sql`
         SELECT entity_id FROM consolidation_group_entities WHERE group_id = ${group.id}
       `);
       
       const junctionEntityIds = junctionEntities.rows.map(row => row.entity_id);
       
-      // Check if all entity_ids exist in the junction table
-      const allMigrated = group.entity_ids.every(entityId => 
+      // Check if all valid entity_ids exist in the junction table
+      const allValidMigrated = validEntityIds.every(entityId => 
         junctionEntityIds.includes(entityId)
       );
       
-      if (allMigrated) {
+      if (allValidMigrated) {
         // 4. Mark as migrated to prevent future migrations
         await db.execute(sql`
           UPDATE consolidation_groups 
-          SET migrated_to_junction = true, updatedAt = NOW()
+          SET migrated_to_junction = true, updated_at = NOW()
           WHERE id = ${group.id}
         `);
         console.log(`Group ${group.id} (${group.name || 'unnamed'}) successfully migrated`);
+        
+        // If there were invalid entities in entity_ids, log it
+        if (validEntityIds.length < group.entity_ids.length) {
+          console.log(`Note: Group ${group.id} had ${group.entity_ids.length - validEntityIds.length} invalid entity references that were skipped`);
+        }
       } else {
         console.error(`Migration verification failed for group ${group.id} (${group.name || 'unnamed'})`);
       }
