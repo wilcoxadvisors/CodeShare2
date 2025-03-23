@@ -30,7 +30,7 @@ const consolidationGroupSchema = z.object({
   name: z.string().min(2, { message: "Group name must be at least 2 characters." }),
   description: z.string().optional(),
   currency: z.string().min(1, { message: "Currency is required." }),
-  entity_ids: z.array(z.number()).min(1, { message: "Select at least one entity." }),
+  entityIds: z.array(z.number()).min(1, { message: "Select at least one entity." }),
 });
 
 interface ConsolidationGroup {
@@ -69,7 +69,7 @@ export default function ConsolidationSetup() {
       name: "",
       description: "",
       currency: "USD",
-      entity_ids: [],
+      entityIds: [],
     },
   });
 
