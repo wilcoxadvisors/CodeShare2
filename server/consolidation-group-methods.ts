@@ -61,8 +61,7 @@ const createConsolidationGroupSchema = z.object({
   rules: z.any().optional(),
   isActive: z.boolean().default(true),
   createdBy: z.number().int().positive("Created by is required"),
-  // Handle both entityIds and entity_ids for flexibility
-  entity_ids: z.array(z.number()).optional(),
+  // Only accept entityIds for input, since entity_ids field is deprecated
   entityIds: z.array(z.number()).optional()
 });
 
@@ -77,27 +76,16 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
     
     // Use a transaction to ensure data consistency
     return await db.transaction(async (tx) => {
-      // Handle both entity_ids and entityIds for inputs
-      // If both are provided, entity_ids takes precedence
-      const entityIds = validatedData.entity_ids || 
-                        validatedData.entityIds || 
-                        [];
+      // Only use entityIds from now on, entity_ids is fully deprecated
+      const entityIds = validatedData.entityIds || [];
       
-      // Log usage of entity_ids in input (for deprecation tracking only)
-      if (validatedData.entity_ids) {
-        logEntityIdsDeprecation('createConsolidationGroup', { 
-          entityCount: validatedData.entity_ids.length 
-        });
-      }
-      
-      // Insert the consolidation group with empty entity_ids array
-      // Since we're now using the junction table exclusively
+      // Insert the consolidation group without the entity_ids field
+      // Since we're now exclusively using the junction table 
       const [newGroup] = await tx.insert(consolidationGroups)
         .values({
           name: validatedData.name,
           description: validatedData.description || null,
           ownerId: validatedData.ownerId,
-          entity_ids: [], // Empty array since we're using junction table
           currency: validatedData.currency || 'USD',
           startDate: validatedData.startDate,
           endDate: validatedData.endDate,
@@ -114,10 +102,9 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
       if (entityIds.length > 0) {
         try {
           // Create entries in the junction table for each entity
-          const junctionRecords = entityIds.map(entityId => ({
+          const junctionRecords = entityIds.map((entityId: number) => ({
             groupId: newGroup.id,
-            entityId: entityId,
-            createdAt: new Date()
+            entityId: entityId
           }));
           
           // Insert all records into the junction table
