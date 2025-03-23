@@ -657,9 +657,8 @@ export type BudgetDocument = typeof budgetDocuments.$inferSelect;
 export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
 
 export type ConsolidationGroup = typeof consolidationGroups.$inferSelect;
-// We extend the schema to include an entityIds property for backward compatibility
+// We extend the schema to allow specifying an initial entity when creating a group
 export const extendedInsertConsolidationGroupSchema = insertConsolidationGroupSchema.extend({
-  entityIds: z.array(z.number()).optional(),
   initialEntityId: z.number().optional() // For creating a group with a single initial entity
 });
 export type InsertConsolidationGroup = z.infer<typeof extendedInsertConsolidationGroupSchema>;
