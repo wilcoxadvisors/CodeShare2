@@ -201,17 +201,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
   
   // Authentication routes
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    res.json({ user: req.user });
+  app.post("/api/auth/login", (req, res, next) => {
+    console.log("Login attempt with username:", req.body.username);
+    
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Error during authentication:", err);
+        return next(err);
+      }
+      
+      if (!user) {
+        console.log("Authentication failed:", info?.message || "Unknown reason");
+        return res.status(401).json({ 
+          message: "Authentication failed", 
+          error: info?.message || "Invalid credentials" 
+        });
+      }
+      
+      // Log in the user
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Error during login (req.login):", loginErr);
+          return next(loginErr);
+        }
+        
+        console.log("User successfully authenticated:", user.username);
+        
+        // Send user data back to the client
+        res.json({ 
+          user, 
+          message: "Authentication successful",
+          sessionID: req.sessionID // Include session ID for debugging
+        });
+      });
+    })(req, res, next);
   });
   
   app.post("/api/auth/logout", (req, res) => {
-    req.logout(() => {
+    console.log("Logout attempt for user:", req.user);
+    
+    if (!req.isAuthenticated()) {
+      return res.status(200).json({ message: "No user is logged in" });
+    }
+    
+    const username = (req.user as any)?.username;
+    
+    req.logout((err) => {
+      if (err) {
+        console.error("Error during logout:", err);
+        return res.status(500).json({ message: "Logout failed", error: err.message });
+      }
+      
+      console.log("User successfully logged out:", username);
       res.status(200).json({ message: "Logged out successfully" });
     });
   });
   
-  app.get("/api/auth/me", isAuthenticated, (req, res) => {
+  app.get("/api/auth/me", (req, res) => {
+    console.log("Auth check - isAuthenticated:", req.isAuthenticated());
+    console.log("Auth check - session:", req.session);
+    
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    console.log("Current authenticated user:", req.user);
     res.json({ user: req.user });
   });
   
