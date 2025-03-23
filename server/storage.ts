@@ -4942,10 +4942,10 @@ export class DatabaseStorage implements IStorage {
     try {
       // Start a transaction to ensure both the group and entity associations are created atomically
       return await db.transaction(async (tx) => {
-        // Extract entity IDs if provided
-        const initialEntityIds = (group.entityIds && group.entityIds.length > 0) ? group.entityIds : [];
+        // Extract entities array from the request if provided (from InsertConsolidationGroupSchema.entities)
+        const entities = group.entities || [];
         
-        // Create the consolidation group without entity_ids field
+        // Create the consolidation group
         const [result] = await tx.insert(consolidationGroups)
           .values({
             name: group.name,
@@ -4965,8 +4965,8 @@ export class DatabaseStorage implements IStorage {
           .returning();
         
         // Create entity associations in the junction table
-        if (initialEntityIds.length > 0) {
-          const junctionValues = initialEntityIds.map(entityId => ({
+        if (entities.length > 0) {
+          const junctionValues = entities.map(entityId => ({
             groupId: result.id,
             entityId: entityId,
             createdAt: new Date()
@@ -4991,20 +4991,20 @@ export class DatabaseStorage implements IStorage {
       // Create update data without entity relationships (handled separately if needed)
       const updateData: any = { ...group };
       
-      // Remove entityIds and entity_ids virtual properties from update data
+      // Ensure we don't have any references to the legacy properties
       delete updateData.entityIds;
       delete updateData.entity_ids;
       
       // Add the updated timestamp
       updateData.updatedAt = new Date();
       
-      // If entityIds was provided, handle entity relationships separately using junction table
+      // Check if entities were provided for updating relationships
       let handleEntityUpdate = false;
-      let newEntityIds: number[] = [];
+      let newEntities: number[] = [];
       
-      if (group.entityIds !== undefined) {
+      if (group.entities !== undefined) {
         handleEntityUpdate = true;
-        newEntityIds = group.entityIds || [];
+        newEntities = group.entities || [];
       }
       
       return await db.transaction(async (tx) => {
@@ -5023,8 +5023,8 @@ export class DatabaseStorage implements IStorage {
             .where(eq(consolidationGroupEntities.groupId, id));
           
           // Insert new relationships if any
-          if (newEntityIds.length > 0) {
-            const junctionValues = newEntityIds.map(entityId => ({
+          if (newEntities.length > 0) {
+            const junctionValues = newEntities.map(entityId => ({
               groupId: id,
               entityId: entityId,
               createdAt: new Date()
