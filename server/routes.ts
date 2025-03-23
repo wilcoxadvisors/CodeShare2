@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const users = await Promise.all(
-        (await storage.getEntities()).map(async (user) => {
+        (await storage.getUsers()).map(async (user) => {
           // Exclude password
           const { password, ...userWithoutPassword } = user;
           return userWithoutPassword;
@@ -196,6 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json(users);
     } catch (error) {
+      console.error("Error fetching users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
