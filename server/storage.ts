@@ -2233,25 +2233,11 @@ export class MemStorage implements IStorage {
   }
   
   async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
-    try {
-      // Check if the group exists
-      const group = await this.getConsolidationGroup(groupId);
-      if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
-      
-      // Get entity IDs from the junction table directly
-      const junctionEntities = await db
-        .select({
-          entityId: consolidationGroupEntities.entityId
-        })
-        .from(consolidationGroupEntities)
-        .where(eq(consolidationGroupEntities.groupId, groupId));
-      
-      // Extract entity IDs from junction table results
-      return junctionEntities.map(je => je.entityId);
-    } catch (error) {
-      console.error('Error getting consolidation group entities:', error);
-      throw error;
+    // For MemStorage implementation, use the junction table map
+    if (this.consolidationGroupEntitiesMap.has(groupId)) {
+      return Array.from(this.consolidationGroupEntitiesMap.get(groupId) || []);
     }
+    return [];
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
@@ -2275,29 +2261,20 @@ export class MemStorage implements IStorage {
     
     this.consolidationGroups.set(id, newGroup);
     
-    // Handle entity relationships with entityIds
-    if (group.entityIds && group.entityIds.length > 0) {
-      // Create associations in the entityGroupMap
-      group.entityIds.forEach(entityId => {
-        if (!this.consolidationGroupEntitiesMap.has(id)) {
-          this.consolidationGroupEntitiesMap.set(id, new Set());
-        }
-        this.consolidationGroupEntitiesMap.get(id)?.add(entityId);
-      });
+    // Handle initialEntityId if provided
+    if (group.initialEntityId) {
+      if (!this.consolidationGroupEntitiesMap.has(id)) {
+        this.consolidationGroupEntitiesMap.set(id, new Set());
+      }
+      this.consolidationGroupEntitiesMap.get(id)?.add(group.initialEntityId);
     }
     
-    return {
-      ...newGroup,
-      entityIds: Array.from(this.consolidationGroupEntitiesMap.get(id) || [])
-    } as ConsolidationGroup;
+    return newGroup as ConsolidationGroup;
   }
 
   async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
     const existingGroup = this.consolidationGroups.get(id);
     if (!existingGroup) return undefined;
-    
-    // No need to manage the separate consolidationGroupEntities map
-    // The entityIds array is the single source of truth for entity membership
     
     const updatedGroup = { ...existingGroup, ...group, updatedAt: new Date() };
     this.consolidationGroups.set(id, updatedGroup);
@@ -2305,11 +2282,11 @@ export class MemStorage implements IStorage {
   }
 
   async deleteConsolidationGroup(id: number): Promise<void> {
-    // No need to remove entity associations from a separate map
-    // Just delete the group - all entity relationships are stored in the entityIds array
-    
-    // Delete the group
+    // Remove the group from the consolidation groups map
     this.consolidationGroups.delete(id);
+    
+    // Remove all entity associations for this group from the junction table map
+    this.consolidationGroupEntitiesMap.delete(id);
   }
 
   async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
@@ -2333,18 +2310,11 @@ export class MemStorage implements IStorage {
       const updatedGroup = await this.updateConsolidationGroup(groupId, { updatedAt: new Date() });
       if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
       
-      // Add the entityIds virtual property for consistent API
-      return {
-        ...updatedGroup,
-        entityIds: Array.from(this.consolidationGroupEntitiesMap.get(groupId) || [])
-      } as ConsolidationGroup;
+      return updatedGroup;
     }
     
     // Return the group if entity was already in the group
-    return {
-      ...group,
-      entityIds: existingEntities
-    } as ConsolidationGroup;
+    return group;
   }
 
   async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
@@ -2366,18 +2336,11 @@ export class MemStorage implements IStorage {
       const updatedGroup = await this.updateConsolidationGroup(groupId, { updatedAt: new Date() });
       if (!updatedGroup) throw new Error(`Failed to update consolidation group ${groupId}`);
       
-      // Add the entityIds virtual property for consistent API
-      return {
-        ...updatedGroup,
-        entityIds: Array.from(this.consolidationGroupEntitiesMap.get(groupId) || [])
-      } as ConsolidationGroup;
+      return updatedGroup;
     }
     
     // Return the group if entity was not in the group
-    return {
-      ...group,
-      entityIds: existingEntities
-    } as ConsolidationGroup;
+    return group;
   }
 
   async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
