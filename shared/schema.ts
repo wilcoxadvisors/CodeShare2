@@ -657,7 +657,12 @@ export type BudgetDocument = typeof budgetDocuments.$inferSelect;
 export type InsertBudgetDocument = z.infer<typeof insertBudgetDocumentSchema>;
 
 export type ConsolidationGroup = typeof consolidationGroups.$inferSelect;
-export type InsertConsolidationGroup = z.infer<typeof insertConsolidationGroupSchema>;
+// We extend the schema to include an entityIds property for backward compatibility
+export const extendedInsertConsolidationGroupSchema = insertConsolidationGroupSchema.extend({
+  entityIds: z.array(z.number()).optional(),
+  initialEntityId: z.number().optional() // For creating a group with a single initial entity
+});
+export type InsertConsolidationGroup = z.infer<typeof extendedInsertConsolidationGroupSchema>;
 
 export type ConsolidationGroupEntity = typeof consolidationGroupEntities.$inferSelect;
 // Create insert schema for the junction table
