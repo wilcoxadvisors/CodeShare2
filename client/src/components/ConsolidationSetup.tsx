@@ -79,7 +79,7 @@ export default function ConsolidationSetup() {
       name: "",
       description: "",
       currency: "USD",
-      entity_ids: [],
+      entityIds: [],
     });
     setEditingGroupId(null);
     setActiveTab("create");
@@ -91,7 +91,7 @@ export default function ConsolidationSetup() {
       name: group.name,
       description: group.description || "",
       currency: group.currency,
-      entity_ids: group.entity_ids || [],
+      entityIds: group.entity_ids || [],
     });
     setEditingGroupId(group.id);
     setActiveTab("create");
@@ -272,7 +272,7 @@ export default function ConsolidationSetup() {
 
                   <FormField
                     control={form.control}
-                    name="entity_ids"
+                    name="entityIds"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
