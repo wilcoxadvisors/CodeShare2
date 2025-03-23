@@ -41,13 +41,40 @@ async function migrateConsolidationGroupEntities() {
       return;
     }
     
-    // 1. Get specific consolidation groups (IDs 3, 5, 7) that haven't been migrated yet
-    // Note: Include inactive groups as well, since we want to migrate all groups
+    // First, reset migration flags for groups with incomplete junction table data
+    console.log("Checking for groups with incomplete junction table data...");
+    const allGroups = await db.execute<ConsolidationGroupRecord>(sql`
+      SELECT id, entity_ids, is_active, name, migrated_to_junction 
+      FROM consolidation_groups 
+      WHERE entity_ids IS NOT NULL
+    `);
+    
+    for (const group of allGroups.rows) {
+      if (!group.entity_ids || !group.entity_ids.length) continue;
+      
+      // Get junction table entries for this group
+      const junctionEntities = await db.execute(sql`
+        SELECT entity_id FROM consolidation_group_entities WHERE group_id = ${group.id}
+      `);
+      
+      const junctionEntityIds = junctionEntities.rows.map(row => row.entity_id);
+      const missingEntities = group.entity_ids.filter(id => !junctionEntityIds.includes(id));
+      
+      if (missingEntities.length > 0) {
+        console.log(`Group ${group.id} (${group.name || 'unnamed'}) has ${missingEntities.length} missing entities in junction table. Resetting migration flag.`);
+        await db.execute(sql`
+          UPDATE consolidation_groups 
+          SET migrated_to_junction = false, updated_at = NOW()
+          WHERE id = ${group.id}
+        `);
+      }
+    }
+    
+    // Now get all groups that need migration (either never migrated or reset in the step above)
     const groups = await db.execute<ConsolidationGroupRecord>(sql`
       SELECT id, entity_ids, is_active, name, migrated_to_junction 
       FROM consolidation_groups 
-      WHERE id IN (3, 5, 7)
-        AND (migrated_to_junction IS NULL OR migrated_to_junction = false)
+      WHERE (migrated_to_junction IS NULL OR migrated_to_junction = false)
         AND entity_ids IS NOT NULL
     `);
     
