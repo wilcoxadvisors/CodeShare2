@@ -41,11 +41,12 @@ async function migrateConsolidationGroupEntities() {
       return;
     }
     
-    // 1. Get all consolidation groups with entity_ids that haven't been migrated yet
+    // 1. Get specific consolidation groups (IDs 3, 5, 7) that haven't been migrated yet
+    // Note: Include inactive groups as well, since we want to migrate all groups
     const groups = await db.execute<ConsolidationGroupRecord>(sql`
       SELECT id, entity_ids, is_active, name, migrated_to_junction 
       FROM consolidation_groups 
-      WHERE is_active = true 
+      WHERE id IN (3, 5, 7)
         AND (migrated_to_junction IS NULL OR migrated_to_junction = false)
         AND entity_ids IS NOT NULL
     `);
