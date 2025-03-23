@@ -2,24 +2,22 @@
 // Enhanced implementation of consolidation group database methods
 
 /**
- * IMPORTANT: TRANSITION PLAN FOR ENTITY-GROUP RELATIONSHIPS
+ * ENTITY-GROUP RELATIONSHIPS IMPLEMENTATION
  * 
  * Current Implementation:
- * - Using entity_ids array field in consolidation_groups table
+ * - Using consolidation_group_entities junction table for many-to-many relationships
  * - Soft deletion via isActive flag
- * 
- * Future Implementation (Phase 2):
- * - Will use the consolidation_group_entities junction table for many-to-many relationships
- * - The junction table is already defined in schema.ts but not yet created in the database
- * - A database migration will be required to create the junction table
- * - During migration, entity_ids data will be copied to the junction table
- * - Code already includes conditional logic for handling both implementations
  * 
  * Benefits of Junction Table:
  * - Proper data integrity with foreign key constraints
  * - More efficient queries for entity-group relationships
  * - Support for relationship metadata (e.g., consolidation rules per entity)
  * - Better handling of many-to-many relationships
+ * 
+ * MIGRATION HISTORY:
+ * - Previously used an entity_ids array field in consolidation_groups table
+ * - Migrated to junction table for better data structure and relationship management
+ * - Completely removed entity_ids column from the database schema
  */
 
 import { eq, and, inArray, sql, not } from "drizzle-orm";
@@ -61,31 +59,28 @@ const createConsolidationGroupSchema = z.object({
   rules: z.any().optional(),
   isActive: z.boolean().default(true),
   createdBy: z.number().int().positive("Created by is required"),
-  // Only accept entityIds for input, since entity_ids field is deprecated
   entityIds: z.array(z.number()).optional()
 });
 
 /**
  * Creates a new consolidation group with validation
- * Temporarily maintains both entity_ids array and junction table for backward compatibility
- * The entity_ids array will be deprecated in the future
+ * Uses the junction table for entity-group relationships
  */
 export async function createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
   try {
     // Validate the input data using Zod
     const validatedData = createConsolidationGroupSchema.parse({
       ...group,
-      // Handle potential entityIds in the input data
-      entityIds: group.entityIds || group.entity_ids || []
+      // Handle entityIds properly
+      entityIds: group.entityIds || []
     });
     
     // Use a transaction to ensure data consistency
     return await db.transaction(async (tx) => {
-      // Extract entity IDs from either the entityIds property or entity_ids array
+      // Extract entity IDs
       const entityIds = validatedData.entityIds || [];
       
-      // Insert the consolidation group with both entity_ids array and junction table approach
-      // This is temporary for backward compatibility during transition period
+      // Insert the consolidation group
       const [newGroup] = await tx.insert(consolidationGroups)
         .values({
           name: validatedData.name,
@@ -98,16 +93,10 @@ export async function createConsolidationGroup(group: InsertConsolidationGroup):
           rules: validatedData.rules || null,
           isActive: validatedData.isActive !== undefined ? validatedData.isActive : true,
           createdBy: validatedData.createdBy,
-          entity_ids: entityIds, // Temporarily maintain entity_ids array for backward compatibility
           createdAt: new Date(),
           updatedAt: new Date()
         })
         .returning();
-      
-      // Log update to entity_ids for backward compatibility
-      if (entityIds.length > 0) {
-        logEntityIdsUpdate('createConsolidationGroup', newGroup.id);
-      }
       
       // Create relationships in the junction table
       if (entityIds.length > 0) {
@@ -225,7 +214,7 @@ export async function deleteConsolidationGroup(id: number): Promise<void> {
 
 /**
  * Adds an entity to a consolidation group
- * Temporarily maintains both entity_ids array and junction table during transition
+ * Uses the junction table for entity-group relationships
  * Returns the updated consolidation group
  */
 export async function addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
@@ -257,45 +246,17 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
         })
         .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] }); // Prevent duplicate entries
       
-      // Also update entity_ids array for backward compatibility during transition
-      // Get current entity_ids array
-      const currentEntityIds = group.entity_ids || [];
+      // Update the group timestamp
+      const updatedGroups = await tx.update(consolidationGroups)
+        .set({ updatedAt: new Date() })
+        .where(eq(consolidationGroups.id, groupId))
+        .returning();
       
-      // Only add if not already in the array
-      if (!currentEntityIds.includes(entityId)) {
-        // Update entity_ids array  
-        const updatedEntityIds = [...currentEntityIds, entityId];
-        
-        // Update the group with both approaches
-        const updatedGroups = await tx.update(consolidationGroups)
-          .set({ 
-            entity_ids: updatedEntityIds, 
-            updatedAt: new Date() 
-          })
-          .where(eq(consolidationGroups.id, groupId))
-          .returning();
-        
-        if (updatedGroups.length === 0) {
-          throw new Error("Failed to update consolidation group");
-        }
-        
-        // Log that we're updating entity_ids for backward compatibility
-        logEntityIdsUpdate('addEntityToConsolidationGroup', groupId);
-        
-        return updatedGroups[0];
-      } else {
-        // Entity already in entity_ids array, just update timestamp
-        const updatedGroups = await tx.update(consolidationGroups)
-          .set({ updatedAt: new Date() })
-          .where(eq(consolidationGroups.id, groupId))
-          .returning();
-        
-        if (updatedGroups.length === 0) {
-          throw new Error("Failed to update consolidation group");
-        }
-        
-        return updatedGroups[0];
+      if (updatedGroups.length === 0) {
+        throw new Error("Failed to update consolidation group");
       }
+      
+      return updatedGroups[0];
     } catch (error) {
       console.error('Error adding entity to consolidation group:', error);
       throw error;
@@ -305,7 +266,7 @@ export async function addEntityToConsolidationGroup(groupId: number, entityId: n
 
 /**
  * Removes an entity from a consolidation group
- * Temporarily maintains both entity_ids array and junction table during transition
+ * Uses the junction table for entity-group relationships
  * Returns the updated consolidation group
  */
 export async function removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
@@ -329,45 +290,17 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
           )
         );
       
-      // Also update entity_ids array for backward compatibility during transition
-      // Get current entity_ids array
-      const currentEntityIds = group.entity_ids || [];
+      // Update the group timestamp
+      const updatedGroups = await tx.update(consolidationGroups)
+        .set({ updatedAt: new Date() })
+        .where(eq(consolidationGroups.id, groupId))
+        .returning();
       
-      // Only remove if entity exists in the array
-      if (currentEntityIds.includes(entityId)) {
-        // Filter out the entity from entity_ids array
-        const updatedEntityIds = currentEntityIds.filter(id => id !== entityId);
-        
-        // Update the group with both approaches
-        const updatedGroups = await tx.update(consolidationGroups)
-          .set({ 
-            entity_ids: updatedEntityIds, 
-            updatedAt: new Date() 
-          })
-          .where(eq(consolidationGroups.id, groupId))
-          .returning();
-        
-        if (updatedGroups.length === 0) {
-          throw new Error("Failed to update consolidation group");
-        }
-        
-        // Log that we're updating entity_ids for backward compatibility
-        logEntityIdsUpdate('removeEntityFromConsolidationGroup', groupId);
-        
-        return updatedGroups[0];
-      } else {
-        // Entity wasn't in entity_ids array, just update timestamp
-        const updatedGroups = await tx.update(consolidationGroups)
-          .set({ updatedAt: new Date() })
-          .where(eq(consolidationGroups.id, groupId))
-          .returning();
-        
-        if (updatedGroups.length === 0) {
-          throw new Error("Failed to update consolidation group");
-        }
-        
-        return updatedGroups[0];
+      if (updatedGroups.length === 0) {
+        throw new Error("Failed to update consolidation group");
       }
+      
+      return updatedGroups[0];
     } catch (error) {
       console.error('Error removing entity from consolidation group:', error);
       throw error;
@@ -378,7 +311,7 @@ export async function removeEntityFromConsolidationGroup(groupId: number, entity
 /**
  * Generates a consolidated report for a group, using transactions
  * to ensure consistency between fetches and updates
- * Primarily uses the junction table but falls back to entity_ids array if needed
+ * Uses the junction table for entity-group relationships
  */
 export async function generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
   try {
@@ -407,15 +340,7 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
         .from(consolidationGroupEntities)
         .where(eq(consolidationGroupEntities.groupId, groupId));
       
-      let entityIds: number[] = junctionEntities.map(je => je.entityId);
-      
-      // If no entities found in junction table, fall back to entity_ids array
-      if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
-        // Log that we're falling back to entity_ids
-        logEntityIdsFallback('generateConsolidatedReport', groupId);
-        
-        entityIds = group.entity_ids;
-      }
+      const entityIds: number[] = junctionEntities.map(je => je.entityId);
       
       if (entityIds.length === 0) {
         throw new ValidationError('No entities associated with this consolidation group');
@@ -510,7 +435,7 @@ export async function convertReportCurrency(report: any, fromCurrency: string, t
 
 /**
  * Gets all entities associated with a consolidation group
- * Primarily uses the junction table but falls back to entity_ids array if needed
+ * Uses the junction table for entity-group relationships
  */
 export async function getConsolidationGroupEntities(groupId: number): Promise<number[]> {
   return await db.transaction(async (tx) => {
@@ -531,22 +456,13 @@ export async function getConsolidationGroupEntities(groupId: number): Promise<nu
     
     const entityIds: number[] = junctionEntities.map(je => je.entityId);
     
-    // If no entities found in junction table, fall back to entity_ids array
-    if (entityIds.length === 0 && group.entity_ids && group.entity_ids.length > 0) {
-      // Log that we're falling back to entity_ids
-      logEntityIdsFallback('getConsolidationGroupEntities', groupId);
-      
-      return group.entity_ids;
-    }
-    
     return entityIds;
   });
 }
 
 /**
  * Gets all consolidation groups that an entity belongs to
- * Primarily uses the junction table, but also checks entity_ids array
- * for backward compatibility during transition
+ * Uses the junction table for entity-group relationships
  */
 export async function getEntityConsolidationGroups(entityId: number): Promise<ConsolidationGroup[]> {
   try {
@@ -570,31 +486,7 @@ export async function getEntityConsolidationGroups(entityId: number): Promise<Co
       
       const groupIds = junctionGroups.map(jg => jg.groupId);
       
-      // For backward compatibility, check entity_ids arrays in all groups
-      // Fetch all active groups that have entity_ids array containing this entityId
-      // Note: SQL array contains operator
-      const legacyGroups = await tx
-        .select()
-        .from(consolidationGroups)
-        .where(
-          and(
-            sql`${entityId} = ANY(${consolidationGroups.entity_ids})`,
-            eq(consolidationGroups.isActive, true),
-            // Exclude groups we already found in the junction table
-            groupIds.length > 0 ? not(inArray(consolidationGroups.id, groupIds)) : undefined
-          )
-        );
-        
-      if (legacyGroups.length > 0) {
-        // Log that we found groups using the legacy approach
-        logEntityIdsFallback('getEntityConsolidationGroups', undefined);
-        
-        // Add the legacy group IDs to our list
-        const legacyGroupIds = legacyGroups.map(g => g.id);
-        groupIds.push(...legacyGroupIds);
-      }
-      
-      // Get groups by IDs from both junction table and legacy results
+      // Get active groups by IDs from junction table
       const groups: ConsolidationGroup[] = [];
       
       if (groupIds.length > 0) {
