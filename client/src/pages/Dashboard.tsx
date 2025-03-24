@@ -1265,8 +1265,22 @@ function Dashboard() {
                         </CardContent>
                       </Card>
                     </div>
-                    <div>
+                    <div className="space-y-6">
+                      {/* Account Setup Card */}
                       <Card>
+                        <CardHeader>
+                          <CardTitle>Account Setup</CardTitle>
+                          <CardDescription>
+                            Complete these steps to set up your financial dashboard
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <SetupStepper />
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Client Status Distribution Card */}
+                      <Card className="mt-6">
                         <CardHeader>
                           <CardTitle>Client Status Distribution</CardTitle>
                         </CardHeader>
