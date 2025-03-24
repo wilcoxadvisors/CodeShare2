@@ -22,11 +22,6 @@ const SETUP_STEPS = [
     description: "Add your business entities"
   },
   {
-    id: "consolidation",
-    title: "Consolidation Groups",
-    description: "Organize entities for reporting"
-  },
-  {
     id: "summary",
     title: "Summary & Activation",
     description: "Review and complete setup"
@@ -151,15 +146,7 @@ export default function SetupStepper() {
               />
             )}
             
-            {currentStep === "consolidation" && (
-              <div className="text-center p-8">
-                <p className="text-lg font-medium mb-4">Consolidation Groups</p>
-                <p className="text-muted-foreground mb-6">
-                  Set up consolidation groups to combine data from multiple entities. This feature helps organize and analyze financial data across your business entities.
-                </p>
-                <Button onClick={handleNext}>Continue</Button>
-              </div>
-            )}
+            {/* Consolidation step removed - now available as a separate module */}
             
             {currentStep === "summary" && (
               <div className="text-center p-8">

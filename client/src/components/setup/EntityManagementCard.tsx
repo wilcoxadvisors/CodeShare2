@@ -128,15 +128,28 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         throw new Error("Owner ID is required but missing. Please try logging in again.");
       }
       
-      // Use admin endpoint if user is admin
+      // Always use admin endpoint if user is admin 
       const endpoint = isAdmin ? '/api/admin/entities' : '/api/entities';
+
+      const cleanedData = {
+        name: data.name,
+        legalName: data.legalName,
+        entityType: data.entityType || 'llc',
+        industry: data.industry,
+        taxId: data.taxId,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        ownerId: data.ownerId,
+        isActive: true,
+        createdBy: user?.id
+      };
+      
+      console.log("Creating entity with data:", cleanedData);
+      
       return await apiRequest(endpoint, {
         method: 'POST',
-        data: {
-          ...data,
-          isActive: true,
-          createdBy: user?.id
-        }
+        data: cleanedData
       });
     },
     onSuccess: () => {
@@ -173,9 +186,30 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
     mutationFn: async ({ id, data }: { id: number, data: EntityFormValues }) => {
       // Use admin endpoint if user is admin
       const endpoint = isAdmin ? `/api/admin/entities/${id}` : `/api/entities/${id}`;
+      
+      // Ensure ownerId is set
+      if (!data.ownerId && user?.id) {
+        data.ownerId = user.id;
+      }
+      
+      const cleanedData = {
+        name: data.name,
+        legalName: data.legalName,
+        entityType: data.entityType || 'llc',
+        industry: data.industry,
+        taxId: data.taxId,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        ownerId: data.ownerId,
+        isActive: true
+      };
+
+      console.log("Updating entity with data:", cleanedData);
+      
       return await apiRequest(endpoint, {
         method: 'PUT',
-        data
+        data: cleanedData
       });
     },
     onSuccess: () => {
