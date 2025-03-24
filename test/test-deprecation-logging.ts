@@ -1,8 +1,11 @@
 /**
- * Test script for deprecation logging in consolidation group operations
+ * Migration complete: This test script is now obsolete
  * 
- * This script verifies that appropriate deprecation warnings are logged
- * when entity_ids is accessed or modified.
+ * This script previously tested deprecation warnings for entity_ids usage,
+ * but since we've fully migrated to the junction table approach and 
+ * removed the entity_ids column, these tests are no longer relevant.
+ * 
+ * The file is kept for historical documentation purposes.
  */
 
 import {
@@ -11,53 +14,29 @@ import {
   removeEntityFromConsolidationGroup,
   getConsolidationGroupEntities,
   getEntityConsolidationGroups,
-  deleteConsolidationGroup,
-  updateConsolidationGroup
+  deleteConsolidationGroup
 } from "../server/consolidation-group-methods";
 import { db } from "../server/db";
-import { users, entities, consolidationGroups, consolidationGroupEntities } from "../shared/schema";
+import { users, entities, consolidationGroupEntities, UserRole } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
-// Mock the logging functions to capture calls
-const logCalls: {method: string, type: string, context?: any}[] = [];
-
-// Override the real logging functions with our mocks that track calls
-jest.mock("../shared/deprecation-logger", () => ({
-  logEntityIdsDeprecation: (method: string, context?: any) => {
-    console.log(`[MOCK] Deprecation warning: entity_ids in ${method}`);
-    logCalls.push({method, type: 'deprecation', context});
-  },
-  
-  logEntityIdsFallback: (method: string, context?: any) => {
-    console.log(`[MOCK] Fallback to entity_ids in ${method}`);
-    logCalls.push({method, type: 'fallback', context});
-  },
-  
-  logEntityIdsUpdate: (method: string, context?: any) => {
-    console.log(`[MOCK] Updating entity_ids in ${method}`);
-    logCalls.push({method, type: 'update', context});
-  }
-}));
-
 /**
- * Test the deprecation logging in consolidation group operations
+ * A validation test to confirm junction table functionality
+ * This replaces the previous deprecation logging tests
  */
-async function testDeprecationLogging() {
+async function testJunctionTableFunctionality() {
   try {
-    console.log("Starting deprecation logging test...");
-    
-    // Clear log calls before starting
-    logCalls.length = 0;
+    console.log("Starting junction table functionality test...");
     
     // Setup test data
     // Create test user
     const [user] = await db.insert(users)
       .values({
-        username: "testuser_deprecation",
+        username: "testuser_junction",
         password: "password123",
-        email: "testuser_deprecation@example.com",
+        email: "testuser_junction@example.com",
         name: "Test User",
-        role: "admin",
+        role: UserRole.ADMIN,
         active: true,
         createdAt: new Date()
       })
@@ -66,35 +45,37 @@ async function testDeprecationLogging() {
     // Create test entities
     const [entity1] = await db.insert(entities)
       .values({
-        name: "Test Entity 1 Deprecation",
+        name: "Test Entity 1 Junction",
         legalName: "Test Entity 1 Legal Name",
+        code: "TE1J",
         entityType: "company",
         ownerId: user.id,
-        isActive: true,
+        active: true,
         createdAt: new Date()
       })
       .returning();
     
     const [entity2] = await db.insert(entities)
       .values({
-        name: "Test Entity 2 Deprecation",
+        name: "Test Entity 2 Junction",
         legalName: "Test Entity 2 Legal Name",
+        code: "TE2J",
         entityType: "company",
         ownerId: user.id,
-        isActive: true,
+        active: true,
         createdAt: new Date()
       })
       .returning();
       
     console.log("Test data setup complete.");
     
-    // Test 1: Create consolidation group with entity_ids
-    console.log("\nTest 1: Create consolidation group with entity_ids");
+    // Test 1: Create consolidation group with initialEntityId
+    console.log("\nTest 1: Create consolidation group with initialEntityId");
     const group = await createConsolidationGroup({
-      name: "Deprecation Test Group",
-      description: "Test group for deprecation logging",
+      name: "Junction Test Group",
+      description: "Test group for junction table",
       ownerId: user.id,
-      entity_ids: [entity1.id], // Directly using entity_ids should trigger deprecation warning
+      initialEntityId: entity1.id, // Using initialEntityId instead of entity_ids
       startDate: new Date(),
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       createdBy: user.id
@@ -102,152 +83,101 @@ async function testDeprecationLogging() {
     
     console.log(`Created group: ${group.id}`);
     
-    // Check log calls for Test 1
-    console.log("Log calls after creation:", logCalls);
-    const createDeprecationLogs = logCalls.filter(call => 
-      call.method === 'createConsolidationGroup' && call.type === 'deprecation'
-    );
-    
-    if (createDeprecationLogs.length > 0) {
-      console.log("✅ Test 1 passed: Deprecation warning logged for createConsolidationGroup");
+    // Verify entity was added to junction table
+    const initialEntities = await db.select()
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, group.id));
+      
+    if (initialEntities.length === 1 && initialEntities[0].entityId === entity1.id) {
+      console.log("✅ Test 1 passed: Entity correctly added to junction table on group creation");
     } else {
-      console.log("❌ Test 1 failed: No deprecation warning logged for createConsolidationGroup");
+      console.log("❌ Test 1 failed: Entity not properly added to junction table");
+      console.log("Found entities:", initialEntities);
     }
     
     // Test 2: Add entity to group
     console.log("\nTest 2: Add entity to group");
-    logCalls.length = 0; // Clear logs
     
     await addEntityToConsolidationGroup(group.id, entity2.id);
     
-    // Check log calls for Test 2
-    console.log("Log calls after adding entity:", logCalls);
-    const addEntityUpdateLogs = logCalls.filter(call => 
-      call.method === 'addEntityToConsolidationGroup' && call.type === 'update'
-    );
+    // Verify both entities are in junction table
+    const entitiesAfterAdd = await db.select()
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, group.id));
+      
+    const entityIds = entitiesAfterAdd.map(e => e.entityId);
     
-    if (addEntityUpdateLogs.length > 0) {
-      console.log("✅ Test 2 passed: Update log recorded for addEntityToConsolidationGroup");
+    if (entitiesAfterAdd.length === 2 && 
+        entityIds.includes(entity1.id) && 
+        entityIds.includes(entity2.id)) {
+      console.log("✅ Test 2 passed: Second entity successfully added to junction table");
     } else {
-      console.log("❌ Test 2 failed: No update log for addEntityToConsolidationGroup");
+      console.log("❌ Test 2 failed: Second entity not properly added");
+      console.log("Found entities:", entitiesAfterAdd);
     }
     
     // Test 3: Get entities for group
     console.log("\nTest 3: Get entities for group");
     
-    // Delete junction table records to force fallback to entity_ids
-    await db.delete(consolidationGroupEntities)
+    const groupEntities = await getConsolidationGroupEntities(group.id);
+    
+    if (groupEntities.length === 2 && 
+        groupEntities.includes(entity1.id) && 
+        groupEntities.includes(entity2.id)) {
+      console.log("✅ Test 3 passed: getConsolidationGroupEntities returns correct entities");
+    } else {
+      console.log("❌ Test 3 failed: getConsolidationGroupEntities returned incorrect results");
+      console.log("Returned entities:", groupEntities);
+    }
+    
+    // Test 4: Remove entity from group
+    console.log("\nTest 4: Remove entity from group");
+    
+    await removeEntityFromConsolidationGroup(group.id, entity1.id);
+    
+    // Verify entity was removed
+    const entitiesAfterRemove = await db.select()
+      .from(consolidationGroupEntities)
       .where(eq(consolidationGroupEntities.groupId, group.id));
-    
-    logCalls.length = 0; // Clear logs
-    
-    await getConsolidationGroupEntities(group.id);
-    
-    // Check log calls for Test 3
-    console.log("Log calls after getting entities:", logCalls);
-    const getEntitiesFallbackLogs = logCalls.filter(call => 
-      call.method === 'getConsolidationGroupEntities' && call.type === 'fallback'
-    );
-    
-    if (getEntitiesFallbackLogs.length > 0) {
-      console.log("✅ Test 3 passed: Fallback log recorded for getConsolidationGroupEntities");
+      
+    if (entitiesAfterRemove.length === 1 && entitiesAfterRemove[0].entityId === entity2.id) {
+      console.log("✅ Test 4 passed: Entity successfully removed from junction table");
     } else {
-      console.log("❌ Test 3 failed: No fallback log for getConsolidationGroupEntities");
+      console.log("❌ Test 4 failed: Entity not properly removed");
+      console.log("Found entities:", entitiesAfterRemove);
     }
     
-    // Test 4: Update consolidation group with direct entity_ids modification
-    console.log("\nTest 4: Update group with direct entity_ids modification");
-    logCalls.length = 0; // Clear logs
+    // Test 5: Get groups for entity
+    console.log("\nTest 5: Get groups for entity");
     
-    await updateConsolidationGroup(group.id, {
-      name: "Updated Deprecation Test Group",
-      entity_ids: [entity1.id, entity2.id] // Direct update should trigger deprecation warning
-    });
+    const entityGroups = await getEntityConsolidationGroups(entity2.id);
     
-    // Check log calls for Test 4
-    console.log("Log calls after updating group:", logCalls);
-    const updateDeprecationLogs = logCalls.filter(call => 
-      call.method === 'updateConsolidationGroup' && call.type === 'deprecation'
-    );
-    
-    if (updateDeprecationLogs.length > 0) {
-      console.log("✅ Test 4 passed: Deprecation warning logged for updateConsolidationGroup");
+    if (entityGroups.length === 1 && entityGroups[0].id === group.id) {
+      console.log("✅ Test 5 passed: getEntityConsolidationGroups returns correct groups");
     } else {
-      console.log("❌ Test 4 failed: No deprecation warning logged for updateConsolidationGroup");
-    }
-    
-    // Test 5: Remove entity from group
-    console.log("\nTest 5: Remove entity from group");
-    
-    // Recreate junction table entries for both entities
-    await db.insert(consolidationGroupEntities)
-      .values([
-        { groupId: group.id, entityId: entity1.id },
-        { groupId: group.id, entityId: entity2.id }
-      ]);
-    
-    logCalls.length = 0; // Clear logs
-    
-    await removeEntityFromConsolidationGroup(group.id, entity2.id);
-    
-    // Check log calls for Test 5
-    console.log("Log calls after removing entity:", logCalls);
-    const removeEntityUpdateLogs = logCalls.filter(call => 
-      call.method === 'removeEntityFromConsolidationGroup' && call.type === 'update'
-    );
-    
-    if (removeEntityUpdateLogs.length > 0) {
-      console.log("✅ Test 5 passed: Update log recorded for removeEntityFromConsolidationGroup");
-    } else {
-      console.log("❌ Test 5 failed: No update log for removeEntityFromConsolidationGroup");
-    }
-    
-    // Test 6: Get groups for entity with fallback
-    console.log("\nTest 6: Get groups for entity with fallback");
-    
-    // Delete junction table records to force fallback to entity_ids
-    await db.delete(consolidationGroupEntities)
-      .where(eq(consolidationGroupEntities.groupId, group.id));
-    
-    logCalls.length = 0; // Clear logs
-    
-    await getEntityConsolidationGroups(entity1.id);
-    
-    // Check log calls for Test 6
-    console.log("Log calls after getting groups for entity:", logCalls);
-    const getGroupsFallbackLogs = logCalls.filter(call => 
-      call.method === 'getEntityConsolidationGroups' && call.type === 'fallback'
-    );
-    
-    if (getGroupsFallbackLogs.length > 0) {
-      console.log("✅ Test 6 passed: Fallback log recorded for getEntityConsolidationGroups");
-    } else {
-      console.log("❌ Test 6 failed: No fallback log for getEntityConsolidationGroups");
+      console.log("❌ Test 5 failed: getEntityConsolidationGroups returned incorrect results");
+      console.log("Returned groups:", entityGroups);
     }
     
     // Cleanup
     await deleteConsolidationGroup(group.id);
+    
+    // Delete junction table entries first to avoid foreign key constraints
+    await db.delete(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.entityId, entity1.id));
+      
+    await db.delete(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.entityId, entity2.id));
+      
     await db.delete(entities).where(eq(entities.id, entity1.id));
     await db.delete(entities).where(eq(entities.id, entity2.id));
     await db.delete(users).where(eq(users.id, user.id));
     
-    console.log("\nDeprecation logging test completed.");
-    
-    // Summary
-    const testsPassed = [
-      createDeprecationLogs.length > 0,
-      addEntityUpdateLogs.length > 0,
-      getEntitiesFallbackLogs.length > 0,
-      updateDeprecationLogs.length > 0,
-      removeEntityUpdateLogs.length > 0,
-      getGroupsFallbackLogs.length > 0
-    ].filter(passed => passed).length;
-    
-    console.log(`\nSummary: ${testsPassed}/6 tests passed.`);
+    console.log("\nJunction table functionality test completed.");
     
   } catch (error) {
-    console.error("Error in testing deprecation logging:", error);
+    console.error("Error in testing junction table functionality:", error);
   }
 }
 
-testDeprecationLogging().catch(console.error);
+testJunctionTableFunctionality().catch(console.error);

@@ -2,7 +2,7 @@
  * Test script to verify consolidation group database operations
  */
 import { db } from "../server/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { 
   users, 
   entities, 
