@@ -47,7 +47,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
     // Since we checked group is not null above, this assertion is safe
-    if (group && group.createdBy !== authUser.id && authUser.role !== 'admin') {
+    if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have access to this consolidation group');
     }
 
@@ -90,7 +90,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
     // Since we checked group is not null above, this assertion is safe
-    if (group && group.createdBy !== authUser.id && authUser.role !== 'admin') {
+    if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to update this consolidation group');
     }
 
@@ -115,7 +115,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
     // Since we checked group is not null above, this assertion is safe
-    if (group && group.createdBy !== authUser.id && authUser.role !== 'admin') {
+    if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to delete this consolidation group');
     }
 
@@ -137,6 +137,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
+    // Since we checked group is not null above, this assertion is safe
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to modify this consolidation group');
     }
@@ -169,6 +170,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
+    // Since we checked group is not null above, this assertion is safe
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to modify this consolidation group');
     }
@@ -195,6 +197,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
+    // Since we checked group is not null above, this assertion is safe
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to access reports for this consolidation group');
     }
