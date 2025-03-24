@@ -1031,136 +1031,24 @@ function Dashboard() {
                                   Add Client
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent>
+                              <DialogContent className="sm:max-w-[600px]">
                                 <DialogHeader>
-                                  <DialogTitle>Add New Client</DialogTitle>
+                                  <DialogTitle>Client Setup Wizard</DialogTitle>
                                   <DialogDescription>
-                                    Enter the details for the new client.
+                                    Complete the steps below to set up a new client.
                                   </DialogDescription>
                                 </DialogHeader>
-                                <div className="grid gap-4 py-4">
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="name" className="text-right">Company Name *</Label>
-                                    <Input 
-                                      id="name" 
-                                      className="col-span-3" 
-                                      value={entityForm.name}
-                                      onChange={handleEntityFormChange}
-                                      required
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="legalName" className="text-right">Legal Name</Label>
-                                    <Input 
-                                      id="legalName" 
-                                      className="col-span-3" 
-                                      value={entityForm.legalName}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="email" className="text-right">Email</Label>
-                                    <Input 
-                                      id="email" 
-                                      type="email" 
-                                      className="col-span-3"
-                                      value={entityForm.email}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="phone" className="text-right">Phone</Label>
-                                    <Input 
-                                      id="phone" 
-                                      className="col-span-3"
-                                      value={entityForm.phone}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="industry" className="text-right">Industry</Label>
-                                    <Input 
-                                      id="industry" 
-                                      className="col-span-3" 
-                                      value={entityForm.industry}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="entityType" className="text-right">Entity Type</Label>
-                                    <Select 
-                                      value={entityForm.entityType}
-                                      onValueChange={(value) => setEntityForm(prev => ({...prev, entityType: value}))}
-                                    >
-                                      <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Select entity type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="company">Company</SelectItem>
-                                        <SelectItem value="individual">Individual</SelectItem>
-                                        <SelectItem value="partnership">Partnership</SelectItem>
-                                        <SelectItem value="llc">LLC</SelectItem>
-                                        <SelectItem value="nonprofit">Non-Profit</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="taxId" className="text-right">Tax ID</Label>
-                                    <Input 
-                                      id="taxId" 
-                                      className="col-span-3"
-                                      value={entityForm.taxId}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="address" className="text-right">Address</Label>
-                                    <Textarea 
-                                      id="address" 
-                                      className="col-span-3" 
-                                      value={entityForm.address}
-                                      onChange={handleEntityFormChange}
-                                    />
-                                  </div>
-                                  {isAdmin && adminUsers && adminUsers.length > 0 && (
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <Label htmlFor="ownerId" className="text-right">Owner</Label>
-                                      <Select 
-                                        value={entityForm.ownerId.toString()} 
-                                        onValueChange={(value) => setEntityForm(prev => ({...prev, ownerId: parseInt(value)}))}
-                                      >
-                                        <SelectTrigger className="col-span-3">
-                                          <SelectValue placeholder="Select user" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {adminUsers.map(u => (
-                                            <SelectItem key={u.id} value={u.id.toString()}>
-                                              {u.name} ({u.email})
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  )}
+                                
+                                <div className="py-4">
+                                  <SetupStepper />
                                 </div>
+                                
                                 <DialogFooter>
                                   <Button 
                                     variant="outline" 
                                     onClick={() => setIsAddClientDialogOpen(false)}
-                                    disabled={createEntityMutation.isPending}
                                   >
-                                    Cancel
-                                  </Button>
-                                  <Button 
-                                    onClick={handleCreateEntity}
-                                    disabled={createEntityMutation.isPending}
-                                  >
-                                    {createEntityMutation.isPending ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Creating...
-                                      </>
-                                    ) : "Save Client"}
+                                    Close
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
