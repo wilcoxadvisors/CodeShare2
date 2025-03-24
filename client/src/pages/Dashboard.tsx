@@ -1154,21 +1154,8 @@ function Dashboard() {
                       </Card>
                     </div>
                     <div className="space-y-6">
-                      {/* Account Setup Card */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Account Setup</CardTitle>
-                          <CardDescription>
-                            Complete these steps to set up your financial dashboard
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <SetupStepper />
-                        </CardContent>
-                      </Card>
-                      
                       {/* Client Status Distribution Card */}
-                      <Card className="mt-6">
+                      <Card>
                         <CardHeader>
                           <CardTitle>Client Status Distribution</CardTitle>
                         </CardHeader>
@@ -1206,7 +1193,7 @@ function Dashboard() {
                           )}
                         </CardContent>
                       </Card>
-                      <Card className="mt-6">
+                      <Card>
                         <CardHeader className="pb-2">
                           <CardTitle>Pending Tasks</CardTitle>
                         </CardHeader>
@@ -1408,7 +1395,7 @@ function Dashboard() {
                           </ResponsiveContainer>
                         </CardContent>
                       </Card>
-                      <Card className="mt-6">
+                      <Card>
                         <CardHeader>
                           <CardTitle>Recent Activity</CardTitle>
                         </CardHeader>
@@ -1546,7 +1533,7 @@ function Dashboard() {
                           </div>
                         </CardFooter>
                       </Card>
-                      <Card className="mt-6">
+                      <Card className="mt-6 space-y-6">
                         <CardHeader>
                           <CardTitle>Recent Transactions</CardTitle>
                         </CardHeader>
@@ -1693,7 +1680,7 @@ function Dashboard() {
                         </CardContent>
                       </Card>
                       
-                      <Card className="mt-6">
+                      <Card className="mt-6 space-y-6">
                         <CardHeader>
                           <CardTitle>Message Templates</CardTitle>
                         </CardHeader>
@@ -1905,7 +1892,7 @@ function Dashboard() {
                         </CardContent>
                       </Card>
                       
-                      <Card className="mt-6">
+                      <Card className="mt-6 space-y-6">
                         <CardHeader>
                           <CardTitle>Blog Performance</CardTitle>
                         </CardHeader>
