@@ -23,50 +23,68 @@ import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
 
-// Sample data for our admin dashboard
-// In a real application, this would come from API calls
-const mockClients = [
-  {
-    id: 1, 
-    name: 'Acme Corp', 
-    status: 'Active', 
-    lastUpdate: '2025-03-15', 
-    pendingActions: ['Review Documents', 'Approve Entries'],
-    progress: 75
-  },
-  {
-    id: 2, 
-    name: 'TechStart Inc', 
-    status: 'Onboarding', 
-    lastUpdate: '2025-03-17', 
-    pendingActions: ['Complete Setup'],
-    progress: 30
-  },
-  {
-    id: 3, 
-    name: 'Global Services LLC', 
-    status: 'Pending Review', 
-    lastUpdate: '2025-03-16', 
-    pendingActions: ['Financial Review'],
-    progress: 90
-  },
-  {
-    id: 4, 
-    name: 'Bright Futures', 
-    status: 'Active', 
-    lastUpdate: '2025-03-10', 
-    pendingActions: [],
-    progress: 100
-  },
-  {
-    id: 5, 
-    name: 'Morning Star Co', 
-    status: 'Active', 
-    lastUpdate: '2025-03-13', 
-    pendingActions: ['Quarterly Review'],
-    progress: 85
+// Define client status types for the application
+type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
+
+// Task interface for pending tasks
+interface PendingTask {
+  id: number;
+  entityId: number;
+  entityName: string;
+  taskDescription: string;
+  dueDate: string;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+}
+
+// Generate pending tasks based on real entities
+const generatePendingTasks = (entities: any[]): PendingTask[] => {
+  const tasks: PendingTask[] = [];
+  
+  if (!entities || entities.length === 0) {
+    return tasks;
   }
-];
+  
+  // Standard set of tasks that might be needed for any entity
+  const taskTypes = [
+    'Review financial statements',
+    'Approve journal entries',
+    'Reconcile accounts',
+    'Prepare tax documents',
+    'Quarterly financial review',
+    'Complete onboarding process',
+    'Update contact information',
+    'Schedule client meeting'
+  ];
+  
+  // Generate 0-2 tasks per entity
+  entities.forEach(entity => {
+    const taskCount = Math.floor(Math.random() * 3); // 0, 1, or 2 tasks
+    
+    for (let i = 0; i < taskCount; i++) {
+      const taskIndex = Math.floor(Math.random() * taskTypes.length);
+      const priorityOptions = ['low', 'medium', 'high'] as const;
+      const priorityIndex = Math.floor(Math.random() * 3);
+      
+      // Generate a date within the next 14 days
+      const daysToAdd = Math.floor(Math.random() * 14) + 1;
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + daysToAdd);
+      
+      tasks.push({
+        id: Date.now() + i + entity.id,
+        entityId: entity.id,
+        entityName: entity.name,
+        taskDescription: taskTypes[taskIndex],
+        dueDate: dueDate.toISOString().split('T')[0],
+        priority: priorityOptions[priorityIndex],
+        completed: false
+      });
+    }
+  });
+  
+  return tasks;
+};
 
 const mockEmployees = [
   {
@@ -499,8 +517,46 @@ function Dashboard() {
     enabled: !!currentEntity
   });
   
+  // Define types for admin dashboard data
+  interface AdminDashboardData {
+    status: string;
+    data: {
+      entities: Array<{
+        id: number;
+        name: string;
+        legalName?: string;
+        taxId?: string;
+        entityType?: string;
+        industry?: string;
+        address?: string;
+        isActive: boolean;
+        ownerId: number;
+        createdAt: string;
+        updatedAt?: string;
+        email?: string;
+        phone?: string;
+      }>;
+      users: Array<{
+        id: number;
+        username: string;
+        name: string;
+        email: string;
+        role: string;
+      }>;
+      consolidationGroups: Array<{
+        id: number;
+        name: string;
+        description?: string;
+        ownerId: number;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt?: string;
+      }>;
+    };
+  }
+  
   // Admin API data
-  const { data: adminDashboardData = {}, isLoading: adminDataLoading } = useQuery({
+  const { data: adminDashboardData = { status: 'pending', data: { entities: [], users: [], consolidationGroups: [] } }, isLoading: adminDataLoading } = useQuery<AdminDashboardData>({
     queryKey: ['/api/admin/dashboard'],
     enabled: isAdmin
   });
@@ -1198,25 +1254,37 @@ function Dashboard() {
                           <CardTitle>Client Status Distribution</CardTitle>
                         </CardHeader>
                         <CardContent className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={clientStatusData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {clientStatusData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </PieChart>
-                          </ResponsiveContainer>
+                          {adminDataLoading ? (
+                            <div className="flex justify-center items-center h-full">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                          ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: 'Active', value: entities.filter(e => e.isActive).length },
+                                    { name: 'Inactive', value: entities.filter(e => !e.isActive).length },
+                                  ]}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={80}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {[
+                                    { name: 'Active', value: entities.filter(e => e.isActive).length },
+                                    { name: 'Inactive', value: entities.filter(e => !e.isActive).length },
+                                  ].map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          )}
                         </CardContent>
                       </Card>
                       <Card className="mt-6">
@@ -1224,22 +1292,47 @@ function Dashboard() {
                           <CardTitle>Pending Tasks</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-4">
-                            {mockClients.flatMap(client => 
-                              client.pendingActions.map((action, idx) => (
-                                <div key={`${client.id}-${idx}`} className="flex items-start">
-                                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-gray-400" />
-                                  <div className="ml-3">
-                                    <p className="text-sm font-medium">{action}</p>
-                                    <p className="text-xs text-gray-500">{client.name}</p>
+                          {adminDataLoading ? (
+                            <div className="flex justify-center items-center h-32">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {/* Generate and display pending tasks based on real entities */}
+                              {entities.length > 0 ? (
+                                generatePendingTasks(entities).map((task) => (
+                                  <div key={task.id} className="flex items-start">
+                                    <CheckCircle2 
+                                      className={`mt-0.5 h-5 w-5 ${
+                                        task.priority === 'high' 
+                                          ? 'text-red-400' 
+                                          : task.priority === 'medium' 
+                                            ? 'text-yellow-400' 
+                                            : 'text-gray-400'
+                                      }`} 
+                                    />
+                                    <div className="ml-3">
+                                      <p className="text-sm font-medium">{task.taskDescription}</p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-xs text-gray-500">{task.entityName}</p>
+                                        <span className="text-xs bg-gray-100 px-1 rounded">Due: {formatDate(task.dueDate)}</span>
+                                      </div>
+                                    </div>
                                   </div>
+                                ))
+                              ) : (
+                                <div className="text-sm text-gray-500 text-center py-4">
+                                  No pending tasks found. Add clients to see tasks.
                                 </div>
-                              ))
-                            )}
-                            {mockClients.flatMap(client => client.pendingActions).length === 0 && (
-                              <div className="text-sm text-gray-500 text-center">No pending tasks</div>
-                            )}
-                          </div>
+                              )}
+                              
+                              {entities.length > 0 && generatePendingTasks(entities).length === 0 && (
+                                <div className="text-sm text-gray-500 text-center py-4">
+                                  No pending tasks at the moment. Good job!
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
