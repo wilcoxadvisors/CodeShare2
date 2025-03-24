@@ -1009,30 +1009,12 @@ function Dashboard() {
                 </div>
                 
                 <TabsList className="mb-4">
-                  <TabsTrigger value="setup">Setup</TabsTrigger>
                   <TabsTrigger value="client-management">Client Management</TabsTrigger>
                   <TabsTrigger value="employee-management">Employee Management</TabsTrigger>
                   <TabsTrigger value="billing">Billing</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="content-management">Website Content</TabsTrigger>
                 </TabsList>
-                
-                {/* Setup Tab */}
-                <TabsContent value="setup">
-                  <div className="grid grid-cols-1 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Account Setup</CardTitle>
-                        <CardDescription>
-                          Complete these steps to set up your financial dashboard
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <SetupStepper />
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
                 
                 {/* Client Management Tab */}
                 <TabsContent value="client-management">
