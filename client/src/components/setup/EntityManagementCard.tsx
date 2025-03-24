@@ -34,7 +34,6 @@ const INDUSTRY_OPTIONS = [
 
 // Entity type options
 const ENTITY_TYPE_OPTIONS = [
-  { value: "company", label: "Company" },
   { value: "llc", label: "LLC" },
   { value: "partnership", label: "Partnership" },
   { value: "soleProprietorship", label: "Sole Proprietorship" },
@@ -86,7 +85,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
       name: clientData?.name || "",
       legalName: clientData?.legalName || "",
       taxId: clientData?.taxId || "",
-      entityType: "company",
+      entityType: "llc",
       industry: clientData?.industry || "",
       address: clientData?.address || "",
       phone: clientData?.phone || "",
@@ -102,7 +101,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         name: clientData.name || "",
         legalName: clientData.legalName || "",
         taxId: clientData.taxId || "",
-        entityType: "company",
+        entityType: "llc",
         industry: clientData.industry || "",
         address: clientData.address || "",
         phone: clientData.phone || "",
