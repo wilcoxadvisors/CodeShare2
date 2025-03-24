@@ -27,16 +27,6 @@ const SETUP_STEPS = [
     description: "Organize entities for reporting"
   },
   {
-    id: "accounts",
-    title: "Chart of Accounts",
-    description: "Set up your accounting structure"
-  },
-  {
-    id: "import",
-    title: "Data Import",
-    description: "Import your financial data"
-  },
-  {
     id: "summary",
     title: "Summary & Activation",
     description: "Review and complete setup"
