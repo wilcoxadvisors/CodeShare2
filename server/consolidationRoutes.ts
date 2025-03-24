@@ -46,7 +46,11 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
-    // Since we checked group is not null above, this assertion is safe
+    // TypeScript needs us to check again here
+    if (!group) {
+      throwNotFound('Consolidation Group');
+    }
+    
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have access to this consolidation group');
     }
@@ -89,7 +93,11 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
-    // Since we checked group is not null above, this assertion is safe
+    // TypeScript needs us to check again here even though we already checked above
+    if (!group) {
+      throwNotFound('Consolidation Group');
+    }
+    
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to update this consolidation group');
     }
@@ -114,7 +122,11 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
 
     // Check if user has access to this group
     const authUser = req.user as AuthUser;
-    // Since we checked group is not null above, this assertion is safe
+    // TypeScript needs us to check again here even though we already checked above
+    if (!group) {
+      throwNotFound('Consolidation Group');
+    }
+    
     if (group.createdBy !== authUser.id && authUser.role !== 'admin') {
       throwUnauthorized('You do not have permission to delete this consolidation group');
     }
@@ -254,8 +266,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
    * Only accessible to admins unless onlyMine=true
    */
   app.post('/api/consolidation-groups/cleanup-empty', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    // @ts-ignore - user is added by isAuthenticated middleware
-    const user: AuthUser = req.user;
+    const user = req.user as AuthUser;
     const onlyMine = req.query.onlyMine === 'true';
     
     // Only admins can clean up all groups, other users can only clean up their own
