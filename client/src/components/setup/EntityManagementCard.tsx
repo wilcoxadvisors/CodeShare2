@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { HelpCircle, Plus, Edit, Trash2, CheckCircle, AlertCircle } from "lucide-react";
+import { HelpCircle, Plus, Edit, Trash2, CheckCircle, AlertCircle, Copy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -73,7 +73,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
   const isAdmin = user?.role === UserRole.ADMIN;
   
   // Fetch entities
-  const { data: entities = [], isLoading, refetch } = useQuery({
+  const { data: entities = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ['/api/entities'],
     enabled: !!user
   });
@@ -119,6 +119,15 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
   // Create entity mutation
   const createEntityMutation = useMutation({
     mutationFn: async (data: EntityFormValues) => {
+      // Ensure ownerId is explicitly set
+      if (!data.ownerId && user?.id) {
+        data.ownerId = user.id;
+      }
+      
+      if (!data.ownerId) {
+        throw new Error("Owner ID is required but missing. Please try logging in again.");
+      }
+      
       // Use admin endpoint if user is admin
       const endpoint = isAdmin ? '/api/admin/entities' : '/api/entities';
       return await apiRequest(endpoint, {
@@ -226,14 +235,34 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
   // Handle form submission
   const onSubmit = async (data: EntityFormValues) => {
     setIsSubmitting(true);
+    
+    // Always ensure ownerId is set
+    if (!data.ownerId && user?.id) {
+      data.ownerId = user.id;
+    }
+    
     try {
+      if (!data.ownerId) {
+        toast({
+          title: "Error",
+          description: "Owner ID is required. Please try logging in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (isEditing && currentEntityId) {
         await updateEntityMutation.mutateAsync({ id: currentEntityId, data });
       } else {
         await createEntityMutation.mutateAsync(data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting entity form:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save entity. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
