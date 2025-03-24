@@ -212,7 +212,14 @@ function Header() {
           
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex-shrink-0 md:flex md:items-center">
-              <EntitySelector />
+              {/* EntitySelector dropdown trigger button */}
+              <div className="relative">
+                <button 
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  Select Entities
+                </button>
+              </div>
               
               <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                 <Bell className="h-6 w-6" />
