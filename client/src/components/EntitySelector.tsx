@@ -14,6 +14,9 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Search } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 interface Entity {
   id: number;
@@ -26,9 +29,9 @@ interface Entity {
 }
 
 interface EntitySelectorProps {
-  entities: Entity[];
-  selectedEntityIds: number[];
-  onChange: (entityIds: number[]) => void;
+  entities?: Entity[];
+  selectedEntityIds?: number[];
+  onChange?: (entityIds: number[]) => void;
 }
 
 export default function EntitySelector({ 
@@ -36,6 +39,7 @@ export default function EntitySelector({
   selectedEntityIds = [], 
   onChange 
 }: EntitySelectorProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   
   const filteredEntities = entities?.filter(entity => {
@@ -49,6 +53,8 @@ export default function EntitySelector({
   }) || [];
 
   const handleToggleEntity = (entityId: number) => {
+    if (!onChange) return;
+    
     let newSelectedIds;
     
     if (selectedEntityIds.includes(entityId)) {
@@ -63,6 +69,8 @@ export default function EntitySelector({
   };
 
   const handleSelectAll = () => {
+    if (!onChange) return;
+    
     if (filteredEntities.length === selectedEntityIds.length) {
       // If all are selected, deselect all
       onChange([]);
@@ -93,12 +101,16 @@ export default function EntitySelector({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
-                  <Checkbox 
-                    id="select-all"
-                    checked={areAllSelected}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all entities"
-                  />
+                  {onChange ? (
+                    <Checkbox 
+                      id="select-all"
+                      checked={areAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all entities"
+                    />
+                  ) : (
+                    <span className="w-4 h-4 block"></span>
+                  )}
                 </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="hidden md:table-cell">Type</TableHead>
@@ -110,7 +122,18 @@ export default function EntitySelector({
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                     {!entities || entities.length === 0 
-                      ? "No entities available. Create entities first."
+                      ? (
+                        <div className="flex flex-col items-center">
+                          <span>No entities available</span>
+                          {user?.role === 'admin' && (
+                            <Link href="/dashboard">
+                              <Button variant="link" className="mt-1 p-0 text-primary-600">
+                                Manage entities
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      )
                       : "No entities match your search query."}
                   </TableCell>
                 </TableRow>
@@ -119,12 +142,16 @@ export default function EntitySelector({
                   <TableRow key={entity.id} className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleToggleEntity(entity.id)}>
                     <TableCell>
-                      <Checkbox
-                        checked={selectedEntityIds.includes(entity.id)}
-                        onCheckedChange={() => handleToggleEntity(entity.id)}
-                        aria-label={`Select ${entity.name}`}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      {onChange ? (
+                        <Checkbox
+                          checked={selectedEntityIds.includes(entity.id)}
+                          onCheckedChange={() => handleToggleEntity(entity.id)}
+                          aria-label={`Select ${entity.name}`}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span className="w-4 h-4 block"></span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{entity.name}</div>

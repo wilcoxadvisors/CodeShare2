@@ -1,0 +1,49 @@
+Warning: Encountered two children with the same key, &#x60;1742840653190&#x60;. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+    at div
+    at div
+    at _c9 (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at div
+    at div
+    at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=8f872fe9:41:13
+    at Presence (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AZCBCMZO.js?v=8f872fe9:24:11)
+    at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=8f872fe9:175:13
+    at _c5 (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=8f872fe9:41:13
+    at Provider (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LSQNWB54.js?v=8f872fe9:38:15)
+    at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=8f872fe9:53:7
+    at div
+    at div
+    at div
+    at Dashboard (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/pages/Dashboard.tsx:474:20)
+    at ProtectedRoute (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/App.tsx?v=goXOp9SjDrIhgSRrXCRT9:565:38)
+    at main
+    at div
+    at div
+    at AppLayout (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/App.tsx?v=goXOp9SjDrIhgSRrXCRT9:605:22)
+    at Route (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=8f872fe9:191:16)
+    at Switch (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=8f872fe9:247:17)
+    at Router (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/App.tsx?v=goXOp9SjDrIhgSRrXCRT9:637:20)
+    at AppWithAuth (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/App.tsx?v=goXOp9SjDrIhgSRrXCRT9:907:52)
+    at UIProvider (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/contexts/UIContext.tsx:20:30)
+    at EntityProvider (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/contexts/EntityContext.tsx:22:34)
+    at AuthProvider (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/contexts/AuthContext.tsx:20:32)
+    at QueryClientProvider (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=8f872fe9:2805:3)
+    at App
+onChange is not a function
+onChange is not a function
+onChange is not a function
+onChange is not a function
+at Object.handleSelectAll [as current] (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/src/components/EntitySelector.tsx:56:7)
+at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LSQNWB54.js?v=8f872fe9:99:61
+at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BTIBV3P6.js?v=8f872fe9:28:30
+at https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-checkbox.js?v=8f872fe9:93:13
+at handleEvent (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OD433RWB.js?v=8f872fe9:6:49)
+at HTMLUnknownElement.callCallback2 (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=8f872fe9:3674:22)
+at Object.invokeGuardedCallbackDev (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=8f872fe9:3699:24)
+at invokeGuardedCallback (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=8f872fe9:3733:39)
+at invokeGuardedCallbackAndCatchFirstError (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=8f872fe9:3736:33)
+at executeDispatch (https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=8f872fe9:7014:11)
