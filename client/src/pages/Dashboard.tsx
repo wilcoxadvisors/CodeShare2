@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX } from "lucide-react";
 import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -1189,62 +1189,78 @@ function Dashboard() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Client Name</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Progress</TableHead>
-                                <TableHead>Last Update</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredClients.map((entity) => (
-                                <TableRow key={entity.id}>
-                                  <TableCell className="font-medium">{entity.name}</TableCell>
-                                  <TableCell>
-                                    <Badge className={getStatusColor(entity.isActive ? 'Active' : 'Inactive')}>
-                                      {entity.isActive ? 'Active' : 'Inactive'}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center">
-                                      {/* Progress based on entity completeness */}
-                                      <Progress value={entity.isActive ? 100 : 50} className="h-2 w-32" />
-                                      <span className="ml-2 text-xs">{entity.isActive ? 100 : 50}%</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>{formatDate(entity.updatedAt || entity.createdAt)}</TableCell>
-                                  <TableCell className="text-right">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                          <MoreVertical className="h-4 w-4" />
-                                          <span className="sr-only">More options</span>
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem>
-                                          <Eye className="mr-2 h-4 w-4" />
-                                          View Details
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem>
-                                          <MessageSquare className="mr-2 h-4 w-4" />
-                                          Send Message
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem>
-                                          <Pen className="mr-2 h-4 w-4" />
-                                          Edit Entity
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </TableCell>
+                          {adminDataLoading ? (
+                            <div className="flex justify-center items-center py-16">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                          ) : filteredClients.length > 0 ? (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Client Name</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Progress</TableHead>
+                                  <TableHead>Last Update</TableHead>
+                                  <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {filteredClients.map((entity) => (
+                                  <TableRow key={entity.id}>
+                                    <TableCell className="font-medium">{entity.name}</TableCell>
+                                    <TableCell>
+                                      <Badge className={getStatusColor(entity.isActive ? 'Active' : 'Inactive')}>
+                                        {entity.isActive ? 'Active' : 'Inactive'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center">
+                                        {/* Progress based on entity completeness */}
+                                        <Progress value={entity.isActive ? 100 : 50} className="h-2 w-32" />
+                                        <span className="ml-2 text-xs">{entity.isActive ? 100 : 50}%</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>{formatDate(entity.updatedAt || entity.createdAt)}</TableCell>
+                                    <TableCell className="text-right">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon">
+                                            <MoreVertical className="h-4 w-4" />
+                                            <span className="sr-only">More options</span>
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                          <DropdownMenuItem>
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            View Details
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem>
+                                            <MessageSquare className="mr-2 h-4 w-4" />
+                                            Send Message
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem>
+                                            <Pen className="mr-2 h-4 w-4" />
+                                            Edit Entity
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          ) : (
+                            <div className="text-center py-10 text-muted-foreground">
+                              <Search className="mx-auto h-10 w-10 text-muted-foreground/50 mb-4" />
+                              <h3 className="font-medium text-lg mb-2">No entities available</h3>
+                              <p className="text-sm mb-4">Create new entities to see them listed here.</p>
+                              <Button size="sm" onClick={() => setIsAddClientDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add New Entity
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
