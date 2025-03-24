@@ -1031,7 +1031,7 @@ function Dashboard() {
                                   Add Client
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="sm:max-w-[600px]">
+                              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
                                   <DialogTitle>Client Setup Wizard</DialogTitle>
                                   <DialogDescription>
