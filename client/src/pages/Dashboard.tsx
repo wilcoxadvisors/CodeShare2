@@ -22,6 +22,7 @@ import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertic
 import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
+import SetupStepper from "../components/setup/SetupStepper";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -1008,12 +1009,30 @@ function Dashboard() {
                 </div>
                 
                 <TabsList className="mb-4">
+                  <TabsTrigger value="setup">Setup</TabsTrigger>
                   <TabsTrigger value="client-management">Client Management</TabsTrigger>
                   <TabsTrigger value="employee-management">Employee Management</TabsTrigger>
                   <TabsTrigger value="billing">Billing</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="content-management">Website Content</TabsTrigger>
                 </TabsList>
+                
+                {/* Setup Tab */}
+                <TabsContent value="setup">
+                  <div className="grid grid-cols-1 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Account Setup</CardTitle>
+                        <CardDescription>
+                          Complete these steps to set up your financial dashboard
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <SetupStepper />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
                 
                 {/* Client Management Tab */}
                 <TabsContent value="client-management">
