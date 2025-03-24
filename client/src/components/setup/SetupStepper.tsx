@@ -161,26 +161,6 @@ export default function SetupStepper() {
               </div>
             )}
             
-            {currentStep === "accounts" && (
-              <div className="text-center p-8">
-                <p className="text-lg font-medium mb-4">Chart of Accounts</p>
-                <p className="text-muted-foreground mb-6">
-                  Configure your chart of accounts or import an existing chart of accounts structure.
-                </p>
-                <Button onClick={handleNext}>Continue</Button>
-              </div>
-            )}
-            
-            {currentStep === "import" && (
-              <div className="text-center p-8">
-                <p className="text-lg font-medium mb-4">Data Import</p>
-                <p className="text-muted-foreground mb-6">
-                  Import your financial data from CSV files or connect to other systems.
-                </p>
-                <Button onClick={handleNext}>Continue</Button>
-              </div>
-            )}
-            
             {currentStep === "summary" && (
               <div className="text-center p-8">
                 <p className="text-lg font-medium mb-4">Setup Complete!</p>

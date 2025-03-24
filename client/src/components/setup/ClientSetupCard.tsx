@@ -36,7 +36,10 @@ const clientSetupSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Please enter a valid email address" }).optional(),
-  website: z.string().url({ message: "Please enter a valid URL" }).optional(),
+  website: z.string().optional().refine(
+    (val) => !val || val === "" || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("www."),
+    { message: "Website should start with http://, https://, or www." }
+  ),
   notes: z.string().optional()
 });
 
