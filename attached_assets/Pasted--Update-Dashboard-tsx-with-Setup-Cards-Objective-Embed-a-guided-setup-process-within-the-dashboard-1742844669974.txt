@@ -1,0 +1,54 @@
+. Update Dashboard.tsx with Setup Cards
+Objective: Embed a guided setup process within the dashboard using card-based components.
+
+Tasks:
+Create/Update Components in client/src/components/:
+ClientSetupCard.tsx: Collects client details (e.g., company name, admin email).
+EntityManagementCard.tsx: Allows adding entities, enforcing a minimum of one entity.
+ConsolidationGroupCard.tsx: Manages consolidation groups via the junction table.
+ChartOfAccountsCard.tsx: Handles Chart of Accounts creation or import.
+DataImportCard.tsx: Facilitates financial data uploads (e.g., Trial Balance).
+SetupSummaryCard.tsx: Displays a summary for review and activation.
+Integrate into Dashboard.tsx:
+Use a stepper to guide users through the setup steps.
+Render each card conditionally based on the current step.
+Approach:
+Use useState to track the activeStep.
+Implement form validation within each card, saving data to the backend upon completion.
+2. Implement Stepper Logic
+Objective: Provide a clear, sequential setup process with progression controls.
+
+Tasks:
+Add a stepper component (e.g., Material-UI’s Stepper) to Dashboard.tsx with steps: "Client Info," "Entities," "Consolidation," "Chart of Accounts," "Data Import," and "Summary."
+Disable the "Next" button until the current step’s requirements are met (e.g., at least one entity added).
+Approach:
+Manage activeStep with useState.
+Pass onNext and onBack callbacks to each card for navigation control.
+3. Enhance User Experience
+Objective: Ensure the setup process is intuitive and accessible.
+
+Tasks:
+Add tooltips and help icons (e.g., "Enter the company’s legal name").
+Display clear, user-friendly error messages for validation failures.
+Meet WCAG 2.1 accessibility standards (e.g., proper contrast, keyboard navigation).
+Approach:
+Leverage Tailwind CSS for responsive design.
+Implement ARIA labels and roles using components from client/src/components/ui/.
+4. Integrate with Backend
+Objective: Connect each setup step to the backend for data persistence.
+
+Tasks:
+Use axios or @tanstack/react-query (from package.json) for API calls.
+Handle errors gracefully with user-friendly feedback.
+Approach:
+Define API endpoints in server/routes/ (e.g., clients.js, entities.js).
+Use react-hook-form with Zod (from client/src/lib/validation.ts) for form validation.
+5. Implement Summary and Activation
+Objective: Allow users to review and finalize the setup.
+
+Tasks:
+In SetupSummaryCard.tsx, fetch and display all entered data.
+Add an "Activate" button to complete the process.
+Approach:
+Use fetch or axios to retrieve summary data.
+Send a POST request to activate the setup upon confirmation.
