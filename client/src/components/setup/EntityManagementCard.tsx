@@ -78,24 +78,24 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
     enabled: !!user
   });
   
-  // Initialize form
+  // Initialize form with empty values (not pre-populated from client data)
   const form = useForm<EntityFormValues>({
     resolver: zodResolver(entitySchema),
     defaultValues: {
-      name: clientData?.name || "",
-      legalName: clientData?.legalName || "",
-      taxId: clientData?.taxId || "",
+      name: "",
+      legalName: "",
+      taxId: "",
       entityType: "llc",
-      industry: clientData?.industry || "",
-      address: clientData?.address || "",
-      phone: clientData?.phone || "",
-      email: clientData?.email || "",
+      industry: "",
+      address: "",
+      phone: "",
+      email: "",
       ownerId: user?.id
     }
   });
   
-  // Reset form when clientData changes
-  useEffect(() => {
+  // Helper function to create entity from client data
+  const populateFromClientData = () => {
     if (clientData) {
       form.reset({
         name: clientData.name || "",
@@ -108,8 +108,13 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         email: clientData.email || "",
         ownerId: user?.id
       });
+      
+      toast({
+        title: "Form Populated",
+        description: "Entity form has been populated with client data.",
+      });
     }
-  }, [clientData, form, user]);
+  };
   
   // Create entity mutation
   const createEntityMutation = useMutation({
@@ -302,9 +307,23 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
       </CardHeader>
       <CardContent>
         <div className="mb-6">
-          <h3 className="text-lg font-medium mb-4">
-            {isEditing ? "Edit Entity" : "Add New Entity"}
-          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">
+              {isEditing ? "Edit Entity" : "Add New Entity"}
+            </h3>
+            {clientData && !isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={populateFromClientData}
+                className="flex items-center gap-1"
+              >
+                <Copy className="h-4 w-4" />
+                Use Client Data
+              </Button>
+            )}
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
