@@ -73,7 +73,7 @@ const generatePendingTasks = (entities: any[]): PendingTask[] => {
       dueDate.setDate(dueDate.getDate() + daysToAdd);
       
       tasks.push({
-        id: Date.now() + i + entity.id,
+        id: entity.id * 1000 + i, // Use a deterministic numeric ID based on entity ID and index
         entityId: entity.id,
         entityName: entity.name,
         taskDescription: taskTypes[taskIndex],
@@ -1385,7 +1385,11 @@ function Dashboard() {
                         </CardHeader>
                         <CardContent className="h-64">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={mockEmployees.map(e => ({ name: e.name, clients: e.assignedClients.length }))}>
+                            <BarChart data={mockEmployees.map(e => ({ 
+                                id: e.id, // Adding id from the original object
+                                name: e.name, 
+                                clients: e.assignedClients.length 
+                              }))}>
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="name" />
                               <YAxis />
