@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function checkAuthStatus() {
       try {
+        console.log('Checking authentication status...');
+        
         // Use fetch with credentials explicitly included
         const response = await fetch('/api/auth/me', {
           method: 'GET',
@@ -35,15 +37,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: 'include' // This is crucial for session cookies
         });
         
+        console.log('Auth check response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('User authenticated:', data);
           setUser(data.user);
         } else {
+          // Check response body for error details
+          try {
+            const errorData = await response.text();
+            console.log('Auth check error response:', errorData);
+          } catch (e) {
+            console.log('Could not read error response');
+          }
+          
           // Check if we're on the home page, which allows guest access
           const isHomePage = window.location.pathname === '/';
+          console.log('Current path:', window.location.pathname, 'Is home page:', isHomePage);
           
           if (isHomePage) {
             // Create a guest user for home page
+            console.log('Setting guest user for home page');
             setUser({
               id: 0,
               username: 'guest',
@@ -71,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log('Login attempt with:', username);
+      
       // Use fetch directly with credentials included to properly handle session cookies
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -81,12 +98,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include' // This is crucial for session cookies
       });
       
+      // Log response status
+      console.log('Login response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Login failed');
+        const errorText = await response.text();
+        console.error('Login response error:', errorText);
+        throw new Error(`Login failed with status ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Login successful, user data:', data);
       setUser(data.user);
+      
+      // Verify session after login
+      setTimeout(async () => {
+        try {
+          const sessionCheck = await fetch('/api/auth/me', {
+            credentials: 'include'
+          });
+          const sessionData = await sessionCheck.json();
+          console.log('Session check after login:', sessionData);
+        } catch (err) {
+          console.error('Session check error:', err);
+        }
+      }, 500);
+      
       return true;
     } catch (error) {
       console.error('Login failed:', error);
