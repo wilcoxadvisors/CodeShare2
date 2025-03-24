@@ -134,7 +134,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         name: "",
         legalName: "",
         taxId: "",
-        entityType: "company",
+        entityType: "llc",
         industry: "",
         address: "",
         phone: "",
@@ -173,7 +173,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         name: "",
         legalName: "",
         taxId: "",
-        entityType: "company",
+        entityType: "llc",
         industry: "",
         address: "",
         phone: "",
@@ -244,7 +244,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
       name: entity.name,
       legalName: entity.legalName,
       taxId: entity.taxId || "",
-      entityType: entity.entityType || "company",
+      entityType: entity.entityType || "llc",
       industry: entity.industry,
       address: entity.address || "",
       phone: entity.phone || "",
@@ -268,7 +268,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
       name: "",
       legalName: "",
       taxId: "",
-      entityType: "company",
+      entityType: "llc",
       industry: "",
       address: "",
       phone: "",
@@ -520,7 +520,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
                   {entities.map((entity: any) => (
                     <TableRow key={entity.id}>
                       <TableCell className="font-medium">{entity.name}</TableCell>
-                      <TableCell>{entity.entityType || "Company"}</TableCell>
+                      <TableCell>{entity.entityType || "LLC"}</TableCell>
                       <TableCell>{entity.industry}</TableCell>
                       <TableCell>
                         <Badge variant={entity.isActive ? "default" : "outline"} className="flex items-center w-fit">
