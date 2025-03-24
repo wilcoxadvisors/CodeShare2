@@ -38,23 +38,39 @@ async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGro
 
 async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
   try {
-    // Insert the group
-    const [newGroup] = await db.insert(consolidationGroups).values({
-      name: group.name,
-      ownerId: group.ownerId,
-      createdBy: group.createdBy,
-      startDate: group.startDate,
-      endDate: group.endDate,
-      description: group.description || null,
-      currency: group.currency || 'USD',
-      periodType: group.periodType || 'monthly',
-      rules: group.rules || {},
-      isActive: group.isActive !== undefined ? group.isActive : true,
-      entity_ids: group.entity_ids || [],
-      icon: group.icon || null
-    }).returning();
-
-    return newGroup;
+    // Use a transaction to ensure data consistency
+    return await db.transaction(async (tx) => {
+      // Insert the consolidation group
+      const [newGroup] = await tx.insert(consolidationGroups).values({
+        name: group.name,
+        ownerId: group.ownerId,
+        createdBy: group.createdBy,
+        startDate: group.startDate,
+        endDate: group.endDate,
+        description: group.description || null,
+        currency: group.currency || 'USD',
+        periodType: group.periodType || 'monthly',
+        rules: group.rules || {},
+        isActive: group.isActive !== undefined ? group.isActive : true,
+        icon: group.icon || null
+      }).returning();
+      
+      // Process entities if provided
+      if (group.entities && group.entities.length > 0) {
+        // Create entries in the junction table for each entity
+        const junctionRecords = group.entities.map(entityId => ({
+          groupId: newGroup.id,
+          entityId: entityId
+        }));
+        
+        // Insert all records into the junction table
+        await tx.insert(consolidationGroupEntities)
+          .values(junctionRecords)
+          .onConflictDoNothing();
+      }
+      
+      return newGroup;
+    });
   } catch (err) {
     console.error('Error creating consolidation group:', err);
     throwInternal('Failed to create consolidation group');
@@ -63,22 +79,50 @@ async createConsolidationGroup(group: InsertConsolidationGroup): Promise<Consoli
 
 async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
   try {
+    // Check if the group exists
     const existingGroup = await this.getConsolidationGroup(id);
     if (!existingGroup) return undefined;
     
-    // Make sure we're using entity_ids not entityIds
-    let updateData: any = { ...group, updatedAt: new Date() };
-    if (group.entityIds) {
-      updateData.entity_ids = group.entityIds;
-      delete updateData.entityIds;
+    // Prepare update data
+    const updateData: Partial<ConsolidationGroup> = {
+      ...group,
+      updatedAt: new Date() 
+    };
+    
+    // Remove entities field from direct update as we handle it separately
+    if ('entities' in updateData) {
+      delete updateData.entities;
     }
     
-    const [updatedGroup] = await db.update(consolidationGroups)
-      .set(updateData)
-      .where(eq(consolidationGroups.id, id))
-      .returning();
-    
-    return updatedGroup;
+    // Use a transaction to ensure data consistency
+    return await db.transaction(async (tx) => {
+      // Update the group first
+      const [updatedGroup] = await tx.update(consolidationGroups)
+        .set(updateData)
+        .where(eq(consolidationGroups.id, id))
+        .returning();
+      
+      // If entity IDs were provided, update them in the junction table
+      if (group.entities && Array.isArray(group.entities)) {
+        // First remove all existing associations
+        await tx.delete(consolidationGroupEntities)
+          .where(eq(consolidationGroupEntities.groupId, id));
+        
+        // Then add all the new ones
+        const junctionRecords = group.entities.map(entityId => ({
+          groupId: id,
+          entityId: entityId
+        }));
+        
+        if (junctionRecords.length > 0) {
+          await tx.insert(consolidationGroupEntities)
+            .values(junctionRecords)
+            .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] });
+        }
+      }
+      
+      return updatedGroup;
+    });
   } catch (err) {
     console.error('Error updating consolidation group:', err);
     throwInternal('Failed to update consolidation group');
@@ -87,8 +131,16 @@ async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): 
 
 async deleteConsolidationGroup(id: number): Promise<void> {
   try {
-    await db.delete(consolidationGroups)
-      .where(eq(consolidationGroups.id, id));
+    // Use a transaction to delete both the group and its junction table entries
+    await db.transaction(async (tx) => {
+      // First delete related junction table entries
+      await tx.delete(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, id));
+      
+      // Then delete the group itself
+      await tx.delete(consolidationGroups)
+        .where(eq(consolidationGroups.id, id));
+    });
   } catch (err) {
     console.error('Error deleting consolidation group:', err);
     throwInternal('Failed to delete consolidation group');
@@ -97,19 +149,32 @@ async deleteConsolidationGroup(id: number): Promise<void> {
 
 async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<void> {
   try {
+    // Check if the group exists
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Get existing entity_ids array or initialize an empty one
-    const entity_ids = group.entity_ids || [];
+    // Check if the entity exists
+    const entityExists = await db.query.entities.findFirst({
+      where: eq(entities.id, entityId)
+    });
     
-    // Add entity to group's entity_ids array if not already there
-    if (!entity_ids.includes(entityId)) {
-      entity_ids.push(entityId);
-      await db.update(consolidationGroups)
-        .set({ entity_ids })
-        .where(eq(consolidationGroups.id, groupId));
+    if (!entityExists) {
+      throw new Error(`Entity ${entityId} not found`);
     }
+    
+    // Add the entity to the junction table
+    await db.insert(consolidationGroupEntities)
+      .values({
+        groupId,
+        entityId
+      })
+      .onConflictDoNothing({ target: [consolidationGroupEntities.groupId, consolidationGroupEntities.entityId] });
+    
+    // Update the timestamp on the group
+    await db.update(consolidationGroups)
+      .set({ updatedAt: new Date() })
+      .where(eq(consolidationGroups.id, groupId));
+      
   } catch (err) {
     console.error('Error adding entity to consolidation group:', err);
     throwInternal('Failed to add entity to consolidation group');
@@ -118,15 +183,24 @@ async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<
 
 async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<void> {
   try {
+    // Check if the group exists
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    // Filter the entity out of the entity_ids array
-    const entity_ids = (group.entity_ids || []).filter(id => id !== entityId);
+    // Remove the entity from the junction table
+    await db.delete(consolidationGroupEntities)
+      .where(
+        and(
+          eq(consolidationGroupEntities.groupId, groupId),
+          eq(consolidationGroupEntities.entityId, entityId)
+        )
+      );
     
+    // Update the timestamp on the group
     await db.update(consolidationGroups)
-      .set({ entity_ids })
+      .set({ updatedAt: new Date() })
       .where(eq(consolidationGroups.id, groupId));
+      
   } catch (err) {
     console.error('Error removing entity from consolidation group:', err);
     throwInternal('Failed to remove entity from consolidation group');
@@ -135,10 +209,19 @@ async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Pro
 
 async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
   try {
+    // Get the consolidation group
     const group = await this.getConsolidationGroup(groupId);
     if (!group) throw new Error(`Consolidation group with ID ${groupId} not found`);
     
-    if (!group.entity_ids || group.entity_ids.length === 0) {
+    // Get entities from the junction table
+    const groupEntities = await db.select({ entityId: consolidationGroupEntities.entityId })
+      .from(consolidationGroupEntities)
+      .where(eq(consolidationGroupEntities.groupId, groupId));
+    
+    // Extract entity IDs
+    const entityIds = groupEntities.map(ge => ge.entityId);
+    
+    if (entityIds.length === 0) {
       throw new Error('Cannot generate consolidated report for an empty group');
     }
     
@@ -148,9 +231,9 @@ async generateConsolidatedReport(groupId: number, reportType: ReportType, startD
     
     if (!effectiveStartDate) {
       // Default to beginning of fiscal year
-      // Use the first entity in the group's entity_ids array as the primary entity
-      const primaryEntity = group.entity_ids.length > 0 
-        ? await this.getEntity(group.entity_ids[0])
+      // Use the first entity in the group as the primary entity
+      const primaryEntity = entityIds.length > 0 
+        ? await this.getEntity(entityIds[0])
         : null;
       
       if (primaryEntity) {
@@ -170,7 +253,7 @@ async generateConsolidatedReport(groupId: number, reportType: ReportType, startD
     }
     
     // Generate reports for each entity in the group
-    const entityReports = await Promise.all(group.entity_ids.map(async (entityId) => {
+    const entityReports = await Promise.all(entityIds.map(async (entityId) => {
       let report;
       
       switch (reportType) {
@@ -220,7 +303,7 @@ async generateConsolidatedReport(groupId: number, reportType: ReportType, startD
     
     return {
       ...consolidatedReport,
-      entities: group.entity_ids,
+      entities: entityIds,
       groupName: group.name,
       groupId: group.id,
       reportType,
