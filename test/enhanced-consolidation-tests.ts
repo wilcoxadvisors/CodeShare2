@@ -74,14 +74,13 @@ async function setupTestData() {
       
     if (firstEntity.length === 0) {
       const [entity1] = await db.insert(entities)
-        .values({
+        .values([{
           name: 'Edge Case Test Entity 1',
-          legalName: 'Edge Case Test Entity 1 Legal Name',
           code: 'ECTE1',
-          entityType: 'LLC',
-          isActive: true,
+          ownerId: userId,
+          active: true,
           createdAt: new Date()
-        })
+        }])
         .returning();
         
       entity1Id = entity1.id;
@@ -96,14 +95,13 @@ async function setupTestData() {
       
     if (secondEntity.length === 0) {
       const [entity2] = await db.insert(entities)
-        .values({
+        .values([{
           name: 'Edge Case Test Entity 2',
-          legalName: 'Edge Case Test Entity 2 Legal Name',
           code: 'ECTE2',
-          entityType: 'LLC',
-          isActive: true,
+          ownerId: userId,
+          active: true,
           createdAt: new Date()
-        })
+        }])
         .returning();
         
       entity2Id = entity2.id;

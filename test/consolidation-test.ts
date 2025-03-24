@@ -96,7 +96,7 @@ async function teardownTestData(userId: number, entity1Id: number, entity2Id: nu
     
     // Also clean up any junction entries for these entities
     if (entity1Id || entity2Id) {
-      const entitiesToCleanup = [];
+      const entitiesToCleanup: number[] = [];
       if (entity1Id) entitiesToCleanup.push(entity1Id);
       if (entity2Id) entitiesToCleanup.push(entity2Id);
       

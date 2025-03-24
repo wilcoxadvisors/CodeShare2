@@ -44,27 +44,23 @@ async function testJunctionTableFunctionality() {
     
     // Create test entities
     const [entity1] = await db.insert(entities)
-      .values({
+      .values([{
         name: "Test Entity 1 Junction",
-        legalName: "Test Entity 1 Legal Name",
         code: "TE1J",
-        entityType: "company",
         ownerId: user.id,
         active: true,
         createdAt: new Date()
-      })
+      }])
       .returning();
     
     const [entity2] = await db.insert(entities)
-      .values({
+      .values([{
         name: "Test Entity 2 Junction",
-        legalName: "Test Entity 2 Legal Name",
         code: "TE2J",
-        entityType: "company",
         ownerId: user.id,
         active: true,
         createdAt: new Date()
-      })
+      }])
       .returning();
       
     console.log("Test data setup complete.");
