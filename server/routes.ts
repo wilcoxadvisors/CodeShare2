@@ -321,6 +321,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // POST route for entity creation (for non-admin users)
+  app.post("/api/entities", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as AuthUser).id;
+      
+      // Validate input
+      const validatedData = insertEntitySchema.parse({
+        ...req.body,
+        ownerId: userId, // Set current user as owner
+        isActive: true
+      });
+      
+      const entity = await storage.createEntity(validatedData);
+      res.status(201).json({
+        status: "success",
+        data: entity
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Invalid entity data", 
+          errors: error.errors 
+        });
+      }
+      console.error("Error creating entity:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // Account routes
   app.get("/api/entities/:entityId/accounts", isAuthenticated, async (req, res) => {
     try {
