@@ -72,34 +72,55 @@ async function setupTestData() {
 async function teardownTestData(userId: number, entity1Id: number, entity2Id: number, groupId?: number) {
   console.log('Cleaning up test data...');
   
-  if (groupId) {
-    // Group should have been soft-deleted already, verify it's marked inactive
-    const group = await db.select()
-      .from(consolidationGroups)
-      .where(eq(consolidationGroups.id, groupId))
-      .limit(1);
+  try {
+    // First, clean up the junction table to avoid foreign key constraints
+    if (groupId) {
+      // Remove all entity associations from the junction table for this group
+      await db.delete(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, groupId));
       
-    if (group.length > 0 && group[0].isActive) {
-      console.warn('Warning: Group should have been soft-deleted but is still active');
-      // Set it to inactive
-      await db.update(consolidationGroups)
-        .set({ isActive: false })
-        .where(eq(consolidationGroups.id, groupId));
+      // Group should have been soft-deleted already, verify it's marked inactive
+      const group = await db.select()
+        .from(consolidationGroups)
+        .where(eq(consolidationGroups.id, groupId))
+        .limit(1);
+        
+      if (group.length > 0 && group[0].isActive) {
+        console.warn('Warning: Group should have been soft-deleted but is still active');
+        // Set it to inactive
+        await db.update(consolidationGroups)
+          .set({ isActive: false })
+          .where(eq(consolidationGroups.id, groupId));
+      }
     }
-  }
-  
-  // Clean up entities
-  if (entity1Id) {
-    await db.delete(entities).where(eq(entities.id, entity1Id));
-  }
-  
-  if (entity2Id) {
-    await db.delete(entities).where(eq(entities.id, entity2Id));
-  }
-  
-  // Clean up user
-  if (userId) {
-    await db.delete(users).where(eq(users.id, userId));
+    
+    // Also clean up any junction entries for these entities
+    if (entity1Id || entity2Id) {
+      const entitiesToCleanup = [];
+      if (entity1Id) entitiesToCleanup.push(entity1Id);
+      if (entity2Id) entitiesToCleanup.push(entity2Id);
+      
+      if (entitiesToCleanup.length > 0) {
+        await db.delete(consolidationGroupEntities)
+          .where(inArray(consolidationGroupEntities.entityId, entitiesToCleanup));
+      }
+    }
+    
+    // Now clean up entities
+    if (entity1Id) {
+      await db.delete(entities).where(eq(entities.id, entity1Id));
+    }
+    
+    if (entity2Id) {
+      await db.delete(entities).where(eq(entities.id, entity2Id));
+    }
+    
+    // Clean up user
+    if (userId) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  } catch (error) {
+    console.error('Error during test cleanup:', error);
   }
 }
 
@@ -126,7 +147,7 @@ async function testConsolidationGroupsOperations() {
       createdBy: userId,
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-      entity_ids: [entity1Id], // Initially add only the first entity
+      initialEntityId: entity1Id, // Initially add only the first entity
       currency: "USD",
       periodType: BudgetPeriodType.MONTHLY
     });
@@ -141,38 +162,36 @@ async function testConsolidationGroupsOperations() {
       console.log('Testing addEntityToConsolidationGroup...');
       await addEntityToConsolidationGroup(createdGroup.id, entity2Id);
       
-      // Verify entity was added
-      const updatedGroup = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, createdGroup.id))
-        .limit(1);
+      // Verify entity was added - use junction table
+      const junctionEntities = await db.select()
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, createdGroup.id));
         
-      const entityIds = updatedGroup[0].entity_ids || [];
+      const entityIdsInJunction = junctionEntities.map(je => je.entityId);
       
-      if (entityIds.includes(entity1Id) && entityIds.includes(entity2Id)) {
+      if (entityIdsInJunction.includes(entity1Id) && entityIdsInJunction.includes(entity2Id)) {
         console.log('Entity successfully added to group');
       } else {
         console.error('Failed to add entity to group');
-        console.log('Current entity IDs:', entityIds);
+        console.log('Current entity IDs in junction table:', entityIdsInJunction);
       }
       
       // Test removing an entity
       console.log('Testing removeEntityFromConsolidationGroup...');
       await removeEntityFromConsolidationGroup(createdGroup.id, entity1Id);
       
-      // Verify entity was removed
-      const afterRemovalGroup = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, createdGroup.id))
-        .limit(1);
+      // Verify entity was removed - use junction table
+      const afterRemovalEntities = await db.select()
+        .from(consolidationGroupEntities)
+        .where(eq(consolidationGroupEntities.groupId, createdGroup.id));
         
-      const afterRemovalEntityIds = afterRemovalGroup[0].entity_ids || [];
+      const afterRemovalEntityIds = afterRemovalEntities.map(je => je.entityId);
       
       if (!afterRemovalEntityIds.includes(entity1Id) && afterRemovalEntityIds.includes(entity2Id)) {
         console.log('Entity successfully removed from group');
       } else {
         console.error('Failed to remove entity from group');
-        console.log('Current entity IDs after removal:', afterRemovalEntityIds);
+        console.log('Current entity IDs after removal in junction table:', afterRemovalEntityIds);
       }
       
       // Test updating a group
