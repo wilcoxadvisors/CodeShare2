@@ -389,7 +389,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
           </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 w-full max-w-full">
                 <FormField
                   control={form.control}
                   name="name"
@@ -531,25 +531,26 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
                   )}
                 />
                 
-                <div className="col-span-1 md:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="123 Main St, City, State, ZIP"
-                            className="min-h-[80px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="123 Main St, City, State, ZIP"
+                          className="min-h-[60px] resize-y w-full"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        The entity's primary address
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               
               <div className="flex justify-end space-x-2">
