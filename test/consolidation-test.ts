@@ -106,7 +106,25 @@ async function teardownTestData(userId: number, entity1Id: number, entity2Id: nu
       }
     }
     
-    // Now clean up entities
+    // Find and clean up any consolidation groups owned by this user
+    // This must be done before deleting the user to avoid foreign key constraint errors
+    const userGroups = await db.select({ id: consolidationGroups.id })
+      .from(consolidationGroups)
+      .where(eq(consolidationGroups.ownerId, userId));
+    
+    const userGroupIds = userGroups.map(group => group.id);
+    
+    if (userGroupIds.length > 0) {
+      // Clean up junction table entries
+      await db.delete(consolidationGroupEntities)
+        .where(inArray(consolidationGroupEntities.groupId, userGroupIds));
+      
+      // Delete the groups
+      await db.delete(consolidationGroups)
+        .where(inArray(consolidationGroups.id, userGroupIds));
+    }
+    
+    // Now clean up entities BEFORE deleting the user (foreign key constraint)
     if (entity1Id) {
       await db.delete(entities).where(eq(entities.id, entity1Id));
     }
@@ -115,7 +133,24 @@ async function teardownTestData(userId: number, entity1Id: number, entity2Id: nu
       await db.delete(entities).where(eq(entities.id, entity2Id));
     }
     
-    // Clean up user
+    // Find any other entities owned by this user and delete them
+    const userEntities = await db.select({ id: entities.id })
+      .from(entities)
+      .where(eq(entities.ownerId, userId));
+    
+    const userEntityIds = userEntities.map(entity => entity.id);
+    
+    if (userEntityIds.length > 0) {
+      // First remove any junction table entries for these entities
+      await db.delete(consolidationGroupEntities)
+        .where(inArray(consolidationGroupEntities.entityId, userEntityIds));
+      
+      // Then delete the entities
+      await db.delete(entities)
+        .where(inArray(entities.id, userEntityIds));
+    }
+    
+    // Finally clean up user
     if (userId) {
       await db.delete(users).where(eq(users.id, userId));
     }

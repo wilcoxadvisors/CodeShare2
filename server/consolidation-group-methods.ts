@@ -326,7 +326,16 @@ export async function generateConsolidatedReport(groupId: number, reportType: Re
       const entityIds: number[] = junctionEntities.map(je => je.entityId);
       
       if (entityIds.length === 0) {
-        throw new ValidationError('No entities associated with this consolidation group');
+        // Return an empty report instead of throwing an error
+        console.log(`Empty consolidation group ${groupId}, returning empty report`);
+        return { 
+          message: 'Empty consolidation group - no entities to report on',
+          groupId,
+          reportType,
+          entities: [],
+          data: [],
+          timestamp: new Date()
+        };
       }
       
       // Get detailed entity information including only active entities
@@ -494,6 +503,63 @@ export async function getEntityConsolidationGroups(entityId: number): Promise<Co
       throw err;
     }
     throw new Error('Failed to get consolidation groups for entity');
+  }
+}
+
+/**
+ * Cleans up empty consolidation groups (groups with no entities)
+ * Useful for maintenance and preventing accumulation of unused groups
+ * @param ownerId Optional - if provided, only cleans up groups owned by this user
+ * @returns The number of groups cleaned up
+ */
+export async function cleanupEmptyConsolidationGroups(ownerId?: number): Promise<number> {
+  try {
+    return await db.transaction(async (tx) => {
+      // Find all active consolidation groups
+      let query = tx
+        .select({
+          id: consolidationGroups.id
+        })
+        .from(consolidationGroups)
+        .where(eq(consolidationGroups.isActive, true));
+        
+      // Add owner filter if provided
+      if (ownerId !== undefined) {
+        query = query.where(eq(consolidationGroups.ownerId, ownerId));
+      }
+      
+      const activeGroups = await query;
+      const groupsToCleanup: number[] = [];
+      
+      // Check each group for entities
+      for (const group of activeGroups) {
+        const entities = await tx
+          .select()
+          .from(consolidationGroupEntities)
+          .where(eq(consolidationGroupEntities.groupId, group.id));
+          
+        if (entities.length === 0) {
+          groupsToCleanup.push(group.id);
+        }
+      }
+      
+      // Soft delete empty groups
+      if (groupsToCleanup.length > 0) {
+        await tx
+          .update(consolidationGroups)
+          .set({ 
+            isActive: false,
+            updatedAt: new Date()
+          })
+          .where(inArray(consolidationGroups.id, groupsToCleanup));
+      }
+      
+      console.log(`Cleaned up ${groupsToCleanup.length} empty consolidation groups`);
+      return groupsToCleanup.length;
+    });
+  } catch (error) {
+    console.error('Error cleaning up empty consolidation groups:', error);
+    return 0;
   }
 }
 

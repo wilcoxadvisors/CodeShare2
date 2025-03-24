@@ -143,15 +143,6 @@ async function teardownTestData(userId: number, entity1Id: number, entity2Id: nu
         .where(inArray(consolidationGroupEntities.entityId, entitiesToCleanup));
     }
     
-    // Now delete the entities
-    if (entity1Id) {
-      await db.delete(entities).where(eq(entities.id, entity1Id));
-    }
-    
-    if (entity2Id) {
-      await db.delete(entities).where(eq(entities.id, entity2Id));
-    }
-    
     // Find and clean up any consolidation groups owned by this user
     // This must be done before deleting the user to avoid foreign key constraint errors
     const userGroups = await db.select({ id: consolidationGroups.id })
@@ -168,6 +159,32 @@ async function teardownTestData(userId: number, entity1Id: number, entity2Id: nu
       // Delete the groups
       await db.delete(consolidationGroups)
         .where(inArray(consolidationGroups.id, userGroupIds));
+    }
+    
+    // Now delete the entities BEFORE deleting the user (foreign key constraint)
+    if (entity1Id) {
+      await db.delete(entities).where(eq(entities.id, entity1Id));
+    }
+    
+    if (entity2Id) {
+      await db.delete(entities).where(eq(entities.id, entity2Id));
+    }
+    
+    // Find any other entities owned by this user and delete them
+    const userEntities = await db.select({ id: entities.id })
+      .from(entities)
+      .where(eq(entities.ownerId, userId));
+    
+    const userEntityIds = userEntities.map(entity => entity.id);
+    
+    if (userEntityIds.length > 0) {
+      // First remove any junction table entries for these entities
+      await db.delete(consolidationGroupEntities)
+        .where(inArray(consolidationGroupEntities.entityId, userEntityIds));
+      
+      // Then delete the entities
+      await db.delete(entities)
+        .where(inArray(entities.id, userEntityIds));
     }
     
     // Finally, clean up the user
@@ -519,6 +536,129 @@ async function testDataConsistency() {
 }
 
 /**
+ * 2.5 Test Entity Deletion Behavior
+ * Verifies that removing an entity properly updates all related groups
+ */
+async function testEntityDeletionBehavior() {
+  console.log('2.5 Testing entity deletion behavior...');
+  
+  let testData;
+  let groupId1: number | undefined;
+  let groupId2: number | undefined;
+  
+  try {
+    // Setup test data
+    testData = await setupTestData();
+    const { userId, entity1Id, entity2Id } = testData;
+    
+    // Create two consolidation groups that share one entity
+    const createdGroup1 = await createConsolidationGroup({
+      name: `Entity Deletion Test Group 1 ${Date.now()}`,
+      description: "A group for testing entity deletion",
+      ownerId: userId,
+      createdBy: userId,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      initialEntityId: entity1Id,
+      currency: "USD",
+      periodType: BudgetPeriodType.MONTHLY
+    });
+    
+    console.log('Group 1 created:', createdGroup1);
+    groupId1 = createdGroup1.id;
+    
+    const createdGroup2 = await createConsolidationGroup({
+      name: `Entity Deletion Test Group 2 ${Date.now()}`,
+      description: "A second group for testing entity deletion",
+      ownerId: userId,
+      createdBy: userId,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      initialEntityId: entity1Id,
+      currency: "USD",
+      periodType: BudgetPeriodType.MONTHLY
+    });
+    
+    console.log('Group 2 created:', createdGroup2);
+    groupId2 = createdGroup2.id;
+    
+    // Add entity2 only to group1
+    await addEntityToConsolidationGroup(createdGroup1.id, entity2Id);
+    
+    // Verify entities in both groups
+    const group1Entities = await getConsolidationGroupEntities(createdGroup1.id);
+    const group2Entities = await getConsolidationGroupEntities(createdGroup2.id);
+    
+    console.log('Group 1 entities before deletion:', group1Entities);
+    console.log('Group 2 entities before deletion:', group2Entities);
+    
+    // Now remove entity1 from all groups
+    const entityGroups = await getEntityConsolidationGroups(entity1Id);
+    console.log(`Entity ${entity1Id} belongs to ${entityGroups.length} groups before deletion`);
+    
+    for (const group of entityGroups) {
+      await removeEntityFromConsolidationGroup(group.id, entity1Id);
+      console.log(`Removed entity ${entity1Id} from group ${group.id}`);
+    }
+    
+    // Verify entity1 is no longer in any groups
+    const entityGroupsAfter = await getEntityConsolidationGroups(entity1Id);
+    console.log(`Entity ${entity1Id} belongs to ${entityGroupsAfter.length} groups after deletion`);
+    
+    if (entityGroupsAfter.length === 0) {
+      console.log('Success: Entity successfully removed from all groups');
+    } else {
+      console.error('Failed: Entity still belongs to some groups after removal');
+      return false;
+    }
+    
+    // Verify group1 still has entity2
+    const group1EntitiesAfter = await getConsolidationGroupEntities(createdGroup1.id);
+    console.log('Group 1 entities after deletion:', group1EntitiesAfter);
+    
+    if (group1EntitiesAfter.length === 1 && group1EntitiesAfter.includes(entity2Id)) {
+      console.log('Success: Group 1 still contains entity2 after entity1 was removed');
+    } else {
+      console.error('Failed: Group 1 entities were incorrectly modified');
+      return false;
+    }
+    
+    // Verify group2 is now empty
+    const group2EntitiesAfter = await getConsolidationGroupEntities(createdGroup2.id);
+    console.log('Group 2 entities after deletion:', group2EntitiesAfter);
+    
+    if (group2EntitiesAfter.length === 0) {
+      console.log('Success: Group 2 is now empty as expected');
+    } else {
+      console.error('Failed: Group 2 should be empty but contains entities');
+      return false;
+    }
+    
+    // Cleanup
+    if (groupId1 && groupId2) {
+      await teardownTestData(userId, entity1Id, entity2Id, [groupId1, groupId2]);
+    }
+    
+    console.log('Entity deletion test completed successfully');
+    return true;
+  } catch (error) {
+    console.error('Error in entity deletion test:', error);
+    
+    // Cleanup on error
+    if (testData && (groupId1 || groupId2)) {
+      await teardownTestData(
+        testData.userId, 
+        testData.entity1Id, 
+        testData.entity2Id, 
+        [groupId1, groupId2].filter(Boolean) as number[]
+      );
+    }
+    
+    return false;
+  }
+}
+
+/**
  * Run all the enhanced tests
  */
 async function runEnhancedTests() {
@@ -528,7 +668,8 @@ async function runEnhancedTests() {
     testGroupWithNoEntities: await testGroupWithNoEntities(),
     testInvalidEntityId: await testInvalidEntityId(),
     testSoftDeleteBehavior: await testSoftDeleteBehavior(),
-    testDataConsistency: await testDataConsistency()
+    testDataConsistency: await testDataConsistency(),
+    testEntityDeletionBehavior: await testEntityDeletionBehavior()
   };
   
   console.log('\nTest Results Summary:');
