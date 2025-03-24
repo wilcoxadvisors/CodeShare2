@@ -525,7 +525,17 @@ export async function cleanupEmptyConsolidationGroups(ownerId?: number): Promise
         
       // Add owner filter if provided
       if (ownerId !== undefined) {
-        query = query.where(eq(consolidationGroups.ownerId, ownerId));
+        query = tx
+          .select({
+            id: consolidationGroups.id
+          })
+          .from(consolidationGroups)
+          .where(
+            and(
+              eq(consolidationGroups.isActive, true),
+              eq(consolidationGroups.ownerId, ownerId)
+            )
+          );
       }
       
       const activeGroups = await query;
