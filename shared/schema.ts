@@ -33,12 +33,35 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// Clients table (users with CLIENT role have a client record)
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  industry: text("industry"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  postalCode: text("postal_code"),
+  website: text("website"),
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  referralSource: text("referral_source"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Entity (company) table
 export const entities = pgTable("entities", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   code: text("code").notNull(),
   ownerId: integer("owner_id").references(() => users.id).notNull(),
+  clientId: integer("client_id").references(() => clients.id), // Link to client
   active: boolean("active").notNull().default(true),
   fiscalYearStart: text("fiscal_year_start").notNull().default("01-01"),
   fiscalYearEnd: text("fiscal_year_end").notNull().default("12-31"),
