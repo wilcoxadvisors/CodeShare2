@@ -335,6 +335,11 @@ export default function EntityManagementCard({
   
   // Handle form submission
   const onSubmit = async (data: EntityFormValues) => {
+    if (isSubmitting) {
+      console.log("Form submission already in progress, ignoring duplicate submit");
+      return; // Prevent multiple submissions
+    }
+    
     setIsSubmitting(true);
     
     // Always ensure ownerId is set
@@ -351,6 +356,8 @@ export default function EntityManagementCard({
         });
         return;
       }
+      
+      console.log("Submitting entity form:", isEditing ? "UPDATE" : "CREATE", data);
       
       if (isEditing && currentEntityId) {
         await updateEntityMutation.mutateAsync({ id: currentEntityId, data });
@@ -391,7 +398,18 @@ export default function EntityManagementCard({
   
   // Delete entity
   const handleDeleteEntity = (id: number) => {
+    if (!id) {
+      console.error("Cannot delete entity: Invalid ID", id);
+      toast({
+        title: "Error",
+        description: "Cannot delete entity: Invalid ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (window.confirm("Are you sure you want to delete this entity?")) {
+      console.log("Deleting entity with ID:", id);
       deleteEntityMutation.mutate(id);
     }
   };
@@ -441,11 +459,16 @@ export default function EntityManagementCard({
     console.log("Entity form reset to default values and setupEntities cleared", {clientId: clientData?.id});
   }, [clientData, form]); // Reset when clientData changes, which happens when navigating steps
   
+  // Sync setupEntities with allEntities when they change
+  useEffect(() => {
+    if (allEntities && allEntities.length > 0) {
+      console.log("Syncing setupEntities with allEntities", allEntities);
+      setSetupEntities(allEntities);
+    }
+  }, [allEntities]);
+  
   // Component mount/unmount handler to ensure clean slate
   useEffect(() => {
-    // Clear entities on mount
-    setSetupEntities([]);
-    
     return () => {
       // Clean up when component unmounts
       setIsEditing(false);
