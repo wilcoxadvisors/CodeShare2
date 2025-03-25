@@ -55,7 +55,8 @@ const entitySchema = z.object({
     (val) => !val || val === "" || val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
     { message: "Please enter a valid email address if providing one" }
   ),
-  ownerId: z.number().optional()
+  ownerId: z.number().optional(),
+  code: z.string().optional() // Adding the code field which is required in the database
 });
 
 type EntityFormValues = z.infer<typeof entitySchema>;
@@ -148,6 +149,8 @@ export default function EntityManagementCard({
         entityType: data.entityType || 'llc',
         industry: data.industry,
         isActive: true,
+        // Generate a code from the name if not provided
+        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100)
       };
 
       // Add optional fields only if they have values
@@ -213,7 +216,9 @@ export default function EntityManagementCard({
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
         industry: data.industry,
-        isActive: true
+        isActive: true,
+        // Generate a code from the name if not provided
+        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100)
       };
 
       // Add optional fields only if they have values
