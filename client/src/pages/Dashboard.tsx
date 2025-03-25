@@ -245,7 +245,7 @@ function SubscriberManagement() {
   const queryClient = useQueryClient();
 
   // Fetch blog subscribers
-  const { data: subscribers, isLoading } = useQuery({
+  const { data: subscribers = [], isLoading } = useQuery<BlogSubscriber[]>({
     queryKey: ['/api/admin/blog-subscribers'],
     enabled: true
   });
@@ -548,6 +548,16 @@ interface CashFlowData {
   financingActivities?: FinancialAccount[];
 }
 
+interface BlogSubscriber {
+  id: number;
+  email: string;
+  name?: string;
+  industry?: string;
+  isActive: boolean;
+  createdAt: string;
+  source?: string;
+}
+
 // Define types for admin dashboard data
 interface AdminDashboardData {
   status: string;
@@ -612,12 +622,12 @@ interface AdminDashboardData {
           subscribers, 
           `blog-subscribers-${new Date().toISOString().split('T')[0]}.csv`,
           [
-            { key: 'email', header: 'Email' },
-            { key: 'name', header: 'Name' },
-            { key: 'industry', header: 'Industry' },
-            { key: 'createdAt', header: 'Subscribed Date' },
-            { key: 'isActive', header: 'Active' },
-            { key: 'source', header: 'Source' }
+            { key: 'email', label: 'Email' },
+            { key: 'name', label: 'Name' },
+            { key: 'industry', label: 'Industry' },
+            { key: 'createdAt', label: 'Subscribed Date' },
+            { key: 'isActive', label: 'Active' },
+            { key: 'source', label: 'Source' }
           ]
         );
         
@@ -874,7 +884,7 @@ interface AdminDashboardData {
                         <h3 className="font-medium text-gray-900">Assets</h3>
                         <div className="mt-2 border-t border-gray-200 pt-2">
                           <dl className="divide-y divide-gray-200">
-                            {balanceSheetData?.assets?.map((asset) => (
+                            {balanceSheetData?.assets?.map((asset: FinancialAccount) => (
                               <div key={asset.accountId} className="flex justify-between py-1 text-sm">
                                 <dt className="text-gray-500">{asset.accountName}</dt>
                                 <dd className="text-gray-900">${asset.balance.toLocaleString()}</dd>
@@ -892,13 +902,13 @@ interface AdminDashboardData {
                         <h3 className="font-medium text-gray-900">Liabilities & Equity</h3>
                         <div className="mt-2 border-t border-gray-200 pt-2">
                           <dl className="divide-y divide-gray-200">
-                            {balanceSheetData?.liabilities?.map((liability) => (
+                            {balanceSheetData?.liabilities?.map((liability: FinancialAccount) => (
                               <div key={liability.accountId} className="flex justify-between py-1 text-sm">
                                 <dt className="text-gray-500">{liability.accountName}</dt>
                                 <dd className="text-gray-900">${liability.balance.toLocaleString()}</dd>
                               </div>
                             ))}
-                            {balanceSheetData?.equity?.map((equity) => (
+                            {balanceSheetData?.equity?.map((equity: FinancialAccount) => (
                               <div key={equity.accountId} className="flex justify-between py-1 text-sm">
                                 <dt className="text-gray-500">{equity.accountName}</dt>
                                 <dd className="text-gray-900">${equity.balance.toLocaleString()}</dd>
@@ -930,7 +940,7 @@ interface AdminDashboardData {
                         <h3 className="font-medium text-gray-900">Revenue</h3>
                         <div className="mt-2 border-t border-gray-200 pt-2">
                           <dl className="divide-y divide-gray-200">
-                            {incomeData?.revenue?.map((rev) => (
+                            {incomeData?.revenue?.map((rev: FinancialAccount) => (
                               <div key={rev.accountId} className="flex justify-between py-1 text-sm">
                                 <dt className="text-gray-500">{rev.accountName}</dt>
                                 <dd className="text-gray-900">${rev.balance.toLocaleString()}</dd>
@@ -948,7 +958,7 @@ interface AdminDashboardData {
                         <h3 className="font-medium text-gray-900">Expenses</h3>
                         <div className="mt-2 border-t border-gray-200 pt-2">
                           <dl className="divide-y divide-gray-200">
-                            {incomeData?.expenses?.map((expense) => (
+                            {incomeData?.expenses?.map((expense: FinancialAccount) => (
                               <div key={expense.accountId} className="flex justify-between py-1 text-sm">
                                 <dt className="text-gray-500">{expense.accountName}</dt>
                                 <dd className="text-gray-900">${expense.balance.toLocaleString()}</dd>
