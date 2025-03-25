@@ -57,21 +57,40 @@ function Login() {
       return;
     }
     
-    console.log('Attempting login with:', formData.username);
-    const success = await login(formData.username, formData.password);
+    // Add detailed logging
+    console.log('🔑 Attempting login with username:', formData.username);
+    console.log('🔑 Password length:', formData.password.length);
     
-    if (success) {
+    try {
+      const success = await login(formData.username, formData.password);
+      
+      console.log('🔑 Login result:', success ? 'Success' : 'Failed');
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+          variant: "default"
+        });
+        
+        // Add a forced redirect after a short delay
+        setTimeout(() => {
+          console.log('🔑 Forcing redirect to dashboard...');
+          window.location.href = '/dashboard';
+        }, 500);
+      } else {
+        toast({
+          title: "Authentication Error",
+          description: "Invalid username or password",
+          variant: "destructive"
+        });
+        console.log('🔑 Login failed with provided credentials');
+      }
+    } catch (error) {
+      console.error('🔑 Login error:', error);
       toast({
-        title: "Success",
-        description: "Logged in successfully",
-        variant: "default"
-      });
-      // The useEffect will handle the redirect, so we don't need to do it here
-      // This prevents the double redirect
-    } else {
-      toast({
-        title: "Authentication Error",
-        description: "Invalid username or password",
+        title: "Login Error",
+        description: "An error occurred during login. Please try again.",
         variant: "destructive"
       });
     }

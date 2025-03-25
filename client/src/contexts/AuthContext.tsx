@@ -26,7 +26,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function checkAuthStatus() {
       try {
-        console.log('Checking authentication status...');
+        console.log('🔒 Checking authentication status...');
+        
+        // Check if we have a debug session ID stored
+        const debugSessionID = localStorage.getItem('debug_sessionID');
+        if (debugSessionID) {
+          console.log('🔒 Debug session ID found:', debugSessionID);
+        }
         
         // Use fetch with credentials explicitly included
         const response = await fetch('/api/auth/me', {
@@ -37,28 +43,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: 'include' // This is crucial for session cookies
         });
         
-        console.log('Auth check response status:', response.status);
+        console.log('🔒 Auth check response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('User authenticated:', data);
+          console.log('🔒 User authenticated:', data);
           setUser(data.user);
+          
+          // If we're on the login page and already authenticated, redirect to dashboard
+          if (window.location.pathname === '/login') {
+            console.log('🔒 Already authenticated, redirecting to dashboard...');
+            window.location.href = '/dashboard';
+          }
         } else {
           // Check response body for error details
           try {
             const errorData = await response.text();
-            console.log('Auth check error response:', errorData);
+            console.log('🔒 Auth check error response:', errorData);
           } catch (e) {
-            console.log('Could not read error response');
+            console.log('🔒 Could not read error response');
           }
           
           // Check if we're on the home page, which allows guest access
           const isHomePage = window.location.pathname === '/';
-          console.log('Current path:', window.location.pathname, 'Is home page:', isHomePage);
+          const isLoginPage = window.location.pathname === '/login';
+          console.log('🔒 Current path:', window.location.pathname, 'Is home page:', isHomePage);
           
           if (isHomePage) {
             // Create a guest user for home page
-            console.log('Setting guest user for home page');
+            console.log('🔒 Setting guest user for home page');
             setUser({
               id: 0,
               username: 'guest',
@@ -66,15 +79,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: 'guest@example.com',
               role: 'guest'
             });
-          } else {
-            // For other pages, require login
+          } else if (!isLoginPage) {
+            // For other pages (except login), redirect to login
+            console.log('🔒 Not authenticated, redirecting to login...');
             setUser(null);
-            console.log('Not authenticated:', response.status);
+            window.location.href = '/login';
+          } else {
+            // On login page, just set user to null
+            setUser(null);
+            console.log('🔒 Not authenticated on login page');
           }
         }
       } catch (error) {
-        console.error('Failed to check authentication status:', error);
+        console.error('🔒 Failed to check authentication status:', error);
         setUser(null);
+        
+        // On error, redirect to login page if not already there
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+          console.log('🔒 Auth check error, redirecting to login...');
+          window.location.href = '/login';
+        }
       } finally {
         setIsLoading(false);
       }
@@ -86,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      console.log('Login attempt with:', username);
+      console.log('🔐 Login attempt with:', username);
       
       // Use fetch directly with credentials included to properly handle session cookies
       const response = await fetch('/api/auth/login', {
@@ -99,34 +123,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       // Log response status
-      console.log('Login response status:', response.status);
+      console.log('🔐 Login response status:', response.status);
+      
+      // Log only essential headers without iterating through the Headers object
+      const cookieHeader = response.headers.get('set-cookie');
+      console.log('🔐 Set-Cookie header:', cookieHeader || 'none');
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Login response error:', errorText);
+        console.error('🔐 Login response error:', errorText);
         throw new Error(`Login failed with status ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('Login successful, user data:', data);
+      console.log('🔐 Login successful, user data:', data);
+      console.log('🔐 Session ID from response:', data.sessionID);
+      
+      // Store the session ID in localStorage for debug purposes
+      localStorage.setItem('debug_sessionID', data.sessionID || 'unknown');
+      
+      // Set the user state
       setUser(data.user);
       
-      // Verify session after login
+      // Verify session after login with detailed logs
       setTimeout(async () => {
         try {
+          console.log('🔐 Verifying session after login...');
           const sessionCheck = await fetch('/api/auth/me', {
             credentials: 'include'
           });
-          const sessionData = await sessionCheck.json();
-          console.log('Session check after login:', sessionData);
+          
+          console.log('🔐 Session check status:', sessionCheck.status);
+          
+          if (sessionCheck.ok) {
+            const sessionData = await sessionCheck.json();
+            console.log('🔐 Session check successful:', sessionData);
+            
+            // If the session check returns a different user than what we set, update it
+            if (sessionData.user && sessionData.user.id !== user?.id) {
+              console.log('🔐 Updating user data from session check');
+              setUser(sessionData.user);
+            }
+          } else {
+            console.error('🔐 Session check failed with status:', sessionCheck.status);
+            const errorText = await sessionCheck.text();
+            console.error('🔐 Session check error details:', errorText);
+          }
         } catch (err) {
-          console.error('Session check error:', err);
+          console.error('🔐 Session check error:', err);
         }
       }, 500);
       
       return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('🔐 Login failed:', error);
       return false;
     } finally {
       setIsLoading(false);
