@@ -823,9 +823,8 @@ interface AdminDashboardData {
           </div>
         )}
         
-        {/* Regular Dashboard Content (show when setup is complete or for non-admin users) */}
-        {(setupComplete || !isAdmin) && (
-          <div className="mt-6">
+        {/* Regular Dashboard Content - Always show for all users */}
+        <div className="mt-6">
             {/* Original Dashboard - Overview Tab */}
           {activeTab === "overview" && (
             <div>
