@@ -489,6 +489,7 @@ export default function EntityManagementCard({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 gap-6 w-full max-w-full">
                 <FormField
+                  key="field-name"
                   control={form.control}
                   name="name"
                   render={({ field }) => (
@@ -506,6 +507,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-legalName"
                   control={form.control}
                   name="legalName"
                   render={({ field }) => (
@@ -523,6 +525,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-entityType"
                   control={form.control}
                   name="entityType"
                   render={({ field }) => (
@@ -554,6 +557,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-industry"
                   control={form.control}
                   name="industry"
                   render={({ field }) => (
@@ -585,6 +589,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-taxId"
                   control={form.control}
                   name="taxId"
                   render={({ field }) => (
@@ -602,6 +607,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-email"
                   control={form.control}
                   name="email"
                   render={({ field }) => (
