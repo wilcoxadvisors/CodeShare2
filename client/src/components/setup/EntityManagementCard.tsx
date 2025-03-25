@@ -700,11 +700,15 @@ export default function EntityManagementCard({
                 <TableBody>
                   {setupEntities.map((entity: any) => (
                     <TableRow key={entity.id}>
-                      <TableCell className="font-medium">{entity.name}</TableCell>
-                      <TableCell>{entity.entityType || "LLC"}</TableCell>
-                      <TableCell>{entity.industry}</TableCell>
-                      <TableCell>
-                        <Badge variant={entity.active ? "default" : "outline"} className="flex items-center w-fit">
+                      <TableCell key={`name-${entity.id}`} className="font-medium">{entity.name}</TableCell>
+                      <TableCell key={`type-${entity.id}`}>{entity.entityType || "LLC"}</TableCell>
+                      <TableCell key={`industry-${entity.id}`}>{entity.industry}</TableCell>
+                      <TableCell key={`status-cell-${entity.id}`}>
+                        <Badge 
+                          key={`status-badge-${entity.id}`}
+                          variant={entity.active ? "default" : "outline"} 
+                          className="flex items-center w-fit"
+                        >
                           {entity.active ? (
                             <span key={`active-${entity.id}`} className="flex items-center">
                               <CheckCircle className="mr-1 h-3 w-3" />
@@ -718,9 +722,10 @@ export default function EntityManagementCard({
                           )}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell key={`actions-${entity.id}`} className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button
+                            key={`edit-${entity.id}`}
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditEntity(entity)}
@@ -728,6 +733,7 @@ export default function EntityManagementCard({
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
+                            key={`delete-${entity.id}`}
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteEntity(entity.id)}
