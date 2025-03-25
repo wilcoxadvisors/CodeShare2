@@ -457,6 +457,13 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true
 });
 
+// Schema for Client insertion
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Schema for Entity insertion
 export const insertEntitySchema = createInsertSchema(entities).omit({
   id: true,
@@ -625,6 +632,9 @@ export const insertChatUsageLimitSchema = createInsertSchema(chatUsageLimits).om
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
 
 export type Entity = typeof entities.$inferSelect;
 export type InsertEntity = z.infer<typeof insertEntitySchema>;
