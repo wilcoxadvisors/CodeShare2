@@ -173,6 +173,12 @@ export default function EntityManagementCard({
       cleanedData.ownerId = data.ownerId;
       if (user?.id) cleanedData.createdBy = user.id;
       
+      // Include clientId from clientData if available (critical for client-entity relationship)
+      if (clientData && clientData.id) {
+        cleanedData.clientId = clientData.id;
+        console.log("Setting clientId in entity creation:", clientData.id);
+      }
+      
       // Log the complete entity data
       console.log("Creating entity with data:", cleanedData);
       
@@ -265,6 +271,12 @@ export default function EntityManagementCard({
       
       // Always include owner info
       cleanedData.ownerId = data.ownerId;
+      
+      // Include clientId from clientData if available (critical for client-entity relationship)
+      if (clientData && clientData.id) {
+        cleanedData.clientId = clientData.id;
+        console.log("Setting clientId in entity update:", clientData.id);
+      }
 
       console.log("Updating entity with data:", cleanedData);
       
@@ -400,6 +412,9 @@ export default function EntityManagementCard({
     setIsEditing(true);
     setCurrentEntityId(entity.id);
     
+    // Log the entity data for debugging
+    console.log("Editing entity:", entity);
+    
     // Reset form with entity data
     form.reset({
       name: entity.name,
@@ -413,6 +428,13 @@ export default function EntityManagementCard({
       ownerId: entity.ownerId || user?.id,
       code: entity.code || ""
     });
+    
+    // Store the client ID in the component state if available
+    if (entity.clientId) {
+      console.log("Entity has clientId:", entity.clientId);
+      // We don't need to do anything special here, as the clientId will be passed from 
+      // the parent component's clientData prop when updateEntityMutation is called
+    }
   };
   
   // Delete entity
