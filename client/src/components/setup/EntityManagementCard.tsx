@@ -122,7 +122,8 @@ export default function EntityManagementCard({
         address: clientData.address || "",
         phone: clientData.phone || "",
         email: clientData.email || "",
-        ownerId: user?.id
+        ownerId: user?.id,
+        code: clientData.code || ""
       });
       
       toast({
@@ -196,7 +197,8 @@ export default function EntityManagementCard({
         address: "",
         phone: "",
         email: "",
-        ownerId: user?.id
+        ownerId: user?.id,
+        code: ""
       });
       
       // Add the created entity to setupEntities
@@ -276,7 +278,8 @@ export default function EntityManagementCard({
         address: "",
         phone: "",
         email: "",
-        ownerId: user?.id
+        ownerId: user?.id,
+        code: ""
       });
       
       // Update the entity in setupEntities
@@ -381,7 +384,8 @@ export default function EntityManagementCard({
       address: entity.address || "",
       phone: entity.phone || "",
       email: entity.email || "",
-      ownerId: entity.ownerId || user?.id
+      ownerId: entity.ownerId || user?.id,
+      code: entity.code || ""
     });
   };
   
@@ -405,7 +409,8 @@ export default function EntityManagementCard({
       address: "",
       phone: "",
       email: "",
-      ownerId: user?.id
+      ownerId: user?.id,
+      code: ""
     });
   };
   
@@ -519,6 +524,24 @@ export default function EntityManagementCard({
                       </FormControl>
                       <FormDescription>
                         The legally registered name
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  key="field-code"
+                  control={form.control}
+                  name="code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Entity Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ABC123" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        A unique identifier code for this entity
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
