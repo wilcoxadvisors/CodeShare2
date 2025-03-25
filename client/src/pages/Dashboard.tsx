@@ -653,7 +653,7 @@ interface AdminDashboardData {
   };
   
   // Admin dashboard specific state - start with client management tab selected
-  const [adminActiveTab, setAdminActiveTab] = useState("setup");
+  const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
   // Load entities and data from admin dashboard data
   const entities = adminDashboardData?.data?.entities || [];
