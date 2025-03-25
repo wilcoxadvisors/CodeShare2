@@ -2851,6 +2851,78 @@ export class MemStorage implements IStorage {
 
 // Database implementation
 export class DatabaseStorage implements IStorage {
+  // Client methods
+  async getClient(id: number): Promise<Client | undefined> {
+    const result = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, id))
+      .limit(1);
+      
+    return result[0];
+  }
+  
+  async getClients(): Promise<Client[]> {
+    return await db
+      .select()
+      .from(clients)
+      .orderBy(asc(clients.name));
+  }
+  
+  async getClientsByUserId(userId: number): Promise<Client[]> {
+    return await db
+      .select()
+      .from(clients)
+      .where(eq(clients.userId, userId))
+      .orderBy(asc(clients.name));
+  }
+  
+  async createClient(client: InsertClient): Promise<Client> {
+    const [result] = await db
+      .insert(clients)
+      .values({
+        name: client.name,
+        userId: client.userId,
+        active: client.active !== undefined ? client.active : true,
+        industry: client.industry || null,
+        contactName: client.contactName || null,
+        contactEmail: client.contactEmail || null,
+        contactPhone: client.contactPhone || null,
+        address: client.address || null,
+        city: client.city || null,
+        state: client.state || null,
+        country: client.country || null,
+        postalCode: client.postalCode || null,
+        website: client.website || null,
+        notes: client.notes || null,
+        referralSource: client.referralSource || null
+      })
+      .returning();
+    return result;
+  }
+  
+  async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
+    const [result] = await db
+      .update(clients)
+      .set({
+        ...clientData,
+        updatedAt: new Date()
+      })
+      .where(eq(clients.id, id))
+      .returning();
+    return result;
+  }
+  
+  // User methods
+  async findUserByRole(role: UserRole): Promise<User | undefined> {
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, role))
+      .limit(1);
+      
+    return result[0];
+  }
   // Budget methods
   async getBudget(id: number): Promise<Budget | undefined> {
     const result = await db
