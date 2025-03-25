@@ -26,7 +26,7 @@ import {
   consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
   consolidationGroupEntities, InsertConsolidationGroupEntity
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
