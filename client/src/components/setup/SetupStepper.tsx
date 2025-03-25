@@ -30,10 +30,14 @@ const SETUP_STEPS = [
   }
 ];
 
+interface SetupStepperProps {
+  onComplete?: () => void;
+}
+
 /**
  * Setup stepper component that guides users through the onboarding process
  */
-export default function SetupStepper() {
+export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<string>("client");
@@ -169,8 +173,10 @@ export default function SetupStepper() {
                   // Complete the setup and close the dialog
                   setSetupComplete(true);
                   
-                  // Handle any additional logic needed after setup completion
-                  // You could add a callback here to refresh the parent component
+                  // Call the onComplete callback if provided
+                  if (onComplete) {
+                    onComplete();
+                  }
                 }}
               />
             )}

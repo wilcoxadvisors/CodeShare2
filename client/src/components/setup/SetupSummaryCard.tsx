@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface SetupSummaryCardProps {
   clientData: any;
@@ -17,6 +18,7 @@ export default function SetupSummaryCard({
   onFinish 
 }: SetupSummaryCardProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFinish = async () => {
@@ -24,6 +26,12 @@ export default function SetupSummaryCard({
     try {
       // Here you could perform any final API calls if needed
       // such as updating client status, etc.
+      
+      // Important: Invalidate queries to refresh all client data on the dashboard
+      // This ensures the newly created client appears on the status page
+      console.log("Invalidating queries to refresh dashboard data...");
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
       
       toast({
         title: "Setup Complete!",

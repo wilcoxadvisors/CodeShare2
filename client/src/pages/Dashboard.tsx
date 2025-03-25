@@ -1087,7 +1087,14 @@ interface AdminDashboardData {
                                 </DialogHeader>
                                 
                                 <div className="py-4">
-                                  <SetupStepper />
+                                  <SetupStepper onComplete={() => {
+                                    // Close the dialog when setup is complete
+                                    setIsAddClientDialogOpen(false);
+                                    
+                                    // Refresh client data
+                                    queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+                                    queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+                                  }} />
                                 </div>
                                 
                                 <DialogFooter>
