@@ -698,37 +698,30 @@ export class MemStorage implements IStorage {
   
   async getClientsByUserId(userId: number): Promise<Client[]> {
     return Array.from(this.clients.values())
-      .filter(client => client.ownerId === userId);
+      .filter(client => client.userId === userId);
   }
   
   async createClient(client: InsertClient): Promise<Client> {
     const id = this.currentClientId++;
     const newClient: Client = {
       id,
+      userId: client.userId,
       name: client.name,
-      email: client.email,
-      phone: client.phone || null,
-      ownerId: client.ownerId,
       active: client.active !== undefined ? client.active : true,
       industry: client.industry || null,
       contactName: client.contactName || null,
       contactEmail: client.contactEmail || null,
       contactPhone: client.contactPhone || null,
-      billingAddress: client.billingAddress || null,
-      billingCity: client.billingCity || null,
-      billingState: client.billingState || null,
-      billingZip: client.billingZip || null,
-      billingCountry: client.billingCountry || null,
-      taxId: client.taxId || null,
+      address: client.address || null,
+      city: client.city || null,
+      state: client.state || null,
+      country: client.country || null,
+      postalCode: client.postalCode || null,
       website: client.website || null,
       notes: client.notes || null,
+      referralSource: client.referralSource || null,
       createdAt: new Date(),
-      updatedAt: null,
-      lastContactDate: client.lastContactDate || null,
-      clientSince: client.clientSince || new Date(),
-      logo: client.logo || null,
-      accountManager: client.accountManager || null,
-      tags: client.tags || []
+      updatedAt: new Date()
     };
     
     this.clients.set(id, newClient);
@@ -767,6 +760,11 @@ export class MemStorage implements IStorage {
       );
   }
   
+  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+    return Array.from(this.entities.values())
+      .filter(entity => entity.clientId === clientId);
+  }
+  
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
     const id = this.currentEntityId++;
     const entity: Entity = { 
@@ -774,6 +772,7 @@ export class MemStorage implements IStorage {
       name: insertEntity.name,
       code: insertEntity.code,
       ownerId: insertEntity.ownerId,
+      clientId: insertEntity.clientId,
       active: insertEntity.active !== undefined ? insertEntity.active : true,
       fiscalYearStart: insertEntity.fiscalYearStart || '01-01',
       fiscalYearEnd: insertEntity.fiscalYearEnd || '12-31',
