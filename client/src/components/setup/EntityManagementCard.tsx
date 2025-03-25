@@ -61,12 +61,18 @@ const entitySchema = z.object({
 type EntityFormValues = z.infer<typeof entitySchema>;
 
 interface EntityManagementCardProps {
-  onNext: () => void;
+  onNext: (entities: any[]) => void;
   onBack?: () => void;
   clientData?: any;
+  setEntityData?: (entities: any[]) => void;
 }
 
-export default function EntityManagementCard({ onNext, onBack, clientData }: EntityManagementCardProps) {
+export default function EntityManagementCard({ 
+  onNext, 
+  onBack, 
+  clientData, 
+  setEntityData 
+}: EntityManagementCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -680,7 +686,18 @@ export default function EntityManagementCard({ onNext, onBack, clientData }: Ent
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext} disabled={!canProceed}>
+        <Button 
+          onClick={(e) => {
+            e.preventDefault();
+            // Update parent entity data
+            if (setEntityData) {
+              setEntityData(entities);
+            }
+            // Continue to next step
+            onNext(entities);
+          }} 
+          disabled={!canProceed}
+        >
           {!canProceed ? "Add at least one entity to continue" : "Continue"}
         </Button>
       </CardFooter>

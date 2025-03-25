@@ -68,6 +68,12 @@ export default function SetupStepper() {
     handleNext();
   };
   
+  // Handle entity data from EntityManagementCard
+  const handleEntityDataSaved = (entities: any[]) => {
+    setEntityData(entities);
+    handleNext();
+  };
+  
   // When client data changes, conditionally update the step
   useEffect(() => {
     // If we have client data and we're on the first step, auto-advance
@@ -145,9 +151,10 @@ export default function SetupStepper() {
             
             {currentStep === "entities" && (
               <EntityManagementCard 
-                onNext={handleNext}
+                onNext={handleEntityDataSaved}
                 onBack={handleBack}
                 clientData={clientData}
+                setEntityData={setEntityData}
               />
             )}
             
@@ -156,6 +163,7 @@ export default function SetupStepper() {
             {currentStep === "summary" && (
               <SetupSummaryCard
                 clientData={clientData}
+                entityData={entityData}
                 onBack={handleBack}
                 onFinish={() => {
                   // Complete the setup and close the dialog
