@@ -22,6 +22,76 @@ const isAdmin = (req: Request, res: Response, next: Function) => {
 };
 
 export function registerAdminRoutes(app: Express, storage: IStorage) {
+
+  /**
+   * Get all clients
+   */
+  app.get("/api/admin/clients", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clients = await storage.getClients();
+      
+      return res.json({
+        status: "success",
+        data: clients
+      });
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      throw error;
+    }
+  }));
+  
+  /**
+   * Get a specific client by ID
+   */
+  app.get("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.id);
+      const client = await storage.getClient(clientId);
+      
+      if (!client) {
+        throwNotFound("Client not found");
+      }
+      
+      // Get client's entities
+      const entities = await storage.getEntitiesByClient(clientId);
+      
+      return res.json({
+        status: "success",
+        data: {
+          ...client,
+          entities
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching client:", error);
+      throw error;
+    }
+  }));
+  
+  /**
+   * Update a client
+   */
+  app.put("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.id);
+      
+      // Verify client exists
+      const existingClient = await storage.getClient(clientId);
+      if (!existingClient) {
+        throwNotFound("Client not found");
+      }
+      
+      const updatedClient = await storage.updateClient(clientId, req.body);
+      
+      return res.json({
+        status: "success",
+        data: updatedClient
+      });
+    } catch (error) {
+      console.error("Error updating client:", error);
+      throw error;
+    }
+  }));
   /**
    * Get admin dashboard data
    * Returns entities and consolidation groups for admin dashboard

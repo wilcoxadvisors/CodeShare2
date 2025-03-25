@@ -398,7 +398,10 @@ function Dashboard() {
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEntityDialogOpen, setIsEditEntityDialogOpen] = useState(false);
+  const [isEditClientDialogOpen, setIsEditClientDialogOpen] = useState(false);
   const [currentEditEntity, setCurrentEditEntity] = useState<any>(null);
+  const [currentEditClient, setCurrentEditClient] = useState<any>(null);
+  const [clientEntities, setClientEntities] = useState<any[]>([]);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -483,6 +486,35 @@ function Dashboard() {
   const handleEditEntity = (entity: any) => {
     setCurrentEditEntity(entity);
     setIsEditEntityDialogOpen(true);
+  };
+  
+  // Handle edit client click from dropdown menu
+  const handleEditClient = async (client: any) => {
+    // Fetch client details with entities
+    try {
+      const response = await fetch(`/api/admin/clients/${client.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch client details');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.status === 'success') {
+        setCurrentEditClient(data.data);
+        // Set client entities if available
+        if (data.data.entities) {
+          setClientEntities(data.data.entities);
+        }
+        setIsEditClientDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching client details:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load client details. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
   
   // Handle entity update
