@@ -56,7 +56,8 @@ const entitySchema = z.object({
     { message: "Please enter a valid email address if providing one" }
   ),
   ownerId: z.number().optional(),
-  code: z.string().optional() // Adding the code field which is required in the database
+  // Code is required in the database, but we'll generate it if not provided
+  code: z.string().optional() 
 });
 
 type EntityFormValues = z.infer<typeof entitySchema>;
@@ -151,9 +152,13 @@ export default function EntityManagementCard({
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
         industry: data.industry,
-        isActive: true,
+        active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
-        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100)
+        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+        // Set default fiscal year values
+        fiscalYearStart: "01-01",
+        fiscalYearEnd: "12-31",
+        currency: "USD"
       };
 
       // Add optional fields only if they have values
@@ -166,6 +171,7 @@ export default function EntityManagementCard({
       cleanedData.ownerId = data.ownerId;
       if (user?.id) cleanedData.createdBy = user.id;
       
+      // Log the complete entity data
       console.log("Creating entity with data:", cleanedData);
       
       return await apiRequest(endpoint, {
@@ -228,9 +234,13 @@ export default function EntityManagementCard({
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
         industry: data.industry,
-        isActive: true,
+        active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
-        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100)
+        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+        // Set default fiscal year values if updating
+        fiscalYearStart: "01-01",
+        fiscalYearEnd: "12-31",
+        currency: "USD"
       };
 
       // Add optional fields only if they have values
