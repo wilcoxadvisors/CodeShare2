@@ -83,8 +83,11 @@ export default function EntityManagementCard({
   // Check if user is admin
   const isAdmin = user?.role === UserRole.ADMIN;
   
-  // Fetch entities
-  const { data: entities = [], isLoading, refetch } = useQuery<any[]>({
+  // Local state to track entities created in this setup flow
+  const [setupEntities, setSetupEntities] = useState<any[]>([]);
+  
+  // Fetch all entities (but we'll only use setupEntities for display)
+  const { data: allEntities = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ['/api/entities'],
     enabled: !!user
   });
@@ -170,11 +173,13 @@ export default function EntityManagementCard({
         data: cleanedData
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast({
         title: "Success",
         description: "Entity created successfully.",
       });
+      
+      // Reset form
       form.reset({
         name: "",
         legalName: "",
@@ -186,6 +191,13 @@ export default function EntityManagementCard({
         email: "",
         ownerId: user?.id
       });
+      
+      // Add the created entity to setupEntities
+      if (response) {
+        setSetupEntities(prev => [...prev, response]);
+      }
+      
+      // Global data refresh
       refetch();
       setIsEditing(false);
       setCurrentEntityId(null);
@@ -371,7 +383,7 @@ export default function EntityManagementCard({
   };
   
   // Check if we can proceed to next step (at least one entity needed)
-  const canProceed = entities && entities.length > 0;
+  const canProceed = setupEntities && setupEntities.length > 0;
   
   // When the component mounts or clientData changes, we should initialize with fresh form data
   useEffect(() => {
