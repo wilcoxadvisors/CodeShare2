@@ -81,11 +81,11 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         const clients = await storage.getClientsByUserId(ownerId);
         if (clients && clients.length > 0) {
           finalClientId = clients[0].id;
-        } else if (owner.role === UserRole.CLIENT) {
+        } else if (owner && owner.role === UserRole.CLIENT) {
           // If user is a client but doesn't have a client record, create one
           const newClient = await storage.createClient({
             userId: ownerId,
-            name: owner.name || `${owner.username}'s Client`,
+            name: owner.name || `${owner.username || 'New'}'s Client`,
             active: true
           });
           finalClientId = newClient.id;
