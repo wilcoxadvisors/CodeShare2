@@ -92,12 +92,10 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // IMPORTANT: Directly set the current step instead of calling handleNext
     // This ensures we jump to the next step immediately without relying on state updates
     console.log("🔷 Directly setting currentStep to 'entities'");
-    const nextStepIndex = steps.findIndex(step => step.id === currentStep) + 1;
-    if (nextStepIndex < steps.length) {
-      const nextStepId = steps[nextStepIndex].id;
-      setCurrentStep(nextStepId);
-      console.log("🔷 Current step set to:", nextStepId);
-    }
+    
+    // Directly set to the entities step instead of trying to calculate it
+    setCurrentStep("entities");
+    console.log("🔷 Current step set to: entities");
   };
   
   // Handle entity data from EntityManagementCard
@@ -108,12 +106,10 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // IMPORTANT: Directly set the current step instead of calling handleNext
     // This ensures we jump to the next step immediately without relying on state updates
     console.log("🔷 Directly setting currentStep to 'summary'");
-    const nextStepIndex = steps.findIndex(step => step.id === currentStep) + 1;
-    if (nextStepIndex < steps.length) {
-      const nextStepId = steps[nextStepIndex].id;
-      setCurrentStep(nextStepId);
-      console.log("🔷 Current step set to:", nextStepId);
-    }
+    
+    // Directly set to the summary step
+    setCurrentStep("summary");
+    console.log("🔷 Current step set to: summary");
   };
   
   // When client data changes, conditionally update the step
