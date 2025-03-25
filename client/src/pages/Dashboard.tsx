@@ -1079,28 +1079,56 @@ interface AdminDashboardData {
                         )}
                       </div>
                       
-                      {/* Stepper Component */}
-                      <SetupStepper 
-                        activeStep={activeStep} 
-                        steps={[
-                          { title: 'Client Info', description: 'Add client details' },
-                          { title: 'Entities', description: 'Set up accounting entities' },
-                          { title: 'Summary & Finish', description: 'Review and complete' }
-                        ]} 
-                      />
+                      {/* Setup Steps Indicator */}
+                      <div className="w-full mb-6">
+                        <div className="flex items-center justify-between">
+                          {['Client Info', 'Entities', 'Summary & Finish'].map((step, index) => (
+                            <div key={index} className="flex flex-col items-center relative">
+                              {/* Connector line between steps */}
+                              {index < 2 && (
+                                <div 
+                                  className={`absolute h-0.5 w-full top-4 left-1/2 -z-10 ${
+                                    index < activeStep ? "bg-primary" : "bg-gray-200"
+                                  }`}
+                                />
+                              )}
+                              
+                              {/* Step circle */}
+                              <div 
+                                className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
+                                  index < activeStep 
+                                    ? "bg-primary border-primary text-primary-foreground" 
+                                    : index === activeStep 
+                                    ? "border-primary text-primary" 
+                                    : "border-gray-200 text-gray-400"
+                                }`}
+                              >
+                                {index < activeStep ? (
+                                  <CheckCircle2 className="h-5 w-5" />
+                                ) : (
+                                  <span>{index + 1}</span>
+                                )}
+                              </div>
+                              
+                              {/* Step label */}
+                              <span 
+                                className={`mt-2 text-xs font-medium ${
+                                  index === activeStep ? "text-primary" : "text-gray-500"
+                                }`}
+                              >
+                                {step}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       
                       <div className="mt-6">
                         {/* Step 1: Client Setup Card */}
                         {activeStep === 0 && (
                           <ClientSetupCard 
-                            onClientDataSaved={(data) => {
-                              setClientData(data);
-                              setActiveStep(1);
-                              toast({
-                                title: "Client information saved",
-                                description: "You can now set up accounting entities",
-                              });
-                            }}
+                            onNext={() => setActiveStep(1)} 
+                            setClientData={setClientData}
                             initialData={clientData}
                           />
                         )}
@@ -1109,7 +1137,7 @@ interface AdminDashboardData {
                         {activeStep === 1 && (
                           <EntityManagementCard 
                             clientData={clientData}
-                            onComplete={() => {
+                            onNext={() => {
                               setActiveStep(2);
                               toast({
                                 title: "Entities configured",
@@ -1123,6 +1151,7 @@ interface AdminDashboardData {
                         {activeStep === 2 && (
                           <SetupSummaryCard 
                             clientData={clientData}
+                            entities={entities}
                             onComplete={() => {
                               setSetupComplete(true);
                               toast({
@@ -1130,6 +1159,7 @@ interface AdminDashboardData {
                                 description: "Your account is now fully configured and ready to use",
                               });
                             }}
+                            onBack={() => setActiveStep(1)}
                           />
                         )}
                       </div>
