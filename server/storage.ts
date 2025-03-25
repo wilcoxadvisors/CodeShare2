@@ -3592,6 +3592,7 @@ export class DatabaseStorage implements IStorage {
         name: insertEntity.name,
         code: insertEntity.code,
         ownerId: insertEntity.ownerId,
+        clientId: insertEntity.clientId,
         active: insertEntity.active ?? true,
         fiscalYearStart: insertEntity.fiscalYearStart ?? "01-01",
         fiscalYearEnd: insertEntity.fiscalYearEnd ?? "12-31",
