@@ -276,7 +276,7 @@ function SubscriberManagement() {
   });
 
   // Filter subscribers based on search and active state
-  const filteredSubscribers = subscribers?.filter((subscriber: BlogSubscriber) => {
+  const filteredSubscribers = subscribers.filter((subscriber: BlogSubscriber) => {
     const matchesSearch = 
       subscriber.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (subscriber.name && subscriber.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -285,7 +285,7 @@ function SubscriberManagement() {
     const matchesActive = filterActive ? subscriber.isActive : true;
     
     return matchesSearch && matchesActive;
-  }) || [];
+  });
 
   const handleDeleteSubscriber = (id: number) => {
     if (window.confirm("Are you sure you want to remove this subscriber?")) {
