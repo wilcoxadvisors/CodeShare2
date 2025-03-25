@@ -1152,6 +1152,78 @@ interface AdminDashboardData {
                 
                 {/* Client Management Tab */}
                 <TabsContent value="client-management">
+                  {/* Setup Flow - Only show for admin users and when setup is not complete */}
+                  {isAdmin && !setupComplete && (
+                    <div className="mb-8">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-bold">Account Setup</h2>
+                        {activeStep > 0 && (
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setActiveStep(prev => Math.max(0, prev - 1))}
+                          >
+                            Back
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* Stepper Component */}
+                      <SetupStepper 
+                        activeStep={activeStep} 
+                        steps={[
+                          { title: 'Client Info', description: 'Add client details' },
+                          { title: 'Entities', description: 'Set up accounting entities' },
+                          { title: 'Summary & Finish', description: 'Review and complete' }
+                        ]} 
+                      />
+                      
+                      <div className="mt-6">
+                        {/* Step 1: Client Setup Card */}
+                        {activeStep === 0 && (
+                          <ClientSetupCard 
+                            onClientDataSaved={(data) => {
+                              setClientData(data);
+                              setActiveStep(1);
+                              toast({
+                                title: "Client information saved",
+                                description: "You can now set up accounting entities",
+                              });
+                            }}
+                            initialData={clientData}
+                          />
+                        )}
+                        
+                        {/* Step 2: Entity Management Card */}
+                        {activeStep === 1 && (
+                          <EntityManagementCard 
+                            clientData={clientData}
+                            onComplete={() => {
+                              setActiveStep(2);
+                              toast({
+                                title: "Entities configured",
+                                description: "Almost done! Review your setup in the final step",
+                              });
+                            }}
+                          />
+                        )}
+                        
+                        {/* Step 3: Summary & Finish Card */}
+                        {activeStep === 2 && (
+                          <SetupSummaryCard 
+                            clientData={clientData}
+                            onComplete={() => {
+                              setSetupComplete(true);
+                              toast({
+                                title: "Setup Complete!",
+                                description: "Your account is now fully configured and ready to use",
+                              });
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                       <Card>
