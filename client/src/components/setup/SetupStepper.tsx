@@ -60,9 +60,13 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Handler to move to the next step
   const handleNext = () => {
     const nextIndex = currentStepIndex + 1;
+    console.log("handleNext called - current step:", currentStep, "currentStepIndex:", currentStepIndex, "nextIndex:", nextIndex);
     if (nextIndex < SETUP_STEPS.length) {
-      setCurrentStep(SETUP_STEPS[nextIndex].id);
+      const nextStepId = SETUP_STEPS[nextIndex].id;
+      console.log(`Moving to next step: ${nextStepId}`);
+      setCurrentStep(nextStepId);
     } else {
+      console.log("At final step, setting setupComplete");
       setSetupComplete(true);
     }
   };
@@ -70,14 +74,21 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Handler to move to the previous step
   const handleBack = () => {
     const prevIndex = currentStepIndex - 1;
+    console.log("handleBack called - current step:", currentStep, "currentStepIndex:", currentStepIndex, "prevIndex:", prevIndex);
     if (prevIndex >= 0) {
-      setCurrentStep(SETUP_STEPS[prevIndex].id);
+      const prevStepId = SETUP_STEPS[prevIndex].id;
+      console.log(`Moving to previous step: ${prevStepId}`);
+      setCurrentStep(prevStepId);
+    } else {
+      console.log("Already at first step, can't go back");
     }
   };
   
   // Handle client data from ClientSetupCard
   const handleClientDataSaved = (data: any) => {
+    console.log("handleClientDataSaved called with data:", data);
     setClientData(data);
+    console.log("Calling handleNext from handleClientDataSaved");
     handleNext();
   };
   
@@ -89,9 +100,12 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // When client data changes, conditionally update the step
   useEffect(() => {
+    console.log("clientData useEffect triggered, clientData:", clientData, "currentStep:", currentStep);
     // If we have client data and we're on the first step, auto-advance
     if (clientData && currentStep === "client") {
-      handleNext();
+      console.log("Auto-advancing due to clientData change while on client step");
+      // *** IMPORTANT: This might be causing a double-advance, commenting out for now ***
+      // handleNext();
     }
   }, [clientData]);
   

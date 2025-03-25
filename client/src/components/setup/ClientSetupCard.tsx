@@ -98,8 +98,11 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
   const onSubmit = async (data: ClientSetupValues) => {
     setIsSubmitting(true);
     try {
+      console.log("Client setup form submitted with data:", data);
+      
       // Save the data to the parent component state
       setClientData(data);
+      console.log("setClientData called with:", data);
       
       toast({
         title: "Success",
@@ -107,8 +110,11 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       });
       
       // Move to the next step with data
+      console.log("Calling onNext with data...");
       if (onNext) {
         onNext(data);
+      } else {
+        console.error("onNext function is not defined!");
       }
     } catch (error: any) {
       console.error("Error saving client information:", error);
