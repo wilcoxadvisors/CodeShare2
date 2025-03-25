@@ -517,6 +517,69 @@ function Dashboard() {
     }
   };
   
+  // Handle client update
+  const updateClientMutation = useMutation({
+    mutationFn: async (clientData: any) => {
+      const response = await fetch(`/api/admin/clients/${clientData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update client');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // Close dialog and reset current client
+      setIsEditClientDialogOpen(false);
+      setCurrentEditClient(null);
+      setClientEntities([]);
+      
+      toast({
+        title: "Success",
+        description: "Client updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Client update error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update client. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle form submission for updating a client
+  const handleUpdateClient = (updatedData: any) => {
+    if (!currentEditClient || !currentEditClient.id) {
+      toast({
+        title: "Error",
+        description: "No client selected for update",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Merge current client with updated data
+    const clientData = {
+      ...currentEditClient,
+      ...updatedData,
+    };
+    
+    // Submit the update
+    updateClientMutation.mutate(clientData);
+  };
+  
   // Handle entity update
   const updateEntityMutation = useMutation({
     mutationFn: async (entityData: any) => {
