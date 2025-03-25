@@ -674,14 +674,14 @@ export default function EntityManagementCard({
           
           {isLoading ? (
             <div className="flex justify-center items-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div key="loading-spinner" className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : setupEntities.length === 0 ? (
             <div className="text-center py-8 border rounded-lg bg-muted/20">
               <p className="text-muted-foreground mb-4">
                 You haven't created any entities yet. Add your first entity above.
               </p>
-              <Badge variant="outline" className="mx-auto">
+              <Badge key="no-entities-badge" variant="outline" className="mx-auto">
                 At least one entity required
               </Badge>
             </div>
@@ -689,12 +689,12 @@ export default function EntityManagementCard({
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow key="header-row">
+                    <TableHead key="header-name">Name</TableHead>
+                    <TableHead key="header-type">Type</TableHead>
+                    <TableHead key="header-industry">Industry</TableHead>
+                    <TableHead key="header-status">Status</TableHead>
+                    <TableHead key="header-actions" className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
