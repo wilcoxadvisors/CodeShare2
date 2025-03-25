@@ -429,7 +429,8 @@ export default function EntityManagementCard({
       address: "",
       phone: "",
       email: "",
-      ownerId: user?.id
+      ownerId: user?.id,
+      code: ""
     });
     
     // Clear setup entities when client data changes (new setup flow)
