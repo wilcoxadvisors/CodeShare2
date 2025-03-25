@@ -373,9 +373,9 @@ export default function EntityManagementCard({
   // Check if we can proceed to next step (at least one entity needed)
   const canProceed = entities && entities.length > 0;
   
-  // When the component mounts, we should initialize with fresh form data
+  // When the component mounts or clientData changes, we should initialize with fresh form data
   useEffect(() => {
-    // Clear any pre-existing entity data when component mounts
+    // Clear any pre-existing entity data when component mounts or when navigating steps
     form.reset({
       name: "",
       legalName: "",
@@ -387,7 +387,10 @@ export default function EntityManagementCard({
       email: "",
       ownerId: user?.id
     });
-  }, []);
+    
+    // For debugging - helps identify when form is being reset
+    console.log("Entity form reset to default values");
+  }, [clientData]); // Reset when clientData changes, which happens when navigating steps
   
   return (
     <Card className="w-full">
