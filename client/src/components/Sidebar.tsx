@@ -34,23 +34,18 @@ function Sidebar() {
     navigate('/');
   };
 
-  const handleNavigation = (path: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    navigate(path);
-  };
-
   const NavItem = ({ path, icon, label }: { path: string, icon: React.ReactNode, label: string }) => (
-    <div 
+    <Link 
+      href={path}
       className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer ${
         isActive(path) 
           ? 'bg-primary-700 text-white font-semibold' 
           : 'text-white hover:bg-primary-800/60 hover:text-white'
       }`}
-      onClick={handleNavigation(path)}
     >
       {icon}
       <span className="ml-1">{label}</span>
-    </div>
+    </Link>
   );
 
   return (
@@ -137,21 +132,21 @@ function Sidebar() {
             />
             
             <div className="mt-6 border-t border-blue-700 pt-4">
-              <div 
+              <Link
+                href="/settings"
                 className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
-                onClick={handleNavigation("/settings")}
               >
                 <Settings className="h-5 w-5 mr-2" />
                 <span className="ml-1">Settings</span>
-              </div>
+              </Link>
               
-              <div 
-                className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
+              <button
                 onClick={handleLogout}
+                className="w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
               >
                 <LogOut className="h-5 w-5 mr-2" />
                 <span className="ml-1">Logout</span>
-              </div>
+              </button>
             </div>
           </nav>
         </div>
