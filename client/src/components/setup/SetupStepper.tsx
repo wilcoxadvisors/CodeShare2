@@ -144,6 +144,7 @@ export default function SetupStepper() {
             {currentStep === "entities" && (
               <EntityManagementCard 
                 onNext={handleNext}
+                onBack={handleBack}
                 clientData={clientData}
               />
             )}

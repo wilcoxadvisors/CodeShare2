@@ -62,10 +62,11 @@ type EntityFormValues = z.infer<typeof entitySchema>;
 
 interface EntityManagementCardProps {
   onNext: () => void;
+  onBack?: () => void;
   clientData?: any;
 }
 
-export default function EntityManagementCard({ onNext, clientData }: EntityManagementCardProps) {
+export default function EntityManagementCard({ onNext, onBack, clientData }: EntityManagementCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -350,6 +351,22 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
   
   // Check if we can proceed to next step (at least one entity needed)
   const canProceed = entities && entities.length > 0;
+  
+  // When the component mounts, we should initialize with fresh form data
+  useEffect(() => {
+    // Clear any pre-existing entity data when component mounts
+    form.reset({
+      name: "",
+      legalName: "",
+      taxId: "",
+      entityType: "llc",
+      industry: "",
+      address: "",
+      phone: "",
+      email: "",
+      ownerId: user?.id
+    });
+  }, []);
   
   return (
     <Card className="w-full">
@@ -650,7 +667,7 @@ export default function EntityManagementCard({ onNext, clientData }: EntityManag
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={() => window.history.back()}>
+        <Button variant="outline" onClick={onBack}>
           Back
         </Button>
         <Button onClick={onNext} disabled={!canProceed}>
