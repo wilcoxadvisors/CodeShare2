@@ -1369,9 +1369,9 @@ interface AdminDashboardData {
                                             <MessageSquare className="mr-2 h-4 w-4" />
                                             Send Message
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleEditEntity(entity)}>
+                                          <DropdownMenuItem onClick={() => handleEditClient(entity)}>
                                             <Pen className="mr-2 h-4 w-4" />
-                                            Edit Entity
+                                            Edit Client
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
