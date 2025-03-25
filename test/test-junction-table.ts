@@ -1,8 +1,8 @@
 /**
  * Test script to verify junction table implementation for consolidation groups
  * 
- * This script tests the updated consolidation group methods that use
- * both the entity_ids array and junction table for backward compatibility.
+ * This script tests the consolidation group methods that use the junction table
+ * for managing entity-group relationships.
  */
 
 import { db } from "../server/db";
@@ -171,7 +171,7 @@ async function testJunctionTableImplementation() {
       createdBy: userId,
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-      entity_ids: [entity1Id], // Initially add only the first entity
+      initialEntityId: entity1Id, // Initially add only the first entity
       currency: "USD",
       periodType: BudgetPeriodType.MONTHLY
     });
@@ -182,16 +182,8 @@ async function testJunctionTableImplementation() {
     if (createdGroup.id) {
       console.log('Group created successfully with ID:', createdGroup.id);
       
-      // Verify entity was added to both array and junction table
-      console.log('Verifying initial entity in array and junction table...');
-      
-      // Check entity_ids array
-      const groupResult = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, createdGroup.id))
-        .limit(1);
-        
-      console.log('Entity IDs in array:', groupResult[0].entity_ids);
+      // Verify entity was added to the junction table
+      console.log('Verifying initial entity in junction table...');
       
       // Check junction table
       const junctionEntities = await db.select()
@@ -204,16 +196,8 @@ async function testJunctionTableImplementation() {
       console.log('Testing addEntityToConsolidationGroup with junction table...');
       await addEntityToConsolidationGroup(createdGroup.id, entity2Id);
       
-      // Verify both entities are in both array and junction table
-      console.log('Verifying both entities in array and junction table...');
-      
-      // Check entity_ids array
-      const updatedGroup = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, createdGroup.id))
-        .limit(1);
-        
-      console.log('Entity IDs in array after adding second entity:', updatedGroup[0].entity_ids);
+      // Verify both entities are in the junction table
+      console.log('Verifying both entities in junction table...');
       
       // Check junction table
       const updatedJunctionEntities = await db.select()
