@@ -56,8 +56,8 @@ const entitySchema = z.object({
     { message: "Please enter a valid email address if providing one" }
   ),
   ownerId: z.number().optional(),
-  // Code is required in the database, but we'll generate it if not provided
-  code: z.string().optional() 
+  // Code is required in database schema
+  code: z.string().min(2, { message: "Code must be at least 2 characters." })
 });
 
 type EntityFormValues = z.infer<typeof entitySchema>;
