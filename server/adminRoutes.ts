@@ -94,7 +94,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   }));
   /**
    * Get admin dashboard data
-   * Returns entities and consolidation groups for admin dashboard
+   * Returns clients, entities and consolidation groups for admin dashboard
    */
   app.get("/api/admin/dashboard", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     console.log("Admin dashboard data requested by:", req.user);
@@ -102,6 +102,9 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     try {
       // Get all entities
       const entities = await storage.getEntities();
+      
+      // Get all clients
+      const clients = await storage.getClients();
       
       // Get all users for admin dashboard
       const users = await storage.getUsers();
@@ -114,6 +117,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       return res.json({
         status: "success",
         data: {
+          clients,
           entities,
           users,
           consolidationGroups

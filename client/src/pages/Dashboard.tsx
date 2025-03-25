@@ -772,7 +772,7 @@ interface AdminDashboardData {
 }
   
   // Admin API data
-  const { data: adminDashboardData = { status: 'pending', data: { entities: [], users: [], consolidationGroups: [] } }, isLoading: adminDataLoading } = useQuery<AdminDashboardData>({
+  const { data: adminDashboardData = { status: 'pending', data: { clients: [], entities: [], users: [], consolidationGroups: [] } }, isLoading: adminDataLoading } = useQuery<AdminDashboardData>({
     queryKey: ['/api/admin/dashboard'],
     enabled: isAdmin
   });
@@ -830,24 +830,29 @@ interface AdminDashboardData {
   // Admin dashboard specific state - start with client management tab selected
   const [adminActiveTab, setAdminActiveTab] = useState("client-management");
   
-  // Load entities and data from admin dashboard data
+  // Load entities, clients, and data from admin dashboard data
   const entities = adminDashboardData?.data?.entities || [];
+  const clients = adminDashboardData?.data?.clients || [];
   const dashboardUsers = adminDashboardData?.data?.users || [];
   const consolidationGroups = adminDashboardData?.data?.consolidationGroups || [];
   
-  // Filtered entities based on search (replacing mock clients)
-  const filteredClients = entities.filter(entity => {
-    const matchesSearch = entity.name.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filtered clients based on search and status
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (client.contactName && client.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (client.contactEmail && client.contactEmail.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = clientStatusFilter === "all" || 
-      (clientStatusFilter === "Active" && entity.isActive) ||
-      (clientStatusFilter === "Inactive" && !entity.isActive);
+      (clientStatusFilter === "Active" && client.active) ||
+      (clientStatusFilter === "Inactive" && !client.active) ||
+      (clientStatusFilter === "Onboarding" && client.active && client.onboardingStatus === "in_progress") ||
+      (clientStatusFilter === "Pending Review" && client.active && client.onboardingStatus === "pending_review");
     return matchesSearch && matchesStatus;
   });
 
-  // Data for client status pie chart using real entity data
+  // Data for client status pie chart using real client data
   const clientStatusData = [
-    { name: 'Active', value: entities.filter(e => e.isActive).length },
-    { name: 'Inactive', value: entities.filter(e => !e.isActive).length }
+    { name: 'Active', value: clients.filter(c => c.active).length },
+    { name: 'Inactive', value: clients.filter(c => !c.active).length }
   ];
 
   // Data for payment status
