@@ -86,16 +86,34 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // Handle client data from ClientSetupCard
   const handleClientDataSaved = (data: any) => {
-    console.log("handleClientDataSaved called with data:", data);
+    console.log("🔷 handleClientDataSaved called with data:", data);
     setClientData(data);
-    console.log("Calling handleNext from handleClientDataSaved");
-    handleNext();
+    
+    // IMPORTANT: Directly set the current step instead of calling handleNext
+    // This ensures we jump to the next step immediately without relying on state updates
+    console.log("🔷 Directly setting currentStep to 'entities'");
+    const nextStepIndex = steps.findIndex(step => step.id === currentStep) + 1;
+    if (nextStepIndex < steps.length) {
+      const nextStepId = steps[nextStepIndex].id;
+      setCurrentStep(nextStepId);
+      console.log("🔷 Current step set to:", nextStepId);
+    }
   };
   
   // Handle entity data from EntityManagementCard
   const handleEntityDataSaved = (entities: any[]) => {
+    console.log("🔷 handleEntityDataSaved called with entities:", entities);
     setEntityData(entities);
-    handleNext();
+    
+    // IMPORTANT: Directly set the current step instead of calling handleNext
+    // This ensures we jump to the next step immediately without relying on state updates
+    console.log("🔷 Directly setting currentStep to 'summary'");
+    const nextStepIndex = steps.findIndex(step => step.id === currentStep) + 1;
+    if (nextStepIndex < steps.length) {
+      const nextStepId = steps[nextStepIndex].id;
+      setCurrentStep(nextStepId);
+      console.log("🔷 Current step set to:", nextStepId);
+    }
   };
   
   // When client data changes, conditionally update the step
