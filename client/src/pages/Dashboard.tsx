@@ -503,58 +503,88 @@ function Dashboard() {
   };
   
   // Queries for financial data - only enabled when entity is selected
-  const { data: incomeData = {}, isLoading: incomeLoading } = useQuery({
+  const { data: incomeData = {} as IncomeStatementData, isLoading: incomeLoading } = useQuery<IncomeStatementData>({
     queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'income-statement'] : ['skip-query-income'],
     enabled: !!currentEntity
   });
   
-  const { data: balanceSheetData = {}, isLoading: balanceSheetLoading } = useQuery({
+  const { data: balanceSheetData = {} as BalanceSheetData, isLoading: balanceSheetLoading } = useQuery<BalanceSheetData>({
     queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'balance-sheet'] : ['skip-query-balance'],
     enabled: !!currentEntity
   });
   
-  const { data: cashFlowData = {}, isLoading: cashFlowLoading } = useQuery({
+  const { data: cashFlowData = {} as CashFlowData, isLoading: cashFlowLoading } = useQuery<CashFlowData>({
     queryKey: currentEntity ? ['/api/entities', currentEntity.id, 'reports', 'cash-flow'] : ['skip-query-cashflow'],
     enabled: !!currentEntity
   });
   
-  // Define types for admin dashboard data
-  interface AdminDashboardData {
-    status: string;
-    data: {
-      entities: Array<{
-        id: number;
-        name: string;
-        legalName?: string;
-        taxId?: string;
-        entityType?: string;
-        industry?: string;
-        address?: string;
-        isActive: boolean;
-        ownerId: number;
-        createdAt: string;
-        updatedAt?: string;
-        email?: string;
-        phone?: string;
-      }>;
-      users: Array<{
-        id: number;
-        username: string;
-        name: string;
-        email: string;
-        role: string;
-      }>;
-      consolidationGroups: Array<{
-        id: number;
-        name: string;
-        description?: string;
-        ownerId: number;
-        isActive: boolean;
-        createdAt: string;
-        updatedAt?: string;
-      }>;
-    };
-  }
+  // Financial data interfaces
+interface FinancialAccount {
+  accountId: number;
+  accountName: string;
+  balance: number;
+}
+
+interface BalanceSheetData {
+  assets?: FinancialAccount[];
+  liabilities?: FinancialAccount[];
+  equity?: FinancialAccount[];
+  totalAssets?: number;
+  liabilitiesAndEquity?: number;
+}
+
+interface IncomeStatementData {
+  revenue?: FinancialAccount[];
+  expenses?: FinancialAccount[];
+  totalRevenue?: number;
+  totalExpenses?: number;
+  netIncome?: number;
+}
+
+interface CashFlowData {
+  netCashFlow?: number;
+  operatingActivities?: FinancialAccount[];
+  investingActivities?: FinancialAccount[];
+  financingActivities?: FinancialAccount[];
+}
+
+// Define types for admin dashboard data
+interface AdminDashboardData {
+  status: string;
+  data: {
+    entities: Array<{
+      id: number;
+      name: string;
+      legalName?: string;
+      taxId?: string;
+      entityType?: string;
+      industry?: string;
+      address?: string;
+      isActive: boolean;
+      ownerId: number;
+      createdAt: string;
+      updatedAt?: string;
+      email?: string;
+      phone?: string;
+    }>;
+    users: Array<{
+      id: number;
+      username: string;
+      name: string;
+      email: string;
+      role: string;
+    }>;
+    consolidationGroups: Array<{
+      id: number;
+      name: string;
+      description?: string;
+      ownerId: number;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt?: string;
+    }>;
+  };
+}
   
   // Admin API data
   const { data: adminDashboardData = { status: 'pending', data: { entities: [], users: [], consolidationGroups: [] } }, isLoading: adminDataLoading } = useQuery<AdminDashboardData>({
