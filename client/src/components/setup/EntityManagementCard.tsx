@@ -622,6 +622,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-phone"
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
@@ -636,6 +637,7 @@ export default function EntityManagementCard({
                 />
                 
                 <FormField
+                  key="field-address"
                   control={form.control}
                   name="address"
                   render={({ field }) => (
