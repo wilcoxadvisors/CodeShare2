@@ -58,10 +58,11 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   /**
    * Create a new entity
    * Admins can create entities for any user
+   * Entities must be associated with a client
    */
   app.post("/api/admin/entities", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { ownerId, ...entityData } = req.body;
+      const { ownerId, clientId, ...entityData } = req.body;
       
       if (!ownerId) {
         throwBadRequest("Owner ID is required");
@@ -73,11 +74,50 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throwNotFound("User not found");
       }
       
+      // If clientId not provided, find or create a client for the owner
+      let finalClientId = clientId;
+      if (!finalClientId) {
+        // Try to find client for the owner
+        const clients = await storage.getClientsByUserId(ownerId);
+        if (clients && clients.length > 0) {
+          finalClientId = clients[0].id;
+        } else if (owner.role === UserRole.CLIENT) {
+          // If user is a client but doesn't have a client record, create one
+          const newClient = await storage.createClient({
+            userId: ownerId,
+            name: owner.name || `${owner.username}'s Client`,
+            active: true
+          });
+          finalClientId = newClient.id;
+        } else {
+          // For ADMIN and EMPLOYEE, look up the default admin client
+          const adminUser = await storage.findUserByRole(UserRole.ADMIN);
+          if (adminUser) {
+            const adminClients = await storage.getClientsByUserId(adminUser.id);
+            if (adminClients && adminClients.length > 0) {
+              finalClientId = adminClients[0].id;
+            }
+          }
+          
+          // If still no client found, throw error
+          if (!finalClientId) {
+            throwBadRequest("Client ID is required and no default client could be found");
+          }
+        }
+      } else {
+        // Validate the client exists
+        const client = await storage.getClient(finalClientId);
+        if (!client) {
+          throwNotFound("Client not found");
+        }
+      }
+      
       // Validate and create entity
       const validatedData = insertEntitySchema.parse({
         ...entityData,
         ownerId,
-        isActive: true
+        clientId: finalClientId,
+        active: true
       });
       
       const entity = await storage.createEntity(validatedData);

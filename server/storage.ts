@@ -1,5 +1,6 @@
 import { 
   users, User, InsertUser, UserRole,
+  clients, Client, InsertClient,
   entities, Entity, InsertEntity,
   accounts, Account, InsertAccount, AccountType,
   journals, Journal, InsertJournal, JournalType,
@@ -38,11 +39,20 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
+  findUserByRole(role: UserRole): Promise<User | undefined>;
+  
+  // Client methods
+  getClient(id: number): Promise<Client | undefined>;
+  getClients(): Promise<Client[]>;
+  getClientsByUserId(userId: number): Promise<Client[]>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
   
   // Entity methods
   getEntity(id: number): Promise<Entity | undefined>;
   getEntities(): Promise<Entity[]>;
   getEntitiesByUser(userId: number): Promise<Entity[]>;
+  getEntitiesByClient(clientId: number): Promise<Entity[]>;
   createEntity(entity: InsertEntity): Promise<Entity>;
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
   
@@ -224,6 +234,7 @@ export interface GLEntry {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private clients: Map<number, Client>;
   private entities: Map<number, Entity>;
   private accounts: Map<number, Account>;
   private journals: Map<number, Journal>;
@@ -248,6 +259,7 @@ export class MemStorage implements IStorage {
   private blogSubscribers: Map<number, BlogSubscriber>;
   
   private currentUserId: number = 1;
+  private currentClientId: number = 1;
   private currentEntityId: number = 1;
   private currentAccountId: number = 1;
   private currentJournalId: number = 1;
@@ -284,6 +296,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.clients = new Map();
     this.entities = new Map();
     this.accounts = new Map();
     this.journals = new Map();
@@ -341,12 +354,43 @@ export class MemStorage implements IStorage {
     };
     this.users.set(adminUser.id, adminUser);
     
+    // Create default client for admin
+    const defaultClient: Client = {
+      id: this.currentClientId++,
+      name: 'Wilcox Advisors',
+      email: 'contact@wilcoxadvisors.com',
+      ownerId: adminUser.id,
+      active: true,
+      phone: '+1-555-123-4567',
+      industry: 'Accounting',
+      contactName: 'Admin User',
+      contactEmail: 'admin@example.com',
+      contactPhone: null,
+      billingAddress: '123 Business Ave',
+      billingCity: 'San Francisco',
+      billingState: 'CA',
+      billingZip: '94105',
+      billingCountry: 'US',
+      taxId: null,
+      website: 'https://wilcoxadvisors.com',
+      notes: 'Our organization',
+      createdAt: new Date(),
+      updatedAt: null,
+      lastContactDate: null,
+      clientSince: new Date(),
+      logo: null,
+      accountManager: adminUser.id,
+      tags: ['internal']
+    };
+    this.clients.set(defaultClient.id, defaultClient);
+    
     // Create default entity
     const defaultEntity: Entity = {
       id: this.currentEntityId++,
       name: 'Acme Corporation',
       code: 'ACME',
       ownerId: adminUser.id,
+      clientId: defaultClient.id, // Link to default client
       active: true,
       fiscalYearStart: '01-01',
       fiscalYearEnd: '12-31',
@@ -637,6 +681,67 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...userData };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+  
+  async findUserByRole(role: UserRole): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.role === role);
+  }
+
+  // Client methods
+  async getClient(id: number): Promise<Client | undefined> {
+    return this.clients.get(id);
+  }
+  
+  async getClients(): Promise<Client[]> {
+    return Array.from(this.clients.values());
+  }
+  
+  async getClientsByUserId(userId: number): Promise<Client[]> {
+    return Array.from(this.clients.values())
+      .filter(client => client.ownerId === userId);
+  }
+  
+  async createClient(client: InsertClient): Promise<Client> {
+    const id = this.currentClientId++;
+    const newClient: Client = {
+      id,
+      name: client.name,
+      email: client.email,
+      phone: client.phone || null,
+      ownerId: client.ownerId,
+      active: client.active !== undefined ? client.active : true,
+      industry: client.industry || null,
+      contactName: client.contactName || null,
+      contactEmail: client.contactEmail || null,
+      contactPhone: client.contactPhone || null,
+      billingAddress: client.billingAddress || null,
+      billingCity: client.billingCity || null,
+      billingState: client.billingState || null,
+      billingZip: client.billingZip || null,
+      billingCountry: client.billingCountry || null,
+      taxId: client.taxId || null,
+      website: client.website || null,
+      notes: client.notes || null,
+      createdAt: new Date(),
+      updatedAt: null,
+      lastContactDate: client.lastContactDate || null,
+      clientSince: client.clientSince || new Date(),
+      logo: client.logo || null,
+      accountManager: client.accountManager || null,
+      tags: client.tags || []
+    };
+    
+    this.clients.set(id, newClient);
+    return newClient;
+  }
+  
+  async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
+    const client = this.clients.get(id);
+    if (!client) return undefined;
+    
+    const updatedClient = { ...client, ...clientData, updatedAt: new Date() };
+    this.clients.set(id, updatedClient);
+    return updatedClient;
   }
   
   // Entity methods
