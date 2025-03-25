@@ -49,7 +49,7 @@ const clientSetupSchema = z.object({
 type ClientSetupValues = z.infer<typeof clientSetupSchema>;
 
 interface ClientSetupCardProps {
-  onNext: () => void;
+  onNext: (data: ClientSetupValues) => void;
   setClientData: (data: ClientSetupValues) => void;
   initialData?: ClientSetupValues;
 }
@@ -85,8 +85,10 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
         description: "Client information saved successfully.",
       });
       
-      // Move to the next step
-      onNext();
+      // Move to the next step with data
+      if (onNext) {
+        onNext(data);
+      }
     } catch (error: any) {
       console.error("Error saving client information:", error);
       toast({

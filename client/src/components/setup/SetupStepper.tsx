@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle } from "lucide-react";
 import ClientSetupCard from "./ClientSetupCard";
 import EntityManagementCard from "./EntityManagementCard";
+import SetupSummaryCard from "./SetupSummaryCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -152,58 +153,40 @@ export default function SetupStepper() {
             {/* Consolidation step removed - now available as a separate module */}
             
             {currentStep === "summary" && (
-              <div className="text-center p-8 space-y-6">
-                <h3 className="text-xl font-medium">Setup Summary</h3>
-                
-                <div className="bg-muted/20 p-4 rounded-lg space-y-4 text-left">
-                  {clientData && (
-                    <div>
-                      <h4 className="font-semibold">Client Information</h4>
-                      <ul className="mt-2 space-y-1">
-                        <li><span className="font-medium">Name:</span> {clientData.name}</li>
-                        <li><span className="font-medium">Legal Name:</span> {clientData.legalName}</li>
-                        <li><span className="font-medium">Industry:</span> {clientData.industry}</li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-                
-                <Button 
-                  onClick={() => {
-                    // Actually complete the setup and close the dialog
-                    setSetupComplete(true);
-                    
-                    // Show toast notification
-                    toast({
-                      title: "Setup Complete!",
-                      description: "Client added successfully",
-                    });
-                  }}
-                >
-                  Finish & Add Client
-                </Button>
-              </div>
+              <SetupSummaryCard
+                clientData={clientData}
+                onBack={handleBack}
+                onFinish={() => {
+                  // Complete the setup and close the dialog
+                  setSetupComplete(true);
+                  
+                  // Handle any additional logic needed after setup completion
+                  // You could add a callback here to refresh the parent component
+                }}
+              />
             )}
           </div>
           
-          {/* Navigation buttons */}
-          <div className="flex justify-between mt-8">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStepIndex === 0}
-            >
-              Back
-            </Button>
-            
-            {/* Skip button could be added here if needed */}
-            
-            {currentStep !== "client" && currentStep !== "entities" && (
-              <Button onClick={handleNext}>
-                {currentStepIndex === SETUP_STEPS.length - 1 ? "Finish" : "Next"}
+          {/* Navigation buttons - only show for steps that don't have their own navigation */}
+          {currentStep !== "summary" && (
+            <div className="flex justify-between mt-8">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={currentStepIndex === 0}
+              >
+                Back
               </Button>
-            )}
-          </div>
+              
+              {/* Skip button could be added here if needed */}
+              
+              {currentStep !== "client" && currentStep !== "entities" && (
+                <Button onClick={handleNext}>
+                  {currentStepIndex === SETUP_STEPS.length - 1 ? "Finish" : "Next"}
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
