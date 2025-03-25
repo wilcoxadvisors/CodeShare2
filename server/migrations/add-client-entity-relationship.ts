@@ -13,7 +13,7 @@ export async function addClientEntityRelationship() {
 
   try {
     // Use a transaction to ensure all operations succeed or fail together
-    await withTransaction(db, async (tx) => {
+    await withTransaction(async (tx) => {
       // First, check if the clients table already exists
       const clientsTableExists = await tx.execute(sql`
         SELECT EXISTS (

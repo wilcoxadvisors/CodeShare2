@@ -1,6 +1,7 @@
 import { db as drizzleDb } from './db';
 import * as schema from '@shared/schema';
 import { updateJunctionTableSchema } from './migrations/update-junction-table-schema';
+import { addClientEntityRelationship } from './migrations/add-client-entity-relationship';
 
 // Database schema migration utility
 
@@ -898,6 +899,9 @@ export async function migrateTables() {
     
     // Apply junction table schema update for consolidation_group_entities
     await updateJunctionTableSchema();
+    
+    // Apply client-entity relationship migration
+    await addClientEntityRelationship();
     
     console.log("Database migration completed successfully!");
     return true;
