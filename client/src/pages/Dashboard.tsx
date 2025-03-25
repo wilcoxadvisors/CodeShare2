@@ -23,6 +23,9 @@ import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
 import SetupStepper from "../components/setup/SetupStepper";
+import ClientSetupCard from "../components/setup/ClientSetupCard";
+import EntityManagementCard from "../components/setup/EntityManagementCard";
+import SetupSummaryCard from "../components/setup/SetupSummaryCard";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -732,11 +735,98 @@ interface AdminDashboardData {
       <PageHeader title="Dashboard" description={`Welcome, ${user?.name || 'User'}!`} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* No tabs - admin dashboard only */}
+        {/* Setup Flow - Only show for admin users and when setup is not complete */}
+        {isAdmin && !setupComplete && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Account Setup</h2>
+              {activeStep > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setActiveStep(prev => Math.max(0, prev - 1))}
+                >
+                  Back
+                </Button>
+              )}
+            </div>
+            
+            {/* Setup Steps Indicator */}
+            <div className="w-full mb-6">
+              <div className="flex items-center justify-between">
+                {['Client Info', 'Entities', 'Summary & Finish'].map((step, index) => (
+                  <div key={index} className="flex flex-col items-center relative">
+                    {/* Connector line between steps */}
+                    {index < 2 && (
+                      <div 
+                        className={`absolute h-0.5 w-full top-4 left-1/2 -z-10 ${
+                          index < activeStep ? "bg-primary" : "bg-gray-200"
+                        }`}
+                      />
+                    )}
+                    
+                    {/* Step circle */}
+                    <div 
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
+                        index < activeStep 
+                          ? "bg-primary border-primary text-primary-foreground" 
+                          : index === activeStep 
+                          ? "border-primary text-primary" 
+                          : "border-gray-200 text-gray-400"
+                      }`}
+                    >
+                      {index < activeStep ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <span>{index + 1}</span>
+                      )}
+                    </div>
+                    
+                    {/* Step label */}
+                    <span 
+                      className={`mt-2 text-xs font-medium ${
+                        index === activeStep ? "text-primary" : "text-gray-500"
+                      }`}
+                    >
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Setup Step Content */}
+            <div className="mt-6">
+              {activeStep === 0 && (
+                <ClientSetupCard 
+                  onNext={() => setActiveStep(1)} 
+                  setClientData={setClientData}
+                  initialData={clientData}
+                />
+              )}
+              
+              {activeStep === 1 && (
+                <EntityManagementCard 
+                  onNext={() => setActiveStep(2)}
+                  clientData={clientData}
+                />
+              )}
+              
+              {activeStep === 2 && (
+                <SetupSummaryCard 
+                  clientData={clientData}
+                  entities={entities}
+                  onComplete={() => setSetupComplete(true)}
+                  onBack={() => setActiveStep(1)}
+                />
+              )}
+            </div>
+          </div>
+        )}
         
-        {/* Tab Content Container */}
-        <div className="mt-6">
-          {/* Original Dashboard - Overview Tab */}
+        {/* Regular Dashboard Content (show when setup is complete or for non-admin users) */}
+        {(setupComplete || !isAdmin) && (
+          <div className="mt-6">
+            {/* Original Dashboard - Overview Tab */}
           {activeTab === "overview" && (
             <div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1973,6 +2063,7 @@ interface AdminDashboardData {
             </div>
           )}
         </div>
+        )}
       </div>
     </>
   );
