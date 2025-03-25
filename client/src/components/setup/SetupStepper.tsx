@@ -45,6 +45,15 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const [entityData, setEntityData] = useState<any[]>([]);
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
   
+  // Reset all state when component is mounted (dialog opened)
+  useEffect(() => {
+    setCurrentStep("client");
+    setClientData(null);
+    setEntityData([]);
+    setSetupComplete(false);
+    console.log("SetupStepper state reset on mount");
+  }, []);
+  
   // Calculate current step index
   const currentStepIndex = SETUP_STEPS.findIndex(step => step.id === currentStep);
   
