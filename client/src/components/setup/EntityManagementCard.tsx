@@ -105,7 +105,8 @@ export default function EntityManagementCard({
       address: "",
       phone: "",
       email: "",
-      ownerId: user?.id
+      ownerId: user?.id,
+      code: ""
     }
   });
   
