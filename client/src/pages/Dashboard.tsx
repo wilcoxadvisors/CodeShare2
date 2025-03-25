@@ -384,6 +384,11 @@ function Dashboard() {
   // Check if user is admin early
   const isAdmin = user?.role === UserRole.ADMIN;
   
+  // Setup state for the stepper flow
+  const [activeStep, setActiveStep] = useState(0);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [clientData, setClientData] = useState<any>(null);
+  
   // Set default active tab based on user role
   const [activeTab, setActiveTab] = useState(isAdmin ? "admin" : "overview");
   const [searchQuery, setSearchQuery] = useState("");

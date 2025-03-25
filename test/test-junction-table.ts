@@ -48,7 +48,7 @@ async function setupTestData() {
         email: 'test@example.com',
         name: 'Test User',
         role: UserRole.ADMIN,
-        isActive: true,
+        active: true,
         createdAt: new Date()
       })
       .returning();
@@ -72,9 +72,9 @@ async function setupTestData() {
     const [entity1] = await db.insert(entities)
       .values({
         name: 'Test Entity 1',
-        legalName: 'Test Entity 1 Legal Name',
-        entityType: 'Corporation',
-        isActive: true,
+        code: 'TE1',
+        ownerId: userId,
+        active: true,
         createdAt: new Date()
       })
       .returning();
@@ -82,9 +82,9 @@ async function setupTestData() {
     const [entity2] = await db.insert(entities)
       .values({
         name: 'Test Entity 2',
-        legalName: 'Test Entity 2 Legal Name',
-        entityType: 'LLC',
-        isActive: true,
+        code: 'TE2',
+        ownerId: userId,
+        active: true,
         createdAt: new Date()
       })
       .returning();
@@ -103,9 +103,9 @@ async function setupTestData() {
       const [entity2] = await db.insert(entities)
         .values({
           name: 'Test Entity 2',
-          legalName: 'Test Entity 2 Legal Name',
-          entityType: 'LLC',
-          isActive: true,
+          code: 'TE2',
+          ownerId: userId,
+          active: true,
           createdAt: new Date()
         })
         .returning();
@@ -220,16 +220,8 @@ async function testJunctionTableImplementation() {
       console.log('Testing removeEntityFromConsolidationGroup...');
       await removeEntityFromConsolidationGroup(createdGroup.id, entity1Id);
       
-      // Verify entity was removed from both array and junction table
-      console.log('Verifying entity removal from array and junction table...');
-      
-      // Check entity_ids array
-      const groupAfterRemoval = await db.select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.id, createdGroup.id))
-        .limit(1);
-        
-      console.log('Entity IDs in array after removal:', groupAfterRemoval[0].entity_ids);
+      // Verify entity was removed from the junction table
+      console.log('Verifying entity removal from junction table...');
       
       // Check junction table
       const junctionAfterRemoval = await db.select()
