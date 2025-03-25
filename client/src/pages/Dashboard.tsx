@@ -2062,7 +2062,6 @@ interface AdminDashboardData {
             </div>
           )}
         </div>
-        )}
       </div>
     </>
   );
