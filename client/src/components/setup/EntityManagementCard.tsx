@@ -249,11 +249,13 @@ export default function EntityManagementCard({
         data: cleanedData
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast({
         title: "Success",
         description: "Entity updated successfully.",
       });
+      
+      // Reset form
       form.reset({
         name: "",
         legalName: "",
@@ -265,6 +267,15 @@ export default function EntityManagementCard({
         email: "",
         ownerId: user?.id
       });
+      
+      // Update the entity in setupEntities
+      if (response && currentEntityId) {
+        setSetupEntities(prev => 
+          prev.map(entity => entity.id === currentEntityId ? response : entity)
+        );
+      }
+      
+      // Global data refresh
       refetch();
       setIsEditing(false);
       setCurrentEntityId(null);
@@ -287,11 +298,16 @@ export default function EntityManagementCard({
         method: 'DELETE'
       });
     },
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       toast({
         title: "Success",
         description: "Entity deleted successfully.",
       });
+      
+      // Remove the entity from setupEntities
+      setSetupEntities(prev => prev.filter(entity => entity.id !== variables));
+      
+      // Global data refresh
       refetch();
     },
     onError: (error: any) => {
@@ -634,7 +650,7 @@ export default function EntityManagementCard({
             <div className="flex justify-center items-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : entities.length === 0 ? (
+          ) : setupEntities.length === 0 ? (
             <div className="text-center py-8 border rounded-lg bg-muted/20">
               <p className="text-muted-foreground mb-4">
                 You haven't created any entities yet. Add your first entity above.
@@ -656,7 +672,7 @@ export default function EntityManagementCard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entities.map((entity: any) => (
+                  {setupEntities.map((entity: any) => (
                     <TableRow key={entity.id}>
                       <TableCell className="font-medium">{entity.name}</TableCell>
                       <TableCell>{entity.entityType || "LLC"}</TableCell>
@@ -711,10 +727,10 @@ export default function EntityManagementCard({
             e.preventDefault();
             // Update parent entity data
             if (setEntityData) {
-              setEntityData(entities);
+              setEntityData(setupEntities);
             }
             // Continue to next step
-            onNext(entities);
+            onNext(setupEntities);
           }} 
           disabled={!canProceed}
         >
