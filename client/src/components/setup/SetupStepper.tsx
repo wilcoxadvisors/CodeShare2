@@ -5,6 +5,7 @@ import { CheckCircle, Circle } from "lucide-react";
 import ClientSetupCard from "./ClientSetupCard";
 import EntityManagementCard from "./EntityManagementCard";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Step configuration for the setup process
@@ -33,6 +34,7 @@ const SETUP_STEPS = [
  */
 export default function SetupStepper() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<string>("client");
   const [clientData, setClientData] = useState<any>(null);
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
@@ -149,12 +151,36 @@ export default function SetupStepper() {
             {/* Consolidation step removed - now available as a separate module */}
             
             {currentStep === "summary" && (
-              <div className="text-center p-8">
-                <p className="text-lg font-medium mb-4">Setup Complete!</p>
-                <p className="text-muted-foreground mb-6">
-                  You've successfully completed the initial setup. You can now start using the platform.
-                </p>
-                <Button onClick={() => setSetupComplete(true)}>Start Using Platform</Button>
+              <div className="text-center p-8 space-y-6">
+                <h3 className="text-xl font-medium">Setup Summary</h3>
+                
+                <div className="bg-muted/20 p-4 rounded-lg space-y-4 text-left">
+                  {clientData && (
+                    <div>
+                      <h4 className="font-semibold">Client Information</h4>
+                      <ul className="mt-2 space-y-1">
+                        <li><span className="font-medium">Name:</span> {clientData.name}</li>
+                        <li><span className="font-medium">Legal Name:</span> {clientData.legalName}</li>
+                        <li><span className="font-medium">Industry:</span> {clientData.industry}</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                
+                <Button 
+                  onClick={() => {
+                    // Actually complete the setup and close the dialog
+                    setSetupComplete(true);
+                    
+                    // Show toast notification
+                    toast({
+                      title: "Setup Complete!",
+                      description: "Client added successfully",
+                    });
+                  }}
+                >
+                  Finish & Add Client
+                </Button>
               </div>
             )}
           </div>
