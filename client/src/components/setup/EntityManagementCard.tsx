@@ -182,6 +182,8 @@ export default function EntityManagementCard({
       });
     },
     onSuccess: (response) => {
+      console.log("Entity created successfully:", response);
+      
       toast({
         title: "Success",
         description: "Entity created successfully.",
@@ -201,9 +203,18 @@ export default function EntityManagementCard({
         code: ""
       });
       
-      // Add the created entity to setupEntities
+      // Add the created entity to setupEntities (preventing duplicates)
       if (response) {
-        setSetupEntities(prev => [...prev, response]);
+        setSetupEntities(prev => {
+          // Check if the entity is already in the list
+          // Cast response to any to handle unknown response structure
+          const entity = response as any;
+          const exists = prev.some(e => e.id === entity.id);
+          if (exists) {
+            return prev; // Don't add it again
+          }
+          return [...prev, entity]; // Add it if it's new
+        });
       }
       
       // Global data refresh
@@ -284,9 +295,11 @@ export default function EntityManagementCard({
       
       // Update the entity in setupEntities
       if (response && currentEntityId) {
-        setSetupEntities(prev => 
-          prev.map(entity => entity.id === currentEntityId ? response : entity)
-        );
+        setSetupEntities(prev => {
+          // Cast response to any to handle unknown response structure
+          const entity = response as any;
+          return prev.map(e => e.id === currentEntityId ? entity : e);
+        });
       }
       
       // Global data refresh
@@ -313,13 +326,19 @@ export default function EntityManagementCard({
       });
     },
     onSuccess: (_response, variables) => {
+      console.log("Entity deleted successfully, ID:", variables);
+      
       toast({
         title: "Success",
         description: "Entity deleted successfully.",
       });
       
       // Remove the entity from setupEntities
-      setSetupEntities(prev => prev.filter(entity => entity.id !== variables));
+      // Using the variable (id) passed to mutate()
+      setSetupEntities(prev => {
+        console.log("Removing entity with ID:", variables, "from", prev);
+        return prev.filter(entity => entity.id !== variables);
+      });
       
       // Global data refresh
       refetch();
