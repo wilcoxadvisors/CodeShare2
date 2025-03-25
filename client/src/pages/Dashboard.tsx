@@ -397,6 +397,8 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [isEditEntityDialogOpen, setIsEditEntityDialogOpen] = useState(false);
+  const [currentEditEntity, setCurrentEditEntity] = useState<any>(null);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -476,6 +478,76 @@ function Dashboard() {
       });
     }
   });
+  
+  // Handle edit entity click from dropdown menu
+  const handleEditEntity = (entity: any) => {
+    setCurrentEditEntity(entity);
+    setIsEditEntityDialogOpen(true);
+  };
+  
+  // Handle entity update
+  const updateEntityMutation = useMutation({
+    mutationFn: async (entityData: any) => {
+      const endpoint = isAdmin ? `/api/admin/entities/${entityData.id}` : `/api/entities/${entityData.id}`;
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(entityData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update entity');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+      
+      // Close dialog and reset current entity
+      setIsEditEntityDialogOpen(false);
+      setCurrentEditEntity(null);
+      
+      toast({
+        title: "Success",
+        description: "Entity updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Entity update error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update entity. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle form submission for updating an entity
+  const handleUpdateEntity = (updatedData: any) => {
+    if (!currentEditEntity || !currentEditEntity.id) {
+      toast({
+        title: "Error",
+        description: "No entity selected for update",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Merge current entity with updated data
+    const entityData = {
+      ...currentEditEntity,
+      ...updatedData,
+    };
+    
+    // Submit the update
+    updateEntityMutation.mutate(entityData);
+  };
   
   // Handle form submission
   const handleCreateEntity = () => {
@@ -1197,7 +1269,7 @@ interface AdminDashboardData {
                                             <MessageSquare className="mr-2 h-4 w-4" />
                                             Send Message
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleEditEntity(entity)}>
                                             <Pen className="mr-2 h-4 w-4" />
                                             Edit Entity
                                           </DropdownMenuItem>
