@@ -417,11 +417,24 @@ export default function EntityManagementCard({
     });
     
     // Clear setup entities when client data changes (new setup flow)
+    // This is critical for ensuring entity isolation between different client setups
     setSetupEntities([]);
     
     // For debugging - helps identify when form is being reset
-    console.log("Entity form reset to default values and setupEntities cleared");
-  }, [clientData]); // Reset when clientData changes, which happens when navigating steps
+    console.log("Entity form reset to default values and setupEntities cleared", {clientId: clientData?.id});
+  }, [clientData, form]); // Reset when clientData changes, which happens when navigating steps
+  
+  // Component mount/unmount handler to ensure clean slate
+  useEffect(() => {
+    // Clear entities on mount
+    setSetupEntities([]);
+    
+    return () => {
+      // Clean up when component unmounts
+      setIsEditing(false);
+      setCurrentEntityId(null);
+    };
+  }, []);
   
   return (
     <Card className="w-full">

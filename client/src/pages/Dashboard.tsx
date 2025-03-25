@@ -1071,7 +1071,17 @@ interface AdminDashboardData {
                         <CardHeader>
                           <div className="flex justify-between items-center">
                             <CardTitle>Client Status Overview</CardTitle>
-                            <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
+                            <Dialog 
+                              open={isAddClientDialogOpen} 
+                              onOpenChange={(open) => {
+                                // When dialog is closed, also reset all form data
+                                if (!open) {
+                                  // Clear any client data that might have been collected
+                                  console.log("Dialog closed - resetting client setup state");
+                                }
+                                setIsAddClientDialogOpen(open);
+                              }}
+                            >
                               <DialogTrigger asChild>
                                 <Button size="sm">
                                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -1087,14 +1097,19 @@ interface AdminDashboardData {
                                 </DialogHeader>
                                 
                                 <div className="py-4">
-                                  <SetupStepper onComplete={() => {
-                                    // Close the dialog when setup is complete
-                                    setIsAddClientDialogOpen(false);
-                                    
-                                    // Refresh client data
-                                    queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
-                                    queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
-                                  }} />
+                                  {isAddClientDialogOpen && (
+                                    <SetupStepper 
+                                      key={`setup-flow-${Date.now()}`} // Force component re-creation on dialog open
+                                      onComplete={() => {
+                                        // Close the dialog when setup is complete
+                                        setIsAddClientDialogOpen(false);
+                                        
+                                        // Refresh client data
+                                        queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+                                        queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+                                      }} 
+                                    />
+                                  )}
                                 </div>
                                 
                                 <DialogFooter>

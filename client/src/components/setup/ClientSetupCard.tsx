@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -73,6 +73,27 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       notes: ""
     }
   });
+  
+  // Reset form when component mounts to ensure a clean state for each new client setup
+  useEffect(() => {
+    // Reset to defaults unless initialData is provided (for when returning to edit)
+    if (!initialData) {
+      console.log("ClientSetupCard mounted - resetting form to defaults");
+      form.reset({
+        name: "",
+        legalName: "",
+        taxId: "",
+        industry: "",
+        address: "",
+        phone: "",
+        email: "",
+        website: "",
+        notes: ""
+      });
+    } else {
+      console.log("ClientSetupCard mounted with initialData - using provided data");
+    }
+  }, []);
 
   const onSubmit = async (data: ClientSetupValues) => {
     setIsSubmitting(true);
