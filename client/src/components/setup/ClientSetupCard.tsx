@@ -74,26 +74,17 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
     }
   });
   
-  // Reset form when component mounts to ensure a clean state for each new client setup
+  // Only reset form if initialData changes or on initial mount
   useEffect(() => {
-    // Reset to defaults unless initialData is provided (for when returning to edit)
-    if (!initialData) {
-      console.log("ClientSetupCard mounted - resetting form to defaults");
-      form.reset({
-        name: "",
-        legalName: "",
-        taxId: "",
-        industry: "",
-        address: "",
-        phone: "",
-        email: "",
-        website: "",
-        notes: ""
-      });
+    if (initialData) {
+      console.log("ClientSetupCard - Using provided initialData", initialData);
+      form.reset(initialData);
     } else {
-      console.log("ClientSetupCard mounted with initialData - using provided data");
+      // Only log without resetting if we're not in the first render
+      // This prevents resetting the form while the user is typing
+      console.log("ClientSetupCard - No initialData provided");
     }
-  }, []);
+  }, [initialData]);
 
   const onSubmit = (data: ClientSetupValues) => {
     setIsSubmitting(true);

@@ -1099,7 +1099,7 @@ interface AdminDashboardData {
                                 <div className="py-4">
                                   {isAddClientDialogOpen && (
                                     <SetupStepper 
-                                      key={`setup-flow-${Date.now()}`} // Force component re-creation on dialog open
+                                      // Removed the dynamic key that caused re-mounting
                                       onComplete={() => {
                                         // Close the dialog when setup is complete
                                         setIsAddClientDialogOpen(false);
