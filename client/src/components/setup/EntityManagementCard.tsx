@@ -704,17 +704,17 @@ export default function EntityManagementCard({
                       <TableCell>{entity.entityType || "LLC"}</TableCell>
                       <TableCell>{entity.industry}</TableCell>
                       <TableCell>
-                        <Badge variant={entity.isActive ? "default" : "outline"} className="flex items-center w-fit">
-                          {entity.isActive ? (
-                            <>
+                        <Badge variant={entity.active ? "default" : "outline"} className="flex items-center w-fit">
+                          {entity.active ? (
+                            <span key={`active-${entity.id}`} className="flex items-center">
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Active
-                            </>
+                            </span>
                           ) : (
-                            <>
+                            <span key={`inactive-${entity.id}`} className="flex items-center">
                               <AlertCircle className="mr-1 h-3 w-3" />
                               Inactive
-                            </>
+                            </span>
                           )}
                         </Badge>
                       </TableCell>
