@@ -135,19 +135,24 @@ export default function EntityManagementCard({ onNext, onBack, clientData }: Ent
       // Always use admin endpoint if user is admin 
       const endpoint = isAdmin ? '/api/admin/entities' : '/api/entities';
 
-      const cleanedData = {
+      // Initialize with required fields
+      const cleanedData: any = {
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
         industry: data.industry,
-        taxId: data.taxId,
-        address: data.address,
-        phone: data.phone,
-        email: data.email,
-        ownerId: data.ownerId,
         isActive: true,
-        createdBy: user?.id
       };
+
+      // Add optional fields only if they have values
+      if (data.taxId) cleanedData.taxId = data.taxId;
+      if (data.address) cleanedData.address = data.address;
+      if (data.phone) cleanedData.phone = data.phone;
+      if (data.email) cleanedData.email = data.email;
+      
+      // Always include owner info
+      cleanedData.ownerId = data.ownerId;
+      if (user?.id) cleanedData.createdBy = user.id;
       
       console.log("Creating entity with data:", cleanedData);
       
@@ -196,18 +201,23 @@ export default function EntityManagementCard({ onNext, onBack, clientData }: Ent
         data.ownerId = user.id;
       }
       
-      const cleanedData = {
+      // Initialize with required fields
+      const cleanedData: any = {
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
         industry: data.industry,
-        taxId: data.taxId,
-        address: data.address,
-        phone: data.phone,
-        email: data.email,
-        ownerId: data.ownerId,
         isActive: true
       };
+
+      // Add optional fields only if they have values
+      if (data.taxId) cleanedData.taxId = data.taxId;
+      if (data.address) cleanedData.address = data.address;
+      if (data.phone) cleanedData.phone = data.phone;
+      if (data.email) cleanedData.email = data.email;
+      
+      // Always include owner info
+      cleanedData.ownerId = data.ownerId;
 
       console.log("Updating entity with data:", cleanedData);
       

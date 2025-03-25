@@ -38,6 +38,7 @@ export default function SetupStepper() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<string>("client");
   const [clientData, setClientData] = useState<any>(null);
+  const [entityData, setEntityData] = useState<any[]>([]);
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
   
   // Calculate current step index
