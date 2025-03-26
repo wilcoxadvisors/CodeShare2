@@ -45,29 +45,41 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
    */
   app.get("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
+      console.log('GET /api/admin/clients/:id - Start of handler');
       const clientId = parseInt(req.params.id);
+      console.log('Client ID:', clientId);
+      
+      // Debug storage object BEFORE calling any methods
+      console.log('Storage object type:', typeof storage);
+      console.log('Storage methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
+      console.log('getEntitiesByClient exists:', typeof storage.getEntitiesByClient === 'function');
+      console.log('getClient exists:', typeof storage.getClient === 'function');
+      
       const client = await storage.getClient(clientId);
+      console.log('Client retrieval result:', client ? 'Found client' : 'Client not found');
       
       if (!client) {
         throwNotFound("Client not found");
       }
       
-      // Debug storage object
-      console.log('Storage object type:', typeof storage);
-      console.log('Storage methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
-      console.log('getEntitiesByClient exists:', typeof storage.getEntitiesByClient === 'function');
       console.log('Attempting to call getEntitiesByClient with clientId:', clientId);
       
       // Get client's entities
-      const entities = await storage.getEntitiesByClient(clientId);
-      
-      return res.json({
-        status: "success",
-        data: {
-          ...client,
-          entities
-        }
-      });
+      try {
+        const entities = await storage.getEntitiesByClient(clientId);
+        console.log('Entities retrieved successfully, count:', entities.length);
+        
+        return res.json({
+          status: "success",
+          data: {
+            ...client,
+            entities
+          }
+        });
+      } catch (error) {
+        console.error("Error getting entities by client:", error);
+        throw error;
+      }
     } catch (error) {
       console.error("Error fetching client:", error);
       throw error;
@@ -106,6 +118,11 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     console.log("Admin dashboard data requested by:", req.user);
     
     try {
+      // Debug storage object
+      console.log('Dashboard - Storage object type:', typeof storage);
+      console.log('Dashboard - Storage methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
+      console.log('Dashboard - getEntitiesByClient exists:', typeof storage.getEntitiesByClient === 'function');
+      
       // Get all entities
       const entities = await storage.getEntities();
       
