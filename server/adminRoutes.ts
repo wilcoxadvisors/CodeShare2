@@ -24,6 +24,41 @@ const isAdmin = (req: Request, res: Response, next: Function) => {
 };
 
 export function registerAdminRoutes(app: Express, storage: IStorage) {
+  
+  // Temporary test endpoint for debugging without authentication
+  app.get("/api/test/entities-by-client/:clientId", asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      console.log('TEST API: Getting entities for client ID:', clientId);
+      
+      const client = await storage.getClient(clientId);
+      console.log('TEST API: Client found:', client ? 'Yes' : 'No');
+      
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Use direct database query to get entities by client
+      const entities = await db
+        .select()
+        .from(entitiesTable)
+        .where(eq(entitiesTable.clientId, clientId))
+        .orderBy(entitiesTable.name);
+      
+      console.log('TEST API: Entities retrieved successfully, count:', entities.length);
+      
+      return res.json({
+        status: "success",
+        data: {
+          client,
+          entities
+        }
+      });
+    } catch (error) {
+      console.error("TEST API: Error getting entities by client:", error);
+      return res.status(500).json({ message: "An error occurred", error });
+    }
+  }));
 
   /**
    * Get all clients
