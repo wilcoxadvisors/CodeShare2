@@ -3585,6 +3585,14 @@ export class DatabaseStorage implements IStorage {
     return uniqueEntities;
   }
 
+  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+    return await db
+      .select()
+      .from(entities)
+      .where(eq(entities.clientId, clientId))
+      .orderBy(entities.name);
+  }
+
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
     const [entity] = await db
       .insert(entities)
