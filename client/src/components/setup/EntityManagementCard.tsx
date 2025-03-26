@@ -853,7 +853,20 @@ export default function EntityManagementCard({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={(e) => {
+          e.preventDefault();
+          // Important: Also update parent entity data when going back
+          // This ensures entities aren't lost when navigating backward
+          if (setEntityData) {
+            console.log("Preserving entity data when going back:", setupEntities);
+            setEntityData(setupEntities);
+          }
+          
+          // Then call the onBack handler
+          if (onBack) {
+            onBack();
+          }
+        }}>
           Back
         </Button>
         <Button 

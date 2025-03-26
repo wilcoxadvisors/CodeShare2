@@ -1,0 +1,29 @@
+Agent Instructions: Verify EntityManagementCard.tsx in 3-Step Flow (Phase 2, Step 5b)
+
+Goal: Verify that the EntityManagementCard.tsx component functions correctly as Step 2 of the 3-step setup flow, receiving data from Step 1, managing entities for the session, and correctly handling navigation forwards and backwards.
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx
+client/src/pages/Dashboard.tsx (or SetupStepper.tsx - managing the flow state/handlers like activeStep, clientData, setEntityData, onNext, onBack)
+server/adminRoutes.ts (Entity creation/deletion API endpoints)
+shared/schema.ts (Entity schema)
+Steps:
+
+Simulate Arrival at Step 2:
+Simulate the state where the user has just completed Step 1 (ClientSetupCard). Assume valid clientData (containing the new client's info) is available and passed as a prop to EntityManagementCard. The activeStep state is now 1.
+Verify Initial State:
+Analyze: When EntityManagementCard renders with the clientData prop for a new client setup, verify that its internal setupEntities state starts as an empty array []. Confirm the entity list displayed to the user is empty.
+Simulate Entity Management within Session:
+Simulate Adding: Simulate adding a new entity (e.g., "Entity B1"). Verify the API call includes the correct clientId from the clientData prop, the API responds successfully, and "Entity B1" appears in the list managed by setupEntities.
+Simulate Adding Multiple: Simulate adding a second entity ("Entity B2"). Verify it also saves successfully and appears in the list with "Entity B1".
+Simulate Deleting: Simulate clicking the delete button for "Entity B1". Verify it's removed correctly from the setupEntities state and that the corresponding DELETE API call is made successfully.
+Verify Navigation Logic:
+Verify "Back" Button: Simulate clicking the "Back" button. Analyze the code: Does it correctly call the onBack prop, which should trigger the parent component to setActiveStep(0) (returning to Step 1)?
+Simulate Forward Navigation: Simulate navigating back to Step 2.
+Verify "Next" Button State: Verify the "Next" button is disabled if setupEntities is empty, and enabled if it contains one or more entities.
+Verify "Next" Button Action: Simulate clicking the enabled "Next" button. Analyze the code: Does it correctly call the onNext prop, passing the current setupEntities array? Does this trigger the parent component to update state (e.g., setEntityData(setupEntities)) and advance the step (setActiveStep(2)) (moving to Step 3)?
+Check Console/Logs:
+Review server logs and browser console output during these simulated actions for any errors (including React key warnings).
+Report Findings: Confirm whether EntityManagementCard functions correctly as Step 2 of the flow: receives client context, manages entities for the session correctly (add/delete/list starts empty), and handles "Back" / "Next" navigation triggers appropriately, passing the correct setupEntities data forward. Report any errors or discrepancies found.
+(Self-Correction from Agent's previous verification): The agent previously verified much of this card's internal logic. This instruction set focuses on re-verifying it specifically in the context of the 3-step flow receiving data from the now-verified Step 1 and ensuring the state isolation fix holds.

@@ -85,6 +85,12 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     if (prevIndex >= 0) {
       const prevStepId = SETUP_STEPS[prevIndex].id;
       console.log(`Moving to previous step: ${prevStepId}`);
+      
+      // IMPORTANT: Keep the entityData when navigating back from summary to entities
+      // or from entities to client
+      console.log(`Preserving entity data when going back: ${entityData.length} entities`);
+      
+      // Just change the step without clearing entity data
       setCurrentStep(prevStepId);
     } else {
       console.log("Already at first step, can't go back");

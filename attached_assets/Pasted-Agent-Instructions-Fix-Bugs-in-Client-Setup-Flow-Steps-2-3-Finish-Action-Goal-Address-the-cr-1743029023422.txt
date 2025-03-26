@@ -1,0 +1,56 @@
+Agent Instructions: Fix Bugs in Client Setup Flow (Steps 2, 3 & Finish Action)
+
+Goal: Address the critical bugs identified during user testing of the 3-step "Add Client" flow (Entity Management, Summary, and final client list update).
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx (Step 2)
+client/src/components/setup/SetupSummaryCard.tsx (Step 3)
+client/src/components/setup/SetupStepper.tsx (or Dashboard.tsx - manages state/flow)
+client/src/pages/Dashboard.tsx (Client list display)
+Bugs to Fix (Prioritized):
+
+Fix "Back" Button Deleting Entities (Step 2 - EntityManagementCard.tsx):
+
+Issue: User reports clicking "Back" in Step 2 deletes the entity added in that session.
+Action:
+Examine the onBack prop function passed to EntityManagementCard and the handler it calls in the parent (SetupStepper or Dashboard).
+Ensure this handler only updates the step state (e.g., setActiveStep(0)) and does not modify the setupEntities state or trigger any delete API calls.
+Examine the "Back" button's onClick handler within EntityManagementCard. Ensure it only calls the onBack prop.
+Report: Confirm the "Back" button now only navigates without deleting entities.
+Fix Entity Deletion within Setup (Step 2 - EntityManagementCard.tsx):
+
+Issue: User reports they cannot delete the (incorrectly pre-populated, or potentially any) entity during Step 2.
+Action:
+Debug the handleDeleteEntity function within EntityManagementCard.tsx.
+Ensure it correctly identifies the entity to delete based on its ID.
+Ensure it correctly updates the local setupEntities state (using setSetupEntities(prev => prev.filter(...))).
+Verify the DELETE API call is made successfully if appropriate for this stage.
+Report: Confirm that entities added during the setup session can now be deleted using the delete button within Step 2.
+Fix Entity Data Not Appearing on Summary (Step 3 - SetupSummaryCard.tsx):
+
+Issue: User reports entity data added in Step 2 does not populate on Step 3.
+Action:
+Trace the data flow:
+EntityManagementCard: Verify the correct setupEntities array is passed via the onNext prop callback.
+SetupStepper/Dashboard: Verify the handler for onNext from Step 2 correctly receives the setupEntities array and stores it in a state variable (e.g., entityData).
+SetupStepper/Dashboard: Verify this entityData state variable is correctly passed as a prop (e.g., entities={entityData}) to the SetupSummaryCard component when rendering Step 3.
+SetupSummaryCard: Verify the component correctly receives the entities prop and maps/renders the entity details (Name, Industry, etc.). Add console.log(props.entities) inside SetupSummaryCard if needed.
+Report: Confirm entity data is now correctly passed to and displayed on the Summary card (Step 3).
+Fix Missing Attributes in Entity List (Step 2 - EntityManagementCard.tsx):
+
+Issue: User reports not all attributes (e.g., Name, Industry mentioned) populate in the entity list within Step 2 after adding an entity.
+Action:
+Examine the setupEntities.map(...) rendering logic inside EntityManagementCard.tsx.
+Verify that the correct properties (e.g., entity.name, entity.industry, entity.code) are being accessed and rendered in the table cells (<TableCell>) or list items. Check for typos or incorrect property names.
+Report: Confirm all relevant entity attributes are now displayed in the list in Step 2.
+Fix "Finish" Action / Client List Update (Step 3 - SetupSummaryCard.tsx & Dashboard.tsx):
+
+Issue: User reports clicking "Finish" doesn't work, and the new client doesn't appear on the main "Client Status Overview".
+Action:
+Examine the "Finish" button's onClick handler in SetupSummaryCard.tsx. Ensure it correctly calls the onComplete prop passed from the parent.
+Examine the onComplete handler in the parent (SetupStepper or Dashboard). Ensure it performs the necessary actions:
+Close the setup modal/dialog (e.g., setAddClientDialogOpen(false)).
+Crucially: Invalidate the relevant TanStack Query cache to force a refetch of the client list (e.g., queryClient.invalidateQueries({ queryKey: ['clients'] })).
+Report: Confirm the "Finish" button now works, closes the modal, and the client list on the dashboard updates to show the newly added client.
+Testing: After implementing fixes for all the above points, perform a single, full end-to-end test simulation of the 3-step "Add Client" flow and report the overall success or any remaining failures.
