@@ -113,6 +113,15 @@ export default function EntityManagementCard({
     }
   });
   
+  // Helper function to determine entity active status consistently
+  // This handles the different property names used (active vs isActive)
+  const getEntityActiveStatus = (entity: any): boolean => {
+    // Check both property names and default to true for new entities
+    return entity.isActive === undefined ? 
+      (entity.active === undefined ? true : Boolean(entity.active)) : 
+      Boolean(entity.isActive);
+  };
+  
   // Helper function to create entity from client data
   const populateFromClientData = () => {
     if (clientData) {
@@ -454,7 +463,22 @@ export default function EntityManagementCard({
     
     if (window.confirm("Are you sure you want to delete this entity?")) {
       console.log("Deleting entity with ID:", id);
+      console.log("Current setupEntities before deletion:", setupEntities);
+      
+      // First update the local setupEntities state to ensure the UI updates immediately
+      setSetupEntities(prev => {
+        const filtered = prev.filter(entity => entity.id !== id);
+        console.log("Filtered setupEntities after removal:", filtered);
+        return filtered;
+      });
+      
+      // Then call the API to actually delete it from the database
       deleteEntityMutation.mutate(id);
+      
+      toast({
+        title: "Success",
+        description: "Entity removed from setup",
+      });
     }
   };
   
@@ -869,14 +893,26 @@ export default function EntityManagementCard({
           e.preventDefault();
           // Important: Also update parent entity data when going back
           // This ensures entities aren't lost when navigating backward
+          console.log("Back button clicked, current entities:", setupEntities);
+          
           if (setEntityData) {
             console.log("Preserving entity data when going back:", setupEntities);
             setEntityData(setupEntities);
-          }
-          
-          // Then call the onBack handler
-          if (onBack) {
-            onBack();
+            
+            // Use setTimeout to ensure state is updated before navigation
+            setTimeout(() => {
+              console.log("Calling onBack after preserving entities");
+              // Then call the onBack handler
+              if (onBack) {
+                onBack();
+              }
+            }, 0);
+          } else {
+            // If setEntityData is not available, just call onBack directly
+            console.log("No setEntityData function available, calling onBack directly");
+            if (onBack) {
+              onBack();
+            }
           }
         }}>
           Back
