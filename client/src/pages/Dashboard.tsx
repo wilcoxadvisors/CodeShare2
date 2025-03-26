@@ -1432,8 +1432,8 @@ interface AdminDashboardData {
                               <PieChart>
                                 <Pie
                                   data={[
-                                    { name: 'Active', value: entities.filter(e => e.isActive).length },
-                                    { name: 'Inactive', value: entities.filter(e => !e.isActive).length },
+                                    { name: 'Active', value: clients.filter(c => c.active).length },
+                                    { name: 'Inactive', value: clients.filter(c => !c.active).length },
                                   ]}
                                   cx="50%"
                                   cy="50%"
@@ -1444,8 +1444,8 @@ interface AdminDashboardData {
                                   dataKey="value"
                                 >
                                   {[
-                                    { name: 'Active', value: entities.filter(e => e.isActive).length },
-                                    { name: 'Inactive', value: entities.filter(e => !e.isActive).length },
+                                    { name: 'Active', value: clients.filter(c => c.active).length },
+                                    { name: 'Inactive', value: clients.filter(c => !c.active).length },
                                   ].map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
