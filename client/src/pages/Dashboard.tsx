@@ -1357,22 +1357,22 @@ interface AdminDashboardData {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {filteredClients.map((entity) => (
-                                  <TableRow key={entity.id}>
-                                    <TableCell className="font-medium">{entity.name}</TableCell>
+                                {filteredClients.map((client) => (
+                                  <TableRow key={client.id}>
+                                    <TableCell className="font-medium">{client.name}</TableCell>
                                     <TableCell>
-                                      <Badge className={getStatusColor(entity.isActive ? 'Active' : 'Inactive')}>
-                                        {entity.isActive ? 'Active' : 'Inactive'}
+                                      <Badge className={getStatusColor(client.active ? 'Active' : 'Inactive')}>
+                                        {client.active ? 'Active' : 'Inactive'}
                                       </Badge>
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center">
-                                        {/* Progress based on entity completeness */}
-                                        <Progress value={entity.isActive ? 100 : 50} className="h-2 w-32" />
-                                        <span className="ml-2 text-xs">{entity.isActive ? 100 : 50}%</span>
+                                        {/* Progress based on client completeness */}
+                                        <Progress value={client.active ? 100 : 50} className="h-2 w-32" />
+                                        <span className="ml-2 text-xs">{client.active ? 100 : 50}%</span>
                                       </div>
                                     </TableCell>
-                                    <TableCell>{formatDate(entity.updatedAt || entity.createdAt)}</TableCell>
+                                    <TableCell>{formatDate(client.updatedAt || client.createdAt)}</TableCell>
                                     <TableCell className="text-right">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1391,7 +1391,7 @@ interface AdminDashboardData {
                                             <MessageSquare className="mr-2 h-4 w-4" />
                                             Send Message
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleEditClient(entity)}>
+                                          <DropdownMenuItem onClick={() => handleEditClient(client)}>
                                             <Pen className="mr-2 h-4 w-4" />
                                             Edit Client
                                           </DropdownMenuItem>
@@ -1405,11 +1405,11 @@ interface AdminDashboardData {
                           ) : (
                             <div className="text-center py-10 text-muted-foreground">
                               <Search className="mx-auto h-10 w-10 text-muted-foreground/50 mb-4" />
-                              <h3 className="font-medium text-lg mb-2">No entities available</h3>
-                              <p className="text-sm mb-4">Create new entities to see them listed here.</p>
+                              <h3 className="font-medium text-lg mb-2">No clients available</h3>
+                              <p className="text-sm mb-4">Create new clients to see them listed here.</p>
                               <Button size="sm" onClick={() => setIsAddClientDialogOpen(true)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
-                                Add New Entity
+                                Add New Client
                               </Button>
                             </div>
                           )}
