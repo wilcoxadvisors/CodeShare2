@@ -501,12 +501,17 @@ export default function EntityManagementCard({
   }, [clientData, form]); // Reset when clientData changes, which happens when navigating steps
   
   // Sync setupEntities with allEntities when they change
+  // IMPORTANT FIX: Do NOT sync all entities when creating a new client - only do this for editing
   useEffect(() => {
-    if (allEntities && allEntities.length > 0) {
-      console.log("Syncing setupEntities with allEntities", allEntities);
-      setSetupEntities(allEntities);
+    // Only sync with allEntities if editing an existing client with a defined ID
+    // For new client setup, we want to start with an empty array and only add entities created during this flow
+    if (clientData?.id && clientData.id > 0 && allEntities && allEntities.length > 0) {
+      // When editing an existing client, filter entities to only those belonging to this client
+      const clientEntities = allEntities.filter(entity => entity.clientId === clientData.id);
+      console.log("Syncing setupEntities with filtered clientEntities:", clientEntities);
+      setSetupEntities(clientEntities);
     }
-  }, [allEntities]);
+  }, [allEntities, clientData]);
   
   // Component mount/unmount handler to ensure clean slate
   useEffect(() => {
