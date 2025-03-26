@@ -6,7 +6,9 @@
 import { Express, Request, Response } from "express";
 import { asyncHandler, throwUnauthorized, throwBadRequest, throwNotFound } from "./errorHandling";
 import { IStorage } from "./storage";
-import { UserRole, insertEntitySchema } from "../shared/schema";
+import { UserRole, insertEntitySchema, entities as entitiesTable } from "../shared/schema";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
 import { z } from "zod";
 
 // Authentication middleware for admin-only routes
@@ -62,11 +64,17 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throwNotFound("Client not found");
       }
       
-      console.log('Attempting to call getEntitiesByClient with clientId:', clientId);
+      console.log('Bypassing storage.getEntitiesByClient and using direct DB access');
       
-      // Get client's entities
+      // Get client's entities directly from the database to avoid circular dependency
       try {
-        const entities = await storage.getEntitiesByClient(clientId);
+        // Use direct database query instead of storage method
+        const entities = await db
+          .select()
+          .from(entitiesTable)
+          .where(eq(entitiesTable.clientId, clientId))
+          .orderBy(entitiesTable.name);
+          
         console.log('Entities retrieved successfully, count:', entities.length);
         
         return res.json({
