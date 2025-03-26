@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 /**
  * Step configuration for the setup process
- * Add or modify steps as needed
+ * Including only the three essential steps
  */
 const SETUP_STEPS = [
   {
@@ -22,21 +22,6 @@ const SETUP_STEPS = [
     id: "entities",
     title: "Entities",
     description: "Add your business entities"
-  },
-  {
-    id: "consolidation",
-    title: "Consolidation",
-    description: "Set up consolidation groups"
-  },
-  {
-    id: "accounts",
-    title: "Chart of Accounts",
-    description: "Configure chart of accounts"
-  },
-  {
-    id: "historical",
-    title: "Historical Data",
-    description: "Import historical data"
   },
   {
     id: "summary",
@@ -127,11 +112,11 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     
     // IMPORTANT: Directly set the current step instead of calling handleNext
     // This ensures we jump to the next step immediately without relying on state updates
-    console.log("🔷 Directly setting currentStep to 'consolidation'");
+    console.log("🔷 Directly setting currentStep to 'summary'");
     
-    // Progress to the consolidation step in our expanded flow
-    setCurrentStep("consolidation");
-    console.log("🔷 Current step set to: consolidation");
+    // Progress to the summary step in our reduced flow
+    setCurrentStep("summary");
+    console.log("🔷 Current step set to: summary");
   };
   
   // When client data changes, conditionally update the step
@@ -157,7 +142,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
         <CardContent>
           {/* Step indicators */}
           <div className="mb-8">
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 gap-4">
               {SETUP_STEPS.map((step, index) => (
                 <div 
                   key={step.id} 
@@ -191,7 +176,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                   
                   {/* Step label */}
                   <div 
-                    className={`mt-2 text-xs font-medium text-center ${
+                    className={`mt-2 text-sm font-medium text-center ${
                       index === currentStepIndex ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
@@ -226,63 +211,6 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 clientData={clientData}
                 setEntityData={setEntityData}
               />
-            )}
-            
-            {currentStep === "consolidation" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Consolidation Groups Setup</h3>
-                <p className="text-muted-foreground">
-                  Consolidation groups allow you to combine financial data from multiple entities for unified reporting.
-                </p>
-                {/* Placeholder for ConsolidationGroupCard component */}
-                <div className="p-6 border rounded-md bg-muted/20">
-                  <p className="text-center text-muted-foreground">
-                    Consolidation Group setup will be implemented in a future update.
-                  </p>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <Button variant="outline" onClick={handleBack}>Back</Button>
-                  <Button onClick={() => setCurrentStep("accounts")}>Continue</Button>
-                </div>
-              </div>
-            )}
-            
-            {currentStep === "accounts" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Chart of Accounts Configuration</h3>
-                <p className="text-muted-foreground">
-                  Set up your chart of accounts to categorize your financial transactions.
-                </p>
-                {/* Placeholder for ChartOfAccountsCard component */}
-                <div className="p-6 border rounded-md bg-muted/20">
-                  <p className="text-center text-muted-foreground">
-                    Chart of Accounts setup will be implemented in a future update.
-                  </p>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <Button variant="outline" onClick={handleBack}>Back</Button>
-                  <Button onClick={() => setCurrentStep("historical")}>Continue</Button>
-                </div>
-              </div>
-            )}
-            
-            {currentStep === "historical" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Historical Data Import</h3>
-                <p className="text-muted-foreground">
-                  Import historical financial data to jumpstart your accounting system.
-                </p>
-                {/* Placeholder for DataImportCard component */}
-                <div className="p-6 border rounded-md bg-muted/20">
-                  <p className="text-center text-muted-foreground">
-                    Historical Data Import will be implemented in a future update.
-                  </p>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <Button variant="outline" onClick={handleBack}>Back</Button>
-                  <Button onClick={() => setCurrentStep("summary")}>Continue to Summary</Button>
-                </div>
-              </div>
             )}
             
             {currentStep === "summary" && (

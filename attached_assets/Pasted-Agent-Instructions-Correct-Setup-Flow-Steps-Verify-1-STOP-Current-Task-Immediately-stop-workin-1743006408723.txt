@@ -1,0 +1,26 @@
+Agent Instructions: Correct Setup Flow Steps & Verify
+
+1. STOP Current Task: Immediately stop working on the "Edit Client" dialog in Dashboard.tsx.
+
+2. Correct Setup Flow Steps:
+* Goal: Modify the guided setup flow (within the "Add Client" modal/dialog in Dashboard.tsx) to only include the essential initial steps as requested by the user.
+* Action:
+* Open client/src/pages/Dashboard.tsx and/or client/src/components/setup/SetupStepper.tsx (wherever the steps are defined and managed).
+* Modify the stepper component and the conditional rendering logic to include only these 3 steps in this sequence:
+1.  Client Info (using ClientSetupCard.tsx)
+2.  Entities (using EntityManagementCard.tsx)
+3.  Summary & Finalize (using SetupSummaryCard.tsx)
+* Remove the steps for "Consolidation", "Chart of Accounts", and "Historical Data" from this initial setup flow. These will be accessed later as separate modules.
+* Ensure the activeStep state management and onNext/onBack props correctly navigate between these 3 steps only.
+* Report: Confirm that the setup flow has been modified to the 3-step sequence (Client -> Entities -> Summary).
+
+3. Verify Corrected 3-Step Flow:
+* Goal: Confirm the shortened setup flow works correctly end-to-end, including adding entities to the client without errors.
+* Action: Execute the full verification using stored credentials (admin/password123):
+* Simulate logging in.
+* Simulate clicking "Add Client" to open the setup modal.
+* Verify Step 1 (Client Info): Fill form, click "Save & Continue". Does it save and advance to Step 2?
+* Verify Step 2 (Entities): Does the entity form start empty? Add an entity. Does it save correctly (no 500 error) and associate with the client in the DB? Can you add multiple? Does "Back" work? Click "Save & Continue". Does it advance to Step 3?
+* Verify Step 3 (Summary): Does it show the correct Client and Entity info? Does "Back" work? Click "Finish Setup". Does the modal close? Does the main client list update correctly?
+* Check console/server logs for any errors throughout.
+* Report: Provide a detailed report confirming the success or failure of each verification point in the 3-step flow. Explicitly state if the 500 error on entity creation is gone and if entities are correctly linked to clients.
