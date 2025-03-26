@@ -52,6 +52,12 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throwNotFound("Client not found");
       }
       
+      // Debug storage object
+      console.log('Storage object type:', typeof storage);
+      console.log('Storage methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
+      console.log('getEntitiesByClient exists:', typeof storage.getEntitiesByClient === 'function');
+      console.log('Attempting to call getEntitiesByClient with clientId:', clientId);
+      
       // Get client's entities
       const entities = await storage.getEntitiesByClient(clientId);
       
