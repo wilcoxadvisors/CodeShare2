@@ -202,16 +202,17 @@ const mockPayments = [
 ];
 
 // Calculate real-time summary stats from API data
-const getStatsSummary = (entities: any[], dashboardUsers: any[], consolidationGroups: any[]) => {
+const getStatsSummary = (clients: any[], entities: any[], dashboardUsers: any[], consolidationGroups: any[]) => {
   const currentMonth = new Date().getMonth();
   return {
-    totalClients: entities.length,
-    activeClients: entities.filter(e => e.isActive).length,
-    newClientsThisMonth: entities.filter(e => new Date(e.createdAt).getMonth() === currentMonth).length,
+    totalClients: clients.length,
+    activeClients: clients.filter(c => c.active).length,
+    newClientsThisMonth: clients.filter(c => new Date(c.createdAt).getMonth() === currentMonth).length,
     totalEmployees: dashboardUsers.length,
     pendingTasks: 0, // Will be implemented when we have task data
     totalRevenue: 0, // Will be implemented when we have revenue data
     outstandingPayments: 0, // Will be implemented when we have payment data
+    totalEntities: entities.length,
     totalConsolidationGroups: consolidationGroups.length
   };
 };
@@ -774,6 +775,18 @@ interface AdminDashboardData {
       email?: string;
       phone?: string;
     }>;
+    clients: Array<{
+      id: number;
+      name: string;
+      contactName?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      industry?: string;
+      address?: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt?: string;
+    }>;
     users: Array<{
       id: number;
       username: string;
@@ -1197,9 +1210,9 @@ interface AdminDashboardData {
                     <CardTitle className="text-lg">Clients</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).totalClients}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).totalClients}</div>
                     <div className="text-sm text-gray-500">
-                      {getStatsSummary(entities, dashboardUsers, consolidationGroups).activeClients} active, {getStatsSummary(entities, dashboardUsers, consolidationGroups).newClientsThisMonth} new this month
+                      {getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).activeClients} active, {getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).newClientsThisMonth} new this month
                     </div>
                   </CardContent>
                 </Card>
@@ -1209,9 +1222,9 @@ interface AdminDashboardData {
                     <CardTitle className="text-lg">Employees</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).totalEmployees}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).totalEmployees}</div>
                     <div className="text-sm text-gray-500">
-                      Managing {getStatsSummary(entities, dashboardUsers, consolidationGroups).totalClients} clients
+                      Managing {getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).totalClients} clients
                     </div>
                   </CardContent>
                 </Card>
@@ -1221,9 +1234,9 @@ interface AdminDashboardData {
                     <CardTitle className="text-lg">Revenue</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${getStatsSummary(entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</div>
                     <div className="text-sm text-gray-500">
-                      ${getStatsSummary(entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()} outstanding
+                      ${getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()} outstanding
                     </div>
                   </CardContent>
                 </Card>
@@ -1233,7 +1246,7 @@ interface AdminDashboardData {
                     <CardTitle className="text-lg">Tasks</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{getStatsSummary(entities, dashboardUsers, consolidationGroups).pendingTasks}</div>
+                    <div className="text-2xl font-bold">{getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).pendingTasks}</div>
                     <div className="text-sm text-gray-500">
                       Pending actions across all clients
                     </div>
@@ -1791,11 +1804,11 @@ interface AdminDashboardData {
                           <div className="w-full">
                             <div className="flex justify-between mb-1">
                               <span className="text-sm font-medium">Total Revenue</span>
-                              <span className="text-sm font-medium">${getStatsSummary(entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</span>
+                              <span className="text-sm font-medium">${getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).totalRevenue.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm font-medium text-red-600">Outstanding</span>
-                              <span className="text-sm font-medium text-red-600">${getStatsSummary(entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()}</span>
+                              <span className="text-sm font-medium text-red-600">${getStatsSummary(clients, entities, dashboardUsers, consolidationGroups).outstandingPayments.toLocaleString()}</span>
                             </div>
                           </div>
                         </CardFooter>
