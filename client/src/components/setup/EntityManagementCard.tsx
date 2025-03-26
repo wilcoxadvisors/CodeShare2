@@ -67,13 +67,16 @@ interface EntityManagementCardProps {
   onBack?: () => void;
   clientData?: any;
   setEntityData?: (entities: any[]) => void;
+  // Add initial entity data from parent component
+  entityData?: any[];
 }
 
 export default function EntityManagementCard({ 
   onNext, 
   onBack, 
   clientData, 
-  setEntityData 
+  setEntityData,
+  entityData // Add the entityData prop to the destructuring 
 }: EntityManagementCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -513,6 +516,15 @@ export default function EntityManagementCard({
     }
   }, [allEntities, clientData]);
   
+  // Initialize setupEntities from entityData passed by parent (when coming back from summary step)
+  useEffect(() => {
+    // Only initialize once when component mounts and if entityData is provided
+    if (entityData && entityData.length > 0) {
+      console.log("Initializing setupEntities from parent entityData:", entityData);
+      setSetupEntities(entityData);
+    }
+  }, [entityData]);
+
   // Component mount/unmount handler to ensure clean slate
   useEffect(() => {
     return () => {
@@ -808,10 +820,10 @@ export default function EntityManagementCard({
                       <TableCell key={`status-cell-${entity.id}`}>
                         <Badge 
                           key={`status-badge-${entity.id}`}
-                          variant={entity.active ? "default" : "outline"} 
+                          variant={(entity.active || entity.isActive) ? "default" : "outline"} 
                           className="flex items-center w-fit"
                         >
-                          {entity.active ? (
+                          {(entity.active || entity.isActive) ? (
                             <span key={`active-${entity.id}`} className="flex items-center">
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Active

@@ -216,6 +216,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 onBack={handleBack}
                 clientData={clientData}
                 setEntityData={setEntityData}
+                entityData={entityData} // Pass entityData to restore previous state
               />
             )}
             

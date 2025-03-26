@@ -206,7 +206,7 @@ const getStatsSummary = (clients: any[], entities: any[], dashboardUsers: any[],
   const currentMonth = new Date().getMonth();
   return {
     totalClients: clients.length,
-    activeClients: clients.filter(c => c.active).length,
+    activeClients: clients.filter(c => c.active || c.isActive).length,
     newClientsThisMonth: clients.filter(c => new Date(c.createdAt).getMonth() === currentMonth).length,
     totalEmployees: dashboardUsers.length,
     pendingTasks: 0, // Will be implemented when we have task data
@@ -877,17 +877,17 @@ interface AdminDashboardData {
                          (client.contactName && client.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                          (client.contactEmail && client.contactEmail.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = clientStatusFilter === "all" || 
-      (clientStatusFilter === "Active" && client.active) ||
-      (clientStatusFilter === "Inactive" && !client.active) ||
-      (clientStatusFilter === "Onboarding" && client.active && client.onboardingStatus === "in_progress") ||
-      (clientStatusFilter === "Pending Review" && client.active && client.onboardingStatus === "pending_review");
+      (clientStatusFilter === "Active" && (client.active || client.isActive)) ||
+      (clientStatusFilter === "Inactive" && !(client.active || client.isActive)) ||
+      (clientStatusFilter === "Onboarding" && (client.active || client.isActive) && client.onboardingStatus === "in_progress") ||
+      (clientStatusFilter === "Pending Review" && (client.active || client.isActive) && client.onboardingStatus === "pending_review");
     return matchesSearch && matchesStatus;
   });
 
   // Data for client status pie chart using real client data
   const clientStatusData = [
-    { name: 'Active', value: clients.filter(c => c.active).length },
-    { name: 'Inactive', value: clients.filter(c => !c.active).length }
+    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
+    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length }
   ];
 
   // Data for payment status
@@ -1374,15 +1374,15 @@ interface AdminDashboardData {
                                   <TableRow key={client.id}>
                                     <TableCell className="font-medium">{client.name}</TableCell>
                                     <TableCell>
-                                      <Badge className={getStatusColor(client.active ? 'Active' : 'Inactive')}>
-                                        {client.active ? 'Active' : 'Inactive'}
+                                      <Badge className={getStatusColor((client.active || client.isActive) ? 'Active' : 'Inactive')}>
+                                        {(client.active || client.isActive) ? 'Active' : 'Inactive'}
                                       </Badge>
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center">
                                         {/* Progress based on client completeness */}
-                                        <Progress value={client.active ? 100 : 50} className="h-2 w-32" />
-                                        <span className="ml-2 text-xs">{client.active ? 100 : 50}%</span>
+                                        <Progress value={(client.active || client.isActive) ? 100 : 50} className="h-2 w-32" />
+                                        <span className="ml-2 text-xs">{(client.active || client.isActive) ? 100 : 50}%</span>
                                       </div>
                                     </TableCell>
                                     <TableCell>{formatDate(client.updatedAt || client.createdAt)}</TableCell>
@@ -1445,8 +1445,8 @@ interface AdminDashboardData {
                               <PieChart>
                                 <Pie
                                   data={[
-                                    { name: 'Active', value: clients.filter(c => c.active).length },
-                                    { name: 'Inactive', value: clients.filter(c => !c.active).length },
+                                    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
+                                    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length },
                                   ]}
                                   cx="50%"
                                   cy="50%"
@@ -1457,8 +1457,8 @@ interface AdminDashboardData {
                                   dataKey="value"
                                 >
                                   {[
-                                    { name: 'Active', value: clients.filter(c => c.active).length },
-                                    { name: 'Inactive', value: clients.filter(c => !c.active).length },
+                                    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
+                                    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length },
                                   ].map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
