@@ -1,0 +1,36 @@
+Agent Instructions: Finalize & Verify ClientSetupCard.tsx (Phase 2, Step 5a)
+
+Goal: Ensure the ClientSetupCard.tsx component (Step 1 of the 3-step setup flow) correctly captures client information, saves it via the API, and triggers the transition to the next step.
+
+Relevant Files:
+
+client/src/components/setup/ClientSetupCard.tsx
+client/src/pages/Dashboard.tsx (or wherever the setup flow state/handlers like setActiveStep reside)
+server/adminRoutes.ts (Client creation API endpoint)
+shared/validation.ts (Client validation schema)
+Steps:
+
+Review ClientSetupCard.tsx Implementation:
+Action: Open client/src/components/setup/ClientSetupCard.tsx.
+Verify:
+Does the form contain the correct fields for initial client setup (e.g., Company Name, Contact Name, potentially Admin User email if creating user simultaneously)? Are any fields incorrectly marked as required (e.g., the user mentioned email wasn't needed previously)?
+Does the form use react-hook-form and the appropriate Zod schema (from shared/validation.ts or defined locally) for validation?
+Does the onSubmit handler correctly prepare the data payload for the client creation API endpoint?
+Does it trigger the correct useMutation hook (e.g., createClientMutation) to send the data to the backend?
+Verify Success Handler & Navigation:
+Action: Examine the onSuccess callback within the createClientMutation usage inside ClientSetupCard.tsx (or passed via props).
+Verify: Upon successful API response:
+Is the onNext function prop (passed down from the stepper/dashboard) being called correctly?
+Does calling onNext successfully trigger the parent component (Dashboard.tsx or SetupStepper.tsx) to update the state (e.g., setActiveStep(1))?
+Is relevant data (like the newly created clientId) being passed up or stored appropriately if needed by subsequent steps?
+Test the Flow (Simulated):
+Action: Simulate the user interaction:
+Open the "Add Client" modal/dialog.
+Fill the ClientSetupCard form with valid data.
+Submit the form.
+Analyze:
+Does the client-side validation pass?
+Does the API call succeed (check network/server logs if possible)?
+Is the onNext function called?
+Does the UI transition to show Step 2 (EntityManagementCard)?
+Report: Confirm that Step 1 (ClientSetupCard) functions correctly – saves the client data via API and successfully triggers the navigation to Step 2. Report any errors encountered.

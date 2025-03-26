@@ -95,6 +95,11 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       setClientData(data);
       console.log("🔶 setClientData called with:", data);
       
+      // Log fields explicitly for debugging
+      console.log(`Client name: ${data.name}`);
+      console.log(`Legal name: ${data.legalName}`);
+      console.log(`Industry: ${data.industry}`);
+      
       toast({
         title: "Success",
         description: "Client information saved successfully.",
@@ -102,6 +107,10 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       
       // Move to the next step with data
       console.log("🔶 About to call onNext with data...");
+      
+      // Important: Client creation is handled implicitly in the system
+      // When creating entities in the next step, they'll be associated with a client
+      // which will be created on-demand if not present
       
       // Call onNext via setTimeout to ensure React state has been updated
       setTimeout(() => {
