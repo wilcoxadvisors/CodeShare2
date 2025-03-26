@@ -1,0 +1,33 @@
+Agent Instructions: Verify Entity Isolation & Creation Fixes (Focus on Step 2)
+
+Goal: Confirm that the latest fixes (Checkpoint: aa44cac3 and related) have definitively resolved the entity isolation bug (showing unrelated entities) and addressed the new issues reported during the "Add Client" setup flow. Use stored credentials (admin/password123).
+
+Reminder: Perform checks by analyzing code execution, API responses, database state, and logs.
+
+Verification Steps:
+
+Log In & Start "Add Client" Flow:
+Simulate an authenticated admin session.
+Simulate clicking "Add Client" to open the setup modal/dialog. Proceed past Step 1 (Client Info) to get to Step 2 (Entities).
+Verify Step 2 (Entities) - Initial State:
+Verify: When Step 2 (EntityManagementCard) loads for this new client, is the entity list completely empty? (It should not show any entities from other clients or previous sessions).
+Report: Confirm if Step 2 starts empty or if unrelated entities are still displayed. If not empty, STOP and report this failure.
+Verify Step 2 (Entities) - Adding First Entity:
+Simulate filling the form to add the first entity (e.g., "Entity A1").
+Verify: Does the entity save successfully via the API (no 500 error)?
+Verify: Does "Entity A1" appear correctly in the list within Step 2? Are all necessary attributes (Name, Code, etc.) displayed correctly in the list/table row?
+Report: Confirm success/failure of adding the first entity and the correctness of its display in the list.
+Verify Step 2 (Entities) - Adding Second Entity:
+Simulate filling the form to add a second entity (e.g., "Entity A2") for the same client.
+Verify: Can a second entity be added successfully?
+Verify: Does "Entity A2" appear in the list alongside "Entity A1"?
+Report: Confirm success/failure of adding multiple entities.
+Verify Step 2 (Entities) - Isolation Check:
+Simulate finishing the setup flow for this client ("Client A").
+Simulate starting the "Add Client" flow again for a different new client ("Client B"). Proceed to Step 2.
+CRITICAL VERIFY: When Step 2 loads for "Client B", is the entity list empty? Does it show "Entity A1" or "Entity A2"? (It must be empty).
+Report: Confirm if entity isolation is now working correctly between different "Add Client" sessions.
+Check Console/Logs:
+Review server logs and browser console output during these tests for any errors (React key warnings, API errors, etc.).
+Report: List any errors observed.
+Summary Request: Provide a clear Yes/No confirmation for each verification point, especially regarding the empty initial state, adding multiple entities, display of attributes, and the isolation between different client setups.
