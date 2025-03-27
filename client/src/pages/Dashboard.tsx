@@ -1307,13 +1307,29 @@ interface AdminDashboardData {
                                   {isAddClientDialogOpen && (
                                     <SetupStepper 
                                       // Removed the dynamic key that caused re-mounting
-                                      onComplete={() => {
-                                        // Close the dialog when setup is complete
-                                        setIsAddClientDialogOpen(false);
+                                      onComplete={async () => {
+                                        console.log("Dashboard: Setup complete callback triggered");
                                         
-                                        // Refresh client data
-                                        queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
-                                        queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+                                        // Enhanced refresh strategy for client data
+                                        await Promise.all([
+                                          queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] }),
+                                          queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] }),
+                                          queryClient.invalidateQueries({ queryKey: ['/api/clients'] }),
+                                          queryClient.invalidateQueries({ queryKey: ['/api/entities'] }),
+                                          // Also invalidate parent routes
+                                          queryClient.invalidateQueries({ queryKey: ['/api/admin'] }),
+                                          queryClient.invalidateQueries({ queryKey: ['/api'] })
+                                        ]);
+                                        
+                                        // Force a direct refetch of the dashboard data
+                                        console.log("Dashboard: Forcing refetch of dashboard data");
+                                        await queryClient.refetchQueries({ queryKey: ['/api/admin/dashboard'] });
+                                        
+                                        // Close the dialog when setup is complete (with slight delay)
+                                        setTimeout(() => {
+                                          setIsAddClientDialogOpen(false);
+                                          console.log("Dashboard: Dialog closed after setup completion");
+                                        }, 300);
                                       }} 
                                     />
                                   )}

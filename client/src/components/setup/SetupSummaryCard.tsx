@@ -36,18 +36,31 @@ export default function SetupSummaryCard({
       console.log("DEBUG: Invalidating queries to refresh dashboard data...");
       
       // Make sure to invalidate ALL relevant queries for dashboard data
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+      // Use a more aggressive approach to ensure cache is completely refreshed
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/entities'] }),
+        // Also invalidate any potential parent query keys
+        queryClient.invalidateQueries({ queryKey: ['/api/admin'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api'] })
+      ]);
+      
+      // Force a refetch of the dashboard data
+      console.log("DEBUG: Forcing refetch of dashboard data");
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/dashboard'] });
       
       toast({
         title: "Setup Complete!",
         description: "Client added successfully",
       });
       
-      // Call onFinish to close modal
-      onFinish();
+      // Small delay to ensure queries have time to complete
+      setTimeout(() => {
+        // Call onFinish to close modal
+        onFinish();
+      }, 300);
     } catch (error: any) {
       console.error("ERROR: Error completing setup:", error);
       toast({
