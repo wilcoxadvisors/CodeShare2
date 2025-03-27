@@ -790,32 +790,28 @@ export default function EntityManagementCard({
     console.log("CRITICAL-DEBUG: Final form values being set:", JSON.stringify(formValues));
     console.log("CRITICAL-DEBUG: Form name:", formValues.name);
     
-    // CRITICAL FIX: Reset the form with the clean values
+    // CRITICAL FIX: Reset the form with the clean values - simplified without setTimeout
     try {
       form.reset(formValues);
       console.log("CRITICAL-DEBUG: Form reset successful");
       
-      // CRITICAL FIX: Double-check form values after reset
-      setTimeout(() => {
-        const currentValues = form.getValues();
-        console.log("CRITICAL-DEBUG: Form values after reset:", JSON.stringify(currentValues));
-        console.log("CRITICAL-DEBUG: Form name after reset:", currentValues.name);
-        
-        // If name is still missing after reset, force-set it
-        if (!currentValues.name || currentValues.name.trim() === "") {
-          console.warn("CRITICAL-DEBUG: Name still missing after form reset, force-setting it");
-          form.setValue("name", formValues.name);
-        }
-      }, 0);
+      // Check values immediately
+      const currentValues = form.getValues();
+      console.log("CRITICAL-DEBUG: Form values after reset:", JSON.stringify(currentValues));
+      
+      // If name is missing, directly set it
+      if (!currentValues.name || currentValues.name.trim() === "") {
+        console.warn("CRITICAL-DEBUG: Name missing after form reset, force-setting it");
+        form.setValue("name", formValues.name || "Entity " + entity.id);
+      }
     } catch (error) {
       console.error("CRITICAL-DEBUG: Error resetting form:", error);
-      // Last resort - try to set fields individually
+      // Simplified last resort - just set the name field which is the critical one
       try {
-        Object.entries(formValues).forEach(([field, value]) => {
-          form.setValue(field as any, value);
-        });
+        form.setValue("name", formValues.name || "Entity " + entity.id);
+        form.setValue("legalName", formValues.legalName || formValues.name || "");
       } catch (e) {
-        console.error("CRITICAL-DEBUG: Failed to set form values individually:", e);
+        console.error("CRITICAL-DEBUG: Failed to set name field individually:", e);
       }
     }
     
