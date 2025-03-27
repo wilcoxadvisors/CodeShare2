@@ -1,0 +1,45 @@
+Agent Instructions: Revert sessionStorage, Fix Step 1 & Step 2 Bugs
+CRITICAL ISSUES: User reports after Checkpoint 7fd18c3e:
+
+Step 1 input fields still clear unexpectedly during typing.
+Step 2 sometimes appears first (unexpected initial state).
+The "Use Client Data" button is broken.
+Entities added in Step 2 do not appear in the list, blocking progress to Step 3.
+Goal: Stabilize the 3-step setup flow by reverting the problematic sessionStorage changes and correctly fixing state management and navigation for Steps 1 and 2.
+
+Actions (Perform in this strict order):
+
+Revert sessionStorage Implementation:
+Action: Roll back all changes made to client/src/components/setup/EntityManagementCard.tsx in Checkpoint 7fd18c3e. Remove all logic related to reading from or writing setupEntities to sessionStorage.
+Report: Confirm the revert is complete.
+Fix Step 1 Input Clearing Bug (Highest Priority):
+Action: Execute the detailed debugging steps from my previous instruction set (Phase 1) focused on ClientSetupCard.tsx and useFormState.ts.
+MUST DO: Add the specified console.log statements, simulate typing, and report the exact log output to identify why inputs are clearing.
+Action: Fix the root cause based only on the log analysis.
+Verify & Report: Confirm the input clearing bug is fixed and report the cause/solution.
+Fix Step 1 -> Step 2 Navigation (After Input Bug Fixed):
+Action: Execute the detailed debugging steps from my previous instruction set (Phase 2) focused on ensuring validation passes and onNext correctly triggers setActiveStep(1) in the parent SetupStepper.tsx. Use await for async operations before calling onNext.
+MUST DO: Add the specified console.log statements, simulate a valid submission, and report the exact log output confirming the flow.
+Verify & Report: Confirm navigation to Step 2 works reliably. Report the fix.
+Fix Step 2 Entity List Population (After Step 1 & Navigation Fixed):
+Focus: EntityManagementCard.tsx and SetupStepper.tsx.
+Hypothesis: State for setupEntities needs to be lifted up to SetupStepper.
+Action (Refactor State):
+In SetupStepper.tsx: Create state: const [setupEntities, setSetupEntities] = useState<Entity[]>([]);
+Pass setupEntities down as a prop to EntityManagementCard: <EntityManagementCard entities={setupEntities} ... />.
+Create a callback handler in SetupStepper:
+TypeScript
+
+const handleEntityAdded = useCallback((newEntity: Entity) => {
+  console.log("DEBUG SetupStepper: handleEntityAdded called with:", newEntity);
+  setSetupEntities(prev => [...prev, newEntity]);
+}, []);
+Pass handleEntityAdded down as a prop: <EntityManagementCard entities={setupEntities} onEntityAdded={handleEntityAdded} ... />.
+Action (Modify EntityManagementCard.tsx):
+Remove the local useState for setupEntities.
+Receive entities and onEntityAdded from props: (props: { entities: Entity[], onEntityAdded: (entity: Entity) => void, ... }).
+Display the list by mapping props.entities.
+In the createEntityMutation's onSuccess callback (or wherever the new entity data is received after API success), call props.onEntityAdded(newEntityData). Do not call setSetupEntities directly anymore.
+Verify & Report: Simulate adding an entity in Step 2. Does the list update correctly now? Report the outcome.
+Defer Other Issues:
+Action: Do NOT attempt to fix the "Use Client Data" button or the "Step 2 showing first" issue until Steps 1-3 (Input, Navigation, Step 2 List) are confirmed working reliably.

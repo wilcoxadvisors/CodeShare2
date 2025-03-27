@@ -20,6 +20,19 @@ export default function SetupSummaryCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // CRITICAL FIX: Add debugging for entity data in summary
+  console.log("SUMMARY: Component mounted/updated with entityData:", 
+    entityData ? entityData.length : 'null', 
+    "entities. First entity ID:", entityData && entityData.length > 0 ? entityData[0].id : 'none');
+    
+  // Track client and entity data
+  console.log("SUMMARY: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
+  
+  // Log the full data for debugging
+  if (entityData && entityData.length > 0) {
+    console.log("SUMMARY: First entity full data:", JSON.stringify(entityData[0]));
+  }
 
   const handleFinish = async () => {
     setIsSubmitting(true);

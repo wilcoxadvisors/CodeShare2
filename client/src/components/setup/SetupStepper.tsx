@@ -41,7 +41,12 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const getInitialData = () => {
     try {
       const savedData = sessionStorage.getItem('setupData');
-      return savedData ? JSON.parse(savedData) : null;
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        console.log("INIT: Loading setup data from session storage:", parsedData);
+        return parsedData;
+      }
+      return null;
     } catch (error) {
       console.error("Failed to load setup data from sessionStorage:", error);
       return null;
@@ -53,7 +58,30 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Component state
   const { user } = useAuth();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<string>(persistedData?.currentStep || "client");
+  
+  // CRITICAL FIX: Always start with client step if we don't have client data yet
+  // This prevents Step 2 from appearing first even if session storage says "entities"
+  const determineInitialStep = () => {
+    // If we have persisted data with a step, check it
+    if (persistedData?.currentStep) {
+      // If it says "entities" but we don't have client data, force it back to "client"
+      if (persistedData.currentStep === "entities" && 
+          (!persistedData.clientData || Object.keys(persistedData.clientData).length === 0)) {
+        console.log("INIT: Session says 'entities' step but no client data found, forcing to 'client' step");
+        return "client";
+      }
+      
+      // Return the persisted step if it makes sense
+      console.log("INIT: Using persisted step:", persistedData.currentStep);
+      return persistedData.currentStep;
+    }
+    
+    // Default to client step
+    console.log("INIT: No persisted step, defaulting to 'client'");
+    return "client";
+  };
+  
+  const [currentStep, setCurrentStep] = useState<string>(determineInitialStep());
   const [clientData, setClientData] = useState<any>(persistedData?.clientData || null);
   const [entityData, setEntityData] = useState<any[]>(persistedData?.entityData || []);
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
@@ -124,20 +152,66 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }, 10);
   };
   
-  // Handle entity data from EntityManagementCard
+  // CRITICAL FIX: Handle entity data from EntityManagementCard more robustly
   const handleEntityDataSaved = (entities: any[]) => {
-    console.log("CRITICAL: handleEntityDataSaved called with entities", entities.length);
+    console.log("CRITICAL: handleEntityDataSaved called with entities", 
+      entities ? entities.length : 'null/undefined', 
+      "entities:", JSON.stringify(entities));
     
-    // First, set the entity data
-    setEntityData(entities);
+    // Validate incoming data first
+    if (!entities || !Array.isArray(entities)) {
+      console.error("CRITICAL ERROR: Invalid entity data received!", entities);
+      toast({
+        title: "Error",
+        description: "There was a problem with your entity data. Please try again."
+      });
+      return; // Don't proceed with invalid data
+    }
     
-    // Then, navigate to the next step
-    console.log("CRITICAL: Advancing from entities step to summary step");
-    
-    // Important: Wait until the next render cycle before changing steps
-    setTimeout(() => {
-      setCurrentStep("summary");
-    }, 10);
+    // Make a deep copy to avoid reference issues
+    try {
+      const entitiesCopy = JSON.parse(JSON.stringify(entities));
+      console.log("CRITICAL: Created deep copy of entity data, length:", entitiesCopy.length);
+      
+      // First save to sessionStorage directly for persistence
+      try {
+        const savedData = sessionStorage.getItem('setupData') || '{}';
+        const parsedData = JSON.parse(savedData);
+        
+        const dataToSave = {
+          ...parsedData,
+          entityData: entitiesCopy,
+          currentStep: "summary" // Pre-set next step
+        };
+        
+        sessionStorage.setItem('setupData', JSON.stringify(dataToSave));
+        console.log("CRITICAL: Saved entity data to session storage");
+      } catch (error) {
+        console.error("CRITICAL: Failed to save to sessionStorage:", error);
+        // Continue without storage, we'll use state
+      }
+      
+      // Set the entity data with the deep copy
+      setEntityData(entitiesCopy);
+      
+      // Then, navigate to the next step with a longer delay to ensure state is updated
+      console.log("CRITICAL: Preparing to advance from entities step to summary step");
+      
+      // Important: Use a longer timeout and Promise to ensure state updates have completed
+      Promise.resolve().then(() => {
+        setTimeout(() => {
+          console.log("CRITICAL: Now advancing to summary step");
+          setCurrentStep("summary");
+        }, 100); // Longer timeout to ensure state updates have propagated
+      });
+    } catch (error) {
+      console.error("CRITICAL: Error handling entity data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process your entity data. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Clear session storage on completion

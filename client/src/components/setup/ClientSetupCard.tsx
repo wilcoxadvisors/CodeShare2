@@ -109,27 +109,63 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
     console.log("FORM DEBUG: Form values:", form.getValues());
   }, [form]);
   
-  // Safety mechanism: Capture form values periodically to prevent data loss
+  // Add debugging on individual form fields to detect changes
+  const formValues = form.watch();
   useEffect(() => {
-    const saveInterval = setInterval(() => {
-      const currentValues = form.getValues();
-      // Only save if we have at least filled in some basic info
-      if (currentValues.name || currentValues.legalName) {
-        try {
-          const savedData = sessionStorage.getItem('setupData') || '{}';
-          const parsedData = JSON.parse(savedData);
-          sessionStorage.setItem('setupData', JSON.stringify({
-            ...parsedData,
-            clientData: currentValues
-          }));
-        } catch (error) {
-          console.error("Auto-save failed:", error);
-        }
-      }
-    }, 5000); // Every 5 seconds
+    console.log("FORM WATCH: Fields changed, current values:", formValues);
+  }, [formValues]);
+  
+  // CRITICAL FIX: The auto-save might be causing form reset issues
+  // Only save on specific events instead of intervals to prevent race conditions
+  
+  // Track previous form values to detect actual changes
+  const [lastSavedValues, setLastSavedValues] = useState<ClientSetupValues | null>(null);
+  
+  // Safety mechanism: Save on blur events instead of timer
+  const handleSaveOnBlur = () => {
+    console.log("FORM BLUR: Auto-saving current form values");
+    const currentValues = form.getValues();
     
-    return () => clearInterval(saveInterval);
-  }, [form]);
+    // Only save if something has changed from last save
+    const hasChanged = !lastSavedValues || 
+      JSON.stringify(lastSavedValues) !== JSON.stringify(currentValues);
+    
+    // Only save if we have minimal data and changes detected
+    if ((currentValues.name || currentValues.legalName) && hasChanged) {
+      try {
+        const savedData = sessionStorage.getItem('setupData') || '{}';
+        const parsedData = JSON.parse(savedData);
+        
+        console.log("FORM BLUR: Saving form values to sessionStorage", currentValues);
+        
+        // Save to session storage
+        sessionStorage.setItem('setupData', JSON.stringify({
+          ...parsedData,
+          clientData: currentValues
+        }));
+        
+        // Update our last saved values reference
+        setLastSavedValues(currentValues);
+        
+        console.log("FORM BLUR: Successfully saved form state");
+      } catch (error) {
+        console.error("FORM BLUR: Auto-save failed:", error);
+      }
+    } else {
+      console.log("FORM BLUR: No meaningful changes to save");
+    }
+  };
+  
+  // Register blur handler on all form inputs using event delegation
+  useEffect(() => {
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      formElement.addEventListener('blur', handleSaveOnBlur, true);
+      return () => {
+        formElement.removeEventListener('blur', handleSaveOnBlur, true);
+      };
+    }
+  }, [form, lastSavedValues]);
 
   const onSubmit = async (data: ClientSetupValues) => {
     setIsSubmitting(true);
