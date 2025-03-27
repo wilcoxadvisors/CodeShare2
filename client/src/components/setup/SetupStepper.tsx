@@ -282,34 +282,61 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     
     try {
       // 1. Save the client data via API
-      console.log("DEBUG SetupStepper: Attempting to save client via API...");
-      console.log("DEBUG SetupStepper: Client payload:", JSON.stringify(clientData));
+      const clientApiUrl = '/api/admin/clients';
+      console.log("DEBUG: Saving Client. URL:", clientApiUrl, "Payload:", JSON.stringify(clientData));
       
-      const response = await fetch('/api/admin/clients', {
+      // Get the current user data from useAuth
+      console.log("DEBUG: Current user:", user ? `ID: ${user.id}, Role: ${user.role}` : "No user found");
+      
+      // Client API call with detailed logging
+      const clientResponse = await fetch(clientApiUrl, {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',
          },
-         body: JSON.stringify(clientData),
+         body: JSON.stringify({
+           ...clientData,
+           userId: user?.id // Ensure user ID is included
+         }),
+         credentials: 'include' // Include cookies for authentication
       });
       
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'No error details available');
-        console.error("DEBUG SetupStepper: Client save API call failed:", response.status, errorText);
-        throw new Error(`Failed to save client: ${response.statusText || response.status} (${errorText})`);
+      // Log just the status without trying to iterate headers (which causes TypeScript errors)
+      console.log("DEBUG: Save Client Response Status:", clientResponse.status);
+      
+      let savedClient;
+      let clientResponseText;
+      
+      try {
+        clientResponseText = await clientResponse.text();
+        console.log("DEBUG: Save Client Response Text:", clientResponseText);
+        
+        if (clientResponseText) {
+          savedClient = JSON.parse(clientResponseText);
+          console.log("DEBUG: Save Client Response Body:", savedClient);
+        }
+      } catch (jsonError) {
+        console.error("DEBUG: Error parsing client save response JSON:", jsonError, 
+          "Response text:", clientResponseText);
+        throw new Error(`Client save response invalid: ${clientResponse.status}`);
       }
       
-      const savedClient = await response.json();
-      console.log("DEBUG SetupStepper: Client save API call successful. Response:", savedClient);
-
-      if (!savedClient || typeof savedClient !== 'object' || !savedClient.id) {
-        console.error("DEBUG SetupStepper: Invalid client response:", savedClient);
-        throw new Error("Client ID was not returned after saving.");
+      if (!clientResponse.ok) {
+        throw new Error(`Client save failed: ${clientResponse.status} - ${clientResponseText || clientResponse.statusText}`);
       }
-      const newClientId = savedClient.id;
+      
+      if (!savedClient?.data?.id) {
+        console.error("DEBUG: Invalid client response structure:", savedClient);
+        throw new Error("Client ID missing from response. Expected structure: {data: {id: number}}");
+      }
+      
+      // Extract client ID from the response structure
+      const newClientId = savedClient.data.id;
+      console.log("DEBUG: Successfully saved client with ID:", newClientId);
 
       // 2. Save the entities via API, associating with the new client ID
-      console.log(`DEBUG SetupStepper: Attempting to save ${setupEntities.length} entities for client ID ${newClientId}...`);
+      console.log(`DEBUG: Saving Entities for Client ID: ${newClientId}, Entities:`, 
+        JSON.stringify(setupEntities.map(e => e.name)));
       
       // Deep clone entities to avoid circular references and ensure data integrity
       const entitiesDeepCopy = setupEntities.map(entity => {
@@ -322,36 +349,61 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           code: entity.code || "",
           taxId: entity.taxId || "",
           clientId: newClientId,
+          ownerId: user?.id, // Set owner to current user
           active: true
         };
       });
       
-      console.log(`DEBUG SetupStepper: Processed entity data:`, JSON.stringify(entitiesDeepCopy));
+      console.log(`DEBUG: Processed entity data:`, JSON.stringify(entitiesDeepCopy));
       
+      // Create entity save promises with detailed logging
       const entitySavePromises = entitiesDeepCopy.map(entityPayload => {
-        console.log(`DEBUG SetupStepper: Saving entity: ${entityPayload.name}`);
+        const entityApiUrl = '/api/admin/entities';
+        console.log(`DEBUG: Saving Entity. URL: ${entityApiUrl}, Entity: ${entityPayload.name}, Payload:`, 
+          JSON.stringify(entityPayload));
         
-        return fetch('/api/admin/entities', {
+        return fetch(entityApiUrl, {
            method: 'POST',
            headers: {
              'Content-Type': 'application/json',
            },
            body: JSON.stringify(entityPayload),
-        }).then(async response => {
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => 'No error details available');
-            console.error(`DEBUG SetupStepper: Entity save failed for ${entityPayload.name}:`, response.status, errorText);
-            throw new Error(`Failed to save entity ${entityPayload.name}: ${response.statusText || response.status} (${errorText})`);
+           credentials: 'include' // Include cookies for authentication
+        }).then(async entityResponse => {
+          // Log response status without trying to iterate headers (which causes TypeScript errors)
+          console.log(`DEBUG: Save Entity Response Status for ${entityPayload.name}:`, entityResponse.status);
+          
+          let entityResponseText;
+          
+          try {
+            entityResponseText = await entityResponse.text();
+            console.log(`DEBUG: Save Entity Response Text for ${entityPayload.name}:`, entityResponseText);
+            
+            if (!entityResponse.ok) {
+              throw new Error(`Failed to save entity ${entityPayload.name}: ${entityResponse.status} - ${entityResponseText}`);
+            }
+            
+            if (entityResponseText) {
+              return JSON.parse(entityResponseText);
+            }
+            return null;
+          } catch (jsonError) {
+            if (jsonError instanceof SyntaxError) {
+              console.error(`DEBUG: Error parsing entity save response JSON for ${entityPayload.name}:`, 
+                jsonError, "Response text:", entityResponseText);
+              throw new Error(`Entity save response invalid for ${entityPayload.name}: ${entityResponse.status}`);
+            }
+            throw jsonError; // Re-throw other errors
           }
-          return response.json();
         });
       });
 
       try {
         // Wait for all entity save calls to complete
+        console.log("DEBUG: Executing all entity save promises...");
         const savedEntities = await Promise.all(entitySavePromises);
-        console.log("DEBUG SetupStepper: All entities save API calls successful.", 
-          savedEntities.length, "entities saved");
+        console.log("DEBUG: All entity saves completed successfully.", 
+          savedEntities.filter(Boolean).length, "entities saved");
         
         // Show success toast
         toast({
@@ -364,17 +416,17 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           localStorage.removeItem('setupActiveStep');
           localStorage.removeItem('setupClientData');
           localStorage.removeItem('setupEntities');
-          console.log("DEBUG SetupStepper: Cleared all setup data from localStorage");
+          console.log("DEBUG: Cleared all setup data from localStorage");
         } catch (e) {
-          console.warn("DEBUG SetupStepper: Error clearing localStorage:", e);
+          console.warn("DEBUG: Error clearing localStorage:", e);
         }
         
         // Also clear session storage
         try {
           sessionStorage.removeItem('setupData');
-          console.log("DEBUG SetupStepper: Cleared all setup data from sessionStorage");
+          console.log("DEBUG: Cleared all setup data from sessionStorage");
         } catch (e) {
-          console.warn("DEBUG SetupStepper: Error clearing sessionStorage:", e);
+          console.warn("DEBUG: Error clearing sessionStorage:", e);
         }
         
         // 4. Invalidate query cache for dashboard data
@@ -382,29 +434,29 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           // Use the imported queryClient directly
           queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
           queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
-          console.log("DEBUG SetupStepper: Invalidated query cache");
+          console.log("DEBUG: Invalidated query cache");
         } catch (e) {
-          console.warn("DEBUG SetupStepper: Error invalidating cache:", e);
+          console.warn("DEBUG: Error invalidating cache:", e);
         }
         
         // 5. Call onComplete callback to trigger dashboard refresh
         if (onComplete) {
-          console.log("DEBUG SetupStepper: Calling onComplete callback");
+          console.log("DEBUG: Calling onComplete callback");
           onComplete();
         } else {
           // Fallback - redirect to dashboard directly
-          console.log("DEBUG SetupStepper: No onComplete callback, redirecting to dashboard");
+          console.log("DEBUG: No onComplete callback, redirecting to dashboard");
           // Small delay to allow toasts to be seen
           setTimeout(() => {
             window.location.href = '/dashboard';
           }, 1000);
         }
       } catch (entityError: any) {
-        console.error("DEBUG SetupStepper: Error during entity save:", entityError);
+        console.error("DEBUG: Error during entity save:", entityError);
         throw new Error(`Failed to save one or more entities: ${entityError.message}`);
       }
     } catch (error: any) {
-      console.error("DEBUG SetupStepper: Error during final save API calls:", error);
+      console.error("DEBUG: ERROR during handleCompleteSetup API calls:", error);
       // Show error toast
       toast({
         title: "Error Saving Data",
@@ -414,7 +466,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [clientData, setupEntities, onComplete, toast, setIsSubmitting]);
+  }, [clientData, setupEntities, onComplete, toast, setIsSubmitting, user]);
   
   // Log at the end of the render
   console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering END. Current activeStep: ${activeStep}`);
