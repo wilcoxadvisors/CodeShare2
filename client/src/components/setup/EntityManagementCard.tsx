@@ -817,7 +817,7 @@ export default function EntityManagementCard({
   // Check if we can proceed to next step (at least one entity needed)
   const canProceed = setupEntities && setupEntities.length > 0;
   
-  // When the component mounts or clientData changes, we should initialize with fresh form and entity data
+  // CRITICAL FIX 10.0: More aggressive loading of entities when component mounts or client data changes
   useEffect(() => {
     // Reset only the form when clientData changes, not the entities list
     form.reset({
@@ -833,13 +833,56 @@ export default function EntityManagementCard({
       code: ""
     });
     
-    // IMPORTANT: Do NOT clear setupEntities when navigating back
-    // This was causing entity data to be lost when going back to the client step
-    // We now preserve entities between navigation steps
+    // CRITICAL FIX 10.0: If we have client data and no entities, proactively fetch them
+    const loadEntitiesForClient = async () => {
+      if (clientData?.id) {
+        console.log("CRITICAL FIX 10.0: Component mounted with clientId:", clientData.id);
+        
+        // Check if we already have entities (from props or local state)
+        if (setupEntities && setupEntities.length > 0) {
+          console.log("CRITICAL FIX 10.0: Already have entities in component state:", setupEntities.length);
+          return;
+        }
+        
+        // Check if we have entities in entityData prop
+        if (entityData && entityData.length > 0) {
+          console.log("CRITICAL FIX 10.0: Using entities from props:", entityData.length);
+          setSetupEntities(entityData);
+          return;
+        }
+        
+        // No entities found in state, try to fetch them directly
+        console.log("CRITICAL FIX 10.0: No entities found in state, fetching from API...");
+        try {
+          const fetchedEntities = await fetchEntitiesDirectly(clientData.id);
+          if (fetchedEntities && Array.isArray(fetchedEntities) && fetchedEntities.length > 0) {
+            console.log("CRITICAL FIX 10.0: Successfully fetched", fetchedEntities.length, "entities from API");
+            
+            // Update local state
+            setSetupEntities(fetchedEntities);
+            
+            // Also update parent state if the setter is available
+            if (setEntityData) {
+              console.log("CRITICAL FIX 10.0: Updating parent entityData with fetched entities");
+              setEntityData(fetchedEntities);
+            }
+          } else {
+            console.log("CRITICAL FIX 10.0: No entities found for client in API, starting with empty list");
+          }
+        } catch (error) {
+          console.error("CRITICAL FIX 10.0: Error fetching entities directly:", error);
+        }
+      } else {
+        console.log("CRITICAL FIX 10.0: No client ID available, cannot fetch entities");
+      }
+    };
+    
+    // Call the function to load entities
+    loadEntitiesForClient();
     
     // For debugging - helps identify when form is being reset
     console.log("Entity form reset to default values, entities preserved", {clientId: clientData?.id});
-  }, [clientData, form]); // Reset when clientData changes, which happens when navigating steps
+  }, [clientData, form, entityData]); // Depend on clientData, form, and entityData
   
   // Sync setupEntities with allEntities when they change
   // IMPORTANT FIX: Do NOT sync all entities when creating a new client - only do this for editing

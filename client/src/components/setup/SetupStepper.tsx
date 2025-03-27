@@ -126,18 +126,47 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // CRITICAL FIX: Handle client data submission and navigation separately
   const handleClientDataSaved = (data: any) => {
-    console.log("CRITICAL: handleClientDataSaved called with data", data);
+    console.log("CRITICAL FIX 9.0: handleClientDataSaved called with data", data);
     
-    // First, update the client data
+    // First, update the client data with setState
     setClientData(data);
     
-    // Then, navigate to the next step
-    console.log("CRITICAL: Advancing from client step to entities step");
+    // Force direct update to session storage immediately
+    try {
+      const setupData = sessionStorage.getItem('setupData') || '{}';
+      const parsedData = JSON.parse(setupData);
+      
+      // Update with new client data and force entities step
+      const updatedData = {
+        ...parsedData,
+        clientData: data,
+        currentStep: "entities" // CRITICAL: Force the step in storage
+      };
+      
+      // Save back to session storage
+      sessionStorage.setItem('setupData', JSON.stringify(updatedData));
+      console.log("CRITICAL FIX 9.0: Forced session storage update with entities step", updatedData);
+    } catch (error) {
+      console.error("CRITICAL FIX 9.0: Error updating session storage:", error);
+    }
     
-    // Important: Wait until the next render cycle before changing steps
+    // Now use a longer timeout to ensure React has time to process state updates
+    console.log("CRITICAL FIX 9.0: Starting timer to advance to entities step");
+    
+    // Use a longer timeout to ensure state updates have completed
     setTimeout(() => {
+      console.log("CRITICAL FIX 9.0: Timer fired, setting current step to entities");
       setCurrentStep("entities");
-    }, 10);
+      
+      // Double-check after a brief delay that the step was actually set
+      setTimeout(() => {
+        console.log("CRITICAL FIX 9.0: Verification - current step is now:", currentStep);
+        if (currentStep !== "entities") {
+          console.log("CRITICAL FIX 9.0: Step didn't update correctly, forcing another update");
+          setCurrentStep("entities");
+        }
+      }, 200);
+    }, 500);
   };
   
   // CRITICAL FIX 2.0: More comprehensive entity data handling to prevent data loss
