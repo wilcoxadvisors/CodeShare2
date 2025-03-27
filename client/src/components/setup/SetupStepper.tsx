@@ -318,7 +318,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           name: entity.name,
           legalName: entity.legalName || entity.name,
           entityType: entity.entityType || "llc",
-          industry: entity.industry || "other",
+          industry: entity.industry === null || entity.industry === undefined ? "other" : entity.industry,
           code: entity.code || "",
           taxId: entity.taxId || "",
           clientId: newClientId,

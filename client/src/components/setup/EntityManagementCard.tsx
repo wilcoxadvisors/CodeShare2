@@ -270,10 +270,22 @@ export default function EntityManagementCard({
   
   // Utility function to ensure industry always has a value
   const ensureIndustryValue = (industryValue: string | undefined | null): string => {
+    // CRITICAL FIX: Improved handling for null and undefined values
+    if (industryValue === null || industryValue === undefined) {
+      console.log("DEBUG: Industry value is null/undefined, defaulting to 'other'");
+      return "other";
+    }
+    
     // Check if the industry value is valid
-    return industryValue && INDUSTRY_OPTIONS.some(opt => opt.value === industryValue)
-      ? industryValue
-      : "other"; // Default to "other" if the value is invalid or missing
+    const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === industryValue);
+    
+    if (!isValidIndustry) {
+      console.log(`DEBUG: Industry value "${industryValue}" is not valid, defaulting to 'other'`);
+      return "other";
+    }
+    
+    console.log(`DEBUG: Using valid industry value: "${industryValue}"`);
+    return industryValue;
   };
 
   // Create entity mutation
@@ -728,7 +740,7 @@ export default function EntityManagementCard({
         name: entity.name || "",
         legalName: entity.legalName || "",
         entityType: entity.entityType || "llc",
-        industry: entity.industry || "other",
+        industry: entity.industry !== null ? entity.industry : "other",
         active: entity.active === undefined ? true : entity.active,
         isActive: entity.isActive === undefined ? true : entity.isActive,
         code: entity.code || "",
@@ -1141,7 +1153,8 @@ export default function EntityManagementCard({
                       <FormLabel>Industry*</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value === null || field.value === undefined ? "other" : field.value}
+                        defaultValue="other"
                       >
                         <FormControl>
                           <SelectTrigger>
