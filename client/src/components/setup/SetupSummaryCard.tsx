@@ -27,10 +27,18 @@ export default function SetupSummaryCard({
       // Here you could perform any final API calls if needed
       // such as updating client status, etc.
       
+      // Log setup data being saved for debugging
+      console.log("DEBUG: Finishing setup with client data:", clientData);
+      console.log("DEBUG: Finishing setup with entity data:", entityData); 
+      
       // Important: Invalidate queries to refresh all client data on the dashboard
       // This ensures the newly created client appears on the status page
-      console.log("Invalidating queries to refresh dashboard data...");
+      console.log("DEBUG: Invalidating queries to refresh dashboard data...");
+      
+      // Make sure to invalidate ALL relevant queries for dashboard data
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
       
       toast({
@@ -38,9 +46,10 @@ export default function SetupSummaryCard({
         description: "Client added successfully",
       });
       
+      // Call onFinish to close modal
       onFinish();
     } catch (error: any) {
-      console.error("Error completing setup:", error);
+      console.error("ERROR: Error completing setup:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to complete setup.",
@@ -117,37 +126,58 @@ export default function SetupSummaryCard({
           )}
           
           {/* Entity Information Summary */}
-          {entityData && entityData.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-4">Entities ({entityData.length})</h3>
-              <div className="bg-muted/20 p-4 rounded-lg space-y-4">
-                {entityData.map((entity, index) => (
-                  <div key={entity.id || index} className="p-3 border rounded-md">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Name</p>
-                        <p className="font-medium">{entity.name}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Type</p>
-                        <p>{entity.entityType}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                        <p>{entity.industry}</p>
-                      </div>
-                      {entity.taxId && (
+          <div>
+            <h3 className="text-lg font-medium mb-4">
+              Entities {entityData ? `(${entityData.length})` : '(0)'}
+            </h3>
+            <div className="bg-muted/20 p-4 rounded-lg space-y-4">
+              {(!entityData || entityData.length === 0) ? (
+                <div className="text-center p-4 border border-dashed rounded">
+                  <p className="text-muted-foreground">No entities have been added.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Log the entity data being rendered for debugging */}
+                  {console.log("DEBUG: Rendering entity data in summary:", JSON.stringify(entityData))}
+                  
+                  {entityData.map((entity, index) => (
+                    <div key={entity.id || `entity-${index}`} className="p-3 border rounded-md">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Tax ID</p>
-                          <p>{entity.taxId}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Name</p>
+                          <p className="font-medium">{entity.name || "Unnamed Entity"}</p>
                         </div>
-                      )}
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Type</p>
+                          <p>{entity.entityType || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Industry</p>
+                          <p>{entity.industry || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Entity ID</p>
+                          <p>{entity.id || "Not yet assigned"}</p>
+                        </div>
+                        {entity.taxId && (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Tax ID</p>
+                            <p>{entity.taxId}</p>
+                          </div>
+                        )}
+                        {entity.code && (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Code</p>
+                            <p>{entity.code}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </>
+              )}
             </div>
-          )}
+          </div>
           
           <div className="border-t pt-6 text-center">
             <p className="mb-4 text-muted-foreground">
