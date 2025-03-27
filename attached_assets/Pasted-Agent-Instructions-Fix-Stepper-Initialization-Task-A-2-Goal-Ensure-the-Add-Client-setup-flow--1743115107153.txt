@@ -1,0 +1,41 @@
+Agent Instructions: Fix Stepper Initialization (Task A.2)
+
+Goal: Ensure the "Add Client" setup flow reliably starts fresh on Step 0 (ClientSetupCard) with a clean state every time the modal is opened.
+
+Context: Although the component remounting issue was fixed, there might be remaining issues with initial state logic or residual effects from previous localStorage usage causing the stepper to sometimes start incorrectly. We need to enforce a clean start.
+
+Relevant Files:
+
+client/src/components/setup/SetupStepper.tsx
+Steps:
+
+Review Mount Logic:
+Action: Open client/src/components/setup/SetupStepper.tsx.
+Action: Locate the useEffect hook that runs only on component mount (i.e., useEffect(() => { ... }, [])). If one doesn't exist specifically for initialization, create it.
+Implement Explicit Reset:
+Action: Inside the mount useEffect, explicitly set the initial state for the setup flow:
+Set activeStep to 0.
+Set clientData to its initial empty/null state (e.g., null or { name: '', email: '', ... } depending on its type).
+Set setupEntities to an empty array ([]).
+Action: Crucially, also explicitly remove any relevant localStorage keys that might have been used previously to store stepper state within this same mount effect. This prevents loading stale data from a previous, potentially incomplete, session. Example:
+TypeScript
+
+useEffect(() => {
+  console.log("DEBUG SetupStepper: Mounting and resetting state...");
+  setActiveStep(0);
+  setClientData(null); // Or initial empty object
+  setSetupEntities([]);
+  // Explicitly clear potential stale localStorage data
+  localStorage.removeItem('setupClientData'); // Use actual key names if different
+  localStorage.removeItem('setupEntities');   // Use actual key names if different
+  localStorage.removeItem('activeStep');      // Use actual key names if different
+  console.log("DEBUG SetupStepper: State reset complete.");
+}, []); // Empty dependency array ensures this runs only once on mount
+Test & Verify:
+Action: Restart the application.
+Action: Open the "Add Client" modal. Verify it starts on Step 0 (ClientSetupCard). Close the modal.
+Action: Navigate away from the dashboard page and then back, or perform other actions.
+Action: Open the "Add Client" modal again. Verify it still starts fresh on Step 0.
+Action: Repeat opening/closing the modal several times to ensure consistency.
+Report Findings:
+Confirm whether the setup flow now reliably starts on Step 0 with a clean state every time the modal is opened. Report any deviations.

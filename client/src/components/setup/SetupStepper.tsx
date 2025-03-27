@@ -75,14 +75,39 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering START`);
   
-  // Add lifecycle monitoring
+  // Add lifecycle monitoring and explicit state reset on mount
   useEffect(() => {
     console.log(`DEBUG SetupStepper: Instance ${instanceId} MOUNTED`);
+    
+    // Explicitly reset to ensure fresh state on every mount
+    console.log("DEBUG SetupStepper: Mounting and resetting state...");
+    setActiveStep(0);
+    setClientData(null);
+    setSetupEntities([]);
+    
+    // Explicitly clear ALL storage to ensure no stale data
+    try {
+      // localStorage cleanup
+      localStorage.removeItem('setupActiveStep');
+      localStorage.removeItem('setupClientData');
+      localStorage.removeItem('setupEntities');
+      
+      // sessionStorage cleanup
+      sessionStorage.removeItem('setupData');
+      sessionStorage.removeItem('setupClientData');
+      sessionStorage.removeItem('setupEntities');
+      sessionStorage.removeItem('activeStep');
+      
+      console.log("DEBUG SetupStepper: State reset and storage cleared on mount");
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error clearing storage on mount:", e);
+    }
+    
     return () => {
       // THIS IS THE CRITICAL LOG!
       console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! State will be lost.`);
     };
-  }, [instanceId]); // Empty dependency array means run on mount, cleanup on unmount
+  }, []); // Empty dependency array ensures this runs only once on mount
   
   // ALWAYS initialize to step 0 to avoid stale state issues
   const [activeStep, setActiveStep] = useState<number>(() => {
