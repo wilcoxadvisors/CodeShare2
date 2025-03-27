@@ -33,265 +33,140 @@ interface SetupStepperProps {
   onComplete?: () => void;
 }
 
+// Define proper types for our data
+interface ClientData {
+  name: string;
+  legalName: string;
+  taxId?: string;
+  industry: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  notes?: string;
+}
+
+interface Entity {
+  id: number;
+  name: string;
+  legalName: string;
+  taxId?: string;
+  entityType: string;
+  industry: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  code?: string;
+  clientId?: number;
+  ownerId?: number;
+  active?: boolean;
+  isActive?: boolean;
+}
+
 /**
  * Setup stepper component that guides users through the onboarding process
  */
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
-  // Get persistedSetupData from session storage if available
-  const getInitialData = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // REFACTORED: Centralize state management in SetupStepper
+  // Initialize activeStep to 0 (client information step)
+  const [activeStep, setActiveStep] = useState(0);
+  console.log("DEBUG SetupStepper: Initializing activeStep state to 0");
+  
+  // Initialize clientData and setupEntities states
+  const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [setupEntities, setSetupEntities] = useState<Entity[]>([]);
+  const [setupComplete, setSetupComplete] = useState<boolean>(false);
+  
+  // Load initial data from session storage on component mount
+  useEffect(() => {
     try {
       const savedData = sessionStorage.getItem('setupData');
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        console.log("INIT: Loading setup data from session storage:", parsedData);
-        return parsedData;
+        console.log("DEBUG SetupStepper: Loading data from session storage:", parsedData);
+        
+        // Only set clientData if it exists and has required fields
+        if (parsedData.clientData && parsedData.clientData.name && parsedData.clientData.legalName) {
+          setClientData(parsedData.clientData);
+        }
+        
+        // Only set entityData if it's a non-empty array
+        if (Array.isArray(parsedData.entityData) && parsedData.entityData.length > 0) {
+          setSetupEntities(parsedData.entityData);
+        }
+        
+        // Don't restore step from storage - always start at step 0
       }
-      return null;
     } catch (error) {
       console.error("Failed to load setup data from sessionStorage:", error);
-      return null;
     }
-  };
-  
-  const persistedData = getInitialData();
-  
-  // Component state
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
-  // CRITICAL FIX 8.0: Completely rewrite initial step determination
-  // Always force step 1 (client step) on page load
-  const determineInitialStep = () => {
-    console.log("CRITICAL FIX 8.0: Forcing application to start at step 1 (client)");
-    
-    // Override any persisted step - always start with client information
-    // This ensures we don't start in the middle of the flow
-    return "client";
-  };
-  
-  const [currentStep, setCurrentStep] = useState<string>(determineInitialStep());
-  const [clientData, setClientData] = useState<any>(persistedData?.clientData || null);
-  const [entityData, setEntityData] = useState<any[]>(persistedData?.entityData || []);
-  const [setupComplete, setSetupComplete] = useState<boolean>(false);
+  }, []);
   
   // Save data to session storage whenever it changes
   const saveToSessionStorage = useCallback(() => {
     try {
+      const stepId = SETUP_STEPS[activeStep]?.id || "client";
       const dataToSave = {
-        currentStep,
+        currentStep: stepId,
         clientData,
-        entityData
+        entityData: setupEntities
       };
       sessionStorage.setItem('setupData', JSON.stringify(dataToSave));
-      console.log("Saved setup data to sessionStorage:", dataToSave);
+      console.log("DEBUG SetupStepper: Saved data to sessionStorage:", dataToSave);
     } catch (error) {
-      console.error("Failed to save setup data to sessionStorage:", error);
+      console.error("DEBUG SetupStepper: Failed to save to sessionStorage:", error);
     }
-  }, [currentStep, clientData, entityData]);
+  }, [activeStep, clientData, setupEntities]);
   
   // Save state changes to session storage
   useEffect(() => {
     saveToSessionStorage();
-  }, [currentStep, clientData, entityData, saveToSessionStorage]);
+  }, [activeStep, clientData, setupEntities, saveToSessionStorage]);
   
-  // Calculate current step index
-  const currentStepIndex = SETUP_STEPS.findIndex(step => step.id === currentStep);
-  
-  // Handler to move to the next step (basic navigation)
-  const handleNext = () => {
-    const nextIndex = currentStepIndex + 1;
-    console.log("NAVIGATION: handleNext called, current step:", currentStep, "next index:", nextIndex);
-    
-    if (nextIndex < SETUP_STEPS.length) {
-      const nextStepId = SETUP_STEPS[nextIndex].id;
-      console.log(`NAVIGATION: Moving to next step: ${nextStepId}`);
-      setCurrentStep(nextStepId);
-    } else {
-      console.log("NAVIGATION: At final step, setting setupComplete");
-      setSetupComplete(true);
-    }
-  };
-  
-  // Handler to move to the previous step
-  const handleBack = () => {
-    const prevIndex = currentStepIndex - 1;
-    console.log("NAVIGATION: handleBack called, current step:", currentStep, "prev index:", prevIndex);
-    
-    if (prevIndex >= 0) {
-      const prevStepId = SETUP_STEPS[prevIndex].id;
-      console.log(`NAVIGATION: Moving to previous step: ${prevStepId}`);
-      setCurrentStep(prevStepId);
-    }
-  };
-  
-  // CRITICAL FIX: Handle client data submission and navigation separately
-  const handleClientDataSaved = (data: any) => {
-    console.log("CRITICAL FIX 9.0: handleClientDataSaved called with data", data);
-    
-    // First, update the client data with setState
+  // Create stable callback functions with useCallback
+  const handleClientSave = useCallback((data: ClientData) => {
+    console.log("DEBUG SetupStepper: handleClientSave received:", data);
     setClientData(data);
     
-    // Force direct update to session storage immediately
-    try {
-      const setupData = sessionStorage.getItem('setupData') || '{}';
-      const parsedData = JSON.parse(setupData);
-      
-      // Update with new client data and force entities step
-      const updatedData = {
-        ...parsedData,
-        clientData: data,
-        currentStep: "entities" // CRITICAL: Force the step in storage
-      };
-      
-      // Save back to session storage
-      sessionStorage.setItem('setupData', JSON.stringify(updatedData));
-      console.log("CRITICAL FIX 9.0: Forced session storage update with entities step", updatedData);
-    } catch (error) {
-      console.error("CRITICAL FIX 9.0: Error updating session storage:", error);
-    }
-    
-    // Now use a longer timeout to ensure React has time to process state updates
-    console.log("CRITICAL FIX 9.0: Starting timer to advance to entities step");
-    
-    // Use a longer timeout to ensure state updates have completed
-    setTimeout(() => {
-      console.log("CRITICAL FIX 9.0: Timer fired, setting current step to entities");
-      setCurrentStep("entities");
-      
-      // Double-check after a brief delay that the step was actually set
-      setTimeout(() => {
-        console.log("CRITICAL FIX 9.0: Verification - current step is now:", currentStep);
-        if (currentStep !== "entities") {
-          console.log("CRITICAL FIX 9.0: Step didn't update correctly, forcing another update");
-          setCurrentStep("entities");
-        }
-      }, 200);
-    }, 500);
-  };
+    // Move to step 2 (entities)
+    console.log("DEBUG SetupStepper: Setting activeStep to 1");
+    setActiveStep(1);
+  }, [setClientData, setActiveStep]);
   
-  // CRITICAL FIX 2.0: More comprehensive entity data handling to prevent data loss
-  const handleEntityDataSaved = (entities: any[]) => {
-    console.log("CRITICAL FIX 2.0: handleEntityDataSaved called with entities", 
-      entities ? entities.length : 'null/undefined');
-    
-    // Validate incoming data first with detailed checks
-    if (!entities) {
-      console.error("CRITICAL ERROR: Entity data is undefined or null!");
+  const handleEntityAdd = useCallback((newEntity: Entity) => {
+    console.log("DEBUG SetupStepper: handleEntityAdd received:", newEntity);
+    setSetupEntities(prev => [...prev, newEntity]);
+  }, [setSetupEntities]);
+  
+  const handleEntityDelete = useCallback((entityId: number) => {
+    console.log("DEBUG SetupStepper: handleEntityDelete called for ID:", entityId);
+    setSetupEntities(prev => prev.filter(e => e.id !== entityId));
+  }, [setSetupEntities]);
+  
+  const handleBack = useCallback(() => {
+    console.log(`DEBUG SetupStepper: handleBack called. Current: ${activeStep}. Going to ${activeStep - 1}`);
+    setActiveStep(prev => Math.max(0, prev - 1));
+  }, [activeStep, setActiveStep]);
+  
+  const handleNextFromEntities = useCallback(() => {
+    console.log(`DEBUG SetupStepper: handleNextFromEntities called. Current: ${activeStep}. Entities count: ${setupEntities.length}`);
+    if (setupEntities.length === 0) {
+      console.warn("DEBUG SetupStepper: Blocked navigation - No entities added.");
       toast({
-        title: "Error",
-        description: "There was a problem with your entity data. Please try again."
+        title: "Cannot proceed",
+        description: "Please add at least one entity before continuing.",
+        variant: "destructive"
       });
-      return; // Don't proceed with invalid data
+      return;
     }
     
-    if (!Array.isArray(entities)) {
-      console.error("CRITICAL ERROR: Entity data is not an array!", typeof entities);
-      toast({
-        title: "Error",
-        description: "Incorrect entity data format. Please try again."
-      });
-      return; // Don't proceed with invalid data
-    }
-    
-    if (entities.length === 0) {
-      console.warn("WARNING: Received empty entities array. User may need to create at least one entity.");
-      toast({
-        title: "Warning",
-        description: "No entities found. Please add at least one entity before proceeding."
-      });
-      return; // Don't proceed with empty data
-    }
-    
-    // Make a deep copy to avoid reference issues
-    try {
-      console.log("CRITICAL FIX 2.0: Creating deep copy of entity data");
-      
-      // Create deep copy with explicit handling for circular structures
-      const entitiesCopy = JSON.parse(JSON.stringify(entities.map(entity => {
-        // Ensure each entity has minimal required fields
-        return {
-          id: entity.id,
-          name: entity.name || "Unnamed Entity",
-          legalName: entity.legalName || "",
-          entityType: entity.entityType || "llc",
-          industry: entity.industry || "",
-          taxId: entity.taxId || "",
-          code: entity.code || "",
-          clientId: clientData?.id || entity.clientId,
-          // Include any other properties but strip out anything causing issues
-          ...Object.fromEntries(
-            Object.entries(entity)
-              .filter(([key]) => !['__typename', 'createdAt', 'updatedAt'].includes(key))
-          )
-        };
-      })));
-      
-      console.log("CRITICAL FIX 2.0: Created deep copy of entity data, length:", entitiesCopy.length);
-      console.log("CRITICAL FIX 2.0: First entity ID:", entitiesCopy[0]?.id);
-      
-      // First update local state to ensure UI consistency
-      setEntityData(entitiesCopy);
-      
-      // Then save to sessionStorage for persistence - do this AFTER setting state
-      try {
-        // Get current saved data
-        const savedData = sessionStorage.getItem('setupData') || '{}';
-        const parsedData = JSON.parse(savedData);
-        
-        // Create complete updated state
-        const dataToSave = {
-          ...parsedData,
-          clientData: clientData,
-          entityData: entitiesCopy,
-          currentStep: "summary" // Pre-set next step
-        };
-        
-        // Save to session storage
-        sessionStorage.setItem('setupData', JSON.stringify(dataToSave));
-        console.log("CRITICAL FIX 2.0: Saved complete state to session storage (client, entities, step)");
-      } catch (error) {
-        console.error("CRITICAL FIX 2.0: Failed to save to sessionStorage:", error);
-        // Continue without storage since we already updated state
-      }
-      
-      // Navigate to the next step with a longer delay and confirmation of data integrity
-      console.log("CRITICAL FIX 2.0: Preparing to advance to summary step");
-      
-      // Create a promise chain to ensure proper sequencing
-      Promise.resolve()
-        .then(() => {
-          // Log a confirmation that data is ready
-          console.log("CRITICAL FIX 2.0: Data is ready for summary step:", {
-            clientDataExists: !!clientData,
-            entityDataLength: entitiesCopy.length
-          });
-          
-          // Use timeout to ensure state updates complete
-          return new Promise(resolve => setTimeout(resolve, 200));
-        })
-        .then(() => {
-          // Do one final verification before transition
-          console.log("CRITICAL FIX 2.0: Performing final state verification before navigation");
-          
-          if (entityData && Array.isArray(entityData) && entityData.length > 0) {
-            console.log("CRITICAL FIX 2.0: Verification passed, advancing to summary");
-            setCurrentStep("summary");
-          } else {
-            // If somehow our state didn't update properly, try once more with the copy
-            console.warn("CRITICAL FIX 2.0: State verification failed, updating state again before navigation");
-            setEntityData(entitiesCopy);
-            setTimeout(() => setCurrentStep("summary"), 100);
-          }
-        });
-    } catch (error) {
-      console.error("CRITICAL FIX 2.0: Error handling entity data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process your entity data. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+    const nextStep = activeStep + 1;
+    console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+    setActiveStep(nextStep);
+  }, [activeStep, setupEntities, toast]);
   
   // CRITICAL FIX 5.0: Enhanced completion with better data handling
   useEffect(() => {
@@ -327,10 +202,11 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
   }, [setupComplete, onComplete]);
   
-  // CRITICAL FIX: Add better debugging for all state changes
+  // Add better debugging for all state changes
   useEffect(() => {
-    console.log(`DEBUG: currentStep is now: ${currentStep}`);
-  }, [currentStep]);
+    const stepId = SETUP_STEPS[activeStep]?.id || "unknown";
+    console.log(`DEBUG: activeStep is now: ${activeStep} (${stepId})`);
+  }, [activeStep]);
   
   useEffect(() => {
     console.log(`DEBUG: clientData: ${clientData ? 'exists' : 'null'}`);
@@ -339,13 +215,43 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
   }, [clientData]);
   
-  // Add a useEffect to track entityData changes specifically
+  // Add a useEffect to track setupEntities changes specifically
   useEffect(() => {
-    console.log(`DEBUG: entityData: ${entityData ? `array with ${entityData.length} items` : 'null/undefined'}`);
-    if (entityData && entityData.length > 0) {
-      console.log("DEBUG: First entity ID:", entityData[0].id);
+    console.log(`DEBUG: setupEntities: ${setupEntities ? `array with ${setupEntities.length} items` : 'null/undefined'}`);
+    if (setupEntities && setupEntities.length > 0) {
+      console.log("DEBUG: First entity ID:", setupEntities[0].id);
     }
-  }, [entityData]);
+  }, [setupEntities]);
+  
+  // Create a stable handler for finishing setup
+  const handleCompleteSetup = useCallback(() => {
+    // Before completing, verify data once more and log final state
+    console.log("DEBUG SetupStepper: Setup complete triggered with:");
+    console.log("DEBUG SetupStepper: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
+    console.log("DEBUG SetupStepper: setupEntities:", setupEntities ? setupEntities.length : 'null', "entities");
+    
+    // Force one more sync to session storage before completion
+    try {
+      // This ensures if there's a redirect/refresh during the completion process,
+      // we still have the latest state
+      const finalState = {
+        clientData,
+        entityData: setupEntities,
+        currentStep: SETUP_STEPS[2].id, // Keep at summary step
+        setupCompleting: true // Flag to indicate we're in completion process
+      };
+      
+      // Save to session storage
+      sessionStorage.setItem('setupData', JSON.stringify(finalState));
+      console.log("DEBUG SetupStepper: Saved final state to session storage");
+    } catch (error) {
+      console.error("DEBUG SetupStepper: Failed to save final state to session storage:", error);
+      // Continue anyway since we're going to clear it soon
+    }
+    
+    // Complete the setup and close the dialog
+    setSetupComplete(true);
+  }, [clientData, setupEntities]);
   
   return (
     <div className="my-8">
@@ -369,7 +275,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                   {index < SETUP_STEPS.length - 1 && (
                     <div 
                       className={`absolute w-full h-0.5 top-3 left-1/2 -z-10 ${
-                        index < currentStepIndex ? "bg-primary" : "bg-muted"
+                        index < activeStep ? "bg-primary" : "bg-muted"
                       }`}
                     />
                   )}
@@ -377,14 +283,14 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                   {/* Step indicator */}
                   <div 
                     className={`flex items-center justify-center w-6 h-6 rounded-full border-2 ${
-                      index < currentStepIndex
+                      index < activeStep
                         ? "border-primary bg-primary text-primary-foreground"
-                        : index === currentStepIndex
+                        : index === activeStep
                         ? "border-primary text-primary"
                         : "border-muted bg-background text-muted-foreground"
                     }`}
                   >
-                    {index < currentStepIndex ? (
+                    {index < activeStep ? (
                       <CheckCircle className="h-4 w-4" />
                     ) : (
                       <Circle className="h-4 w-4" />
@@ -394,7 +300,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                   {/* Step label */}
                   <div 
                     className={`mt-2 text-sm font-medium text-center ${
-                      index === currentStepIndex ? "text-primary" : "text-muted-foreground"
+                      index === activeStep ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     {step.title}
@@ -406,88 +312,41 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
             {/* Current step description */}
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">
-                {SETUP_STEPS[currentStepIndex]?.description}
+                {SETUP_STEPS[activeStep]?.description}
               </p>
             </div>
           </div>
           
           {/* Current step content */}
           <div className="mt-8">
-            {currentStep === "client" && (
+            {activeStep === 0 && (
               <ClientSetupCard 
-                onNext={handleClientDataSaved} 
+                onNext={handleClientSave} 
                 setClientData={setClientData}
-                initialData={clientData}
+                initialData={clientData || undefined}
               />
             )}
             
-            {currentStep === "entities" && (
+            {activeStep === 1 && (
               <EntityManagementCard 
-                onNext={handleEntityDataSaved}
+                onNext={handleNextFromEntities}
                 onBack={handleBack}
                 clientData={clientData}
-                setEntityData={setEntityData}
-                entityData={entityData} // Pass entityData to restore previous state
+                onEntityAdded={handleEntityAdd}
+                onEntityDeleted={handleEntityDelete}
+                entities={setupEntities}
               />
             )}
             
-            {currentStep === "summary" && (
+            {activeStep === 2 && (
               <SetupSummaryCard
                 clientData={clientData}
-                entityData={entityData}
+                entityData={setupEntities}
                 onBack={handleBack}
-                onFinish={() => {
-                  // CRITICAL FIX 5.0: Before completing, verify data once more and log final state
-                  console.log("FINAL: Setup complete triggered with:");
-                  console.log("FINAL: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
-                  console.log("FINAL: entityData:", entityData ? entityData.length : 'null', "entities");
-                  
-                  // Force one more sync to session storage before completion
-                  try {
-                    // This ensures if there's a redirect/refresh during the completion process,
-                    // we still have the latest state
-                    const finalState = {
-                      clientData,
-                      entityData,
-                      currentStep: "summary", // Keep at summary step
-                      setupCompleting: true // Flag to indicate we're in completion process
-                    };
-                    
-                    // Save to session storage
-                    sessionStorage.setItem('setupData', JSON.stringify(finalState));
-                    console.log("FINAL: Saved final state to session storage");
-                  } catch (error) {
-                    console.error("FINAL: Failed to save final state to session storage:", error);
-                    // Continue anyway since we're going to clear it soon
-                  }
-                  
-                  // Complete the setup and close the dialog
-                  setSetupComplete(true);
-                }}
+                onFinish={handleCompleteSetup}
               />
             )}
           </div>
-          
-          {/* Navigation buttons - only show for steps that don't have their own navigation */}
-          {currentStep !== "summary" && (
-            <div className="flex justify-between mt-8">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStepIndex === 0}
-              >
-                Back
-              </Button>
-              
-              {/* Skip button could be added here if needed */}
-              
-              {currentStep !== "client" && currentStep !== "entities" && (
-                <Button onClick={handleNext}>
-                  {currentStepIndex === SETUP_STEPS.length - 1 ? "Finish" : "Next"}
-                </Button>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

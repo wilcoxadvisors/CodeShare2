@@ -63,35 +63,38 @@ const entitySchema = z.object({
 type EntityFormValues = z.infer<typeof entitySchema>;
 
 interface EntityManagementCardProps {
-  onNext: (entities: any[]) => void;
+  onNext: () => void;
   onBack?: () => void;
   clientData?: any;
-  setEntityData?: (entities: any[]) => void;
-  // Add initial entity data from parent component
+  onEntityAdded: (entity: any) => void;
+  onEntityDeleted: (entityId: number) => void;
+  entities: any[];
   entityData?: any[];
+  setEntityData?: (entities: any[]) => void;
 }
 
 export default function EntityManagementCard({ 
   onNext, 
   onBack, 
   clientData, 
-  setEntityData,
-  entityData // Add the entityData prop to the destructuring 
+  onEntityAdded,
+  onEntityDeleted,
+  entities,
+  entityData,
+  setEntityData
 }: EntityManagementCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentEntityId, setCurrentEntityId] = useState<number | null>(null);
+  // Local copy of entities for management
+  const [setupEntities, setSetupEntities] = useState<any[]>(entities || []);
   
   // Check if user is admin
   const isAdmin = user?.role === UserRole.ADMIN;
   
-  // Local state to track entities created in this setup flow
-  // Simple state for tracking entities in this component
-  const [setupEntities, setSetupEntities] = useState<any[]>(entityData || []);
-  
-  // Fetch all entities (but we'll only use setupEntities for display)
+  // Fetch all entities (but we'll only use entities from props for display)
   const { data: allEntities = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ['/api/entities'],
     enabled: !!user
@@ -411,6 +414,11 @@ export default function EntityManagementCard({
               console.error("CRITICAL FIX 7.0: Error updating session storage:", error);
             }
             
+            // Notify parent component of the added entity
+            if (response) {
+              onEntityAdded(response);
+            }
+            
             console.log("CRITICAL FIX 7.0: Entity refresh complete");
           } else {
             console.warn("CRITICAL FIX 7.0: Failed to fetch entities directly, falling back to original flow");
@@ -591,6 +599,11 @@ export default function EntityManagementCard({
         });
       }
       
+      // Notify parent component of the updated entity
+      if (response) {
+        onEntityAdded(response);
+      }
+      
       // Global data refresh
       refetch();
       setIsEditing(false);
@@ -717,7 +730,7 @@ export default function EntityManagementCard({
   // Delete entity
   const handleDeleteEntity = (id: number) => {
     if (!id) {
-      console.error("Cannot delete entity: Invalid ID", id);
+      console.error("DEBUG EntityManagementCard: Cannot delete entity: Invalid ID", id);
       toast({
         title: "Error",
         description: "Cannot delete entity: Invalid ID",
@@ -727,15 +740,15 @@ export default function EntityManagementCard({
     }
     
     if (window.confirm("Are you sure you want to delete this entity?")) {
-      console.log("DEBUG: Deleting entity with ID:", id, typeof id);
-      console.log("DEBUG: Current setupEntities before deletion:", JSON.stringify(setupEntities));
+      console.log("DEBUG EntityManagementCard: Deleting entity with ID:", id, typeof id);
+      console.log("DEBUG EntityManagementCard: Current setupEntities before deletion:", JSON.stringify(setupEntities));
       
       // Find the entity to make sure it exists
       const entityToDelete = setupEntities.find(entity => entity.id === id);
-      console.log("DEBUG: Entity to delete:", entityToDelete);
+      console.log("DEBUG EntityManagementCard: Entity to delete:", entityToDelete);
       
       if (!entityToDelete) {
-        console.error("Entity not found in setupEntities:", id);
+        console.error("DEBUG EntityManagementCard: Entity not found in setupEntities:", id);
         toast({
           title: "Error",
           description: "Entity not found. Please refresh and try again.",
@@ -748,17 +761,20 @@ export default function EntityManagementCard({
       setSetupEntities(prev => {
         // Convert IDs to numbers to ensure proper comparison
         const filtered = prev.filter(entity => Number(entity.id) !== Number(id));
-        console.log("DEBUG: Filtered setupEntities after removal, now have", filtered.length, "entities");
+        console.log("DEBUG EntityManagementCard: Filtered setupEntities after removal, now have", filtered.length, "entities");
         
         return filtered;
       });
       
+      // Notify parent component of the deletion
+      onEntityDeleted(id);
+      
       // Then call the API to actually delete it from the database if it's not a new entity (temp ID)
       if (id > 0) {  // Only delete from database if it's a real entity with a positive ID
-        console.log("DEBUG: Calling API to delete entity ID:", id);
+        console.log("DEBUG EntityManagementCard: Calling API to delete entity ID:", id);
         deleteEntityMutation.mutate(id);
       } else {
-        console.log("DEBUG: Entity had temporary ID, not calling API");
+        console.log("DEBUG EntityManagementCard: Entity had temporary ID, not calling API");
       }
       
       // CRITICAL FIX: Better handling of parent state update for delete
@@ -815,7 +831,7 @@ export default function EntityManagementCard({
   };
   
   // Check if we can proceed to next step (at least one entity needed)
-  const canProceed = setupEntities && setupEntities.length > 0;
+  const canProceed = entities && entities.length > 0;
   
   // CRITICAL FIX 10.0: More aggressive loading of entities when component mounts or client data changes
   useEffect(() => {
@@ -1223,7 +1239,7 @@ export default function EntityManagementCard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {setupEntities.map((entity: any) => (
+                  {entities.map((entity: any) => (
                     <TableRow key={entity.id}>
                       <TableCell key={`name-${entity.id}`} className="font-medium">{entity.name}</TableCell>
                       <TableCell key={`type-${entity.id}`}>{entity.entityType || "LLC"}</TableCell>
@@ -1429,7 +1445,7 @@ export default function EntityManagementCard({
                       finalNavigationCopy.length, "entities");
                     
                     // Finally call onNext with our navigation copy
-                    onNext(finalNavigationCopy);
+                    onNext();
                   }, 100);
                 });
               } else {
@@ -1437,7 +1453,7 @@ export default function EntityManagementCard({
                 console.log("ENTITY NAV: No setEntityData function, proceeding directly");
                 // Create a fresh copy for navigation
                 const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
-                onNext(navigationCopy);
+                onNext();
               }
             } catch (error) {
               console.error("ENTITY NAV: Error preparing entity data:", error);
@@ -1447,8 +1463,8 @@ export default function EntityManagementCard({
                 description: "There was an issue processing your entity data. Please check entities on summary screen.",
                 variant: "destructive",
               });
-              // Continue anyway with original data
-              onNext(setupEntities);
+              // Continue anyway
+              onNext();
             }
           }} 
           disabled={!canProceed}
