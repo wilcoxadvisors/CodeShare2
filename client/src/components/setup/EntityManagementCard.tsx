@@ -449,7 +449,18 @@ export default function EntityManagementCard({
   // Update entity mutation
   const updateEntityMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: EntityFormValues }) => {
-      console.log("DEBUG: Starting entity update with form data:", data);
+      console.log("DEBUG: Starting entity update with form data:", JSON.stringify(data));
+      console.log("DEBUG: Entity ID for update:", id);
+      
+      // CRITICAL FIX: Validate name is not empty, with multiple fallbacks
+      if (!data.name || data.name.trim() === "") {
+        console.error("CRITICAL ERROR: Entity name is empty in update. This should never happen.");
+        
+        // Use the most robust fallback chain
+        const nameBackup = data.legalName || data.code || `Entity ${id}`;
+        console.log("CRITICAL FIX: Using fallback name in entity update:", nameBackup);
+        data.name = nameBackup;
+      }
       
       // Use admin endpoint if user is admin
       const endpoint = isAdmin ? `/api/admin/entities/${id}` : `/api/entities/${id}`;
@@ -459,24 +470,31 @@ export default function EntityManagementCard({
         data.ownerId = user.id;
       }
       
-      // Initialize with required fields - CRITICAL: Ensure name is preserved
+      // CRITICAL FIX: Initialize with required fields with better validation
       const cleanedData: any = {
-        name: data.name || "", // Critical fix: Always include name even if empty
-        legalName: data.legalName || data.name || "", // Fallback to name if legalName is missing
+        // Force name to be a string and trim whitespace
+        name: data.name.toString().trim(), 
+        // Ensure legalName is valid with better fallback
+        legalName: data.legalName && data.legalName.trim() ? 
+                 data.legalName.trim() : 
+                 data.name.trim(), 
+        // Ensure entityType is valid
         entityType: data.entityType || 'llc',
         // Use our utility function to ensure industry is valid
         industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
-        // Generate a code from the name if not provided
-        code: data.code || (data.name ? data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100) : "ENT" + Math.floor(Math.random() * 1000)),
+        // Better code generation with validation
+        code: data.code && data.code.trim() ? 
+              data.code.trim() : 
+              (data.name ? data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100) : "ENT" + id),
         // Set default fiscal year values if updating
         fiscalYearStart: "01-01",
         fiscalYearEnd: "12-31",
         currency: "USD"
       };
         
-      console.log("DEBUG: Industry value being sent to API in update:", data.industry);
-      console.log("DEBUG: Entity name being sent to API in update:", cleanedData.name);
+      console.log("CRITICAL DEBUG: Entity update API payload:", JSON.stringify(cleanedData));
+      console.log("CRITICAL DEBUG: Entity name in API payload:", cleanedData.name);
 
       // Add optional fields only if they have values
       if (data.taxId) cleanedData.taxId = data.taxId;
@@ -627,6 +645,22 @@ export default function EntityManagementCard({
       return; // Prevent multiple submissions
     }
     
+    // CRITICAL FIX: Log form data for debugging entity name issues
+    console.log("SUBMIT DEBUG: Form data being submitted:", JSON.stringify(data));
+    console.log("SUBMIT DEBUG: Entity name in form:", data.name);
+    
+    // CRITICAL FIX: Validate that entity name is not empty before submission
+    if (!data.name || data.name.trim() === "") {
+      console.error("CRITICAL ERROR: Entity name cannot be empty");
+      toast({
+        title: "Error",
+        description: "Entity name cannot be empty. Please provide a name for this entity.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
     setIsSubmitting(true);
     
     // Always ensure ownerId is set
@@ -641,13 +675,19 @@ export default function EntityManagementCard({
           description: "Owner ID is required. Please try logging in again.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
       
       console.log("Submitting entity form:", isEditing ? "UPDATE" : "CREATE", data);
       
       if (isEditing && currentEntityId) {
-        await updateEntityMutation.mutateAsync({ id: currentEntityId, data });
+        // CRITICAL FIX: Make a deep copy of the data to prevent mutation issues
+        const dataCopy = JSON.parse(JSON.stringify(data));
+        console.log("CRITICAL DEBUG: Update entity data (copy):", dataCopy);
+        console.log("CRITICAL DEBUG: Entity name in update copy:", dataCopy.name);
+        
+        await updateEntityMutation.mutateAsync({ id: currentEntityId, data: dataCopy });
       } else {
         await createEntityMutation.mutateAsync(data);
       }
@@ -668,35 +708,75 @@ export default function EntityManagementCard({
     setIsEditing(true);
     setCurrentEntityId(entity.id);
     
-    // Log the entity data for debugging
-    console.log("CRITICAL-DEBUG: Editing entity:", entity);
+    // CRITICAL FIX: Enhanced logging for entity edit initialization
+    console.log("CRITICAL-DEBUG: Editing entity START:", JSON.stringify(entity));
+    console.log("CRITICAL-DEBUG: Original entity name:", entity.name);
+    console.log("CRITICAL-DEBUG: Original entity ID:", entity.id);
     
-    // Deep clone the entity to prevent potential object reference issues
-    let entityClone;
+    // CRITICAL FIX: More robust deep cloning with error handling
+    let entityClone = null;
     try {
+      // First attempt: Full JSON deep clone
       entityClone = JSON.parse(JSON.stringify(entity));
+      console.log("CRITICAL-DEBUG: Successfully deep cloned entity via JSON");
     } catch (e) {
-      console.error("Failed to clone entity:", e);
-      entityClone = { ...entity };
+      console.error("CRITICAL-DEBUG: JSON deep clone failed, falling back to manual copy:", e);
+      
+      // Second attempt: Manual deep clone of critical properties
+      entityClone = {
+        id: entity.id,
+        name: entity.name || "",
+        legalName: entity.legalName || "",
+        entityType: entity.entityType || "llc",
+        industry: entity.industry || "other",
+        active: entity.active === undefined ? true : entity.active,
+        isActive: entity.isActive === undefined ? true : entity.isActive,
+        code: entity.code || "",
+        ownerId: entity.ownerId || user?.id,
+        clientId: entity.clientId || (clientData ? clientData.id : undefined),
+        taxId: entity.taxId || "",
+        address: entity.address || "",
+        phone: entity.phone || "",
+        email: entity.email || "",
+      };
     }
     
-    // Extra safety check for missing name field
-    if (!entityClone.name || entityClone.name === "") {
-      console.warn("CRITICAL-DEBUG: Entity has empty or missing name, using placeholder");
-      entityClone.name = entityClone.legalName || "Unnamed Entity";
+    // CRITICAL FIX: Double-check clone was successful and name was preserved
+    if (!entityClone) {
+      console.error("CRITICAL-DEBUG: Both clone methods failed, creating minimal entity");
+      entityClone = {
+        id: entity.id,
+        name: entity.name || "",
+        entityType: "llc",
+        industry: "other"
+      };
     }
     
-    // CRITICAL FIX: Add more robust handling of entity properties
-    // Ensure legalName has a value (fallback to name if missing)
+    // CRITICAL FIX: Verify and fix name field with multiple fallbacks
+    if (!entityClone.name || entityClone.name.trim() === "") {
+      console.warn("CRITICAL-DEBUG: Entity has empty or missing name, using fallbacks");
+      
+      // Try multiple fallbacks for name in order of preference
+      entityClone.name = entity.name || 
+                        entityClone.legalName || 
+                        entity.legalName || 
+                        entityClone.code || 
+                        entity.code || 
+                        `Entity ${entity.id || Math.floor(Math.random() * 1000)}`;
+                        
+      console.log("CRITICAL-DEBUG: Repaired entity name:", entityClone.name);
+    }
+    
+    // CRITICAL FIX: Ensure legalName has a value (fallback to name if missing)
     const entityLegalName = entityClone.legalName || entityClone.name || "";
     
-    console.log("CRITICAL-DEBUG: Entity name for form:", entityClone.name);
-    console.log("CRITICAL-DEBUG: Legal name for form:", entityLegalName);
+    console.log("CRITICAL-DEBUG: Final entity name for form:", entityClone.name);
+    console.log("CRITICAL-DEBUG: Final legal name for form:", entityLegalName);
     
-    // Reset form with entity data - carefully preserving the name field
+    // CRITICAL FIX: Create stable form values object with clean properties
     const formValues = {
-      name: entityClone.name, // Critical fix: Directly use name without empty fallback
-      legalName: entityLegalName, // Use safeguarded legal name value
+      name: entityClone.name.trim(), // Ensure no whitespace issues
+      legalName: entityLegalName.trim(), // Ensure no whitespace issues
       taxId: entityClone.taxId || "",
       entityType: entityClone.entityType || "llc",
       industry: entityClone.industry || "other", // Ensure industry has a default value
@@ -707,8 +787,37 @@ export default function EntityManagementCard({
       code: entityClone.code || ""
     };
     
-    console.log("CRITICAL-DEBUG: Form values being set:", formValues);
-    form.reset(formValues);
+    console.log("CRITICAL-DEBUG: Final form values being set:", JSON.stringify(formValues));
+    console.log("CRITICAL-DEBUG: Form name:", formValues.name);
+    
+    // CRITICAL FIX: Reset the form with the clean values
+    try {
+      form.reset(formValues);
+      console.log("CRITICAL-DEBUG: Form reset successful");
+      
+      // CRITICAL FIX: Double-check form values after reset
+      setTimeout(() => {
+        const currentValues = form.getValues();
+        console.log("CRITICAL-DEBUG: Form values after reset:", JSON.stringify(currentValues));
+        console.log("CRITICAL-DEBUG: Form name after reset:", currentValues.name);
+        
+        // If name is still missing after reset, force-set it
+        if (!currentValues.name || currentValues.name.trim() === "") {
+          console.warn("CRITICAL-DEBUG: Name still missing after form reset, force-setting it");
+          form.setValue("name", formValues.name);
+        }
+      }, 0);
+    } catch (error) {
+      console.error("CRITICAL-DEBUG: Error resetting form:", error);
+      // Last resort - try to set fields individually
+      try {
+        Object.entries(formValues).forEach(([field, value]) => {
+          form.setValue(field as any, value);
+        });
+      } catch (e) {
+        console.error("CRITICAL-DEBUG: Failed to set form values individually:", e);
+      }
+    }
     
     // Store the client ID in the component state if available
     if (entityClone.clientId) {
