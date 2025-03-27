@@ -108,7 +108,7 @@ export default function EntityManagementCard({
       legalName: "",
       taxId: "",
       entityType: "llc",
-      industry: "",
+      industry: "other", // Default to "other" to ensure it always has a value
       address: "",
       phone: "",
       email: "",
