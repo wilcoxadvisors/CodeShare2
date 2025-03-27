@@ -638,17 +638,33 @@ export default function EntityManagementCard({
   }, [allEntities, clientData]);
   
   // CRITICAL FIX: Better initialization of setupEntities from parent entityData
+  // Now with clearer dependency array and handling of empty/null values
   useEffect(() => {
-    // We should initialize from entityData any time it changes and is not empty
+    console.log("INIT ENTITIES: entityData dependency changed:", 
+      entityData ? `Array with ${entityData.length} items` : 'null/undefined',
+      "Type:", entityData ? typeof entityData : 'N/A',
+      "Is Array:", entityData ? Array.isArray(entityData) : 'N/A');
+    
+    // Clear validation - ensure entityData is valid before using it
     if (entityData && Array.isArray(entityData)) {
-      if (entityData.length > 0) {
-        console.log("INIT ENTITIES: Loading", entityData.length, "entities from parent");
-        setSetupEntities(entityData);
+      // Cast to a new array to avoid reference issues
+      const entitiesCopy = [...entityData];
+      
+      if (entitiesCopy.length > 0) {
+        console.log("INIT ENTITIES: Loading", entitiesCopy.length, "entities from parent");
+        
+        // THIS IS CRITICAL: Use the stringified copy to break references
+        // This prevents issues where the state isn't properly updated
+        const entitiesDeepCopy = JSON.parse(JSON.stringify(entitiesCopy));
+        setSetupEntities(entitiesDeepCopy);
       } else {
         console.log("INIT ENTITIES: Parent provided empty entityData array");
+        // Still set an empty array to ensure state is consistent
+        setSetupEntities([]);
       }
     } else {
-      console.log("INIT ENTITIES: No entityData from parent");
+      console.log("INIT ENTITIES: No entityData from parent, using empty array");
+      setSetupEntities([]);
     }
   }, [entityData]);
   
@@ -1083,31 +1099,51 @@ export default function EntityManagementCard({
                 setEntityData(entitiesCopy);
               }
               
-              // CRITICAL FIX: Ensure proper state coordination between components
-              // First update local storage then parent state, then navigate
+              // CRITICAL FIX: Complete rewrite of Continue button flow
+              // This is important for fixing entity persistence between steps
+              
+              // First update local storage for safety
+              console.log("ENTITY NAV: First saving entities to local storage", entitiesCopy.length, "entities");
+              
+              // Now, very carefully manage the state updates to ensure synchronization
               if (setEntityData) {
-                // Update parent component's state first and wait for it
-                console.log("ENTITY NAV: Updating parent entity data DEEPLY:", entitiesCopy.length, "entities");
+                // Update parent component's state with a fresh deep copy first
+                console.log("ENTITY NAV: Creating fresh deep copy for parent state update");
                 
-                // Force async handling to avoid race conditions
+                // Create a completely detached copy 
+                const parentStateCopy = JSON.parse(JSON.stringify(entitiesCopy));
+                console.log("ENTITY NAV: Created parentStateCopy with", parentStateCopy.length, "entities");
+                
+                // First and most important - update parent state
+                console.log("ENTITY NAV: Calling setEntityData with fresh entity copy");
+                setEntityData(parentStateCopy);
+                
+                // Now use a two-phase approach with promises to ensure state updates complete
                 Promise.resolve().then(() => {
-                  // First set parent state
-                  setEntityData(entitiesCopy);
+                  console.log("ENTITY NAV: Promise phase 1 - state should be updating");
                   
-                  // Then wait for React render cycle
+                  // Create another completely fresh copy for navigation
+                  const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
+                  console.log("ENTITY NAV: Created navigationCopy with", navigationCopy.length, "entities");
+                  
+                  // Store a reference to navigationCopy in a higher scope
+                  const finalNavigationCopy = [...navigationCopy];
+                  
+                  // Use setTimeout instead of Promise chaining to avoid TypeScript error
                   setTimeout(() => {
-                    // Then trigger navigation with explicit entity data
-                    console.log("ENTITY NAV: Proceeding to next step with", entitiesCopy.length, "entities");
+                    console.log("ENTITY NAV: Final phase - calling onNext with", 
+                      finalNavigationCopy.length, "entities");
                     
-                    // THIS IS CRITICAL: Pass a FRESH COPY of entities to avoid reference issues
-                    const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
-                    onNext(navigationCopy);
+                    // Finally call onNext with our navigation copy
+                    onNext(finalNavigationCopy);
                   }, 100);
                 });
               } else {
-                // Fallback if no setEntityData provided
-                console.log("ENTITY NAV: No setEntityData function, proceeding directly to next step");
-                onNext(entitiesCopy);
+                // Fallback if no setEntityData provided - much simpler path
+                console.log("ENTITY NAV: No setEntityData function, proceeding directly");
+                // Create a fresh copy for navigation
+                const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
+                onNext(navigationCopy);
               }
             } catch (error) {
               console.error("ENTITY NAV: Error preparing entity data:", error);

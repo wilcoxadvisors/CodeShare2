@@ -21,17 +21,44 @@ export default function SetupSummaryCard({
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // CRITICAL FIX: Add debugging for entity data in summary
+  // CRITICAL FIX: Much more comprehensive debugging for entity data in summary
   console.log("SUMMARY: Component mounted/updated with entityData:", 
     entityData ? entityData.length : 'null', 
     "entities. First entity ID:", entityData && entityData.length > 0 ? entityData[0].id : 'none');
     
-  // Track client and entity data
+  // Track client and entity data with more detail
   console.log("SUMMARY: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
   
-  // Log the full data for debugging
-  if (entityData && entityData.length > 0) {
-    console.log("SUMMARY: First entity full data:", JSON.stringify(entityData[0]));
+  // Log entity data details for debugging, with much more information
+  if (entityData) {
+    console.log("SUMMARY: Entity data type:", typeof entityData);
+    console.log("SUMMARY: Is entity data an array?", Array.isArray(entityData));
+    
+    if (Array.isArray(entityData) && entityData.length > 0) {
+      // Log info about each entity (limited to first 3 to avoid overwhelming the console)
+      const entitiesToLog = entityData.slice(0, 3); // Only log first 3
+      entitiesToLog.forEach((entity, index) => {
+        console.log(`SUMMARY: Entity #${index+1} ID:`, entity.id);
+        console.log(`SUMMARY: Entity #${index+1} Name:`, entity.name);
+        console.log(`SUMMARY: Entity #${index+1} Properties:`, Object.keys(entity).join(', '));
+      });
+      
+      // Log specifically what properties we'll be using in the render
+      if (entityData[0]) {
+        console.log("SUMMARY: First entity critical properties:", {
+          id: entityData[0].id,
+          name: entityData[0].name,
+          entityType: entityData[0].entityType,
+          industry: entityData[0].industry,
+          taxId: entityData[0].taxId,
+          code: entityData[0].code
+        });
+      }
+    } else {
+      console.log("SUMMARY: No entities to display");
+    }
+  } else {
+    console.log("SUMMARY: Entity data is null or undefined");
   }
 
   const handleFinish = async () => {
@@ -130,19 +157,31 @@ export default function SetupSummaryCard({
           {/* Entity Information Summary */}
           <div>
             <h3 className="text-lg font-medium mb-4">
-              Entities {entityData ? `(${entityData.length})` : '(0)'}
+              Entities {(entityData && Array.isArray(entityData)) ? `(${entityData.length})` : '(0)'}
             </h3>
             <div className="bg-muted/20 p-4 rounded-lg space-y-4">
-              {(!entityData || entityData.length === 0) ? (
+              {/* CRITICAL FIX: Improved null/empty check with explicit array validation */}
+              {(!entityData || !Array.isArray(entityData) || entityData.length === 0) ? (
                 <div className="text-center p-4 border border-dashed rounded">
                   <p className="text-muted-foreground">No entities have been added.</p>
+                  {/* Add debug info if there's a problem with the entityData format */}
+                  {entityData && !Array.isArray(entityData) && (
+                    <p className="text-xs text-destructive mt-2">
+                      Error: Entity data is not in the correct format. Please go back and try again.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>
-                  {/* Log the entity data being rendered for debugging */}
-                  {console.log("DEBUG: Rendering entity data in summary:", JSON.stringify(entityData))}
+                  {/* CRITICAL FIX: Extra safety check and debugging for entity rendering */}
+                  {console.log("DEBUG: About to render entity list with type checks:", {
+                    isEntityDataDefined: Boolean(entityData),
+                    isArray: Array.isArray(entityData),
+                    length: entityData ? entityData.length : 0
+                  })}
                   
-                  {entityData.map((entity, index) => (
+                  {/* Make absolutely sure entityData is an array before calling map */}
+                  {Array.isArray(entityData) && entityData.map((entity, index) => (
                     <div key={entity.id || `entity-${index}`} className="p-3 border rounded-md">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>

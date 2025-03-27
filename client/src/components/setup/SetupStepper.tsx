@@ -225,14 +225,25 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
   }, [setupComplete, onComplete]);
   
-  // Debug logging
+  // CRITICAL FIX: Add better debugging for all state changes
   useEffect(() => {
     console.log(`DEBUG: currentStep is now: ${currentStep}`);
   }, [currentStep]);
   
   useEffect(() => {
     console.log(`DEBUG: clientData: ${clientData ? 'exists' : 'null'}`);
+    if (clientData) {
+      console.log("DEBUG: clientData fields:", Object.keys(clientData).join(", "));
+    }
   }, [clientData]);
+  
+  // Add a useEffect to track entityData changes specifically
+  useEffect(() => {
+    console.log(`DEBUG: entityData: ${entityData ? `array with ${entityData.length} items` : 'null/undefined'}`);
+    if (entityData && entityData.length > 0) {
+      console.log("DEBUG: First entity ID:", entityData[0].id);
+    }
+  }, [entityData]);
   
   return (
     <div className="my-8">
