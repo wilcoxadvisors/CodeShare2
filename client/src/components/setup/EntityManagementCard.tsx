@@ -232,22 +232,31 @@ export default function EntityManagementCard({
         code: ""
       });
       
-      // CRITICAL FIX: Handle entity creation more robustly
+      // CRITICAL FIX 6.0: Completely refactor entity creation and state management
+      console.log("CRITICAL FIX 6.0: Entity created with response:", response);
+      
       if (response) {
         // Cast the response to any type to access dynamic properties
         const respData = response as any;
         
-        // Convert the response to a proper entity structure with required fields
+        // Ensure we have the form values for fields that might not be in the response
+        const formValues = form.getValues();
+        
+        // Create a comprehensive entity object with all needed fields for both UI and API
         const entityData = {
           id: respData.id,
-          name: respData.name || "",
-          legalName: respData.legalName || "",
-          entityType: respData.entityType || "llc",
-          industry: respData.industry || "",
+          name: respData.name || formValues.name || "",
+          legalName: respData.legalName || formValues.legalName || respData.name || "",
+          // Map business type to entityType or use form value
+          entityType: respData.entityType || respData.businessType || formValues.entityType || "llc",
+          industry: respData.industry || formValues.industry || "",
           active: respData.active === undefined ? true : respData.active,
-          isActive: respData.isActive === undefined ? true : respData.isActive,
-          code: respData.code || "",
-          ...respData // Include any other fields from the response
+          isActive: true, // UI needs this
+          code: respData.code || formValues.code || "",
+          // Critical: Add client relationship
+          clientId: respData.clientId || clientData?.id,
+          // Include all other fields from API response
+          ...respData
         };
         
         console.log("ENTITY CREATION: Adding to setupEntities and updating parent:", entityData);
