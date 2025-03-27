@@ -54,9 +54,9 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
           entities
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("TEST API: Error getting entities by client:", error);
-      return res.status(500).json({ message: "An error occurred", error });
+      return res.status(500).json({ message: "An error occurred", error: error.message || String(error) });
     }
   }));
 
@@ -71,9 +71,50 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         data: clients
       });
-    } catch (error) {
-      console.error("Error fetching clients:", error);
+    } catch (error: any) {
+      console.error("Error fetching clients:", error.message || error);
       throw error;
+    }
+  }));
+  
+  /**
+   * Create a new client
+   */
+  app.post("/api/admin/clients", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log("POST /api/admin/clients - Received client data:", req.body);
+      
+      // Extract user ID from the authenticated user
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'User ID is required'
+        });
+      }
+      
+      // Create the client with owner information
+      const clientData = {
+        ...req.body,
+        ownerId: userId,
+        createdBy: userId
+      };
+      
+      console.log("Creating client with data:", clientData);
+      const newClient = await storage.createClient(clientData);
+      console.log("Client created successfully:", newClient);
+      
+      return res.status(201).json({
+        status: "success",
+        data: newClient
+      });
+    } catch (error: any) {
+      console.error("Error creating client:", error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to create client',
+        error: error.message || String(error)
+      });
     }
   }));
   
@@ -119,12 +160,12 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
             entities
           }
         });
-      } catch (error) {
-        console.error("Error getting entities by client:", error);
+      } catch (error: any) {
+        console.error("Error getting entities by client:", error.message || error);
         throw error;
       }
-    } catch (error) {
-      console.error("Error fetching client:", error);
+    } catch (error: any) {
+      console.error("Error fetching client:", error.message || error);
       throw error;
     }
   }));
@@ -148,8 +189,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         data: updatedClient
       });
-    } catch (error) {
-      console.error("Error updating client:", error);
+    } catch (error: any) {
+      console.error("Error updating client:", error.message || error);
       throw error;
     }
   }));
@@ -189,8 +230,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
           consolidationGroups
         }
       });
-    } catch (error) {
-      console.error("Error fetching admin dashboard data:", error);
+    } catch (error: any) {
+      console.error("Error fetching admin dashboard data:", error.message || error);
       throw error;
     }
   }));
@@ -266,7 +307,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         data: entity
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           status: "error", 
@@ -274,6 +315,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
           errors: error.errors 
         });
       }
+      console.error("Error creating entity:", error.message || error);
       throw error;
     }
   }));
@@ -297,7 +339,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         data: updatedEntity
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           status: "error", 
@@ -305,6 +347,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
           errors: error.errors 
         });
       }
+      console.error("Error updating entity:", error.message || error);
       throw error;
     }
   }));
@@ -331,8 +374,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         data: safeUsers
       });
-    } catch (error) {
-      console.error("Error fetching users:", error);
+    } catch (error: any) {
+      console.error("Error fetching users:", error.message || error);
       throw error;
     }
   }));
@@ -368,8 +411,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         status: "success",
         message: "Access granted successfully"
       });
-    } catch (error) {
-      console.error("Error granting access:", error);
+    } catch (error: any) {
+      console.error("Error granting access:", error.message || error);
       throw error;
     }
   }));

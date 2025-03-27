@@ -268,24 +268,36 @@ export default function EntityManagementCard({
     }
   };
   
-  // Utility function to ensure industry always has a value
+  // Utility function to ensure industry always has a valid value
   const ensureIndustryValue = (industryValue: string | undefined | null): string => {
-    // CRITICAL FIX: Improved handling for null and undefined values
-    if (industryValue === null || industryValue === undefined) {
-      console.log("DEBUG: Industry value is null/undefined, defaulting to 'other'");
+    // Log the incoming value for debugging
+    console.log(`DEBUG ensureIndustryValue: Received value type: ${typeof industryValue}, value: "${industryValue}"`);
+    
+    // CRITICAL FIX: Enhanced handling for null and undefined values
+    if (industryValue === null || industryValue === undefined || industryValue === '') {
+      console.log("DEBUG ensureIndustryValue: Empty/null/undefined value detected, defaulting to 'other'");
+      return "other";
+    }
+    
+    // Trim the value to avoid whitespace issues
+    const trimmedValue = typeof industryValue === 'string' ? industryValue.trim() : '';
+    
+    // Additional check for empty string after trimming
+    if (trimmedValue === '') {
+      console.log("DEBUG ensureIndustryValue: Empty string after trimming, defaulting to 'other'");
       return "other";
     }
     
     // Check if the industry value is valid
-    const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === industryValue);
+    const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === trimmedValue);
     
     if (!isValidIndustry) {
-      console.log(`DEBUG: Industry value "${industryValue}" is not valid, defaulting to 'other'`);
+      console.log(`DEBUG ensureIndustryValue: Value "${trimmedValue}" is not in valid options, defaulting to 'other'`);
       return "other";
     }
     
-    console.log(`DEBUG: Using valid industry value: "${industryValue}"`);
-    return industryValue;
+    console.log(`DEBUG ensureIndustryValue: Using valid industry value: "${trimmedValue}"`);
+    return trimmedValue;
   };
 
   // Create entity mutation
@@ -786,12 +798,19 @@ export default function EntityManagementCard({
     console.log("CRITICAL-DEBUG: Final legal name for form:", entityLegalName);
     
     // CRITICAL FIX: Create stable form values object with clean properties
+    // First, ensure we have a valid industry value using our utility function
+    const validIndustryValue = ensureIndustryValue(entityClone.industry);
+    console.log("CRITICAL-DEBUG: Industry validation:", {
+      original: entityClone.industry,
+      validated: validIndustryValue
+    });
+    
     const formValues = {
       name: entityClone.name.trim(), // Ensure no whitespace issues
       legalName: entityLegalName.trim(), // Ensure no whitespace issues
       taxId: entityClone.taxId || "",
       entityType: entityClone.entityType || "llc",
-      industry: entityClone.industry || "other", // Ensure industry has a default value
+      industry: validIndustryValue, // Use validated industry value
       address: entityClone.address || "",
       phone: entityClone.phone || "",
       email: entityClone.email || "",
@@ -1148,33 +1167,42 @@ export default function EntityManagementCard({
                   key="field-industry"
                   control={form.control}
                   name="industry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Industry*</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value === null || field.value === undefined ? "other" : field.value}
-                        defaultValue="other"
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an industry" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {INDUSTRY_OPTIONS.map((industry) => (
-                            <SelectItem key={industry.value} value={industry.value}>
-                              {industry.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        The primary industry this entity operates in
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // CRITICAL FIX: Ensure industry value is valid before rendering
+                    const safeValue = ensureIndustryValue(field.value);
+                    console.log(`CRITICAL-DEBUG Form field industry: Original value: "${field.value}", Safe value: "${safeValue}"`);
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Industry*</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            console.log(`CRITICAL-DEBUG Industry onChange: New value selected: "${value}"`);
+                            field.onChange(value);
+                          }}
+                          value={safeValue} // Use validated value
+                          defaultValue="other"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an industry" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {INDUSTRY_OPTIONS.map((industry) => (
+                              <SelectItem key={industry.value} value={industry.value}>
+                                {industry.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          The primary industry this entity operates in
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 
                 <FormField
