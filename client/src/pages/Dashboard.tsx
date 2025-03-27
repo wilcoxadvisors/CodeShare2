@@ -1340,19 +1340,45 @@ interface AdminDashboardData {
                                         // Then immediately trigger manual refetches
                                         console.log("Dashboard: Forcing direct refetches of all data");
                                         
+                                        // Set the setupComplete state to trigger UI update
+                                        setSetupComplete(true);
+                                        
+                                        // Clear setup data from sessionStorage to avoid caching issues
+                                        try {
+                                          console.log("Dashboard: Clearing setup data from sessionStorage");
+                                          sessionStorage.removeItem('setupData');
+                                        } catch (e) {
+                                          console.error("Dashboard: Error clearing sessionStorage:", e);
+                                        }
+                                        
                                         // Wait briefly for dialog animations to complete, then refresh
                                         setTimeout(async () => {
                                           console.log("Dashboard: Executing refetch operations");
                                           try {
-                                            // Execute direct refetch of dashboard data
-                                            await refetchDashboard();
-                                            console.log("Dashboard: Dashboard data successfully refetched");
+                                            // Invalidate and refetch all queries
+                                            queryClient.invalidateQueries();
+                                            
+                                            // Also explicitly refetch dashboard data
+                                            if (refetchDashboard) {
+                                              await refetchDashboard();
+                                              console.log("Dashboard: Dashboard data successfully refetched");
+                                            } else {
+                                              console.warn("Dashboard: refetchDashboard function not available");
+                                            }
                                           
                                             // Show confirmation toast after refetch completes
                                             toast({
-                                              title: "Refresh Complete",
-                                              description: "Dashboard data has been updated with your new client",
+                                              title: "Setup Complete",
+                                              description: "New client has been added successfully",
                                             });
+                                            
+                                            // Force refresh if data still doesn't appear
+                                            setTimeout(() => {
+                                              if (!adminDashboardData?.data?.clients?.length) {
+                                                console.log("Dashboard: Data still missing, forcing a reload");
+                                                window.location.reload();
+                                              }
+                                            }, 2000);
                                           } catch (error) {
                                             console.error("Dashboard: Error refetching data:", error);
                                           }

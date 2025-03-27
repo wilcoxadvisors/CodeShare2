@@ -62,6 +62,25 @@ const entitySchema = z.object({
 
 type EntityFormValues = z.infer<typeof entitySchema>;
 
+// Utility function to get default form values
+// This helps ensure consistent form resets throughout the component
+const getDefaultFormValues = (initialValues = {}) => {
+  const user = useAuth().user;
+  return {
+    name: "",
+    legalName: "",
+    taxId: "",
+    entityType: "llc",
+    industry: "other", // Default to "other" instead of empty string
+    address: "",
+    phone: "",
+    email: "",
+    ownerId: user?.id,
+    code: "",
+    ...initialValues // Allow overriding defaults with initialValues
+  };
+};
+
 interface EntityManagementCardProps {
   onNext: () => void;
   onBack?: () => void;
@@ -100,10 +119,9 @@ export default function EntityManagementCard({
     enabled: !!user
   });
   
-  // Initialize form with empty values (not pre-populated from client data)
-  const form = useForm<EntityFormValues>({
-    resolver: zodResolver(entitySchema),
-    defaultValues: {
+  // Create a utility function for consistent form resets
+  const getDefaultFormValues = (overrides: Partial<EntityFormValues> = {}) => {
+    return {
       name: "",
       legalName: "",
       taxId: "",
@@ -113,8 +131,15 @@ export default function EntityManagementCard({
       phone: "",
       email: "",
       ownerId: user?.id,
-      code: ""
-    }
+      code: "",
+      ...overrides // Allow overriding specific fields
+    };
+  };
+
+  // Initialize form with empty values (not pre-populated from client data)
+  const form = useForm<EntityFormValues>({
+    resolver: zodResolver(entitySchema),
+    defaultValues: getDefaultFormValues()
   });
   
   // Helper function to determine entity active status consistently
@@ -128,30 +153,31 @@ export default function EntityManagementCard({
   
   // Helper function to format industry value to human-readable form
   const getEntityIndustryLabel = (industryValue: string | null | undefined): string => {
-    if (!industryValue) return "N/A";
+    // If empty, null, or undefined, return formatted "Other" instead of "N/A"
+    if (!industryValue) return "Other";
     
     // Find the matching industry option
     const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
-    return industry ? industry.label : industryValue;
+    return industry ? industry.label : (industryValue === "other" ? "Other" : industryValue);
   };
   
   // Helper function to create entity from client data
   const populateFromClientData = () => {
     console.log("POPULATE: Using client data to pre-fill entity form", clientData);
     if (clientData) {
-      // Set form values
-      form.reset({
+      // Set form values with client data, ensuring industry has a fallback value
+      form.reset(getDefaultFormValues({
         name: clientData.name || "",
         legalName: clientData.legalName || "",
         taxId: clientData.taxId || "",
         entityType: "llc",
-        industry: clientData.industry || "",
+        industry: clientData.industry || "other", // Ensure industry has a default value
         address: clientData.address || "",
         phone: clientData.phone || "",
         email: clientData.email || "",
         ownerId: user?.id,
         code: clientData.code || ""
-      });
+      }));
       
       toast({
         title: "Form Populated",
@@ -229,6 +255,14 @@ export default function EntityManagementCard({
     }
   };
   
+  // Utility function to ensure industry always has a value
+  const ensureIndustryValue = (industryValue: string | undefined | null): string => {
+    // Check if the industry value is valid
+    return industryValue && INDUSTRY_OPTIONS.some(opt => opt.value === industryValue)
+      ? industryValue
+      : "other"; // Default to "other" if the value is invalid or missing
+  };
+
   // Create entity mutation
   const createEntityMutation = useMutation({
     mutationFn: async (data: EntityFormValues) => {
@@ -249,8 +283,8 @@ export default function EntityManagementCard({
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
-        // Ensure industry is properly included - this appears to be missing in created entities
-        industry: data.industry || '', // Make sure industry is included even if empty
+        // Use our utility function to ensure industry is valid
+        industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
         code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
@@ -302,19 +336,8 @@ export default function EntityManagementCard({
         description: "Entity created successfully.",
       });
       
-      // Reset form
-      form.reset({
-        name: "",
-        legalName: "",
-        taxId: "",
-        entityType: "llc",
-        industry: "",
-        address: "",
-        phone: "",
-        email: "",
-        ownerId: user?.id,
-        code: ""
-      });
+      // Reset form with consistent defaults
+      form.reset(getDefaultFormValues());
       
       // Define original entity creation logic as a helper function first
       const handleOriginalEntityCreation = (responseData: any) => {
@@ -371,7 +394,7 @@ export default function EntityManagementCard({
           name: response.name || "",
           legalName: response.legalName || response.name || "",
           entityType: response.entityType || "llc",
-          industry: response.industry || "",
+          industry: ensureIndustryValue(response.industry),
           active: true,
           isActive: true,
           code: response.code || "",
@@ -426,8 +449,8 @@ export default function EntityManagementCard({
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
-        // Ensure industry is properly included - this appears to be missing in updated entities
-        industry: data.industry || '', // Make sure industry is included even if empty
+        // Use our utility function to ensure industry is valid
+        industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
         code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
@@ -466,28 +489,8 @@ export default function EntityManagementCard({
       const jsonData = await response.json();
       console.log("Entity update API response:", jsonData);
       
-      // Return the entity data from the response
-      return jsonData.data;
-    },
-    onSuccess: (response) => {
-      toast({
-        title: "Success",
-        description: "Entity updated successfully.",
-      });
-      
-      // Reset form
-      form.reset({
-        name: "",
-        legalName: "",
-        taxId: "",
-        entityType: "llc",
-        industry: "",
-        address: "",
-        phone: "",
-        email: "",
-        ownerId: user?.id,
-        code: ""
-      });
+      // Reset form with consistent defaults
+      form.reset(getDefaultFormValues());
       
       // Update the entity in setupEntities
       if (response && currentEntityId) {
@@ -502,7 +505,7 @@ export default function EntityManagementCard({
           name: respData.name || "",
           legalName: respData.legalName || "",
           entityType: respData.entityType || "llc",
-          industry: respData.industry || "",
+          industry: ensureIndustryValue(respData.industry),
           active: respData.active === undefined ? true : respData.active,
           isActive: respData.isActive === undefined ? true : respData.isActive,
           code: respData.code || "",
@@ -657,18 +660,18 @@ export default function EntityManagementCard({
     console.log("EDIT ENTITY: Legal name for form:", entityLegalName);
     
     // Reset form with entity data
-    form.reset({
+    form.reset(getDefaultFormValues({
       name: entity.name || "",
       legalName: entityLegalName, // Use safeguarded legal name value
       taxId: entity.taxId || "",
       entityType: entity.entityType || "llc",
-      industry: entity.industry || "",
+      industry: entity.industry || "other", // Ensure industry has a default value
       address: entity.address || "",
       phone: entity.phone || "",
       email: entity.email || "",
       ownerId: entity.ownerId || user?.id,
       code: entity.code || ""
-    });
+    }));
     
     // Store the client ID in the component state if available
     if (entity.clientId) {
@@ -730,18 +733,7 @@ export default function EntityManagementCard({
   const handleCancelEdit = () => {
     setIsEditing(false);
     setCurrentEntityId(null);
-    form.reset({
-      name: "",
-      legalName: "",
-      taxId: "",
-      entityType: "llc",
-      industry: "",
-      address: "",
-      phone: "",
-      email: "",
-      ownerId: user?.id,
-      code: ""
-    });
+    form.reset(getDefaultFormValues());
   };
   
   // Check if we can proceed to next step (at least one entity needed)
@@ -750,18 +742,7 @@ export default function EntityManagementCard({
   // CRITICAL FIX 10.0: More aggressive loading of entities when component mounts or client data changes
   useEffect(() => {
     // Reset only the form when clientData changes, not the entities list
-    form.reset({
-      name: "",
-      legalName: "",
-      taxId: "",
-      entityType: "llc",
-      industry: "",
-      address: "",
-      phone: "",
-      email: "",
-      ownerId: user?.id,
-      code: ""
-    });
+    form.reset(getDefaultFormValues());
     
     // CRITICAL FIX 10.0: If we have client data and no entities, proactively fetch them
     const loadEntitiesForClient = async () => {

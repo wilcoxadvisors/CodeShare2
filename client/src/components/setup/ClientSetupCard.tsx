@@ -58,10 +58,17 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
   
   console.log("FORM INIT: ClientSetupCard rendering. Has initialData:", !!initialData);
   
-  // Initialize form with either the provided initialData or empty values
-  const form = useForm<ClientSetupValues>({
-    resolver: zodResolver(clientSetupSchema),
-    defaultValues: initialData || {
+  // Utility function to ensure industry always has a value
+  const ensureIndustryValue = (industryValue: string | undefined | null): string => {
+    // Check if the industry value is valid
+    return industryValue && INDUSTRY_OPTIONS.some(opt => opt.value === industryValue)
+      ? industryValue
+      : "other"; // Default to "other" if the value is invalid or missing
+  };
+  
+  // Utility function to get default form values with optional overrides
+  const getDefaultFormValues = (overrides: Partial<ClientSetupValues> = {}) => {
+    return {
       name: "",
       legalName: "",
       taxId: "",
@@ -70,8 +77,19 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       phone: "",
       email: "",
       website: "",
-      notes: ""
-    },
+      notes: "",
+      ...overrides // Allow overriding specific fields
+    };
+  };
+  
+  // Initialize form with either the provided initialData or default values
+  const form = useForm<ClientSetupValues>({
+    resolver: zodResolver(clientSetupSchema),
+    defaultValues: initialData ? {
+      // Use initialData but ensure industry has a valid value
+      ...initialData,
+      industry: ensureIndustryValue(initialData.industry)
+    } : getDefaultFormValues(),
     mode: "onBlur" // Only validate when field loses focus, not during typing
   });
   
@@ -83,9 +101,17 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
     setIsSubmitting(true);
     
     try {
+      // Ensure industry has a valid value before submitting
+      const processedData: ClientSetupValues = {
+        ...data,
+        industry: ensureIndustryValue(data.industry)
+      };
+      
+      console.log("FORM SUBMIT: Processed form data with ensured industry value:", processedData);
+      
       // First update parent state
       console.log("FORM SUBMIT: Setting client data in parent state");
-      setClientData(data);
+      setClientData(processedData);
       
       // Show success message
       toast({
@@ -95,7 +121,7 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       
       // Navigate to next step via callback
       console.log("FORM SUBMIT: Now calling onNext to navigate to entities step");
-      onNext(data);
+      onNext(processedData);
     } catch (error: any) {
       console.error("Error saving client information:", error);
       toast({

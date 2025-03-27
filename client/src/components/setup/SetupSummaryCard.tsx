@@ -17,6 +17,16 @@ const INDUSTRY_OPTIONS = [
   { value: "other", label: "Other" }
 ];
 
+// Helper function to display industry consistently across the application
+const getIndustryLabel = (industryValue: string | null | undefined): string => {
+  // If empty, null, or undefined, return formatted "Other" instead of "N/A"
+  if (!industryValue) return "Other";
+  
+  // Find the matching industry option
+  const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
+  return industry ? industry.label : (industryValue === "other" ? "Other" : industryValue);
+};
+
 interface SetupSummaryCardProps {
   clientData: any;
   entityData?: any[];
@@ -181,7 +191,7 @@ export default function SetupSummaryCard({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                    <p>{INDUSTRY_OPTIONS.find(opt => opt.value === clientData.industry)?.label || clientData.industry || "N/A"}</p>
+                    <p>{getIndustryLabel(clientData.industry)}</p>
                   </div>
                   {clientData.taxId && (
                     <div>
@@ -260,7 +270,7 @@ export default function SetupSummaryCard({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                          <p>{INDUSTRY_OPTIONS.find(opt => opt.value === entity.industry)?.label || entity.industry || "N/A"}</p>
+                          <p>{getIndustryLabel(entity.industry)}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Entity ID</p>
