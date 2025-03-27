@@ -206,7 +206,7 @@ const getStatsSummary = (clients: any[], entities: any[], dashboardUsers: any[],
   const currentMonth = new Date().getMonth();
   return {
     totalClients: clients.length,
-    activeClients: clients.filter(c => c.active || c.isActive).length,
+    activeClients: clients.filter(c => getClientActiveStatus(c)).length,
     newClientsThisMonth: clients.filter(c => new Date(c.createdAt).getMonth() === currentMonth).length,
     totalEmployees: dashboardUsers.length,
     pendingTasks: 0, // Will be implemented when we have task data
@@ -240,6 +240,21 @@ const getProgressColor = (progress: number) => {
   if (progress >= 50) return 'bg-blue-500';
   if (progress >= 30) return 'bg-yellow-500';
   return 'bg-red-500';
+};
+
+// Helper function to standardize client active status checks
+// This resolves TypeScript errors related to 'active' vs 'isActive' properties
+const getClientActiveStatus = (client: any): boolean => {
+  // Always prefer isActive if it exists (which is the standard field in our schema)
+  if (typeof client.isActive === 'boolean') {
+    return client.isActive;
+  }
+  // For backward compatibility where some data might use 'active' instead
+  if (typeof client.active === 'boolean') {
+    return client.active;
+  }
+  // Default to false if neither property exists
+  return false;
 };
 
 // Format date to a more readable form
@@ -807,9 +822,15 @@ interface AdminDashboardData {
 }
   
   // Admin API data
-  const { data: adminDashboardData = { status: 'pending', data: { clients: [], entities: [], users: [], consolidationGroups: [] } }, isLoading: adminDataLoading } = useQuery<AdminDashboardData>({
+  const { data: adminDashboardData = { status: 'pending', data: { clients: [], entities: [], users: [], consolidationGroups: [] } }, 
+    isLoading: adminDataLoading,
+    refetch: refetchDashboard
+  } = useQuery<AdminDashboardData>({
     queryKey: ['/api/admin/dashboard'],
-    enabled: isAdmin
+    enabled: isAdmin,
+    staleTime: 0, // Consider data always stale
+    refetchOnMount: true, // Always refetch on component mount
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
   
   // Fetch admin users list for entity owner assignment (admin only)
@@ -877,17 +898,15 @@ interface AdminDashboardData {
                          (client.contactName && client.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                          (client.contactEmail && client.contactEmail.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = clientStatusFilter === "all" || 
-      (clientStatusFilter === "Active" && (client.active || client.isActive)) ||
-      (clientStatusFilter === "Inactive" && !(client.active || client.isActive)) ||
-      (clientStatusFilter === "Onboarding" && (client.active || client.isActive) && client.onboardingStatus === "in_progress") ||
-      (clientStatusFilter === "Pending Review" && (client.active || client.isActive) && client.onboardingStatus === "pending_review");
+      (clientStatusFilter === "Active" && getClientActiveStatus(client)) ||
+      (clientStatusFilter === "Inactive" && !getClientActiveStatus(client));
     return matchesSearch && matchesStatus;
   });
 
   // Data for client status pie chart using real client data
   const clientStatusData = [
-    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
-    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length }
+    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
+    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length }
   ];
 
   // Data for payment status
@@ -1306,30 +1325,38 @@ interface AdminDashboardData {
                                 <div className="py-4">
                                   {isAddClientDialogOpen && (
                                     <SetupStepper 
-                                      // Removed the dynamic key that caused re-mounting
+                                      key={Date.now()} // Add a unique key to force full remount and reset
                                       onComplete={async () => {
                                         console.log("Dashboard: Setup complete callback triggered");
                                         
-                                        // Enhanced refresh strategy for client data
-                                        await Promise.all([
-                                          queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] }),
-                                          queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] }),
-                                          queryClient.invalidateQueries({ queryKey: ['/api/clients'] }),
-                                          queryClient.invalidateQueries({ queryKey: ['/api/entities'] }),
-                                          // Also invalidate parent routes
-                                          queryClient.invalidateQueries({ queryKey: ['/api/admin'] }),
-                                          queryClient.invalidateQueries({ queryKey: ['/api'] })
-                                        ]);
+                                        // Close the dialog first for better UX
+                                        setIsAddClientDialogOpen(false);
                                         
-                                        // Force a direct refetch of the dashboard data
-                                        console.log("Dashboard: Forcing refetch of dashboard data");
-                                        await queryClient.refetchQueries({ queryKey: ['/api/admin/dashboard'] });
+                                        // More aggressive approach to refresh data
+                                        // First, clear all query caches to force complete refresh
+                                        console.log("Dashboard: Clearing all query caches");
+                                        queryClient.clear();
                                         
-                                        // Close the dialog when setup is complete (with slight delay)
-                                        setTimeout(() => {
-                                          setIsAddClientDialogOpen(false);
-                                          console.log("Dashboard: Dialog closed after setup completion");
-                                        }, 300);
+                                        // Then immediately trigger manual refetches
+                                        console.log("Dashboard: Forcing direct refetches of all data");
+                                        
+                                        // Wait briefly for dialog animations to complete, then refresh
+                                        setTimeout(async () => {
+                                          console.log("Dashboard: Executing refetch operations");
+                                          try {
+                                            // Execute direct refetch of dashboard data
+                                            await refetchDashboard();
+                                            console.log("Dashboard: Dashboard data successfully refetched");
+                                          
+                                            // Show confirmation toast after refetch completes
+                                            toast({
+                                              title: "Refresh Complete",
+                                              description: "Dashboard data has been updated with your new client",
+                                            });
+                                          } catch (error) {
+                                            console.error("Dashboard: Error refetching data:", error);
+                                          }
+                                        }, 500);
                                       }} 
                                     />
                                   )}
@@ -1390,15 +1417,15 @@ interface AdminDashboardData {
                                   <TableRow key={client.id}>
                                     <TableCell className="font-medium">{client.name}</TableCell>
                                     <TableCell>
-                                      <Badge className={getStatusColor((client.active || client.isActive) ? 'Active' : 'Inactive')}>
-                                        {(client.active || client.isActive) ? 'Active' : 'Inactive'}
+                                      <Badge className={getStatusColor(getClientActiveStatus(client) ? 'Active' : 'Inactive')}>
+                                        {getClientActiveStatus(client) ? 'Active' : 'Inactive'}
                                       </Badge>
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center">
                                         {/* Progress based on client completeness */}
-                                        <Progress value={(client.active || client.isActive) ? 100 : 50} className="h-2 w-32" />
-                                        <span className="ml-2 text-xs">{(client.active || client.isActive) ? 100 : 50}%</span>
+                                        <Progress value={getClientActiveStatus(client) ? 100 : 50} className="h-2 w-32" />
+                                        <span className="ml-2 text-xs">{getClientActiveStatus(client) ? 100 : 50}%</span>
                                       </div>
                                     </TableCell>
                                     <TableCell>{formatDate(client.updatedAt || client.createdAt)}</TableCell>
@@ -1461,8 +1488,8 @@ interface AdminDashboardData {
                               <PieChart>
                                 <Pie
                                   data={[
-                                    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
-                                    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length },
+                                    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
+                                    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length },
                                   ]}
                                   cx="50%"
                                   cy="50%"
@@ -1473,8 +1500,8 @@ interface AdminDashboardData {
                                   dataKey="value"
                                 >
                                   {[
-                                    { name: 'Active', value: clients.filter(c => c.active || c.isActive).length },
-                                    { name: 'Inactive', value: clients.filter(c => !(c.active || c.isActive)).length },
+                                    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
+                                    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length },
                                   ].map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}

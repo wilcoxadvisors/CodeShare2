@@ -24,43 +24,19 @@ export default function SetupSummaryCard({
   const handleFinish = async () => {
     setIsSubmitting(true);
     try {
-      // Here you could perform any final API calls if needed
-      // such as updating client status, etc.
-      
       // Log setup data being saved for debugging
       console.log("DEBUG: Finishing setup with client data:", clientData);
       console.log("DEBUG: Finishing setup with entity data:", entityData); 
       
-      // Important: Invalidate queries to refresh all client data on the dashboard
-      // This ensures the newly created client appears on the status page
-      console.log("DEBUG: Invalidating queries to refresh dashboard data...");
-      
-      // Make sure to invalidate ALL relevant queries for dashboard data
-      // Use a more aggressive approach to ensure cache is completely refreshed
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/admin/clients'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/clients'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/entities'] }),
-        // Also invalidate any potential parent query keys
-        queryClient.invalidateQueries({ queryKey: ['/api/admin'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api'] })
-      ]);
-      
-      // Force a refetch of the dashboard data
-      console.log("DEBUG: Forcing refetch of dashboard data");
-      await queryClient.refetchQueries({ queryKey: ['/api/admin/dashboard'] });
-      
+      // Use a simpler approach - just display a success toast and call onFinish immediately
+      // The Dashboard component will handle the cache invalidation and refreshing
       toast({
         title: "Setup Complete!",
         description: "Client added successfully",
       });
       
-      // Small delay to ensure queries have time to complete
-      setTimeout(() => {
-        // Call onFinish to close modal
-        onFinish();
-      }, 300);
+      // Call onFinish immediately - the parent will handle data refreshing
+      onFinish();
     } catch (error: any) {
       console.error("ERROR: Error completing setup:", error);
       toast({
