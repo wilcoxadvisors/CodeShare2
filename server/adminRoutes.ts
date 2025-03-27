@@ -281,22 +281,13 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         });
       }
       
-      // Make sure clientId is provided for the setup flow
-      if (!clientId) {
-        console.log("WARNING: No clientId provided for entity creation");
+      // Make sure clientId is provided and valid
+      if (!clientId || clientId <= 0) {
+        console.log("WARNING: No valid clientId provided for entity creation");
         return res.status(400).json({
           status: 'error',
-          message: 'Client ID is required for entity creation'
+          message: 'Valid Client ID is required for entity creation'
         });
-      }
-      
-      // Special handling for setup flow entities that use a temporary clientId of -1
-      if (clientId === -1) {
-        console.log("SETUP FLOW: Received entity with temporary clientId. This is for the setup flow.");
-        // Allow creation during setup flow by using a valid but temporary clientId
-        // The entity will be properly associated with the actual client in the final setup step
-        clientId = 1; // Use a valid default clientId (usually the first client in the system)
-        console.log("SETUP FLOW: Using temporary clientId for entity creation:", clientId);
       }
       
       // Validate the client exists

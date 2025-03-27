@@ -686,7 +686,6 @@ export default function EntityManagementCard({
         description: "Entity name cannot be empty. Please provide a name for this entity.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
       return;
     }
     
@@ -716,9 +715,50 @@ export default function EntityManagementCard({
         console.log("CRITICAL DEBUG: Update entity data (copy):", dataCopy);
         console.log("CRITICAL DEBUG: Entity name in update copy:", dataCopy.name);
         
+        // Still use mutation for updating existing entities
         await updateEntityMutation.mutateAsync({ id: currentEntityId, data: dataCopy });
       } else {
-        await createEntityMutation.mutateAsync(data);
+        // SETUP FLOW: For entity creation during setup, we don't call the API
+        // Instead, we create an entity object locally with a temporary ID
+        console.log("SETUP FLOW: Creating entity locally without API call");
+        
+        // Assign a temporary local ID for React keys and state management
+        const tempId = Date.now();
+        
+        // Create a validated entity object with consistent field structure
+        const validatedEntityData = {
+          id: tempId, // Temporary frontend ID
+          localId: tempId, // Additional marker to identify local entities
+          name: data.name.trim(),
+          legalName: data.legalName?.trim() || data.name.trim(),
+          taxId: data.taxId || "",
+          entityType: data.entityType || "llc",
+          industry: data.industry || "other", 
+          address: data.address || "",
+          phone: data.phone || "",
+          email: data.email || "",
+          code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+          ownerId: data.ownerId,
+          active: true,
+          isActive: true
+        };
+        
+        console.log("SETUP FLOW: Created local entity object:", validatedEntityData);
+        
+        // Add to local state
+        setSetupEntities(prev => [...prev, validatedEntityData]);
+        
+        // Notify parent component
+        onEntityAdded(validatedEntityData);
+        
+        // Show success message
+        toast({
+          title: "Entity Added",
+          description: "Entity has been added successfully.",
+        });
+        
+        // Reset form
+        form.reset(getDefaultFormValues());
       }
     } catch (error: any) {
       console.error("Error submitting entity form:", error);
@@ -1328,55 +1368,65 @@ export default function EntityManagementCard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entities.map((entity: any) => (
-                    <TableRow key={entity.id}>
-                      <TableCell key={`name-${entity.id}`} className="font-medium">{entity.name}</TableCell>
-                      <TableCell key={`type-${entity.id}`}>{entity.entityType || "LLC"}</TableCell>
-                      <TableCell key={`industry-${entity.id}`}>
-                        {/* Display industry as human-readable label, not code */}
-                        {getEntityIndustryLabel(entity.industry)}
-                      </TableCell>
-                      <TableCell key={`status-cell-${entity.id}`}>
-                        <Badge 
-                          key={`status-badge-${entity.id}`}
-                          variant={getEntityActiveStatus(entity) ? "default" : "outline"} 
-                          className="flex items-center w-fit"
-                        >
-                          {getEntityActiveStatus(entity) ? (
-                            <span key={`active-${entity.id}`} className="flex items-center">
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                              Active
-                            </span>
-                          ) : (
-                            <span key={`inactive-${entity.id}`} className="flex items-center">
-                              <AlertCircle className="mr-1 h-3 w-3" />
-                              Inactive
-                            </span>
+                  {entities.map((entity: any) => {
+                    // Use either localId, id, or a combination of name+index for the key
+                    const entityKey = entity.localId || entity.id || `entity-${entity.name}-${Math.random()}`;
+                    
+                    return (
+                      <TableRow key={entityKey}>
+                        <TableCell key={`name-${entityKey}`} className="font-medium">
+                          {entity.name}
+                          {entity.localId && (
+                            <span className="ml-2 text-xs text-gray-400">(Unsaved)</span>
                           )}
-                        </Badge>
-                      </TableCell>
-                      <TableCell key={`actions-${entity.id}`} className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            key={`edit-${entity.id}`}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditEntity(entity)}
+                        </TableCell>
+                        <TableCell key={`type-${entityKey}`}>{entity.entityType || "LLC"}</TableCell>
+                        <TableCell key={`industry-${entityKey}`}>
+                          {/* Display industry as human-readable label, not code */}
+                          {getEntityIndustryLabel(entity.industry)}
+                        </TableCell>
+                        <TableCell key={`status-cell-${entityKey}`}>
+                          <Badge 
+                            key={`status-badge-${entityKey}`}
+                            variant={getEntityActiveStatus(entity) ? "default" : "outline"} 
+                            className="flex items-center w-fit"
                           >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            key={`delete-${entity.id}`}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteEntity(entity.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {getEntityActiveStatus(entity) ? (
+                              <span key={`active-${entityKey}`} className="flex items-center">
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                Active
+                              </span>
+                            ) : (
+                              <span key={`inactive-${entityKey}`} className="flex items-center">
+                                <AlertCircle className="mr-1 h-3 w-3" />
+                                Inactive
+                              </span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell key={`actions-${entityKey}`} className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              key={`edit-${entityKey}`}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditEntity(entity)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              key={`delete-${entityKey}`}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteEntity(entity.localId || entity.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
