@@ -112,15 +112,14 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       // When creating entities in the next step, they'll be associated with a client
       // which will be created on-demand if not present
       
-      // Call onNext via setTimeout to ensure React state has been updated
-      setTimeout(() => {
-        console.log("🔶 Now calling onNext via setTimeout");
-        if (onNext) {
-          onNext(data);
-        } else {
-          console.error("🔴 onNext function is not defined!");
-        }
-      }, 0);
+      // CRITICAL FIX: Call onNext directly without setTimeout
+      // This ensures the navigation happens immediately
+      console.log("🔶 Now calling onNext directly (fixed!)");
+      if (onNext) {
+        onNext(data);
+      } else {
+        console.error("🔴 onNext function is not defined!");
+      }
       
     } catch (error: any) {
       console.error("Error saving client information:", error);

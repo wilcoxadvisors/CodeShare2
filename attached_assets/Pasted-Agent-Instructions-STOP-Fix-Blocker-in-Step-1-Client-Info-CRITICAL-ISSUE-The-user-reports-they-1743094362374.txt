@@ -1,0 +1,33 @@
+Agent Instructions: STOP & Fix Blocker in Step 1 (Client Info)
+CRITICAL ISSUE: The user reports they cannot navigate past the first step ("Client Info") in the setup flow. This prevents any further testing. Fix this immediately. Pause all other tasks.
+
+Goal: Debug and fix the issue preventing navigation from ClientSetupCard.tsx (Step 1) to the next step (Step 2 - Entities).
+
+Relevant Files:
+
+client/src/components/setup/ClientSetupCard.tsx
+client/src/pages/Dashboard.tsx (or client/src/components/setup/SetupStepper.tsx - wherever activeStep state and handlers like handleNext reside)
+client/src/lib/validation.ts (Client validation schema)
+server/adminRoutes.ts (Client creation API endpoint, if Step 1 saves the client immediately)
+Debugging Steps:
+
+Examine ClientSetupCard.tsx:
+onSubmit Handler: Locate the function that handles form submission (likely passed to react-hook-form's handleSubmit). Add console.log statements at the beginning of this handler.
+Validation: Verify that form validation (using Zod schema) is passing correctly when you expect it to pass (i.e., with valid data). Log the validation result.
+API Call: Does the onSubmit handler trigger an API call to create the client (e.g., using createClientMutation)? Add console.log before the API call is made and after it returns (in onSuccess and onError callbacks). Log the request payload and the response/error. Is the API call succeeding?
+onNext Prop: Verify the onNext() prop function (passed from the parent component) is being called only after the form is valid and any necessary data saving (like the API call) is successful. Add console.log("Calling onNext...") immediately before it's called.
+Examine Parent Component (Dashboard.tsx or SetupStepper.tsx):
+onNext Handler: Locate the function that is passed as the onNext prop to ClientSetupCard. Add console.log statements inside this handler.
+State Update: Verify this handler is correctly updating the activeStep state (e.g., setActiveStep(prev => prev + 1) or setActiveStep(1)). Log the activeStep value before and after the update attempt.
+Fix the Issue: Based on the logging, identify where the process is failing:
+Is validation failing unexpectedly?
+Is the API call failing?
+Is the onNext prop not being called?
+Is the parent component's handler not updating the activeStep correctly?
+Implement the necessary fix in the appropriate component (ClientSetupCard or the parent).
+Verify Fix (Simulated):
+Restart the application.
+Simulate filling the Step 1 form with valid data and submitting it.
+Check the console logs to confirm the entire process (validation, API call (if applicable), onNext call, activeStep update) executes successfully.
+Verify: Does the UI now correctly transition to show Step 2 (EntityManagementCard)?
+Report: Detail the root cause of the Step 1 blocker and the specific fix applied. Confirm that navigation from Step 1 to Step 2 is now working correctly based on your analysis and simulation.
