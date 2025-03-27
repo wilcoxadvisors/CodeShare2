@@ -345,64 +345,44 @@ export default function EntityManagementCard({
         }
       };
       
-      // CRITICAL FIX 7.0: Completely bypass the old flow and directly fetch entities from API
-      console.log("CRITICAL FIX 7.0: Starting direct entity fetch after creation");
+      // SIMPLIFIED APPROACH - Just use the original entity creation logic
+      console.log("ENTITY CREATION: Using simple direct approach");
       
-      // Get the client ID from the response or from props
-      const clientId = response?.clientId || clientData?.id;
-      
-      if (!clientId) {
-        console.error("CRITICAL FIX 7.0: No client ID available for entity fetch");
-        // Fall back to original approach
-        handleOriginalEntityCreation(response);
-        return;
+      // Simply create the entity object directly from the response
+      if (response) {
+        // Log the complete response for debugging
+        console.log("ENTITY CREATION: Received response:", response);
+        
+        // Create a clean entity object
+        const entityData = {
+          id: response.id,
+          name: response.name || "",
+          legalName: response.legalName || response.name || "",
+          entityType: response.entityType || "llc",
+          industry: response.industry || "",
+          active: true,
+          isActive: true,
+          code: response.code || "",
+          clientId: response.clientId || clientData?.id,
+          ...response // Include all other fields
+        };
+        
+        console.log("ENTITY CREATION: Created entity object:", entityData);
+        
+        // Update local state with the new entity
+        setSetupEntities(prev => {
+          // Create a deep copy to prevent reference issues
+          const updatedEntities = [...prev, entityData];
+          console.log("ENTITY CREATION: Updated local entities, now have:", updatedEntities.length);
+          return updatedEntities;
+        });
+        
+        // Explicitly notify the parent component through the callback
+        console.log("ENTITY CREATION: Notifying parent via onEntityAdded");
+        onEntityAdded(entityData);
+      } else {
+        console.error("ENTITY CREATION: Received null/undefined response");
       }
-      
-      // Give the database a moment to update
-      setTimeout(async () => {
-        try {
-          // Directly fetch entities from the API
-          const fetchedEntities = await fetchEntitiesDirectly(clientId);
-          
-          if (fetchedEntities && Array.isArray(fetchedEntities) && fetchedEntities.length > 0) {
-            console.log(`CRITICAL FIX 7.0: Successfully fetched ${fetchedEntities.length} entities, using direct fetch`);
-            
-            // Create a deep copy to avoid reference issues
-            const entitiesCopy = JSON.parse(JSON.stringify(fetchedEntities));
-            
-            // Update local state
-            setSetupEntities(entitiesCopy);
-            
-            // Update parent component
-            if (setEntityData) {
-              setEntityData(entitiesCopy);
-            }
-            
-            // No longer using sessionStorage - parent component handles state persistence using localStorage
-            console.log("CRITICAL FIX: Using parent component state management with localStorage instead of sessionStorage");
-            
-            // Notify parent component of the added entity
-            if (response) {
-              onEntityAdded(response);
-            }
-            
-            console.log("CRITICAL FIX 7.0: Entity refresh complete");
-          } else {
-            console.warn("CRITICAL FIX 7.0: Failed to fetch entities directly, falling back to original flow");
-            // Fall back to original approach if direct fetch failed
-            handleOriginalEntityCreation(response);
-          }
-        } catch (error) {
-          console.error("CRITICAL FIX 7.0: Error during entity fetch:", error);
-          // Use fallback if anything goes wrong
-          handleOriginalEntityCreation(response);
-        }
-      }, 500); // Half-second delay to ensure DB has updated
-      
-      // Global data refresh
-      refetch();
-      setIsEditing(false);
-      setCurrentEntityId(null);
       
       // Global data refresh
       refetch();
