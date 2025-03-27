@@ -1,0 +1,34 @@
+Agent Instructions: Verify Entity Display Fix & Other Step 2 Bugs
+
+Goal: Confirm the fix for missing entity attributes works, and then re-verify the other reported issues in Step 2 (Adding Multiple, Deletion, Back Button). Use stored credentials (admin/password123).
+
+Reminder: Perform checks by analyzing code execution, component state, API calls/responses, database state, and logs, simulating the user journey step-by-step.
+
+Verification Steps (Execute Sequentially & Report on Each):
+
+Simulate Login & Start Flow:
+Simulate login and proceed past Step 1 (Client Info) to arrive at Step 2 (Entities). Verify the entity list starts empty.
+Verify Entity Display Fix (Name/Industry etc.):
+Simulate adding the first entity (e.g., "Entity D1", Industry "Retail", Code "ED1").
+Verify: Does "Entity D1" now appear correctly in the list with all attributes (Name, Industry, Code, Type, Status) displayed? (This tests the JSON parsing fix 411de814).
+Report: Confirm if Name/Industry/Code are now displayed correctly. If not, STOP and report the failure.
+Verify Adding Multiple Entities:
+If Step 2 passes, simulate adding a second entity (e.g., "Entity D2").
+Verify: Can the second entity be added successfully? Does it appear in the list with "Entity D1"?
+Report: Confirm success/failure of adding multiple entities.
+Verify Deletion During Setup:
+With both entities present, simulate clicking the delete button for "Entity D1".
+Verify: Is "Entity D1" successfully removed from the setupEntities state and the displayed list? (This tests the fix from Checkpoint: 8732f207).
+Report: Confirm success/failure of deleting an entity added during setup.
+Verify "Back" Button Behavior:
+With only "Entity D2" remaining, simulate clicking the "Back" button.
+Simulate clicking "Save & Continue" on Step 1 to return to Step 2.
+Verify: Is "Entity D2" still present in the entity list? (This re-verifies the fix from Checkpoint: 45df4dda).
+Report: Confirm data persistence when using the "Back" button.
+Verify "Next" Button:
+With "Entity D2" present, simulate clicking the "Continue"/"Next" button.
+Verify: Does it successfully navigate to Step 3 (Summary)?
+Report: Confirm navigation to Step 3 works.
+Check Console/Logs:
+Review logs for any errors during these steps.
+Summary Request: Provide a clear report confirming the results for each specific verification point (Display fix, Add Multiple, Deletion, Back Button Persistence, Next Button).
