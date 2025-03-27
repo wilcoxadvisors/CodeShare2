@@ -88,7 +88,31 @@ export default function EntityManagementCard({
   const isAdmin = user?.role === UserRole.ADMIN;
   
   // Local state to track entities created in this setup flow
-  const [setupEntities, setSetupEntities] = useState<any[]>([]);
+  // CRITICAL FIX: Initialize with entities from props if available, otherwise try sessionStorage
+  const [setupEntities, setSetupEntities] = useState<any[]>(() => {
+    // First try entity data passed from parent
+    if (entityData && entityData.length > 0) {
+      console.log("INIT: Using entityData from props:", entityData.length, "entities");
+      return entityData;
+    }
+    
+    // Then try session storage
+    try {
+      const savedData = sessionStorage.getItem('setupData');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.entityData && parsedData.entityData.length > 0) {
+          console.log("INIT: Using entityData from sessionStorage:", parsedData.entityData.length, "entities");
+          return parsedData.entityData;
+        }
+      }
+    } catch (error) {
+      console.error("Error loading entities from sessionStorage during initialization:", error);
+    }
+    
+    // Default to empty array if nothing else is available
+    return [];
+  });
   
   // Fetch all entities (but we'll only use setupEntities for display)
   const { data: allEntities = [], isLoading, refetch } = useQuery<any[]>({
@@ -124,7 +148,9 @@ export default function EntityManagementCard({
   
   // Helper function to create entity from client data
   const populateFromClientData = () => {
+    console.log("POPULATE: Using client data to pre-fill entity form", clientData);
     if (clientData) {
+      // Set form values
       form.reset({
         name: clientData.name || "",
         legalName: clientData.legalName || "",
@@ -263,15 +289,23 @@ export default function EntityManagementCard({
             ? prev.map(e => e.id === entityData.id ? entityData : e) // Update it
             : [...prev, entityData]; // Add it if it's new
           
-          // CRITICAL FIX: Update session storage immediately
+          // CRITICAL BUG FIX: Update session storage immediately
           try {
             const savedData = sessionStorage.getItem('setupData') || '{}';
             const parsedData = JSON.parse(savedData);
+            
+            // Important log to debug entity array
+            console.log("ENTITY CREATE: About to save", updatedEntities.length, "entities to sessionStorage");
+            
+            // Save the updated entities to sessionStorage
             sessionStorage.setItem('setupData', JSON.stringify({
               ...parsedData,
               entityData: updatedEntities
             }));
-            console.log("Entity form reset to default values, entities preserved", {});
+            
+            // Log for debugging
+            console.log("ENTITY CREATE: Session storage updated with", updatedEntities.length, "entities");
+            console.log("ENTITY CREATE: Entity data:", JSON.stringify(updatedEntities));
           } catch (error) {
             console.error("Failed to save entity to sessionStorage:", error);
           }
