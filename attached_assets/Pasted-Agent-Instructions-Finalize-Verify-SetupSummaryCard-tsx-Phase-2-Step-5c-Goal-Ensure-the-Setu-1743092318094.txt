@@ -1,0 +1,32 @@
+Agent Instructions: Finalize & Verify SetupSummaryCard.tsx (Phase 2, Step 5c)
+
+Goal: Ensure the SetupSummaryCard.tsx component (Step 3 of the 3-step setup flow) correctly displays the client and entity information entered in the previous steps and that the "Finish" action successfully completes the setup process and updates the main dashboard.
+
+Relevant Files:
+
+client/src/components/setup/SetupSummaryCard.tsx
+client/src/pages/Dashboard.tsx (or SetupStepper.tsx - managing the flow state/handlers like clientData, entityData, onComplete, onBack, query invalidation)
+Steps:
+
+Review SetupSummaryCard.tsx Implementation:
+Action: Open client/src/components/setup/SetupSummaryCard.tsx.
+Verify Data Reception: Does the component correctly receive clientData and entityData (likely named entities in props) passed down from the parent (SetupStepper or Dashboard)? Add console.log for props if needed.
+Verify Data Display: Does the component render a clear summary of the key client details (e.g., clientData.name) and the list of entities added (e.g., mapping props.entities to display entity.name, entity.code)?
+Verify Button Labels: Is the final action button correctly labeled (e.g., "Finish Setup", "Complete", "Activate")?
+Verify Navigation & Finalization:
+Action: Examine the "Back" and "Finish Setup" button handlers.
+Verify "Back" Button: Does the "Back" button correctly call the onBack prop, triggering the parent to setActiveStep(1) (returning to Step 2)?
+Verify "Finish" Button Action: Does the "Finish Setup" button correctly call the onComplete prop?
+Verify Parent onComplete Handler: In the parent component (SetupStepper or Dashboard), examine the onComplete handler function. Does it:
+Close the setup modal/dialog (e.g., setAddClientDialogOpen(false))?
+Trigger the necessary TanStack Query invalidation to refresh the main client list (queryClient.invalidateQueries({ queryKey: ['clients'] }))?
+Test the Flow (Simulated):
+Action: Simulate arriving at Step 3 with valid clientData and entityData from the previous steps.
+Analyze:
+Does the summary card display the correct client and entity information?
+Simulate clicking "Back". Does it correctly return to Step 2?
+Simulate navigating back to Step 3.
+Simulate clicking "Finish Setup". Does the onComplete handler execute all necessary actions (close modal, invalidate query)? Check logs/code execution.
+Verify Final Dashboard State (Simulated):
+Analyze: After the onComplete handler runs and query invalidation occurs, simulate the main dashboard component re-fetching the client list. Would the newly added client now appear in the list based on the expected API response?
+Report: Confirm that Step 3 (SetupSummaryCard) functions correctly – displays the summary, handles "Back" navigation, and successfully triggers the "Finish" actions (closing modal and invalidating client list query). Report any errors or discrepancies found.
