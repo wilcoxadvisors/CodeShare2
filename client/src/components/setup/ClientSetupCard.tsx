@@ -58,10 +58,30 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize form with default values or existing client data
-  const form = useForm<ClientSetupValues>({
-    resolver: zodResolver(clientSetupSchema),
-    defaultValues: initialData || {
+  // Attempt to get data from session storage first (highest priority)
+  const getSavedClientData = () => {
+    try {
+      const savedData = sessionStorage.getItem('setupData');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (parsed?.clientData) {
+          console.log("FORM INIT: Using client data from sessionStorage");
+          return parsed.clientData;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load from sessionStorage:", error);
+    }
+    
+    // Fall back to props if session storage fails
+    if (initialData) {
+      console.log("FORM INIT: Using initialData from props");
+      return initialData;
+    }
+    
+    // Default empty values as last resort
+    console.log("FORM INIT: Using default empty values");
+    return {
       name: "",
       legalName: "",
       taxId: "",
@@ -71,66 +91,91 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       email: "",
       website: "",
       notes: ""
-    }
+    };
+  };
+  
+  // Get initial form values with fallback chain (session storage → props → defaults)
+  const initialFormValues = getSavedClientData();
+  
+  // Initialize form with our best available data
+  const form = useForm<ClientSetupValues>({
+    resolver: zodResolver(clientSetupSchema),
+    defaultValues: initialFormValues,
+    mode: "onBlur", // Only validate when field loses focus, not during typing
   });
   
-  // Only reset form if initialData changes or on initial mount
+  // Debug log the form's current values for tracing
   useEffect(() => {
-    if (initialData) {
-      console.log("ClientSetupCard - Using provided initialData", initialData);
-      form.reset(initialData);
-    } else {
-      // Only log without resetting if we're not in the first render
-      // This prevents resetting the form while the user is typing
-      console.log("ClientSetupCard - No initialData provided");
-    }
-  }, [initialData]);
+    console.log("FORM DEBUG: Form values:", form.getValues());
+  }, [form]);
+  
+  // Safety mechanism: Capture form values periodically to prevent data loss
+  useEffect(() => {
+    const saveInterval = setInterval(() => {
+      const currentValues = form.getValues();
+      // Only save if we have at least filled in some basic info
+      if (currentValues.name || currentValues.legalName) {
+        try {
+          const savedData = sessionStorage.getItem('setupData') || '{}';
+          const parsedData = JSON.parse(savedData);
+          sessionStorage.setItem('setupData', JSON.stringify({
+            ...parsedData,
+            clientData: currentValues
+          }));
+        } catch (error) {
+          console.error("Auto-save failed:", error);
+        }
+      }
+    }, 5000); // Every 5 seconds
+    
+    return () => clearInterval(saveInterval);
+  }, [form]);
 
   const onSubmit = async (data: ClientSetupValues) => {
     setIsSubmitting(true);
     try {
-      console.log("DEBUG: ClientSetupCard onSubmit triggered.");
+      console.log("FORM SUBMIT: Client form submit started");
       
-      // Validation check (explicitly await to ensure it completes)
-      const isValid = await form.trigger();
-      console.log(`DEBUG: ClientSetupCard form validation result: ${isValid}`);
-      
-      if (!isValid) {
-        console.log("DEBUG: ClientSetupCard validation failed, stopping.");
-        setIsSubmitting(false);
-        return;
+      // CRITICAL FIX: Save to sessionStorage first for persistence
+      try {
+        // Get existing setup data if any
+        const savedData = sessionStorage.getItem('setupData');
+        const existingData = savedData ? JSON.parse(savedData) : {};
+        
+        // Update with new client data
+        const newData = {
+          ...existingData,
+          clientData: data,
+          currentStep: "entities" // Pre-set the next step
+        };
+        
+        // Save to session storage
+        sessionStorage.setItem('setupData', JSON.stringify(newData));
+        console.log("FORM SUBMIT: Saved to sessionStorage for persistence");
+      } catch (storageError) {
+        console.error("Failed to save to sessionStorage:", storageError);
+        // Continue anyway since we have other mechanisms
       }
       
-      console.log("DEBUG: ClientSetupCard validation passed.");
-      console.log("DEBUG: Client setup form submitted with data:", data);
+      // CRITICAL FIX: Set client data in parent state
+      console.log("FORM SUBMIT: Setting client data in parent state");
+      if (setClientData) {
+        setClientData(data);
+      }
       
-      // CRITICAL FIX: Save the data to the parent component state
-      // This must be done BEFORE calling onNext, so parent has the data when step changes
-      console.log("DEBUG: ClientSetupCard calling setClientData prop FIRST with:", data);
-      setClientData(data);
-      
-      // Log fields explicitly for debugging
-      console.log(`DEBUG: Client name: ${data.name}`);
-      console.log(`DEBUG: Legal name: ${data.legalName}`);
-      console.log(`DEBUG: Industry: ${data.industry}`);
-      
-      // Only show toast after data is validated and saved
+      // Show success message
       toast({
         title: "Success",
         description: "Client information saved successfully.",
       });
       
-      // CRITICAL FIX: Ensure all async operations are complete before proceeding
-      // Small delay to ensure state updates have propagated
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // CRITICAL FIX: Wait to ensure parent state is updated before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // CRITICAL FIX: Now that data is saved, proceed to the next step
-      console.log("DEBUG: Step 1 onSubmit completed, calling onNext with data...");
-      
+      // CRITICAL FIX: Navigate to next step via callback - pass data explicitly
+      console.log("FORM SUBMIT: Now calling onNext to navigate to entities step");
       if (onNext) {
-        console.log("DEBUG: ClientSetupCard passing data to onNext:", data);
-        onNext(data); // Pass data explicitly to ensure it's available
-        console.log("DEBUG: ClientSetupCard onNext called successfully.");
+        onNext(data);
       } else {
         console.error("🔴 onNext function is not defined!");
       }

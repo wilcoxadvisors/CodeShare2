@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle } from "lucide-react";
@@ -7,66 +7,158 @@ import EntityManagementCard from "./EntityManagementCard";
 import SetupSummaryCard from "./SetupSummaryCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useSetup, SETUP_STEPS, SetupProvider } from "../../contexts/SetupContext";
+
+/**
+ * Step configuration for the setup process
+ */
+const SETUP_STEPS = [
+  {
+    id: "client",
+    title: "Client Information",
+    description: "Set up your company profile"
+  },
+  {
+    id: "entities",
+    title: "Entities",
+    description: "Add your business entities"
+  },
+  {
+    id: "summary",
+    title: "Summary & Finalize",
+    description: "Review and complete setup"
+  }
+];
 
 interface SetupStepperProps {
   onComplete?: () => void;
 }
 
-// Main wrapper component that provides the context
+/**
+ * Setup stepper component that guides users through the onboarding process
+ */
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
-  return (
-    <SetupProvider onComplete={onComplete}>
-      <SetupStepperContent />
-    </SetupProvider>
-  );
-}
-
-// The actual stepper content that uses the context
-function SetupStepperContent() {
-  // DEBUG: Tracking component instance ID to detect remounting
-  const instanceId = useRef<string>(`setup-${Math.random().toString(36).substr(2, 9)}`);
-  console.log(`DEBUG: SetupStepperContent INITIALIZING - instance ${instanceId.current}`);
-
+  // Get persistedSetupData from session storage if available
+  const getInitialData = () => {
+    try {
+      const savedData = sessionStorage.getItem('setupData');
+      return savedData ? JSON.parse(savedData) : null;
+    } catch (error) {
+      console.error("Failed to load setup data from sessionStorage:", error);
+      return null;
+    }
+  };
+  
+  const persistedData = getInitialData();
+  
+  // Component state
   const { user } = useAuth();
   const { toast } = useToast();
+  const [currentStep, setCurrentStep] = useState<string>(persistedData?.currentStep || "client");
+  const [clientData, setClientData] = useState<any>(persistedData?.clientData || null);
+  const [entityData, setEntityData] = useState<any[]>(persistedData?.entityData || []);
+  const [setupComplete, setSetupComplete] = useState<boolean>(false);
   
-  // Use the setup context instead of local state
-  const { 
-    currentStep, 
-    clientData, 
-    entityData, 
-    handleBack, 
-    handleClientDataSaved, 
-    handleEntityDataSaved,
-    setClientData,
-    setEntityData,
-    setSetupComplete
-  } = useSetup();
+  // Save data to session storage whenever it changes
+  const saveToSessionStorage = useCallback(() => {
+    try {
+      const dataToSave = {
+        currentStep,
+        clientData,
+        entityData
+      };
+      sessionStorage.setItem('setupData', JSON.stringify(dataToSave));
+      console.log("Saved setup data to sessionStorage:", dataToSave);
+    } catch (error) {
+      console.error("Failed to save setup data to sessionStorage:", error);
+    }
+  }, [currentStep, clientData, entityData]);
   
-  // Initialize state only once when component is mounted
+  // Save state changes to session storage
   useEffect(() => {
-    // Track mounting/unmounting for debugging
-    console.log(`DEBUG: SetupStepperContent MOUNTED - instance ${instanceId.current}`);
-    
-    // Return cleanup function to track unmounting
-    return () => {
-      console.log(`DEBUG: SetupStepperContent UNMOUNTING - instance ${instanceId.current}`);
-    };
-  }, []);
+    saveToSessionStorage();
+  }, [currentStep, clientData, entityData, saveToSessionStorage]);
   
   // Calculate current step index
   const currentStepIndex = SETUP_STEPS.findIndex(step => step.id === currentStep);
   
-  // CRITICAL FIX: Monitor client data changes to update UI debug info
-  useEffect(() => {
-    console.log(`DEBUG: SetupStepperContent - clientData changed: ${clientData ? 'exists' : 'null'}`);
-  }, [clientData]);
+  // Handler to move to the next step (basic navigation)
+  const handleNext = () => {
+    const nextIndex = currentStepIndex + 1;
+    console.log("NAVIGATION: handleNext called, current step:", currentStep, "next index:", nextIndex);
+    
+    if (nextIndex < SETUP_STEPS.length) {
+      const nextStepId = SETUP_STEPS[nextIndex].id;
+      console.log(`NAVIGATION: Moving to next step: ${nextStepId}`);
+      setCurrentStep(nextStepId);
+    } else {
+      console.log("NAVIGATION: At final step, setting setupComplete");
+      setSetupComplete(true);
+    }
+  };
   
-  // CRITICAL FIX: Monitor step changes to update UI debug info
+  // Handler to move to the previous step
+  const handleBack = () => {
+    const prevIndex = currentStepIndex - 1;
+    console.log("NAVIGATION: handleBack called, current step:", currentStep, "prev index:", prevIndex);
+    
+    if (prevIndex >= 0) {
+      const prevStepId = SETUP_STEPS[prevIndex].id;
+      console.log(`NAVIGATION: Moving to previous step: ${prevStepId}`);
+      setCurrentStep(prevStepId);
+    }
+  };
+  
+  // CRITICAL FIX: Handle client data submission and navigation separately
+  const handleClientDataSaved = (data: any) => {
+    console.log("CRITICAL: handleClientDataSaved called with data", data);
+    
+    // First, update the client data
+    setClientData(data);
+    
+    // Then, navigate to the next step
+    console.log("CRITICAL: Advancing from client step to entities step");
+    
+    // Important: Wait until the next render cycle before changing steps
+    setTimeout(() => {
+      setCurrentStep("entities");
+    }, 10);
+  };
+  
+  // Handle entity data from EntityManagementCard
+  const handleEntityDataSaved = (entities: any[]) => {
+    console.log("CRITICAL: handleEntityDataSaved called with entities", entities.length);
+    
+    // First, set the entity data
+    setEntityData(entities);
+    
+    // Then, navigate to the next step
+    console.log("CRITICAL: Advancing from entities step to summary step");
+    
+    // Important: Wait until the next render cycle before changing steps
+    setTimeout(() => {
+      setCurrentStep("summary");
+    }, 10);
+  };
+  
+  // Clear session storage on completion
   useEffect(() => {
-    console.log(`DEBUG: SetupStepperContent - currentStep changed to: ${currentStep}`);
+    if (setupComplete) {
+      sessionStorage.removeItem('setupData');
+      
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  }, [setupComplete, onComplete]);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log(`DEBUG: currentStep is now: ${currentStep}`);
   }, [currentStep]);
+  
+  useEffect(() => {
+    console.log(`DEBUG: clientData: ${clientData ? 'exists' : 'null'}`);
+  }, [clientData]);
   
   return (
     <div className="my-8">
@@ -179,13 +271,7 @@ function SetupStepperContent() {
               {/* Skip button could be added here if needed */}
               
               {currentStep !== "client" && currentStep !== "entities" && (
-                <Button onClick={() => {
-                  const nextIndex = currentStepIndex + 1;
-                  if (nextIndex < SETUP_STEPS.length) {
-                    const nextStepId = SETUP_STEPS[nextIndex].id;
-                    console.log(`DEBUG: Moving to next step: ${nextStepId}`);
-                  }
-                }}>
+                <Button onClick={handleNext}>
                   {currentStepIndex === SETUP_STEPS.length - 1 ? "Finish" : "Next"}
                 </Button>
               )}
