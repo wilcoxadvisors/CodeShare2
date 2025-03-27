@@ -125,12 +125,12 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       await new Promise(resolve => setTimeout(resolve, 50));
       
       // CRITICAL FIX: Now that data is saved, proceed to the next step
-      console.log("DEBUG: Step 1 onSubmit completed, calling onNext...");
+      console.log("DEBUG: Step 1 onSubmit completed, calling onNext with data...");
       
       if (onNext) {
-        // Explicitly pass data to onNext to ensure it has access to latest values
-        onNext(data);
-        console.log("DEBUG: ClientSetupCard onNext completed successfully.");
+        console.log("DEBUG: ClientSetupCard passing data to onNext:", data);
+        onNext(data); // Pass data explicitly to ensure it's available
+        console.log("DEBUG: ClientSetupCard onNext called successfully.");
       } else {
         console.error("🔴 onNext function is not defined!");
       }

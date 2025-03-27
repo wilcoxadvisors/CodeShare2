@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle } from "lucide-react";
@@ -7,168 +7,65 @@ import EntityManagementCard from "./EntityManagementCard";
 import SetupSummaryCard from "./SetupSummaryCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-
-/**
- * Step configuration for the setup process
- * Including only the three essential steps
- */
-const SETUP_STEPS = [
-  {
-    id: "client",
-    title: "Client Information",
-    description: "Set up your company profile"
-  },
-  {
-    id: "entities",
-    title: "Entities",
-    description: "Add your business entities"
-  },
-  {
-    id: "summary",
-    title: "Summary & Finalize",
-    description: "Review and complete setup"
-  }
-];
+import { useSetup, SETUP_STEPS, SetupProvider } from "../../contexts/SetupContext";
 
 interface SetupStepperProps {
   onComplete?: () => void;
 }
 
-/**
- * Setup stepper component that guides users through the onboarding process
- */
+// Main wrapper component that provides the context
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
+  return (
+    <SetupProvider onComplete={onComplete}>
+      <SetupStepperContent />
+    </SetupProvider>
+  );
+}
+
+// The actual stepper content that uses the context
+function SetupStepperContent() {
   // DEBUG: Tracking component instance ID to detect remounting
   const instanceId = useRef<string>(`setup-${Math.random().toString(36).substr(2, 9)}`);
-  console.log(`DEBUG: SetupStepper INITIALIZING - instance ${instanceId.current}`);
-  
-  // Use a ref to store step change info for debugging
-  const stepChangeRef = useRef<{from: string, to: string, timestamp: number} | null>(null);
+  console.log(`DEBUG: SetupStepperContent INITIALIZING - instance ${instanceId.current}`);
 
   const { user } = useAuth();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<string>("client");
-  const [clientData, setClientData] = useState<any>(null);
-  const [entityData, setEntityData] = useState<any[]>([]);
-  const [setupComplete, setSetupComplete] = useState<boolean>(false);
+  
+  // Use the setup context instead of local state
+  const { 
+    currentStep, 
+    clientData, 
+    entityData, 
+    handleBack, 
+    handleClientDataSaved, 
+    handleEntityDataSaved,
+    setClientData,
+    setEntityData,
+    setSetupComplete
+  } = useSetup();
   
   // Initialize state only once when component is mounted
   useEffect(() => {
     // Track mounting/unmounting for debugging
-    console.log(`DEBUG: SetupStepper MOUNTED - instance ${instanceId.current}`);
+    console.log(`DEBUG: SetupStepperContent MOUNTED - instance ${instanceId.current}`);
     
     // Return cleanup function to track unmounting
     return () => {
-      console.log(`DEBUG: SetupStepper UNMOUNTING - instance ${instanceId.current}`);
+      console.log(`DEBUG: SetupStepperContent UNMOUNTING - instance ${instanceId.current}`);
     };
   }, []);
   
   // Calculate current step index
   const currentStepIndex = SETUP_STEPS.findIndex(step => step.id === currentStep);
   
-  // Wrapper to track step changes with extra debugging
-  const setCurrentStepWithTracking = (newStep: string) => {
-    console.log(`DEBUG: setCurrentStepWithTracking called - from ${currentStep} to ${newStep}`);
-    
-    // Store information about this step change
-    stepChangeRef.current = {
-      from: currentStep,
-      to: newStep,
-      timestamp: Date.now()
-    };
-    
-    // Actually update the step
-    setCurrentStep(newStep);
-    
-    // Verify the change in a short while
-    setTimeout(() => {
-      console.log(`DEBUG: Verifying step change to ${newStep}, current step is ${currentStep}`);
-      if (currentStep !== newStep) {
-        console.log(`DEBUG: WARNING - Step change verification failed! Expected ${newStep}, found ${currentStep}`);
-        // Don't auto-retry here, just log the failure
-      } else {
-        console.log(`DEBUG: Step change to ${newStep} verified successfully`);
-      }
-    }, 100);
-  };
-  
-  // Handler to move to the next step
-  const handleNext = () => {
-    const nextIndex = currentStepIndex + 1;
-    console.log(`DEBUG: handleNext called - current step: ${currentStep}, currentStepIndex: ${currentStepIndex}, nextIndex: ${nextIndex}`);
-    if (nextIndex < SETUP_STEPS.length) {
-      const nextStepId = SETUP_STEPS[nextIndex].id;
-      console.log(`DEBUG: Moving to next step: ${nextStepId}`);
-      setCurrentStepWithTracking(nextStepId);
-    } else {
-      console.log("DEBUG: At final step, setting setupComplete");
-      setSetupComplete(true);
-    }
-  };
-  
-  // Handler to move to the previous step
-  const handleBack = () => {
-    const prevIndex = currentStepIndex - 1;
-    console.log(`DEBUG: handleBack called - current step: ${currentStep}, currentStepIndex: ${currentStepIndex}, prevIndex: ${prevIndex}`);
-    if (prevIndex >= 0) {
-      const prevStepId = SETUP_STEPS[prevIndex].id;
-      console.log(`DEBUG: Moving to previous step: ${prevStepId}`);
-      
-      // IMPORTANT: Keep the entityData when navigating back from summary to entities
-      // or from entities to client
-      console.log(`DEBUG: Preserving entity data when going back: ${entityData.length} entities`);
-      
-      // Just change the step without clearing entity data
-      setCurrentStepWithTracking(prevStepId);
-    } else {
-      console.log("DEBUG: Already at first step, can't go back");
-    }
-  };
-  
-  // Handle client data from ClientSetupCard 
-  const handleClientDataSaved = (data: any) => {
-    console.log(`DEBUG: handleClientDataSaved called with data`);
-    console.log(`DEBUG: Current step BEFORE update: ${currentStep}`);
-    
-    try {
-      // CRITICAL FIX: First set client data, then update the step
-      // Do the client data update first
-      console.log(`DEBUG: Setting clientData`);
-      setClientData(data);
-      
-      // Then update the step - with a direct function call to ensure they happen in order
-      console.log(`DEBUG: Step 1 onSubmit completed, calling setCurrentStepWithTracking to 'entities'...`);
-      setCurrentStepWithTracking("entities");
-    } catch (error) {
-      console.error(`DEBUG: Error in handleClientDataSaved:`, error);
-    }
-  };
-  
-  // Handle entity data from EntityManagementCard
-  const handleEntityDataSaved = (entities: any[]) => {
-    console.log("DEBUG: handleEntityDataSaved called with entities:", entities.length);
-    
-    try {
-      // CRITICAL FIX: First set entity data, then update the step
-      console.log(`DEBUG: Setting entityData (${entities.length} entities)`);
-      setEntityData(entities);
-      
-      // Then update the step
-      console.log(`DEBUG: Calling setCurrentStepWithTracking to 'summary'`);
-      setCurrentStepWithTracking("summary");
-    } catch (error) {
-      console.error(`DEBUG: Error in handleEntityDataSaved:`, error);
-    }
-  };
-  
   // CRITICAL FIX: Monitor client data changes to update UI debug info
   useEffect(() => {
-    console.log(`DEBUG: clientData changed: ${clientData ? 'exists' : 'null'}`);
+    console.log(`DEBUG: SetupStepperContent - clientData changed: ${clientData ? 'exists' : 'null'}`);
   }, [clientData]);
   
   // CRITICAL FIX: Monitor step changes to update UI debug info
   useEffect(() => {
-    console.log(`DEBUG: currentStep changed to: ${currentStep}`);
+    console.log(`DEBUG: SetupStepperContent - currentStep changed to: ${currentStep}`);
   }, [currentStep]);
   
   return (
@@ -263,11 +160,6 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 onFinish={() => {
                   // Complete the setup and close the dialog
                   setSetupComplete(true);
-                  
-                  // Call the onComplete callback if provided
-                  if (onComplete) {
-                    onComplete();
-                  }
                 }}
               />
             )}
@@ -287,7 +179,13 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
               {/* Skip button could be added here if needed */}
               
               {currentStep !== "client" && currentStep !== "entities" && (
-                <Button onClick={handleNext}>
+                <Button onClick={() => {
+                  const nextIndex = currentStepIndex + 1;
+                  if (nextIndex < SETUP_STEPS.length) {
+                    const nextStepId = SETUP_STEPS[nextIndex].id;
+                    console.log(`DEBUG: Moving to next step: ${nextStepId}`);
+                  }
+                }}>
                   {currentStepIndex === SETUP_STEPS.length - 1 ? "Finish" : "Next"}
                 </Button>
               )}

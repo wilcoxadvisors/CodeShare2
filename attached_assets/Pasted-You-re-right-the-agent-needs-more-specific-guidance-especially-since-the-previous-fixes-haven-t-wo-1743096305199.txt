@@ -1,0 +1,142 @@
+You're right, the agent needs more specific guidance, especially since the previous fixes haven't worked and introduced new problems. The fact that Step 1 inputs are clearing immediately is a strong clue that something fundamental is wrong with the state management or component lifecycle in ClientSetupCard or SetupStepper.
+
+Let's give the agent very explicit instructions with code snippets to focus its debugging.
+
+Agent Instructions: Detailed Debugging for Step 1 (Inputs & Navigation)
+CRITICAL ISSUES: After Checkpoint db8f533e:
+
+Step 1 (ClientSetupCard) input fields clear immediately upon typing.
+Navigation from Step 1 to Step 2 still fails.
+Goal: Systematically debug and fix both critical Step 1 issues.
+
+Phase 1: Fix Input Clearing Bug
+
+Add Detailed Logging in useFormState.ts:
+Action: Modify client/src/hooks/useFormState.ts. Add console.log statements as shown below to trace state initialization and updates:
+TypeScript
+
+// Inside useFormState hook
+export function useFormState<T extends Record<string, any>>({
+  initialData,
+  schema,
+  onSubmit
+}: UseFormStateOptions<T>) {
+  console.log("DEBUG useFormState: Initializing/Re-rendering. Received initialData:", initialData); // Log initial data on render
+
+  const [formState, setFormState] = useState<FormState<T>>(() => {
+     console.log("DEBUG useFormState: useState initializer running with initialData:", initialData); // Log initial state setup
+     return {
+       data: initialData,
+       errors: {},
+       formError: null,
+       isSubmitting: false
+     };
+  });
+
+  // Log if initialData prop changes causing potential resets
+  useEffect(() => {
+    console.log("DEBUG useFormState: initialData prop changed:", initialData);
+    // Add a check here if resetForm is called based on initialData changes
+    // Example: if (/* condition for reset */) { resetForm(); }
+  }, [initialData]);
+
+  const setData = useCallback((key: keyof T, value: any) => {
+    console.log(`DEBUG useFormState setData: Setting key=${String(key)} to value=`, value);
+    setFormState(prev => {
+      console.log("DEBUG useFormState setData: Previous state data=", prev.data);
+      const updatedData = { ...prev.data, [key]: value };
+      const updatedErrors = { ...prev.errors };
+      if (updatedErrors[key as string]) {
+        delete updatedErrors[key as string];
+      }
+      console.log("DEBUG useFormState setData: New state data=", updatedData);
+      return {
+        ...prev,
+        data: updatedData,
+        errors: updatedErrors,
+        formError: null
+      };
+    });
+  }, []);
+
+  const resetForm = useCallback(() => {
+    console.log("DEBUG useFormState: resetForm called! Resetting state based on initialData:", initialData); // Log reset calls
+    setFormState({
+      data: initialData,
+      errors: {},
+      formError: null,
+      isSubmitting: false
+    });
+  }, [initialData]);
+
+  // Add logs inside setFieldValue, setSelectValue, setCheckboxValue if used directly
+  const setFieldValue = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
+      console.log(`DEBUG useFormState setFieldValue: name=<span class="math-inline">\{name\}, type\=</span>{type}, value=`, value);
+      // ... rest of setFieldValue ...
+      setData(name as keyof T, /* calculated value based on type */);
+  }, [setData]);
+
+  return {
+     // ... rest of the hook ...
+     setData,
+     setFieldValue,
+     resetForm // ensure resetForm is returned
+  };
+}
+Check ClientSetupCard.tsx for Resets:
+Action: Log the initialData prop passed into useFormState inside ClientSetupCard.tsx. Does this prop change unexpectedly during user interaction?
+Action: Search ClientSetupCard.tsx for any direct calls to resetForm() or state setters that might clear the form data unintentionally. Add logs around them.
+Simulate & Report Logs:
+Action: Restart the app. Type a few characters into one of the Step 1 input fields.
+Action: Copy the full sequence of "DEBUG useFormState" logs from the browser console.
+Report: Provide the exact log output.
+Analyze & Fix:
+Action: Based only on the logs, determine if resetForm is being called incorrectly, if initialData is changing unexpectedly, or if setData/setFieldValue is behaving strangely. Implement a targeted fix.
+Verify: Test typing again. Confirm inputs persist.
+Report: Explain the fix and confirm inputs are stable.
+Phase 2: Fix Step 1 Navigation (ONLY AFTER Phase 1 is Fixed & Verified)
+
+Ensure Correct Async Handling in ClientSetupCard.tsx onSubmit:
+Action: Modify the onSubmit handler to strictly await any API calls before calling props.onNext(). Ensure props.setClientData() is also called before props.onNext().
+TypeScript
+
+const onSubmit = async (formData) => { // Use the data from react-hook-form
+  console.log("DEBUG ClientSetupCard: onSubmit starting.");
+  // set submitting state true
+  try {
+    // --- Example: Assume API call saves client ---
+    // const createdClient = await createClientMutation.mutateAsync(formData);
+    // console.log("DEBUG ClientSetupCard: API call successful.");
+
+    // --- Pass data BEFORE navigating ---
+    console.log("DEBUG ClientSetupCard: Calling props.setClientData with:", formData);
+    props.setClientData(formData); // Pass form data or API response as needed
+
+    // --- Navigate only AFTER success ---
+    console.log("DEBUG ClientSetupCard: Calling props.onNext...");
+    props.onNext();
+    console.log("DEBUG ClientSetupCard: props.onNext finished.");
+
+  } catch (error) {
+    console.error("DEBUG ClientSetupCard: onSubmit Error:", error);
+    // Handle/display error to user
+  } finally {
+    // set submitting state false
+  }
+};
+Simplify SetupStepper.tsx handleNext:
+Action: Ensure the function passed as onNext only updates the step index reliably.
+TypeScript
+
+// Inside SetupStepper or parent component
+const handleNext = useCallback(() => {
+  const currentStep = activeStep; // Read state *before* setting
+  const nextStep = currentStep + 1;
+  console.log(`DEBUG handleNext: Updating step from ${currentStep} to ${nextStep}`);
+  setActiveStep(nextStep);
+}, [activeStep, setActiveStep]); // Include dependencies
+Test & Report Logs:
+Action: Restart. Simulate a successful Step 1 submission.
+Action: Copy the "DEBUG" logs from both ClientSetupCard and SetupStepper during the submission process.
+Report: Provide the logs and state clearly whether navigation to Step 2 now occurs reliably.
