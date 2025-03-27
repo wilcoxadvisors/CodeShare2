@@ -48,7 +48,7 @@ const entitySchema = z.object({
   legalName: z.string().min(2, { message: "Legal name must be at least 2 characters." }),
   taxId: z.string().optional(),
   entityType: z.string().min(1, { message: "Please select an entity type" }),
-  industry: z.string().min(1, { message: "Please select an industry" }),
+  industry: z.string(), // Allow empty string to fix "other" selection issues
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional().refine(
@@ -124,6 +124,15 @@ export default function EntityManagementCard({
     return entity.isActive === undefined ? 
       (entity.active === undefined ? true : Boolean(entity.active)) : 
       Boolean(entity.isActive);
+  };
+  
+  // Helper function to format industry value to human-readable form
+  const getEntityIndustryLabel = (industryValue: string | null | undefined): string => {
+    if (!industryValue) return "N/A";
+    
+    // Find the matching industry option
+    const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
+    return industry ? industry.label : industryValue;
   };
   
   // Helper function to create entity from client data
@@ -641,13 +650,19 @@ export default function EntityManagementCard({
     // Log the entity data for debugging
     console.log("Editing entity:", entity);
     
+    // CRITICAL FIX: Add more robust handling of entity properties
+    // Ensure legalName has a value (fallback to name if missing)
+    const entityLegalName = entity.legalName || entity.name || "";
+    
+    console.log("EDIT ENTITY: Legal name for form:", entityLegalName);
+    
     // Reset form with entity data
     form.reset({
-      name: entity.name,
-      legalName: entity.legalName,
+      name: entity.name || "",
+      legalName: entityLegalName, // Use safeguarded legal name value
       taxId: entity.taxId || "",
       entityType: entity.entityType || "llc",
-      industry: entity.industry,
+      industry: entity.industry || "",
       address: entity.address || "",
       phone: entity.phone || "",
       email: entity.email || "",
@@ -1150,7 +1165,7 @@ export default function EntityManagementCard({
                       <TableCell key={`type-${entity.id}`}>{entity.entityType || "LLC"}</TableCell>
                       <TableCell key={`industry-${entity.id}`}>
                         {/* Display industry as human-readable label, not code */}
-                        {INDUSTRY_OPTIONS.find(opt => opt.value === entity.industry)?.label || entity.industry || "N/A"}
+                        {getEntityIndustryLabel(entity.industry)}
                       </TableCell>
                       <TableCell key={`status-cell-${entity.id}`}>
                         <Badge 
