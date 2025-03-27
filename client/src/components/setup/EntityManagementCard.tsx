@@ -223,15 +223,35 @@ export default function EntityManagementCard({
       
       // Add the created entity to setupEntities (preventing duplicates)
       if (response) {
+        // Ensure we have a proper entity object to store
+        // Debug the response structure to ensure we're getting what we expect
+        console.log("DEBUG: Response structure:", JSON.stringify(response));
+        
+        // Cast the response to any type to access dynamic properties
+        const respData = response as any;
+        
+        // Convert the response to a proper entity structure with required fields
+        const entityData = {
+          id: respData.id,
+          name: respData.name || "",
+          legalName: respData.legalName || "",
+          entityType: respData.entityType || "llc",
+          industry: respData.industry || "",
+          active: respData.active === undefined ? true : respData.active,
+          isActive: respData.isActive === undefined ? true : respData.isActive,
+          code: respData.code || "",
+          ...respData // Include any other fields from the response
+        };
+        
+        console.log("DEBUG: Adding entity to setupEntities:", entityData);
+        
         setSetupEntities(prev => {
           // Check if the entity is already in the list
-          // Cast response to any to handle unknown response structure
-          const entity = response as any;
-          const exists = prev.some(e => e.id === entity.id);
+          const exists = prev.some(e => e.id === entityData.id);
           if (exists) {
-            return prev; // Don't add it again
+            return prev.map(e => e.id === entityData.id ? entityData : e); // Update it
           }
-          return [...prev, entity]; // Add it if it's new
+          return [...prev, entityData]; // Add it if it's new
         });
       }
       
@@ -319,10 +339,28 @@ export default function EntityManagementCard({
       
       // Update the entity in setupEntities
       if (response && currentEntityId) {
+        console.log("DEBUG: Update response structure:", JSON.stringify(response));
+        
+        // Cast the response to any type to access dynamic properties
+        const respData = response as any;
+        
+        // Convert the response to a proper entity structure with required fields
+        const entityData = {
+          id: respData.id,
+          name: respData.name || "",
+          legalName: respData.legalName || "",
+          entityType: respData.entityType || "llc",
+          industry: respData.industry || "",
+          active: respData.active === undefined ? true : respData.active,
+          isActive: respData.isActive === undefined ? true : respData.isActive,
+          code: respData.code || "",
+          ...respData // Include any other fields from the response
+        };
+        
+        console.log("DEBUG: Updating entity in setupEntities:", entityData);
+        
         setSetupEntities(prev => {
-          // Cast response to any to handle unknown response structure
-          const entity = response as any;
-          return prev.map(e => e.id === currentEntityId ? entity : e);
+          return prev.map(e => e.id === currentEntityId ? entityData : e);
         });
       }
       
