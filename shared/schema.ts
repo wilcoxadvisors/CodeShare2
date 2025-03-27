@@ -36,7 +36,7 @@ export const users = pgTable("users", {
 // Clients table (users with CLIENT role have a client record)
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  userId: integer("user_id").references(() => users.id).notNull(), // Removed unique constraint to allow users to have multiple clients
   name: text("name").notNull(),
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),

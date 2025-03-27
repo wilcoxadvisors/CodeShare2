@@ -2877,7 +2877,54 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(clients.name));
   }
   
+  async getClientByUserId(userId: number): Promise<Client | null> {
+    try {
+      const results = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.userId, userId))
+        .limit(1);
+      
+      return results.length > 0 ? results[0] : null;
+    } catch (error) {
+      console.error("Error in getClientByUserId:", error);
+      return null;
+    }
+  }
+
   async createClient(client: InsertClient): Promise<Client> {
+    // First check if a client already exists for this user
+    const existingClient = await this.getClientByUserId(client.userId);
+    
+    if (existingClient) {
+      console.log(`Client already exists for user ${client.userId}. Updating instead of creating.`);
+      // If client already exists, update it
+      const [result] = await db
+        .update(clients)
+        .set({
+          name: client.name,
+          active: client.active !== undefined ? client.active : true,
+          industry: client.industry || null,
+          contactName: client.contactName || null,
+          contactEmail: client.contactEmail || null,
+          contactPhone: client.contactPhone || null,
+          address: client.address || null,
+          city: client.city || null,
+          state: client.state || null,
+          country: client.country || null,
+          postalCode: client.postalCode || null,
+          website: client.website || null,
+          notes: client.notes || null,
+          referralSource: client.referralSource || null,
+          updatedAt: new Date()
+        })
+        .where(eq(clients.userId, client.userId))
+        .returning();
+      
+      return result;
+    }
+    
+    // Otherwise create a new client
     const [result] = await db
       .insert(clients)
       .values({
