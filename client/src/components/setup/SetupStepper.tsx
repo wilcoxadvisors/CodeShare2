@@ -59,25 +59,13 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // CRITICAL FIX: Always start with client step if we don't have client data yet
-  // This prevents Step 2 from appearing first even if session storage says "entities"
+  // CRITICAL FIX 8.0: Completely rewrite initial step determination
+  // Always force step 1 (client step) on page load
   const determineInitialStep = () => {
-    // If we have persisted data with a step, check it
-    if (persistedData?.currentStep) {
-      // If it says "entities" but we don't have client data, force it back to "client"
-      if (persistedData.currentStep === "entities" && 
-          (!persistedData.clientData || Object.keys(persistedData.clientData).length === 0)) {
-        console.log("INIT: Session says 'entities' step but no client data found, forcing to 'client' step");
-        return "client";
-      }
-      
-      // Return the persisted step if it makes sense
-      console.log("INIT: Using persisted step:", persistedData.currentStep);
-      return persistedData.currentStep;
-    }
+    console.log("CRITICAL FIX 8.0: Forcing application to start at step 1 (client)");
     
-    // Default to client step
-    console.log("INIT: No persisted step, defaulting to 'client'");
+    // Override any persisted step - always start with client information
+    // This ensures we don't start in the middle of the flow
     return "client";
   };
   

@@ -148,6 +148,75 @@ export default function EntityManagementCard({
     }
   };
   
+  // CRITICAL FIX 7.0: Direct API fetch function to get all entities
+  const fetchEntitiesDirectly = async (clientId?: number) => {
+    try {
+      console.log("CRITICAL FIX 7.0: Directly fetching all entities from API");
+      
+      // Use the clientId if provided, otherwise use the clientData.id
+      const effectiveClientId = clientId || (clientData?.id ? clientData.id : undefined);
+      
+      // Only proceed if we have a clientId to filter by
+      if (!effectiveClientId) {
+        console.error("CRITICAL FIX 7.0: No client ID available for fetching entities");
+        return null;
+      }
+      
+      // Make direct API call to get entities for this client
+      const response = await fetch(`/api/admin/dashboard`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch entities: ${response.status}`);
+      }
+      
+      // Parse the response
+      const result = await response.json();
+      console.log("CRITICAL FIX 7.0: Fetched dashboard data:", result);
+      
+      // Extract entities that belong to this client
+      if (result.data && result.data.clients && Array.isArray(result.data.clients)) {
+        // Find the client we're interested in
+        const client = result.data.clients.find((c: any) => c.id === effectiveClientId);
+        if (client && client.entities && Array.isArray(client.entities)) {
+          console.log(`CRITICAL FIX 7.0: Found ${client.entities.length} entities for client ${effectiveClientId}`);
+          return client.entities;
+        }
+      }
+      
+      // If we couldn't find entities in the expected structure, try direct entities endpoint
+      const entitiesResponse = await fetch("/api/entities", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!entitiesResponse.ok) {
+        throw new Error(`Failed to fetch entities directly: ${entitiesResponse.status}`);
+      }
+      
+      const entitiesResult = await entitiesResponse.json();
+      console.log("CRITICAL FIX 7.0: Fetched entities directly:", entitiesResult);
+      
+      if (entitiesResult.data && Array.isArray(entitiesResult.data)) {
+        // Filter by clientId
+        const clientEntities = entitiesResult.data.filter((e: any) => e.clientId === effectiveClientId);
+        console.log(`CRITICAL FIX 7.0: Found ${clientEntities.length} entities for client ${effectiveClientId} via direct API`);
+        return clientEntities;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("CRITICAL FIX 7.0: Error fetching entities directly:", error);
+      return null;
+    }
+  };
+  
   // Create entity mutation
   const createEntityMutation = useMutation({
     mutationFn: async (data: EntityFormValues) => {
@@ -210,7 +279,7 @@ export default function EntityManagementCard({
       // Return the entity data from the response
       return jsonData.data;
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       console.log("Entity created successfully:", response);
       
       toast({
@@ -232,89 +301,133 @@ export default function EntityManagementCard({
         code: ""
       });
       
-      // CRITICAL FIX 6.0: Completely refactor entity creation and state management
-      console.log("CRITICAL FIX 6.0: Entity created with response:", response);
+      // Define original entity creation logic as a helper function first
+      const handleOriginalEntityCreation = (responseData: any) => {
+        console.log("CRITICAL FIX 7.0: Using original entity creation flow as fallback");
+        
+        if (responseData) {
+          // Cast the response to any type to access dynamic properties
+          const respData = responseData as any;
+          
+          // Ensure we have the form values for fields that might not be in the response
+          const formValues = form.getValues();
+          
+          // Create a comprehensive entity object with all needed fields for both UI and API
+          const entityData = {
+            id: respData.id,
+            name: respData.name || formValues.name || "",
+            legalName: respData.legalName || formValues.legalName || respData.name || "",
+            // Map business type to entityType or use form value
+            entityType: respData.entityType || respData.businessType || formValues.entityType || "llc",
+            industry: respData.industry || formValues.industry || "",
+            active: respData.active === undefined ? true : respData.active,
+            isActive: true, // UI needs this
+            code: respData.code || formValues.code || "",
+            // Critical: Add client relationship
+            clientId: respData.clientId || clientData?.id,
+            // Include all other fields from API response
+            ...respData
+          };
+          
+          console.log("ENTITY CREATION: Adding to setupEntities and updating parent:", entityData);
+          
+          // Update setupEntities state with the new entity
+          setSetupEntities(prev => {
+            // First make a deep copy of previous state
+            const prevCopy = prev ? [...prev] : [];
+            
+            // Add the new entity if it doesn't exist yet
+            const exists = prevCopy.some(e => e.id === entityData.id);
+            const updatedEntities = exists 
+              ? prevCopy.map(e => e.id === entityData.id ? entityData : e)
+              : [...prevCopy, entityData];
+              
+            console.log("ENTITY CREATION: Local state updated, now have", updatedEntities.length, "entities");
+            
+            // Update session storage with the updated entities
+            try {
+              const setupData = sessionStorage.getItem('setupData');
+              if (setupData) {
+                const parsedData = JSON.parse(setupData);
+                parsedData.entityData = updatedEntities;
+                sessionStorage.setItem('setupData', JSON.stringify(parsedData));
+              }
+            } catch (error) {
+              console.error("Failed to update sessionStorage:", error);
+            }
+            
+            // Also update parent state if the setter is available
+            if (setEntityData) {
+              setEntityData([...updatedEntities]);
+            }
+            
+            return updatedEntities;
+          });
+        }
+      };
       
-      if (response) {
-        // Cast the response to any type to access dynamic properties
-        const respData = response as any;
-        
-        // Ensure we have the form values for fields that might not be in the response
-        const formValues = form.getValues();
-        
-        // Create a comprehensive entity object with all needed fields for both UI and API
-        const entityData = {
-          id: respData.id,
-          name: respData.name || formValues.name || "",
-          legalName: respData.legalName || formValues.legalName || respData.name || "",
-          // Map business type to entityType or use form value
-          entityType: respData.entityType || respData.businessType || formValues.entityType || "llc",
-          industry: respData.industry || formValues.industry || "",
-          active: respData.active === undefined ? true : respData.active,
-          isActive: true, // UI needs this
-          code: respData.code || formValues.code || "",
-          // Critical: Add client relationship
-          clientId: respData.clientId || clientData?.id,
-          // Include all other fields from API response
-          ...respData
-        };
-        
-        console.log("ENTITY CREATION: Adding to setupEntities and updating parent:", entityData);
-        
-        // CRITICAL FIX: Completely rewrite how state is updated
-        // This flow fixes the issue with entities being lost
-        
-        setSetupEntities(prev => {
-          // First, make a deep copy of the previous state
-          let prevCopy;
-          try {
-            prevCopy = JSON.parse(JSON.stringify(prev)) || [];
-          } catch (e: any) {
-            console.error("Failed to deep copy previous entities:", e);
-            prevCopy = [];
-          }
+      // CRITICAL FIX 7.0: Completely bypass the old flow and directly fetch entities from API
+      console.log("CRITICAL FIX 7.0: Starting direct entity fetch after creation");
+      
+      // Get the client ID from the response or from props
+      const clientId = response?.clientId || clientData?.id;
+      
+      if (!clientId) {
+        console.error("CRITICAL FIX 7.0: No client ID available for entity fetch");
+        // Fall back to original approach
+        handleOriginalEntityCreation(response);
+        return;
+      }
+      
+      // Give the database a moment to update
+      setTimeout(async () => {
+        try {
+          // Directly fetch entities from the API
+          const fetchedEntities = await fetchEntitiesDirectly(clientId);
           
-          // Check if the entity already exists by ID to avoid duplicates
-          const exists = prevCopy.some((e: any) => e.id === entityData.id);
-          
-          // Create the new entities array with deep copies to avoid reference issues
-          const updatedEntities = exists 
-            ? prevCopy.map((e: any) => e.id === entityData.id ? {...entityData} : {...e}) 
-            : [...prevCopy, {...entityData}]; 
-          
-          console.log("ENTITY CREATION: Local state updated, now have", updatedEntities.length, "entities");
-          
-          // CRITICAL FIX: Save immediately to sessionStorage for safety
-          try {
-            const setupData = sessionStorage.getItem('setupData');
-            if (setupData) {
+          if (fetchedEntities && Array.isArray(fetchedEntities) && fetchedEntities.length > 0) {
+            console.log(`CRITICAL FIX 7.0: Successfully fetched ${fetchedEntities.length} entities, using direct fetch`);
+            
+            // Create a deep copy to avoid reference issues
+            const entitiesCopy = JSON.parse(JSON.stringify(fetchedEntities));
+            
+            // Update local state
+            setSetupEntities(entitiesCopy);
+            
+            // Update parent component
+            if (setEntityData) {
+              setEntityData(entitiesCopy);
+            }
+            
+            // Update session storage
+            try {
+              const setupData = sessionStorage.getItem('setupData') || '{}';
               const parsedData = JSON.parse(setupData);
               
-              // Create a complete fresh copy of the updated entities
-              const storageCopy = JSON.parse(JSON.stringify(updatedEntities));
-              
-              // Update the storage
-              parsedData.entityData = storageCopy;
-              
-              // Save back to sessionStorage
+              parsedData.entityData = entitiesCopy;
               sessionStorage.setItem('setupData', JSON.stringify(parsedData));
-              console.log("CRITICAL FIX: Updated sessionStorage with", storageCopy.length, "entities");
+              console.log("CRITICAL FIX 7.0: Updated session storage with fetched entities");
+            } catch (error) {
+              console.error("CRITICAL FIX 7.0: Error updating session storage:", error);
             }
-          } catch (error) {
-            console.error("CRITICAL ERROR: Failed to update sessionStorage:", error);
+            
+            console.log("CRITICAL FIX 7.0: Entity refresh complete");
+          } else {
+            console.warn("CRITICAL FIX 7.0: Failed to fetch entities directly, falling back to original flow");
+            // Fall back to original approach if direct fetch failed
+            handleOriginalEntityCreation(response);
           }
-          
-          // CRITICAL FIX: Also update parent component state with a fresh copy
-          if (setEntityData) {
-            // Create a completely fresh copy to avoid any shared references
-            const parentCopy = JSON.parse(JSON.stringify(updatedEntities));
-            console.log("ENTITY CREATION: Updating parent with deep copied entity array:", parentCopy.length, "entities");
-            setEntityData(parentCopy);
-          }
-          
-          return updatedEntities;
-        });
-      }
+        } catch (error) {
+          console.error("CRITICAL FIX 7.0: Error during entity fetch:", error);
+          // Use fallback if anything goes wrong
+          handleOriginalEntityCreation(response);
+        }
+      }, 500); // Half-second delay to ensure DB has updated
+      
+      // Global data refresh
+      refetch();
+      setIsEditing(false);
+      setCurrentEntityId(null);
       
       // Global data refresh
       refetch();
