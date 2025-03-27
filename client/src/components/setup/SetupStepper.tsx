@@ -100,15 +100,26 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Handle client data from ClientSetupCard
   const handleClientDataSaved = (data: any) => {
     console.log("🔷 handleClientDataSaved called with data:", data);
+    
+    // CRITICAL FIX: First set the step, then update the client data
+    // This ensures the navigation happens first
+    console.log("🔷 STEP 1: Directly setting currentStep to 'entities'");
+    setCurrentStep("entities");
+    
+    // Now update the client data after setting the step
+    console.log("🔷 STEP 2: Updating client data");
     setClientData(data);
     
-    // IMPORTANT: Directly set the current step instead of calling handleNext
-    // This ensures we jump to the next step immediately without relying on state updates
-    console.log("🔷 Directly setting currentStep to 'entities'");
+    // Add a forced state check
+    setTimeout(() => {
+      console.log("🔷 STEP 3: Verification - Current step should be 'entities':", currentStep);
+      if (currentStep !== "entities") {
+        console.log("🔷 STEP 4: Forcing step to 'entities' as backup");
+        setCurrentStep("entities");
+      }
+    }, 100);
     
-    // Directly set to the entities step instead of trying to calculate it
-    setCurrentStep("entities");
-    console.log("🔷 Current step set to: entities");
+    console.log("🔷 handleClientDataSaved completed");
   };
   
   // Handle entity data from EntityManagementCard
@@ -131,8 +142,12 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // If we have client data and we're on the first step, auto-advance
     if (clientData && currentStep === "client") {
       console.log("Auto-advancing due to clientData change while on client step");
-      // *** IMPORTANT: This might be causing a double-advance, commenting out for now ***
-      // handleNext();
+      // CRITICAL FIX: This effect might be interfering with the direct step change in handleClientDataSaved
+      // Let's make this effect work with the explicit navigation
+      setTimeout(() => {
+        console.log("Setting current step to entities from useEffect");
+        setCurrentStep("entities");
+      }, 50);
     }
   }, [clientData]);
   
