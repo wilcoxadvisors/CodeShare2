@@ -194,10 +194,18 @@ export default function EntityManagementCard({
       // Log the complete entity data
       console.log("Creating entity with data:", cleanedData);
       
-      return await apiRequest(endpoint, {
+      // Make API request and parse the JSON response
+      const response = await apiRequest(endpoint, {
         method: 'POST',
         data: cleanedData
       });
+      
+      // Parse the response JSON
+      const jsonData = await response.json();
+      console.log("Entity creation API response:", jsonData);
+      
+      // Return the entity data from the response
+      return jsonData.data;
     },
     onSuccess: (response) => {
       console.log("Entity created successfully:", response);
@@ -312,10 +320,18 @@ export default function EntityManagementCard({
 
       console.log("Updating entity with data:", cleanedData);
       
-      return await apiRequest(endpoint, {
+      // Make API request and parse the JSON response
+      const response = await apiRequest(endpoint, {
         method: 'PUT',
         data: cleanedData
       });
+      
+      // Parse the response JSON
+      const jsonData = await response.json();
+      console.log("Entity update API response:", jsonData);
+      
+      // Return the entity data from the response
+      return jsonData.data;
     },
     onSuccess: (response) => {
       toast({
