@@ -253,13 +253,30 @@ export default function EntityManagementCard({
         
         console.log("DEBUG: Adding entity to setupEntities:", entityData);
         
+        // First update the state
         setSetupEntities(prev => {
           // Check if the entity is already in the list
           const exists = prev.some(e => e.id === entityData.id);
-          if (exists) {
-            return prev.map(e => e.id === entityData.id ? entityData : e); // Update it
+          
+          // Create the new entities array
+          const updatedEntities = exists 
+            ? prev.map(e => e.id === entityData.id ? entityData : e) // Update it
+            : [...prev, entityData]; // Add it if it's new
+          
+          // CRITICAL FIX: Update session storage immediately
+          try {
+            const savedData = sessionStorage.getItem('setupData') || '{}';
+            const parsedData = JSON.parse(savedData);
+            sessionStorage.setItem('setupData', JSON.stringify({
+              ...parsedData,
+              entityData: updatedEntities
+            }));
+            console.log("Entity form reset to default values, entities preserved", {});
+          } catch (error) {
+            console.error("Failed to save entity to sessionStorage:", error);
           }
-          return [...prev, entityData]; // Add it if it's new
+          
+          return updatedEntities;
         });
       }
       
@@ -376,7 +393,23 @@ export default function EntityManagementCard({
         console.log("DEBUG: Updating entity in setupEntities:", entityData);
         
         setSetupEntities(prev => {
-          return prev.map(e => e.id === currentEntityId ? entityData : e);
+          // Create updated entities array
+          const updatedEntities = prev.map(e => e.id === currentEntityId ? entityData : e);
+          
+          // CRITICAL FIX: Update session storage with updated entity
+          try {
+            const savedData = sessionStorage.getItem('setupData') || '{}';
+            const parsedData = JSON.parse(savedData);
+            sessionStorage.setItem('setupData', JSON.stringify({
+              ...parsedData,
+              entityData: updatedEntities
+            }));
+            console.log("Entity updated in sessionStorage");
+          } catch (error) {
+            console.error("Failed to update entity in sessionStorage:", error);
+          }
+          
+          return updatedEntities;
         });
       }
       
@@ -538,6 +571,20 @@ export default function EntityManagementCard({
         // Convert IDs to numbers to ensure proper comparison
         const filtered = prev.filter(entity => Number(entity.id) !== Number(id));
         console.log("DEBUG: Filtered setupEntities after removal:", JSON.stringify(filtered));
+        
+        // CRITICAL FIX: Update session storage after entity deletion
+        try {
+          const savedData = sessionStorage.getItem('setupData') || '{}';
+          const parsedData = JSON.parse(savedData);
+          sessionStorage.setItem('setupData', JSON.stringify({
+            ...parsedData,
+            entityData: filtered
+          }));
+          console.log("ENTITY DELETE: Updated sessionStorage after entity removal");
+        } catch (error) {
+          console.error("Failed to update sessionStorage after entity removal:", error);
+        }
+        
         return filtered;
       });
       
@@ -629,10 +676,30 @@ export default function EntityManagementCard({
     }
   }, [entityData]);
 
-  // Component mount/unmount handler to ensure clean slate
+  // Component mount handler to ensure entities are loaded from sessionStorage
   useEffect(() => {
+    // CRITICAL FIX: Load entities from sessionStorage on mount
+    try {
+      const savedData = sessionStorage.getItem('setupData');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.entityData && parsedData.entityData.length > 0) {
+          console.log("ENTITY INIT: Found", parsedData.entityData.length, "entities in sessionStorage");
+          // Only set if we don't already have entities loaded (avoid overwriting)
+          if (!setupEntities || setupEntities.length === 0) {
+            console.log("ENTITY INIT: Loading entities from sessionStorage");
+            setSetupEntities(parsedData.entityData);
+          } else {
+            console.log("ENTITY INIT: Already have entities, not overwriting from sessionStorage");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading entities from sessionStorage:", error);
+    }
+    
+    // Cleanup when component unmounts
     return () => {
-      // Clean up when component unmounts
       setIsEditing(false);
       setCurrentEntityId(null);
     };
@@ -1019,25 +1086,46 @@ export default function EntityManagementCard({
         <Button 
           onClick={(e) => {
             e.preventDefault();
-            console.log("DEBUG: Continue button clicked, passing entities:", JSON.stringify(setupEntities));
+            console.log("ENTITY NAV: Continue button clicked, saving entities to session storage");
             
             try {
               // Create a deep copy of the entities to avoid reference issues
               const entitiesCopy = JSON.parse(JSON.stringify(setupEntities));
               
-              // Update parent entity data first
+              // CRITICAL FIX: Save to sessionStorage first for persistence
+              try {
+                // Get existing setup data if any
+                const savedData = sessionStorage.getItem('setupData');
+                const existingData = savedData ? JSON.parse(savedData) : {};
+                
+                // Update with entities and next step
+                const newData = {
+                  ...existingData,
+                  entityData: entitiesCopy,
+                  currentStep: "summary" // Pre-set the next step
+                };
+                
+                // Save to session storage
+                sessionStorage.setItem('setupData', JSON.stringify(newData));
+                console.log("ENTITY NAV: Saved entities to sessionStorage for persistence", entitiesCopy.length);
+              } catch (storageError) {
+                console.error("Failed to save entities to sessionStorage:", storageError);
+                // Continue anyway since we have other mechanisms
+              }
+              
+              // Update parent entity data
               if (setEntityData) {
-                console.log("DEBUG: Updating parent entity data before proceeding:", JSON.stringify(entitiesCopy));
+                console.log("ENTITY NAV: Updating parent entity data:", entitiesCopy.length, "entities");
                 setEntityData(entitiesCopy);
               }
               
-              // Continue to next step - use setTimeout to ensure state is updated first
+              // Wait to ensure state changes have propagated
               setTimeout(() => {
-                console.log("DEBUG: Proceeding to next step with entities:", JSON.stringify(entitiesCopy));
+                console.log("ENTITY NAV: Proceeding to next step with", entitiesCopy.length, "entities");
                 onNext(entitiesCopy);
-              }, 50);
+              }, 100);
             } catch (error) {
-              console.error("DEBUG: Error passing entity data to next step:", error);
+              console.error("ENTITY NAV: Error preparing entity data:", error);
               // If there's an error, still try to continue with original data
               toast({
                 title: "Warning",

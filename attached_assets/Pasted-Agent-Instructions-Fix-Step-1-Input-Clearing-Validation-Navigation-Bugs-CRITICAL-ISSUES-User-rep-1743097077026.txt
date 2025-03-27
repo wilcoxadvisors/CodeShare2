@@ -1,0 +1,82 @@
+Agent Instructions: Fix Step 1 Input Clearing & Validation/Navigation Bugs
+CRITICAL ISSUES: User reports Step 1 (ClientSetupCard) is still broken:
+
+Input fields clear immediately when typing begins.
+Navigation to Step 2 fails after clicking "Save & Continue".
+Goal: Fix both Step 1 bugs reliably.
+
+Phase 1: Fix Input Clearing Bug (Highest Priority)
+
+Focus: ClientSetupCard.tsx and the useFormState hook (client/src/hooks/useFormState.ts).
+Hypothesis: State within useFormState might be resetting incorrectly on re-renders or due to prop changes.
+Add Logging:
+Action: Add the detailed console.log statements inside useFormState.ts as specified in my previous instruction set (logging initialData, state changes in setData/setFieldValue, and calls to resetForm).
+Action: In ClientSetupCard.tsx, log the initialData prop being passed to useFormState on each render. Also, log any explicit calls to resetForm.
+Simulate & Report Logs:
+Action: Restart. Type characters into a Step 1 input field.
+Action: Copy the full sequence of "DEBUG useFormState" and any related "DEBUG ClientSetupCard" logs from the browser console.
+Report: Provide the exact log output.
+Analyze & Fix:
+Action: Based on the logs, pinpoint why the input state is clearing (e.g., resetForm called? initialData changing? Incorrect setData logic?). Apply a specific fix.
+Verify: Test typing again. Confirm inputs persist.
+Report: Explain the root cause and the fix. Confirm input stability.
+Phase 2: Fix Step 1 Navigation Bug (AFTER Phase 1 is Fixed)
+
+Focus: ClientSetupCard.tsx onSubmit handler and its interaction with react-hook-form validation and the parent's (SetupStepper.tsx) onNext prop.
+Hypothesis: Either form validation is failing silently, preventing onSubmit from calling onNext, OR onNext is called but the parent component fails to update the step.
+Add/Verify Logging & Validation Check:
+Action: Ensure ClientSetupCard.tsx uses react-hook-form correctly with the Zod resolver. Modify the submission logic to explicitly log validation status before attempting navigation.
+TypeScript
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { clientSetupSchema } from '@shared/validation'; // Assuming this is the correct schema
+
+// Inside ClientSetupCard component
+const { register, handleSubmit, formState: { errors, isValid } } = useForm({
+  resolver: zodResolver(clientSetupSchema), // Make sure resolver is used
+  mode: 'onChange', // Or 'onBlur'/'onSubmit'
+});
+
+// This function runs ONLY if react-hook-form validation passes
+const actualSubmitLogic = async (data) => {
+  console.log("DEBUG ClientSetupCard: actualSubmitLogic RUNNING (Validation Passed). Data:", data);
+  // ... (rest of logic: API call if needed, props.setClientData, props.onNext) ...
+  try {
+     console.log("DEBUG ClientSetupCard: Calling props.setClientData...");
+     props.setClientData(data); // Ensure data is passed if needed
+
+     console.log("DEBUG ClientSetupCard: Calling props.onNext...");
+     props.onNext(); // Trigger navigation
+     console.log("DEBUG ClientSetupCard: props.onNext finished.");
+  } catch(e) {
+     console.error("DEBUG ClientSetupCard: Error during setClientData or onNext", e);
+  }
+};
+
+// Modify the button or add logging around the form submission itself
+const triggerSubmit = () => {
+   console.log("DEBUG ClientSetupCard: Submit button clicked. Form isValid:", isValid, "Errors:", errors);
+   // RHF's handleSubmit will call actualSubmitLogic only if validation passes
+   // The form tag should look like: <form onSubmit={handleSubmit(actualSubmitLogic)}>
+}
+// Add onClick={triggerSubmit} to your "Save & Continue" button
+// Make sure your form tag has: <form onSubmit={handleSubmit(actualSubmitLogic)}>...</form>
+Action: Ensure the parent component (SetupStepper.tsx)'s function passed as onNext still looks simple, like this:
+TypeScript
+
+const handleNext = useCallback(() => {
+  console.log(`DEBUG SetupStepper: handleNext called. Current step: ${activeStep}. Setting activeStep to ${activeStep + 1}`);
+  setActiveStep(activeStep + 1);
+}, [activeStep, setActiveStep]);
+Test with Valid Data & Report Logs:
+Action: Restart. Fill all required fields in Step 1 (name, legalName, industry) with valid data according to clientSetupSchema. Click "Save & Continue".
+Action: Copy the "DEBUG" logs from the console.
+Report: Provide the logs. Does the actualSubmitLogic RUNNING log appear? Does the DEBUG SetupStepper: handleNext called... log appear? Does navigation to Step 2 happen?
+Analyze & Fix:
+If actualSubmitLogic doesn't run: Validation is failing. Check the errors log. Ensure the UI allows entering valid data that passes the Zod schema.
+If actualSubmitLogic runs but handleNext doesn't: The props.onNext() call in ClientSetupCard is failing or not reached. Check for errors after the API call.
+If handleNext runs but navigation fails: The issue is in SetupStepper's state update (setActiveStep) or conditional rendering logic.
+Action: Apply the specific fix based on the logs.
+Verify: Test Step 1 submission again. Confirm navigation to Step 2 works reliably.
+Report: Explain the final fix and confirm Step 1 is stable (both inputs and navigation).
