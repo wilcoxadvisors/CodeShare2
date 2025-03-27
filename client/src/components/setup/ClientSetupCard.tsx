@@ -90,44 +90,47 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
     setIsSubmitting(true);
     try {
       console.log("DEBUG: ClientSetupCard onSubmit triggered.");
-      // Validation check
+      
+      // Validation check (explicitly await to ensure it completes)
       const isValid = await form.trigger();
       console.log(`DEBUG: ClientSetupCard form validation result: ${isValid}`);
       
       if (!isValid) {
         console.log("DEBUG: ClientSetupCard validation failed, stopping.");
+        setIsSubmitting(false);
         return;
       }
       
       console.log("DEBUG: ClientSetupCard validation passed.");
-      console.log("🔶 Client setup form submitted with data:", data);
+      console.log("DEBUG: Client setup form submitted with data:", data);
       
-      // Save the data to the parent component state
-      console.log("DEBUG: ClientSetupCard calling setClientData prop with:", data);
+      // CRITICAL FIX: Save the data to the parent component state
+      // This must be done BEFORE calling onNext, so parent has the data when step changes
+      console.log("DEBUG: ClientSetupCard calling setClientData prop FIRST with:", data);
       setClientData(data);
-      console.log("🔶 setClientData called with:", data);
       
       // Log fields explicitly for debugging
-      console.log(`Client name: ${data.name}`);
-      console.log(`Legal name: ${data.legalName}`);
-      console.log(`Industry: ${data.industry}`);
+      console.log(`DEBUG: Client name: ${data.name}`);
+      console.log(`DEBUG: Legal name: ${data.legalName}`);
+      console.log(`DEBUG: Industry: ${data.industry}`);
       
+      // Only show toast after data is validated and saved
       toast({
         title: "Success",
         description: "Client information saved successfully.",
       });
       
-      // Move to the next step with data
-      console.log("🔶 About to call onNext with data...");
-      console.log("DEBUG: ClientSetupCard calling onNext prop...");
+      // CRITICAL FIX: Ensure all async operations are complete before proceeding
+      // Small delay to ensure state updates have propagated
+      await new Promise(resolve => setTimeout(resolve, 50));
       
-      // Important: Client creation is handled implicitly in the system
-      // When creating entities in the next step, they'll be associated with a client
-      // which will be created on-demand if not present
+      // CRITICAL FIX: Now that data is saved, proceed to the next step
+      console.log("DEBUG: Step 1 onSubmit completed, calling onNext...");
       
       if (onNext) {
+        // Explicitly pass data to onNext to ensure it has access to latest values
         onNext(data);
-        console.log("DEBUG: ClientSetupCard onNext prop called.");
+        console.log("DEBUG: ClientSetupCard onNext completed successfully.");
       } else {
         console.error("🔴 onNext function is not defined!");
       }

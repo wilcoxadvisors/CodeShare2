@@ -34,102 +34,28 @@ interface SetupStepperProps {
   onComplete?: () => void;
 }
 
-// CRITICAL FIX: Storage keys for localStorage persistence
-const STORAGE_KEYS = {
-  CURRENT_STEP: "setup_current_step",
-  CLIENT_DATA: "setup_client_data",
-  ENTITY_DATA: "setup_entity_data"
-};
-
 /**
  * Setup stepper component that guides users through the onboarding process
  */
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
-  // CRITICAL DEBUG: Tracking component instance ID to detect remounting
+  // DEBUG: Tracking component instance ID to detect remounting
   const instanceId = useRef<string>(`setup-${Math.random().toString(36).substr(2, 9)}`);
   console.log(`DEBUG: SetupStepper INITIALIZING - instance ${instanceId.current}`);
+  
+  // Use a ref to store step change info for debugging
+  const stepChangeRef = useRef<{from: string, to: string, timestamp: number} | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  // Initialize state either from localStorage or with defaults
-  const [currentStep, setCurrentStep] = useState<string>(() => {
-    try {
-      const savedStep = localStorage.getItem(STORAGE_KEYS.CURRENT_STEP);
-      console.log(`DEBUG: Retrieved saved step from localStorage: ${savedStep}`);
-      return savedStep || "client";
-    } catch (error) {
-      console.error("Failed to retrieve step from localStorage:", error);
-      return "client";
-    }
-  });
-  
-  const [clientData, setClientData] = useState<any>(() => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEYS.CLIENT_DATA);
-      console.log(`DEBUG: Retrieved saved client data from localStorage: ${savedData ? "exists" : "none"}`);
-      return savedData ? JSON.parse(savedData) : null;
-    } catch (error) {
-      console.error("Failed to retrieve client data from localStorage:", error);
-      return null;
-    }
-  });
-  
-  const [entityData, setEntityData] = useState<any[]>(() => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEYS.ENTITY_DATA);
-      console.log(`DEBUG: Retrieved saved entity data from localStorage: ${savedData ? "exists" : "none"}`);
-      return savedData ? JSON.parse(savedData) : [];
-    } catch (error) {
-      console.error("Failed to retrieve entity data from localStorage:", error);
-      return [];
-    }
-  });
-  
+  const [currentStep, setCurrentStep] = useState<string>("client");
+  const [clientData, setClientData] = useState<any>(null);
+  const [entityData, setEntityData] = useState<any[]>([]);
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
-  
-  // CRITICAL FIX: Persist state to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      console.log(`DEBUG: Persisting current step to localStorage: ${currentStep}`);
-      localStorage.setItem(STORAGE_KEYS.CURRENT_STEP, currentStep);
-    } catch (error) {
-      console.error("Failed to save current step to localStorage:", error);
-    }
-  }, [currentStep]);
-  
-  useEffect(() => {
-    if (clientData) {
-      try {
-        console.log(`DEBUG: Persisting client data to localStorage`);
-        localStorage.setItem(STORAGE_KEYS.CLIENT_DATA, JSON.stringify(clientData));
-      } catch (error) {
-        console.error("Failed to save client data to localStorage:", error);
-      }
-    }
-  }, [clientData]);
-  
-  useEffect(() => {
-    if (entityData.length > 0) {
-      try {
-        console.log(`DEBUG: Persisting entity data to localStorage: ${entityData.length} entities`);
-        localStorage.setItem(STORAGE_KEYS.ENTITY_DATA, JSON.stringify(entityData));
-      } catch (error) {
-        console.error("Failed to save entity data to localStorage:", error);
-      }
-    }
-  }, [entityData]);
   
   // Initialize state only once when component is mounted
   useEffect(() => {
     // Track mounting/unmounting for debugging
     console.log(`DEBUG: SetupStepper MOUNTED - instance ${instanceId.current}`);
-    
-    // Check for inconsistent state and ensure step is set correctly
-    if (clientData && currentStep === "client") {
-      console.log(`DEBUG: Found client data but step is still 'client', updating to 'entities'`);
-      setCurrentStep("entities");
-    }
     
     // Return cleanup function to track unmounting
     return () => {
@@ -140,16 +66,42 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Calculate current step index
   const currentStepIndex = SETUP_STEPS.findIndex(step => step.id === currentStep);
   
+  // Wrapper to track step changes with extra debugging
+  const setCurrentStepWithTracking = (newStep: string) => {
+    console.log(`DEBUG: setCurrentStepWithTracking called - from ${currentStep} to ${newStep}`);
+    
+    // Store information about this step change
+    stepChangeRef.current = {
+      from: currentStep,
+      to: newStep,
+      timestamp: Date.now()
+    };
+    
+    // Actually update the step
+    setCurrentStep(newStep);
+    
+    // Verify the change in a short while
+    setTimeout(() => {
+      console.log(`DEBUG: Verifying step change to ${newStep}, current step is ${currentStep}`);
+      if (currentStep !== newStep) {
+        console.log(`DEBUG: WARNING - Step change verification failed! Expected ${newStep}, found ${currentStep}`);
+        // Don't auto-retry here, just log the failure
+      } else {
+        console.log(`DEBUG: Step change to ${newStep} verified successfully`);
+      }
+    }, 100);
+  };
+  
   // Handler to move to the next step
   const handleNext = () => {
     const nextIndex = currentStepIndex + 1;
-    console.log("handleNext called - current step:", currentStep, "currentStepIndex:", currentStepIndex, "nextIndex:", nextIndex);
+    console.log(`DEBUG: handleNext called - current step: ${currentStep}, currentStepIndex: ${currentStepIndex}, nextIndex: ${nextIndex}`);
     if (nextIndex < SETUP_STEPS.length) {
       const nextStepId = SETUP_STEPS[nextIndex].id;
-      console.log(`Moving to next step: ${nextStepId}`);
-      setCurrentStep(nextStepId);
+      console.log(`DEBUG: Moving to next step: ${nextStepId}`);
+      setCurrentStepWithTracking(nextStepId);
     } else {
-      console.log("At final step, setting setupComplete");
+      console.log("DEBUG: At final step, setting setupComplete");
       setSetupComplete(true);
     }
   };
@@ -157,38 +109,36 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Handler to move to the previous step
   const handleBack = () => {
     const prevIndex = currentStepIndex - 1;
-    console.log("handleBack called - current step:", currentStep, "currentStepIndex:", currentStepIndex, "prevIndex:", prevIndex);
+    console.log(`DEBUG: handleBack called - current step: ${currentStep}, currentStepIndex: ${currentStepIndex}, prevIndex: ${prevIndex}`);
     if (prevIndex >= 0) {
       const prevStepId = SETUP_STEPS[prevIndex].id;
-      console.log(`Moving to previous step: ${prevStepId}`);
+      console.log(`DEBUG: Moving to previous step: ${prevStepId}`);
       
       // IMPORTANT: Keep the entityData when navigating back from summary to entities
       // or from entities to client
-      console.log(`Preserving entity data when going back: ${entityData.length} entities`);
+      console.log(`DEBUG: Preserving entity data when going back: ${entityData.length} entities`);
       
       // Just change the step without clearing entity data
-      setCurrentStep(prevStepId);
+      setCurrentStepWithTracking(prevStepId);
     } else {
-      console.log("Already at first step, can't go back");
+      console.log("DEBUG: Already at first step, can't go back");
     }
   };
   
   // Handle client data from ClientSetupCard 
   const handleClientDataSaved = (data: any) => {
-    console.log(`DEBUG: Parent (instance ${instanceId.current}) handleClientDataSaved received:`, data);
-    console.log(`DEBUG: Parent current step BEFORE update: ${currentStep}`);
+    console.log(`DEBUG: handleClientDataSaved called with data`);
+    console.log(`DEBUG: Current step BEFORE update: ${currentStep}`);
     
     try {
-      // CRITICAL FIX: Immediately save to localStorage before any state updates
-      // This ensures we don't lose data if a remount happens during state updates
-      localStorage.setItem(STORAGE_KEYS.CLIENT_DATA, JSON.stringify(data));
-      localStorage.setItem(STORAGE_KEYS.CURRENT_STEP, "entities");
-      console.log(`DEBUG: Saved client data and step='entities' directly to localStorage`);
-      
-      // Now update React state
-      console.log(`DEBUG: Updating React state for clientData and currentStep`);
+      // CRITICAL FIX: First set client data, then update the step
+      // Do the client data update first
+      console.log(`DEBUG: Setting clientData`);
       setClientData(data);
-      setCurrentStep("entities");
+      
+      // Then update the step - with a direct function call to ensure they happen in order
+      console.log(`DEBUG: Step 1 onSubmit completed, calling setCurrentStepWithTracking to 'entities'...`);
+      setCurrentStepWithTracking("entities");
     } catch (error) {
       console.error(`DEBUG: Error in handleClientDataSaved:`, error);
     }
@@ -196,45 +146,30 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // Handle entity data from EntityManagementCard
   const handleEntityDataSaved = (entities: any[]) => {
-    console.log("🔷 handleEntityDataSaved called with entities:", entities);
+    console.log("DEBUG: handleEntityDataSaved called with entities:", entities.length);
     
     try {
-      // CRITICAL FIX: Immediately save to localStorage before any state updates
-      localStorage.setItem(STORAGE_KEYS.ENTITY_DATA, JSON.stringify(entities));
-      localStorage.setItem(STORAGE_KEYS.CURRENT_STEP, "summary");
-      console.log(`DEBUG: Saved entity data and step='summary' directly to localStorage`);
-      
-      // Now update React state
+      // CRITICAL FIX: First set entity data, then update the step
+      console.log(`DEBUG: Setting entityData (${entities.length} entities)`);
       setEntityData(entities);
-      setCurrentStep("summary");
-      console.log("🔷 Updated React state: entityData and currentStep='summary'");
+      
+      // Then update the step
+      console.log(`DEBUG: Calling setCurrentStepWithTracking to 'summary'`);
+      setCurrentStepWithTracking("summary");
     } catch (error) {
       console.error(`DEBUG: Error in handleEntityDataSaved:`, error);
     }
   };
   
-  // When client data changes, run verification to ensure consistency
+  // CRITICAL FIX: Monitor client data changes to update UI debug info
   useEffect(() => {
-    console.log("DEBUG: State change detected - currentStep:", currentStep, "clientData:", !!clientData);
-    
-    // Ensure we're on the correct step based on data availability
-    if (clientData && currentStep === "client") {
-      console.log("DEBUG: Inconsistent state detected - have client data but on client step");
-      setCurrentStep("entities");
-    }
-  }, [clientData, currentStep]);
+    console.log(`DEBUG: clientData changed: ${clientData ? 'exists' : 'null'}`);
+  }, [clientData]);
   
-  // Final component cleanup on unmount - consider removing localStorage data on complete
+  // CRITICAL FIX: Monitor step changes to update UI debug info
   useEffect(() => {
-    return () => {
-      if (setupComplete) {
-        console.log("DEBUG: Setup complete, clearing localStorage data");
-        localStorage.removeItem(STORAGE_KEYS.CLIENT_DATA);
-        localStorage.removeItem(STORAGE_KEYS.ENTITY_DATA);
-        localStorage.removeItem(STORAGE_KEYS.CURRENT_STEP);
-      }
-    };
-  }, [setupComplete]);
+    console.log(`DEBUG: currentStep changed to: ${currentStep}`);
+  }, [currentStep]);
   
   return (
     <div className="my-8">
@@ -328,11 +263,6 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 onFinish={() => {
                   // Complete the setup and close the dialog
                   setSetupComplete(true);
-                  
-                  // Clean up localStorage on completion
-                  localStorage.removeItem(STORAGE_KEYS.CLIENT_DATA);
-                  localStorage.removeItem(STORAGE_KEYS.ENTITY_DATA);
-                  localStorage.removeItem(STORAGE_KEYS.CURRENT_STEP);
                   
                   // Call the onComplete callback if provided
                   if (onComplete) {

@@ -1,0 +1,40 @@
+Agent Instructions: Revert localStorage Fix & Re-Debug Step 1 Navigation
+ISSUE: The previous fix using localStorage (Checkpoint 6fc524fd) allowed navigation past Step 1 but introduced new bugs (broken "Use Client Data" button, entities not appearing in Step 2 list).
+
+Goal:
+
+Revert the problematic localStorage implementation.
+Re-debug and fix the original issue preventing reliable navigation from ClientSetupCard.tsx (Step 1) to the next step, ensuring other functionality is not broken.
+Actions:
+
+Revert Code:
+Action: Roll back the changes made in client/src/components/setup/SetupStepper.tsx during Checkpoint 6fc524fd. Return to the code state from Checkpoint 760f1e5d (which fixed the syntax error but didn't solve the navigation) or the state immediately before the localStorage logic was added. Remove all localStorage saving/loading logic related to the stepper state.
+Report: Confirm that the localStorage changes have been reverted.
+Re-Debug Step 1 Navigation (ClientSetupCard & Parent Stepper):
+Focus: The goal is to ensure that after successfully submitting the Step 1 form, the activeStep state in the parent (SetupStepper or Dashboard) reliably updates to 1.
+Examine ClientSetupCard.tsx onSubmit:
+Ensure any asynchronous operations (like an API call to create the client using createClientMutation.mutateAsync or similar) are fully completed using await before proceeding.
+Crucially: Ensure the onNext() prop function is called only once and after all necessary data processing/saving for Step 1 is successfully finished.
+Add Log: Add console.log("DEBUG: Step 1 onSubmit completed, calling onNext..."); right before calling onNext().
+Examine Parent Handler for onNext (SetupStepper.tsx or Dashboard.tsx):
+Locate the function passed as onNext (e.g., handleNext).
+Simplify: Make sure this function's primary responsibility is to update the step.
+Add Logs:
+TypeScript
+
+const handleNext = () => {
+  console.log(`DEBUG: handleNext called. Current step: ${activeStep}`);
+  const nextStepIndex = activeStep + 1;
+  console.log(`DEBUG: Calling setActiveStep(${nextStepIndex})`);
+  setActiveStep(nextStepIndex);
+};
+Separate State Updates: If client data saving (setClientData) was happening in the same handler as setActiveStep, try separating them. Ensure setClientData happens before onNext is called in ClientSetupCard if possible, or ensure it doesn't interfere with setActiveStep.
+Test Step 1 Navigation:
+Restart the application.
+Simulate: Log in, open the "Add Client" modal, fill Step 1 with valid data, and click "Save & Continue".
+Monitor Logs: Check the browser console for the "DEBUG:" logs added above.
+Verify: Does the UI reliably navigate to Step 2? Does the "Use Client Data" button still work? (We'll verify the Step 2 entity list separately later).
+Report:
+Confirm the revert was done.
+Provide the console log output from the successful Step 1 submission and navigation.
+State clearly whether navigation to Step 2 is now working reliably without the localStorage code and without breaking the "Use Client Data" button.
