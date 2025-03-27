@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle } from "lucide-react";
@@ -70,9 +70,18 @@ interface Entity {
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const instanceId = useRef(Math.random().toString(36).substring(2, 8)).current; // Unique ID per instance
   
-  // DRASTIC SIMPLIFICATION: Initialize states with simple values
-  console.log("DEBUG SetupStepper: Mounting/Rendering");
+  console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering START`);
+  
+  // Add lifecycle monitoring
+  useEffect(() => {
+    console.log(`DEBUG SetupStepper: Instance ${instanceId} MOUNTED`);
+    return () => {
+      // THIS IS THE CRITICAL LOG!
+      console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! State will be lost.`);
+    };
+  }, [instanceId]); // Empty dependency array means run on mount, cleanup on unmount
   
   // Use local storage to persist state across remounts
   const [activeStep, setActiveStep] = useState<number>(() => {
@@ -252,6 +261,9 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       onComplete();
     }
   }, [clientData, setupEntities, onComplete]);
+  
+  // Log at the end of the render
+  console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering END. Current activeStep: ${activeStep}`);
   
   return (
     <div className="my-8">

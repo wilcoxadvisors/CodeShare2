@@ -1325,7 +1325,7 @@ interface AdminDashboardData {
                                 <div className="py-4">
                                   {isAddClientDialogOpen && (
                                     <SetupStepper 
-                                      key={Date.now()} // Add a unique key to force full remount and reset
+                                      key="setup-stepper" // Use a stable key to prevent remounting
                                       onComplete={async () => {
                                         console.log("Dashboard: Setup complete callback triggered");
                                         

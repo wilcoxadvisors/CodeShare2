@@ -1,0 +1,66 @@
+Agent Instructions: STOP - Debug SetupStepper Remounting Issue
+CRITICAL ISSUE: Evidence strongly suggests the SetupStepper component is unmounting and remounting unexpectedly, causing all internal state (activeStep, clientData, setupEntities) to reset. This is likely the root cause of the navigation failures, input clearing, and incorrect initial step issues.
+
+Goal: Identify why SetupStepper is remounting and fix the parent component's rendering logic to prevent it.
+
+Actions:
+
+Identify Parent Component:
+Action: Search the codebase to find where the <SetupStepper ... /> component is being rendered. This is most likely in client/src/pages/Dashboard.tsx or a related layout component.
+Report: State the file and component where SetupStepper is used.
+Investigate Parent's Rendering Logic:
+Action: Examine the rendering code in the parent component identified in Step 1. Look for:
+Conditional Rendering: Is SetupStepper rendered inside a conditional block (e.g., {isOpen && <SetupStepper .../>} or someState ? <SetupStepper .../> : null)? If so, does the condition change in a way that causes SetupStepper to be removed from the DOM and then added back?
+Changing Keys: Does the <SetupStepper ... /> element have a key prop that changes frequently or unnecessarily?
+Component Instantiation: Is the parent component potentially creating a new instance of SetupStepper on every render instead of updating the existing one? (Less common in standard functional components, but possible with incorrect patterns).
+Add Mount/Unmount Logging to SetupStepper.tsx:
+Action: Add the following logs inside SetupStepper.tsx to definitively track its lifecycle:
+TypeScript
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+// ... other imports ...
+
+const SetupStepper = ({ onComplete, onCancel }) => {
+  const instanceId = useRef(Math.random()).current; // Unique ID per instance
+  console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering START`);
+
+  // --- Your existing useState hooks ---
+  const [activeStep, setActiveStep] = useState(0);
+  // ... other state ...
+
+  useEffect(() => {
+    console.log(`DEBUG SetupStepper: Instance ${instanceId} MOUNTED`);
+    return () => {
+      // THIS IS THE CRITICAL LOG!
+      console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! State will be lost.`);
+    };
+  }, [instanceId]); // Empty dependency array means run on mount, cleanup on unmount
+
+  // --- Your existing useCallback handlers ---
+  // ... handleClientSave, handleEntityAdd, etc. ...
+
+  console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering END. Current activeStep: ${activeStep}`);
+
+  return (
+     // ... JSX ...
+  );
+};
+export default SetupStepper;
+Simulate & Report Logs:
+Action: Restart the application.
+Action: Perform the action that previously failed (e.g., fill Step 1 and click "Save & Continue").
+Action: Carefully observe the browser console logs. Specifically, look for the DEBUG SetupStepper: Instance ... UNMOUNTING! message immediately after you click the button or when the UI fails to navigate.
+Report:
+Confirm the file where SetupStepper is rendered.
+Describe how it's rendered (conditional? key?).
+Provide the sequence of "DEBUG SetupStepper" logs, highlighting if and when the "UNMOUNTING" message appears.
+Fix Remounting Cause:
+Action: Based on the parent's rendering logic and the logs, identify why it's remounting. Implement a fix in the parent component to prevent this. Common fixes include:
+Avoid Conditional Rendering that Unmounts: If SetupStepper is inside {condition && <SetupStepper />}, consider rendering it permanently but controlling its visibility via CSS (e.g., display: none) if needed, or ensure condition doesn't flicker unnecessarily.
+Ensure Stable Key: If it has a key, make sure the key is constant for the lifetime of the setup process.
+Lift State (If Necessary): If the condition causing the remount is based on state within the parent that shouldn't affect the stepper's existence, lift that state higher or refactor the parent.
+Report: Describe the fix applied to the parent component.
+Verify Fix (Crucial):
+Action: Restart. Repeat the simulation (submit Step 1).
+MUST DO: Check logs again. Does the "UNMOUNTING" log no longer appear? Does the activeStep state persist and correctly increment to 1 in the same instance logs?
+Report: Confirm whether the remounting issue is resolved and if Step 1 navigation now works correctly.
