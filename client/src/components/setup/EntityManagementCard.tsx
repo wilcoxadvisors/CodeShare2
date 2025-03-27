@@ -347,6 +347,11 @@ export default function EntityManagementCard({
       if (clientData && clientData.id) {
         cleanedData.clientId = clientData.id;
         console.log("Setting clientId in entity creation:", clientData.id);
+      } else {
+        // For setup flow, we're creating entities before the client has an ID
+        // Set a temporary value (will be replaced with actual client ID on final save)
+        cleanedData.clientId = -1; // Temporary value that indicates "setup flow entity"
+        console.log("SETUP FLOW: Using temporary clientId for setup flow:", cleanedData.clientId);
       }
       
       // Log the complete entity data
