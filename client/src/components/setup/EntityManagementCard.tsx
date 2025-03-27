@@ -449,6 +449,8 @@ export default function EntityManagementCard({
   // Update entity mutation
   const updateEntityMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: EntityFormValues }) => {
+      console.log("DEBUG: Starting entity update with form data:", data);
+      
       // Use admin endpoint if user is admin
       const endpoint = isAdmin ? `/api/admin/entities/${id}` : `/api/entities/${id}`;
       
@@ -457,16 +459,16 @@ export default function EntityManagementCard({
         data.ownerId = user.id;
       }
       
-      // Initialize with required fields
+      // Initialize with required fields - CRITICAL: Ensure name is preserved
       const cleanedData: any = {
-        name: data.name,
-        legalName: data.legalName,
+        name: data.name || "", // Critical fix: Always include name even if empty
+        legalName: data.legalName || data.name || "", // Fallback to name if legalName is missing
         entityType: data.entityType || 'llc',
         // Use our utility function to ensure industry is valid
         industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
-        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+        code: data.code || (data.name ? data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100) : "ENT" + Math.floor(Math.random() * 1000)),
         // Set default fiscal year values if updating
         fiscalYearStart: "01-01",
         fiscalYearEnd: "12-31",
@@ -474,6 +476,7 @@ export default function EntityManagementCard({
       };
         
       console.log("DEBUG: Industry value being sent to API in update:", data.industry);
+      console.log("DEBUG: Entity name being sent to API in update:", cleanedData.name);
 
       // Add optional fields only if they have values
       if (data.taxId) cleanedData.taxId = data.taxId;
@@ -492,11 +495,18 @@ export default function EntityManagementCard({
 
       console.log("Updating entity with data:", cleanedData);
       
-      // Make API request and parse the JSON response
-      const response = await apiRequest(endpoint, {
+      // Make direct fetch call instead of apiRequest
+      const response = await fetch(endpoint, {
         method: 'PUT',
-        data: cleanedData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cleanedData)
       });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update entity: ${response.statusText}`);
+      }
       
       // Parse the response JSON
       const jsonData = await response.json();
@@ -505,70 +515,65 @@ export default function EntityManagementCard({
       // Reset form with consistent defaults
       form.reset(getDefaultFormValues());
       
-      // Update the entity in setupEntities
-      if (response && currentEntityId) {
-        console.log("DEBUG: Update response structure:", JSON.stringify(response));
+      // Get the updated entity data
+      const respData = jsonData.data || jsonData;
+      
+      // Convert the response to a proper entity structure with required fields
+      const entityData = {
+        id: respData.id,
+        name: respData.name || "",
+        legalName: respData.legalName || "",
+        entityType: respData.entityType || "llc",
+        industry: ensureIndustryValue(respData.industry),
+        active: respData.active === undefined ? true : respData.active,
+        isActive: respData.isActive === undefined ? true : respData.isActive,
+        code: respData.code || "",
+        ...respData // Include any other fields from the response
+      };
+      
+      console.log("DEBUG: Updating entity in setupEntities:", entityData);
+      
+      // CRITICAL FIX: Better handling of entity updates with proper deep copying
+      setSetupEntities(prev => {
+        // Create a deep copy of the previous state to avoid reference issues
+        let prevCopy;
+        try {
+          prevCopy = JSON.parse(JSON.stringify(prev)) || [];
+        } catch (e: any) {
+          console.error("Failed to deep copy previous entities during update:", e);
+          prevCopy = [];
+        }
         
-        // Cast the response to any type to access dynamic properties
-        const respData = response as any;
+        // Create updated entities array with deep copies
+        const updatedEntities = prevCopy.map((e: any) => 
+          e.id === currentEntityId ? JSON.parse(JSON.stringify(entityData)) : {...e}
+        );
         
-        // Convert the response to a proper entity structure with required fields
-        const entityData = {
-          id: respData.id,
-          name: respData.name || "",
-          legalName: respData.legalName || "",
-          entityType: respData.entityType || "llc",
-          industry: ensureIndustryValue(respData.industry),
-          active: respData.active === undefined ? true : respData.active,
-          isActive: respData.isActive === undefined ? true : respData.isActive,
-          code: respData.code || "",
-          ...respData // Include any other fields from the response
-        };
+        console.log("DEBUG: Updated entity in setupEntities, now have", updatedEntities.length, "entities");
         
-        console.log("DEBUG: Updating entity in setupEntities:", entityData);
+        // CRITICAL FIX: Update parent component state with a fresh copy
+        if (setEntityData) {
+          // Create a completely fresh copy to avoid any shared references
+          const parentCopy = JSON.parse(JSON.stringify(updatedEntities));
+          console.log("ENTITY UPDATE: Updating parent with deep copied entity array:", parentCopy.length, "entities");
+          setEntityData(parentCopy);
+        }
         
-        // CRITICAL FIX: Better handling of entity updates with proper deep copying
-        setSetupEntities(prev => {
-          // Create a deep copy of the previous state to avoid reference issues
-          let prevCopy;
-          try {
-            prevCopy = JSON.parse(JSON.stringify(prev)) || [];
-          } catch (e: any) {
-            console.error("Failed to deep copy previous entities during update:", e);
-            prevCopy = [];
-          }
-          
-          // Create updated entities array with deep copies
-          const updatedEntities = prevCopy.map((e: any) => 
-            e.id === currentEntityId ? JSON.parse(JSON.stringify(entityData)) : {...e}
-          );
-          
-          console.log("DEBUG: Updated entity in setupEntities, now have", updatedEntities.length, "entities");
-          
-          // CRITICAL FIX: Update parent component state with a fresh copy
-          if (setEntityData) {
-            // Create a completely fresh copy to avoid any shared references
-            const parentCopy = JSON.parse(JSON.stringify(updatedEntities));
-            console.log("ENTITY UPDATE: Updating parent with deep copied entity array:", parentCopy.length, "entities");
-            setEntityData(parentCopy);
-          }
-          
-          // No longer using sessionStorage - parent component handles state persistence using localStorage
-          console.log("CRITICAL FIX: Using parent component state management with localStorage instead of sessionStorage");
-          
-          return updatedEntities;
-        });
-      }
+        // No longer using sessionStorage - parent component handles state persistence using localStorage
+        console.log("CRITICAL FIX: Using parent component state management with localStorage instead of sessionStorage");
+        
+        return updatedEntities;
+      });
       
       // Notify parent component of the updated entity
-      if (response) {
-        onEntityAdded(response);
-      }
+      onEntityAdded(entityData);
       
       // Global data refresh
       refetch();
       setIsEditing(false);
       setCurrentEntityId(null);
+      
+      return jsonData;
     },
     onError: (error: any) => {
       toast({
@@ -664,31 +669,50 @@ export default function EntityManagementCard({
     setCurrentEntityId(entity.id);
     
     // Log the entity data for debugging
-    console.log("Editing entity:", entity);
+    console.log("CRITICAL-DEBUG: Editing entity:", entity);
+    
+    // Deep clone the entity to prevent potential object reference issues
+    let entityClone;
+    try {
+      entityClone = JSON.parse(JSON.stringify(entity));
+    } catch (e) {
+      console.error("Failed to clone entity:", e);
+      entityClone = { ...entity };
+    }
+    
+    // Extra safety check for missing name field
+    if (!entityClone.name || entityClone.name === "") {
+      console.warn("CRITICAL-DEBUG: Entity has empty or missing name, using placeholder");
+      entityClone.name = entityClone.legalName || "Unnamed Entity";
+    }
     
     // CRITICAL FIX: Add more robust handling of entity properties
     // Ensure legalName has a value (fallback to name if missing)
-    const entityLegalName = entity.legalName || entity.name || "";
+    const entityLegalName = entityClone.legalName || entityClone.name || "";
     
-    console.log("EDIT ENTITY: Legal name for form:", entityLegalName);
+    console.log("CRITICAL-DEBUG: Entity name for form:", entityClone.name);
+    console.log("CRITICAL-DEBUG: Legal name for form:", entityLegalName);
     
-    // Reset form with entity data
-    form.reset(getDefaultFormValues({
-      name: entity.name || "",
+    // Reset form with entity data - carefully preserving the name field
+    const formValues = {
+      name: entityClone.name, // Critical fix: Directly use name without empty fallback
       legalName: entityLegalName, // Use safeguarded legal name value
-      taxId: entity.taxId || "",
-      entityType: entity.entityType || "llc",
-      industry: entity.industry || "other", // Ensure industry has a default value
-      address: entity.address || "",
-      phone: entity.phone || "",
-      email: entity.email || "",
-      ownerId: entity.ownerId || user?.id,
-      code: entity.code || ""
-    }));
+      taxId: entityClone.taxId || "",
+      entityType: entityClone.entityType || "llc",
+      industry: entityClone.industry || "other", // Ensure industry has a default value
+      address: entityClone.address || "",
+      phone: entityClone.phone || "",
+      email: entityClone.email || "",
+      ownerId: entityClone.ownerId || user?.id,
+      code: entityClone.code || ""
+    };
+    
+    console.log("CRITICAL-DEBUG: Form values being set:", formValues);
+    form.reset(formValues);
     
     // Store the client ID in the component state if available
-    if (entity.clientId) {
-      console.log("Entity has clientId:", entity.clientId);
+    if (entityClone.clientId) {
+      console.log("Entity has clientId:", entityClone.clientId);
       // We don't need to do anything special here, as the clientId will be passed from 
       // the parent component's clientData prop when updateEntityMutation is called
     }
