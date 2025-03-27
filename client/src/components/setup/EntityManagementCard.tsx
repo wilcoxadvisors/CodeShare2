@@ -153,12 +153,25 @@ export default function EntityManagementCard({
   
   // Helper function to format industry value to human-readable form
   const getEntityIndustryLabel = (industryValue: string | null | undefined): string => {
+    console.log(`DEBUG getEntityIndustryLabel: Received value: "${industryValue}"`);
+    
     // If empty, null, or undefined, return formatted "Other" instead of "N/A"
-    if (!industryValue) return "Other";
+    if (!industryValue) {
+      console.log(`DEBUG getEntityIndustryLabel: Null or undefined value, returning "Other"`);
+      return "Other";
+    }
+    
+    // Special case for "other" value
+    if (industryValue.toLowerCase() === "other") {
+      console.log(`DEBUG getEntityIndustryLabel: Found "other" value, returning "Other"`);
+      return "Other";
+    }
     
     // Find the matching industry option
     const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
-    return industry ? industry.label : (industryValue === "other" ? "Other" : industryValue);
+    const label = industry ? industry.label : industryValue;
+    console.log(`DEBUG getEntityIndustryLabel: Returning label: "${label}"`);
+    return label;
   };
   
   // Helper function to create entity from client data

@@ -7,6 +7,7 @@ import EntityManagementCard from "./EntityManagementCard";
 import SetupSummaryCard from "./SetupSummaryCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 /**
  * Step configuration for the setup process
@@ -234,27 +235,117 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     setActiveStep(nextStep);
   }, [activeStep, setupEntities.length, toast]);
   
-  // Completion handler - clears localStorage when done
-  const handleCompleteSetup = useCallback(() => {
+  // Loading state
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Completion handler - saves to database then clears localStorage when done
+  const handleCompleteSetup = useCallback(async () => {
     console.log("DEBUG SetupStepper: handleCompleteSetup called.");
     console.log("DEBUG SetupStepper: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
     console.log("DEBUG SetupStepper: setupEntities:", setupEntities ? setupEntities.length : 'null', "entities");
     
-    // Clear localStorage items related to the setup
-    try {
-      localStorage.removeItem('setupActiveStep');
-      localStorage.removeItem('setupClientData');
-      localStorage.removeItem('setupEntities');
-      console.log("DEBUG SetupStepper: Cleared all setup data from localStorage");
-    } catch (e) {
-      console.warn("DEBUG SetupStepper: Error clearing localStorage:", e);
+    // Basic validation
+    if (!clientData || !setupEntities || setupEntities.length === 0) {
+       console.error("DEBUG SetupStepper: Cannot complete setup - missing client or entity data.");
+       toast({
+         title: "Cannot Complete Setup",
+         description: "Missing required client or entity data. Please go back and check your entries.",
+         variant: "destructive"
+       });
+       return;
     }
     
-    // Call onComplete callback
-    if (onComplete) {
-      onComplete();
+    // Set loading state 
+    setIsSubmitting(true);
+    
+    try {
+      // 1. Save the client data via API
+      console.log("DEBUG SetupStepper: Attempting to save client via API...");
+      const response = await fetch('/api/admin/clients', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(clientData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save client: ${response.statusText}`);
+      }
+      
+      const savedClient = await response.json();
+      console.log("DEBUG SetupStepper: Client save API call successful. Response:", savedClient);
+
+      if (!savedClient || typeof savedClient !== 'object' || !savedClient.id) {
+        console.error("Invalid client response:", savedClient);
+        throw new Error("Client ID was not returned after saving.");
+      }
+      const newClientId = savedClient.id;
+
+      // 2. Save the entities via API, associating with the new client ID
+      console.log(`DEBUG SetupStepper: Attempting to save ${setupEntities.length} entities for client ID ${newClientId}...`);
+      const entitySavePromises = setupEntities.map(entity => {
+        const entityPayload = { ...entity, clientId: newClientId };
+        console.log(`DEBUG SetupStepper: Saving entity: ${entity.name || 'New Entity'} with payload:`, entityPayload);
+        
+        return fetch('/api/admin/entities', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify(entityPayload),
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to save entity: ${response.statusText}`);
+          }
+          return response.json();
+        });
+      });
+
+      // Wait for all entity save calls to complete
+      const savedEntities = await Promise.all(entitySavePromises);
+      console.log("DEBUG SetupStepper: All entities save API calls successful. Responses:", savedEntities);
+      
+      // Show success toast
+      toast({
+        title: "Setup Complete",
+        description: "Client and entities have been saved successfully",
+      });
+
+      // 3. Clear localStorage items related to the setup
+      try {
+        localStorage.removeItem('setupActiveStep');
+        localStorage.removeItem('setupClientData');
+        localStorage.removeItem('setupEntities');
+        console.log("DEBUG SetupStepper: Cleared all setup data from localStorage");
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error clearing localStorage:", e);
+      }
+      
+      // Also clear session storage
+      try {
+        sessionStorage.removeItem('setupData');
+        console.log("DEBUG SetupStepper: Cleared all setup data from sessionStorage");
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error clearing sessionStorage:", e);
+      }
+      
+      // 4. Call onComplete callback to trigger dashboard refresh
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error: any) {
+      console.error("DEBUG SetupStepper: Error during final save API calls:", error);
+      // Show error toast
+      toast({
+        title: "Error Saving Data",
+        description: error.message || "Failed to save client or entity data.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [clientData, setupEntities, onComplete]);
+  }, [clientData, setupEntities, onComplete, toast, setIsSubmitting]);
   
   // Log at the end of the render
   console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering END. Current activeStep: ${activeStep}`);

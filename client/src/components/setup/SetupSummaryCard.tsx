@@ -19,12 +19,25 @@ const INDUSTRY_OPTIONS = [
 
 // Helper function to display industry consistently across the application
 const getIndustryLabel = (industryValue: string | null | undefined): string => {
+  console.log(`DEBUG getIndustryLabel: Received value: "${industryValue}"`);
+  
   // If empty, null, or undefined, return formatted "Other" instead of "N/A"
-  if (!industryValue) return "Other";
+  if (!industryValue) {
+    console.log(`DEBUG getIndustryLabel: Null or undefined value, returning "Other"`);
+    return "Other";
+  }
+  
+  // Special case for "other" value
+  if (industryValue.toLowerCase() === "other") {
+    console.log(`DEBUG getIndustryLabel: Found "other" value, returning "Other"`);
+    return "Other";
+  }
   
   // Find the matching industry option
   const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
-  return industry ? industry.label : (industryValue === "other" ? "Other" : industryValue);
+  const label = industry ? industry.label : industryValue;
+  console.log(`DEBUG getIndustryLabel: Returning label: "${label}"`);
+  return label;
 };
 
 interface SetupSummaryCardProps {
