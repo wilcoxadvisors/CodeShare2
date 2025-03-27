@@ -74,56 +74,139 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // DRASTIC SIMPLIFICATION: Initialize states with simple values
   console.log("DEBUG SetupStepper: Mounting/Rendering");
   
+  // Use local storage to persist state across remounts
   const [activeStep, setActiveStep] = useState<number>(() => {
-    console.log("DEBUG SetupStepper: Initializing activeStep state to 0");
-    return 0; // ALWAYS START AT STEP 0
+    console.log("DEBUG SetupStepper: Initializing activeStep state");
+    try {
+      const savedStep = localStorage.getItem('setupActiveStep');
+      if (savedStep) {
+        console.log(`DEBUG SetupStepper: Found saved step: ${savedStep}`);
+        return parseInt(savedStep, 10);
+      }
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error accessing localStorage for activeStep", e);
+    }
+    console.log("DEBUG SetupStepper: Using default step 0");
+    return 0;
   });
   
   const [clientData, setClientData] = useState<ClientData | null>(() => {
-    console.log("DEBUG SetupStepper: Initializing clientData state to null");
+    console.log("DEBUG SetupStepper: Initializing clientData state");
+    try {
+      const savedClientData = localStorage.getItem('setupClientData');
+      if (savedClientData) {
+        console.log("DEBUG SetupStepper: Found saved client data");
+        return JSON.parse(savedClientData);
+      }
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error accessing localStorage for clientData", e);
+    }
+    console.log("DEBUG SetupStepper: Using default null client data");
     return null;
   });
   
   const [setupEntities, setSetupEntities] = useState<Entity[]>(() => {
-    console.log("DEBUG SetupStepper: Initializing setupEntities state to []");
+    console.log("DEBUG SetupStepper: Initializing setupEntities state");
+    try {
+      const savedEntities = localStorage.getItem('setupEntities');
+      if (savedEntities) {
+        console.log("DEBUG SetupStepper: Found saved entities");
+        return JSON.parse(savedEntities);
+      }
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error accessing localStorage for setupEntities", e);
+    }
+    console.log("DEBUG SetupStepper: Using default empty entities array");
     return [];
   });
   
   // Create stable callback functions using useCallback
   const handleClientSave = useCallback((data: ClientData) => {
     console.log("DEBUG SetupStepper: handleClientSave received:", data);
+    
+    // First save data to localStorage
+    try {
+      localStorage.setItem('setupClientData', JSON.stringify(data));
+      console.log("DEBUG SetupStepper: Saved client data to localStorage");
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error saving to localStorage:", e);
+    }
+    
+    // Then update state
     setClientData(data);
-    // --- IMPORTANT: Update step AFTER data is set ---
+    
+    // Finally update step AFTER data is set
     const nextStep = 1;
     console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+    
+    // Save the new active step to localStorage
+    try {
+      localStorage.setItem('setupActiveStep', nextStep.toString());
+      console.log(`DEBUG SetupStepper: Saved active step ${nextStep} to localStorage`);
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+    }
+    
     setActiveStep(nextStep);
   }, []);
   
   const handleEntityAdd = useCallback((newEntity: Entity) => {
     console.log("DEBUG SetupStepper: handleEntityAdd received:", newEntity);
+    
     setSetupEntities(prev => {
       const newState = [...prev, newEntity];
       console.log("DEBUG SetupStepper: New setupEntities state:", newState);
+      
+      // Save updated entities to localStorage
+      try {
+        localStorage.setItem('setupEntities', JSON.stringify(newState));
+        console.log("DEBUG SetupStepper: Saved entities to localStorage");
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error saving entities to localStorage:", e);
+      }
+      
       return newState;
     });
   }, []);
   
   const handleEntityDelete = useCallback((entityId: number) => {
     console.log("DEBUG SetupStepper: handleEntityDelete called for ID:", entityId);
+    
     setSetupEntities(prev => {
       const newState = prev.filter(e => e.id !== entityId);
       console.log("DEBUG SetupStepper: New setupEntities state after delete:", newState);
+      
+      // Save updated entities to localStorage
+      try {
+        localStorage.setItem('setupEntities', JSON.stringify(newState));
+        console.log("DEBUG SetupStepper: Saved entities to localStorage after deletion");
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error saving entities to localStorage:", e);
+      }
+      
       return newState;
     });
   }, []);
   
   const handleBack = useCallback(() => {
     console.log(`DEBUG SetupStepper: handleBack called. Current: ${activeStep}. Going to ${activeStep - 1}`);
-    setActiveStep(prev => Math.max(0, prev - 1));
+    
+    const newStep = Math.max(0, activeStep - 1);
+    
+    // Save new step to localStorage
+    try {
+      localStorage.setItem('setupActiveStep', newStep.toString());
+      console.log(`DEBUG SetupStepper: Saved active step ${newStep} to localStorage during back navigation`);
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+    }
+    
+    setActiveStep(newStep);
   }, [activeStep]);
   
   const handleNextFromEntities = useCallback(() => {
     console.log(`DEBUG SetupStepper: handleNextFromEntities called. Current: ${activeStep}. Entities count: ${setupEntities.length}`);
+    
     if (setupEntities.length === 0) {
       console.warn("DEBUG SetupStepper: Blocked navigation - No entities added.");
       toast({
@@ -133,18 +216,38 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       });
       return;
     }
+    
     const nextStep = activeStep + 1;
     console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+    
+    // Save new step to localStorage
+    try {
+      localStorage.setItem('setupActiveStep', nextStep.toString());
+      console.log(`DEBUG SetupStepper: Saved active step ${nextStep} to localStorage during entity completion`);
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+    }
+    
     setActiveStep(nextStep);
   }, [activeStep, setupEntities.length, toast]);
   
-  // Simple completion handler
+  // Completion handler - clears localStorage when done
   const handleCompleteSetup = useCallback(() => {
     console.log("DEBUG SetupStepper: handleCompleteSetup called.");
     console.log("DEBUG SetupStepper: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
     console.log("DEBUG SetupStepper: setupEntities:", setupEntities ? setupEntities.length : 'null', "entities");
     
-    // Directly call onComplete callback without any session storage operations
+    // Clear localStorage items related to the setup
+    try {
+      localStorage.removeItem('setupActiveStep');
+      localStorage.removeItem('setupClientData');
+      localStorage.removeItem('setupEntities');
+      console.log("DEBUG SetupStepper: Cleared all setup data from localStorage");
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error clearing localStorage:", e);
+    }
+    
+    // Call onComplete callback
     if (onComplete) {
       onComplete();
     }

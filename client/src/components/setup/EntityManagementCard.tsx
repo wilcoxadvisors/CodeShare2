@@ -334,38 +334,14 @@ export default function EntityManagementCard({
           
           console.log("ENTITY CREATION: Adding to setupEntities and updating parent:", entityData);
           
-          // Update setupEntities state with the new entity
-          setSetupEntities(prev => {
-            // First make a deep copy of previous state
-            const prevCopy = prev ? [...prev] : [];
-            
-            // Add the new entity if it doesn't exist yet
-            const exists = prevCopy.some(e => e.id === entityData.id);
-            const updatedEntities = exists 
-              ? prevCopy.map(e => e.id === entityData.id ? entityData : e)
-              : [...prevCopy, entityData];
-              
-            console.log("ENTITY CREATION: Local state updated, now have", updatedEntities.length, "entities");
-            
-            // Update session storage with the updated entities
-            try {
-              const setupData = sessionStorage.getItem('setupData');
-              if (setupData) {
-                const parsedData = JSON.parse(setupData);
-                parsedData.entityData = updatedEntities;
-                sessionStorage.setItem('setupData', JSON.stringify(parsedData));
-              }
-            } catch (error) {
-              console.error("Failed to update sessionStorage:", error);
-            }
-            
-            // Also update parent state if the setter is available
-            if (setEntityData) {
-              setEntityData([...updatedEntities]);
-            }
-            
-            return updatedEntities;
-          });
+          // Simplified approach - directly use the onEntityAdded callback
+          console.log("ENTITY CREATION: New entity created:", entityData);
+          
+          // Call the parent's callback to add the entity (will update SetupStepper's state)
+          onEntityAdded(entityData);
+          
+          // No need to call setSetupEntities as we're now fully relying on
+          // the parent component's state, which will flow back to us via props
         }
       };
       
@@ -402,17 +378,8 @@ export default function EntityManagementCard({
               setEntityData(entitiesCopy);
             }
             
-            // Update session storage
-            try {
-              const setupData = sessionStorage.getItem('setupData') || '{}';
-              const parsedData = JSON.parse(setupData);
-              
-              parsedData.entityData = entitiesCopy;
-              sessionStorage.setItem('setupData', JSON.stringify(parsedData));
-              console.log("CRITICAL FIX 7.0: Updated session storage with fetched entities");
-            } catch (error) {
-              console.error("CRITICAL FIX 7.0: Error updating session storage:", error);
-            }
+            // No longer using sessionStorage - parent component handles state persistence using localStorage
+            console.log("CRITICAL FIX: Using parent component state management with localStorage instead of sessionStorage");
             
             // Notify parent component of the added entity
             if (response) {
@@ -575,25 +542,8 @@ export default function EntityManagementCard({
             setEntityData(parentCopy);
           }
           
-          // CRITICAL FIX: Save immediately to sessionStorage for safety
-          try {
-            const setupData = sessionStorage.getItem('setupData');
-            if (setupData) {
-              const parsedData = JSON.parse(setupData);
-              
-              // Create a complete fresh copy of the updated entities
-              const storageCopy = JSON.parse(JSON.stringify(updatedEntities));
-              
-              // Update the storage
-              parsedData.entityData = storageCopy;
-              
-              // Save back to sessionStorage
-              sessionStorage.setItem('setupData', JSON.stringify(parsedData));
-              console.log("CRITICAL FIX: Updated sessionStorage after entity update with", storageCopy.length, "entities");
-            }
-          } catch (error) {
-            console.error("CRITICAL ERROR: Failed to update sessionStorage during entity update:", error);
-          }
+          // No longer using sessionStorage - parent component handles state persistence using localStorage
+          console.log("CRITICAL FIX: Using parent component state management with localStorage instead of sessionStorage");
           
           return updatedEntities;
         });
