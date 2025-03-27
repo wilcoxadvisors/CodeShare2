@@ -88,7 +88,7 @@ export default function EntityManagementCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentEntityId, setCurrentEntityId] = useState<number | null>(null);
-  // Local copy of entities for management
+  // Use entities from props for local state (for backward compatibility)
   const [setupEntities, setSetupEntities] = useState<any[]>(entities || []);
   
   // Check if user is admin
@@ -740,15 +740,14 @@ export default function EntityManagementCard({
     }
     
     if (window.confirm("Are you sure you want to delete this entity?")) {
-      console.log("DEBUG EntityManagementCard: Deleting entity with ID:", id, typeof id);
-      console.log("DEBUG EntityManagementCard: Current setupEntities before deletion:", JSON.stringify(setupEntities));
+      console.log("DEBUG EntityManagementCard: Deleting entity with ID:", id);
       
       // Find the entity to make sure it exists
-      const entityToDelete = setupEntities.find(entity => entity.id === id);
+      const entityToDelete = entities.find(entity => entity.id === id);
       console.log("DEBUG EntityManagementCard: Entity to delete:", entityToDelete);
       
       if (!entityToDelete) {
-        console.error("DEBUG EntityManagementCard: Entity not found in setupEntities:", id);
+        console.error("DEBUG EntityManagementCard: Entity not found in entities array:", id);
         toast({
           title: "Error",
           description: "Entity not found. Please refresh and try again.",
@@ -757,19 +756,7 @@ export default function EntityManagementCard({
         return;
       }
       
-      // First update the local setupEntities state to ensure the UI updates immediately
-      setSetupEntities(prev => {
-        // Convert IDs to numbers to ensure proper comparison
-        const filtered = prev.filter(entity => Number(entity.id) !== Number(id));
-        console.log("DEBUG EntityManagementCard: Filtered setupEntities after removal, now have", filtered.length, "entities");
-        
-        return filtered;
-      });
-      
-      // Notify parent component of the deletion
-      onEntityDeleted(id);
-      
-      // Then call the API to actually delete it from the database if it's not a new entity (temp ID)
+      // Call the API to delete it from the database if it's not a new entity (temp ID)
       if (id > 0) {  // Only delete from database if it's a real entity with a positive ID
         console.log("DEBUG EntityManagementCard: Calling API to delete entity ID:", id);
         deleteEntityMutation.mutate(id);
@@ -777,33 +764,9 @@ export default function EntityManagementCard({
         console.log("DEBUG EntityManagementCard: Entity had temporary ID, not calling API");
       }
       
-      // CRITICAL FIX: Better handling of parent state update for delete
-      if (setEntityData) {
-        console.log("DEBUG: Updating parent component entity data for deletion");
-        
-        // Create a deep copy of setupEntities first
-        try {
-          const deepCopy = JSON.parse(JSON.stringify(
-            setupEntities.filter(entity => Number(entity.id) !== Number(id))
-          ));
-          
-          console.log("ENTITY DELETE: Deep copy for parent has", deepCopy.length, "entities");
-          setEntityData(deepCopy);
-          
-          // Also update sessionStorage directly as a safety measure
-          const setupData = sessionStorage.getItem('setupData');
-          if (setupData) {
-            const parsedData = JSON.parse(setupData);
-            parsedData.entityData = deepCopy;
-            sessionStorage.setItem('setupData', JSON.stringify(parsedData));
-            console.log("ENTITY DELETE: Updated sessionStorage with", deepCopy.length, "entities");
-          }
-        } catch (error) {
-          console.error("ENTITY DELETE: Error updating parent data:", error);
-          // Fallback with regular filter
-          setEntityData(setupEntities.filter(entity => Number(entity.id) !== Number(id)));
-        }
-      }
+      // Notify parent component of the deletion
+      console.log("DEBUG EntityManagementCard: Calling onEntityDeleted with ID:", id);
+      onEntityDeleted(id);
       
       toast({
         title: "Success",
@@ -948,6 +911,12 @@ export default function EntityManagementCard({
   useEffect(() => {
     console.log("ENTITY STATE: setupEntities updated, now has", setupEntities.length, "entities");
   }, [setupEntities]);
+  
+  // CRITICAL FIX: Sync with entities prop when it changes
+  useEffect(() => {
+    console.log("ENTITY SYNC: entities prop changed, updating local setupEntities", entities?.length);
+    setSetupEntities(entities || []);
+  }, [entities]);
 
   // Component mount handler for cleanup purposes
   useEffect(() => {
@@ -1217,7 +1186,7 @@ export default function EntityManagementCard({
             <div className="flex justify-center items-center p-8">
               <div key="loading-spinner" className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : setupEntities.length === 0 ? (
+          ) : entities.length === 0 ? (
             <div className="text-center py-8 border rounded-lg bg-muted/20">
               <p className="text-muted-foreground mb-4">
                 You haven't created any entities yet. Add your first entity above.
@@ -1294,47 +1263,12 @@ export default function EntityManagementCard({
       <CardFooter className="flex justify-between">
         <Button variant="outline" onClick={(e) => {
           e.preventDefault();
-          // Important: Also update parent entity data when going back
-          // This ensures entities aren't lost when navigating backward
-          console.log("DEBUG: Back button clicked, current entities:", JSON.stringify(setupEntities));
+          // Navigate back directly - entities are already handled by the parent
+          console.log("DEBUG: Back button clicked, current entities:", entities.length);
           
-          if (setEntityData) {
-            console.log("DEBUG: Preserving entity data when going back:", JSON.stringify(setupEntities));
-            
-            try {
-              // Create a deep copy of the entities to avoid reference issues
-              const entitiesCopy = JSON.parse(JSON.stringify(setupEntities));
-              console.log("DEBUG: Created deep copy of entities:", JSON.stringify(entitiesCopy));
-              
-              // Update parent state FIRST 
-              setEntityData(entitiesCopy);
-              
-              // Use a longer timeout to ensure state updates are fully processed
-              setTimeout(() => {
-                console.log("DEBUG: Calling onBack after preserving entities");
-                // Then call the onBack handler
-                if (onBack) {
-                  onBack();
-                }
-              }, 50); // Increased timeout to ensure state update completes
-            } catch (error) {
-              console.error("DEBUG: Error preserving entity data:", error);
-              // If there's an error, still allow navigation but warn user
-              toast({
-                title: "Warning",
-                description: "There was an issue preserving your entity data. You may need to re-add entities.",
-                variant: "destructive",
-              });
-              if (onBack) {
-                onBack();
-              }
-            }
-          } else {
-            // If setEntityData is not available, just call onBack directly
-            console.log("DEBUG: No setEntityData function available, calling onBack directly");
-            if (onBack) {
-              onBack();
-            }
+          if (onBack) {
+            console.log("DEBUG: Calling onBack directly");
+            onBack();
           }
         }}>
           Back
@@ -1342,130 +1276,17 @@ export default function EntityManagementCard({
         <Button 
           onClick={(e) => {
             e.preventDefault();
-            console.log("ENTITY NAV: Continue button clicked, saving entities to session storage");
+            console.log("ENTITY NAV: Continue button clicked");
             
-            try {
-              console.log("CRITICAL FIX 3.0: Continue button clicked, processing entities:", 
-                setupEntities?.length || 0, "entities");
-                
-              // Verify entities array is valid and each entity has minimal required fields
-              if (!setupEntities || !Array.isArray(setupEntities) || setupEntities.length === 0) {
-                throw new Error("No entities to continue with. Please create at least one entity.");
-              }
-              
-              // Create a deep copy with additional data validation
-              const entitiesCopy = JSON.parse(JSON.stringify(setupEntities.map((entity, index) => {
-                // Ensure each entity has an ID, even if it's temporary
-                const entityId = entity.id || -(index + 1); // Use negative ID for temp entities
-                
-                // Ensure each entity has minimal required fields
-                return {
-                  id: entityId,
-                  name: entity.name || "Unnamed Entity",
-                  legalName: entity.legalName || entity.name || "Unnamed Entity",
-                  entityType: entity.entityType || "llc",
-                  industry: entity.industry || "",
-                  active: true,
-                  clientId: clientData?.id || entity.clientId,
-                  // Copy all other fields from the original entity
-                  ...Object.fromEntries(
-                    Object.entries(entity)
-                      .filter(([key]) => !['__typename', 'createdAt', 'updatedAt'].includes(key))
-                  )
-                };
-              })));
-              
-              console.log("CRITICAL FIX 3.0: Created validated entity copy:", entitiesCopy.length);
-              
-              // CRITICAL FIX: Update our local entities state first
-              // This ensures complete ui consistency
-              setSetupEntities(entitiesCopy);
-              
-              // Now save to sessionStorage for persistence
-              try {
-                // Get existing setup data if any
-                const savedData = sessionStorage.getItem('setupData');
-                const existingData = savedData ? JSON.parse(savedData) : {};
-                
-                // Update with validated entities and next step
-                const newData = {
-                  ...existingData,
-                  clientData: clientData, // Include client data for safety
-                  entityData: entitiesCopy,
-                  currentStep: "summary" // Pre-set the next step
-                };
-                
-                // Save to session storage
-                sessionStorage.setItem('setupData', JSON.stringify(newData));
-                console.log("ENTITY NAV: Saved entities to sessionStorage for persistence", entitiesCopy.length);
-              } catch (storageError) {
-                console.error("Failed to save entities to sessionStorage:", storageError);
-                // Continue anyway since we have other mechanisms
-              }
-              
-              // Update parent entity data
-              if (setEntityData) {
-                console.log("ENTITY NAV: Updating parent entity data:", entitiesCopy.length, "entities");
-                setEntityData(entitiesCopy);
-              }
-              
-              // CRITICAL FIX: Complete rewrite of Continue button flow
-              // This is important for fixing entity persistence between steps
-              
-              // First update local storage for safety
-              console.log("ENTITY NAV: First saving entities to local storage", entitiesCopy.length, "entities");
-              
-              // Now, very carefully manage the state updates to ensure synchronization
-              if (setEntityData) {
-                // Update parent component's state with a fresh deep copy first
-                console.log("ENTITY NAV: Creating fresh deep copy for parent state update");
-                
-                // Create a completely detached copy 
-                const parentStateCopy = JSON.parse(JSON.stringify(entitiesCopy));
-                console.log("ENTITY NAV: Created parentStateCopy with", parentStateCopy.length, "entities");
-                
-                // First and most important - update parent state
-                console.log("ENTITY NAV: Calling setEntityData with fresh entity copy");
-                setEntityData(parentStateCopy);
-                
-                // Now use a two-phase approach with promises to ensure state updates complete
-                Promise.resolve().then(() => {
-                  console.log("ENTITY NAV: Promise phase 1 - state should be updating");
-                  
-                  // Create another completely fresh copy for navigation
-                  const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
-                  console.log("ENTITY NAV: Created navigationCopy with", navigationCopy.length, "entities");
-                  
-                  // Store a reference to navigationCopy in a higher scope
-                  const finalNavigationCopy = [...navigationCopy];
-                  
-                  // Use setTimeout instead of Promise chaining to avoid TypeScript error
-                  setTimeout(() => {
-                    console.log("ENTITY NAV: Final phase - calling onNext with", 
-                      finalNavigationCopy.length, "entities");
-                    
-                    // Finally call onNext with our navigation copy
-                    onNext();
-                  }, 100);
-                });
-              } else {
-                // Fallback if no setEntityData provided - much simpler path
-                console.log("ENTITY NAV: No setEntityData function, proceeding directly");
-                // Create a fresh copy for navigation
-                const navigationCopy = JSON.parse(JSON.stringify(entitiesCopy));
-                onNext();
-              }
-            } catch (error) {
-              console.error("ENTITY NAV: Error preparing entity data:", error);
-              // If there's an error, still try to continue with original data
-              toast({
-                title: "Warning",
-                description: "There was an issue processing your entity data. Please check entities on summary screen.",
-                variant: "destructive",
-              });
-              // Continue anyway
-              onNext();
+            // Simplify the flow - use the entities directly from props
+            if (setEntityData) {
+              // Pass the entities up to the parent component
+              setEntityData([...entities]);
             }
+            
+            // Since we've simplified the state management to use props directly,
+            // we can just call onNext immediately
+            onNext();
           }} 
           disabled={!canProceed}
         >

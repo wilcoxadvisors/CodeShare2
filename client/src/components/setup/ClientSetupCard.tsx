@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,8 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
 
 // Industry options
 const INDUSTRY_OPTIONS = [
@@ -57,31 +55,13 @@ interface ClientSetupCardProps {
 export default function ClientSetupCard({ onNext, setClientData, initialData }: ClientSetupCardProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Attempt to get data from session storage first (highest priority)
-  const getSavedClientData = () => {
-    try {
-      const savedData = sessionStorage.getItem('setupData');
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed?.clientData) {
-          console.log("FORM INIT: Using client data from sessionStorage");
-          return parsed.clientData;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load from sessionStorage:", error);
-    }
-    
-    // Fall back to props if session storage fails
-    if (initialData) {
-      console.log("FORM INIT: Using initialData from props");
-      return initialData;
-    }
-    
-    // Default empty values as last resort
-    console.log("FORM INIT: Using default empty values");
-    return {
+  
+  console.log("FORM INIT: ClientSetupCard rendering. Has initialData:", !!initialData);
+  
+  // Initialize form with either the provided initialData or empty values
+  const form = useForm<ClientSetupValues>({
+    resolver: zodResolver(clientSetupSchema),
+    defaultValues: initialData || {
       name: "",
       legalName: "",
       taxId: "",
@@ -91,113 +71,21 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       email: "",
       website: "",
       notes: ""
-    };
-  };
-  
-  // Get initial form values with fallback chain (session storage → props → defaults)
-  const initialFormValues = getSavedClientData();
-  
-  // Initialize form with our best available data
-  const form = useForm<ClientSetupValues>({
-    resolver: zodResolver(clientSetupSchema),
-    defaultValues: initialFormValues,
-    mode: "onBlur", // Only validate when field loses focus, not during typing
+    },
+    mode: "onBlur" // Only validate when field loses focus, not during typing
   });
   
-  // Debug log the form's current values for tracing
-  useEffect(() => {
-    console.log("FORM DEBUG: Form values:", form.getValues());
-  }, [form]);
-  
-  // Add debugging on individual form fields to detect changes
-  const formValues = form.watch();
-  useEffect(() => {
-    console.log("FORM WATCH: Fields changed, current values:", formValues);
-  }, [formValues]);
-  
-  // CRITICAL FIX: The auto-save might be causing form reset issues
-  // Only save on specific events instead of intervals to prevent race conditions
-  
-  // Track previous form values to detect actual changes
-  const [lastSavedValues, setLastSavedValues] = useState<ClientSetupValues | null>(null);
-  
-  // Safety mechanism: Save on blur events instead of timer
-  const handleSaveOnBlur = () => {
-    console.log("FORM BLUR: Auto-saving current form values");
-    const currentValues = form.getValues();
-    
-    // Only save if something has changed from last save
-    const hasChanged = !lastSavedValues || 
-      JSON.stringify(lastSavedValues) !== JSON.stringify(currentValues);
-    
-    // Only save if we have minimal data and changes detected
-    if ((currentValues.name || currentValues.legalName) && hasChanged) {
-      try {
-        const savedData = sessionStorage.getItem('setupData') || '{}';
-        const parsedData = JSON.parse(savedData);
-        
-        console.log("FORM BLUR: Saving form values to sessionStorage", currentValues);
-        
-        // Save to session storage
-        sessionStorage.setItem('setupData', JSON.stringify({
-          ...parsedData,
-          clientData: currentValues
-        }));
-        
-        // Update our last saved values reference
-        setLastSavedValues(currentValues);
-        
-        console.log("FORM BLUR: Successfully saved form state");
-      } catch (error) {
-        console.error("FORM BLUR: Auto-save failed:", error);
-      }
-    } else {
-      console.log("FORM BLUR: No meaningful changes to save");
-    }
-  };
-  
-  // Register blur handler on all form inputs using event delegation
-  useEffect(() => {
-    const formElement = document.querySelector('form');
-    if (formElement) {
-      formElement.addEventListener('blur', handleSaveOnBlur, true);
-      return () => {
-        formElement.removeEventListener('blur', handleSaveOnBlur, true);
-      };
-    }
-  }, [form, lastSavedValues]);
+  // Log the current values for debugging
+  console.log("FORM DEBUG: Initial form values:", form.getValues());
 
   const onSubmit = async (data: ClientSetupValues) => {
+    console.log("FORM SUBMIT: Client form submit started with data:", data);
     setIsSubmitting(true);
+    
     try {
-      console.log("FORM SUBMIT: Client form submit started");
-      
-      // CRITICAL FIX: Save to sessionStorage first for persistence
-      try {
-        // Get existing setup data if any
-        const savedData = sessionStorage.getItem('setupData');
-        const existingData = savedData ? JSON.parse(savedData) : {};
-        
-        // Update with new client data
-        const newData = {
-          ...existingData,
-          clientData: data,
-          currentStep: "entities" // Pre-set the next step
-        };
-        
-        // Save to session storage
-        sessionStorage.setItem('setupData', JSON.stringify(newData));
-        console.log("FORM SUBMIT: Saved to sessionStorage for persistence");
-      } catch (storageError) {
-        console.error("Failed to save to sessionStorage:", storageError);
-        // Continue anyway since we have other mechanisms
-      }
-      
-      // CRITICAL FIX: Set client data in parent state
+      // First update parent state
       console.log("FORM SUBMIT: Setting client data in parent state");
-      if (setClientData) {
-        setClientData(data);
-      }
+      setClientData(data);
       
       // Show success message
       toast({
@@ -205,17 +93,9 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
         description: "Client information saved successfully.",
       });
       
-      // CRITICAL FIX: Wait to ensure parent state is updated before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // CRITICAL FIX: Navigate to next step via callback - pass data explicitly
+      // Navigate to next step via callback
       console.log("FORM SUBMIT: Now calling onNext to navigate to entities step");
-      if (onNext) {
-        onNext(data);
-      } else {
-        console.error("🔴 onNext function is not defined!");
-      }
-      
+      onNext(data);
     } catch (error: any) {
       console.error("Error saving client information:", error);
       toast({

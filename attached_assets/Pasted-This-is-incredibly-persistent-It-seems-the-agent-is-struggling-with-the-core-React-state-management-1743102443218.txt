@@ -1,0 +1,162 @@
+This is incredibly persistent! It seems the agent is struggling with the core React state management and lifecycle within this stepper component. The fixes are causing regressions, and fundamental issues like input clearing and state propagation aren't being resolved. Using sessionStorage or overly complex refs was likely masking the real problem.
+
+Let's mandate a major simplification of the state management in SetupStepper.tsx and ensure the child components (ClientSetupCard, EntityManagementCard) are behaving correctly with props.
+
+Here are the instructions for the agent, focusing on getting back to basics and ensuring the parent component correctly controls the flow and data:
+
+Agent Instructions: Drastic Simplification of SetupStepper State & Flow
+CRITICAL ISSUES: Multiple attempts have failed. Core problems persist:
+
+Stepper sometimes initializes on Step 2.
+Step 1 inputs clear unexpectedly.
+Step 1 -> Step 2 navigation is broken.
+Step 2 entity list doesn't update after adding.
+"Use Client Data" button broken.
+Goal: Stabilize the setup flow by radically simplifying state management in SetupStepper.tsx, fixing Step 1 bugs, and ensuring Step 2 list updates correctly.
+
+Phase 1: Simplify SetupStepper.tsx
+
+Revert & Reset:
+Action: Completely revert SetupStepper.tsx to a state before the complex sessionStorage, deep copying, and ref-based attempts (e.g., conceptually before Checkpoint cbdedaee or 6fc524fd). Remove all useEffect hooks trying to manage or restore state on mount.
+Action: Implement the simplest possible state management directly in SetupStepper.tsx:
+TypeScript
+
+import React, { useState, useCallback } from 'react';
+// ... other imports ...
+import ClientSetupCard from './ClientSetupCard';
+import EntityManagementCard from './EntityManagementCard';
+import SetupSummaryCard from './SetupSummaryCard';
+// Define types for ClientData and Entity if not already imported
+// interface ClientData { ... }
+// interface Entity { id: number; ... }
+
+const SetupStepper = ({ onComplete, onCancel }) => { // Assuming these props exist
+  console.log("DEBUG SetupStepper: Mounting/Rendering");
+
+  const [activeStep, setActiveStep] = useState<number>(() => {
+    console.log("DEBUG SetupStepper: Initializing activeStep state to 0");
+    return 0; // ALWAYS START AT STEP 0
+  });
+  const [clientData, setClientData] = useState<ClientData | null>(() => {
+    console.log("DEBUG SetupStepper: Initializing clientData state to null");
+    return null;
+  });
+  const [setupEntities, setSetupEntities] = useState<Entity[]>(() => {
+    console.log("DEBUG SetupStepper: Initializing setupEntities state to []");
+    return [];
+  });
+
+  const handleClientSave = useCallback((data: ClientData) => {
+    console.log("DEBUG SetupStepper: handleClientSave received:", data);
+    setClientData(data);
+    // --- IMPORTANT: Update step AFTER data is set ---
+    const nextStep = 1;
+    console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+    setActiveStep(nextStep);
+  }, [setActiveStep, setClientData]);
+
+  const handleEntityAdd = useCallback((newEntity: Entity) => {
+    console.log("DEBUG SetupStepper: handleEntityAdd received:", newEntity);
+    setSetupEntities(prev => {
+       const newState = [...prev, newEntity];
+       console.log("DEBUG SetupStepper: New setupEntities state:", newState);
+       return newState;
+    });
+  }, [setSetupEntities]);
+
+  const handleEntityDelete = useCallback((entityId: number) => {
+    console.log("DEBUG SetupStepper: handleEntityDelete called for ID:", entityId);
+    setSetupEntities(prev => {
+      const newState = prev.filter(e => e.id !== entityId);
+      console.log("DEBUG SetupStepper: New setupEntities state after delete:", newState);
+      return newState;
+    });
+    // TODO: Add API call to delete entity from DB if needed?
+  }, [setSetupEntities]);
+
+  const handleBack = useCallback(() => {
+    console.log(`DEBUG SetupStepper: handleBack called. Current: ${activeStep}. Going to ${activeStep - 1}`);
+    setActiveStep(prev => Math.max(0, prev - 1));
+  }, [activeStep, setActiveStep]);
+
+  const handleNextFromEntities = useCallback(() => {
+     console.log(`DEBUG SetupStepper: handleNextFromEntities called. Current: ${activeStep}. Entities count: ${setupEntities.length}`);
+     if (setupEntities.length === 0) {
+       console.warn("DEBUG SetupStepper: Blocked navigation - No entities added.");
+       // TODO: Show toast/message to user ("Please add at least one entity.")
+       return;
+     }
+     const nextStep = activeStep + 1;
+     console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+     setActiveStep(nextStep);
+   }, [activeStep, setActiveStep, setupEntities]);
+
+  // Add handleCompleteSetup logic later
+  const handleCompleteSetup = () => {
+     console.log("DEBUG SetupStepper: handleCompleteSetup called.");
+     // TODO: API calls to finalize?
+     if (onComplete) onComplete();
+  };
+
+  console.log(`DEBUG SetupStepper: Rendering step ${activeStep}`);
+
+  return (
+    <div>
+      {/* Stepper UI component here */}
+      {activeStep === 0 && (
+        <ClientSetupCard
+          onSave={handleClientSave}
+          // initialData={clientData || undefined} // Pass if needed for re-editing
+        />
+      )}
+      {activeStep === 1 && (
+        <EntityManagementCard
+          clientData={clientData} // Pass client context
+          entities={setupEntities} // Pass entity array state
+          onEntityAdded={handleEntityAdd} // Pass add callback
+          onEntityDeleted={handleEntityDelete} // Pass delete callback
+          onBack={handleBack}
+          onNext={handleNextFromEntities}
+        />
+      )}
+      {activeStep === 2 && (
+         <SetupSummaryCard
+            clientData={clientData}
+            entities={setupEntities}
+            onBack={handleBack}
+            onComplete={handleCompleteSetup}
+         />
+      )}
+    </div>
+  );
+};
+
+export default SetupStepper;
+Report: Confirm SetupStepper.tsx has been simplified to manage state directly and pass props/handlers as shown.
+Phase 2: Fix Step 1 (ClientSetupCard.tsx)
+
+Fix Input Clearing Bug:
+Action: Re-run the detailed logging steps for useFormState.ts and ClientSetupCard.tsx from my previous instructions.
+MUST DO: Report the exact log output during typing. Identify and fix the cause.
+Verify & Report: Confirm inputs are stable.
+Fix Navigation:
+Action: Ensure ClientSetupCard's onSubmit calls props.onSave(data) after validation and any necessary API calls (use await). Remove all other state/navigation logic from ClientSetupCard.
+Test & Report Logs: Simulate submitting Step 1. Report logs. Confirm navigation to Step 2 now happens reliably via handleClientSave in SetupStepper.
+Phase 3: Fix Step 2 (EntityManagementCard.tsx) List Population
+
+Simplify EntityManagementCard.tsx:
+Action: Ensure it receives entities, onEntityAdded, onEntityDeleted, onBack, onNext via props. Remove any internal setupEntities state.
+Action: Display the list using props.entities.map(...).
+Action: On successful entity creation API call (createEntityMutation.onSuccess), call props.onEntityAdded(newEntityData).
+Action: On delete button click, call props.onEntityDeleted(entityId) (and potentially trigger deleteEntityMutation).
+Action: The "Continue" button should be disabled={props.entities.length === 0} and its onClick should just call props.onNext().
+Test & Report Logs:
+Action: Simulate adding an entity in Step 2.
+MUST DO: Check the logs. Does handleEntityAdd in SetupStepper run? Does the setupEntities state in SetupStepper update? Does EntityManagementCard re-render with the new props.entities? Does the entity appear in the list?
+Report: Confirm if the entity list now updates correctly. Provide logs if it fails.
+Focus Order:
+
+Simplify SetupStepper.
+Fix Step 1 inputs.
+Fix Step 1 navigation.
+Fix Step 2 entity list updates.
