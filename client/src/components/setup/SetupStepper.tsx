@@ -232,6 +232,8 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 onEntityAdded={handleEntityAdd}
                 onEntityDeleted={handleEntityDelete}
                 entities={setupEntities}
+                entityData={setupEntities}
+                setEntityData={setSetupEntities}
               />
             )}
             
