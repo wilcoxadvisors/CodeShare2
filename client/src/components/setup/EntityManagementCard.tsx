@@ -240,7 +240,8 @@ export default function EntityManagementCard({
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
-        industry: data.industry,
+        // Ensure industry is properly included - this appears to be missing in created entities
+        industry: data.industry || '', // Make sure industry is included even if empty
         active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
         code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
@@ -249,6 +250,8 @@ export default function EntityManagementCard({
         fiscalYearEnd: "12-31",
         currency: "USD"
       };
+        
+      console.log("DEBUG: Industry value being sent to API:", data.industry);
 
       // Add optional fields only if they have values
       if (data.taxId) cleanedData.taxId = data.taxId;
@@ -414,7 +417,8 @@ export default function EntityManagementCard({
         name: data.name,
         legalName: data.legalName,
         entityType: data.entityType || 'llc',
-        industry: data.industry,
+        // Ensure industry is properly included - this appears to be missing in updated entities
+        industry: data.industry || '', // Make sure industry is included even if empty
         active: true, // Using 'active' instead of 'isActive' to match schema
         // Generate a code from the name if not provided
         code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
@@ -423,6 +427,8 @@ export default function EntityManagementCard({
         fiscalYearEnd: "12-31",
         currency: "USD"
       };
+        
+      console.log("DEBUG: Industry value being sent to API in update:", data.industry);
 
       // Add optional fields only if they have values
       if (data.taxId) cleanedData.taxId = data.taxId;
@@ -1142,7 +1148,10 @@ export default function EntityManagementCard({
                     <TableRow key={entity.id}>
                       <TableCell key={`name-${entity.id}`} className="font-medium">{entity.name}</TableCell>
                       <TableCell key={`type-${entity.id}`}>{entity.entityType || "LLC"}</TableCell>
-                      <TableCell key={`industry-${entity.id}`}>{entity.industry}</TableCell>
+                      <TableCell key={`industry-${entity.id}`}>
+                        {/* Display industry as human-readable label, not code */}
+                        {INDUSTRY_OPTIONS.find(opt => opt.value === entity.industry)?.label || entity.industry || "N/A"}
+                      </TableCell>
                       <TableCell key={`status-cell-${entity.id}`}>
                         <Badge 
                           key={`status-badge-${entity.id}`}

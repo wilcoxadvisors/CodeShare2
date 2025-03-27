@@ -1,0 +1,77 @@
+Agent Instructions: Fix Initialization, Dashboard Update, & Industry Display
+Progress: Step 1 -> Step 2 -> Step 3 navigation works, and entities appear in the Step 2 list.
+Remaining Critical Issues:
+
+Stepper sometimes initializes incorrectly (Step 2 / stale Step 1 data).
+Dashboard doesn't update after setup completion.
+Entity industry field isn't displayed correctly in Step 2 list or Step 3 summary.
+Goal: Fix these remaining critical bugs for a stable setup flow.
+
+Phase 1: Fix Stepper Initialization (Bug 1)
+
+Focus: SetupStepper.tsx state initialization logic.
+Hypothesis: Stale data from localStorage (re-introduced in Checkpoint a2763eac) might be causing incorrect initial state, especially if not cleared properly on completion/cancellation.
+Action: Modify SetupStepper.tsx state initialization:
+Ensure activeStep always initializes to 0:
+TypeScript
+
+const [activeStep, setActiveStep] = useState<number>(() => {
+  console.log("DEBUG SetupStepper: Initializing activeStep state to 0 (Ignoring localStorage for step)");
+  return 0; // ALWAYS START AT 0
+});
+Modify clientData and setupEntities initialization to optionally load from localStorage ONLY if resuming an incomplete setup is desired. Crucially, ensure localStorage is cleared on completion.
+Add/verify localStorage.removeItem calls within the handleCompleteSetup (called by onComplete) and onCancel handlers in SetupStepper.tsx to clear setup state when the process finishes or is cancelled.
+TypeScript
+
+const handleCompleteSetup = () => {
+  console.log("DEBUG SetupStepper: Setup complete. Clearing localStorage...");
+  localStorage.removeItem('activeStep'); // If step was ever saved
+  localStorage.removeItem('clientData');
+  localStorage.removeItem('setupEntities');
+  if (props.onComplete) props.onComplete();
+};
+// Similar clearing logic in onCancel handler
+Verify & Report: Restart the app/refresh the dashboard multiple times. Does the "Add Client" flow consistently start on Step 0 (ClientSetupCard) with empty fields? Report confirmation.
+Phase 2: Fix Dashboard Update on Completion (Bug 4)
+
+Focus: SetupStepper.tsx (handleCompleteSetup, onComplete prop) and Dashboard.tsx (where SetupStepper is used).
+Hypothesis: Dashboard.tsx isn't refetching its client list data after the setup stepper completes.
+Action: Implement TanStack Query invalidation in Dashboard.tsx:
+Ensure SetupStepper correctly calls props.onComplete() inside its handleCompleteSetup function after clearing localStorage.
+In Dashboard.tsx, find the function passed as the onComplete prop to SetupStepper.
+Inside this onComplete handler in Dashboard.tsx, use queryClient.invalidateQueries to refetch the client list.
+TypeScript
+
+// Inside Dashboard.tsx
+import { useQueryClient } from '@tanstack/react-query'; // Import query client hook
+
+// ... inside component ...
+const queryClient = useQueryClient(); // Get query client instance
+
+const handleSetupComplete = () => {
+  console.log("DEBUG Dashboard: handleSetupComplete called. Invalidating client list query...");
+  // Adjust ['clients'] to your actual query key for fetching the client list
+  queryClient.invalidateQueries({ queryKey: ['clients'] });
+  // Hide the stepper modal/dialog
+  setSetupMode(false); // Or however visibility is controlled
+};
+
+// ... later in JSX ...
+{setupMode && (
+  <SetupStepper onComplete={handleSetupComplete} onCancel={() => setSetupMode(false)} />
+)}
+Verify & Report: Complete the entire setup flow (Steps 1-3, click Finish). Does the client list/stat card on the main Dashboard.tsx update automatically to show the newly added client? Report confirmation.
+Phase 3: Fix Industry Display (Bugs 2 & 3) (After Phases 1 & 2 Verified)
+
+Focus: EntityManagementCard.tsx (entity creation, list rendering) and SetupSummaryCard.tsx.
+Hypothesis: The industry field is either not being saved/passed correctly in the Entity object, or the UI components aren't rendering it.
+Action (Trace Data):
+Add logs in EntityManagementCard's form submission (onSubmit) to check if industry has a value before the API call.
+Add logs in createEntityMutation's onSuccess to check if the newEntity object returned from the API includes the industry field with the correct value.
+Add logs in SetupStepper's handleEntityAdd to verify the received newEntity includes industry. Check the localStorage value after saving.
+Add logs in EntityManagementCard to show props.entities (including industry) before rendering the table.
+Add logs in SetupSummaryCard to show props.entities (including industry).
+Action (Fix Rendering):
+In EntityManagementCard.tsx, ensure the table rendering logic (<TableBody>{props.entities?.map(...)}</TableBody>) includes a <TableCell> specifically for displaying entity.industry.
+In SetupSummaryCard.tsx, find where entity details are displayed. Ensure it accesses and displays entity.industry. Remove any logic that defaults it to "N/A" if the data should be present.
+Verify & Report: Add an entity, selecting an industry. Does the industry appear correctly in the Step 2 table? Does it appear correctly (not "N/A") in the Step 3 summary? Report confirmation.

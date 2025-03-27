@@ -4,6 +4,19 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Industry options - same as in EntityManagementCard for consistency
+const INDUSTRY_OPTIONS = [
+  { value: "retail", label: "Retail" },
+  { value: "manufacturing", label: "Manufacturing" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "tech", label: "Technology" },
+  { value: "finance", label: "Finance" },
+  { value: "construction", label: "Construction" },
+  { value: "hospitality", label: "Hospitality" },
+  { value: "services", label: "Professional Services" },
+  { value: "other", label: "Other" }
+];
+
 interface SetupSummaryCardProps {
   clientData: any;
   entityData?: any[];
@@ -168,7 +181,7 @@ export default function SetupSummaryCard({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                    <p>{clientData.industry}</p>
+                    <p>{INDUSTRY_OPTIONS.find(opt => opt.value === clientData.industry)?.label || clientData.industry || "N/A"}</p>
                   </div>
                   {clientData.taxId && (
                     <div>
@@ -247,7 +260,7 @@ export default function SetupSummaryCard({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                          <p>{entity.industry || "N/A"}</p>
+                          <p>{INDUSTRY_OPTIONS.find(opt => opt.value === entity.industry)?.label || entity.industry || "N/A"}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Entity ID</p>

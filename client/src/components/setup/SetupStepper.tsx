@@ -83,30 +83,27 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     };
   }, [instanceId]); // Empty dependency array means run on mount, cleanup on unmount
   
-  // Use local storage to persist state across remounts
+  // ALWAYS initialize to step 0 to avoid stale state issues
   const [activeStep, setActiveStep] = useState<number>(() => {
-    console.log("DEBUG SetupStepper: Initializing activeStep state");
+    console.log("DEBUG SetupStepper: Initializing activeStep state to 0 (Ignoring localStorage for step)");
+    
+    // Ensure we always start with step 0 when the component mounts to avoid stale state
     try {
-      const savedStep = localStorage.getItem('setupActiveStep');
-      if (savedStep) {
-        console.log(`DEBUG SetupStepper: Found saved step: ${savedStep}`);
-        return parseInt(savedStep, 10);
-      }
+      // Clear any existing step in localStorage to prevent future stale loads
+      localStorage.removeItem('setupActiveStep');
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for activeStep", e);
     }
+    
     console.log("DEBUG SetupStepper: Using default step 0");
-    return 0;
+    return 0; // ALWAYS START AT STEP 0
   });
   
   const [clientData, setClientData] = useState<ClientData | null>(() => {
-    console.log("DEBUG SetupStepper: Initializing clientData state");
+    console.log("DEBUG SetupStepper: Initializing clientData state to null (fresh start)");
     try {
-      const savedClientData = localStorage.getItem('setupClientData');
-      if (savedClientData) {
-        console.log("DEBUG SetupStepper: Found saved client data");
-        return JSON.parse(savedClientData);
-      }
+      // Clear any existing client data in localStorage to prevent stale data
+      localStorage.removeItem('setupClientData');
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for clientData", e);
     }
@@ -115,13 +112,10 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   });
   
   const [setupEntities, setSetupEntities] = useState<Entity[]>(() => {
-    console.log("DEBUG SetupStepper: Initializing setupEntities state");
+    console.log("DEBUG SetupStepper: Initializing setupEntities state to empty array (fresh start)");
     try {
-      const savedEntities = localStorage.getItem('setupEntities');
-      if (savedEntities) {
-        console.log("DEBUG SetupStepper: Found saved entities");
-        return JSON.parse(savedEntities);
-      }
+      // Clear any existing entity data in localStorage to prevent stale data
+      localStorage.removeItem('setupEntities');
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for setupEntities", e);
     }
