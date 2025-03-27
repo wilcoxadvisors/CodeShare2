@@ -3,42 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-
-// Industry options - same as in EntityManagementCard for consistency
-const INDUSTRY_OPTIONS = [
-  { value: "retail", label: "Retail" },
-  { value: "manufacturing", label: "Manufacturing" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "tech", label: "Technology" },
-  { value: "finance", label: "Finance" },
-  { value: "construction", label: "Construction" },
-  { value: "hospitality", label: "Hospitality" },
-  { value: "services", label: "Professional Services" },
-  { value: "other", label: "Other" }
-];
-
-// Helper function to display industry consistently across the application
-const getIndustryLabel = (industryValue: string | null | undefined): string => {
-  console.log(`DEBUG getIndustryLabel: Received value: "${industryValue}"`);
-  
-  // If empty, null, or undefined, return formatted "Other" instead of "N/A"
-  if (!industryValue) {
-    console.log(`DEBUG getIndustryLabel: Null or undefined value, returning "Other"`);
-    return "Other";
-  }
-  
-  // Special case for "other" value
-  if (industryValue.toLowerCase() === "other") {
-    console.log(`DEBUG getIndustryLabel: Found "other" value, returning "Other"`);
-    return "Other";
-  }
-  
-  // Find the matching industry option
-  const industry = INDUSTRY_OPTIONS.find(opt => opt.value === industryValue);
-  const label = industry ? industry.label : industryValue;
-  console.log(`DEBUG getIndustryLabel: Returning label: "${label}"`);
-  return label;
-};
+import { getIndustryLabel } from "@/lib/industryUtils";
 
 interface SetupSummaryCardProps {
   clientData: any;
@@ -283,6 +248,10 @@ export default function SetupSummaryCard({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Industry</p>
+                          {(() => {
+                            console.log("DEBUG SummaryCard: Rendering entity industry:", entity.id, entity.name, entity.industry);
+                            return null; // Return null to avoid TypeScript error
+                          })()}
                           <p>{getIndustryLabel(entity.industry)}</p>
                         </div>
                         <div>

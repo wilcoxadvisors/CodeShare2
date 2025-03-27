@@ -1,0 +1,34 @@
+Agent Instructions: Fix Industry Display (Task A.3)
+
+Goal: Ensure the selected industry displays correctly as its user-friendly label (e.g., "Technology", "Healthcare", "Other") in the Step 2 entity list and Step 3 summary.
+
+Context: Previous attempts to fix this failed. We need to trace the industry value and verify the helper function that generates the display label.
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx (Contains entity list rendering and likely the getEntityIndustryLabel helper)
+client/src/components/setup/SetupSummaryCard.tsx (Contains summary rendering)
+shared/validation.ts or constants file (Likely contains INDUSTRY_OPTIONS array/map)
+Debugging Steps:
+
+Debug getEntityIndustryLabel Helper:
+Action: Locate the getEntityIndustryLabel function (likely within EntityManagementCard.tsx or a shared utils file).
+Action: Add console.log statements inside this function:
+Log the industryValue it receives as input.
+Log the INDUSTRY_OPTIONS array/map it uses for lookup (confirm it's being accessed correctly).
+Log the final label it returns.
+Action: Review the function's logic. Does it correctly find the label corresponding to the value (e.g., find { value: 'tech', label: 'Technology' })? Does it handle the specific case where industryValue is "other" and correctly return the label "Other"? Does it have a sensible fallback for unexpected values (e.g., return the value itself or "N/A")?
+Trace industry Value in Components:
+Action: In EntityManagementCard.tsx, find the .map function that renders the entity list (likely within <TableBody>). Inside the map, before the getEntityIndustryLabel call, add: console.log("DEBUG EntityMC: Rendering entity industry:", entity.industry);
+Action: In SetupSummaryCard.tsx, find where it maps over setupEntities to display the summary. Before the getEntityIndustryLabel call, add: console.log("DEBUG SummaryCard: Rendering entity industry:", entity.industry);
+Verify Helper Function Usage:
+Action: Ensure both EntityManagementCard.tsx (in the table cell for industry) and SetupSummaryCard.tsx (in the entity summary) are correctly calling the helper function, like {getEntityIndustryLabel(entity.industry)}.
+Fix Logic/Rendering:
+Action: Based on the logs from steps 1 & 2, identify the failure point. Is the getEntityIndustryLabel function logic flawed? Is the entity.industry value being passed to it incorrect or undefined? Is the helper function not being called correctly in the render? Implement the necessary fix in the helper function or the component rendering logic.
+Test & Report:
+Action: Restart the application.
+Action: Start the "Add Client" flow.
+Action: In Step 2, add an entity with a specific industry (e.g., select "Technology"). Check the console logs and verify the industry displays as "Technology" in the list.
+Action: Add a second entity, selecting "Other". Check the console logs and verify the industry displays as "Other" in the list.
+Action: Proceed to Step 3. Check the console logs and verify both entities display the correct industry labels ("Technology", "Other") in the summary.
+Report: Confirm that the correct industry labels are now displayed consistently in both Step 2 and Step 3. Provide relevant logs if any issues persist.

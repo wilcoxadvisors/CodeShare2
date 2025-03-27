@@ -18,19 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "../../contexts/AuthContext";
 import { UserRole } from "@shared/schema";
-
-// Industry options
-const INDUSTRY_OPTIONS = [
-  { value: "retail", label: "Retail" },
-  { value: "manufacturing", label: "Manufacturing" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "tech", label: "Technology" },
-  { value: "finance", label: "Finance" },
-  { value: "construction", label: "Construction" },
-  { value: "hospitality", label: "Hospitality" },
-  { value: "services", label: "Professional Services" },
-  { value: "other", label: "Other" }
-];
+import { INDUSTRY_OPTIONS, getIndustryLabel } from "@/lib/industryUtils";
 
 // Entity type options
 const ENTITY_TYPE_OPTIONS = [
@@ -1383,7 +1371,11 @@ export default function EntityManagementCard({
                         <TableCell key={`type-${entityKey}`}>{entity.entityType || "LLC"}</TableCell>
                         <TableCell key={`industry-${entityKey}`}>
                           {/* Display industry as human-readable label, not code */}
-                          {getEntityIndustryLabel(entity.industry)}
+                          {(() => {
+                            console.log("DEBUG EntityMC: Rendering entity industry:", entity.id, entity.name, entity.industry);
+                            return null; // Return null to avoid TypeScript error
+                          })()}
+                          {getIndustryLabel(entity.industry)}
                         </TableCell>
                         <TableCell key={`status-cell-${entityKey}`}>
                           <Badge 
