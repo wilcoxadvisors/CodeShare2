@@ -1,0 +1,28 @@
+Agent Instructions: Verify Final Save & Dashboard Update (Task A.1)
+
+Goal: Confirm that the complete "Add Client" flow works end-to-end, successfully saving the client and associated entities (added in Step 2 via state) to the database, and that the dashboard updates.
+
+Context: The logic for adding entities in Step 2 (EntityManagementCard) has been refactored to use frontend state only (Checkpoint 5bab32ab). We now need to verify that the handleCompleteSetup function in SetupStepper.tsx correctly handles saving this state to the database in Step 3. Detailed logging should already be present from previous attempts.
+
+Steps:
+
+Restart Application: Ensure you are running the latest code (after Checkpoint 5bab32ab).
+Bash
+
+# If needed:
+npm run dev
+Execute Full Setup Flow:
+Go to the Admin Dashboard.
+Click "Add Client".
+Step 1: Fill in Client Information and click "Save & Continue".
+Step 2: Add at least two distinct entities (e.g., different names, different industries). Verify they appear in the list correctly. Click "Continue".
+Step 3: Review the summary. Click "Finish & Add Client".
+Observe & Collect Data:
+UI: Did the setup modal close? Did you see any error messages? Did the client list on the dashboard update to show the new client?
+Browser Console: Copy all "DEBUG:" messages logged from SetupStepper.tsx, especially those within handleCompleteSetup showing the API payloads, response statuses, and response bodies for both client and entity saves. Note any console errors.
+Browser Network Tab: Check the requests made to POST /api/admin/clients and POST /api/admin/entities. What were their final HTTP status codes (e.g., 200, 201, 400, 500)? Were the request payloads correct? What were the response bodies?
+Report Findings:
+Clearly state whether the flow completed successfully from a UI perspective (modal closed, dashboard updated).
+Provide the full copied console log output from handleCompleteSetup.
+Report the status codes and any relevant response details from the Network tab for the client and entity save requests.
+Based on these results, we will know if Task A.1 is complete or if further debugging of handleCompleteSetup or the backend is required.
