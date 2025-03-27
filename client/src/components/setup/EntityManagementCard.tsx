@@ -252,22 +252,55 @@ export default function EntityManagementCard({
         
         console.log("ENTITY CREATION: Adding to setupEntities and updating parent:", entityData);
         
-        // Update local state first (prevent duplicates)
+        // CRITICAL FIX: Completely rewrite how state is updated
+        // This flow fixes the issue with entities being lost
+        
         setSetupEntities(prev => {
-          // Check if the entity already exists by ID
-          const exists = prev.some(e => e.id === entityData.id);
+          // First, make a deep copy of the previous state
+          let prevCopy;
+          try {
+            prevCopy = JSON.parse(JSON.stringify(prev)) || [];
+          } catch (e: any) {
+            console.error("Failed to deep copy previous entities:", e);
+            prevCopy = [];
+          }
           
-          // Create the new entities array
+          // Check if the entity already exists by ID to avoid duplicates
+          const exists = prevCopy.some((e: any) => e.id === entityData.id);
+          
+          // Create the new entities array with deep copies to avoid reference issues
           const updatedEntities = exists 
-            ? prev.map(e => e.id === entityData.id ? entityData : e) // Update it if it exists
-            : [...prev, entityData]; // Add it if it's new
+            ? prevCopy.map((e: any) => e.id === entityData.id ? {...entityData} : {...e}) 
+            : [...prevCopy, {...entityData}]; 
           
           console.log("ENTITY CREATION: Local state updated, now have", updatedEntities.length, "entities");
           
-          // CRITICAL FIX: Also update parent component state immediately
+          // CRITICAL FIX: Save immediately to sessionStorage for safety
+          try {
+            const setupData = sessionStorage.getItem('setupData');
+            if (setupData) {
+              const parsedData = JSON.parse(setupData);
+              
+              // Create a complete fresh copy of the updated entities
+              const storageCopy = JSON.parse(JSON.stringify(updatedEntities));
+              
+              // Update the storage
+              parsedData.entityData = storageCopy;
+              
+              // Save back to sessionStorage
+              sessionStorage.setItem('setupData', JSON.stringify(parsedData));
+              console.log("CRITICAL FIX: Updated sessionStorage with", storageCopy.length, "entities");
+            }
+          } catch (error) {
+            console.error("CRITICAL ERROR: Failed to update sessionStorage:", error);
+          }
+          
+          // CRITICAL FIX: Also update parent component state with a fresh copy
           if (setEntityData) {
-            console.log("ENTITY CREATION: Updating parent component state with new entity");
-            setEntityData(updatedEntities);
+            // Create a completely fresh copy to avoid any shared references
+            const parentCopy = JSON.parse(JSON.stringify(updatedEntities));
+            console.log("ENTITY CREATION: Updating parent with deep copied entity array:", parentCopy.length, "entities");
+            setEntityData(parentCopy);
           }
           
           return updatedEntities;
@@ -386,11 +419,51 @@ export default function EntityManagementCard({
         
         console.log("DEBUG: Updating entity in setupEntities:", entityData);
         
+        // CRITICAL FIX: Better handling of entity updates with proper deep copying
         setSetupEntities(prev => {
-          // Create updated entities array
-          const updatedEntities = prev.map(e => e.id === currentEntityId ? entityData : e);
+          // Create a deep copy of the previous state to avoid reference issues
+          let prevCopy;
+          try {
+            prevCopy = JSON.parse(JSON.stringify(prev)) || [];
+          } catch (e: any) {
+            console.error("Failed to deep copy previous entities during update:", e);
+            prevCopy = [];
+          }
+          
+          // Create updated entities array with deep copies
+          const updatedEntities = prevCopy.map((e: any) => 
+            e.id === currentEntityId ? JSON.parse(JSON.stringify(entityData)) : {...e}
+          );
           
           console.log("DEBUG: Updated entity in setupEntities, now have", updatedEntities.length, "entities");
+          
+          // CRITICAL FIX: Update parent component state with a fresh copy
+          if (setEntityData) {
+            // Create a completely fresh copy to avoid any shared references
+            const parentCopy = JSON.parse(JSON.stringify(updatedEntities));
+            console.log("ENTITY UPDATE: Updating parent with deep copied entity array:", parentCopy.length, "entities");
+            setEntityData(parentCopy);
+          }
+          
+          // CRITICAL FIX: Save immediately to sessionStorage for safety
+          try {
+            const setupData = sessionStorage.getItem('setupData');
+            if (setupData) {
+              const parsedData = JSON.parse(setupData);
+              
+              // Create a complete fresh copy of the updated entities
+              const storageCopy = JSON.parse(JSON.stringify(updatedEntities));
+              
+              // Update the storage
+              parsedData.entityData = storageCopy;
+              
+              // Save back to sessionStorage
+              sessionStorage.setItem('setupData', JSON.stringify(parsedData));
+              console.log("CRITICAL FIX: Updated sessionStorage after entity update with", storageCopy.length, "entities");
+            }
+          } catch (error) {
+            console.error("CRITICAL ERROR: Failed to update sessionStorage during entity update:", error);
+          }
           
           return updatedEntities;
         });
@@ -566,10 +639,32 @@ export default function EntityManagementCard({
         console.log("DEBUG: Entity had temporary ID, not calling API");
       }
       
-      // Always update setupEntities state via parent if available
+      // CRITICAL FIX: Better handling of parent state update for delete
       if (setEntityData) {
-        console.log("DEBUG: Updating parent component entity data");
-        setEntityData(setupEntities.filter(entity => Number(entity.id) !== Number(id)));
+        console.log("DEBUG: Updating parent component entity data for deletion");
+        
+        // Create a deep copy of setupEntities first
+        try {
+          const deepCopy = JSON.parse(JSON.stringify(
+            setupEntities.filter(entity => Number(entity.id) !== Number(id))
+          ));
+          
+          console.log("ENTITY DELETE: Deep copy for parent has", deepCopy.length, "entities");
+          setEntityData(deepCopy);
+          
+          // Also update sessionStorage directly as a safety measure
+          const setupData = sessionStorage.getItem('setupData');
+          if (setupData) {
+            const parsedData = JSON.parse(setupData);
+            parsedData.entityData = deepCopy;
+            sessionStorage.setItem('setupData', JSON.stringify(parsedData));
+            console.log("ENTITY DELETE: Updated sessionStorage with", deepCopy.length, "entities");
+          }
+        } catch (error) {
+          console.error("ENTITY DELETE: Error updating parent data:", error);
+          // Fallback with regular filter
+          setEntityData(setupEntities.filter(entity => Number(entity.id) !== Number(id)));
+        }
       }
       
       toast({
@@ -1069,18 +1164,52 @@ export default function EntityManagementCard({
             console.log("ENTITY NAV: Continue button clicked, saving entities to session storage");
             
             try {
-              // Create a deep copy of the entities to avoid reference issues
-              const entitiesCopy = JSON.parse(JSON.stringify(setupEntities));
+              console.log("CRITICAL FIX 3.0: Continue button clicked, processing entities:", 
+                setupEntities?.length || 0, "entities");
+                
+              // Verify entities array is valid and each entity has minimal required fields
+              if (!setupEntities || !Array.isArray(setupEntities) || setupEntities.length === 0) {
+                throw new Error("No entities to continue with. Please create at least one entity.");
+              }
               
-              // CRITICAL FIX: Save to sessionStorage first for persistence
+              // Create a deep copy with additional data validation
+              const entitiesCopy = JSON.parse(JSON.stringify(setupEntities.map((entity, index) => {
+                // Ensure each entity has an ID, even if it's temporary
+                const entityId = entity.id || -(index + 1); // Use negative ID for temp entities
+                
+                // Ensure each entity has minimal required fields
+                return {
+                  id: entityId,
+                  name: entity.name || "Unnamed Entity",
+                  legalName: entity.legalName || entity.name || "Unnamed Entity",
+                  entityType: entity.entityType || "llc",
+                  industry: entity.industry || "",
+                  active: true,
+                  clientId: clientData?.id || entity.clientId,
+                  // Copy all other fields from the original entity
+                  ...Object.fromEntries(
+                    Object.entries(entity)
+                      .filter(([key]) => !['__typename', 'createdAt', 'updatedAt'].includes(key))
+                  )
+                };
+              })));
+              
+              console.log("CRITICAL FIX 3.0: Created validated entity copy:", entitiesCopy.length);
+              
+              // CRITICAL FIX: Update our local entities state first
+              // This ensures complete ui consistency
+              setSetupEntities(entitiesCopy);
+              
+              // Now save to sessionStorage for persistence
               try {
                 // Get existing setup data if any
                 const savedData = sessionStorage.getItem('setupData');
                 const existingData = savedData ? JSON.parse(savedData) : {};
                 
-                // Update with entities and next step
+                // Update with validated entities and next step
                 const newData = {
                   ...existingData,
+                  clientData: clientData, // Include client data for safety
                   entityData: entitiesCopy,
                   currentStep: "summary" // Pre-set the next step
                 };

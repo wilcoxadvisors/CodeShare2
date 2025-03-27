@@ -152,15 +152,14 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }, 10);
   };
   
-  // CRITICAL FIX: Handle entity data from EntityManagementCard more robustly
+  // CRITICAL FIX 2.0: More comprehensive entity data handling to prevent data loss
   const handleEntityDataSaved = (entities: any[]) => {
-    console.log("CRITICAL: handleEntityDataSaved called with entities", 
-      entities ? entities.length : 'null/undefined', 
-      "entities:", JSON.stringify(entities));
+    console.log("CRITICAL FIX 2.0: handleEntityDataSaved called with entities", 
+      entities ? entities.length : 'null/undefined');
     
-    // Validate incoming data first
-    if (!entities || !Array.isArray(entities)) {
-      console.error("CRITICAL ERROR: Invalid entity data received!", entities);
+    // Validate incoming data first with detailed checks
+    if (!entities) {
+      console.error("CRITICAL ERROR: Entity data is undefined or null!");
       toast({
         title: "Error",
         description: "There was a problem with your entity data. Please try again."
@@ -168,44 +167,107 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       return; // Don't proceed with invalid data
     }
     
+    if (!Array.isArray(entities)) {
+      console.error("CRITICAL ERROR: Entity data is not an array!", typeof entities);
+      toast({
+        title: "Error",
+        description: "Incorrect entity data format. Please try again."
+      });
+      return; // Don't proceed with invalid data
+    }
+    
+    if (entities.length === 0) {
+      console.warn("WARNING: Received empty entities array. User may need to create at least one entity.");
+      toast({
+        title: "Warning",
+        description: "No entities found. Please add at least one entity before proceeding."
+      });
+      return; // Don't proceed with empty data
+    }
+    
     // Make a deep copy to avoid reference issues
     try {
-      const entitiesCopy = JSON.parse(JSON.stringify(entities));
-      console.log("CRITICAL: Created deep copy of entity data, length:", entitiesCopy.length);
+      console.log("CRITICAL FIX 2.0: Creating deep copy of entity data");
       
-      // First save to sessionStorage directly for persistence
+      // Create deep copy with explicit handling for circular structures
+      const entitiesCopy = JSON.parse(JSON.stringify(entities.map(entity => {
+        // Ensure each entity has minimal required fields
+        return {
+          id: entity.id,
+          name: entity.name || "Unnamed Entity",
+          legalName: entity.legalName || "",
+          entityType: entity.entityType || "llc",
+          industry: entity.industry || "",
+          taxId: entity.taxId || "",
+          code: entity.code || "",
+          clientId: clientData?.id || entity.clientId,
+          // Include any other properties but strip out anything causing issues
+          ...Object.fromEntries(
+            Object.entries(entity)
+              .filter(([key]) => !['__typename', 'createdAt', 'updatedAt'].includes(key))
+          )
+        };
+      })));
+      
+      console.log("CRITICAL FIX 2.0: Created deep copy of entity data, length:", entitiesCopy.length);
+      console.log("CRITICAL FIX 2.0: First entity ID:", entitiesCopy[0]?.id);
+      
+      // First update local state to ensure UI consistency
+      setEntityData(entitiesCopy);
+      
+      // Then save to sessionStorage for persistence - do this AFTER setting state
       try {
+        // Get current saved data
         const savedData = sessionStorage.getItem('setupData') || '{}';
         const parsedData = JSON.parse(savedData);
         
+        // Create complete updated state
         const dataToSave = {
           ...parsedData,
+          clientData: clientData,
           entityData: entitiesCopy,
           currentStep: "summary" // Pre-set next step
         };
         
+        // Save to session storage
         sessionStorage.setItem('setupData', JSON.stringify(dataToSave));
-        console.log("CRITICAL: Saved entity data to session storage");
+        console.log("CRITICAL FIX 2.0: Saved complete state to session storage (client, entities, step)");
       } catch (error) {
-        console.error("CRITICAL: Failed to save to sessionStorage:", error);
-        // Continue without storage, we'll use state
+        console.error("CRITICAL FIX 2.0: Failed to save to sessionStorage:", error);
+        // Continue without storage since we already updated state
       }
       
-      // Set the entity data with the deep copy
-      setEntityData(entitiesCopy);
+      // Navigate to the next step with a longer delay and confirmation of data integrity
+      console.log("CRITICAL FIX 2.0: Preparing to advance to summary step");
       
-      // Then, navigate to the next step with a longer delay to ensure state is updated
-      console.log("CRITICAL: Preparing to advance from entities step to summary step");
-      
-      // Important: Use a longer timeout and Promise to ensure state updates have completed
-      Promise.resolve().then(() => {
-        setTimeout(() => {
-          console.log("CRITICAL: Now advancing to summary step");
-          setCurrentStep("summary");
-        }, 100); // Longer timeout to ensure state updates have propagated
-      });
+      // Create a promise chain to ensure proper sequencing
+      Promise.resolve()
+        .then(() => {
+          // Log a confirmation that data is ready
+          console.log("CRITICAL FIX 2.0: Data is ready for summary step:", {
+            clientDataExists: !!clientData,
+            entityDataLength: entitiesCopy.length
+          });
+          
+          // Use timeout to ensure state updates complete
+          return new Promise(resolve => setTimeout(resolve, 200));
+        })
+        .then(() => {
+          // Do one final verification before transition
+          console.log("CRITICAL FIX 2.0: Performing final state verification before navigation");
+          
+          if (entityData && Array.isArray(entityData) && entityData.length > 0) {
+            console.log("CRITICAL FIX 2.0: Verification passed, advancing to summary");
+            setCurrentStep("summary");
+          } else {
+            // If somehow our state didn't update properly, try once more with the copy
+            console.warn("CRITICAL FIX 2.0: State verification failed, updating state again before navigation");
+            setEntityData(entitiesCopy);
+            setTimeout(() => setCurrentStep("summary"), 100);
+          }
+        });
     } catch (error) {
-      console.error("CRITICAL: Error handling entity data:", error);
+      console.error("CRITICAL FIX 2.0: Error handling entity data:", error);
       toast({
         title: "Error",
         description: "Failed to process your entity data. Please try again.",
@@ -214,12 +276,35 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
   };
   
-  // Clear session storage on completion
+  // CRITICAL FIX 5.0: Enhanced completion with better data handling
   useEffect(() => {
     if (setupComplete) {
-      sessionStorage.removeItem('setupData');
+      console.log("COMPLETION: Setup process complete, handling final steps");
       
+      // Instead of immediately removing, get the data one last time 
+      // in case we need to recover it
+      try {
+        const finalData = sessionStorage.getItem('setupData');
+        if (finalData) {
+          // Store it in localStorage as a backup for recovery if needed
+          localStorage.setItem('lastCompletedSetup', finalData);
+          console.log("COMPLETION: Backed up final setup data to localStorage for recovery if needed");
+        }
+      } catch (error) {
+        console.error("COMPLETION: Failed to backup setup data:", error);
+      }
+      
+      // Now clear the session storage
+      try {
+        console.log("COMPLETION: Clearing setup data from sessionStorage");
+        sessionStorage.removeItem('setupData');
+      } catch (error) {
+        console.error("COMPLETION: Failed to clear sessionStorage:", error);
+      }
+      
+      // Finally call the completion callback
       if (onComplete) {
+        console.log("COMPLETION: Calling onComplete callback");
         onComplete();
       }
     }
@@ -335,6 +420,30 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 entityData={entityData}
                 onBack={handleBack}
                 onFinish={() => {
+                  // CRITICAL FIX 5.0: Before completing, verify data once more and log final state
+                  console.log("FINAL: Setup complete triggered with:");
+                  console.log("FINAL: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
+                  console.log("FINAL: entityData:", entityData ? entityData.length : 'null', "entities");
+                  
+                  // Force one more sync to session storage before completion
+                  try {
+                    // This ensures if there's a redirect/refresh during the completion process,
+                    // we still have the latest state
+                    const finalState = {
+                      clientData,
+                      entityData,
+                      currentStep: "summary", // Keep at summary step
+                      setupCompleting: true // Flag to indicate we're in completion process
+                    };
+                    
+                    // Save to session storage
+                    sessionStorage.setItem('setupData', JSON.stringify(finalState));
+                    console.log("FINAL: Saved final state to session storage");
+                  } catch (error) {
+                    console.error("FINAL: Failed to save final state to session storage:", error);
+                    // Continue anyway since we're going to clear it soon
+                  }
+                  
                   // Complete the setup and close the dialog
                   setSetupComplete(true);
                 }}

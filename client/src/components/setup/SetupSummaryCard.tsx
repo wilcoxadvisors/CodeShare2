@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -21,22 +21,59 @@ export default function SetupSummaryCard({
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // CRITICAL FIX 4.0: Try to recover entity data if it's somehow missing
+  const [fixedEntityData, setFixedEntityData] = useState<any[] | null>(null);
+  
+  // First, try to get entity data from session storage as a last resort if props.entityData is empty
+  useEffect(() => {
+    console.log("SUMMARY INIT: Checking entity data from props:", 
+      entityData ? `array with ${entityData.length} items` : 'null/undefined');
+    
+    // If entityData is missing or empty but we know we should have some, try to recover from session storage
+    if ((!entityData || !Array.isArray(entityData) || entityData.length === 0) && clientData) {
+      console.log("SUMMARY RECOVERY: Entity data missing or empty, attempting recovery from sessionStorage");
+      
+      try {
+        const savedData = sessionStorage.getItem('setupData');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          
+          if (parsedData.entityData && Array.isArray(parsedData.entityData) && parsedData.entityData.length > 0) {
+            console.log("SUMMARY RECOVERY: Found entity data in sessionStorage:", parsedData.entityData.length, "entities");
+            setFixedEntityData(parsedData.entityData);
+          } else {
+            console.log("SUMMARY RECOVERY: No entity data in sessionStorage either");
+          }
+        }
+      } catch (error) {
+        console.error("SUMMARY RECOVERY: Failed to recover entities from sessionStorage:", error);
+      }
+    } else if (entityData && Array.isArray(entityData) && entityData.length > 0) {
+      // If we have valid entity data from props, use that
+      console.log("SUMMARY INIT: Using entityData from props:", entityData.length, "entities");
+      setFixedEntityData(entityData);
+    }
+  }, [entityData, clientData]);
+  
+  // Use either the recovered entity data or the original props
+  const displayEntityData = fixedEntityData || entityData;
+  
   // CRITICAL FIX: Much more comprehensive debugging for entity data in summary
   console.log("SUMMARY: Component mounted/updated with entityData:", 
-    entityData ? entityData.length : 'null', 
-    "entities. First entity ID:", entityData && entityData.length > 0 ? entityData[0].id : 'none');
+    displayEntityData ? displayEntityData.length : 'null', 
+    "entities. First entity ID:", displayEntityData && displayEntityData.length > 0 ? displayEntityData[0].id : 'none');
     
   // Track client and entity data with more detail
   console.log("SUMMARY: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
   
   // Log entity data details for debugging, with much more information
-  if (entityData) {
-    console.log("SUMMARY: Entity data type:", typeof entityData);
-    console.log("SUMMARY: Is entity data an array?", Array.isArray(entityData));
+  if (displayEntityData) {
+    console.log("SUMMARY: Entity data type:", typeof displayEntityData);
+    console.log("SUMMARY: Is entity data an array?", Array.isArray(displayEntityData));
     
-    if (Array.isArray(entityData) && entityData.length > 0) {
+    if (Array.isArray(displayEntityData) && displayEntityData.length > 0) {
       // Log info about each entity (limited to first 3 to avoid overwhelming the console)
-      const entitiesToLog = entityData.slice(0, 3); // Only log first 3
+      const entitiesToLog = displayEntityData.slice(0, 3); // Only log first 3
       entitiesToLog.forEach((entity, index) => {
         console.log(`SUMMARY: Entity #${index+1} ID:`, entity.id);
         console.log(`SUMMARY: Entity #${index+1} Name:`, entity.name);
@@ -44,14 +81,14 @@ export default function SetupSummaryCard({
       });
       
       // Log specifically what properties we'll be using in the render
-      if (entityData[0]) {
+      if (displayEntityData[0]) {
         console.log("SUMMARY: First entity critical properties:", {
-          id: entityData[0].id,
-          name: entityData[0].name,
-          entityType: entityData[0].entityType,
-          industry: entityData[0].industry,
-          taxId: entityData[0].taxId,
-          code: entityData[0].code
+          id: displayEntityData[0].id,
+          name: displayEntityData[0].name,
+          entityType: displayEntityData[0].entityType,
+          industry: displayEntityData[0].industry,
+          taxId: displayEntityData[0].taxId,
+          code: displayEntityData[0].code
         });
       }
     } else {
@@ -66,7 +103,23 @@ export default function SetupSummaryCard({
     try {
       // Log setup data being saved for debugging
       console.log("DEBUG: Finishing setup with client data:", clientData);
-      console.log("DEBUG: Finishing setup with entity data:", entityData); 
+      console.log("DEBUG: Finishing setup with entity data:", displayEntityData || entityData); 
+      
+      // CRITICAL FIX 4.0: Save final data to session storage before finishing
+      // This ensures that if the finish operation needs to be restarted, 
+      // we still have the correct data
+      try {
+        const setupData = {
+          clientData: clientData,
+          entityData: displayEntityData || entityData,
+          currentStep: "summary" // Keep at summary step
+        };
+        sessionStorage.setItem('setupData', JSON.stringify(setupData));
+        console.log("SUMMARY FINAL: Saved complete final data to session storage");
+      } catch (storageError) {
+        console.error("SUMMARY FINAL: Failed to save final data to session storage:", storageError);
+        // Continue anyway since we will finish the process
+      }
       
       // Use a simpler approach - just display a success toast and call onFinish immediately
       // The Dashboard component will handle the cache invalidation and refreshing
@@ -157,15 +210,15 @@ export default function SetupSummaryCard({
           {/* Entity Information Summary */}
           <div>
             <h3 className="text-lg font-medium mb-4">
-              Entities {(entityData && Array.isArray(entityData)) ? `(${entityData.length})` : '(0)'}
+              Entities {(displayEntityData && Array.isArray(displayEntityData)) ? `(${displayEntityData.length})` : '(0)'}
             </h3>
             <div className="bg-muted/20 p-4 rounded-lg space-y-4">
-              {/* CRITICAL FIX: Improved null/empty check with explicit array validation */}
-              {(!entityData || !Array.isArray(entityData) || entityData.length === 0) ? (
+              {/* CRITICAL FIX 4.0: Using displayEntityData which includes recovery mechanism */}
+              {(!displayEntityData || !Array.isArray(displayEntityData) || displayEntityData.length === 0) ? (
                 <div className="text-center p-4 border border-dashed rounded">
                   <p className="text-muted-foreground">No entities have been added.</p>
                   {/* Add debug info if there's a problem with the entityData format */}
-                  {entityData && !Array.isArray(entityData) && (
+                  {displayEntityData && !Array.isArray(displayEntityData) && (
                     <p className="text-xs text-destructive mt-2">
                       Error: Entity data is not in the correct format. Please go back and try again.
                     </p>
@@ -175,13 +228,13 @@ export default function SetupSummaryCard({
                 <>
                   {/* CRITICAL FIX: Extra safety check and debugging for entity rendering */}
                   {console.log("DEBUG: About to render entity list with type checks:", {
-                    isEntityDataDefined: Boolean(entityData),
-                    isArray: Array.isArray(entityData),
-                    length: entityData ? entityData.length : 0
+                    isEntityDataDefined: Boolean(displayEntityData),
+                    isArray: Array.isArray(displayEntityData),
+                    length: displayEntityData ? displayEntityData.length : 0
                   })}
                   
                   {/* Make absolutely sure entityData is an array before calling map */}
-                  {Array.isArray(entityData) && entityData.map((entity, index) => (
+                  {Array.isArray(displayEntityData) && displayEntityData.map((entity, index) => (
                     <div key={entity.id || `entity-${index}`} className="p-3 border rounded-md">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
