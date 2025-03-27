@@ -1,0 +1,38 @@
+Agent Instructions: Fix Database Save, Industry Display, Back Navigation State Loss
+Goal: Resolve the three specific bugs reported by the user after Checkpoint b1f302ef.
+
+Phase 1: Fix Database Save & Dashboard Update (Bug 3 - Highest Priority)
+
+Focus: SetupStepper.tsx (handleCompleteSetup), Backend (server/adminRoutes.ts, server/storage.ts), Dashboard.tsx.
+Hypothesis: The API calls in handleCompleteSetup (added around dbb44cec) are failing, the backend endpoints are incorrect, or the dashboard refresh logic is flawed.
+Action (Frontend API Call Debugging):
+Review handleCompleteSetup in SetupStepper.tsx:
+Add detailed logging before the Workspace('/api/admin/clients', ...) call: Log the exact clientData payload.
+Add logging after the client fetch: Log response.status AND await response.json(). Check the returned client ID.
+Add logging before the setupEntities.map(...) loop: Log the setupEntities array and the newClientId.
+Inside the map loop: Log the entityPayload for each entity fetch.
+After Promise.all(): Log the success/failure. Log any caught errors specifically.
+Before props.onComplete(): Log that the API calls seem successful.
+Action (Backend Verification - CRITICAL):
+Instruct the agent to re-verify the backend code:
+Check server/adminRoutes.ts: Are POST /api/admin/clients and POST /api/admin/entities routes definitely present and correctly defined using app.post(...)? Log the req.body received in both route handlers.
+Check server/storage.ts: Do createClient and createEntity methods correctly use Drizzle (db.insert(...).returning())? Log the data being inserted and the result from the DB call. Are errors handled?
+Action (Dashboard Refresh Verification):
+In Dashboard.tsx: Confirm the queryKey in queryClient.invalidateQueries({ queryKey: ['clients'] }) exactly matches the useQuery key for the client list. Log just before calling invalidateQueries.
+Test & Report:
+Complete the setup flow.
+Check Frontend Logs, Backend Logs, Network Tab (Status codes? Responses? Errors?).
+Check Dashboard UI.
+Report: Clearly state if data successfully reaches the backend, gets saved (check backend logs/DB directly if possible), and if the dashboard UI updates. Provide specific logs/errors.
+Phase 2: Fix Industry Display (Bug 1) (AFTER Phase 1 Verified)
+
+Focus: EntityManagementCard.tsx (form submit, getEntityIndustryLabel), SetupSummaryCard.tsx.
+Action: Debug getEntityIndustryLabel function: Log the input industryValue, the INDUSTRY_OPTIONS array used for lookup, and the returned label. Is the logic correct for mapping values like "tech" to "Technology" and "other" to "Other"?
+Action: Verify UI components call getEntityIndustryLabel(entity.industry) and log the entity.industry value being passed.
+Test & Report: Add entities with different industries. Check logs & UI display in Steps 2 & 3. Confirm correct labels appear.
+Phase 3: Fix State Loss on Back Navigation (Bug 2) (AFTER Phase 1 & 2 Verified)
+
+Focus: SetupStepper.tsx (handleBack function, setupEntities state, localStorage usage if any remains).
+Action: Add logs in handleBack showing activeStep before/after. Add logs in EntityManagementCard (on render) showing props.entities.
+Action: Ensure no state variables (setupEntities, clientData) or localStorage keys are being cleared/reset during the handleBack operation. The state should simply persist in SetupStepper.
+Test & Report: Go Steps 1->2->3, add entities, click "Back" to Step 2. Check logs. Does the entity list remain correct? Confirm fix.
