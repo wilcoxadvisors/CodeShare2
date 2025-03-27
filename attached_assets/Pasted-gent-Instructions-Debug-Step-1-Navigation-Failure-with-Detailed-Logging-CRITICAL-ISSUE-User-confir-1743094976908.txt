@@ -1,0 +1,72 @@
+gent Instructions: Debug Step 1 Navigation Failure with Detailed Logging
+CRITICAL ISSUE: User confirms navigation from Step 1 (ClientSetupCard) to Step 2 (EntityManagementCard) is still failing after previous fixes (Checkpoints 924e5628, f6abbbdd). We need to pinpoint the exact failure point.
+
+Goal: Use detailed console logging to trace the execution flow after submitting the Step 1 form and identify why setActiveStep is not successfully transitioning the UI to Step 2.
+
+Relevant Files:
+
+client/src/components/setup/ClientSetupCard.tsx (Handles Step 1 form and submission)
+client/src/components/setup/SetupStepper.tsx (Likely manages activeStep state and step transition logic)
+client/src/pages/Dashboard.tsx (May contain SetupStepper or related state/handlers)
+Debugging & Reporting Steps:
+
+Add Detailed Logs in ClientSetupCard.tsx:
+Locate the onSubmit function (or the handler passed to react-hook-form's handleSubmit).
+Add the following logs inside this function:
+TypeScript
+
+console.log("DEBUG: ClientSetupCard onSubmit triggered.");
+// --- Assuming validation happens here ---
+const isValid = await trigger(); // Or however validation is checked
+console.log(`DEBUG: ClientSetupCard form validation result: ${isValid}`);
+if (!isValid) {
+  console.log("DEBUG: ClientSetupCard validation failed, stopping.");
+  return;
+}
+console.log("DEBUG: ClientSetupCard validation passed.");
+// --- Assuming client data is potentially saved via API here (if applicable) ---
+// Add logs before/after any API call (createClientMutation?.mutate) if it exists in Step 1
+console.log("DEBUG: ClientSetupCard calling setClientData prop with:", data); // Log the data being passed up
+setClientData(data); // Or however the data is passed to the parent
+console.log("DEBUG: ClientSetupCard calling onNext prop...");
+onNext(); // Or however the next step is triggered
+console.log("DEBUG: ClientSetupCard onNext prop called.");
+Add Detailed Logs in Parent Component (SetupStepper.tsx or Dashboard.tsx):
+Locate the function passed as the setClientData prop to ClientSetupCard. Add a log inside it:
+TypeScript
+
+const handleClientDataSaved = (clientInfo) => {
+  console.log("DEBUG: Parent handleClientDataSaved received:", clientInfo);
+  setClientDataState(clientInfo); // Or however the state is updated
+};
+Locate the function passed as the onNext prop to ClientSetupCard (likely named handleNext or similar). Add logs inside it:
+TypeScript
+
+const handleNext = () => {
+  console.log("DEBUG: Parent handleNext called.");
+  console.log(`DEBUG: Parent current activeStep BEFORE update: ${activeStep}`);
+  setActiveStep(prev => {
+    const nextStep = prev + 1;
+    console.log(`DEBUG: Parent calling setActiveStep with: ${nextStep}`);
+    return nextStep;
+  });
+  // It might be useful to log AFTER a short delay to see if state updated
+  setTimeout(() => {
+    // Note: This reads the state captured in the closure, might not be the final updated state immediately
+     console.log(`DEBUG: Parent activeStep shortly AFTER update attempt: ${activeStep}`);
+  }, 100);
+};
+Simulate and Report Log Output:
+Restart the application to apply logging changes.
+Simulate: Log in (admin/password123), open the "Add Client" modal, fill the Step 1 form with valid data, and click "Save & Continue".
+Action: Carefully copy the entire sequence of "DEBUG:" console log messages that appear in the browser's developer console after you click "Save & Continue".
+Report: Provide the exact log output here. This output is critical for diagnosis.
+Analyze and Fix:
+Based only on the log output from Step 3, identify where the sequence stops or deviates from the expected flow (e.g., validation fails, setClientData isn't called, onNext isn't called, setActiveStep isn't called or doesn't update the step).
+Propose and implement a targeted fix for the identified failure point.
+Verify Fix:
+Restart the application.
+Simulate completing Step 1 again.
+Verify: Does the UI now successfully navigate to Step 2?
+Report: Describe the fix implemented and confirm whether navigation to Step 2 is now successful.
+Focus: Address only the Step 1 navigation blocker. Do not proceed to other issues (like getEntitiesByClient or Step 2 verification) until this is resolved and confirmed. The detailed log output is essential for the next instruction.

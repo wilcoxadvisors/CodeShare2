@@ -86,12 +86,24 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
     }
   }, [initialData]);
 
-  const onSubmit = (data: ClientSetupValues) => {
+  const onSubmit = async (data: ClientSetupValues) => {
     setIsSubmitting(true);
     try {
+      console.log("DEBUG: ClientSetupCard onSubmit triggered.");
+      // Validation check
+      const isValid = await form.trigger();
+      console.log(`DEBUG: ClientSetupCard form validation result: ${isValid}`);
+      
+      if (!isValid) {
+        console.log("DEBUG: ClientSetupCard validation failed, stopping.");
+        return;
+      }
+      
+      console.log("DEBUG: ClientSetupCard validation passed.");
       console.log("🔶 Client setup form submitted with data:", data);
       
       // Save the data to the parent component state
+      console.log("DEBUG: ClientSetupCard calling setClientData prop with:", data);
       setClientData(data);
       console.log("🔶 setClientData called with:", data);
       
@@ -107,16 +119,15 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
       
       // Move to the next step with data
       console.log("🔶 About to call onNext with data...");
+      console.log("DEBUG: ClientSetupCard calling onNext prop...");
       
       // Important: Client creation is handled implicitly in the system
       // When creating entities in the next step, they'll be associated with a client
       // which will be created on-demand if not present
       
-      // CRITICAL FIX: Call onNext directly without setTimeout
-      // This ensures the navigation happens immediately
-      console.log("🔶 Now calling onNext directly (fixed!)");
       if (onNext) {
         onNext(data);
+        console.log("DEBUG: ClientSetupCard onNext prop called.");
       } else {
         console.error("🔴 onNext function is not defined!");
       }

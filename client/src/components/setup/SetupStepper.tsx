@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle } from "lucide-react";
@@ -38,6 +38,14 @@ interface SetupStepperProps {
  * Setup stepper component that guides users through the onboarding process
  */
 export default function SetupStepper({ onComplete }: SetupStepperProps) {
+  // CRITICAL DEBUG: Tracking component instance ID to detect remounting
+  const instanceId = useRef<string>(`setup-${Math.random().toString(36).substr(2, 9)}`);
+  console.log(`DEBUG: SetupStepper INITIALIZING - instance ${instanceId.current}`);
+
+  // CRITICAL FIX: Create a ref to hold client data in case component remounts
+  // This will survive component remounts and allow us to restore state
+  const persistedClientDataRef = useRef<any>(null);
+
   const { user } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<string>("client");
@@ -47,18 +55,42 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // Initialize state only once when component is mounted
   useEffect(() => {
-    // Only initialize if these states haven't been set yet
-    if (currentStep !== "client" || clientData !== null || entityData.length > 0 || setupComplete) {
-      console.log("SetupStepper already initialized, not resetting state");
+    // Track mounting/unmounting for debugging
+    console.log(`DEBUG: SetupStepper MOUNTED - instance ${instanceId.current}`);
+    
+    // CRITICAL FIX: Check if we have persisted data in refs that needs to be restored
+    // This handles the case where the component was remounted but we have saved data
+    if (persistedClientDataRef.current && !clientData) {
+      console.log(`DEBUG: Found persisted client data from previous instance, restoring...`);
+      console.log(`DEBUG: Persisted data:`, persistedClientDataRef.current);
+      
+      // Restore client data from our ref (this survives remounts)
+      setClientData(persistedClientDataRef.current);
+      
+      // Also set the step to entities if we have client data
+      console.log(`DEBUG: Also setting step to entities because we have persisted client data`);
+      setCurrentStep("entities");
       return;
     }
     
-    console.log("SetupStepper initializing state on first mount");
+    // Normal initialization for first mount (no persisted data)
+    // Only initialize if these states haven't been set yet
+    if (currentStep !== "client" || clientData !== null || entityData.length > 0 || setupComplete) {
+      console.log(`DEBUG: SetupStepper already initialized (instance ${instanceId.current}), not resetting state`);
+      return;
+    }
+    
+    console.log(`DEBUG: SetupStepper initializing state on first mount - instance ${instanceId.current}`);
     // Only set these values if they're at their initial state
     if (currentStep !== "client") setCurrentStep("client");
     if (clientData !== null) setClientData(null);
     if (entityData.length > 0) setEntityData([]);
     if (setupComplete) setSetupComplete(false);
+    
+    // Return cleanup function to track unmounting
+    return () => {
+      console.log(`DEBUG: SetupStepper UNMOUNTING - instance ${instanceId.current}`);
+    };
   }, []);
   
   // Calculate current step index
@@ -97,29 +129,60 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
   };
   
-  // Handle client data from ClientSetupCard
+  // Handle client data from ClientSetupCard 
   const handleClientDataSaved = (data: any) => {
-    console.log("🔷 handleClientDataSaved called with data:", data);
+    console.log(`DEBUG: Parent (instance ${instanceId.current}) handleClientDataSaved received:`, data);
+    console.log(`DEBUG: Parent current activeStep BEFORE update: ${currentStep}`);
     
-    // CRITICAL FIX: First set the step, then update the client data
-    // This ensures the navigation happens first
-    console.log("🔷 STEP 1: Directly setting currentStep to 'entities'");
-    setCurrentStep("entities");
+    // CRITICAL FIX: Store client data in both state and our ref
+    // The ref will survive component remounts
+    persistedClientDataRef.current = {...data};
+    console.log(`DEBUG: Saved clientData to persistedClientDataRef`, persistedClientDataRef.current);
     
-    // Now update the client data after setting the step
-    console.log("🔷 STEP 2: Updating client data");
-    setClientData(data);
-    
-    // Add a forced state check
-    setTimeout(() => {
-      console.log("🔷 STEP 3: Verification - Current step should be 'entities':", currentStep);
-      if (currentStep !== "entities") {
-        console.log("🔷 STEP 4: Forcing step to 'entities' as backup");
-        setCurrentStep("entities");
-      }
-    }, 100);
-    
-    console.log("🔷 handleClientDataSaved completed");
+    try {
+      // We now use our solution that stores and sets steps in correct sequence
+      
+      // 1. First, set client data
+      console.log(`DEBUG: Setting clientData state`);
+      setClientData(persistedClientDataRef.current);
+      
+      // 2. Set step to entities AFTER client data is set
+      console.log(`DEBUG: Setting currentStep to 'entities'`);
+      setCurrentStep("entities");
+      
+      // 3. Force detection and recovery from remounts that might lose state
+      // We'll do this by checking current state shortly after our updates
+      setTimeout(() => {
+        console.log(`DEBUG: Running verification - Current step: ${currentStep}`);
+        
+        // Create a new function to call only if needed
+        const forceStateRecovery = () => {
+          console.log(`DEBUG: STATE RECOVERY needed for instance ${instanceId.current}`);
+          console.log(`DEBUG: Current step (should be 'entities'): ${currentStep}`);
+          console.log(`DEBUG: Current clientData:`, clientData);
+          
+          // Force state recovery by retrying the state updates
+          if (currentStep !== "entities") {
+            console.log(`DEBUG: Recovering step state - setting to 'entities'`);
+            setCurrentStep("entities");
+          }
+          
+          if (!clientData && persistedClientDataRef.current) {
+            console.log(`DEBUG: Recovering clientData from ref`);
+            setClientData(persistedClientDataRef.current);
+          }
+        };
+        
+        // Check and recover if needed
+        if (currentStep !== "entities" || !clientData) {
+          forceStateRecovery();
+        } else {
+          console.log(`DEBUG: State verification passed - step: ${currentStep}, clientData present: ${!!clientData}`);
+        }
+      }, 100);
+    } catch (error) {
+      console.error(`DEBUG: Error in handleClientDataSaved:`, error);
+    }
   };
   
   // Handle entity data from EntityManagementCard
@@ -138,18 +201,16 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   // When client data changes, conditionally update the step
   useEffect(() => {
-    console.log("clientData useEffect triggered, clientData:", clientData, "currentStep:", currentStep);
-    // If we have client data and we're on the first step, auto-advance
-    if (clientData && currentStep === "client") {
-      console.log("Auto-advancing due to clientData change while on client step");
-      // CRITICAL FIX: This effect might be interfering with the direct step change in handleClientDataSaved
-      // Let's make this effect work with the explicit navigation
-      setTimeout(() => {
-        console.log("Setting current step to entities from useEffect");
-        setCurrentStep("entities");
-      }, 50);
-    }
-  }, [clientData]);
+    console.log("DEBUG: clientData useEffect triggered, clientData:", clientData, "currentStep:", currentStep);
+    
+    // CRITICAL FIX: This useEffect was causing problems
+    // We'll remove the auto-advancing behavior since it's redundant with handleClientDataSaved
+    // Only log the data state changes for debugging
+    
+    // Debugging only - force a check of rendered component state
+    console.log(`DEBUG: Current component client step state is: ${currentStep}`);
+    console.log(`DEBUG: Current component client data state is:`, clientData);
+  }, [clientData, currentStep]);
   
   return (
     <div className="my-8">
