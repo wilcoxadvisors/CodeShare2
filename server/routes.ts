@@ -508,7 +508,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Account routes
+  // Account routes are now handled by accountRoutes.ts
+  // These legacy routes are commented out to avoid duplication
+  
+  /* 
   app.get("/api/entities/:entityId/accounts", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.entityId);
@@ -631,6 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+  */
   
   // Journal Entry routes
   app.get("/api/entities/:entityId/journal-entries", isAuthenticated, async (req, res) => {

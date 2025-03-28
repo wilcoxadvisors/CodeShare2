@@ -50,10 +50,10 @@ function ChartOfAccounts() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get accounts data
+  // Get accounts data using client-based API
   const { data: accounts = [], isLoading, refetch } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ["no-entity-selected"],
-    enabled: !!currentEntity,
+    queryKey: currentEntity ? [`/api/clients/${currentEntity.clientId}/accounts`] : ["no-entity-selected"],
+    enabled: !!currentEntity && !!currentEntity.clientId,
   });
 
   // Auto-generate account code based on type selection
@@ -126,7 +126,7 @@ function ChartOfAccounts() {
   const createAccount = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest(
-        `/api/entities/${currentEntity?.id}/accounts`, 
+        `/api/clients/${currentEntity?.clientId}/accounts`, 
         {
           method: 'POST',
           data
@@ -252,7 +252,7 @@ function ChartOfAccounts() {
   const updateAccount = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest(
-        `/api/entities/${currentEntity?.id}/accounts/${data.id}`, 
+        `/api/clients/${currentEntity?.clientId}/accounts/${data.id}`, 
         {
           method: 'PUT',
           data

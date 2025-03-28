@@ -13,9 +13,12 @@ import {
 } from "@shared/validation";
 import { 
   AccountType,
-  Account
+  Account,
+  journalEntryLines
 } from "@shared/schema";
 import { validateRequest } from "@shared/validation";
+import { eq, sql } from "drizzle-orm";
+import { db, pool } from "./db";
 
 // Type for authenticated user in request
 interface AuthUser {
@@ -39,64 +42,58 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 
 // Register account routes
 export function registerAccountRoutes(app: Express) {
-  // Get all accounts for an entity
-  app.get("/api/entities/:entityId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
+  // Get all accounts for a client
+  app.get("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
     
-    // Validate entity ID
-    if (isNaN(entityId) || entityId <= 0) {
-      throwBadRequest("Invalid entity ID");
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
     }
     
-    // Validate user has access to entity
+    // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const entity = await storage.getEntity(entityId);
+    const client = await storage.getClient(clientId);
     
-    if (!entity) {
-      throwNotFound("Entity");
+    if (!client) {
+      throwNotFound("Client");
     }
     
-    if (entity.ownerId !== userId) {
-      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-      if (!accessLevel) {
-        throwForbidden("You don't have access to this entity");
-      }
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
     }
     
-    // Get accounts from storage
-    const accounts = await storage.getAccounts(entityId);
+    // Get accounts from storage (now using clientId)
+    const accounts = await storage.getAccounts(clientId);
     
     // Return accounts
     res.json(accounts);
   }));
   
   // Get account by ID
-  app.get("/api/entities/:entityId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
+  app.get("/api/clients/:clientId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
     const accountId = parseInt(req.params.id);
     
     // Validate IDs
-    if (isNaN(entityId) || entityId <= 0) {
-      throwBadRequest("Invalid entity ID");
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
     }
     
     if (isNaN(accountId) || accountId <= 0) {
       throwBadRequest("Invalid account ID");
     }
     
-    // Validate user has access to entity
+    // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const entity = await storage.getEntity(entityId);
+    const client = await storage.getClient(clientId);
     
-    if (!entity) {
-      throwNotFound("Entity");
+    if (!client) {
+      throwNotFound("Client");
     }
     
-    if (entity.ownerId !== userId) {
-      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-      if (!accessLevel) {
-        throwForbidden("You don't have access to this entity");
-      }
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
     }
     
     // Get account from storage
@@ -106,8 +103,8 @@ export function registerAccountRoutes(app: Express) {
       throwNotFound("Account");
     }
     
-    if (account.entityId !== entityId) {
-      throwForbidden("Account does not belong to this entity");
+    if (account.clientId !== clientId) {
+      throwForbidden("Account does not belong to this client");
     }
     
     // Return account
@@ -115,33 +112,30 @@ export function registerAccountRoutes(app: Express) {
   }));
   
   // Create a new account
-  app.post("/api/entities/:entityId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
+  app.post("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
     
-    // Validate entity ID
-    if (isNaN(entityId) || entityId <= 0) {
-      throwBadRequest("Invalid entity ID");
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
     }
     
-    // Validate user has access to entity
+    // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const entity = await storage.getEntity(entityId);
+    const client = await storage.getClient(clientId);
     
-    if (!entity) {
-      throwNotFound("Entity");
+    if (!client) {
+      throwNotFound("Client");
     }
     
-    if (entity.ownerId !== userId) {
-      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-      if (!accessLevel) {
-        throwForbidden("You don't have access to this entity");
-      }
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
     }
     
     // Validate request data
     const validationResult = validateRequest(
       enhancedAccountSchema,
-      { ...req.body, entityId }
+      { ...req.body, clientId }
     );
     
     if (!validationResult.success) {
@@ -151,7 +145,7 @@ export function registerAccountRoutes(app: Express) {
     const accountData = validationResult.data;
     
     // Check for duplicate account code
-    const existingAccounts = await storage.getAccounts(entityId);
+    const existingAccounts = await storage.getAccounts(clientId);
     const isDuplicateCode = existingAccounts.some(
       acc => acc.code === accountData.code
     );
@@ -168,32 +162,29 @@ export function registerAccountRoutes(app: Express) {
   }));
   
   // Update an account
-  app.put("/api/entities/:entityId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
+  app.put("/api/clients/:clientId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
     const accountId = parseInt(req.params.id);
     
     // Validate IDs
-    if (isNaN(entityId) || entityId <= 0) {
-      throwBadRequest("Invalid entity ID");
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
     }
     
     if (isNaN(accountId) || accountId <= 0) {
       throwBadRequest("Invalid account ID");
     }
     
-    // Validate user has access to entity
+    // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const entity = await storage.getEntity(entityId);
+    const client = await storage.getClient(clientId);
     
-    if (!entity) {
-      throwNotFound("Entity");
+    if (!client) {
+      throwNotFound("Client");
     }
     
-    if (entity.ownerId !== userId) {
-      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-      if (!accessLevel) {
-        throwForbidden("You don't have access to this entity");
-      }
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
     }
     
     // Get existing account
@@ -203,8 +194,8 @@ export function registerAccountRoutes(app: Express) {
       throwNotFound("Account");
     }
     
-    if (existingAccount.entityId !== entityId) {
-      throwForbidden("Account does not belong to this entity");
+    if (existingAccount.clientId !== clientId) {
+      throwForbidden("Account does not belong to this client");
     }
     
     // Validate partial update data
@@ -221,7 +212,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Check for duplicate account code if code is being updated
     if (updateData.code && updateData.code !== existingAccount.code) {
-      const existingAccounts = await storage.getAccounts(entityId);
+      const existingAccounts = await storage.getAccounts(clientId);
       const isDuplicateCode = existingAccounts.some(
         acc => acc.code === updateData.code && acc.id !== accountId
       );
@@ -243,32 +234,29 @@ export function registerAccountRoutes(app: Express) {
   }));
   
   // Delete an account
-  app.delete("/api/entities/:entityId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
+  app.delete("/api/clients/:clientId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
     const accountId = parseInt(req.params.id);
     
     // Validate IDs
-    if (isNaN(entityId) || entityId <= 0) {
-      throwBadRequest("Invalid entity ID");
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
     }
     
     if (isNaN(accountId) || accountId <= 0) {
       throwBadRequest("Invalid account ID");
     }
     
-    // Validate user has access to entity
+    // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const entity = await storage.getEntity(entityId);
+    const client = await storage.getClient(clientId);
     
-    if (!entity) {
-      throwNotFound("Entity");
+    if (!client) {
+      throwNotFound("Client");
     }
     
-    if (entity.ownerId !== userId) {
-      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-      if (!accessLevel) {
-        throwForbidden("You don't have access to this entity");
-      }
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
     }
     
     // Get existing account
@@ -278,22 +266,26 @@ export function registerAccountRoutes(app: Express) {
       throwNotFound("Account");
     }
     
-    if (existingAccount.entityId !== entityId) {
-      throwForbidden("Account does not belong to this entity");
+    if (existingAccount.clientId !== clientId) {
+      throwForbidden("Account does not belong to this client");
     }
     
-    // Check if account is used in journal entries
-    const journalEntries = await storage.getJournalEntries(entityId);
-    const journalEntryIds = journalEntries.map(entry => entry.id);
-    
-    // Check if account is used in any journal entry lines
+    // Check if account is used directly in any journal entry lines
     let hasJournalEntryLines = false;
-    for (const entryId of journalEntryIds) {
-      const lines = await storage.getJournalEntryLines(entryId);
-      if (lines.some(line => line.accountId === accountId)) {
-        hasJournalEntryLines = true;
-        break;
-      }
+    
+    try {
+      // Query the journal_entry_lines table directly to find any references to this account
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(journalEntryLines)
+        .where(eq(journalEntryLines.accountId, accountId));
+      
+      // If count is more than 0, the account is in use
+      const count = parseInt(result[0].count.toString());
+      hasJournalEntryLines = count > 0;
+    } catch (error) {
+      console.error("Error checking journal entry lines:", error);
+      throw error;
     }
     
     if (hasJournalEntryLines) {

@@ -168,15 +168,13 @@ export enum JournalEntryStatus {
 export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
   entityId: integer("entity_id").references(() => entities.id).notNull(),
-  journalId: integer("journal_id").references(() => journals.id).notNull(),
+  // Removed journalId as it doesn't exist in the actual database
   reference: text("reference").notNull(), // JE-2023-0001
   date: timestamp("date").notNull(),
   description: text("description"),
   status: text("status").$type<JournalEntryStatus>().notNull().default(JournalEntryStatus.DRAFT),
-  needsReview: boolean("needs_review").default(false), // Flag for entries that need additional review
-  isRecurring: boolean("is_recurring").default(false), // Flag for recurring entries
-  recurringFrequency: text("recurring_frequency"), // monthly, quarterly, etc.
-  recurringEndDate: timestamp("recurring_end_date"),
+  // needsReview and isRecurring fields don't exist in the actual database table
+  // recurringFrequency and recurringEndDate fields don't exist in the actual database table
   requestedBy: integer("requested_by").references(() => users.id),
   requestedAt: timestamp("requested_at"),
   approvedBy: integer("approved_by").references(() => users.id),
@@ -486,6 +484,7 @@ export const insertAccountSchema = createInsertSchema(accounts).omit({
 // Schema for Journal Entry insertion
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({
   id: true,
+  // Removed journalId from schema since it doesn't exist in the database
   requestedAt: true,
   approvedAt: true,
   rejectedAt: true,

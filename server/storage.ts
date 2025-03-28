@@ -98,10 +98,10 @@ export interface IStorage {
   updateFixedAsset(id: number, asset: Partial<FixedAsset>): Promise<FixedAsset | undefined>;
   
   // Report methods
-  generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
-  generateBalanceSheet(clientId: number, asOfDate?: Date): Promise<any>;
-  generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
-  generateCashFlow(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
+  generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any>;
+  generateBalanceSheet(clientId: number, asOfDate?: Date, entityId?: number): Promise<any>;
+  generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any>;
+  generateCashFlow(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any>;
   
   // GL reporting
   getGeneralLedger(entityId: number, options?: GLOptions): Promise<GLEntry[]>;
@@ -440,7 +440,7 @@ export class MemStorage implements IStorage {
     accounts.forEach(account => {
       const newAccount: Account = {
         id: this.currentAccountId++,
-        entityId: defaultEntity.id,
+        clientId: defaultClient.id,
         code: account.code,
         name: account.name,
         type: account.type,
@@ -603,7 +603,7 @@ export class MemStorage implements IStorage {
       // Add journal entry lines
       entry.lines.forEach(line => {
         const accountEntry = Array.from(this.accounts.values())
-          .find(a => a.entityId === defaultEntity.id && a.code === line.accountCode);
+          .find(a => a.clientId === defaultClient.id && a.code === line.accountCode);
         
         if (accountEntry) {
           const journalEntryLine: JournalEntryLine = {
@@ -1208,7 +1208,7 @@ export class MemStorage implements IStorage {
   }
   
   // Report methods
-  async generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any> {
     const accounts = await this.getAccounts(clientId);
     const result = [];
     
@@ -1220,6 +1220,11 @@ export class MemStorage implements IStorage {
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
           if (!entry || entry.status !== JournalEntryStatus.POSTED) {
+            return false;
+          }
+          
+          // Filter by entityId if provided - important as we share Chart of Accounts across entities
+          if (entityId && entry.entityId !== entityId) {
             return false;
           }
           
@@ -1281,7 +1286,7 @@ export class MemStorage implements IStorage {
     return result;
   }
   
-  async generateBalanceSheet(clientId: number, asOfDate?: Date): Promise<any> {
+  async generateBalanceSheet(clientId: number, asOfDate?: Date, entityId?: number): Promise<any> {
     // Get all asset, liability, and equity accounts
     const assetAccounts = await this.getAccountsByType(clientId, AccountType.ASSET);
     const liabilityAccounts = await this.getAccountsByType(clientId, AccountType.LIABILITY);
@@ -1293,6 +1298,11 @@ export class MemStorage implements IStorage {
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
           if (!entry || entry.status !== JournalEntryStatus.POSTED) {
+            return false;
+          }
+          
+          // Filter by entityId if provided - important as we share Chart of Accounts across entities
+          if (entityId && entry.entityId !== entityId) {
             return false;
           }
           
@@ -1354,7 +1364,7 @@ export class MemStorage implements IStorage {
     };
   }
   
-  async generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any> {
     // Get all revenue and expense accounts
     const revenueAccounts = await this.getAccountsByType(clientId, AccountType.REVENUE);
     const expenseAccounts = await this.getAccountsByType(clientId, AccountType.EXPENSE);
@@ -1365,6 +1375,11 @@ export class MemStorage implements IStorage {
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
           if (!entry || entry.status !== JournalEntryStatus.POSTED) {
+            return false;
+          }
+          
+          // Filter by entityId if provided - important as we share Chart of Accounts across entities
+          if (entityId && entry.entityId !== entityId) {
             return false;
           }
           
@@ -1427,7 +1442,7 @@ export class MemStorage implements IStorage {
     };
   }
   
-  async generateCashFlow(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateCashFlow(clientId: number, startDate?: Date, endDate?: Date, entityId?: number): Promise<any> {
     // For this simple implementation, we'll just return the cash account balance changes
     const cashAccounts = Array.from(this.accounts.values())
       .filter(account => 
@@ -1453,6 +1468,11 @@ export class MemStorage implements IStorage {
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
           if (!entry || entry.status !== JournalEntryStatus.POSTED) {
+            return false;
+          }
+          
+          // Filter by entityId if provided - important as we share Chart of Accounts across entities
+          if (entityId && entry.entityId !== entityId) {
             return false;
           }
           
@@ -2319,8 +2339,15 @@ export class MemStorage implements IStorage {
     };
     
     // Get accounts to forecast
+    const client = Array.from(this.entities.values())
+      .find(entity => entity.id === entityId)?.clientId;
+      
+    if (!client) {
+      return null; // Entity not found or no client associated
+    }
+    
     const accounts = Array.from(this.accounts.values())
-      .filter(account => account.entityId === entityId)
+      .filter(account => account.clientId === client)
       .filter(account => account.type === AccountType.REVENUE || account.type === AccountType.EXPENSE);
     
     // Add accounts to forecast
