@@ -1,0 +1,32 @@
+Agent Instructions: Implement Correct Frontend Logic for Local Entity Updates
+
+Goal: Allow users to successfully edit entities added during the current setup session (Step 2) by modifying the frontend state directly, without making unnecessary/failing API calls using temporary IDs.
+
+Context: Your previous backend fix (Checkpoint 0f050df6) prevents the 500 error by rejecting large temporary IDs. Now, you need to modify the frontend (EntityManagementCard.tsx) to handle updates to these temporary entities correctly by updating local state instead of calling the API.
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx (Handles edits and onSubmit)
+client/src/components/setup/SetupStepper.tsx (Manages setupEntities state, needs update callback)
+Refactoring Steps:
+
+Modify onSubmit in EntityManagementCard.tsx:
+Action: Locate the onSubmit function and the logic branch for updates (if (isEditing && currentEntityId)).
+Action: Add a check to determine if currentEntityId is a temporary local ID (e.g., a large number/timestamp generated via Date.now() or similar). You might check if the currentEntityId is greater than a typical database ID threshold or if the entity object being edited has a specific flag indicating it's local-only.
+Action:
+If currentEntityId is identified as a temporary/local ID:
+Do NOT call updateEntityMutation.mutate(...).
+Instead, construct the updatedLocalEntityData object based on the form values and ensure it includes the same temporary localId the entity had before editing.
+Call the props.onEntityUpdated(updatedLocalEntityData) function (passed from SetupStepper) to update the central state.
+Reset the form and editing state.
+Add a console log: console.log("DEBUG EntityMC: Updated local entity in state:", updatedLocalEntityData);
+If currentEntityId is a real database ID (else block):
+(Keep existing logic) Call updateEntityMutation.mutate(...) with the database ID and payload. Add a console log: console.log("DEBUG EntityMC: Calling API to update entity with DB ID:", currentEntityId);
+Verify onEntityUpdated Callback in SetupStepper.tsx:
+Action: Open client/src/components/setup/SetupStepper.tsx.
+Action: Confirm the handleEntityUpdated function correctly updates the setupEntities state array by finding the entity with the matching localId and replacing it immutably. Confirm it's passed as onEntityUpdated prop to EntityManagementCard.
+Verify Fix via Simulation:
+Action: Authenticate (admin/password123).
+Action: Simulate the UI flow: Dashboard -> Add Client -> Step 1 -> Step 2 -> Add Entity -> Edit that Entity -> Change Field -> Click "Save Changes".
+Action: Monitor Frontend Console Logs.
+Report: Did the edit save without errors? Did the frontend log indicate a local state update occurred? Was a PUT request made to the backend? (It should NOT have been for this local entity edit). Did the entity list in the UI state update correctly?
