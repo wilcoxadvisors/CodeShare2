@@ -766,7 +766,23 @@ export class MemStorage implements IStorage {
   }
   
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
+    console.log("DEBUG Storage CreateEntity: Creating new entity with data:", JSON.stringify(insertEntity));
+    
     const id = this.currentEntityId++;
+    
+    // Process industry data for consistency
+    let industryValue = null;
+    if (insertEntity.industry !== undefined && insertEntity.industry !== null) {
+      if (insertEntity.industry === '') {
+        console.log("DEBUG Storage CreateEntity: Empty industry provided, defaulting to 'other'");
+        industryValue = 'other';
+      } else {
+        // Convert any industry value to string for consistent storage
+        console.log(`DEBUG Storage CreateEntity: Converting industry value "${insertEntity.industry}" (${typeof insertEntity.industry}) to string`);
+        industryValue = String(insertEntity.industry);
+      }
+    }
+    
     const entity: Entity = { 
       id, 
       name: insertEntity.name,
@@ -788,7 +804,7 @@ export class MemStorage implements IStorage {
       state: insertEntity.state || null,
       country: insertEntity.country || null,
       postalCode: insertEntity.postalCode || null,
-      industry: insertEntity.industry || null,
+      industry: industryValue, // Use our processed industry value
       subIndustry: insertEntity.subIndustry || null,
       employeeCount: insertEntity.employeeCount || null,
       foundedYear: insertEntity.foundedYear || null,
@@ -832,10 +848,17 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Industry field validation - ensure we never store null/empty values
-    if (entityData.industry === null || entityData.industry === '') {
-      console.log("DEBUG Storage UpdateEntity: Empty industry provided, defaulting to 'other'");
-      entityData.industry = 'other';
+    // Industry field validation - ensure we never store null/empty values and always store as string
+    if (entityData.industry !== undefined) {
+      // Handle null/empty values
+      if (entityData.industry === null || entityData.industry === '') {
+        console.log("DEBUG Storage UpdateEntity: Empty industry provided, defaulting to 'other'");
+        entityData.industry = 'other';
+      } else {
+        // Ensure industry is stored as string regardless of input type (number, etc.)
+        console.log(`DEBUG Storage UpdateEntity: Converting industry value "${entityData.industry}" (${typeof entityData.industry}) to string for storage consistency`);
+        entityData.industry = String(entityData.industry);
+      }
     }
     
     // Detailed logging for all fields being updated

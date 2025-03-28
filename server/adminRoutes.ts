@@ -304,16 +304,30 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       // Make sure code is provided or generate a default one
       const entityCode = entityData.code || entityData.name?.substring(0, 3).toUpperCase() || 'ENT';
       
+      // If the industry field is present but empty, null, or a non-string value, set it explicitly
+      let industryValue = entityData.industry;
+      
+      // Convert numeric industry values to string to maintain consistency
+      if (industryValue !== undefined && industryValue !== null) {
+        // Convert to string for consistency
+        industryValue = String(industryValue);
+      } else if (industryValue === '' || industryValue === null) {
+        // Default empty value to "other" for consistency with update logic
+        industryValue = "other";
+      }
+      
       // Validate and create entity
       const validatedData = insertEntitySchema.parse({
         ...entityData,
         code: entityCode,
         ownerId: finalOwnerId,
         clientId: clientId,
-        active: true
+        active: true,
+        industry: industryValue
       });
       
       console.log("Creating entity with validated data:", validatedData);
+      console.log("INDUSTRY VALUE BEING SAVED:", validatedData.industry);
       const entity = await storage.createEntity(validatedData);
       console.log("Entity created successfully:", entity);
       
@@ -380,10 +394,16 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throw new Error("Entity name is required");
       }
       
-      // If the industry field is present but empty or null, set it to "other"
-      if (req.body.industry === null || req.body.industry === '') {
-        console.log("DEBUG Route Update Entity: Setting empty industry to 'other'");
-        req.body.industry = "other";
+      // If the industry field is present, convert it to string for consistency
+      if (req.body.industry !== undefined) {
+        if (req.body.industry === null || req.body.industry === '') {
+          console.log("DEBUG Route Update Entity: Setting empty industry to 'other'");
+          req.body.industry = "other";
+        } else {
+          // Convert numeric industry values to string for consistency
+          console.log(`DEBUG Route Update Entity: Converting industry value "${req.body.industry}" (${typeof req.body.industry}) to string`);
+          req.body.industry = String(req.body.industry);
+        }
       }
       
       // Validate clientId if provided
