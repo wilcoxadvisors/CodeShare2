@@ -1,167 +1,183 @@
 /**
- * Entity Creation Test with Detailed Logging
+ * Entity Creation Test with Industry Field
  * 
- * This script simulates the entity creation flow while providing detailed logging
- * specifically focused on the industry field handling.
+ * This script tests the entity creation workflow with industry field,
+ * using the same direct SQL approach we implemented in storage.ts
  */
 
-const axios = require('axios');
-const fs = require('fs');
+// Import the PostgreSQL client
+const { Pool } = require('pg');
 
-// Configuration
-const API_URL = 'http://localhost:5000'; // The server URL
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'password123'
-};
+// Create a connection to the database
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
 
-// Store cookies for authenticated requests
-let cookies = [];
-
-function logHeader(text) {
-  console.log('\n' + '='.repeat(80));
-  console.log(text);
-  console.log('='.repeat(80) + '\n');
+// Log section utility
+function logSection(title) {
+  console.log('\n' + '='.repeat(50));
+  console.log(title);
+  console.log('='.repeat(50));
 }
 
-function logRequest(method, url, data = null) {
-  console.log(`🌐 ${method} ${url}`);
-  if (data) {
-    console.log('📦 Request data:', JSON.stringify(data, null, 2));
-  }
-}
-
-function logResponse(response) {
-  console.log('✅ Response status:', response.status);
-  console.log('📦 Response data:', JSON.stringify(response.data, null, 2));
-}
-
-function logError(error) {
-  console.error('❌ Error:', error.message);
-  if (error.response) {
-    console.error('📦 Response status:', error.response.status);
-    console.error('📦 Response data:', error.response.data);
-  }
-}
-
-// Configure axios to handle cookies
-axios.defaults.withCredentials = true;
-
-async function runTest() {
-  logHeader('STARTING ENTITY CREATION TEST WITH DETAILED LOGGING');
-
-  try {
-    // Step 1: Authentication
-    logHeader('STEP 1: AUTHENTICATION');
-    logRequest('POST', '/api/auth/login', ADMIN_CREDENTIALS);
-    
-    const authResponse = await axios.post(`${API_URL}/api/auth/login`, ADMIN_CREDENTIALS);
-    logResponse(authResponse);
-    
-    // Save cookies
-    if (authResponse.headers['set-cookie']) {
-      cookies = authResponse.headers['set-cookie'];
-      console.log('🍪 Cookies received:', cookies);
-    }
-    
-    // Configure axios to send the cookies with subsequent requests
-    axios.defaults.headers.Cookie = cookies.join('; ');
-    
-    console.log('👤 Authenticated as admin');
-    
-    // Verify authentication
-    logRequest('GET', '/api/auth/me');
-    const meResponse = await axios.get(`${API_URL}/api/auth/me`);
-    logResponse(meResponse);
-    console.log('✅ Authentication confirmed');
-
-    // Step 2: Create a client (required for entity creation)
-    logHeader('STEP 2: CREATE CLIENT');
-    
-    const timestamp = Date.now();
-    const clientData = {
-      name: `Test Client ${timestamp}`,
-      contactName: 'Test Contact',
-      industry: 'technology',
-      phone: '555-123-4567',
-      email: 'test@example.com',
-      ownerId: 1
-    };
-    
-    logRequest('POST', '/api/admin/clients', clientData);
-    const clientResponse = await axios.post(`${API_URL}/api/admin/clients`, clientData);
-    logResponse(clientResponse);
-    
-    const clientId = clientResponse.data.data.id;
-    console.log(`✅ Client created with ID: ${clientId}`);
-
-    // Test different industry scenarios
-    await testIndustryCase(clientId, 'String Value', 'technology', 'Test Case 1: String Industry Value');
-    await testIndustryCase(clientId, 'Numeric Value', 123, 'Test Case 2: Numeric Industry Value');
-    await testIndustryCase(clientId, 'Empty String', '', 'Test Case 3: Empty String Industry Value');
-    await testIndustryCase(clientId, 'Null Value', null, 'Test Case 4: Null Industry Value');
-    
-    logHeader('ENTITY CREATION TEST SUMMARY');
-    console.log('✅ All test cases executed');
-
-  } catch (error) {
-    logError(error);
-  }
-}
-
-async function testIndustryCase(clientId, caseName, industryValue, description) {
-  logHeader(description);
+async function createEntity(entityData) {
+  logSection(`CREATING ENTITY: ${entityData.name}`);
   
-  const timestamp = Date.now();
-  const entityData = {
-    name: `${caseName} Entity ${timestamp}`,
-    legalName: `Test ${caseName} Legal Name`,
-    clientId: clientId,
-    entityType: 'llc',
-    industry: industryValue,
-    taxId: '12-3456789',
-    address: '123 Test Street',
-    phone: '555-987-6543',
-    email: 'entity@example.com',
-    ownerId: 1,
-    code: `TE${Math.floor(Math.random() * 1000)}`
-  };
+  // Process industry data for consistency
+  let industryValue = entityData.industry;
   
-  console.log(`🏢 Creating entity with industry value: ${industryValue} (${typeof industryValue})`);
-  logRequest('POST', '/api/admin/entities', entityData);
+  // Handle null/empty values
+  if (industryValue === null || industryValue === '' || industryValue === undefined) {
+    console.log("Empty/null industry provided, defaulting to 'other'");
+    industryValue = 'other';
+  } else {
+    // Ensure industry is stored as string regardless of input type
+    console.log(`Converting industry value "${industryValue}" (${typeof industryValue}) to string for storage consistency`);
+    industryValue = String(industryValue);
+  }
+  
+  console.log(`Final industry value to be stored: "${industryValue}"`);
   
   try {
-    const entityResponse = await axios.post(`${API_URL}/api/admin/entities`, entityData);
-    logResponse(entityResponse);
+    // Create timestamp for created_at field
+    const now = new Date();
     
-    const entityId = entityResponse.data.data.id;
-    const storedIndustry = entityResponse.data.data.industry;
+    // Build the SQL query to explicitly include all necessary fields
+    const insertSql = `
+      INSERT INTO entities (
+        name, code, owner_id, client_id, active, 
+        fiscal_year_start, fiscal_year_end, industry,
+        created_at, updated_at, currency
+      ) VALUES (
+        $1, $2, $3, $4, $5, 
+        $6, $7, $8,
+        $9, $10, $11
+      ) RETURNING *
+    `;
     
-    console.log(`✅ Entity created with ID: ${entityId}`);
-    console.log(`👁️ Sent industry value: ${industryValue} (${typeof industryValue})`);
-    console.log(`👁️ Stored industry value: "${storedIndustry}" (${typeof storedIndustry})`);
+    // Prepare parameters
+    const params = [
+      entityData.name,
+      entityData.code || entityData.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 1000),
+      entityData.ownerId || 1,
+      entityData.clientId || 1,
+      entityData.active ?? true,
+      entityData.fiscalYearStart ?? "01-01",
+      entityData.fiscalYearEnd ?? "12-31",
+      industryValue, // Explicitly include processed industry value
+      now, // created_at
+      now, // updated_at
+      entityData.currency ?? "USD"
+    ];
     
-    // Analyze results
-    if (storedIndustry === null) {
-      console.log('❌ ISSUE: Industry was stored as NULL despite being set in request');
-    } else if (typeof storedIndustry === 'string' && industryValue !== null && storedIndustry !== String(industryValue) && storedIndustry !== 'other') {
-      console.log('⚠️ NOTE: Industry was stored but with modified value');
+    // Execute the query
+    const result = await pool.query(insertSql, params);
+    
+    if (result.rows && result.rows.length > 0) {
+      const entity = result.rows[0];
+      console.log('Entity created successfully:', {
+        id: entity.id,
+        name: entity.name,
+        industry: entity.industry
+      });
+      console.log(`Industry value stored: "${entity.industry}" (${typeof entity.industry})`);
+      
+      // Now use select to verify what was stored
+      await getEntityById(entity.id);
+      
+      return entity;
     } else {
-      console.log('✅ Industry value handling was as expected');
+      throw new Error("Entity creation failed - no result returned from insertion");
     }
-    
-    // Verify entity by ID 
-    logRequest('GET', `/api/admin/entities/${entityId}`);
-    const verifyResponse = await axios.get(`${API_URL}/api/admin/entities/${entityId}`);
-    const verifiedIndustry = verifyResponse.data.industry;
-    console.log(`👁️ Verified industry value: "${verifiedIndustry}" (${typeof verifiedIndustry})`);
-    
-    return entityId;
   } catch (error) {
-    logError(error);
+    console.error("Error creating entity:", error);
     return null;
   }
 }
 
+async function getEntityById(id) {
+  logSection(`FETCHING ENTITY: ID ${id}`);
+  
+  try {
+    const result = await pool.query('SELECT * FROM entities WHERE id = $1', [id]);
+    
+    if (result.rows && result.rows.length > 0) {
+      const entity = result.rows[0];
+      console.log('Found entity:', {
+        id: entity.id,
+        name: entity.name,
+        industry: entity.industry
+      });
+      console.log(`Industry value: "${entity.industry}" (${typeof entity.industry})`);
+      
+      return entity;
+    } else {
+      console.log(`No entity found with ID ${id}`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching entity:', error);
+    return null;
+  }
+}
+
+async function cleanup(testPrefix) {
+  logSection('CLEANING UP TEST ENTITIES');
+  
+  try {
+    // Delete any entities created by this test
+    const result = await pool.query(
+      'DELETE FROM entities WHERE name LIKE $1 RETURNING id, name, industry',
+      [testPrefix + '%']
+    );
+    
+    if (result.rows && result.rows.length > 0) {
+      console.log(`Deleted ${result.rows.length} test entities:`);
+      result.rows.forEach(entity => {
+        console.log(`- ID: ${entity.id}, Name: ${entity.name}, Industry: ${entity.industry}`);
+      });
+    } else {
+      console.log('No test entities to delete');
+    }
+  } catch (error) {
+    console.error('Error cleaning up test entities:', error);
+  }
+}
+
+async function runTest() {
+  const testPrefix = 'TestEntity_' + Date.now().toString().substring(0, 6) + '_';
+  
+  try {
+    logSection('STARTING ENTITY CREATION TEST');
+    
+    // Test cases for different industry values
+    const testCases = [
+      { name: testPrefix + 'String_Value', industry: 'tech' },
+      { name: testPrefix + 'Numeric_Value', industry: 123 },
+      { name: testPrefix + 'Empty_String', industry: '' },
+      { name: testPrefix + 'Null_Value', industry: null },
+      { name: testPrefix + 'Other_Value', industry: 'other' }
+    ];
+    
+    // Create test entities
+    for (const testCase of testCases) {
+      await createEntity(testCase);
+    }
+    
+    // Cleanup test entities
+    await cleanup(testPrefix);
+    
+    console.log('\nTest completed.');
+    
+    // Close pool
+    await pool.end();
+  } catch (error) {
+    console.error('Test error:', error);
+    
+    // Make sure to close the pool even if there's an error
+    await pool.end();
+  }
+}
+
 // Run the test
-runTest().catch(console.error);
+runTest();

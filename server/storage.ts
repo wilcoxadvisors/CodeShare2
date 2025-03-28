@@ -3728,76 +3728,156 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`DEBUG DB CreateEntity: Final industry value to be stored: "${industryValue}"`);
     
-    // DIRECT SQL APPROACH - based on successful test case
     try {
-      console.log("DEBUG DB CreateEntity: Using direct SQL approach for reliable industry handling");
+      // Use Drizzle ORM for entity creation, but ensure industry is properly set
+      const [result] = await db
+        .insert(entities)
+        .values({
+          name: insertEntity.name,
+          code: insertEntity.code,
+          ownerId: insertEntity.ownerId,
+          clientId: insertEntity.clientId || null,
+          active: insertEntity.active ?? true,
+          fiscalYearStart: insertEntity.fiscalYearStart ?? "01-01",
+          fiscalYearEnd: insertEntity.fiscalYearEnd ?? "12-31",
+          taxId: insertEntity.taxId || null,
+          address: insertEntity.address || null,
+          phone: insertEntity.phone || null,
+          website: insertEntity.website || null,
+          currency: insertEntity.currency ?? "USD",
+          industry: industryValue // Explicitly include processed industry value
+        })
+        .returning();
       
-      // Build a SQL query with all the necessary fields
-      const query = `
-        INSERT INTO entities (
-          name, code, owner_id, client_id, active, 
-          fiscal_year_start, fiscal_year_end, tax_id, 
-          address, phone, email, website, currency, industry
-        ) VALUES (
-          $1, $2, $3, $4, $5, 
-          $6, $7, $8, 
-          $9, $10, $11, $12, $13, $14
-        ) RETURNING *
-      `;
-      
-      // Prepare parameters with proper defaults and explicitly include industry
-      const params = [
-        insertEntity.name,
-        insertEntity.code,
-        insertEntity.ownerId,
-        insertEntity.clientId || null,
-        insertEntity.active ?? true,
-        insertEntity.fiscalYearStart ?? "01-01",
-        insertEntity.fiscalYearEnd ?? "12-31",
-        insertEntity.taxId || null,
-        insertEntity.address || null,
-        insertEntity.phone || null,
-        insertEntity.email || null,
-        insertEntity.website || null,
-        insertEntity.currency ?? "USD",
-        industryValue  // Explicitly include processed industry value
-      ];
-      
-      console.log("DEBUG DB CreateEntity: Executing SQL with parameters:", params);
-      
-      // Execute the query and get the result
-      const result = await db.execute(query, params);
-      
-      if (result.rows && result.rows.length > 0) {
-        const entity = result.rows[0] as Entity;
-        console.log("DEBUG DB CreateEntity: Entity created successfully with SQL method. Industry value:", entity.industry);
+      if (result) {
+        console.log("DEBUG DB CreateEntity: Entity created successfully with Drizzle ORM. Industry value:", result.industry);
         
-        // Verify the industry value was saved correctly
-        if (entity.industry !== industryValue) {
-          console.log(`DEBUG DB CreateEntity: WARNING - Industry mismatch after creation. Expected "${industryValue}" but got "${entity.industry}"`);
+        // Verify the industry value was stored correctly
+        if (result.industry !== industryValue) {
+          console.log(`DEBUG DB CreateEntity: WARNING - Industry mismatch after creation. Expected "${industryValue}" but got "${result.industry}"`);
           
           // Fix it with a direct update if needed
-          await db
-            .update(entities)
-            .set({ industry: industryValue })
-            .where(eq(entities.id, entity.id));
+          const updatedEntity = await this.updateEntity(result.id, { industry: industryValue });
           
-          // Return the entity with the corrected industry value
-          console.log(`DEBUG DB CreateEntity: Fixed industry value to "${industryValue}"`);
-          return { ...entity, industry: industryValue };
+          if (updatedEntity) {
+            console.log(`DEBUG DB CreateEntity: Fixed industry value to "${updatedEntity.industry}"`);
+            return updatedEntity;
+          }
         }
         
-        return entity;
+        return result;
       } else {
-        throw new Error("Entity creation failed - no rows returned from insertion");
+        throw new Error("Entity creation failed - no result returned from insertion");
       }
     } catch (error) {
-      console.error("DEBUG DB CreateEntity: Error creating entity with SQL approach:", error);
-      throw error;
+      console.error("DEBUG DB CreateEntity: Error creating entity:", error);
+      
+      // Fallback to direct SQL if ORM approach fails
+      try {
+        console.log("DEBUG DB CreateEntity: Falling back to direct SQL for entity creation");
+        
+        // Use the same approach that worked in our test
+        const now = new Date();
+        
+        // Build the SQL query with just the essential fields
+        const insertSql = `
+          INSERT INTO entities (
+            name, code, owner_id, client_id, active, 
+            fiscal_year_start, fiscal_year_end, industry,
+            created_at, updated_at, currency
+          ) VALUES (
+            $1, $2, $3, $4, $5, 
+            $6, $7, $8,
+            $9, $10, $11
+          ) RETURNING *
+        `;
+        
+        // Prepare parameters with proper defaults
+        const params = [
+          insertEntity.name,
+          insertEntity.code,
+          insertEntity.ownerId,
+          insertEntity.clientId || null,
+          insertEntity.active ?? true,
+          insertEntity.fiscalYearStart ?? "01-01",
+          insertEntity.fiscalYearEnd ?? "12-31",
+          industryValue, // Explicitly include processed industry value
+          now, // created_at
+          now, // updated_at
+          insertEntity.currency ?? "USD"
+        ];
+        
+        console.log("DEBUG DB CreateEntity: Executing SQL with parameters:", params);
+        
+        // Import pool from ./db at the top of the file if not already imported
+        const { pool } = require('./db');
+        
+        const result = await pool.query(insertSql, params);
+        
+        if (result.rows && result.rows.length > 0) {
+          const entity = result.rows[0];
+          console.log("DEBUG DB CreateEntity: Entity created successfully with SQL. Industry value:", entity.industry);
+          
+          // Now fetch the complete entity with the ORM to ensure consistent types
+          const [fullEntity] = await db
+            .select()
+            .from(entities)
+            .where(eq(entities.id, entity.id));
+            
+          if (fullEntity) {
+            return fullEntity;
+          }
+          
+          // If that fails, manually convert from SQL result
+          return {
+            id: entity.id,
+            name: entity.name,
+            code: entity.code,
+            ownerId: entity.owner_id,
+            clientId: entity.client_id,
+            active: entity.active,
+            fiscalYearStart: entity.fiscal_year_start,
+            fiscalYearEnd: entity.fiscal_year_end,
+            industry: entity.industry,
+            createdAt: entity.created_at,
+            updatedAt: entity.updated_at,
+            currency: entity.currency,
+            // Set reasonable defaults for required fields
+            taxId: entity.tax_id || null,
+            address: entity.address || null,
+            phone: entity.phone || null,
+            email: null,
+            website: entity.website || null,
+            referralSource: null,
+            userId: entity.user_id || 0,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            fiscalYearLocked: false,
+            notes: null,
+            state: null,
+            city: null,
+            country: null,
+            postalCode: null,
+            subIndustry: null,
+            employeeCount: null,
+            foundedYear: null,
+            stockSymbol: null,
+            registrationNumber: null,
+            taxExempt: false,
+            taxExemptId: null,
+            fiscalYearType: null,
+            lastTaxFiling: null,
+            lastAuditDate: null
+          } as Entity;
+        } else {
+          throw new Error("Entity creation failed - no rows returned from SQL insertion");
+        }
+      } catch (fallbackError) {
+        console.error("DEBUG DB CreateEntity: Fallback approach also failed:", fallbackError);
+        throw error; // Throw the original error
+      }
     }
-    // This code is unreachable but kept for backward compatibility
-    // console.log("DEBUG DB CreateEntity: Entity created successfully:", JSON.stringify(entity));
-    // return entity;
   }
 
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
@@ -3817,6 +3897,26 @@ export class DatabaseStorage implements IStorage {
     // Additional log to check for name changes specifically
     if (entityData.name !== undefined) {
       console.log(`DEBUG DB UpdateEntity: Name update - Original: "${existingEntity.name}", New: "${entityData.name}"`);
+    }
+    
+    // Process industry field if it's included in the update
+    if ('industry' in entityData) {
+      let industryValue = entityData.industry;
+      
+      // Handle null/empty values
+      if (industryValue === null || industryValue === '' || industryValue === undefined) {
+        console.log("DEBUG DB UpdateEntity: Empty/null industry provided, defaulting to 'other'");
+        industryValue = 'other';
+      } else {
+        // Ensure industry is stored as string regardless of input type
+        console.log(`DEBUG DB UpdateEntity: Converting industry value "${industryValue}" (${typeof industryValue}) to string for storage consistency`);
+        industryValue = String(industryValue);
+      }
+      
+      console.log(`DEBUG DB UpdateEntity: Final industry value to be stored: "${industryValue}"`);
+      
+      // Update the industry field in the data
+      entityData.industry = industryValue;
     }
     
     // Add updatedAt timestamp to the update data
