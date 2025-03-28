@@ -267,25 +267,32 @@ export default function EntityManagementCard({
       return "other";
     }
     
-    // Trim the value to avoid whitespace issues
-    const trimmedValue = typeof industryValue === 'string' ? industryValue.trim() : '';
-    
-    // Additional check for empty string after trimming
-    if (trimmedValue === '') {
-      console.log("DEBUG ensureIndustryValue: Empty string after trimming, defaulting to 'other'");
+    // BUGFIX: Better handling of industry values to prevent type errors
+    try {
+      // Trim the value to avoid whitespace issues
+      const trimmedValue = String(industryValue).trim();
+      
+      // Additional check for empty string after trimming
+      if (trimmedValue === '') {
+        console.log("DEBUG ensureIndustryValue: Empty string after trimming, defaulting to 'other'");
+        return "other";
+      }
+      
+      // Check if the industry value is valid
+      const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === trimmedValue);
+      
+      if (!isValidIndustry) {
+        console.log(`DEBUG ensureIndustryValue: Value "${trimmedValue}" is not in valid options, defaulting to 'other'`);
+        return "other";
+      }
+      
+      console.log(`DEBUG ensureIndustryValue: Using valid industry value: "${trimmedValue}"`);
+      return trimmedValue;
+    } catch (err) {
+      console.error("ERROR in ensureIndustryValue:", err);
+      console.log("CRITICAL FIX: Defaulting to 'other' due to processing error");
       return "other";
     }
-    
-    // Check if the industry value is valid
-    const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === trimmedValue);
-    
-    if (!isValidIndustry) {
-      console.log(`DEBUG ensureIndustryValue: Value "${trimmedValue}" is not in valid options, defaulting to 'other'`);
-      return "other";
-    }
-    
-    console.log(`DEBUG ensureIndustryValue: Using valid industry value: "${trimmedValue}"`);
-    return trimmedValue;
   };
 
   // Create entity mutation
@@ -1240,8 +1247,15 @@ export default function EntityManagementCard({
                   name="industry"
                   render={({ field }) => {
                     // CRITICAL FIX: Ensure industry value is valid before rendering
-                    const safeValue = ensureIndustryValue(field.value);
-                    console.log(`CRITICAL-DEBUG Form field industry: Original value: "${field.value}", Safe value: "${safeValue}"`);
+                    // BUGFIX: Better error handling around industry field value
+                    let safeValue = "other"; // Default fallback
+                    try {
+                      safeValue = ensureIndustryValue(field.value);
+                      console.log(`CRITICAL-DEBUG Form field industry: Original value: "${field.value}", Safe value: "${safeValue}"`);
+                    } catch (err) {
+                      console.error("CRITICAL ERROR: Failed to process industry value:", err);
+                      console.log("Using default 'other' value for industry");
+                    }
                     
                     return (
                       <FormItem>
@@ -1251,7 +1265,7 @@ export default function EntityManagementCard({
                             console.log(`CRITICAL-DEBUG Industry onChange: New value selected: "${value}"`);
                             field.onChange(value);
                           }}
-                          value={safeValue} // Use validated value
+                          value={safeValue} // Use validated value with better error handling
                           defaultValue="other"
                         >
                           <FormControl>
@@ -1413,7 +1427,14 @@ export default function EntityManagementCard({
                             console.log("DEBUG EntityMC: Rendering entity industry:", entity.id, entity.name, entity.industry);
                             return null; // Return null to avoid TypeScript error
                           })()}
-                          {getIndustryLabel(entity.industry)}
+                          {(() => {
+                            try {
+                              return getIndustryLabel(entity.industry);
+                            } catch (err) {
+                              console.error("Error displaying industry for entity:", entity.name, err);
+                              return "Other"; // Default fallback when industry label can't be determined
+                            }
+                          })()}
                         </TableCell>
                         <TableCell key={`status-cell-${entityKey}`}>
                           <Badge 

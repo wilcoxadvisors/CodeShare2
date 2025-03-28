@@ -1,0 +1,37 @@
+Agent Instructions: Debug Frontend Entity Update Logic (Step 2)
+
+Goal: Identify and fix the error occurring in the UI when saving an edited entity within Step 2 (EntityManagementCard.tsx).
+
+Context: An automated API test for entity updates passed (Checkpoint da381783), but the user reported errors when updating via the UI. The problem is likely in the frontend component's interaction with the API or its state management. Logging was previously added (Checkpoint 44faa52d).
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx (Handles editing form, onSubmit, updateEntityMutation)
+client/src/components/setup/SetupStepper.tsx (Manages setupEntities state, receives update callbacks)
+Debugging Steps:
+
+Review Frontend Update Code:
+Action: Open client/src/components/setup/EntityManagementCard.tsx.
+Action: Meticulously review the following:
+handleEditEntity function: Does it correctly find the entity to edit (using id or localId)? Does it populate the form state (form.reset() or form.setValue()) with all necessary fields from the selected entity? Log the entity being edited and the values set in the form.
+onSubmit function (when isEditing === true): Does it correctly extract the entityId (should be the database ID if the entity was previously saved, or potentially a localId that needs mapping if updating an unsaved entity - though updating unsaved entities might be the issue)? Does it construct the correct payloadToUpdate? Log the entityId and the payloadToUpdate just before calling the mutation.
+updateEntityMutation.mutate() call: Is it called with the correct arguments ({ entityId: number, data: UpdatePayload })?
+updateEntityMutation -> onSuccess handler: Does it receive the updated entity data? Does it correctly call a prop function passed from SetupStepper (e.g., props.onEntityUpdated(updatedEntity)) to update the central setupEntities state? Log the data received and the props function called.
+updateEntityMutation -> onError handler: Ensure detailed logging is present.
+Simulate UI Test & Capture Logs:
+Action: Authenticate as admin (admin/password123).
+Action: Simulate the exact failing sequence: Go to Dashboard -> Add Client -> Step 1 -> Step 2 -> Add a new entity -> Click "Edit" on that entity -> Change a field -> Click "Save Changes".
+Action: Collect ALL relevant Frontend Console Logs (DEBUG messages showing form population, payload creation, mutation calls, success/error handlers). Note the specific error message. Check the Network Tab for the PUT request status and response.
+Analyze Logs & Identify Frontend Failure:
+Action: Analyze the logs collected in Step 2. Where does the process fail?
+Is the correct entityId being passed to the mutation? (Entities added during setup might not have a real DB ID yet - how is this handled?)
+Is the payload correct?
+Does the mutation itself error out (check onError logs)?
+Does the onSuccess handler fail when trying to update the state via the prop callback?
+Report: State the specific point of failure identified in the frontend logic based on the logs.
+Implement Frontend Fix:
+Action: Implement the fix in EntityManagementCard.tsx or potentially in how SetupStepper.tsx handles the update callback, based on the diagnosis from Step 3. (Common issues might involve handling updates for entities that only have a localId, correctly passing the DB id for saved entities, or updating the setupEntities state immutably).
+Verify Fix:
+Action: Repeat the simulation test from Step 2.
+Action: Confirm the entity update now works correctly without errors, and the change is reflected in the Step 2 list. Report success.
+Let the agent proceed with reviewing the frontend code and adding/verifying the necessary logs (Step 1) before attempting the simulation test (Step 2).
