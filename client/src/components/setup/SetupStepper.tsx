@@ -285,6 +285,30 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     });
   }, []);
   
+  // Handle updating a local entity (particularly for temporary entities)
+  const handleEntityUpdated = useCallback((updatedEntity: Entity) => {
+    console.log("DEBUG SetupStepper: handleEntityUpdated called with:", updatedEntity);
+    
+    setSetupEntities(prev => {
+      // Find and update the entity with matching ID
+      const newState = prev.map(entity => 
+        entity.id === updatedEntity.id ? { ...updatedEntity } : entity
+      );
+      
+      console.log("DEBUG SetupStepper: Updated local entity. New state:", newState);
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('setupEntities', JSON.stringify(newState));
+        console.log("DEBUG SetupStepper: Saved updated entities to localStorage");
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error saving to localStorage after entity update:", e);
+      }
+      
+      return newState;
+    });
+  }, []);
+  
   const handleBack = useCallback(() => {
     console.log(`DEBUG SetupStepper: handleBack called. Current: ${activeStep}. Going to ${activeStep - 1}`);
     console.log(`DEBUG Stepper: Navigating Back from ${activeStep}. Entities BEFORE state change:`, JSON.stringify(setupEntities));
@@ -677,6 +701,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                   onBack={handleBack}
                   clientData={clientData}
                   onEntityAdded={handleEntityAdd}
+                  onEntityUpdated={handleEntityUpdated}
                   onEntityDeleted={handleEntityDelete}
                   entities={setupEntities}
                   entityData={setupEntities}

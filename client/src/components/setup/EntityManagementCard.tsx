@@ -74,6 +74,7 @@ interface EntityManagementCardProps {
   onBack?: () => void;
   clientData?: any;
   onEntityAdded: (entity: any) => void;
+  onEntityUpdated?: (entity: any) => void; // Add onEntityUpdated prop
   onEntityDeleted: (entityId: number) => void;
   entities: any[];
   entityData?: any[];
@@ -85,6 +86,7 @@ export default function EntityManagementCard({
   onBack, 
   clientData, 
   onEntityAdded,
+  onEntityUpdated,
   onEntityDeleted,
   entities,
   entityData,
@@ -629,7 +631,14 @@ export default function EntityManagementCard({
       });
       
       // Notify parent component of the updated entity
-      onEntityAdded(entityData);
+      if (onEntityUpdated) {
+        console.log("Calling onEntityUpdated with entity data:", entityData);
+        onEntityUpdated(entityData);
+      } else {
+        // Fallback to onEntityAdded if onEntityUpdated is not available
+        console.log("Fallback: calling onEntityAdded with updated entity data:", entityData);
+        onEntityAdded(entityData);
+      }
       
       // Global data refresh
       refetch();
@@ -769,8 +778,65 @@ export default function EntityManagementCard({
         console.log("DEBUG EntityMC Update: Editing Entity ID:", currentEntityId);
         console.log("DEBUG EntityMC Update: Sending Payload:", JSON.stringify(dataCopy));
         
-        // Still use mutation for updating existing entities
-        await updateEntityMutation.mutateAsync({ id: currentEntityId, data: dataCopy });
+        // Check if this is a temporary entity (has a large timestamp-based ID)
+        const isTemporaryEntity = currentEntityId > 1000000000; // Timestamp IDs are large numbers
+        
+        if (isTemporaryEntity) {
+          console.log("ENTITY UPDATE: Handling local update for temporary entity ID:", currentEntityId);
+          
+          // Create a validated entity object with the same ID but updated values
+          const updatedEntityData = {
+            id: currentEntityId, // Keep the same temporary ID
+            localId: currentEntityId, // Keep the localId marker
+            name: dataCopy.name.trim(),
+            legalName: dataCopy.legalName?.trim() || dataCopy.name.trim(),
+            taxId: dataCopy.taxId || "",
+            entityType: dataCopy.entityType || "llc",
+            industry: ensureIndustryValue(dataCopy.industry),
+            address: dataCopy.address || "",
+            phone: dataCopy.phone || "",
+            email: dataCopy.email || "",
+            code: dataCopy.code || dataCopy.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+            ownerId: dataCopy.ownerId,
+            active: true,
+            isActive: true
+          };
+          
+          console.log("ENTITY UPDATE: Created updated local entity:", updatedEntityData);
+          
+          // Update local state
+          setSetupEntities(prev => {
+            const newEntities = prev.map(entity => 
+              entity.id === currentEntityId ? updatedEntityData : entity
+            );
+            return newEntities;
+          });
+          
+          // Notify parent component using the new onEntityUpdated callback
+          if (onEntityUpdated) {
+            console.log("ENTITY UPDATE: Calling onEntityUpdated with local entity:", updatedEntityData);
+            onEntityUpdated(updatedEntityData);
+          } else {
+            // Fallback to onEntityAdded if onEntityUpdated is not available
+            console.log("ENTITY UPDATE: Fallback to onEntityAdded for local entity update:", updatedEntityData);
+            onEntityAdded(updatedEntityData);
+          }
+          
+          // Show success message
+          toast({
+            title: "Entity Updated",
+            description: "Entity has been updated successfully.",
+          });
+          
+          // Reset form and editing state
+          form.reset(getDefaultFormValues());
+          setIsEditing(false);
+          setCurrentEntityId(null);
+        } else {
+          // For real database entities, use the mutation for API call
+          console.log("ENTITY UPDATE: Updating database entity via API, ID:", currentEntityId);
+          await updateEntityMutation.mutateAsync({ id: currentEntityId, data: dataCopy });
+        }
       } else {
         // SETUP FLOW: For entity creation during setup, we don't call the API
         // Instead, we create an entity object locally with a temporary ID
@@ -982,12 +1048,15 @@ export default function EntityManagementCard({
         return;
       }
       
-      // Call the API to delete it from the database if it's not a new entity (temp ID)
-      if (id > 0) {  // Only delete from database if it's a real entity with a positive ID
+      // Check if this is a temporary entity (has a timestamp-based ID)
+      const isTemporaryEntity = id > 1000000000; // Timestamp IDs are large numbers
+      
+      // Call the API to delete it from the database only if it's a real entity
+      if (!isTemporaryEntity && id > 0) {
         console.log("DEBUG EntityManagementCard: Calling API to delete entity ID:", id);
         deleteEntityMutation.mutate(id);
       } else {
-        console.log("DEBUG EntityManagementCard: Entity had temporary ID, not calling API");
+        console.log("DEBUG EntityManagementCard: Entity had temporary ID, not calling API:", id);
       }
       
       // Notify parent component of the deletion
