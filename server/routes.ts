@@ -354,21 +354,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT route for entity update (for non-admin users)
   app.put("/api/entities/:id", isAuthenticated, async (req, res) => {
     try {
-      const entityId = parseInt(req.params.id);
+      // Get the raw ID string first
+      const rawIdString = req.params.id;
       const userId = (req.user as AuthUser).id;
       
-      console.log(`DEBUG Route Update Entity: Received request for ID: ${entityId} from user ${userId}`);
+      console.log(`DEBUG Route Update Entity: Received request for ID: ${rawIdString} from user ${userId}`);
       console.log("DEBUG Route Update Entity: Received body:", JSON.stringify(req.body));
       
-      // Validate the entity ID format
-      if (isNaN(entityId) || entityId <= 0) {
-        console.error(`DEBUG Route Update Entity: Invalid entity ID format: ${req.params.id}`);
-        throw new Error(`Invalid entity ID format: ${req.params.id}`);
+      // CRITICAL FIX: First check if the ID exceeds PostgreSQL integer range directly as a string
+      // This prevents the parseInt from generating a number that's too large for JS to handle properly
+      if (rawIdString.length > 10 || parseInt(rawIdString) > 2147483647) { // PostgreSQL int max is 2147483647 (10 digits)
+        console.error(`DEBUG Route Update Entity: ID ${rawIdString} exceeds PostgreSQL integer range - likely a temporary frontend ID`);
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Cannot update entity with temporary ID. Please save the client first." 
+        });
       }
       
-      // Verify entity exists
-      console.log(`DEBUG Route Update Entity: Fetching entity with ID ${entityId} from storage...`);
-      const existingEntity = await storage.getEntity(entityId);
+      // Now safely parse the integer
+      const entityId = parseInt(rawIdString);
+      
+      // Validate the entity ID format
+      if (isNaN(entityId)) {
+        console.error(`DEBUG Route Update Entity: Invalid entity ID format: ${rawIdString}`);
+        return res.status(400).json({ 
+          status: "error", 
+          message: `Invalid entity ID format: ${rawIdString}` 
+        });
+      }
+      
+      if (entityId <= 0) {
+        console.error(`DEBUG Route Update Entity: Invalid entity ID (must be positive): ${entityId}`);
+        return res.status(400).json({ 
+          status: "error", 
+          message: `Invalid entity ID (must be positive): ${entityId}` 
+        });
+      }
+      
+      let existingEntity;
+      
+      // CRITICAL FIX: Short-circuit for temporary IDs in step 2 of the setup flow
+      // These IDs are typically large numbers like timestamps (e.g., 1743100000000)
+      // This pattern indicates they are coming from EntityManagementCard's temporary IDs
+      if (entityId > 1740000000000) { // Timestamp-based IDs from January 2025 onwards will be > 1740000000000
+        console.error(`DEBUG Route Update Entity: Detected temporary ID pattern: ${entityId}`);
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Cannot update entity with temporary ID. You need to complete the client setup first." 
+        });
+      }
+      
+      try {
+        // Verify entity exists
+        console.log(`DEBUG Route Update Entity: Fetching entity with ID ${entityId} from storage...`);
+        existingEntity = await storage.getEntity(entityId);
+      } catch (error) {
+        // If the error is specifically about the ID being out of range, handle it gracefully
+        if (error instanceof Error && error.message.includes("out of range for type integer")) {
+          console.error(`DEBUG Route Update Entity ERROR: ${error.message}`);
+          return res.status(400).json({ 
+            status: "error", 
+            message: "Cannot update entity with temporary ID. Please save the client first." 
+          });
+        }
+        // Otherwise return a 500 error
+        console.error(`DEBUG Route Update Entity ERROR: ${error instanceof Error ? error.message : String(error)}`, error);
+        return res.status(500).json({ 
+          status: "error", 
+          message: "Database error occurred" 
+        });
+      }
       
       if (!existingEntity) {
         console.log(`DEBUG Route Update Entity: Entity with ID ${entityId} not found in database`);
@@ -413,8 +468,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the specific changes being made
       console.log("DEBUG Route Update Entity: Fields being updated:");
       for (const [key, value] of Object.entries(req.body)) {
-        if (existingEntity[key] !== value) {
-          console.log(`  - ${key}: "${existingEntity[key]}" -> "${value}"`);
+        // Use type safety to access properties 
+        if (key in existingEntity && existingEntity[key as keyof typeof existingEntity] !== value) {
+          console.log(`  - ${key}: "${existingEntity[key as keyof typeof existingEntity]}" -> "${value}"`);
         }
       }
       

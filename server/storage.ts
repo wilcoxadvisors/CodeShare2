@@ -3668,6 +3668,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEntity(id: number): Promise<Entity | undefined> {
+    // Check if ID exceeds PostgreSQL integer range (2147483647)
+    if (id > 2147483647) {
+      console.log(`DEBUG Storage.getEntity: ID ${id} exceeds PostgreSQL integer range`);
+      throw new Error(`Cannot query database with temporary ID ${id} - value exceeds integer range`);
+    }
+    
     const [entity] = await db.select().from(entities).where(eq(entities.id, id));
     return entity || undefined;
   }
@@ -3883,6 +3889,12 @@ export class DatabaseStorage implements IStorage {
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
     console.log(`DEBUG DB UpdateEntity: Updating entity with ID ${id}`);
     console.log("DEBUG DB UpdateEntity: Received entity data:", JSON.stringify(entityData));
+    
+    // Check if ID exceeds PostgreSQL integer range (2147483647)
+    if (id > 2147483647) {
+      console.log(`DEBUG DB UpdateEntity: ID ${id} exceeds PostgreSQL integer range`);
+      throw new Error(`Cannot update database with temporary ID ${id} - value exceeds integer range`);
+    }
     
     // First get the existing entity to log what's changing
     const [existingEntity] = await db.select().from(entities).where(eq(entities.id, id));
