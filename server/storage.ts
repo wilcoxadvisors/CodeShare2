@@ -2893,38 +2893,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    // First check if a client already exists for this user
-    const existingClient = await this.getClientByUserId(client.userId);
+    // Note: We previously checked for existing clients and updated them,
+    // but this caused a bug where clients were being replaced/deleted
+    // when creating new clients during the setup process. Now we always
+    // create a new client regardless of whether the user already has one.
     
-    if (existingClient) {
-      console.log(`Client already exists for user ${client.userId}. Updating instead of creating.`);
-      // If client already exists, update it
-      const [result] = await db
-        .update(clients)
-        .set({
-          name: client.name,
-          active: client.active !== undefined ? client.active : true,
-          industry: client.industry || null,
-          contactName: client.contactName || null,
-          contactEmail: client.contactEmail || null,
-          contactPhone: client.contactPhone || null,
-          address: client.address || null,
-          city: client.city || null,
-          state: client.state || null,
-          country: client.country || null,
-          postalCode: client.postalCode || null,
-          website: client.website || null,
-          notes: client.notes || null,
-          referralSource: client.referralSource || null,
-          updatedAt: new Date()
-        })
-        .where(eq(clients.userId, client.userId))
-        .returning();
-      
-      return result;
-    }
-    
-    // Otherwise create a new client
+    // Always create a new client
     const [result] = await db
       .insert(clients)
       .values({

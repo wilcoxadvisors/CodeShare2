@@ -1,0 +1,29 @@
+Agent Instructions: Investigate Unintended Client Deletion (NEW HIGHEST PRIORITY)
+
+CRITICAL ISSUE: User reports that after successfully completing the "Add Client" setup flow (Step 8), an existing client record was deleted from the system.
+
+Goal: Identify and fix the root cause of the unintended client deletion triggered by the successful completion of the setup flow.
+
+Possible Causes: Flawed logic in backend client creation/update, incorrect dashboard refresh/data handling, accidental triggering of deletion code.
+
+Investigation Steps:
+
+Review Backend createClient Logic:
+Focus: server/adminRoutes.ts (handler for POST /api/admin/clients) and server/storage.ts (createClient method).
+Action: Meticulously review the createClient method in storage.ts. Does it strictly perform an INSERT operation? Is there any possibility it performs an UPDATE or DELETE on the clients table under certain conditions?
+Action: Add detailed logging inside storage.ts's createClient method, immediately before the database operation, logging the type of operation (should be INSERT) and the data being used. If possible, log the exact SQL query Drizzle generates. Log the result or error from the database operation.
+Action: In the POST /api/admin/clients handler in adminRoutes.ts, log the incoming req.body and the result received from storage.createClient. Confirm it only calls createClient.
+Review Dashboard Refresh & Display Logic:
+Focus: client/src/pages/Dashboard.tsx.
+Action: Review the handleSetupComplete function. Confirm it only contains logic for closing the modal (setSetupOpen(false)) and invalidating the query cache (queryClient.invalidateQueries({ queryKey: ['clients'] })). Add logs at the start and end of this function.
+Action: Review the useQuery hook for fetching clients (key ['clients']). How is the adminDashboardData.clients array rendered into the table? Is there any client-side filtering happening that might incorrectly hide a client?
+Action: Check if there is any client deletion functionality implemented elsewhere in Dashboard.tsx (e.g., triggered by a button). Could it be accidentally called?
+Prepare & Execute Test:
+Action: Ensure all the logging from steps 1 & 2 is implemented. Restart the application.
+Action: Identify Existing Clients: Before starting the test, determine the current clients in the database. (If you can add a temporary backend route for the agent to GET /api/admin/clients and log the results, that would be ideal. Otherwise, note the clients visible in the UI). Record their IDs/Names.
+Action: Run the setup flow once to add one new client (Steps 1 -> 2 -> 3 -> Finish). Do NOT try to update entities in Step 2.
+Analyze Results & Report:
+Action: After the flow completes, collect all relevant logs: Frontend Console (especially from handleCompleteSetup and handleSetupComplete), Backend Console (especially API route hits and storage.createClient logs, including any logged SQL). Note Network Tab statuses for POST /clients and the dashboard refresh call.
+Action: Verify Database State: Check the list of clients directly in the database again (or via the temporary GET route). Compare with the list from before the test. Was a client record actually deleted? Which one? Or is it just missing from the UI?
+Action: Report: Provide all logs, network statuses, and clearly state whether a client was confirmed deleted from the database or if it was just a UI display issue. Pinpoint where the logs indicate the deletion might be happening (e.g., unexpected query in createClient, an unexpected API call seen in network tab, etc.).
+Defer Other Bugs: Do NOT work on the Step 2 entity update error or other Phase A bugs until this critical client deletion issue is resolved.
