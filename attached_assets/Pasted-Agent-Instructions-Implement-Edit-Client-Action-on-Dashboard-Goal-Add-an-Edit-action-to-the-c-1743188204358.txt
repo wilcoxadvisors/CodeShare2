@@ -1,0 +1,125 @@
+Agent Instructions: Implement "Edit Client" Action on Dashboard
+
+Goal: Add an "Edit" action to the client list on the dashboard (Dashboard.tsx) that opens a modal allowing the user to modify and save client details.
+
+Relevant Files:
+
+client/src/pages/Dashboard.tsx (Main file for action trigger and modal integration)
+server/adminRoutes.ts (Contains GET /api/admin/clients/:id and PUT /api/admin/clients/:id) [cite: CodeShare/server/adminRoutes.ts]
+shared/schema.ts / client/src/lib/types.ts (For Client type definition) [cite: CodeShare/shared/schema.ts, CodeShare/client/src/lib/types.ts]
+Potentially adapt client/src/components/setup/ClientInfoForm.tsx or create a new client/src/components/dashboard/ClientEditForm.tsx.
+Shadcn UI Components: DropdownMenu, Dialog, Form, input components.
+TanStack Query (useQuery, useMutation), react-hook-form, zod.
+Implementation Steps:
+
+Modify Dashboard.tsx - Add Edit Menu Item & State:
+
+Action: Open client/src/pages/Dashboard.tsx.
+Action: In the "Actions" column's DropdownMenuContent (where "View Details" was added), add a new DropdownMenuItem for "Edit Client".
+Action: Add an onSelect handler to this item, calling a new function handleEditClient(client.id).
+Action: Add state variables for the edit modal near the top of the component:
+TypeScript
+
+const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [selectedClientIdForEdit, setSelectedClientIdForEdit] = useState<number | null>(null);
+Action: Define the handleEditClient function within the Dashboard component:
+TypeScript
+
+const handleEditClient = (clientId: number) => {
+  console.log(`DEBUG: Editing client ID: ${clientId}`);
+  setSelectedClientIdForEdit(clientId);
+  setIsEditModalOpen(true);
+};
+Action: Ensure handleEditClient is accessible/passed to the cell renderer for the actions column.
+Create ClientEditModal.tsx Component:
+
+Action: Create a new file: client/src/components/dashboard/ClientEditModal.tsx.
+Action: Implement the basic structure using Shadcn's Dialog:
+TypeScript
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
+import { Client } from "@/lib/types"; // Adjust import if needed
+import { ClientEditForm } from "./ClientEditForm"; // Will be created next
+import React from "react"; // Import React
+
+interface ClientEditModalProps {
+  clientId: number | null;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+}
+
+// Fetch function (similar to ClientDetailModal)
+const fetchClientDetails = async (clientId: number): Promise<Client> => {
+  // ... (fetch logic using /api/admin/clients/:id) ...
+   const response = await fetch(`/api/admin/clients/${clientId}`);
+    if (!response.ok) { throw new Error('Network response was not ok'); }
+    const result = await response.json();
+    if (result.status !== 'success') { throw new Error(result.message || 'API error'); }
+    return result.data;
+};
+
+export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditModalProps) {
+  const { data: clientData, isLoading, isError, error } = useQuery<Client, Error>({
+    queryKey: ["clientDetails", clientId],
+    queryFn: () => fetchClientDetails(clientId!),
+    enabled: !!clientId && isOpen, // Fetch only when modal is open with valid ID
+  });
+
+  const handleUpdateSuccess = () => {
+     console.log('DEBUG: Client update successful, closing modal.');
+     onOpenChange(false); // Close modal on success
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Edit Client</DialogTitle>
+          <DialogDescription>Modify the client's details below.</DialogDescription>
+        </DialogHeader>
+        {isLoading && <p>Loading client data...</p>}
+        {isError && <p className="text-red-500">Error loading data: {error?.message}</p>}
+        {clientData && clientId && (
+          <ClientEditForm
+            clientData={clientData}
+            clientId={clientId}
+            onUpdateSuccess={handleUpdateSuccess}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+Create ClientEditForm.tsx Component:
+
+Action: Create a new file: client/src/components/dashboard/ClientEditForm.tsx.
+Action: Implement the form using react-hook-form, zod, Shadcn's Form components (FormField, FormItem, FormLabel, FormControl, FormMessage), and Input, Textarea, etc.
+Action: Define props: clientData: Client, clientId: number, onUpdateSuccess: () => void.
+Action: Define a Zod schema for validation (e.g., editClientSchema) based on editable fields in the Client type.
+Action: Initialize the form using useForm with the schema and set defaultValues from the clientData prop.
+Action: Implement the onSubmit function:
+Define a mutation using TanStack Query's useMutation. The mutation function should take the form data, make a PUT request to /api/admin/clients/:clientId [cite: CodeShare/server/adminRoutes.ts], and handle the response.
+In the mutation's onSuccess handler:
+Invalidate relevant queries using queryClient.invalidateQueries: invalidate the client list (e.g., ['adminClients']) and the specific client detail (e.g., ['clientDetails', clientId]).
+Show a success toast.
+Call props.onUpdateSuccess().
+In the mutation's onError handler: Show an error toast.
+Call the mutation function with the validated form data inside onSubmit.
+Action: Render the form fields using FormField components, connecting them to the form state. Include a "Save Changes" button (type="submit") and potentially a "Cancel" button that closes the modal (onOpenChange(false)).
+Integrate Modal in Dashboard.tsx:
+
+Action: Import ClientEditModal at the top of client/src/pages/Dashboard.tsx.
+Action: Render the modal component within the Dashboard component's return statement, similar to where ClientDetailModal was added:
+JavaScript
+
+ <ClientEditModal
+   clientId={selectedClientIdForEdit}
+   isOpen={isEditModalOpen}
+   onOpenChange={setIsEditModalOpen}
+ />
+Verification:
+
+Action: Restart the application.
+Action: Report if the application builds and restarts successfully.
+Action: Describe the steps to manually test: Navigate to the dashboard, click the actions menu for a client, select "Edit Client", verify the modal opens with data pre-filled, change some data, click "Save Changes", verify the modal closes, the success toast appears, and the dashboard list updates with the new information. Check for console errors during the process.

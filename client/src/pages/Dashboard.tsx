@@ -31,6 +31,7 @@ import ClientSetupCard from "../components/setup/ClientSetupCard";
 import EntityManagementCard from "../components/setup/EntityManagementCard";
 import SetupSummaryCard from "../components/setup/SetupSummaryCard";
 import { ClientDetailModal } from "../components/ClientDetailModal";
+import { ClientEditModal } from "../components/dashboard/ClientEditModal";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -1495,6 +1496,15 @@ interface AdminDashboardData {
                                         >
                                           <Eye className="h-4 w-4 text-gray-500" />
                                         </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="md:hidden p-1" 
+                                          onClick={() => handleEditClient(client)}
+                                          title="Edit Client"
+                                        >
+                                          <Pen className="h-4 w-4 text-gray-500" />
+                                        </Button>
                                       </div>
                                     </TableCell>
                                     <TableCell>
@@ -2335,6 +2345,13 @@ interface AdminDashboardData {
         clientId={selectedClientIdForDetails}
         isOpen={isClientDetailModalOpen}
         onOpenChange={setIsClientDetailModalOpen}
+      />
+
+      {/* ClientEditModal for editing client details */}
+      <ClientEditModal 
+        clientId={currentEditClient?.id || null}
+        isOpen={isEditClientDialogOpen}
+        onOpenChange={setIsEditClientDialogOpen}
       />
     </>
   );
