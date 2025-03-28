@@ -1,0 +1,56 @@
+Agent Instructions: Fix Entity Update Error in Setup Flow (Step 2)
+
+CRITICAL ISSUE: User reports getting an error when trying to edit and save changes to an entity within Step 2 (EntityManagementCard).
+
+Goal: Identify and fix the error that occurs during the entity update process within the setup flow.
+
+Relevant Files:
+
+client/src/components/setup/EntityManagementCard.tsx (Contains onSubmit for editing, updateEntityMutation)
+server/adminRoutes.ts (Contains the PUT /api/admin/entities/:entityId route handler)
+server/storage.ts (Contains the updateEntity database logic)
+Debugging Steps:
+
+Add Logging to Frontend Update Logic:
+Action: Open client/src/components/setup/EntityManagementCard.tsx.
+Action: Locate the onSubmit function. Find the logic branch that executes when isEditing is true (this branch should call updateEntityMutation.mutate(...)).
+Action: Immediately before the updateEntityMutation.mutate(...) call, add detailed logging:
+TypeScript
+
+console.log("DEBUG EntityMC Update: Editing Entity ID:", editingEntityId); // Log the ID being edited
+console.log("DEBUG EntityMC Update: Sending Payload:", JSON.stringify(payloadToUpdate)); // Log the exact payload
+updateEntityMutation.mutate({ entityId: editingEntityId, data: payloadToUpdate });
+(Adjust variable names like editingEntityId and payloadToUpdate based on the actual code).
+Action: Ensure the updateEntityMutation definition has onSuccess and onError handlers. Add logging inside both:
+TypeScript
+
+onError: (error) => {
+  console.error("DEBUG EntityMC Update: Mutation Error:", error);
+  // existing error handling...
+},
+onSuccess: (data) => {
+  console.log("DEBUG EntityMC Update: Mutation Success:", data);
+  // existing success handling...
+}
+Add Logging to Backend Update Logic:
+Action: Open server/adminRoutes.ts. Locate the PUT /api/admin/entities/:entityId route handler.
+Action: Add console.log at the beginning to log the received parameters and body:
+TypeScript
+
+console.log(`DEBUG Route Update Entity: Received request for ID: ${req.params.entityId}`);
+console.log("DEBUG Route Update Entity: Received body:", req.body);
+Action: Add logging before calling storage.updateEntity to log the ID and data being passed. Add logging after to log the result or error from storage.updateEntity.
+Action: Open server/storage.ts. Locate the updateEntity method.
+Action: Add logging before the db.update(...).where(...) call to log the entityId and the updateData being used. Log the result or error from the database operation.
+Test Entity Update & Report:
+Action: Restart the application.
+Action: Go through Steps 1 and 2, add a new entity.
+Action: Click the "Edit" button for the newly added entity.
+Action: Change one or more fields (e.g., Name, Industry).
+Action: Click "Save Changes".
+Action: Collect ALL relevant logs:
+Frontend Console: Copy "DEBUG:" logs showing the payload sent, mutation result/error.
+Backend Console: Copy "DEBUG:" logs showing the API route hit, received params/body, storage method logs, DB result/error.
+Browser Network Tab: Report the status code for the PUT /api/admin/entities/:entityId request. Note the specific error message if it's not a 2xx status.
+Report: Provide all logs and clearly state the specific error message encountered or confirm if the update now works correctly.
+Once the agent reports back with these logs, we should be able to pinpoint the cause of the update error.

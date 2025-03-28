@@ -805,11 +805,84 @@ export class MemStorage implements IStorage {
   }
   
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
-    const entity = this.entities.get(id);
-    if (!entity) return undefined;
+    console.log(`DEBUG Storage UpdateEntity: Updating entity with ID ${id}`);
+    console.log("DEBUG Storage UpdateEntity: Received entity data:", JSON.stringify(entityData));
     
-    const updatedEntity = { ...entity, ...entityData };
+    // Validate ID
+    if (isNaN(id) || id <= 0) {
+      console.error(`DEBUG Storage UpdateEntity: Invalid entity ID: ${id}`);
+      return undefined;
+    }
+    
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.error(`DEBUG Storage UpdateEntity: Entity with ID ${id} not found in database`);
+      return undefined;
+    }
+    
+    console.log("DEBUG Storage UpdateEntity: Found existing entity:", JSON.stringify(entity));
+    
+    // Input validation for critical fields
+    if (entityData.name !== undefined) {
+      if (!entityData.name || entityData.name.trim() === '') {
+        console.error("DEBUG Storage UpdateEntity: Name cannot be empty, keeping original name");
+        entityData.name = entity.name; // Keep original name if new one is empty
+      } else {
+        console.log(`DEBUG Storage UpdateEntity: Name update - Original: "${entity.name}", New: "${entityData.name}"`);
+      }
+    }
+    
+    // Industry field validation - ensure we never store null/empty values
+    if (entityData.industry === null || entityData.industry === '') {
+      console.log("DEBUG Storage UpdateEntity: Empty industry provided, defaulting to 'other'");
+      entityData.industry = 'other';
+    }
+    
+    // Detailed logging for all fields being updated
+    console.log("DEBUG Storage UpdateEntity: Field changes for entity ID " + id + ":");
+    for (const [key, value] of Object.entries(entityData)) {
+      if (entity[key] !== value) {
+        console.log(`  - ${key}: "${entity[key]}" -> "${value}"`);
+      }
+    }
+    
+    // Type consistency check for clientId
+    if (entityData.clientId !== undefined) {
+      // Ensure clientId is a number
+      if (typeof entityData.clientId !== 'number') {
+        console.warn(`DEBUG Storage UpdateEntity: Converting clientId from ${typeof entityData.clientId} to number`);
+        entityData.clientId = parseInt(String(entityData.clientId), 10);
+        
+        if (isNaN(entityData.clientId)) {
+          console.error("DEBUG Storage UpdateEntity: Invalid clientId, cannot convert to number");
+          entityData.clientId = entity.clientId; // Keep original if invalid
+        }
+      }
+      
+      // Log client relationship change
+      if (entity.clientId !== entityData.clientId) {
+        console.log(`DEBUG Storage UpdateEntity: Client relationship changing from ${entity.clientId} to ${entityData.clientId}`);
+      }
+    }
+    
+    // Create updated entity with all merged properties
+    const updatedEntity = { 
+      ...entity, 
+      ...entityData, 
+      updatedAt: new Date() 
+    };
+    
+    // Final log before saving
+    console.log("DEBUG Storage UpdateEntity: Final updated entity data:", JSON.stringify(updatedEntity));
+    
+    // Verify the entity still has required fields after update
+    if (!updatedEntity.name || updatedEntity.name.trim() === '') {
+      console.error("DEBUG Storage UpdateEntity: CRITICAL ERROR - Entity would have no name after update");
+      return undefined;
+    }
+    
     this.entities.set(id, updatedEntity);
+    console.log(`DEBUG Storage UpdateEntity: Entity ID ${id} successfully updated`);
     return updatedEntity;
   }
   
@@ -3637,11 +3710,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
+    console.log(`DEBUG DB UpdateEntity: Updating entity with ID ${id}`);
+    console.log("DEBUG DB UpdateEntity: Received entity data:", JSON.stringify(entityData));
+    
+    // First get the existing entity to log what's changing
+    const [existingEntity] = await db.select().from(entities).where(eq(entities.id, id));
+    
+    if (!existingEntity) {
+      console.log(`DEBUG DB UpdateEntity: Entity with ID ${id} not found`);
+      return undefined;
+    }
+    
+    console.log("DEBUG DB UpdateEntity: Found existing entity:", JSON.stringify(existingEntity));
+    
+    // Additional log to check for name changes specifically
+    if (entityData.name !== undefined) {
+      console.log(`DEBUG DB UpdateEntity: Name update - Original: "${existingEntity.name}", New: "${entityData.name}"`);
+    }
+    
+    // Add updatedAt timestamp to the update data
+    const updateData = {
+      ...entityData,
+      updatedAt: new Date()
+    };
+    
+    console.log("DEBUG DB UpdateEntity: Executing update query with data:", JSON.stringify(updateData));
+    
     const [entity] = await db
       .update(entities)
-      .set(entityData)
+      .set(updateData)
       .where(eq(entities.id, id))
       .returning();
+    
+    console.log("DEBUG DB UpdateEntity: Update complete, returned entity:", JSON.stringify(entity));
+    
     return entity || undefined;
   }
 

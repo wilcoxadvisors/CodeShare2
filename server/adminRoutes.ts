@@ -346,20 +346,83 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     try {
       const entityId = parseInt(req.params.id);
       
-      // Verify entity exists
-      const existingEntity = await storage.getEntity(entityId);
-      if (!existingEntity) {
-        throwNotFound("Entity not found");
+      // Enhanced DEBUG: Log incoming request details with more context
+      console.log(`DEBUG Route Update Entity: Received request for ID: ${entityId}`);
+      console.log("DEBUG Route Update Entity: Received body:", JSON.stringify(req.body));
+      
+      // Log request headers for authentication debugging
+      console.log("DEBUG Route Update Entity: Request headers:", {
+        authorization: req.headers.authorization ? "Present" : "Missing",
+        contentType: req.headers['content-type'],
+        userAgent: req.headers['user-agent']
+      });
+      
+      // Validate the entity ID format
+      if (isNaN(entityId) || entityId <= 0) {
+        console.error(`DEBUG Route Update Entity: Invalid entity ID format: ${req.params.id}`);
+        throw new Error(`Invalid entity ID format: ${req.params.id}`);
       }
       
+      // Verify entity exists with detailed logging
+      console.log(`DEBUG Route Update Entity: Fetching entity with ID ${entityId} from storage...`);
+      const existingEntity = await storage.getEntity(entityId);
+      
+      if (!existingEntity) {
+        console.log(`DEBUG Route Update Entity: Entity with ID ${entityId} not found in database`);
+        throwNotFound(`Entity with ID ${entityId} not found`);
+      }
+      
+      console.log(`DEBUG Route Update Entity: Found existing entity:`, JSON.stringify(existingEntity));
+      
+      // Validate required fields in request body
+      if (!req.body.name || req.body.name.trim() === '') {
+        console.error("DEBUG Route Update Entity: Missing required field 'name' in request body");
+        throw new Error("Entity name is required");
+      }
+      
+      // If the industry field is present but empty or null, set it to "other"
+      if (req.body.industry === null || req.body.industry === '') {
+        console.log("DEBUG Route Update Entity: Setting empty industry to 'other'");
+        req.body.industry = "other";
+      }
+      
+      // Validate clientId if provided
+      if (req.body.clientId !== undefined) {
+        console.log(`DEBUG Route Update Entity: Request includes clientId: ${req.body.clientId}`);
+        
+        if (req.body.clientId !== existingEntity.clientId) {
+          console.log(`DEBUG Route Update Entity: ClientId changed from ${existingEntity.clientId} to ${req.body.clientId}`);
+        }
+      }
+      
+      // Log the specific changes being made
+      console.log("DEBUG Route Update Entity: Fields being updated:");
+      for (const [key, value] of Object.entries(req.body)) {
+        if (existingEntity[key] !== value) {
+          console.log(`  - ${key}: "${existingEntity[key]}" -> "${value}"`);
+        }
+      }
+      
+      console.log(`DEBUG Route Update Entity: Calling storage.updateEntity with ID ${entityId}...`);
+      
       const updatedEntity = await storage.updateEntity(entityId, req.body);
+      
+      if (!updatedEntity) {
+        console.error(`DEBUG Route Update Entity: Storage returned null/undefined after update for ID ${entityId}`);
+        throw new Error(`Failed to update entity with ID ${entityId}`);
+      }
+      
+      console.log(`DEBUG Route Update Entity: Update successful, returning entity:`, JSON.stringify(updatedEntity));
       
       return res.json({
         status: "success",
         data: updatedEntity
       });
     } catch (error: any) {
+      console.error(`DEBUG Route Update Entity ERROR: ${error.message}`, error.stack);
+      
       if (error instanceof z.ZodError) {
+        console.error("DEBUG Route Update Entity: ZodError validation failed", JSON.stringify(error.errors));
         return res.status(400).json({ 
           status: "error", 
           message: "Invalid entity data", 

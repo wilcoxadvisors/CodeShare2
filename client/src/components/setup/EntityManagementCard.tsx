@@ -611,10 +611,44 @@ export default function EntityManagementCard({
       return jsonData;
     },
     onError: (error: any) => {
+      console.error("DEBUG EntityMC Update: Mutation Error:", error);
+      
+      // Log additional details for entity update errors
+      try {
+        console.error("DEBUG EntityMC Update Error Details:");
+        console.error("- Error message:", error.message);
+        console.error("- Stack trace:", error.stack);
+        console.error("- Entity ID that failed to update:", currentEntityId);
+        console.error("- Form data at time of error:", JSON.stringify(form.getValues()));
+      } catch (logError) {
+        console.error("Error while logging entity update error details:", logError);
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to update entity.",
+        title: "Error Updating Entity",
+        description: error.message || "Failed to update entity. Please check the console for details.",
         variant: "destructive",
+      });
+    },
+    onSuccess: (data) => {
+      console.log("DEBUG EntityMC Update: Mutation Success:", data);
+      
+      // Log detailed success information
+      try {
+        console.log("DEBUG EntityMC Update Success Details:");
+        console.log("- Updated entity ID:", data?.data?.id || currentEntityId);
+        console.log("- Updated entity name:", data?.data?.name);
+        console.log("- Updated entity industry:", data?.data?.industry);
+        console.log("- Current setupEntities length:", setupEntities.length);
+        console.log("- Current form values:", JSON.stringify(form.getValues()));
+        console.log("- Is still in editing mode?", isEditing);
+      } catch (logError) {
+        console.error("Error while logging entity update success details:", logError);
+      }
+      
+      toast({
+        title: "Entity Updated",
+        description: "Entity was successfully updated.",
       });
     }
   });
@@ -702,6 +736,10 @@ export default function EntityManagementCard({
         const dataCopy = JSON.parse(JSON.stringify(data));
         console.log("CRITICAL DEBUG: Update entity data (copy):", dataCopy);
         console.log("CRITICAL DEBUG: Entity name in update copy:", dataCopy.name);
+        
+        // DEBUG logs as requested in the bug fix instructions
+        console.log("DEBUG EntityMC Update: Editing Entity ID:", currentEntityId);
+        console.log("DEBUG EntityMC Update: Sending Payload:", JSON.stringify(dataCopy));
         
         // Still use mutation for updating existing entities
         await updateEntityMutation.mutateAsync({ id: currentEntityId, data: dataCopy });
