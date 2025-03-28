@@ -257,22 +257,43 @@ export default function EntityManagementCard({
   };
   
   // Utility function to ensure industry always has a valid value
-  const ensureIndustryValue = (industryValue: string | undefined | null): string => {
-    // Log the incoming value for debugging
+  const ensureIndustryValue = (industryValue: string | number | undefined | null): string => {
+    // Log the incoming value for debugging with more details
     console.log(`DEBUG ensureIndustryValue: Received value type: ${typeof industryValue}, value: "${industryValue}"`);
     
-    // CRITICAL FIX: Enhanced handling for null and undefined values
-    if (industryValue === null || industryValue === undefined || industryValue === '') {
-      console.log("DEBUG ensureIndustryValue: Empty/null/undefined value detected, defaulting to 'other'");
-      return "other";
-    }
-    
-    // BUGFIX: Better handling of industry values to prevent type errors
     try {
-      // Trim the value to avoid whitespace issues
+      // CRITICAL FIX: Improved handling for different input types
+      // Case 1: null or undefined values
+      if (industryValue === null || industryValue === undefined) {
+        console.log("DEBUG ensureIndustryValue: Null or undefined value detected, defaulting to 'other'");
+        return "other";
+      }
+      
+      // Case 2: Convert numeric values to strings
+      // This fixes issues when numeric value like 123 is received instead of "123"
+      if (typeof industryValue === 'number') {
+        const stringValue = String(industryValue);
+        console.log(`DEBUG ensureIndustryValue: Converted numeric value ${industryValue} to string "${stringValue}"`);
+        // Check if the converted string is a valid industry value
+        const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === stringValue);
+        if (isValidIndustry) {
+          return stringValue;
+        }
+        // If not valid after conversion, default to "other"
+        console.log(`DEBUG ensureIndustryValue: Converted numeric value is not valid, defaulting to 'other'`);
+        return "other";
+      }
+      
+      // Case 3: Empty string values
+      if (industryValue === '') {
+        console.log("DEBUG ensureIndustryValue: Empty string detected, defaulting to 'other'");
+        return "other";
+      }
+      
+      // Case 4: String values that need trimming
       const trimmedValue = String(industryValue).trim();
       
-      // Additional check for empty string after trimming
+      // Check for empty string after trimming
       if (trimmedValue === '') {
         console.log("DEBUG ensureIndustryValue: Empty string after trimming, defaulting to 'other'");
         return "other";

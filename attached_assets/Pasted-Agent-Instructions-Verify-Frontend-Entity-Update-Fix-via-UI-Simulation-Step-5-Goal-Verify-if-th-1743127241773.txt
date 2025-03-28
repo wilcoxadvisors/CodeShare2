@@ -1,0 +1,23 @@
+Agent Instructions: Verify Frontend Entity Update Fix via UI Simulation (Step 5)
+
+Goal: Verify if the fix implemented in Checkpoint 62b7ed9c (targeting industry handling during updates) successfully resolved the error encountered when updating an entity via the UI in Step 2.
+
+Context: Your previous jsdom test (Checkpoint dc046c9c) was insufficient for UI verification. You must now simulate the specific UI sequence reported as failing by the user, using the detailed logging already added (Checkpoint 44faa52d) to observe the frontend component's behavior.
+
+Steps:
+
+Authenticate:
+Action: Authenticate programmatically using the admin credentials (admin / password123) and ensure the session cookie is used for subsequent requests. Confirm authentication success.
+Execute Test Flow Simulating UI:
+Action: Simulate navigating to the Admin Dashboard -> Add Client -> Step 1 (Enter data) -> Step 2 (Entities).
+Action: Simulate adding a new entity.
+Action: Simulate clicking the "Edit" button for the entity you just added.
+Action: Simulate changing a field in the form (e.g., change the Name or Industry).
+Action: Simulate clicking "Save Changes".
+Observe and Report Frontend Results:
+Action: Monitor the Frontend Console Logs closely during the "Save Changes" action. Look for the "DEBUG:" messages you added previously (in Checkpoint 44faa52d) within EntityManagementCard.tsx's onSubmit function and the updateEntityMutation's onSuccess/onError handlers.
+Action: Did the "Save Changes" action complete without any errors logged in the frontend console?
+Action: Did the simulated UI state (specifically the list of entities in Step 2) update correctly to show the changed details?
+Action: Briefly check Network results for the PUT request status code.
+Report: State clearly whether the entity update simulation succeeded without frontend errors and if the state updated correctly. Provide relevant Frontend Console Logs, especially if errors occurred.
+This test will confirm if the fix made in Checkpoint 62b7ed9c actually resolved the UI bug.

@@ -1,0 +1,42 @@
+Agent Instructions:
+
+Part 1: Debug & Fix Frontend Entity Update Logic (Priority 1)
+
+Goal: Fix the error occurring in the UI when saving an edited entity within Step 2 (EntityManagementCard.tsx).
+
+Context: The backend API works (verified by script da381783). The bug must be in the frontend component's state handling, payload creation, mutation call, or response handling. Logging is already in place (Checkpoint 44faa52d).
+
+Relevant File: client/src/components/setup/EntityManagementCard.tsx
+
+Steps:
+
+Review Frontend Update Code:
+Action: Meticulously review handleEditEntity, onSubmit (when isEditing), updateEntityMutation (including onSuccess, onError), and how state updates are passed back to SetupStepper via props callback (e.g., props.onEntityUpdated). Ensure logging is active.
+Simulate UI Test & Capture Logs:
+Action: Authenticate (admin/password123).
+Action: Simulate the exact failing sequence: Dashboard -> Add Client -> Step 1 -> Step 2 -> Add entity -> Edit entity -> Change field -> Click "Save Changes".
+Action: Collect ALL relevant Frontend Console Logs (DEBUG messages, errors). Note Network Tab results for the PUT request (status, response).
+Analyze Logs & Identify Frontend Failure:
+Action: Analyze the logs/network results from Step 2. Pinpoint the failure in the frontend logic (e.g., wrong ID used, bad payload, error in onSuccess state update). Report the specific failure point and logs.
+Implement Frontend Fix:
+Action: Implement the fix in EntityManagementCard.tsx (or related state logic).
+Verify Fix via Simulation:
+Action: Repeat the simulation test from Step 2. Confirm the update now works without frontend errors. Report success.
+Part 2: Fix API Response Inconsistency (After Part 1 Verified)
+
+Goal: Standardize the API response format for consistency.
+
+Relevant File: server/routes.ts
+
+Steps:
+
+Modify GET Endpoint:
+Action: Open server/routes.ts. Locate the GET /api/entities/:entityId route handler.
+Action: Change the response from res.json(entity) to res.json({ status: 'success', data: entity });.
+Update API Test Script:
+Action: Open test-entity-update.js.
+Action: Modify the part of the script that verifies the entity after the update (the GET request) to expect the response data within a data property (e.g., updatedEntity = getResponse.data.data.name; instead of updatedEntity = getResponse.data.name;).
+Run API Test:
+Action: Execute node test-entity-update.js.
+Action: Confirm the test still passes with the updated endpoint and assertion. Report success.
+Let the agent begin with Part 1: Debugging the frontend update logic.
