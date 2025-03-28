@@ -1,40 +1,26 @@
 #!/bin/bash
 
-# Login and store cookie
-echo "Logging in..."
-curl -c cookies.txt -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser_1742830853830", "password":"password123"}' \
-  -s
+# Test script for Chart of Accounts API
 
-echo -e "\n\nTesting GET /api/clients/1/accounts"
-curl -b cookies.txt -X GET http://localhost:5000/api/clients/1/accounts -s | jq .
+echo "===== Running Chart of Accounts API Test ====="
+echo "Date: $(date)"
+echo
 
-echo -e "\n\nTesting POST /api/clients/1/accounts (Create Account)"
-curl -b cookies.txt -X POST http://localhost:5000/api/clients/1/accounts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Client Account",
-    "code": "TEST123",
-    "type": "ASSET",
-    "subtype": "Current Asset", 
-    "isSubledger": false
-  }' \
-  -s | jq .
+# Run the Node.js test script
+node test/chart-of-accounts.js
 
-echo -e "\n\nFetch the created account"
-ACCOUNT_ID=$(curl -b cookies.txt -X GET http://localhost:5000/api/clients/1/accounts -s | jq '.[length-1].id')
-echo "Last account ID: $ACCOUNT_ID"
-curl -b cookies.txt -X GET http://localhost:5000/api/clients/1/accounts/$ACCOUNT_ID -s | jq .
+# Check if the test was successful
+if [ $? -eq 0 ]; then
+  echo
+  echo "✅ Test script executed successfully"
+else
+  echo
+  echo "❌ Test script failed with exit code $?"
+fi
 
-echo -e "\n\nTesting PUT /api/clients/1/accounts/$ACCOUNT_ID (Update Account)"
-curl -b cookies.txt -X PUT http://localhost:5000/api/clients/1/accounts/$ACCOUNT_ID \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Updated Test Client Account",
-    "active": true
-  }' \
-  -s | jq .
+# Save the test results to a file
+echo "Saving test results to test-output.txt"
+node test/chart-of-accounts.js > test-output.txt 2>&1
 
-echo -e "\n\nTesting DELETE /api/clients/1/accounts/$ACCOUNT_ID (Delete Account)"
-curl -b cookies.txt -X DELETE http://localhost:5000/api/clients/1/accounts/$ACCOUNT_ID -s -v
+echo
+echo "===== Test Complete ====="

@@ -306,7 +306,7 @@ function ChartOfAccounts() {
         // Show deactivation dialog if we have the account details
         if (accountToDelete) {
           setAccountData({
-            id: accountToDelete.id,
+            id: accountToDelete.id || null,
             code: accountToDelete.code,
             name: accountToDelete.name,
             type: "",  // Will be filled when fetching account details
@@ -432,7 +432,7 @@ function ChartOfAccounts() {
       console.error("Export error:", error);
       toast({
         title: "Export failed",
-        description: `Error exporting chart of accounts: ${error.message}`,
+        description: `Error exporting chart of accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -528,7 +528,7 @@ function ChartOfAccounts() {
       console.error("Template generation error:", error);
       toast({
         title: "Template generation failed",
-        description: `Error creating template: ${error.message}`,
+        description: `Error creating template: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -559,7 +559,7 @@ function ChartOfAccounts() {
         console.error("Error processing Excel file:", error);
         toast({
           title: "Import failed",
-          description: `Error processing Excel file: ${error.message}`,
+          description: `Error processing Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         });
       }
@@ -655,10 +655,10 @@ function ChartOfAccounts() {
       setImportErrors([]);
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Import failed",
-        description: `Failed to import accounts: ${error.message}`,
+        description: `Failed to import accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
