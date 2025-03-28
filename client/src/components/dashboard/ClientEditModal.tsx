@@ -155,49 +155,51 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                 <h2 className="text-lg font-semibold mb-4">Associated Entities</h2>
                 
                 {clientData.entities && clientData.entities.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Entity Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Industry</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {clientData.entities.map((entity: Entity) => (
-                        <TableRow key={entity.id}>
-                          <TableCell className="font-medium">{entity.name}</TableCell>
-                          <TableCell>
-                            <Badge variant={entity.active ? "default" : "outline"}>
-                              {entity.active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{entity.industry || 'N/A'}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleEditEntity(entity)}
-                              >
-                                <Pencil className="h-4 w-4 mr-1" />
-                                Edit
-                              </Button>
-                              <Button 
-                                variant={entity.active ? "destructive" : "outline"} 
-                                size="sm"
-                                onClick={() => handleToggleEntityStatus(entity)}
-                              >
-                                <Power className="h-4 w-4 mr-1" />
-                                {entity.active ? 'Deactivate' : 'Activate'}
-                              </Button>
-                            </div>
-                          </TableCell>
+                  <div className="overflow-auto">
+                    <Table className="min-w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-1/4">Entity Name</TableHead>
+                          <TableHead className="w-1/6">Status</TableHead>
+                          <TableHead className="w-1/4">Industry</TableHead>
+                          <TableHead className="text-right w-1/3">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {clientData.entities.map((entity: Entity) => (
+                          <TableRow key={entity.id}>
+                            <TableCell className="font-medium">{entity.name}</TableCell>
+                            <TableCell>
+                              <Badge variant={entity.active ? "default" : "outline"}>
+                                {entity.active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{entity.industry || 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleEditEntity(entity)}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">Edit</span>
+                                </Button>
+                                <Button 
+                                  variant={entity.active ? "destructive" : "outline"} 
+                                  size="sm"
+                                  onClick={() => handleToggleEntityStatus(entity)}
+                                >
+                                  <Power className="h-4 w-4 mr-1" />
+                                  <span className="hidden sm:inline">{entity.active ? 'Deactivate' : 'Activate'}</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">
                     No associated entities found.

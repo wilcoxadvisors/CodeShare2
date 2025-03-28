@@ -123,7 +123,7 @@ export function EntityEditModal({ entity, isOpen, onOpenChange, onUpdateSuccess 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Entity</DialogTitle>
           <DialogDescription>Modify the entity's details below.</DialogDescription>
