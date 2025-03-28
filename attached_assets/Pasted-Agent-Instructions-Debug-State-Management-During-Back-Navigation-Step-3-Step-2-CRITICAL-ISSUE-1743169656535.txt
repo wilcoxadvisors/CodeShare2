@@ -1,0 +1,55 @@
+Agent Instructions: Debug State Management During Back Navigation (Step 3 -> Step 2)
+
+CRITICAL ISSUE: User reports errors (including 500 Internal Server Error when updating) occur in Step 2 specifically after navigating to Step 3 and then using the "Back" button to return to Step 2. This suggests a state management problem with setupEntities.
+
+Goal: Diagnose how the setupEntities state is handled during the Step 3 -> Step 2 navigation and identify why subsequent actions (edit, add, delete) fail.
+
+Relevant Files:
+
+client/src/components/setup/SetupStepper.tsx (Manages activeStep, setupEntities; contains handleBack, handleNextFromEntities)
+client/src/components/setup/EntityManagementCard.tsx (Receives entities prop, handles edits/adds/deletes)
+Debugging Steps:
+
+Add Navigation & State Logging:
+Action: Open client/src/components/setup/SetupStepper.tsx.
+Action: Add logging inside handleNextFromEntities (when going from Step 2 to Step 3):
+TypeScript
+
+console.log("DEBUG Stepper: Navigating Step 2 -> 3. Entities:", JSON.stringify(setupEntities));
+// existing logic...
+setActiveStep(2);
+Action: Add logging inside handleBack (when going from Step 3 to Step 2):
+TypeScript
+
+console.log(`DEBUG Stepper: Navigating Back from ${activeStep}. Entities BEFORE state change:`, JSON.stringify(setupEntities));
+// existing logic...
+setActiveStep(prev => prev - 1);
+// Add log AFTER state update if possible, or rely on re-render logs
+Action: Add logging where <EntityManagementCard /> is rendered within SetupStepper.tsx. Log the entities prop being passed every time it renders when activeStep is 1:
+TypeScript
+
+{activeStep === 1 && (
+   <>
+     {console.log("DEBUG Stepper: Rendering EntityManagementCard with entities:", JSON.stringify(setupEntities))}
+     <EntityManagementCard entities={setupEntities} /* other props */ />
+   </>
+)}
+Action: Open client/src/components/setup/EntityManagementCard.tsx.
+Action: At the very beginning of the component function (or inside a useEffect watching props.entities), log the received prop:
+TypeScript
+
+console.log("DEBUG EntityMC: Received props.entities:", JSON.stringify(props.entities));
+Action: Ensure logging is still active inside handleEditEntity (logging the specific entity being edited, especially its id and localId) and inside onSubmit (logging the editingEntityId and payload for updates).
+Execute Specific User Scenario:
+Action: Authenticate (admin/password123).
+Action: Simulate the exact sequence:
+Dashboard -> Add Client -> Step 1 -> Step 2.
+Add two distinct entities. Note their names/details.
+Click "Continue" (Navigate to Step 3).
+Click "Back" (Navigate back to Step 2).
+Attempt to Edit one of the entities added previously. Change a field.
+Click "Save Changes".
+Collect Logs & Report:
+Action: Collect ALL Frontend Console Logs generated during this entire sequence. Pay close attention to the setupEntities state logged during navigation and re-renders, and the entity details logged during the edit attempt.
+Action: Note the specific error message encountered when clicking "Save Changes" (e.g., the 500 error from the screenshot, or a different frontend error). Check the Network Tab for the PUT request status/response. Include Backend logs if the request resulted in a 500 error again.
+Report: Provide the logs and error details. Specifically highlight what the setupEntities state looked like after navigating back to Step 2 and what entityId was used when the edit failed.

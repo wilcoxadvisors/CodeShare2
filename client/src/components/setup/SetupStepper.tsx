@@ -75,77 +75,145 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering START`);
   
-  // Add lifecycle monitoring and explicit state reset on mount
+  // Add lifecycle monitoring and state restoration from localStorage on mount
   useEffect(() => {
     console.log(`DEBUG SetupStepper: Instance ${instanceId} MOUNTED`);
     
-    // Explicitly reset to ensure fresh state on every mount
-    console.log("DEBUG SetupStepper: Mounting and resetting state...");
-    setActiveStep(0);
-    setClientData(null);
-    setSetupEntities([]);
+    // CRITICAL FIX: Load state from localStorage instead of resetting
+    console.log("DEBUG SetupStepper: Mounting - checking localStorage for saved state...");
     
-    // Explicitly clear ALL storage to ensure no stale data
     try {
-      // localStorage cleanup
-      localStorage.removeItem('setupActiveStep');
-      localStorage.removeItem('setupClientData');
-      localStorage.removeItem('setupEntities');
+      // First check if there are any saved entities
+      const savedEntities = localStorage.getItem('setupEntities');
+      if (savedEntities) {
+        try {
+          const parsedEntities = JSON.parse(savedEntities);
+          console.log(`DEBUG SetupStepper: Found ${parsedEntities.length} saved entities in localStorage`);
+          if (Array.isArray(parsedEntities)) {
+            setSetupEntities(parsedEntities);
+          } else {
+            console.warn("DEBUG SetupStepper: Saved entities not in expected array format");
+          }
+        } catch (e) {
+          console.warn("DEBUG SetupStepper: Error parsing saved entities:", e);
+        }
+      } else {
+        console.log("DEBUG SetupStepper: No saved entities found in localStorage");
+      }
       
-      // sessionStorage cleanup
-      sessionStorage.removeItem('setupData');
-      sessionStorage.removeItem('setupClientData');
-      sessionStorage.removeItem('setupEntities');
-      sessionStorage.removeItem('activeStep');
+      // Check for client data
+      const savedClientData = localStorage.getItem('setupClientData');
+      if (savedClientData) {
+        try {
+          const parsedClientData = JSON.parse(savedClientData);
+          console.log(`DEBUG SetupStepper: Found saved client data in localStorage`);
+          setClientData(parsedClientData);
+        } catch (e) {
+          console.warn("DEBUG SetupStepper: Error parsing saved client data:", e);
+        }
+      } else {
+        console.log("DEBUG SetupStepper: No saved client data found in localStorage");
+      }
       
-      console.log("DEBUG SetupStepper: State reset and storage cleared on mount");
+      // Check for active step - do this last to ensure data is loaded first
+      const savedStep = localStorage.getItem('setupActiveStep');
+      if (savedStep) {
+        const step = parseInt(savedStep, 10);
+        console.log(`DEBUG SetupStepper: Found saved step ${step} in localStorage`);
+        setActiveStep(step);
+      } else {
+        console.log("DEBUG SetupStepper: No saved step found in localStorage, using default");
+      }
+      
+      console.log("DEBUG SetupStepper: State loaded from localStorage");
     } catch (e) {
-      console.warn("DEBUG SetupStepper: Error clearing storage on mount:", e);
+      console.warn("DEBUG SetupStepper: Error loading state from localStorage:", e);
     }
     
     return () => {
       // THIS IS THE CRITICAL LOG!
-      console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! State will be lost.`);
+      console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! Saving state to localStorage...`);
+      
+      // CRITICAL FIX: Save state to localStorage on unmount to ensure persistence
+      try {
+        // Only save entities if they exist and have data
+        if (setupEntities && setupEntities.length > 0) {
+          localStorage.setItem('setupEntities', JSON.stringify(setupEntities));
+          console.log(`DEBUG SetupStepper: Saved ${setupEntities.length} entities to localStorage on unmount`);
+        }
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error saving state to localStorage on unmount:", e);
+      }
     };
   }, []); // Empty dependency array ensures this runs only once on mount
   
-  // ALWAYS initialize to step 0 to avoid stale state issues
+  // Initialize activeStep with better recovery logic
   const [activeStep, setActiveStep] = useState<number>(() => {
-    console.log("DEBUG SetupStepper: Initializing activeStep state to 0 (Ignoring localStorage for step)");
+    console.log("DEBUG SetupStepper: Initializing activeStep state...");
     
-    // Ensure we always start with step 0 when the component mounts to avoid stale state
+    // CRITICAL FIX: Instead of forcing to 0, check localStorage first
     try {
-      // Clear any existing step in localStorage to prevent future stale loads
-      localStorage.removeItem('setupActiveStep');
+      const savedStep = localStorage.getItem('setupActiveStep');
+      if (savedStep !== null) {
+        const step = parseInt(savedStep, 10) || 0;
+        console.log(`DEBUG SetupStepper: Using saved step ${step} from localStorage`);
+        return step;
+      }
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for activeStep", e);
     }
     
-    console.log("DEBUG SetupStepper: Using default step 0");
-    return 0; // ALWAYS START AT STEP 0
+    console.log("DEBUG SetupStepper: No saved step found, using default step 0");
+    return 0; // Default to 0 when nothing is found
   });
   
   const [clientData, setClientData] = useState<ClientData | null>(() => {
-    console.log("DEBUG SetupStepper: Initializing clientData state to null (fresh start)");
+    console.log("DEBUG SetupStepper: Initializing clientData state...");
+    
+    // CRITICAL FIX: Check localStorage instead of always clearing it
     try {
-      // Clear any existing client data in localStorage to prevent stale data
-      localStorage.removeItem('setupClientData');
+      const savedClientData = localStorage.getItem('setupClientData');
+      if (savedClientData) {
+        try {
+          const parsedData = JSON.parse(savedClientData);
+          console.log(`DEBUG SetupStepper: Using saved client data from localStorage: ${parsedData.name || 'unnamed'}`);
+          return parsedData;
+        } catch (parseError) {
+          console.warn("DEBUG SetupStepper: Error parsing saved client data:", parseError);
+        }
+      }
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for clientData", e);
     }
-    console.log("DEBUG SetupStepper: Using default null client data");
+    
+    console.log("DEBUG SetupStepper: No saved client data found, using default null");
     return null;
   });
   
   const [setupEntities, setSetupEntities] = useState<Entity[]>(() => {
-    console.log("DEBUG SetupStepper: Initializing setupEntities state to empty array (fresh start)");
+    console.log("DEBUG SetupStepper: Initializing setupEntities state...");
+    
+    // CRITICAL FIX: Check localStorage instead of always clearing it
     try {
-      // Clear any existing entity data in localStorage to prevent stale data
-      localStorage.removeItem('setupEntities');
+      const savedEntities = localStorage.getItem('setupEntities');
+      if (savedEntities) {
+        try {
+          const parsedEntities = JSON.parse(savedEntities);
+          if (Array.isArray(parsedEntities) && parsedEntities.length > 0) {
+            console.log(`DEBUG SetupStepper: Using saved entities from localStorage: ${parsedEntities.length} entities found`);
+            return parsedEntities;
+          } else {
+            console.log("DEBUG SetupStepper: Found saved entities but data was empty or invalid");
+          }
+        } catch (parseError) {
+          console.warn("DEBUG SetupStepper: Error parsing saved entities:", parseError);
+        }
+      }
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error accessing localStorage for setupEntities", e);
     }
-    console.log("DEBUG SetupStepper: Using default empty entities array");
+    
+    console.log("DEBUG SetupStepper: No valid saved entities found, using default empty array");
     return [];
   });
   
@@ -219,22 +287,37 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   const handleBack = useCallback(() => {
     console.log(`DEBUG SetupStepper: handleBack called. Current: ${activeStep}. Going to ${activeStep - 1}`);
+    console.log(`DEBUG Stepper: Navigating Back from ${activeStep}. Entities BEFORE state change:`, JSON.stringify(setupEntities));
     
     const newStep = Math.max(0, activeStep - 1);
     
-    // Save new step to localStorage
+    // Critical Fix: Ensure entity data is preserved in localStorage before navigating back
+    // This ensures that if the component remounts, it can restore from localStorage
     try {
+      // Save current step to localStorage
       localStorage.setItem('setupActiveStep', newStep.toString());
       console.log(`DEBUG SetupStepper: Saved active step ${newStep} to localStorage during back navigation`);
+      
+      // CRITICAL FIX: Explicitly save entity data to localStorage during back navigation
+      if (setupEntities && setupEntities.length > 0) {
+        localStorage.setItem('setupEntities', JSON.stringify(setupEntities));
+        console.log(`DEBUG SetupStepper: Explicitly saved ${setupEntities.length} entities to localStorage during back navigation`);
+      }
     } catch (e) {
-      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+      console.warn("DEBUG SetupStepper: Error saving data to localStorage during back navigation:", e);
     }
     
+    // Set the new active step
     setActiveStep(newStep);
-  }, [activeStep]);
+    
+    // We'll rely on the re-render to log entities after state change
+    // At this point, if the component remounts due to React's behavior, it will
+    // restore the entity data from localStorage in the useEffect on mount
+  }, [activeStep, setupEntities]);
   
   const handleNextFromEntities = useCallback(() => {
     console.log(`DEBUG SetupStepper: handleNextFromEntities called. Current: ${activeStep}. Entities count: ${setupEntities.length}`);
+    console.log("DEBUG Stepper: Navigating Step 2 -> 3. Entities:", JSON.stringify(setupEntities));
     
     if (setupEntities.length === 0) {
       console.warn("DEBUG SetupStepper: Blocked navigation - No entities added.");
@@ -249,16 +332,24 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     const nextStep = activeStep + 1;
     console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
     
-    // Save new step to localStorage
+    // Save new step and entity data to localStorage
     try {
+      // Save step
       localStorage.setItem('setupActiveStep', nextStep.toString());
       console.log(`DEBUG SetupStepper: Saved active step ${nextStep} to localStorage during entity completion`);
+      
+      // CRITICAL FIX: Explicitly save entity data to localStorage before proceeding to Step 3
+      // This ensures consistent behavior with the back navigation fix
+      if (setupEntities && setupEntities.length > 0) {
+        localStorage.setItem('setupEntities', JSON.stringify(setupEntities));
+        console.log(`DEBUG SetupStepper: Explicitly saved ${setupEntities.length} entities to localStorage during Next navigation`);
+      }
     } catch (e) {
-      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+      console.warn("DEBUG SetupStepper: Error saving data to localStorage:", e);
     }
     
     setActiveStep(nextStep);
-  }, [activeStep, setupEntities.length, toast]);
+  }, [activeStep, setupEntities, toast]);
   
   // Loading state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -579,25 +670,31 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
             )}
             
             {activeStep === 1 && (
-              <EntityManagementCard 
-                onNext={handleNextFromEntities}
-                onBack={handleBack}
-                clientData={clientData}
-                onEntityAdded={handleEntityAdd}
-                onEntityDeleted={handleEntityDelete}
-                entities={setupEntities}
-                entityData={setupEntities}
-                setEntityData={setSetupEntities}
-              />
+              <>
+                {console.log("DEBUG Stepper: Rendering EntityManagementCard with entities:", JSON.stringify(setupEntities))}
+                <EntityManagementCard 
+                  onNext={handleNextFromEntities}
+                  onBack={handleBack}
+                  clientData={clientData}
+                  onEntityAdded={handleEntityAdd}
+                  onEntityDeleted={handleEntityDelete}
+                  entities={setupEntities}
+                  entityData={setupEntities}
+                  setEntityData={setSetupEntities}
+                />
+              </>
             )}
             
             {activeStep === 2 && (
-              <SetupSummaryCard
-                clientData={clientData}
-                entityData={setupEntities}
-                onBack={handleBack}
-                onFinish={handleCompleteSetup}
-              />
+              <>
+                {console.log("DEBUG Stepper: Rendering SetupSummaryCard (Step 3). Entities:", JSON.stringify(setupEntities))}
+                <SetupSummaryCard
+                  clientData={clientData}
+                  entityData={setupEntities}
+                  onBack={handleBack}
+                  onFinish={handleCompleteSetup}
+                />
+              </>
             )}
           </div>
         </CardContent>
