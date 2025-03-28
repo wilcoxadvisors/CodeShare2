@@ -466,8 +466,16 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
         
         // 5. Call onComplete callback to trigger dashboard refresh
         if (onComplete) {
-          console.log("DEBUG: Calling onComplete callback");
-          onComplete();
+          console.log("DEBUG SetupStepper: API saves successful. Calling props.onComplete()...");
+          console.log("DEBUG SetupStepper: onComplete callback type:", typeof onComplete);
+          
+          // Add try/catch to catch any errors in the callback execution
+          try {
+            onComplete();
+            console.log("DEBUG SetupStepper: onComplete callback executed successfully!");
+          } catch (callbackError) {
+            console.error("DEBUG SetupStepper: Error executing onComplete callback:", callbackError);
+          }
         } else {
           // Fallback - redirect to dashboard directly
           console.log("DEBUG: No onComplete callback, redirecting to dashboard");

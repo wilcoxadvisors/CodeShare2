@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -824,14 +824,35 @@ interface AdminDashboardData {
   // Admin API data
   const { data: adminDashboardData = { status: 'pending', data: { clients: [], entities: [], users: [], consolidationGroups: [] } }, 
     isLoading: adminDataLoading,
-    refetch: refetchDashboard
+    refetch: refetchDashboardRaw
   } = useQuery<AdminDashboardData>({
     queryKey: ['/api/admin/dashboard'],
     enabled: isAdmin,
     staleTime: 0, // Consider data always stale
     refetchOnMount: true, // Always refetch on component mount
-    refetchOnWindowFocus: true // Refetch when window regains focus
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    onSuccess: (data) => {
+      console.log("DEBUG Dashboard: adminDashboard query onSuccess triggered with data:", 
+        data?.status, "clients:", data?.data?.clients?.length || 0);
+    },
+    onError: (error) => {
+      console.error("DEBUG Dashboard: adminDashboard query onError triggered:", error);
+    }
   });
+  
+  // Create a wrapped refetch function with logging
+  const refetchDashboard = useCallback(async () => {
+    console.log("DEBUG Dashboard: refetchDashboard called - executing refetchDashboardRaw()");
+    try {
+      const result = await refetchDashboardRaw();
+      console.log("DEBUG Dashboard: refetchDashboard success. Result status:", 
+        result.status, "clients:", result.data?.data?.clients?.length || 0);
+      return result;
+    } catch (error) {
+      console.error("DEBUG Dashboard: refetchDashboard error:", error);
+      throw error;
+    }
+  }, [refetchDashboardRaw]);
   
   // Fetch admin users list for entity owner assignment (admin only)
   const { data: adminUsers = [], isLoading: usersLoading } = useQuery({
@@ -1327,21 +1348,29 @@ interface AdminDashboardData {
                                     <SetupStepper 
                                       key="setup-stepper" // Use a stable key to prevent remounting
                                       onComplete={async () => {
-                                        console.log("Dashboard: Setup complete callback triggered");
+                                        console.log("DEBUG Dashboard: handleSetupComplete triggered. Invalidating queries...");
+                                        console.log("DEBUG Dashboard: onComplete function executed as expected");
                                         
                                         // Close the dialog first for better UX
                                         setIsAddClientDialogOpen(false);
+                                        console.log("DEBUG Dashboard: Dialog closed");
                                         
                                         // More aggressive approach to refresh data
                                         // First, clear all query caches to force complete refresh
-                                        console.log("Dashboard: Clearing all query caches");
-                                        queryClient.clear();
+                                        console.log("DEBUG Dashboard: Clearing all query caches with queryClient.clear()");
+                                        try {
+                                          queryClient.clear();
+                                          console.log("DEBUG Dashboard: Query cache cleared successfully");
+                                        } catch (clearError) {
+                                          console.error("DEBUG Dashboard: Error clearing query cache:", clearError);
+                                        }
                                         
                                         // Then immediately trigger manual refetches
-                                        console.log("Dashboard: Forcing direct refetches of all data");
+                                        console.log("DEBUG Dashboard: Forcing direct refetches of all data");
                                         
                                         // Set the setupComplete state to trigger UI update
                                         setSetupComplete(true);
+                                        console.log("DEBUG Dashboard: setupComplete state set to true");
                                         
                                         // Clear setup data from sessionStorage to avoid caching issues
                                         try {
@@ -1356,12 +1385,14 @@ interface AdminDashboardData {
                                           console.log("Dashboard: Executing refetch operations");
                                           try {
                                             // Invalidate and refetch all queries
+                                            console.log("DEBUG Dashboard: Invalidating all query caches, including '/api/admin/dashboard'");
                                             queryClient.invalidateQueries();
                                             
                                             // Also explicitly refetch dashboard data
                                             if (refetchDashboard) {
+                                              console.log("DEBUG Dashboard: Calling refetchDashboard function directly");
                                               await refetchDashboard();
-                                              console.log("Dashboard: Dashboard data successfully refetched");
+                                              console.log("DEBUG Dashboard: Dashboard data successfully refetched");
                                             } else {
                                               console.warn("Dashboard: refetchDashboard function not available");
                                             }
