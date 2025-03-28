@@ -30,6 +30,7 @@ import SetupStepper from "../components/setup/SetupStepper";
 import ClientSetupCard from "../components/setup/ClientSetupCard";
 import EntityManagementCard from "../components/setup/EntityManagementCard";
 import SetupSummaryCard from "../components/setup/SetupSummaryCard";
+import { ClientDetailModal } from "../components/ClientDetailModal";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -437,6 +438,8 @@ function Dashboard() {
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEntityDialogOpen, setIsEditEntityDialogOpen] = useState(false);
   const [isEditClientDialogOpen, setIsEditClientDialogOpen] = useState(false);
+  const [isClientDetailModalOpen, setIsClientDetailModalOpen] = useState(false);
+  const [selectedClientIdForDetails, setSelectedClientIdForDetails] = useState<number | null>(null);
   const [currentEditEntity, setCurrentEditEntity] = useState<any>(null);
   const [currentEditClient, setCurrentEditClient] = useState<any>(null);
   const [clientEntities, setClientEntities] = useState<any[]>([]);
@@ -526,6 +529,13 @@ function Dashboard() {
     setIsEditEntityDialogOpen(true);
   };
   
+  // Handle view client details click from dropdown menu
+  const handleViewDetails = (clientId: number) => {
+    console.log(`Viewing details for client ID: ${clientId}`);
+    setSelectedClientIdForDetails(clientId);
+    setIsClientDetailModalOpen(true);
+  };
+
   // Handle edit client click from dropdown menu
   const handleEditClient = async (client: any) => {
     // Fetch client details with entities
@@ -1496,7 +1506,7 @@ interface AdminDashboardData {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                          <DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleViewDetails(client.id)}>
                                             <Eye className="mr-2 h-4 w-4" />
                                             View Details
                                           </DropdownMenuItem>
@@ -1732,7 +1742,7 @@ interface AdminDashboardData {
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleViewDetails(employee.id)}>
                                           <Eye className="mr-2 h-4 w-4" />
                                           View Details
                                         </DropdownMenuItem>
@@ -2305,6 +2315,13 @@ interface AdminDashboardData {
           )}
         </div>
       </div>
+
+      {/* ClientDetailModal for viewing client details */}
+      <ClientDetailModal 
+        clientId={selectedClientIdForDetails}
+        isOpen={isClientDetailModalOpen}
+        onOpenChange={setIsClientDetailModalOpen}
+      />
     </>
   );
 }
