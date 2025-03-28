@@ -279,7 +279,7 @@ function ChartOfAccounts() {
   const deleteAccount = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest(
-        `/api/entities/${currentEntity?.id}/accounts/${id}`, 
+        `/api/clients/${currentEntity?.clientId}/accounts/${id}`, 
         {
           method: 'DELETE'
         }
@@ -318,7 +318,7 @@ function ChartOfAccounts() {
           });
           
           // Get full account details before showing the form
-          apiRequest(`/api/entities/${currentEntity?.id}/accounts/${accountToDelete.id}`)
+          apiRequest(`/api/clients/${currentEntity?.clientId}/accounts/${accountToDelete.id}`)
             .then((accountDetails: any) => {
               setAccountData(prev => ({
                 ...prev,
@@ -356,12 +356,12 @@ function ChartOfAccounts() {
     if (isEditMode) {
       updateAccount.mutate({
         ...accountData,
-        entityId: currentEntity?.id
+        clientId: currentEntity?.clientId
       });
     } else {
       createAccount.mutate({
         ...accountData,
-        entityId: currentEntity?.id
+        clientId: currentEntity?.clientId
       });
     }
   };
@@ -638,7 +638,7 @@ function ChartOfAccounts() {
   const importAccounts = useMutation({
     mutationFn: async (accounts: any[]) => {
       return await apiRequest(
-        `/api/entities/${currentEntity?.id}/accounts/batch`, 
+        `/api/clients/${currentEntity?.clientId}/accounts/batch`, 
         {
           method: 'POST',
           data: { accounts }
