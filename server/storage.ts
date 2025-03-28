@@ -3728,28 +3728,76 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`DEBUG DB CreateEntity: Final industry value to be stored: "${industryValue}"`);
     
-    const [entity] = await db
-      .insert(entities)
-      .values({
-        name: insertEntity.name,
-        code: insertEntity.code,
-        ownerId: insertEntity.ownerId,
-        clientId: insertEntity.clientId,
-        active: insertEntity.active ?? true,
-        fiscalYearStart: insertEntity.fiscalYearStart ?? "01-01",
-        fiscalYearEnd: insertEntity.fiscalYearEnd ?? "12-31",
-        taxId: insertEntity.taxId,
-        address: insertEntity.address,
-        phone: insertEntity.phone,
-        email: insertEntity.email,
-        website: insertEntity.website,
-        currency: insertEntity.currency ?? "USD",
-        industry: industryValue // Add the processed industry value
-      })
-      .returning();
-    
-    console.log("DEBUG DB CreateEntity: Entity created successfully:", JSON.stringify(entity));
-    return entity;
+    // DIRECT SQL APPROACH - based on successful test case
+    try {
+      console.log("DEBUG DB CreateEntity: Using direct SQL approach for reliable industry handling");
+      
+      // Build a SQL query with all the necessary fields
+      const query = `
+        INSERT INTO entities (
+          name, code, owner_id, client_id, active, 
+          fiscal_year_start, fiscal_year_end, tax_id, 
+          address, phone, email, website, currency, industry
+        ) VALUES (
+          $1, $2, $3, $4, $5, 
+          $6, $7, $8, 
+          $9, $10, $11, $12, $13, $14
+        ) RETURNING *
+      `;
+      
+      // Prepare parameters with proper defaults and explicitly include industry
+      const params = [
+        insertEntity.name,
+        insertEntity.code,
+        insertEntity.ownerId,
+        insertEntity.clientId || null,
+        insertEntity.active ?? true,
+        insertEntity.fiscalYearStart ?? "01-01",
+        insertEntity.fiscalYearEnd ?? "12-31",
+        insertEntity.taxId || null,
+        insertEntity.address || null,
+        insertEntity.phone || null,
+        insertEntity.email || null,
+        insertEntity.website || null,
+        insertEntity.currency ?? "USD",
+        industryValue  // Explicitly include processed industry value
+      ];
+      
+      console.log("DEBUG DB CreateEntity: Executing SQL with parameters:", params);
+      
+      // Execute the query and get the result
+      const result = await db.execute(query, params);
+      
+      if (result.rows && result.rows.length > 0) {
+        const entity = result.rows[0] as Entity;
+        console.log("DEBUG DB CreateEntity: Entity created successfully with SQL method. Industry value:", entity.industry);
+        
+        // Verify the industry value was saved correctly
+        if (entity.industry !== industryValue) {
+          console.log(`DEBUG DB CreateEntity: WARNING - Industry mismatch after creation. Expected "${industryValue}" but got "${entity.industry}"`);
+          
+          // Fix it with a direct update if needed
+          await db
+            .update(entities)
+            .set({ industry: industryValue })
+            .where(eq(entities.id, entity.id));
+          
+          // Return the entity with the corrected industry value
+          console.log(`DEBUG DB CreateEntity: Fixed industry value to "${industryValue}"`);
+          return { ...entity, industry: industryValue };
+        }
+        
+        return entity;
+      } else {
+        throw new Error("Entity creation failed - no rows returned from insertion");
+      }
+    } catch (error) {
+      console.error("DEBUG DB CreateEntity: Error creating entity with SQL approach:", error);
+      throw error;
+    }
+    // This code is unreachable but kept for backward compatibility
+    // console.log("DEBUG DB CreateEntity: Entity created successfully:", JSON.stringify(entity));
+    // return entity;
   }
 
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
