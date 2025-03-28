@@ -67,51 +67,8 @@ interface PendingTask {
 
 // Generate pending tasks based on real entities
 const generatePendingTasks = (entities: any[]): PendingTask[] => {
-  const tasks: PendingTask[] = [];
-  
-  if (!entities || entities.length === 0) {
-    return tasks;
-  }
-  
-  // Standard set of tasks that might be needed for any entity
-  const taskTypes = [
-    'Review financial statements',
-    'Approve journal entries',
-    'Reconcile accounts',
-    'Prepare tax documents',
-    'Quarterly financial review',
-    'Complete onboarding process',
-    'Update contact information',
-    'Schedule client meeting'
-  ];
-  
-  // Generate 0-2 tasks per entity
-  entities.forEach(entity => {
-    const taskCount = Math.floor(Math.random() * 3); // 0, 1, or 2 tasks
-    
-    for (let i = 0; i < taskCount; i++) {
-      const taskIndex = Math.floor(Math.random() * taskTypes.length);
-      const priorityOptions = ['low', 'medium', 'high'] as const;
-      const priorityIndex = Math.floor(Math.random() * 3);
-      
-      // Generate a date within the next 14 days
-      const daysToAdd = Math.floor(Math.random() * 14) + 1;
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + daysToAdd);
-      
-      tasks.push({
-        id: entity.id * 1000 + i, // Use a deterministic numeric ID based on entity ID and index
-        entityId: entity.id,
-        entityName: entity.name,
-        taskDescription: taskTypes[taskIndex],
-        dueDate: dueDate.toISOString().split('T')[0],
-        priority: priorityOptions[priorityIndex],
-        completed: false
-      });
-    }
-  });
-  
-  return tasks;
+  // Return an empty array to not display any random tasks
+  return [];
 };
 
 const mockEmployees = [
@@ -1514,9 +1471,7 @@ interface AdminDashboardData {
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center">
-                                        {/* Progress based on client completeness */}
-                                        <Progress value={getClientActiveStatus(client) ? 100 : 50} className="h-2 w-32" />
-                                        <span className="ml-2 text-xs">{getClientActiveStatus(client) ? 100 : 50}%</span>
+                                        <span className="text-sm text-gray-600">{getClientActiveStatus(client) ? 'Complete' : 'In Progress'}</span>
                                       </div>
                                     </TableCell>
                                     <TableCell>{formatDate(client.updatedAt || client.createdAt)}</TableCell>
