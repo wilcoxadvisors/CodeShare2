@@ -1482,7 +1482,21 @@ interface AdminDashboardData {
                               <TableBody>
                                 {filteredClients.map((client) => (
                                   <TableRow key={client.id}>
-                                    <TableCell className="font-medium">{client.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center gap-2">
+                                        <span>{client.name}</span>
+                                        {/* Eye button visible only on small screens (mobile) */}
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="md:hidden p-1" 
+                                          onClick={() => handleViewDetails(client.id)}
+                                          title="View Details"
+                                        >
+                                          <Eye className="h-4 w-4 text-gray-500" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
                                     <TableCell>
                                       <Badge className={getStatusColor(getClientActiveStatus(client) ? 'Active' : 'Inactive')}>
                                         {getClientActiveStatus(client) ? 'Active' : 'Inactive'}

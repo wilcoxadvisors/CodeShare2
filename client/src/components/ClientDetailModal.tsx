@@ -96,7 +96,7 @@ export function ClientDetailModal({ clientId, isOpen, onOpenChange }: ClientDeta
                 
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <p>{clientData.isActive ? 'Active' : 'Inactive'}</p>
+                  <p>{clientData.active ? 'Active' : 'Inactive'}</p>
                 </div>
               </div>
               
