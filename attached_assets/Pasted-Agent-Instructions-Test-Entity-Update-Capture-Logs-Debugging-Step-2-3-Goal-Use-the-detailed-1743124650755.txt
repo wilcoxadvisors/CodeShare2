@@ -1,0 +1,24 @@
+Agent Instructions: Test Entity Update & Capture Logs (Debugging Step 2 & 3)
+
+Goal: Use the detailed logging you just added (Checkpoint 6a585531) to trigger the entity update error in Step 2 and capture the specific logs/error messages needed for diagnosis.
+
+Context: You have added extensive "DEBUG:" logs to the frontend (EntityManagementCard) and backend (adminRoutes, storage) related to the entity update process. Now you must execute the failing action and report the logs.
+
+Steps:
+
+Authenticate:
+Action: Authenticate programmatically using the admin credentials (admin / password123) and ensure the session cookie is used for subsequent requests, as done previously. Confirm authentication success.
+Execute Test Flow to Trigger Error:
+Action: Simulate navigating to the Admin Dashboard -> Add Client -> Step 1 (Enter data) -> Step 2 (Entities).
+Action: Simulate adding a new entity successfully (confirm it appears in the list state).
+Action: Simulate clicking the "Edit" button for the entity you just added.
+Action: Simulate changing a field in the form (e.g., the Name).
+Action: Simulate clicking "Save Changes". This is the action expected to fail based on user feedback.
+Collect Logs and Error Details:
+Action: Carefully collect ALL relevant logs generated during and immediately after clicking "Save Changes":
+Frontend Console Logs: Copy all "DEBUG:" logs related to the onSubmit function (when isEditing is true), the payload being sent to updateEntityMutation, and the onSuccess or onError handler of the mutation. Note the specific error message if onError was triggered.
+Backend Console Logs: Copy all "DEBUG:" logs from the PUT /api/admin/entities/:entityId route handler and the storage.updateEntity method. Note any errors logged.
+Network Results: Report the HTTP status code for the PUT /api/admin/entities/:entityId request. If it wasn't 200/OK, provide the response body/error message from the Network tab.
+Report Findings:
+Action: Provide all collected Frontend logs, Backend logs, and Network results.
+Action: Clearly state the specific error message encountered (whether from the frontend console, backend console, or network response).
