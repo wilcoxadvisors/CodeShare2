@@ -51,7 +51,7 @@ const sectionTabs = {
 
 // Main navigation items for mobile menu
 const mainNavItems = [
-  { path: '/', label: 'Dashboard' }
+  { path: '/dashboard', label: 'Dashboard' }
 ];
 
 function Header() {
@@ -246,7 +246,7 @@ function Header() {
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
             {/* Main navigation */}
-            <a href="/" className={`${location === '/' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+            <a href="/dashboard" className={`${location === '/dashboard' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
               Dashboard
             </a>
             
