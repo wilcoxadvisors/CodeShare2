@@ -62,8 +62,8 @@ export interface IStorage {
   
   // Account methods
   getAccount(id: number): Promise<Account | undefined>;
-  getAccounts(entityId: number): Promise<Account[]>;
-  getAccountsByType(entityId: number, type: AccountType): Promise<Account[]>;
+  getAccounts(clientId: number): Promise<Account[]>;
+  getAccountsByType(clientId: number, type: AccountType): Promise<Account[]>;
   createAccount(account: InsertAccount): Promise<Account>;
   updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
   deleteAccount(id: number): Promise<void>;
@@ -98,10 +98,10 @@ export interface IStorage {
   updateFixedAsset(id: number, asset: Partial<FixedAsset>): Promise<FixedAsset | undefined>;
   
   // Report methods
-  generateTrialBalance(entityId: number, startDate?: Date, endDate?: Date): Promise<any>;
-  generateBalanceSheet(entityId: number, asOfDate?: Date): Promise<any>;
-  generateIncomeStatement(entityId: number, startDate?: Date, endDate?: Date): Promise<any>;
-  generateCashFlow(entityId: number, startDate?: Date, endDate?: Date): Promise<any>;
+  generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
+  generateBalanceSheet(clientId: number, asOfDate?: Date): Promise<any>;
+  generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
+  generateCashFlow(clientId: number, startDate?: Date, endDate?: Date): Promise<any>;
   
   // GL reporting
   getGeneralLedger(entityId: number, options?: GLOptions): Promise<GLEntry[]>;
@@ -923,21 +923,21 @@ export class MemStorage implements IStorage {
     return this.accounts.get(id);
   }
   
-  async getAccounts(entityId: number): Promise<Account[]> {
+  async getAccounts(clientId: number): Promise<Account[]> {
     return Array.from(this.accounts.values())
-      .filter(account => account.entityId === entityId);
+      .filter(account => account.clientId === clientId);
   }
   
-  async getAccountsByType(entityId: number, type: AccountType): Promise<Account[]> {
+  async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
     return Array.from(this.accounts.values())
-      .filter(account => account.entityId === entityId && account.type === type);
+      .filter(account => account.clientId === clientId && account.type === type);
   }
   
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
     const id = this.currentAccountId++;
     const account: Account = { 
       id,
-      entityId: insertAccount.entityId,
+      clientId: insertAccount.clientId,
       name: insertAccount.name,
       code: insertAccount.code,
       type: insertAccount.type as AccountType,
@@ -1208,8 +1208,8 @@ export class MemStorage implements IStorage {
   }
   
   // Report methods
-  async generateTrialBalance(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
-    const accounts = await this.getAccounts(entityId);
+  async generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    const accounts = await this.getAccounts(clientId);
     const result = [];
     
     let totalDebits = 0;
@@ -1219,7 +1219,7 @@ export class MemStorage implements IStorage {
       const lines = Array.from(this.journalEntryLines.values())
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
-          if (!entry || entry.entityId !== entityId || entry.status !== JournalEntryStatus.POSTED) {
+          if (!entry || entry.status !== JournalEntryStatus.POSTED) {
             return false;
           }
           
@@ -1281,18 +1281,18 @@ export class MemStorage implements IStorage {
     return result;
   }
   
-  async generateBalanceSheet(entityId: number, asOfDate?: Date): Promise<any> {
+  async generateBalanceSheet(clientId: number, asOfDate?: Date): Promise<any> {
     // Get all asset, liability, and equity accounts
-    const assetAccounts = await this.getAccountsByType(entityId, AccountType.ASSET);
-    const liabilityAccounts = await this.getAccountsByType(entityId, AccountType.LIABILITY);
-    const equityAccounts = await this.getAccountsByType(entityId, AccountType.EQUITY);
+    const assetAccounts = await this.getAccountsByType(clientId, AccountType.ASSET);
+    const liabilityAccounts = await this.getAccountsByType(clientId, AccountType.LIABILITY);
+    const equityAccounts = await this.getAccountsByType(clientId, AccountType.EQUITY);
     
     // Calculate balances for each account
     const calculateBalance = async (account: Account) => {
       const lines = Array.from(this.journalEntryLines.values())
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
-          if (!entry || entry.entityId !== entityId || entry.status !== JournalEntryStatus.POSTED) {
+          if (!entry || entry.status !== JournalEntryStatus.POSTED) {
             return false;
           }
           
@@ -1354,17 +1354,17 @@ export class MemStorage implements IStorage {
     };
   }
   
-  async generateIncomeStatement(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
     // Get all revenue and expense accounts
-    const revenueAccounts = await this.getAccountsByType(entityId, AccountType.REVENUE);
-    const expenseAccounts = await this.getAccountsByType(entityId, AccountType.EXPENSE);
+    const revenueAccounts = await this.getAccountsByType(clientId, AccountType.REVENUE);
+    const expenseAccounts = await this.getAccountsByType(clientId, AccountType.EXPENSE);
     
     // Calculate balances for each account
     const calculateBalance = async (account: Account) => {
       const lines = Array.from(this.journalEntryLines.values())
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
-          if (!entry || entry.entityId !== entityId || entry.status !== JournalEntryStatus.POSTED) {
+          if (!entry || entry.status !== JournalEntryStatus.POSTED) {
             return false;
           }
           
@@ -1427,11 +1427,11 @@ export class MemStorage implements IStorage {
     };
   }
   
-  async generateCashFlow(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateCashFlow(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
     // For this simple implementation, we'll just return the cash account balance changes
     const cashAccounts = Array.from(this.accounts.values())
       .filter(account => 
-        account.entityId === entityId && 
+        account.clientId === clientId && 
         account.type === AccountType.ASSET && 
         account.code.startsWith('1000')
       );
@@ -1452,7 +1452,7 @@ export class MemStorage implements IStorage {
       const lines = Array.from(this.journalEntryLines.values())
         .filter(line => {
           const entry = this.journalEntries.get(line.journalEntryId);
-          if (!entry || entry.entityId !== entityId || entry.status !== JournalEntryStatus.POSTED) {
+          if (!entry || entry.status !== JournalEntryStatus.POSTED) {
             return false;
           }
           
@@ -3979,20 +3979,20 @@ export class DatabaseStorage implements IStorage {
     return account || undefined;
   }
 
-  async getAccounts(entityId: number): Promise<Account[]> {
+  async getAccounts(clientId: number): Promise<Account[]> {
     return await db
       .select()
       .from(accounts)
-      .where(eq(accounts.entityId, entityId))
+      .where(eq(accounts.clientId, clientId))
       .orderBy(accounts.code);
   }
 
-  async getAccountsByType(entityId: number, type: AccountType): Promise<Account[]> {
+  async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
     return await db
       .select()
       .from(accounts)
       .where(and(
-        eq(accounts.entityId, entityId),
+        eq(accounts.clientId, clientId),
         eq(accounts.type, type)
       ))
       .orderBy(accounts.code);
@@ -4005,7 +4005,7 @@ export class DatabaseStorage implements IStorage {
         name: insertAccount.name,
         code: insertAccount.code,
         type: insertAccount.type,
-        entityId: insertAccount.entityId,
+        clientId: insertAccount.clientId,
         active: insertAccount.active ?? true,
         subtype: insertAccount.subtype,
         isSubledger: insertAccount.isSubledger ?? false,
@@ -4171,10 +4171,10 @@ export class DatabaseStorage implements IStorage {
     return asset || undefined;
   }
 
-  async generateTrialBalance(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateTrialBalance(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
     // This is a more complex query that will need to aggregate data from journal entries
     // For now, return a simple implementation
-    const accounts = await this.getAccounts(entityId);
+    const accounts = await this.getAccounts(clientId);
     const result = [];
     
     for (const account of accounts) {
@@ -4210,10 +4210,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async generateBalanceSheet(entityId: number, asOfDate?: Date): Promise<any> {
-    const assets = await this.getAccountsByType(entityId, AccountType.ASSET);
-    const liabilities = await this.getAccountsByType(entityId, AccountType.LIABILITY);
-    const equity = await this.getAccountsByType(entityId, AccountType.EQUITY);
+  async generateBalanceSheet(clientId: number, asOfDate?: Date): Promise<any> {
+    const assets = await this.getAccountsByType(clientId, AccountType.ASSET);
+    const liabilities = await this.getAccountsByType(clientId, AccountType.LIABILITY);
+    const equity = await this.getAccountsByType(clientId, AccountType.EQUITY);
     
     const assetItems = [];
     const liabilityItems = [];
@@ -4276,9 +4276,9 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async generateIncomeStatement(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
-    const revenues = await this.getAccountsByType(entityId, AccountType.REVENUE);
-    const expenses = await this.getAccountsByType(entityId, AccountType.EXPENSE);
+  async generateIncomeStatement(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    const revenues = await this.getAccountsByType(clientId, AccountType.REVENUE);
+    const expenses = await this.getAccountsByType(clientId, AccountType.EXPENSE);
     
     const revenueItems = [];
     const expenseItems = [];
@@ -4325,7 +4325,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async generateCashFlow(entityId: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async generateCashFlow(clientId: number, startDate?: Date, endDate?: Date): Promise<any> {
     // This is a complex calculation that requires categorizing activities
     // For now, return a simplified structure
     return {

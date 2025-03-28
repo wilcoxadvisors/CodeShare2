@@ -1,0 +1,32 @@
+Agent Instructions: Begin Chart of Accounts Implementation (Client-Specific)
+
+Goal: Start implementing the client-specific Chart of Accounts by modifying the database schema, running migrations, and beginning to refactor the backend API endpoints.
+
+Phase 1: Update Database Schema and Migrate
+
+Modify Schema (shared/schema.ts):
+
+Action: Open shared/schema.ts.
+Action: Locate the pgTable definition for the accounts table.
+Action: Find the line defining the entityId column: entityId: integer("entity_id").references(() => entities.id).notNull(), [cite: uploaded:CodeShare/shared/schema.ts]
+Action: Change this line to link to the clients table using clientId instead: clientId: integer("client_id").references(() => clients.id).notNull(),
+Action: Save the changes to shared/schema.ts.
+Generate Database Migration:
+
+Action: Run the Drizzle Kit command specified in your package.json to generate a new migration script based on the schema change (likely npm run db:generate).
+Action: Report the full name/path of the generated migration file.
+Apply Database Migration:
+
+Action: Run the Drizzle command specified in your package.json to apply the generated migration to your database (likely npm run db:push or npm run db:migrate).
+Action: Report whether the migration applied successfully or if any errors occurred.
+Phase 2: Start Backend API Refactoring
+
+Open Account Routes:
+Action: Open the primary file for account-related API endpoints, server/accountRoutes.ts [cite: uploaded:CodeShare/server/accountRoutes.ts]. (Keep in mind that server/routes.ts might also contain relevant account endpoints that need checking later [cite: uploaded:CodeShare/server/routes.ts]).
+Refactor GET Endpoint (Example):
+Action: Find the main endpoint for fetching accounts (currently likely GET /api/accounts or similar within accountRoutes.ts).
+Action: Modify this endpoint to operate based on clientId.
+Change the route path to accept a client ID, for example: app.get("/api/clients/:clientId/accounts", ...)
+Update the data fetching logic inside the handler (whether using storage.getAccounts or a direct db query) to select/filter accounts where accounts.clientId matches the :clientId parameter from the route.
+Add or verify authorization logic: Ensure the logged-in user making the request has permission to access data for the requested clientId.
+Action: Report the specific code changes made to this GET endpoint (including the new route path and the modified data fetching/filtering logic) as an example of the refactoring required.

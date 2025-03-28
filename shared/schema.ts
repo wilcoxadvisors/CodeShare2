@@ -121,7 +121,7 @@ export enum JournalType {
 // Chart of Accounts
 export const accounts = pgTable("accounts", {
   id: serial("id").primaryKey(),
-  entityId: integer("entity_id").references(() => entities.id).notNull(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
   code: text("code").notNull(),
   name: text("name").notNull(),
   type: text("type").$type<AccountType>().notNull(),
