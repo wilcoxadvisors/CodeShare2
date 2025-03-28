@@ -3711,6 +3711,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
+    console.log("DEBUG DB CreateEntity: Creating new entity with data:", JSON.stringify(insertEntity));
+    
+    // Process industry data for consistency, similar to updateEntity method
+    let industryValue = insertEntity.industry;
+    
+    // Handle null/empty values
+    if (industryValue === null || industryValue === '' || industryValue === undefined) {
+      console.log("DEBUG DB CreateEntity: Empty/null industry provided, defaulting to 'other'");
+      industryValue = 'other';
+    } else {
+      // Ensure industry is stored as string regardless of input type (number, etc.)
+      console.log(`DEBUG DB CreateEntity: Converting industry value "${industryValue}" (${typeof industryValue}) to string for storage consistency`);
+      industryValue = String(industryValue);
+    }
+    
+    console.log(`DEBUG DB CreateEntity: Final industry value to be stored: "${industryValue}"`);
+    
     const [entity] = await db
       .insert(entities)
       .values({
@@ -3726,9 +3743,12 @@ export class DatabaseStorage implements IStorage {
         phone: insertEntity.phone,
         email: insertEntity.email,
         website: insertEntity.website,
-        currency: insertEntity.currency ?? "USD"
+        currency: insertEntity.currency ?? "USD",
+        industry: industryValue // Add the processed industry value
       })
       .returning();
+    
+    console.log("DEBUG DB CreateEntity: Entity created successfully:", JSON.stringify(entity));
     return entity;
   }
 

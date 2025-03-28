@@ -5,11 +5,11 @@
  * specifically focused on the industry field handling.
  */
 
-import axios from 'axios';
-import fs from 'fs';
+const axios = require('axios');
+const fs = require('fs');
 
 // Configuration
-const API_URL = 'http://localhost:4000'; // The server URL
+const API_URL = 'http://localhost:5000'; // The server URL
 const ADMIN_CREDENTIALS = {
   username: 'admin',
   password: 'password123'
