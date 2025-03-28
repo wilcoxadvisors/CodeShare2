@@ -1,0 +1,30 @@
+Agent Instructions: Authenticate and TEST End-to-End Save & Refresh (Task A.1 Verification - MANDATORY)
+
+Goal: Log in as the admin user (admin/password123) and execute the full "Add Client" flow to verify Task A.1 (Final Save & Dashboard Update) using the detailed logs you added in Checkpoint 9ff19aef.
+
+Context: You have added the necessary logging. You have the admin credentials. You MUST now perform the test yourself. Do NOT ask the user to test this step.
+
+Steps:
+
+Authenticate:
+Action: Programmatically authenticate using the credentials: Username: admin, Password: password123.
+Method: Identify the login API endpoint (e.g., /api/auth/login). Send a POST request (e.g., using Workspace within a test script or directly if possible) with the credentials. Capture and store the session cookie(s) returned. Confirm authentication success (e.g., expect a 200 OK response).
+Apply Session: Ensure all subsequent simulated browser actions or API calls use the obtained session cookie(s) in their request headers.
+Report: Briefly state if authentication was successful. If not, report the error and STOP.
+Execute Full Test Flow (No Edits/Updates):
+Action: Once authenticated, simulate navigating to the Admin Dashboard.
+Action: Simulate clicking "Add Client".
+Action: Go through the setup flow (Steps 1 -> 2 -> 3 -> Finish).
+Action: In Step 2, add one or two entities but do NOT attempt to update or edit them.
+Action: Click "Finish & Add Client" in Step 3.
+Collect Logs and Observe Results:
+Action: Collect ALL "DEBUG:" log messages from the Frontend Console related to handleCompleteSetup and handleSetupComplete.
+Action: Simulate checking the Network Results: Report status codes for POST /api/admin/clients, POST /api/admin/entities, and the dashboard data refetch request.
+Action: Check relevant Backend Console logs for API route hits, received data, database interactions/errors.
+Action: Check UI State: Did the modal close state change? Did the dashboard data state update?
+Report Detailed Findings:
+Action: Provide the complete sequence of collected frontend and backend "DEBUG:" logs.
+Action: Report the final HTTP status codes from the simulated network requests.
+Action: State clearly whether the simulated modal closed and whether the simulated dashboard data updated correctly.
+Action: Note any errors encountered during the test flow.
+The agent must complete this entire verification process and report the detailed results.
