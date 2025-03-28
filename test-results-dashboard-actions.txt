@@ -1,0 +1,15 @@
+
+Dashboard Client Actions Test Results
+=====================================
+Timestamp: 2025-03-28T19:31:33.017Z
+Pass Rate: 7 of 7 tests passed (100%)
+Duration: 1.19 seconds
+
+Test Results:
+- authentication: PASSED
+- dashboardData: PASSED
+- viewClientDetails: PASSED
+- editClient: PASSED
+- editEntity: PASSED
+- toggleEntityStatus: PASSED
+- clientDeactivation: PASSED
