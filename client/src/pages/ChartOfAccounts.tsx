@@ -830,9 +830,32 @@ function ChartOfAccounts() {
   if (!currentEntity) {
     return (
       <div className="py-6">
+        <PageHeader 
+          title="Chart of Accounts" 
+          description="Manage your chart of accounts"
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">No entity selected</h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    Please select an entity using the "Select entity" dropdown in the header.
+                  </p>
+                  <p className="mt-1">
+                    The Chart of Accounts is shared across all entities belonging to the same client, 
+                    allowing consistent account structure across multiple entities.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="text-center py-10">
-            <h1 className="text-xl font-semibold text-gray-900">Please select an entity to continue</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Select an entity to view the Chart of Accounts</h1>
           </div>
         </div>
       </div>
