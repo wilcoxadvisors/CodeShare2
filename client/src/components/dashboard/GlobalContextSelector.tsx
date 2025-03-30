@@ -204,8 +204,12 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                 <div key={`client-group-${client.id}`}>
                   <CommandGroup heading={client.name}>
                     <CommandItem
-                      value={client.name} // Use name for better search
-                      onSelect={() => selectClient(client.id)}
+                      value={`client-${client.id}-${client.name}`} // Use unique identifier for each client
+                      onSelect={(currentValue) => {
+                        // Parse the client ID from the value string
+                        const id = parseInt(currentValue.split('-')[1]);
+                        selectClient(id);
+                      }}
                       className="cursor-pointer font-medium"
                     >
                       <div className="flex items-center w-full overflow-hidden">
@@ -235,8 +239,16 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                         {clientEntities.map((entity) => (
                           <CommandItem
                             key={`entity-${entity.id}`}
-                            value={`${entity.name} ${entity.code || ''}`} // Use name and code for better search
-                            onSelect={() => selectEntity(entity)}
+                            value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`} // Use unique identifier + name/code for better search
+                            onSelect={(currentValue) => {
+                              // Parse the entity ID from the value string
+                              const id = parseInt(currentValue.split('-')[1]);
+                              // Find the entity by ID
+                              const selectedEntity = entities.find(e => e.id === id);
+                              if (selectedEntity) {
+                                selectEntity(selectedEntity);
+                              }
+                            }}
                             className="cursor-pointer pl-8 py-1"
                           >
                             <div className="flex items-center w-full overflow-hidden">

@@ -68,6 +68,9 @@ function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { selectedClientId, setSelectedClientId } = useEntity();
   
+  // Define routes where the selector should not be shown
+  const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup'];
+  
   // Query for clients to populate client selector
   const { data: clientsResponse } = useQuery<{ status: string, data: Client[] }>({
     queryKey: user ? ['/api/admin/clients'] : [],
@@ -233,29 +236,35 @@ function Header() {
           
           <div className="flex items-center">
             {/* GlobalContextSelector for client and entity selection - desktop only */}
-            <div className="relative mr-3 hidden md:block">
-              <GlobalContextSelector clients={clients} entities={useEntity().entities} />
-            </div>
+            {!hideSelectorRoutes.includes(location) && (
+              <div className="relative mr-3 hidden md:block">
+                <GlobalContextSelector clients={clients} entities={useEntity().entities} />
+              </div>
+            )}
             
             {/* Mobile-friendly context button with indicator - visible on mobile and small screens */}
-            <div className="flex md:hidden items-center mr-3">
-              <button 
-                onClick={() => setMobileMenuOpen(true)}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                aria-label="Select client and entity"
-              >
-                <Building className="h-4 w-4 mr-1.5" />
-                <span className="truncate max-w-[120px]">
-                  {selectedClientId ? 
-                    (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
-                    'Select Context'}
-                </span>
+            {!hideSelectorRoutes.includes(location) && (
+              <div className="flex md:hidden items-center mr-3">
+                <button 
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  aria-label="Select client and entity"
+                >
+                  <Building className="h-4 w-4 mr-1.5" />
+                  <span className="truncate max-w-[120px]">
+                    {selectedClientId ? 
+                      (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
+                      'Select Context'}
+                  </span>
+                </button>
+              </div>
+            )}
+            
+            <div>
+              <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <Bell className="h-6 w-6" />
               </button>
             </div>
-            
-            <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-              <Bell className="h-6 w-6" />
-            </button>
             
             <div className="ml-3 relative">
               <div>
@@ -276,13 +285,15 @@ function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden">
           {/* Client/Entity context selector for mobile */}
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client & Entity</h2>
-            <GlobalContextSelector 
-              clients={clients} 
-              entities={useEntity().entities} 
-            />
-          </div>
+          {!hideSelectorRoutes.includes(location) && (
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client & Entity</h2>
+              <GlobalContextSelector 
+                clients={clients} 
+                entities={useEntity().entities} 
+              />
+            </div>
+          )}
         
           <div className="pt-2 pb-3 space-y-1">
             {/* Main navigation */}

@@ -1,0 +1,43 @@
+Agent Instructions: Final Fixes for Header Context Selector
+
+Goal: Fix the remaining functional and UI issues with the GlobalContextSelector based on the latest user feedback, including conditional display, scaling, duplicate name handling, and ensuring correct context setting for different modules.
+
+Relevant Files:
+
+client/src/components/dashboard/GlobalContextSelector.tsx (Main focus)
+client/src/components/Header.tsx (Conditional rendering)
+client/src/App.tsx (Routing info needed for conditional rendering)
+client/src/pages/JournalEntries.tsx (Verify context usage)
+Implementation Steps:
+
+Fix Duplicate Client Name Bug (GlobalContextSelector.tsx):
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Locate the CommandItem for displaying Clients. Ensure its value prop is unique, incorporating the ID: value={\client-${client.id}`}`.
+Action: Modify the onSelect handler for the Client CommandItem. It receives the unique value (e.g., "client-123"). Parse the actual clientId from this value string (e.g., const id = parseInt(currentValue.split('-')[1]);). Use this parsed id when calling setSelectedClientId(id) and setCurrentEntity(null).
+Fix Dropdown Scaling (GlobalContextSelector.tsx):
+
+Action: Find the CommandList component within the PopoverContent.
+Action: Add TailwindCSS classes to constrain its size and enable scrolling: className="max-h-[300px] md:max-h-[400px] overflow-y-auto" (adjust max-height as needed).
+Action: Consider adding a width class to the PopoverContent itself if needed, e.g., className="w-[300px] p-0".
+Implement Conditional Display in Header (Header.tsx):
+
+Action: Open client/src/components/Header.tsx.
+Action: Import useLocation from react-router-dom.
+Action: Get the current pathname: const { pathname } = useLocation();.
+Action: Define a list of routes where the selector should not be shown (e.g., const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup']; - adjust this list based on your routes in App.tsx).
+Action: Wrap the rendering of <GlobalContextSelector /> (for both desktop and mobile views) in a condition: { !hideSelectorRoutes.includes(pathname) && <GlobalContextSelector ... /> }.
+Verify Context Setting & JE Usage:
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx. Ensure the onSelect for an Entity CommandItem correctly calls BOTH setSelectedClientId(entity.clientId) AND setCurrentEntity(entity).
+Action: Open client/src/pages/JournalEntries.tsx (using fetched content). Verify it accesses const { currentEntity } = useEntity(); and has a check like if (!currentEntity) { return <p>Please select an entity from the header...</p>; } before attempting to load or display entity-specific data. Report if any changes are needed here.
+Verification:
+
+Action: Restart the application. Report build success.
+Action: Describe test steps:
+Check Dashboard page - selector should be hidden.
+Go to CoA page - selector should be visible.
+Open selector - verify dropdown content scrolls and has a max height.
+Select a client with a duplicate name - verify only that specific client's context is set (check button text/logs).
+Expand client, select entity - verify button text updates correctly.
+Go to Journal Entries page - verify it prompts for entity selection if none is chosen, and loads data correctly when an entity is selected via the header.
