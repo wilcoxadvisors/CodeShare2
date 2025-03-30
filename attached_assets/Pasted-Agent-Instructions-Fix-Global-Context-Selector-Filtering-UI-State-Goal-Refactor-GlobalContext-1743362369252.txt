@@ -1,0 +1,61 @@
+Agent Instructions: Fix Global Context Selector (Filtering, UI, State)
+
+Goal: Refactor GlobalContextSelector.tsx to correctly filter entities based on the selected client, improve the UI organization (using grouping and expand/collapse), and ensure context state is updated correctly upon selection.
+
+Relevant Files:
+
+client/src/components/dashboard/GlobalContextSelector.tsx (Primary file to fix)
+client/src/contexts/EntityContext.tsx (Context state setters)
+client/src/components/Header.tsx (Ensure props are passed correctly)
+Implementation Steps:
+
+Implement Grouping & Indentation:
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Review the rendering logic inside the CommandList.
+Action: Ensure you are mapping through the clients prop. For each client, use a CommandGroup (or similar structural element).
+Action: Inside the CommandGroup for a client, render the selectable CommandItem for the Client itself first.
+Action: Below the Client item, filter the entities prop (entities.filter(e => e.clientId === client.id)) and then map over the filtered entities to render their CommandItems. Apply indentation to these entity items (e.g., className="pl-4").
+Implement Expand/Collapse:
+
+Action: Add local state to track expanded clients: const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});.
+Action: Modify the Client CommandItem: Add a clickable icon (e.g., ChevronRight / ChevronDown from lucide-react) next to the client name. The onClick handler for this icon (use event.stopPropagation() to prevent selection) should toggle the client.id in the expandedClients state:
+JavaScript
+
+// Example onClick for chevron icon
+onClick={(e) => {
+  e.stopPropagation(); // Prevent triggering onSelect
+  setExpandedClients(prev => ({ ...prev, [client.id]: !prev[client.id] }));
+}}
+Action: Modify the Entity item rendering: Only render the entity CommandItems if expandedClients[client.id] is true.
+Fix Filtering Logic:
+
+Action: Double-check that the entity filtering logic (entities.filter(entity => entity.clientId === client.id)) is correctly placed and applied before mapping and rendering the entity items within the conditional block created in Step 2.
+Fix onSelect Handlers & Context Updates:
+
+Action: Find the onSelect handler for the Client CommandItem. Ensure it correctly calls:
+JavaScript
+
+setSelectedClientId(client.id);
+setCurrentEntity(null); // Clear selected entity
+setOpen(false); // Close the popover
+console.log(`DEBUG: Client selected: ${client.id}`); // Add log
+Action: Find the onSelect handler for each Entity CommandItem. Ensure it correctly calls:
+JavaScript
+
+setSelectedClientId(entity.clientId); // Ensure client context is also set
+setCurrentEntity(entity);
+setOpen(false); // Close the popover
+console.log(`DEBUG: Entity selected: ${entity.id}, Client: ${entity.clientId}`); // Add log
+Action: Make sure setSelectedClientId, setCurrentEntity, and setOpen are correctly accessed from context/props/state.
+Fix Trigger Button Display:
+
+Action: Review and fix the logic that determines the text displayed on the main trigger Button. It should react to changes in selectedClientId and currentEntity.
+If currentEntity exists: Show Entity: ${currentEntity.name} (${/* Find Client Name */}).
+If only selectedClientId exists: Show Client: ${/* Find Client Name */}.
+Otherwise: Show "Select Context...". (You'll need access to the clients list here to find names based on IDs).
+Verification:
+
+Action: Restart the application.
+Action: Report build success.
+Action: Describe the expected functional changes: The dropdown should now group entities under clients, only show entities for an expanded client, selecting a client/entity should update context and the button text, and filtering should work correctly. Request user testing.

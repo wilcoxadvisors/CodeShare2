@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, ChevronsUpDown, Building, Layers } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
   PopoverContent, 
@@ -46,6 +46,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
 
   // Determine what context is selected for display
   const hasClientContext = selectedClientId !== null;
@@ -59,8 +60,12 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   
   // Determine the button text
   let buttonText = "Select Context...";
-  if (hasEntityContext) {
-    buttonText = `Entity: ${currentEntity.name}`;
+  if (hasEntityContext && currentEntity) {
+    if (selectedClient) {
+      buttonText = `Entity: ${currentEntity.name} (${selectedClient.name})`;
+    } else {
+      buttonText = `Entity: ${currentEntity.name}`;
+    }
   } else if (hasClientContext && selectedClient) {
     buttonText = `Client: ${selectedClient.name}`;
   }
@@ -83,13 +88,29 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     setSelectedClientId(clientId);
     setCurrentEntity(null);
     setOpen(false);
+    console.log(`DEBUG: Client selected: ${clientId}`);
   };
 
   const selectEntity = (entity: Entity) => {
     setSelectedClientId(entity.clientId);
     setCurrentEntity(entity);
     setOpen(false);
+    console.log(`DEBUG: Entity selected: ${entity.id}, Client: ${entity.clientId}`);
   };
+
+  const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
+    e.stopPropagation(); // Prevent triggering onSelect
+    setExpandedClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
+
+  // Auto-expand the client of the currently selected entity
+  // If the client is selected but not expanded, expand it when component renders
+  if (selectedClientId && !expandedClients[selectedClientId]) {
+    // Using a timeout to avoid state updates during render
+    setTimeout(() => {
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+    }, 0);
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -128,6 +149,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                 return null;
               }
               
+              const isExpanded = expandedClients[client.id] || false;
+              
               return (
                 <div key={`client-group-${client.id}`}>
                   {/* Client Group Header with client option */}
@@ -137,20 +160,30 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                       onSelect={() => selectClient(client.id)}
                       className="cursor-pointer"
                     >
-                      <Building className="mr-2 h-4 w-4" />
-                      <span>Client: {client.name}</span>
+                      <div className="flex items-center flex-1">
+                        {clientEntities.length > 0 && (
+                          <button 
+                            onClick={(e) => toggleClientExpansion(e, client.id)}
+                            className="p-1 mr-1 rounded-sm hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                        )}
+                        <Building className="mr-2 h-4 w-4" />
+                        <span>Client: {client.name}</span>
+                      </div>
                       {selectedClientId === client.id && !hasEntityContext && (
                         <Check className="ml-auto h-4 w-4" />
                       )}
                     </CommandItem>
                     
-                    {/* Entity options under this client */}
-                    {clientEntities.map((entity) => (
+                    {/* Entity options under this client - only show if expanded */}
+                    {isExpanded && clientEntities.map((entity) => (
                       <CommandItem
                         key={`entity-${entity.id}`}
                         value={`entity-${entity.id}`}
                         onSelect={() => selectEntity(entity)}
-                        className="cursor-pointer pl-6"
+                        className="cursor-pointer pl-8"
                       >
                         <Layers className="mr-2 h-4 w-4" />
                         <div className="flex flex-col">
