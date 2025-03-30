@@ -19,7 +19,7 @@ import {
 import { validateRequest } from "@shared/validation";
 import { eq, sql } from "drizzle-orm";
 import { db, pool } from "./db";
-import * as Papa from "papaparse";
+import Papa from "papaparse";
 import multer from "multer";
 
 // Type for authenticated user in request
