@@ -18,43 +18,41 @@
 * **ERP Evolution:** The long-term goal is to expand the feature set so the platform can be sold and used as a standalone ERP system directly by client finance teams [cite: uploaded:gemini 3-27.docx].
 * **Future-Proofing:** Considerations for Blockchain audits and IoT expense tracking are planned for later phases [cite: uploaded:Outline for Accounting System Integration.docx, uploaded:Business Plan.docx].
 
-## 3. Current Development Status & CRITICAL BUGS
+## 3. Current Development Status
 
 * **Phase 1 (Stabilization & Migration):** COMPLETE. Database migration (junction table for consolidation groups) is finished. Backend logic updated. Code cleanup done.
-* **Phase 2 (Guided Setup Flow):** **IN PROGRESS & SEVERELY BLOCKED**. The focus remains on stabilizing the 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx`.
-    * **Latest Update:** Agent attempted multiple fixes (Checkpoints including `a2763eac`, `dbb44cec`, `b1f302ef`) for state management and navigation, but critical bugs persist based on user testing after the latest fixes.
-* **CRITICAL BLOCKERS (Must Fix NOW - Focus of Current Debugging):**
-    1.  **(BUG 4 - HIGHEST PRIORITY) Final Save / Dashboard Update Failure:** Client/Entity data is NOT saved to DB on finishing Step 3; dashboard doesn't update. User gets an error on finish. Requires debugging `SetupStepper.tsx` -> `handleCompleteSetup` API calls (`Workspace` or `apiRequest` to POST `/api/admin/clients` & `/api/admin/entities`) and verifying backend routes/storage.
-    2.  **(BUG 1) Stepper Initialization Failure:** Sometimes starts on Step 2 / stale data. Needs reliable reset to Step 0 in `SetupStepper.tsx` on modal open, potentially clearing `localStorage`.
-    3.  **(BUG 2 & 3) Industry Display Issues:** Industry displays incorrectly ("always other" or "N/A") in Step 2 list and Step 3 summary. Requires debugging data capture/save/pass logic and `getEntityIndustryLabel` helper.
-    4.  **(BUG 7) State Loss on Back Navigation:** Entity name disappears when navigating back from Step 3 to Step 2. Requires debugging state persistence in `SetupStepper` during back navigation.
-    5.  **(BUG 5 - Verify) Step 1 Input Clearing:** Input fields in `ClientSetupCard` might still clear during typing (related to `useFormState` or re-renders). Needs re-verification.
-    6.  **(BUG 6 - Deferred) "Use Client Data" Button:** Broken. Fix later.
+* **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
+    * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
+* **Phase 3 (Core Accounting Features):** IN PROGRESS. Focus has shifted to implementing the Chart of Accounts with client-specific organization and hierarchical structure.
+    * **Current Update:** Backend for client-specific Chart of Accounts with hierarchy support is complete. Frontend hierarchy visualization and management is in progress.
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
-**Phase A: Stabilize Core Setup Flow (IMMEDIATE & ESSENTIAL)**
+**Phase A: Stabilize Core Setup Flow (COMPLETED)**
 
-* **(Task A.1 - HIGHEST PRIORITY)** **Fix Final DB Save & Dashboard Update (Bug 4):** Rigorously debug the `handleCompleteSetup` API calls (client & entities) in `SetupStepper.tsx`. Verify backend routes/storage. Ensure `Dashboard.tsx` correctly invalidates `['clients']` query on success. **Verify data saves and dashboard updates.**
-* **(Task A.2)** **Fix Stepper Initialization (Bug 1):** Ensure `SetupStepper.tsx` reliably initializes `activeStep=0` and clears state/`localStorage` for a *new* setup flow.
-* **(Task A.3)** **Fix Industry Display (Bugs 2 & 3):** Debug the data capture, saving, propagation of the `industry` field, and the `getEntityIndustryLabel` helper function. Ensure correct display in Step 2 list & Step 3 summary.
-* **(Task A.4)** **Fix State Loss on Back Navigation (Bug 7):** Debug `SetupStepper` state handling (`setupEntities`, `localStorage`) during `handleBack` to prevent data loss between Steps 3 and 2.
-* **(Task A.5)** **Verify/Fix Step 1 Input Clearing (Bug 5):** Once initialization is stable, re-verify Step 1 inputs. Debug `ClientSetupCard` / `useFormState` if clearing persists.
+* **(Task A.1)** ✅ **Fix Final DB Save & Dashboard Update:** Successfully debugged and fixed the `handleCompleteSetup` API calls in `SetupStepper.tsx`. Data now correctly saves to the database and dashboard updates.
+* **(Task A.2)** ✅ **Fix Stepper Initialization:** `SetupStepper.tsx` now reliably initializes at Step 0 and properly clears state for new setup flows.
+* **(Task A.3)** ✅ **Fix Industry Display:** Fixed data capture, saving, and display of industry field throughout the setup flow.
+* **(Task A.4)** ✅ **Fix State Loss on Back Navigation:** Fixed state persistence in `SetupStepper` during navigation between steps.
+* **(Task A.5)** ✅ **Fix Step 1 Input Clearing:** Resolved issues with input fields in `ClientSetupCard` clearing during typing.
+* **Additional Completed Tasks:**
+    * ✅ **Dashboard Client Actions:** Implemented View Details, Edit Client with Entity Management, and client deactivation via Edit Form.
 
-**(ONLY proceed to Phase B after ALL bugs in Phase A are fixed and verified)**
-
-**Phase B: Core Accounting Module (Manual First)**
+**Phase B: Core Accounting Module (IN PROGRESS)**
 
 * **(Task B.1)** **Customizable Chart of Accounts (CoA):**
-    * Design/Finalize hierarchical schema (`shared/schema.ts`).
-    * Implement backend CRUD API (`server/accountRoutes.ts`).
-    * Build frontend management UI (allow add/edit/delete/reorder accounts, potentially in a dedicated section or `ChartOfAccountsCard.tsx`).
-    * Implement CoA Import/Export (from parsed CSV/JSON provided by user).
+    * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`) - Complete with client-specific account linking
+    * ✅ Implement backend CRUD API (`server/accountRoutes.ts`) - Complete with `/accounts/tree` endpoint for hierarchy
+    * ✅ Basic CRUD API Testing - Complete with client-specific tests
+    * ✅ Backend Hierarchy Implementation - Complete with parent-child relationship
+    * ✅ Single Header Context Selector - Complete with combined client/entity dropdown
+    * 🔄 **Current Task:** Frontend Hierarchy UI - Complete parent selection form and hierarchical tree display
+    * 📝 Next: Implement CoA Import/Export functionality
 * **(Task B.2)** **General Ledger (GL) and Journal Entries (JE):**
-    * Design/Finalize JE schema (`shared/schema.ts`, linking to CoA).
-    * Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
-    * Build frontend UI for manual JE creation (`ManualJournalEntry.tsx`).
-    * Implement logic for processing batch JE uploads (from parsed CSV/JSON provided by user).
+    * 📝 Next: Design/Finalize JE schema (`shared/schema.ts`, linking to CoA).
+    * 📝 Next: Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
+    * 📝 Next: Build frontend UI for manual JE creation (`ManualJournalEntry.tsx`).
+    * 📝 Next: Implement logic for processing batch JE uploads (from parsed CSV/JSON provided by user).
     * **(AI Link - Future):** Consider hooks for "JE learning" - suggesting entries based on historical data (requires AI module).
 
 **Phase C: Reporting (Standard & Custom)**
@@ -77,7 +75,7 @@
 
 **Phase F: Deferred Features & Final Polish**
 
-* **(Task F.1)** **Implement Client Edit/Deactivate:** Add UI controls and backend logic (soft delete `isActive` flag) on the main `Dashboard.tsx` client list.
+* **(Task F.1)** ✅ **Implement Client Edit/Deactivate:** Added UI controls and backend logic for client management on the main `Dashboard.tsx` client list, including View Details, Edit, and Deactivate functionality.
 * **(Task F.2)** Fix "Use Client Data" Button (Bug 6).
 * **(Task F.3)** Comprehensive Testing: Expand unit, integration, and E2E tests.
 * **(Task F.4)** Documentation: Update all technical and user documentation.
@@ -89,8 +87,10 @@
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Follow the Phase order above. Fix **ALL** bugs in Phase A before starting Phase B.
-* **Log Extensively:** Use `console.log("DEBUG Component: Action:", value)` for tracing. **Report log output** for debugging.
-* **Verify Incrementally:** Test each specific fix thoroughly.
+* **Prioritize:** Focus on completing the Chart of Accounts frontend hierarchy implementation before moving to Journal Entries.
+* **Maintain Structure:** Keep the client-specific accounting design consistent across features.
+* **Test Thoroughly:** Ensure all functionality works with the new combined client-entity context selector.
+* **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
+* **Verify Incrementally:** Test each specific feature thoroughly before moving to the next.
 * **Simplify:** Avoid unnecessary complexity. Focus on clean state management.
 * **Ask for Clarification:** If unsure, ask before proceeding.

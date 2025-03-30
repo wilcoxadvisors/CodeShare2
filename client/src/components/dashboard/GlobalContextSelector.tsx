@@ -52,7 +52,10 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   const hasEntityContext = currentEntity !== null;
   
   // Find the current client's name if a client is selected
-  const selectedClient = clients.find(client => client.id === selectedClientId);
+  // Add defensive check to ensure clients is an array before calling find
+  const selectedClient = Array.isArray(clients) 
+    ? clients.find(client => client.id === selectedClientId)
+    : undefined;
   
   // Determine the button text
   let buttonText = "Select Context...";
@@ -73,8 +76,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     return nameMatch || codeMatch;
   };
   
-  // Filtered clients and entities
-  const filteredClients = clients.filter(filterBySearchQuery);
+  // Filtered clients and entities - with defensive check
+  const filteredClients = Array.isArray(clients) ? clients.filter(filterBySearchQuery) : [];
   
   const selectClient = (clientId: number) => {
     setSelectedClientId(clientId);
@@ -113,10 +116,12 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
             <CommandEmpty>No matches found.</CommandEmpty>
 
             {filteredClients.map((client) => {
-              // Get all entities for this client
-              const clientEntities = entities.filter(
-                (entity) => entity.clientId === client.id && filterBySearchQuery(entity)
-              );
+              // Get all entities for this client - with defensive check
+              const clientEntities = Array.isArray(entities) 
+                ? entities.filter(
+                    (entity) => entity.clientId === client.id && filterBySearchQuery(entity)
+                  )
+                : [];
               
               // Only show clients that match the search query or have entities that match
               if (!filterBySearchQuery(client) && clientEntities.length === 0) {

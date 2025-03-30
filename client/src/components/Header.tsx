@@ -69,13 +69,15 @@ function Header() {
   const { selectedClientId, setSelectedClientId } = useEntity();
   
   // Query for clients to populate client selector
-  const { data: clientsData = [] } = useQuery({
+  const { data: clientsResponse } = useQuery<{ status: string, data: Client[] }>({
     queryKey: user ? ['/api/admin/clients'] : [],
     enabled: !!user,
   });
   
-  // Cast to Client[] since we know the API returns this format
-  const clients = clientsData as Client[];
+  // Safely extract clients array from the API response or use empty array as fallback
+  const clients = clientsResponse?.data && Array.isArray(clientsResponse.data) 
+    ? clientsResponse.data 
+    : [];
 
   // Function to determine the base section of the current path (memoized)
   const currentBaseSection = useMemo(() => {
