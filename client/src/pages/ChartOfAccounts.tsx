@@ -59,6 +59,7 @@ function ChartOfAccounts() {
     subledgerType: string;
     active: boolean;
     description: string;
+    parentId: number | null;
   }
 
   const [accountData, setAccountData] = useState<AccountData>({
@@ -70,7 +71,8 @@ function ChartOfAccounts() {
     isSubledger: false,
     subledgerType: "",
     active: true,
-    description: ""
+    description: "",
+    parentId: null
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -223,7 +225,8 @@ function ChartOfAccounts() {
       isSubledger: false,
       subledgerType: "",
       active: true,
-      description: ""
+      description: "",
+      parentId: null
     });
     setIsEditMode(false);
     setFormTab("basic");
@@ -240,7 +243,8 @@ function ChartOfAccounts() {
       isSubledger: account.isSubledger,
       subledgerType: account.subledgerType || "",
       active: account.active,
-      description: account.description || ""
+      description: account.description || "",
+      parentId: account.parentId
     });
     setIsEditMode(true);
     setFormTab("basic");
@@ -377,7 +381,8 @@ function ChartOfAccounts() {
             isSubledger: false,
             subledgerType: "",
             active: false,  // Set to inactive
-            description: ""
+            description: "",
+            parentId: null // Will be updated when fetching account details
           });
           
           // Get full account details before showing the form
@@ -389,7 +394,8 @@ function ChartOfAccounts() {
                 subtype: accountDetails.subtype || "",
                 isSubledger: accountDetails.isSubledger,
                 subledgerType: accountDetails.subledgerType || "",
-                description: accountDetails.description || ""
+                description: accountDetails.description || "",
+                parentId: accountDetails.parentId
               }));
               setIsEditMode(true);
               setFormTab("basic");
@@ -1067,6 +1073,38 @@ function ChartOfAccounts() {
                       onChange={handleChange}
                       placeholder="Brief description of the account's purpose"
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="parentId">Parent Account</Label>
+                    <Select
+                      value={accountData.parentId?.toString() || ""}
+                      onValueChange={(value) => {
+                        const parentId = value ? parseInt(value, 10) : null;
+                        setAccountData(prev => ({
+                          ...prev,
+                          parentId
+                        }));
+                      }}
+                    >
+                      <SelectTrigger id="parentId">
+                        <SelectValue placeholder="Select a parent account (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No Parent (Top Level)</SelectItem>
+                        {flattenedAccounts
+                          .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
+                          .map((account: any) => (
+                            <SelectItem key={account.id} value={account.id.toString()}>
+                              {account.code} - {account.name}
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Selecting a parent will place this account under it in the hierarchy
+                    </div>
                   </div>
                 </div>
               </TabsContent>
