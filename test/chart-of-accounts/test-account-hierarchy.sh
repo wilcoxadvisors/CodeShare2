@@ -142,15 +142,15 @@ if [ $TREE_STATUS -eq 0 ]; then
   echo "Successfully fetched account tree hierarchy"
   
   # Save the response to a file for inspection
-  echo "$TREE_RESPONSE" > hierarchy-tree-output.json
-  echo "Tree response saved to hierarchy-tree-output.json"
+  echo "$TREE_RESPONSE" > test/chart-of-accounts/hierarchy-tree-output.json
+  echo "Tree response saved to test/chart-of-accounts/hierarchy-tree-output.json"
   
   # Find and display our new hierarchy
   echo "Extracting our test hierarchy..."
-  cat hierarchy-tree-output.json | jq --arg pid "$PARENT_ID" '.data[] | select(.id == ($pid | tonumber))' > hierarchy-extract.json
+  cat test/chart-of-accounts/hierarchy-tree-output.json | jq --arg pid "$PARENT_ID" '.data[] | select(.id == ($pid | tonumber))' > test/chart-of-accounts/hierarchy-extract.json
   
   echo "Our hierarchy structure:"
-  cat hierarchy-extract.json
+  cat test/chart-of-accounts/hierarchy-extract.json
 else
   echo "Failed to fetch account tree with status: $TREE_STATUS"
   echo "Response: $TREE_RESPONSE"
@@ -163,7 +163,7 @@ echo ""
 # ------------------------------------------
 echo "--- Step 6: Verify the hierarchy structure ---"
 # Check that parent has exactly 2 children
-CHILDREN_COUNT=$(cat hierarchy-extract.json | jq '.children | length')
+CHILDREN_COUNT=$(cat test/chart-of-accounts/hierarchy-extract.json | jq '.children | length')
 echo "Parent account has $CHILDREN_COUNT children (expected: 2)"
 
 if [ "$CHILDREN_COUNT" -eq 2 ]; then
@@ -174,7 +174,7 @@ else
 fi
 
 # Check that one of the children has a grandchild
-CHILD1_HAS_GRANDCHILD=$(cat hierarchy-extract.json | jq --arg cid "$CHILD1_ID" '.children[] | select(.id == ($cid | tonumber)) | .children | length')
+CHILD1_HAS_GRANDCHILD=$(cat test/chart-of-accounts/hierarchy-extract.json | jq --arg cid "$CHILD1_ID" '.children[] | select(.id == ($cid | tonumber)) | .children | length')
 echo "Child 1 has $CHILD1_HAS_GRANDCHILD children (expected: 1)"
 
 if [ "$CHILD1_HAS_GRANDCHILD" -eq 1 ]; then
@@ -185,7 +185,7 @@ else
 fi
 
 # Check that child 2 has no children
-CHILD2_HAS_CHILDREN=$(cat hierarchy-extract.json | jq --arg cid "$CHILD2_ID" '.children[] | select(.id == ($cid | tonumber)) | .children | length')
+CHILD2_HAS_CHILDREN=$(cat test/chart-of-accounts/hierarchy-extract.json | jq --arg cid "$CHILD2_ID" '.children[] | select(.id == ($cid | tonumber)) | .children | length')
 echo "Child 2 has $CHILD2_HAS_CHILDREN children (expected: 0)"
 
 if [ "$CHILD2_HAS_CHILDREN" -eq 0 ]; then
@@ -196,7 +196,7 @@ else
 fi
 
 # Check that grandchild has no children
-GRANDCHILD_IN_TREE=$(cat hierarchy-extract.json | jq --arg cid "$CHILD1_ID" --arg gcid "$GRANDCHILD_ID" '.children[] | select(.id == ($cid | tonumber)) | .children[] | select(.id == ($gcid | tonumber)) | .id')
+GRANDCHILD_IN_TREE=$(cat test/chart-of-accounts/hierarchy-extract.json | jq --arg cid "$CHILD1_ID" --arg gcid "$GRANDCHILD_ID" '.children[] | select(.id == ($cid | tonumber)) | .children[] | select(.id == ($gcid | tonumber)) | .id')
 
 if [ -n "$GRANDCHILD_IN_TREE" ]; then
   echo "✅ Grandchild found in the correct position in the hierarchy"

@@ -19,8 +19,8 @@ else
 fi
 
 # Save the test results to a file
-echo "Saving test results to test-output.txt"
-node test/chart-of-accounts.js > test-output.txt 2>&1
+echo "Saving test results to test/chart-of-accounts/test-output.txt"
+node test/chart-of-accounts/chart-of-accounts.js > test/chart-of-accounts/test-output.txt 2>&1
 
 echo
 echo "===== Test Complete ====="

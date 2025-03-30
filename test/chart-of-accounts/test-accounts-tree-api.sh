@@ -54,7 +54,7 @@ echo "Tree Fetch Status: $TREE_STATUS"
 
 if [ $TREE_STATUS -eq 0 ]; then
   # Save the response to parse and check
-  echo "$TREE_RESPONSE" > tree-response.json
+  echo "$TREE_RESPONSE" > test/chart-of-accounts/tree-response.json
   
   # Check if the response contains "status": "success"
   if echo "$TREE_RESPONSE" | grep -q '"status":"success"'; then
@@ -91,7 +91,7 @@ echo ""
 echo "✅ Test script executed successfully"
 
 # Save test results to file
-echo "$TREE_RESPONSE" > test-tree-output.txt
-echo "Saving tree results to test-tree-output.txt"
+echo "$TREE_RESPONSE" > test/chart-of-accounts/test-tree-output.txt
+echo "Saving tree results to test/chart-of-accounts/test-tree-output.txt"
 echo ""
 echo "===== Test Complete ====="
