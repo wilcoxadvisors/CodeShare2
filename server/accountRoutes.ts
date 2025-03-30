@@ -91,7 +91,10 @@ export function registerAccountRoutes(app: Express) {
       }));
       
       // Generate CSV using PapaParse
-      const csv = Papa.unparse(accountsData);
+      const csv = Papa.unparse(accountsData, {
+        header: true,
+        skipEmptyLines: true
+      });
       
       // Set response headers for CSV download
       res.setHeader('Content-Type', 'text/csv');
