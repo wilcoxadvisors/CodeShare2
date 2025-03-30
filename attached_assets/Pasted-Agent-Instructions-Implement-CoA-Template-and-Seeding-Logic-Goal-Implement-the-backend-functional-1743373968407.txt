@@ -1,0 +1,100 @@
+Agent Instructions: Implement CoA Template and Seeding Logic
+
+Goal: Implement the backend functionality to define a standard Chart of Accounts template and automatically seed this template for new clients upon creation.
+
+Relevant Files (paths based on gitingest summary):
+
+Create: server/coaTemplate.ts
+Modify: server/storage.ts
+Modify: server/adminRoutes.ts
+Reference: shared/schema.ts
+Implementation Steps:
+
+Part 1: Define the Standard CoA Template
+
+Create Template File:
+Action: Create a new file named server/coaTemplate.ts.
+Define Template Structure:
+Action: Inside server/coaTemplate.ts, define the "basic" standard Chart of Accounts structure as an exported TypeScript constant (e.g., export const standardCoaTemplate = [...]). This should be an array of account objects.
+Action: Each object should include properties like code (string), name (string), type (use AccountType enum from ../shared/schema), subtype (string, optional), description (string, optional), isSubledger (boolean, optional), subledgerType (string, optional), and parentCode: string | null (use the account code string to define hierarchy, null for root accounts).
+Example Structure (Ensure comprehensive coverage):
+TypeScript
+
+// Example in server/coaTemplate.ts
+import { AccountType } from '../shared/schema';
+
+type CoaTemplateItem = {
+  code: string;
+  name: string;
+  type: AccountType;
+  subtype?: string;
+  description?: string;
+  isSubledger?: boolean;
+  subledgerType?: string;
+  parentCode: string | null;
+};
+
+export const standardCoaTemplate: CoaTemplateItem[] = [
+  // Assets (1xxx) - Add more details as needed
+  { code: '1', name: 'Assets', type: AccountType.ASSET, parentCode: null, description: 'Resources owned.' },
+  { code: '1100', name: 'Current Assets', type: AccountType.ASSET, parentCode: '1', description: 'Assets convertible to cash within a year.' },
+  { code: '1110', name: 'Operating Bank Account', type: AccountType.ASSET, subtype: 'Bank', parentCode: '1100', description: 'Main operational bank account.' },
+  { code: '1120', name: 'Accounts Receivable', type: AccountType.ASSET, subtype: 'Receivable', parentCode: '1100', isSubledger: true, subledgerType: 'accounts_receivable', description: 'Money owed by customers.' },
+  // ... Add other current assets, fixed assets, accumulated depreciation...
+
+  // Liabilities (2xxx)
+  { code: '2', name: 'Liabilities', type: AccountType.LIABILITY, parentCode: null, description: 'Obligations owed.' },
+  { code: '2100', name: 'Current Liabilities', type: AccountType.LIABILITY, parentCode: '2', description: 'Obligations due within a year.' },
+  { code: '2110', name: 'Accounts Payable', type: AccountType.LIABILITY, subtype: 'Payable', parentCode: '2100', isSubledger: true, subledgerType: 'accounts_payable', description: 'Money owed to suppliers.' },
+  // ... Add other current liabilities, long-term liabilities...
+
+  // Equity (3xxx)
+  { code: '3', name: 'Equity', type: AccountType.EQUITY, parentCode: null, description: 'Owner\'s stake.' },
+  { code: '3100', name: 'Owner\'s Equity', type: AccountType.EQUITY, parentCode: '3', description: 'Capital contributed.' },
+  { code: '3900', name: 'Retained Earnings', type: AccountType.EQUITY, parentCode: '3', description: 'Accumulated profits.' },
+  // ... Add other equity accounts...
+
+  // Revenue (4xxx)
+  { code: '4', name: 'Revenue', type: AccountType.REVENUE, parentCode: null, description: 'Income from operations.' },
+  { code: '4100', name: 'Service Revenue', type: AccountType.REVENUE, parentCode: '4', description: 'Income from services rendered.' },
+  // ... Add other revenue accounts...
+
+  // Expenses (5xxx onwards)
+  { code: '5', name: 'Expenses', type: AccountType.EXPENSE, parentCode: null, description: 'Costs incurred.' },
+  { code: '5100', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, parentCode: '5', description: 'Direct costs of goods sold.' },
+  { code: '6000', name: 'Operating Expenses', type: AccountType.EXPENSE, parentCode: '5', description: 'General operating costs.' },
+  { code: '6100', name: 'Rent Expense', type: AccountType.EXPENSE, parentCode: '6000', description: 'Cost of rent.' },
+  // ... Add many more standard expense accounts...
+];
+Action: Ensure the template is reasonably complete for basic business needs.
+Part 2: Implement Seeding Function in storage.ts
+
+Update IStorage Interface:
+Action: Open server/storage.ts.
+Action: Add the new method signature to the IStorage interface: seedClientCoA(clientId: number): Promise<void>;
+Implement in DbStorage:
+Action: Implement the async seedClientCoA(clientId: number): Promise<void> method within the DbStorage class.
+Action: Inside the method:
+Import standardCoaTemplate.
+Import Drizzle helpers/schema (db, eq, isNull, accounts, clients, sql, and, AccountType).
+Check if CoA Exists: Query accounts where clientId matches. If results exist, log and return.
+Seed within Transaction: Use await this.db.transaction(async (tx) => { ... });.
+Inside the transaction:
+Create const codeToIdMap = new Map<string, number>();.
+Loop through standardCoaTemplate:
+Resolve parentId using item.parentCode and codeToIdMap (query tx within the loop if needed to find parent ID based on code and clientId, handle null).
+Prepare account data object including clientId, resolved parentId, etc.
+Insert using const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });.
+Store the new ID: if (inserted[0]?.id) { codeToIdMap.set(item.code, inserted[0].id); }.
+Add logging and error handling.
+Part 3: Integrate Seeding into Client Creation
+
+Modify Client Creation Route:
+Action: Open server/adminRoutes.ts and locate the POST /api/admin/clients route handler.
+Action: Find the point after newClient = await storage.createClient(...).
+Action: Add a call to storage.seedClientCoA(newClient.id) within a try...catch block, including logging.
+Part 4: Verification Plan (Report Only)
+
+Report Completion:
+Action: Report that the template file (coaTemplate.ts), the seedClientCoA method (in IStorage and DbStorage), and the integration into the client creation route have been implemented.
+Action: State clearly: "Verification requires manually creating a new client via the UI and then checking the /api/clients/:newClientId/accounts/tree endpoint or database to confirm the standard CoA was created."
