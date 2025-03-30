@@ -83,6 +83,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
+        // Only show active clients and always include the currently selected client
+        .filter(client => client.active !== false || client.id === selectedClientId)
         .filter(filterBySearchQuery)
         .sort((a, b) => {
           // Always put the selected client at the top
