@@ -172,18 +172,16 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
             <CommandEmpty>No matches found.</CommandEmpty>
 
             {filteredClients.map((client) => {
-              // CRITICAL: Get entities for this client - more explicit filter
-              console.log('Filtering entities for client:', client.id, client.name, 'Expanded:', expandedClients[client.id]);
+              // CRITICAL: Get entities for this client - more explicit filter with enhanced logging
+              console.log(`DEBUG: Rendering entities for Client ${client.id} (${client.name}). Expanded: ${!!expandedClients[client.id]}`);
+              console.log(`DEBUG: Full entities list length: ${entities?.length}`);
               
               // First ensure entities is an array and filter based on clientId
               const filteredByClient = Array.isArray(entities) 
-                ? entities.filter(entity => {
-                    const isMatch = entity.clientId === client.id;
-                    return isMatch;
-                  })
+                ? entities.filter(e => e.clientId === client.id)
                 : [];
               
-              console.log('Filtered entity result for client', client.id, ':', filteredByClient.map(e => ({id: e.id, name: e.name, clientId: e.clientId})));
+              console.log(`DEBUG: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, filteredByClient.map(e => e.id));
                 
               // Then apply search filter separately
               const clientEntities = filteredByClient
@@ -246,7 +244,10 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                               // Find the entity by ID
                               const selectedEntity = entities.find(e => e.id === id);
                               if (selectedEntity) {
+                                console.log('Entity selected, setting context:', selectedEntity);
                                 selectEntity(selectedEntity);
+                              } else {
+                                console.error(`ERROR: Could not find entity with ID ${id} in entities list`);
                               }
                             }}
                             className="cursor-pointer pl-8 py-1"
