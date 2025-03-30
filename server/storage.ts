@@ -36,10 +36,20 @@ import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
 
+// Interface for import results
+export interface ImportResult {
+  count: number;
+  errors: string[];
+}
+
 // Storage interface for data access
 export interface IStorage {
   // Chart of Accounts Seeding
   seedClientCoA(clientId: number): Promise<void>;
+  
+  // Chart of Accounts Import/Export
+  getAccountsForClient(clientId: number): Promise<Account[]>;
+  importCoaForClient(clientId: number, fileBuffer: Buffer): Promise<ImportResult>;
   
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -76,6 +86,8 @@ export interface IStorage {
   updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
   deleteAccount(id: number): Promise<void>;
   getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
+  getAccountsForClient(clientId: number): Promise<Account[]>; // For CoA export
+  importCoaForClient(clientId: number, csvData: Buffer): Promise<{ count: number, errors: string[] }>;
   
   // Journal methods
   getJournal(id: number): Promise<Journal | undefined>;
@@ -4252,6 +4264,152 @@ export class DatabaseStorage implements IStorage {
     }
     
     return rootAccounts;
+  }
+  
+  // Implementation for Chart of Accounts export
+  async getAccountsForClient(clientId: number): Promise<Account[]> {
+    // We can reuse the getAccounts method as it already fetches accounts by clientId
+    return this.getAccounts(clientId);
+  }
+  
+  // Implementation for Chart of Accounts import
+  async importCoaForClient(clientId: number, fileBuffer: Buffer): Promise<ImportResult> {
+    const result: ImportResult = {
+      count: 0,
+      errors: []
+    };
+    
+    try {
+      // Parse CSV from buffer
+      const csvContent = fileBuffer.toString('utf-8');
+      const Papa = await import('papaparse');
+      const parseResult = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim().toLowerCase()
+      });
+      
+      if (parseResult.errors && parseResult.errors.length > 0) {
+        for (const error of parseResult.errors) {
+          result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+        }
+        return result;
+      }
+      
+      const rows = parseResult.data as any[];
+      if (!rows || rows.length === 0) {
+        result.errors.push('No accounts found in the imported file');
+        return result;
+      }
+      
+      // Validate expected CSV structure
+      const requiredFields = ['code', 'name', 'type'];
+      const firstRow = rows[0];
+      
+      for (const field of requiredFields) {
+        if (!(field in firstRow)) {
+          result.errors.push(`Missing required field: ${field}`);
+          return result;
+        }
+      }
+      
+      // Get existing accounts to check for duplicates
+      const existingAccounts = await this.getAccounts(clientId);
+      const existingCodes = new Set(existingAccounts.map(acc => acc.code));
+      
+      // Map to store newly created account codes to their IDs for parent resolution
+      const codeToIdMap = new Map<string, number>();
+      
+      // First add all existing account codes to the map
+      for (const account of existingAccounts) {
+        codeToIdMap.set(account.code, account.id);
+      }
+      
+      // Process new accounts first without setting parent IDs
+      for (const row of rows) {
+        try {
+          // Normalize account type to match enum
+          const normalizedType = this.normalizeAccountType(row.type.trim().toUpperCase());
+          
+          // Skip accounts with duplicate codes
+          if (existingCodes.has(row.code)) {
+            result.errors.push(`Account with code ${row.code} already exists`);
+            continue;
+          }
+          
+          // Create the account (without parent reference first)
+          const newAccount = await this.createAccount({
+            clientId,
+            code: row.code.trim(),
+            name: row.name.trim(),
+            type: normalizedType as AccountType,
+            subtype: row.subtype ? row.subtype.trim() : null,
+            isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
+            subledgerType: row.subledgertype ? row.subledgertype.trim() : null,
+            parentId: null, // We'll update this in the second pass
+            description: row.description ? row.description.trim() : null,
+            active: row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false'
+          });
+          
+          // Store the new account code to ID mapping
+          codeToIdMap.set(row.code, newAccount.id);
+          result.count++;
+        } catch (error: any) {
+          result.errors.push(`Error creating account ${row.code}: ${error.message || 'Unknown error'}`);
+        }
+      }
+      
+      // Second pass to set parent IDs
+      for (const row of rows) {
+        if (row.parentcode && codeToIdMap.has(row.parentcode)) {
+          const accountId = codeToIdMap.get(row.code);
+          const parentId = codeToIdMap.get(row.parentcode);
+          
+          if (accountId && parentId) {
+            try {
+              // Update the account with the parent ID
+              await this.updateAccount(accountId, { parentId });
+            } catch (error: any) {
+              result.errors.push(`Error setting parent for account ${row.code}: ${error.message || 'Unknown error'}`);
+            }
+          }
+        }
+      }
+      
+      return result;
+    } catch (error: any) {
+      result.errors.push(`Import failed: ${error.message || 'Unknown error'}`);
+      return result;
+    }
+  }
+  
+  // Helper method to normalize account types from imported data
+  private normalizeAccountType(type: string): AccountType {
+    switch (type.toUpperCase()) {
+      case 'ASSET':
+      case 'ASSETS':
+        return AccountType.ASSET;
+      
+      case 'LIABILITY':
+      case 'LIABILITIES':
+        return AccountType.LIABILITY;
+      
+      case 'EQUITY':
+        return AccountType.EQUITY;
+      
+      case 'REVENUE':
+      case 'INCOME':
+      case 'REVENUES':
+      case 'INCOMES':
+        return AccountType.REVENUE;
+      
+      case 'EXPENSE':
+      case 'EXPENSES':
+        return AccountType.EXPENSE;
+      
+      default:
+        throw new Error(`Invalid account type: ${type}`);
+    }
   }
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {

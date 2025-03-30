@@ -24,6 +24,7 @@ import {
   FileText, Info, AlertTriangle, ChevronRight, ChevronDown
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import Papa from "papaparse";
 
 // Account hierarchy interface matching backend AccountTreeNode
 interface AccountTreeNode {
@@ -608,27 +609,66 @@ function ChartOfAccounts() {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const file = e.target.files[0];
+    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
     const reader = new FileReader();
     
     reader.onload = (evt) => {
       try {
-        const binaryString = evt.target?.result as string;
-        const workbook = XLSX.read(binaryString, { type: 'binary' });
+        const content = evt.target?.result as string;
         
-        // Get first sheet
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convert to JSON
-        const data = XLSX.utils.sheet_to_json(worksheet);
-        
-        // Validate and process data
-        validateAndProcessImportData(data);
+        if (fileType === 'csv') {
+          // Process CSV file
+          Papa.parse(content, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              if (results.errors && results.errors.length > 0) {
+                console.error("CSV parsing errors:", results.errors);
+                
+                // Format the error message
+                const errorMessage = results.errors.length === 1 
+                  ? `Error parsing CSV file: ${results.errors[0].message}`
+                  : `Error parsing CSV file: ${results.errors.length} errors found. First error: ${results.errors[0].message}`;
+                
+                toast({
+                  title: "Import failed",
+                  description: errorMessage,
+                  variant: "destructive",
+                });
+                return;
+              }
+              
+              // Validate and process the data
+              validateAndProcessImportData(results.data);
+            },
+            error: (error: any) => {
+              console.error("Error parsing CSV:", error);
+              toast({
+                title: "Import failed",
+                description: `Error parsing CSV file: ${error.message || 'Unknown parsing error'}`,
+                variant: "destructive",
+              });
+            }
+          });
+        } else {
+          // Process Excel file
+          const workbook = XLSX.read(content, { type: 'binary' });
+          
+          // Get first sheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert to JSON
+          const data = XLSX.utils.sheet_to_json(worksheet);
+          
+          // Validate and process data
+          validateAndProcessImportData(data);
+        }
       } catch (error) {
-        console.error("Error processing Excel file:", error);
+        console.error("Error processing file:", error);
         toast({
           title: "Import failed",
-          description: `Error processing Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: `Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         });
       }
@@ -637,12 +677,16 @@ function ChartOfAccounts() {
     reader.onerror = () => {
       toast({
         title: "Import failed",
-        description: "Failed to read the Excel file. Please check the file format.",
+        description: "Failed to read the file. Please check the file format.",
         variant: "destructive",
       });
     };
     
-    reader.readAsBinaryString(file);
+    if (fileType === 'csv') {
+      reader.readAsText(file);
+    } else {
+      reader.readAsBinaryString(file);
+    }
   };
   
   // Validate and process import data
@@ -650,7 +694,7 @@ function ChartOfAccounts() {
     if (!data || data.length === 0) {
       toast({
         title: "Import failed",
-        description: "The Excel file contains no data. Please check the file content.",
+        description: "The file contains no data. Please check the file content.",
         variant: "destructive",
       });
       return;
@@ -876,14 +920,38 @@ function ChartOfAccounts() {
       >
         <div className="flex space-x-3">
           <div className="relative group">
-            <Button 
-              variant="outline" 
-              className="inline-flex items-center text-sm font-medium text-gray-700"
-              onClick={handleExportToExcel}
-            >
-              <FileSpreadsheet className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-              Export
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline"
+                className="inline-flex items-center text-sm font-medium text-gray-700"
+                onClick={handleExportToExcel}
+              >
+                <FileSpreadsheet className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+                Export Excel
+              </Button>
+              <Button 
+                variant="outline"
+                className="inline-flex items-center text-sm font-medium text-gray-700"
+                onClick={() => {
+                  if (currentEntity?.clientId) {
+                    window.location.href = `/api/clients/${currentEntity.clientId}/accounts/export`;
+                    toast({
+                      title: "Export initiated",
+                      description: "Your CSV file download should begin shortly.",
+                    });
+                  } else {
+                    toast({
+                      title: "No client selected",
+                      description: "Please select a client before exporting accounts.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+                Export CSV
+              </Button>
+            </div>
           </div>
           
           <div className="relative group">
@@ -891,7 +959,7 @@ function ChartOfAccounts() {
               type="file"
               id="file-input"
               className="hidden"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={handleFileSelect}
               ref={fileInputRef}
             />

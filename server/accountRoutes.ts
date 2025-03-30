@@ -19,6 +19,8 @@ import {
 import { validateRequest } from "@shared/validation";
 import { eq, sql } from "drizzle-orm";
 import { db, pool } from "./db";
+import * as Papa from "papaparse";
+import multer from "multer";
 
 // Type for authenticated user in request
 interface AuthUser {
@@ -40,8 +42,116 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
   return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });
 };
 
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB file size limit
+  },
+});
+
 // Register account routes
 export function registerAccountRoutes(app: Express) {
+  // Export Chart of Accounts as CSV
+  app.get("/api/clients/:clientId/accounts/export", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
+    
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
+    }
+    
+    // Validate user has access to client
+    const userId = (req.user as AuthUser).id;
+    const client = await storage.getClient(clientId);
+    
+    if (!client) {
+      throwNotFound("Client");
+    }
+    
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
+    }
+    
+    try {
+      // Get accounts for export
+      const accounts = await storage.getAccountsForClient(clientId);
+      
+      // Format accounts for CSV export
+      const accountsData = accounts.map(account => ({
+        code: account.code,
+        name: account.name,
+        type: account.type,
+        subtype: account.subtype || '',
+        isSubledger: account.isSubledger ? 'Yes' : 'No',
+        subledgerType: account.subledgerType || '',
+        parentCode: account.parentId ? accounts.find(a => a.id === account.parentId)?.code || '' : '',
+        description: account.description || '',
+        active: account.active ? 'Yes' : 'No'
+      }));
+      
+      // Generate CSV using PapaParse
+      const csv = Papa.unparse(accountsData);
+      
+      // Set response headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="chart_of_accounts_${clientId}_${new Date().toISOString().slice(0,10)}.csv"`);
+      
+      // Send CSV response
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting accounts:", error);
+      throw error;
+    }
+  }));
+  
+  // Import Chart of Accounts from CSV
+  app.post("/api/clients/:clientId/accounts/import", isAuthenticated, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
+    
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
+    }
+    
+    // Validate user has access to client
+    const userId = (req.user as AuthUser).id;
+    const client = await storage.getClient(clientId);
+    
+    if (!client) {
+      throwNotFound("Client");
+    }
+    
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
+    }
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      throwBadRequest("No file uploaded. Please provide a CSV file.");
+    }
+    
+    // Check file type
+    if (req.file.mimetype !== 'text/csv' && !req.file.originalname.endsWith('.csv')) {
+      throwBadRequest("Invalid file format. Please upload a CSV file.");
+    }
+    
+    try {
+      // Process the imported CSV file
+      const result = await storage.importCoaForClient(clientId, req.file.buffer);
+      
+      // Return success response with import stats
+      res.json({
+        status: "success",
+        message: `Successfully imported ${result.count} accounts.`,
+        count: result.count,
+        errors: result.errors
+      });
+    } catch (error: any) {
+      console.error("Error importing accounts:", error);
+      throwBadRequest(`Error importing accounts: ${error.message || "Unknown error"}`);
+    }
+  }));
   // Get hierarchical account tree for a client (must come before /:id route)
   app.get("/api/clients/:clientId/accounts/tree", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const clientId = parseInt(req.params.clientId);
