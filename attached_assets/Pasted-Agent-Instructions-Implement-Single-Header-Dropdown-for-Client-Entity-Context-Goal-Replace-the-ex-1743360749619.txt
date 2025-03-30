@@ -1,0 +1,63 @@
+Agent Instructions: Implement Single Header Dropdown for Client/Entity Context
+
+Goal: Replace the existing entity selector in the header with a single, clearly organized dropdown that allows selecting either a Client (for client-level context) or a specific Entity (for entity-level context), filtering entities based on the selected client.
+
+Relevant Files:
+
+client/src/contexts/EntityContext.tsx (Will store selected client ID)
+client/src/components/Header.tsx (Will host the new selector)
+client/src/components/EntitySelector.tsx (Will likely be removed or replaced)
+Create: client/src/components/dashboard/GlobalContextSelector.tsx (The new dropdown component)
+client/src/pages/ChartOfAccounts.tsx (Needs update to use new context)
+server/adminRoutes.ts (Reference for GET /api/admin/clients endpoint)
+Implementation Steps:
+
+Enhance EntityContext.tsx:
+
+Action: Open client/src/contexts/EntityContext.tsx.
+Action: Add state for the selected client ID: const [selectedClientId, setSelectedClientId] = useState<number | null>(null);.
+Action: Ensure the setCurrentEntity function correctly updates the currentEntity state (including setting it to null).
+Action: Add selectedClientId and setSelectedClientId to the value provided by the EntityContext.Provider.
+Update Header.tsx:
+
+Action: Open client/src/components/Header.tsx.
+Action: Import useContext, EntityContext, useQuery and the new GlobalContextSelector component (which will be created in the next step).
+Action: Access the full list of entities from the context: const { entities } = useContext(EntityContext);.
+Action: Fetch the list of clients: const { data: clients = [] } = useQuery({ queryKey: ['/api/admin/clients'], queryFn: fetchClientsFn, enabled: !!user }); (define WorkspaceClientsFn to hit GET /api/admin/clients).
+Action: Remove the line that renders the old <EntitySelector />.
+Action: In its place, render the new component: <GlobalContextSelector clients={clients} entities={entities} />.
+Create GlobalContextSelector.tsx:
+
+Action: Create the file client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Implement this component using Shadcn's Popover and Command components for a searchable, grouped dropdown.
+Props: It should accept clients: Client[] and entities: Entity[].
+Context: Access selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity via useEntity().
+State: Use useState to manage the popover's open/closed state.
+Trigger Button: Display the currently selected context. Examples: "Client: Acme Corp", "Entity: Subsidiary B", or "Select Context..." if nothing is selected.
+Dropdown (Command):
+Include CommandInput for searching.
+Map through the clients prop:
+Create a CommandGroup heading for each client.
+Add a CommandItem for selecting the Client itself.
+value: Use a unique string like client-${client.id}.
+onSelect: Call setSelectedClientId(client.id), setCurrentEntity(null), and close the popover.
+Filter the entities prop to get entities belonging to the current client (entity.clientId === client.id).
+Map through these filtered entities and add a CommandItem for selecting each Entity.
+value: Use a unique string like entity-${entity.id}.
+onSelect: Call setSelectedClientId(entity.clientId), setCurrentEntity(entity), and close the popover.
+Show a checkmark (Check icon) next to the CommandItem corresponding to the currently selected context (selectedClientId or currentEntity.id).
+Handle empty states (no clients, no entities for selected client).
+Update ChartOfAccounts.tsx Consumer:
+
+Action: Open client/src/pages/ChartOfAccounts.tsx.
+Action: Access the new selectedClientId from the useEntity() context.
+Action: Modify the main useQuery hook to use selectedClientId directly:
+queryKey: ['clientAccountsTree', selectedClientId]
+queryFn: Fetch from /api/clients/${selectedClientId}/accounts/tree
+enabled: !!selectedClientId
+Action: Update the message shown when context is missing to prompt the user to select a client from the new header dropdown.
+Verification:
+
+Action: Restart the application.
+Action: Report build success.
+Action: Describe the steps to manually test the new selector and its effect on the Chart of Accounts page, as outlined in my previous thought process.

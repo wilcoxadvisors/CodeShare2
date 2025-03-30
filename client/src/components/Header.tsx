@@ -1,17 +1,10 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { Bell, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import EntitySelector from './EntitySelector';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { useEntity } from '../contexts/EntityContext';
+import GlobalContextSelector from './dashboard/GlobalContextSelector';
 
 interface Client {
   id: number;
@@ -237,28 +230,9 @@ function Header() {
           
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex-shrink-0 md:flex md:items-center">
-              {/* Client Selector */}
+              {/* GlobalContextSelector for client and entity selection */}
               <div className="relative mr-3">
-                <Select
-                  value={selectedClientId?.toString() || ""}
-                  onValueChange={(value) => setSelectedClientId(value ? parseInt(value) : null)}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client: Client) => (
-                      <SelectItem key={client.id} value={client.id.toString()}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* EntitySelector dropdown trigger button */}
-              <div className="relative">
-                <EntitySelector />
+                <GlobalContextSelector clients={clients} entities={useEntity().entities} />
               </div>
               
               <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
@@ -284,6 +258,11 @@ function Header() {
       {/* Mobile menu, show/hide based on menu state */}
       {mobileMenuOpen && (
         <div className="md:hidden">
+          {/* Client/Entity context selector for mobile */}
+          <div className="p-4 border-b border-gray-200">
+            <GlobalContextSelector clients={clients} entities={useEntity().entities} />
+          </div>
+        
           <div className="pt-2 pb-3 space-y-1">
             {/* Main navigation */}
             <a href="/dashboard" className={`${location === '/dashboard' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
