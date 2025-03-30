@@ -1,0 +1,69 @@
+Okay, let's move on to the next item listed under Task B.1 in the roadmap: Implement CoA Import/Export functionality.
+
+We'll start with the backend implementation first. Please provide the following instructions to the agent:
+
+Task: Implement Backend for CoA Import/Export (Task B.1 - Next)
+
+Goal: Add API endpoints and supporting logic to allow users to export their Chart of Accounts for a specific client as a CSV file and import a Chart of Accounts from a CSV file.
+
+1. Add Dependencies:
+
+Action: Add multer (for file uploads) and papaparse (for robust CSV parsing) to the project dependencies.
+Bash
+
+npm install multer papaparse
+npm install --save-dev @types/multer @types/papaparse
+Action: Ensure these dependencies are added to package.json.
+2. Implement Export Functionality:
+
+Create Storage Function (server/storage.ts):
+Action: Add a function getAccountsForClient(clientId: number) that fetches all accounts (id, accountNumber, accountName, accountType, parentId, description) for a given clientId, ordered appropriately (e.g., by accountNumber).
+Create Export Endpoint (server/accountRoutes.ts):
+Action: Add a new GET route: /api/clients/:clientId/accounts/export.
+Logic:
+Protect the route (ensure user is authenticated and authorized for the client).
+Get clientId from route parameters.
+Call getAccountsForClient(clientId) to fetch the accounts.
+Format as CSV: Convert the fetched account data into a CSV string.
+Use papaparse.unparse() for reliable CSV generation.
+Include a header row: AccountNumber,AccountName,AccountType,ParentAccountNumber,Description. (Note: Exporting the parent account number is more user-friendly for re-import than the parent ID).
+To get the ParentAccountNumber, you'll need to map the parentId from the fetched data back to the corresponding parent account's accountNumber (a simple lookup map created from the fetched accounts list should work). Handle cases where parentId is null (export as an empty string).
+Set Headers: Set response headers:
+Content-Type: text/csv
+Content-Disposition: attachment; filename="chart_of_accounts_${clientId}.csv"
+Send the generated CSV string as the response body.
+3. Implement Import Functionality:
+
+Configure Multer (server/accountRoutes.ts or separate middleware file):
+Action: Configure multer for in-memory storage (multer.memoryStorage()) to handle CSV file uploads.
+Action: Create multer middleware instance configured to accept a single file with the field name coaFile.
+Create Storage Function (server/storage.ts):
+Action: Add a function importCoaForClient(clientId: number, csvData: Buffer) responsible for processing the import.
+Logic inside importCoaForClient:
+Parse CSV: Use papaparse.parse(csvData.toString('utf-8'), { header: true, skipEmptyLines: true }) to parse the CSV buffer. Check results.errors for parsing errors.
+Validate Headers/Data: Validate that required columns (AccountNumber, AccountName, AccountType) exist in results.meta.fields and that essential data is present in each row. Validate AccountType against allowed values. Log validation errors clearly.
+Transaction: Wrap database operations in a transaction (db.transaction(async (tx) => { ... })).
+Clear Existing CoA (Simpler Option): Inside the transaction, delete all existing accounts for the clientId using the transaction object (tx). Log this action.
+Prepare Account Data & ID Mapping:
+Iterate through the parsed results.data. Create an array of account objects ready for insertion, mapping CSV headers to schema fields.
+Parent Account Number Resolution: This is crucial. Create a map of AccountNumber -> parsedAccountObject. You'll need to resolve the ParentAccountNumber string from the CSV into the actual database parentId after all accounts are potentially inserted. This likely requires inserting accounts first without the parentId, then doing a second pass to update the parentId based on the resolved IDs. Alternatively, process in an order that ensures parents are created before children if possible (complex with arbitrary CSVs). Instruct the agent to implement the two-pass approach within the transaction: first insert all accounts with parentId as null, then iterate again to update the parentId field by looking up the parent's ID based on the ParentAccountNumber from the CSV.
+Insert Accounts: Inside the transaction, insert the prepared account objects (initially with parentId = null). Use the transaction object (tx).
+Update Parent IDs: Inside the transaction, perform the second pass to update the parentId for each inserted account based on the ParentAccountNumber lookup. Use the transaction object (tx).
+Handle potential database errors during insertion/update.
+Return the count of successfully imported accounts.
+Create Import Endpoint (server/accountRoutes.ts):
+Action: Add a new POST route: /api/clients/:clientId/accounts/import.
+Middleware: Apply the configured multer middleware before your route handler.
+Logic:
+Protect the route.
+Get clientId from route parameters.
+Check if req.file exists. If not, return a 400 error.
+Call importCoaForClient(clientId, req.file.buffer).
+Handle success: Return a 200 response with a success message and the count of imported accounts.
+Handle errors: Catch errors from parsing, validation, or the storage function. Return appropriate 400 or 500 errors with informative messages.
+4. Verification Plan (Report Only):
+
+Action: Report that the dependencies (multer, papaparse) have been added.
+Action: Report that the GET /api/clients/:clientId/accounts/export endpoint and supporting storage function are implemented.
+Action: Report that the POST /api/clients/:clientId/accounts/import endpoint, using multer middleware and supporting storage/parsing/validation logic (including the two-pass parent ID resolution), is implemented.
+Action: Describe the expected CSV format for import (headers: AccountNumber, AccountName, AccountType, ParentAccountNumber, Description) and confirm that existing accounts for the client will be deleted before import.

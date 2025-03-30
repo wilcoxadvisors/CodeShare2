@@ -52,3 +52,67 @@ The script will provide detailed console output showing:
 - This script is intended for administrative use only
 - Always back up your database before running maintenance scripts
 - The script does not affect any existing account data
+
+## Test Data Cleanup Script
+
+### Purpose
+The `cleanup-test-data.ts` script safely removes test clients and their associated data (entities, accounts) from the database, while protecting essential core clients.
+
+### When to Use
+This script should be run:
+- When you need to clean up test data after development or testing cycles
+- Before deploying to production to ensure a clean database
+- Periodically to maintain database hygiene by removing test data
+
+### ⚠️ WARNINGS ⚠️
+- **THIS IS A DESTRUCTIVE OPERATION** that permanently deletes data
+- **ALWAYS BACKUP YOUR DATABASE** before running this script
+- Verify the `CLIENT_IDS_TO_KEEP` constant in the script to ensure critical clients are protected
+- Run in a staging environment first to verify behavior
+
+### How to Run
+Run the script using one of these methods:
+
+#### Option 1: Using the Shell Script (Recommended)
+```bash
+./scripts/cleanup-test-data.sh
+```
+This includes confirmation prompts and warnings.
+
+#### Option 2: Using npx directly
+```bash
+npx tsx scripts/cleanup-test-data.ts
+```
+**CAUTION:** This method skips the confirmation prompts.
+
+### What It Does
+1. Identifies all clients with "Test" in their name (case-insensitive)
+2. Filters out any clients whose IDs are in the protected list (`CLIENT_IDS_TO_KEEP`)
+3. For each remaining test client:
+   - Deletes associated user entity access records
+   - Deletes accounts linked to the client
+   - Deletes entities owned by the client
+   - Finally deletes the client record itself
+4. Uses database transactions to ensure consistency
+5. Provides detailed logs of all operations
+
+### Safety Features
+- Uses the `CLIENT_IDS_TO_KEEP` safeguard to prevent deletion of critical clients
+- Interactive confirmation prompt in the shell script
+- Transaction-based operations ensure all-or-nothing deletion for each client
+- Detailed logging for audit purposes
+
+### Output
+The script provides detailed console output showing:
+- Total number of "Test" clients found
+- Clients in the protected list that will be skipped
+- Clients selected for deletion
+- Number of entities, accounts, and access records deleted for each client
+- Success and failure counts
+- Summary of operations
+
+### Notes
+- This script is intended for manual execution only after careful review
+- It should never be run automatically or as part of CI/CD pipelines
+- Always verify the `CLIENT_IDS_TO_KEEP` array before running
+- The script can be customized to target different naming patterns if needed
