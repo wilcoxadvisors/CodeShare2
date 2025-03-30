@@ -143,6 +143,34 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
   }, [selectedClientId]);
+  
+  // Scroll to selected item when the dropdown opens
+  useEffect(() => {
+    if (open) {
+      // Use a small delay to ensure the list is fully rendered
+      setTimeout(() => {
+        let selector = '';
+        
+        if (currentEntity) {
+          // If an entity is selected, construct selector for the entity
+          selector = `[data-value="entity-${currentEntity.id}-${currentEntity.name} ${currentEntity.code || ''}"]`;
+        } else if (selectedClientId) {
+          // If only a client is selected, construct selector for the client
+          selector = `[data-value="client-${selectedClientId}-${clients.find(c => c.id === selectedClientId)?.name || ''}"]`;
+        }
+        
+        if (selector) {
+          // Find the selected element
+          const element = document.querySelector(selector);
+          if (element) {
+            // Scroll the element into view
+            console.log('Scrolling to selected item', selector);
+            element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+      }, 100); // Short delay to ensure rendering is complete
+    }
+  }, [open, currentEntity, selectedClientId, clients]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

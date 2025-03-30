@@ -1,0 +1,42 @@
+Agent Instructions: Refine Header Selector UX (Desktop Rediscovery & Mobile Pop-out)
+
+Goal: Improve the usability of the header context selector by making the selected item easier to find when reopening the desktop dropdown and by implementing a modal/drawer view for mobile.
+
+Relevant Files:
+
+client/src/components/dashboard/GlobalContextSelector.tsx (Desktop dropdown logic)
+client/src/components/Header.tsx (Mobile trigger and modal/drawer implementation)
+Shadcn UI Components: Command, Popover, Dialog, Drawer
+Implementation Steps:
+
+Part 1: Improve Desktop Dropdown Rediscovery
+
+Implement Scroll-to-Selected:
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Add a useEffect hook that depends on the popover's open state.
+Action: Inside the useEffect, if open is true and a context is selected (currentEntity or selectedClientId), construct the unique value string that corresponds to the selected item (e.g., client-${selectedClientId} or entity-${currentEntity.id}).
+Action: Use document.querySelector or a similar method within the effect to find the DOM element for the CommandItem that has the matching data-value attribute (Shadcn CommandItem usually renders this).
+Action: If the element is found, call element.scrollIntoView({ block: 'nearest' }); to scroll the list so the selected item is visible. You might need to wrap this in a requestAnimationFrame or small setTimeout (e.g., setTimeout(..., 0)) to ensure the list is rendered before scrolling.
+Action: Report the implementation of this scroll-to-selected functionality.
+Part 2: Implement Mobile Pop-out Screen
+
+Modify Mobile Trigger in Header.tsx:
+
+Action: Open client/src/components/Header.tsx.
+Action: Locate the mobile trigger button (e.g., the <Button> with <Menu /> or building icon, visible only on small screens block sm:hidden).
+Action: Add state to Header.tsx to control the mobile modal/drawer: const [isMobileContextOpen, setIsMobileContextOpen] = useState(false);.
+Action: Change the mobile trigger button's onClick handler to set setIsMobileContextOpen(true). Remove any logic that previously tried to open the Popover from here.
+Add Mobile Modal/Drawer in Header.tsx:
+
+Action: Still in Header.tsx, render a Shadcn Dialog or Drawer component. Control its visibility using the isMobileContextOpen state and onOpenChange={setIsMobileContextOpen}.
+Action: Inside the DialogContent or DrawerContent:
+Add a suitable title (e.g., "Select Context").
+Replicate Selector Logic: Render the list rendering logic from GlobalContextSelector.tsx. This involves fetching/passing clients and entities, mapping clients, having expand/collapse state (useState locally here or passed down), filtering entities, and rendering the Client and Entity list items. Crucially, the onSelect handlers for these items should call the context setters (setSelectedClientId, setCurrentEntity from useEntity()) AND ALSO call setIsMobileContextOpen(false) to close the modal/drawer.
+Styling: Ensure the content area within the modal/drawer scrolls (overflow-y-auto, max-h-...). Style it appropriately for mobile (e.g., full width or near-full width).
+Consideration: If the list rendering logic inside GlobalContextSelector is complex, consider extracting it into a reusable child component that can be used by both the desktop Command list and the mobile Dialog/Drawer.
+Verification:
+
+Action: Restart the application. Report build success.
+Action: Describe test steps:
+Desktop: Select an item, close dropdown, reopen dropdown -> does it scroll to the selected item?
+Mobile: Verify the mobile icon button appears. Click it -> does a full-screen Dialog or side Drawer open? Does it contain the Client/Entity list? Does selecting an item set the context and close the modal/drawer? Does the main header button update?

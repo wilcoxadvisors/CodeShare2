@@ -1,10 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { Bell, Menu, Building } from 'lucide-react';
+import { Bell, Menu, Building, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useEntity } from '../contexts/EntityContext';
 import GlobalContextSelector from './dashboard/GlobalContextSelector';
+import MobileContextSelector from './dashboard/MobileContextSelector';
+import { Button } from '@/components/ui/button';
+import { 
+  Drawer, 
+  DrawerContent, 
+  DrawerHeader, 
+  DrawerTitle, 
+  DrawerClose 
+} from '@/components/ui/drawer';
 
 interface Client {
   id: number;
@@ -66,7 +75,8 @@ function Header() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { selectedClientId, setSelectedClientId } = useEntity();
+  const [mobileContextOpen, setMobileContextOpen] = useState(false);
+  const { selectedClientId, setSelectedClientId, currentEntity } = useEntity();
   
   // Define routes where the selector should not be shown
   const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup'];
@@ -245,18 +255,42 @@ function Header() {
             {/* Mobile-friendly context button with indicator - visible on mobile and small screens */}
             {!hideSelectorRoutes.includes(location) && (
               <div className="flex md:hidden items-center mr-3">
-                <button 
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                <Button 
+                  variant="outline"
+                  onClick={() => setMobileContextOpen(true)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm leading-4 font-medium rounded-md"
                   aria-label="Select client and entity"
                 >
                   <Building className="h-4 w-4 mr-1.5" />
                   <span className="truncate max-w-[120px]">
-                    {selectedClientId ? 
-                      (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
-                      'Select Context'}
+                    {currentEntity ? 
+                      `${currentEntity.name}` : 
+                      selectedClientId ? 
+                        (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
+                        'Select Context'}
                   </span>
-                </button>
+                </Button>
+                
+                {/* Mobile Drawer */}
+                <Drawer open={mobileContextOpen} onOpenChange={setMobileContextOpen}>
+                  <DrawerContent className="h-[90vh] max-h-[90vh]">
+                    <DrawerHeader className="border-b border-gray-200">
+                      <DrawerTitle>Select Client & Entity</DrawerTitle>
+                      <DrawerClose className="absolute right-4 top-4">
+                        <Button variant="ghost" size="sm">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </DrawerClose>
+                    </DrawerHeader>
+                    <div className="p-4 overflow-y-auto flex-1">
+                      <MobileContextSelector 
+                        clients={clients} 
+                        entities={useEntity().entities} 
+                        onSelect={() => setMobileContextOpen(false)} 
+                      />
+                    </div>
+                  </DrawerContent>
+                </Drawer>
               </div>
             )}
             
