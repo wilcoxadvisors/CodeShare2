@@ -104,12 +104,28 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
     console.log(`DEBUG: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
+    
+    // CRITICAL - Verify entity has valid clientId
+    if (!entity.clientId) {
+      console.error(`ERROR: Entity ${entity.id} (${entity.name}) has no clientId!`);
+      return;
+    }
+    
     // Find client name for logging
     const clientName = clients.find(c => c.id === entity.clientId)?.name || 'Unknown';
     console.log(`DEBUG: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
     
-    setSelectedClientId(entity.clientId);
+    // Critical - setting both context values
+    console.log('Setting entity context:', entity);
+    console.log('Setting client context via entity:', entity.clientId);
+    
+    // Set client context FIRST to ensure proper state hierarchy
+    setSelectedClientId(entity.clientId); 
+    
+    // Then set entity context
     setCurrentEntity(entity);
+    
+    // Close popover
     setOpen(false);
     
     console.log(`DEBUG: Context after entity selection - clientId: ${entity.clientId}, entityId: ${entity.id}`);
@@ -142,29 +158,40 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent 
+        className="w-[90vw] sm:w-[300px] p-0 max-h-[70vh]" 
+        align="start"
+      >
         <Command>
           <CommandInput 
             placeholder="Search clients and entities..." 
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          <CommandList>
+          <CommandList className="max-h-[60vh] overflow-y-auto">
             <CommandEmpty>No matches found.</CommandEmpty>
 
             {filteredClients.map((client) => {
-              // Get entities for this client
-              const filteredEntities = Array.isArray(entities) 
-                ? entities.filter(entity => entity.clientId === client.id)
+              // CRITICAL: Get entities for this client - more explicit filter
+              console.log('Filtering entities for client:', client.id, client.name, 'Expanded:', expandedClients[client.id]);
+              
+              // First ensure entities is an array and filter based on clientId
+              const filteredByClient = Array.isArray(entities) 
+                ? entities.filter(entity => {
+                    const isMatch = entity.clientId === client.id;
+                    return isMatch;
+                  })
                 : [];
+              
+              console.log('Filtered entity result for client', client.id, ':', filteredByClient.map(e => ({id: e.id, name: e.name, clientId: e.clientId})));
                 
-              // Apply search filter separately for better debugging
-              const clientEntities = filteredEntities
+              // Then apply search filter separately
+              const clientEntities = filteredByClient
                 .filter(filterBySearchQuery)
                 .sort((a, b) => a.name.localeCompare(b.name));
                 
-              // Debug logging to verify filtering
-              console.log(`Client ${client.id} (${client.name}): Found ${filteredEntities.length} entities, ${clientEntities.length} after search filter`);
+              // Final entities after all filtering
+              console.log(`Final result - Client ${client.id} (${client.name}): Found ${filteredByClient.length} entities, ${clientEntities.length} after search filter`);
               
               // Skip if no matches
               if (!filterBySearchQuery(client) && clientEntities.length === 0) {

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Building } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useEntity } from '../contexts/EntityContext';
@@ -232,38 +232,40 @@ function Header() {
           </div>
           
           <div className="flex items-center">
-            <div className="hidden md:ml-4 md:flex-shrink-0 md:flex md:items-center">
-              {/* GlobalContextSelector for client and entity selection - desktop */}
-              <div className="relative mr-3 hidden md:block">
-                <GlobalContextSelector clients={clients} entities={useEntity().entities} />
-              </div>
-              
-              {/* Mobile-friendly context button - show on smaller screens */}
-              <div className="sm:flex md:hidden items-center mr-3">
-                <button 
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                >
+            {/* GlobalContextSelector for client and entity selection - desktop only */}
+            <div className="relative mr-3 hidden md:block">
+              <GlobalContextSelector clients={clients} entities={useEntity().entities} />
+            </div>
+            
+            {/* Mobile-friendly context button with indicator - visible on mobile and small screens */}
+            <div className="flex md:hidden items-center mr-3">
+              <button 
+                onClick={() => setMobileMenuOpen(true)}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                aria-label="Select client and entity"
+              >
+                <Building className="h-4 w-4 mr-1.5" />
+                <span className="truncate max-w-[120px]">
                   {selectedClientId ? 
                     (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
-                    'Select Client'}
-                </button>
-              </div>
-              
-              <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                <Bell className="h-6 w-6" />
+                    'Select Context'}
+                </span>
               </button>
-              
-              <div className="ml-3 relative">
-                <div>
-                  <button type="button" className="flex items-center max-w-xs bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
-                    <img 
-                      className="h-8 w-8 rounded-full" 
-                      src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} 
-                      alt={user?.name || 'User'} 
-                    />
-                  </button>
-                </div>
+            </div>
+            
+            <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+              <Bell className="h-6 w-6" />
+            </button>
+            
+            <div className="ml-3 relative">
+              <div>
+                <button type="button" className="flex items-center max-w-xs bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
+                  <img 
+                    className="h-8 w-8 rounded-full" 
+                    src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} 
+                    alt={user?.name || 'User'} 
+                  />
+                </button>
               </div>
             </div>
           </div>
