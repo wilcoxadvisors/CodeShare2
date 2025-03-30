@@ -80,11 +80,17 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     return nameMatch || codeMatch;
   };
   
-  // Get filtered and sorted clients
+  // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
         .filter(filterBySearchQuery)
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => {
+          // Always put the selected client at the top
+          if (a.id === selectedClientId) return -1;
+          if (b.id === selectedClientId) return 1;
+          // Otherwise sort alphabetically
+          return a.name.localeCompare(b.name);
+        })
     : [];
   
   // Handle client selection
@@ -211,10 +217,16 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
               
               console.log(`DEBUG: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, filteredByClient.map(e => e.id));
                 
-              // Then apply search filter separately
+              // Then apply search filter separately and put selected entity at the top
               const clientEntities = filteredByClient
                 .filter(filterBySearchQuery)
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .sort((a, b) => {
+                  // Always put the selected entity at the top
+                  if (currentEntity && a.id === currentEntity.id) return -1;
+                  if (currentEntity && b.id === currentEntity.id) return 1;
+                  // Otherwise sort alphabetically
+                  return a.name.localeCompare(b.name);
+                });
                 
               // Final entities after all filtering
               console.log(`Final result - Client ${client.id} (${client.name}): Found ${filteredByClient.length} entities, ${clientEntities.length} after search filter`);

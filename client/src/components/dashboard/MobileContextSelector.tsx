@@ -52,11 +52,17 @@ export default function MobileContextSelector({ clients, entities, onSelect }: M
     return nameMatch || codeMatch;
   };
   
-  // Get filtered and sorted clients
+  // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
         .filter(filterBySearchQuery)
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => {
+          // Always put the selected client at the top
+          if (a.id === selectedClientId) return -1;
+          if (b.id === selectedClientId) return 1;
+          // Otherwise sort alphabetically
+          return a.name.localeCompare(b.name);
+        })
     : [];
   
   // Handle client selection
@@ -113,10 +119,16 @@ export default function MobileContextSelector({ clients, entities, onSelect }: M
             ? entities.filter(e => e.clientId === client.id)
             : [];
             
-          // Then apply search filter
+          // Then apply search filter and put selected entity at the top
           const clientEntities = filteredByClient
             .filter(filterBySearchQuery)
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => {
+              // Always put the selected entity at the top
+              if (currentEntity && a.id === currentEntity.id) return -1;
+              if (currentEntity && b.id === currentEntity.id) return 1;
+              // Otherwise sort alphabetically
+              return a.name.localeCompare(b.name);
+            });
             
           // Skip if no matches
           if (!filterBySearchQuery(client) && clientEntities.length === 0) {
