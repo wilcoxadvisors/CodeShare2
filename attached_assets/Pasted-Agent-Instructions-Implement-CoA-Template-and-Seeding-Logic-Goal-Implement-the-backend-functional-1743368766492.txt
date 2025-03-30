@@ -1,0 +1,101 @@
+Agent Instructions: Implement CoA Template and Seeding Logic
+
+Goal: Implement the backend functionality to define a standard Chart of Accounts template and automatically seed this template for new clients upon creation.
+
+Relevant Files:
+
+server/storage.ts (To add seeding method)
+shared/schema.ts (Reference for accounts table structure with clientId) [cite: uploaded:CodeShare/shared/schema.ts]
+server/adminRoutes.ts (Or other file handling POST /api/admin/clients for integration) [cite: uploaded:CodeShare/server/adminRoutes.ts]
+Potentially create server/coaTemplate.ts
+Implementation Steps:
+
+Part 1: Define the Standard CoA Template
+
+Define Template Structure:
+Action: Create a new file server/coaTemplate.ts (or choose a suitable location like within storage.ts).
+Action: Define the "basic" standard Chart of Accounts structure as a TypeScript constant (e.g., export const standardCoaTemplate = [...]). This should be an array of account objects.
+Action: Each object should represent an account and include properties matching the InsertAccount type (minus id and clientId), such as code, name, type (use AccountType enum from schema), subtype (optional), description (optional), and parentCode: string | null (use account codes to define hierarchy initially).
+Example Template Snippet:
+TypeScript
+
+// Example in server/coaTemplate.ts
+import { AccountType } from '../shared/schema';
+
+export const standardCoaTemplate = [
+  // Assets (1xxx)
+  { code: '1', name: 'Assets', type: AccountType.ASSET, parentCode: null },
+  { code: '1100', name: 'Current Assets', type: AccountType.ASSET, parentCode: '1' },
+  { code: '1110', name: 'Cash', type: AccountType.ASSET, subtype: 'Bank', parentCode: '1100' },
+  { code: '1120', name: 'Accounts Receivable', type: AccountType.ASSET, subtype: 'Receivable', parentCode: '1100', isSubledger: true, subledgerType: 'accounts_receivable' },
+  { code: '1400', name: 'Fixed Assets', type: AccountType.ASSET, parentCode: '1' },
+  { code: '1410', name: 'Equipment', type: AccountType.ASSET, subtype: 'Fixed Asset', parentCode: '1400' },
+  { code: '1490', name: 'Accumulated Depreciation', type: AccountType.ASSET, subtype: 'Contra Asset', parentCode: '1400' },
+  // Liabilities (2xxx)
+  { code: '2', name: 'Liabilities', type: AccountType.LIABILITY, parentCode: null },
+  { code: '2100', name: 'Current Liabilities', type: AccountType.LIABILITY, parentCode: '2' },
+  { code: '2110', name: 'Accounts Payable', type: AccountType.LIABILITY, subtype: 'Payable', parentCode: '2100', isSubledger: true, subledgerType: 'accounts_payable' },
+  // Equity (3xxx)
+  { code: '3', name: 'Equity', type: AccountType.EQUITY, parentCode: null },
+  { code: '3100', name: 'Owner\'s Equity', type: AccountType.EQUITY, parentCode: '3' },
+  // Revenue (4xxx)
+  { code: '4', name: 'Revenue', type: AccountType.REVENUE, parentCode: null },
+  { code: '4100', name: 'Operating Revenue', type: AccountType.REVENUE, parentCode: '4' },
+  // Expenses (5xxx-9xxx)
+  { code: '5', name: 'Expenses', type: AccountType.EXPENSE, parentCode: null },
+  { code: '5100', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, parentCode: '5' },
+  { code: '6000', name: 'Operating Expenses', type: AccountType.EXPENSE, parentCode: '5' },
+  { code: '6100', name: 'Office Expenses', type: AccountType.EXPENSE, parentCode: '6000' },
+  // Add more essential accounts as needed
+];
+Action: Ensure the template is comprehensive enough for basic bookkeeping.
+Part 2: Implement Seeding Function in storage.ts
+
+Update IStorage Interface:
+Action: Open server/storage.ts.
+Action: Add the new method signature to the IStorage interface:
+TypeScript
+
+seedClientCoA(clientId: number): Promise<void>;
+Implement in DbStorage:
+Action: Implement the async seedClientCoA(clientId: number): Promise<void> method within the DbStorage class.
+Action: Inside the method:
+Import standardCoaTemplate from its definition location.
+Import necessary Drizzle functions (eq) and schema (accounts).
+Check for Existing: Check if accounts exist for clientId. If (await this.db.select().from(accounts).where(eq(accounts.clientId, clientId)).limit(1)).length > 0, log and return.
+Process Template:
+Use a map (const codeToIdMap = new Map<string, number>();) to store the database ID generated for each account code as it's inserted.
+Use await this.db.transaction(async (tx) => { ... }); to wrap insertions.
+Iterate through standardCoaTemplate:
+Determine the parentId by looking up item.parentCode in codeToIdMap. Log a warning if a parent code isn't found (should only happen for roots where parentCode is null).
+Prepare the InsertAccount data, including the correct clientId and resolved parentId.
+Insert the account using await tx.insert(accounts).values(accountData).returning({ id: accounts.id });.
+Store the returned id in codeToIdMap using the account's code as the key.
+Add logging for success or failure (including catching errors within the transaction).
+Part 3: Integrate Seeding into Client Creation
+
+Modify Client Creation Route:
+Action: Open the file handling client creation (likely POST /api/admin/clients in server/adminRoutes.ts).
+Action: Locate the code after newClient = await storage.createClient(...).
+Action: Add the call to the seeding function within a try-catch block:
+TypeScript
+
+if (newClient && newClient.id) {
+  try {
+    console.log(`SEEDING: Attempting to seed CoA for new client ID: ${newClient.id}`);
+    await storage.seedClientCoA(newClient.id);
+    console.log(`SEEDING: CoA seeding completed for client ID: ${newClient.id}`);
+  } catch (seedError) {
+    console.error(`SEEDING ERROR: Failed to seed CoA for client ID: ${newClient.id}`, seedError);
+    // Log error but likely don't fail client creation itself
+  }
+}
+Part 4: Verification
+
+Restart & Test:
+Action: Restart the application (npm run dev). Report build success.
+Action: Manually create a new client via the UI ("Add Client").
+Action: After creation, use an API client or curl to call GET /api/clients/:newClientId/accounts/tree (using the new client's ID).
+Action: Verify the response contains the accounts defined in standardCoaTemplate, linked to the correct clientId, and with the correct parent/child relationships.
+Action: Report the results.
+Please provide these instructions to the agent. This will establish the standard Chart of Accounts for new clients.

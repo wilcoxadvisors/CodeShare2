@@ -1,0 +1,58 @@
+Agent Instructions: Prioritize Selected Item in Context Selectors
+
+Goal: Modify both the desktop (GlobalContextSelector) and mobile (MobileContextSelector) context selectors to display the currently selected client at the top of the client list and the currently selected entity at the top of its client's entity list.
+
+Relevant Files:
+
+client/src/components/dashboard/GlobalContextSelector.tsx (Desktop dropdown)
+client/src/components/dashboard/MobileContextSelector.tsx (Mobile drawer/list)
+client/src/contexts/EntityContext.tsx (To access selectedClientId and currentEntity)
+Implementation Steps:
+
+Update Desktop Selector (GlobalContextSelector.tsx):
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Locate where the component receives or fetches the clients list.
+Action: Before the clients.map(...) loop that renders the CommandGroups, create a memoized, sorted list of clients. Use React.useMemo. The sorting logic should place the selectedClientId first, then sort the rest alphabetically by name.
+TypeScript
+
+const sortedClients = React.useMemo(() => {
+  if (!clients || clients.length === 0) return [];
+  return [...clients].sort((a, b) => {
+    if (a.id === selectedClientId && b.id !== selectedClientId) return -1; // 'a' is selected, 'b' is not -> 'a' comes first
+    if (a.id !== selectedClientId && b.id === selectedClientId) return 1;  // 'b' is selected, 'a' is not -> 'b' comes first
+    return a.name.localeCompare(b.name); // Otherwise, sort alphabetically
+  });
+}, [clients, selectedClientId]);
+Action: Update the main loop to iterate over sortedClients.map(client => ...).
+Action: Inside the client loop, locate where the filtered clientEntities are prepared before mapping them to CommandItems.
+Action: Before mapping clientEntities, create a memoized, sorted list of these entities. Use similar logic, checking against currentEntity?.id.
+TypeScript
+
+// Assuming clientEntities is the filtered array for the current client
+const sortedEntities = React.useMemo(() => {
+   if (!clientEntities || clientEntities.length === 0) return [];
+   return [...clientEntities].sort((a, b) => {
+     if (currentEntity && a.id === currentEntity.id && (!currentEntity || b.id !== currentEntity.id)) return -1;
+     if (currentEntity && a.id !== currentEntity.id && currentEntity && b.id === currentEntity.id) return 1;
+     return a.name.localeCompare(b.name);
+   });
+ }, [clientEntities, currentEntity]);
+Action: Update the entity mapping loop to iterate over sortedEntities.map(entity => ...).
+Update Mobile Selector (MobileContextSelector.tsx):
+
+Action: Open client/src/components/dashboard/MobileContextSelector.tsx.
+Action: Apply the exact same sorting logic as in Step 1:
+Create sortedClients before mapping clients.
+Create sortedEntities before mapping entities within each client section.
+Update the .map() calls to use these sorted arrays.
+Verification:
+
+Action: Restart the application. Report build success.
+Action: Describe test steps:
+Select a client/entity that is not alphabetically first.
+Close the selector.
+Reopen the selector (both desktop and mobile).
+Verify the selected client appears at the top of the client list.
+Verify the selected entity appears at the top of the list within its client's group.
+Verify other non-selected items remain alphabetically sorted below the selected one.

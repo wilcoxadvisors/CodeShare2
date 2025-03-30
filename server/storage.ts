@@ -38,6 +38,9 @@ import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } fro
 
 // Storage interface for data access
 export interface IStorage {
+  // Chart of Accounts Seeding
+  seedClientCoA(clientId: number): Promise<void>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -299,6 +302,57 @@ export class MemStorage implements IStorage {
   private currentChecklistFileId: number = 1;
   private currentConsultationSubmissionId: number = 1;
   private currentBlogSubscriberId: number = 1;
+
+  async seedClientCoA(clientId: number): Promise<void> {
+    console.log(`MemStorage: Seeding Chart of Accounts for client ID: ${clientId}`);
+    
+    // Import the standard template
+    const { standardCoaTemplate } = await import('./coaTemplate');
+    
+    // Check if accounts already exist for this client
+    const existingAccounts = Array.from(this.accounts.values())
+      .filter(account => account.clientId === clientId);
+    
+    if (existingAccounts.length > 0) {
+      console.log(`MemStorage: Client ${clientId} already has ${existingAccounts.length} accounts. Skipping seed.`);
+      return;
+    }
+    
+    // Map to store account codes to their generated IDs for parentId resolution
+    const codeToIdMap = new Map<string, number>();
+    
+    // Process each template account
+    for (const templateAccount of standardCoaTemplate) {
+      // Determine parentId by looking up the parent code in our map
+      let parentId: number | null = null;
+      
+      if (templateAccount.parentCode) {
+        parentId = codeToIdMap.get(templateAccount.parentCode) || null;
+        if (!parentId && templateAccount.parentCode) {
+          console.warn(`MemStorage: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.code} (${templateAccount.name})`);
+        }
+      }
+      
+      // Create the account
+      const account = await this.createAccount({
+        clientId,
+        code: templateAccount.code,
+        name: templateAccount.name,
+        type: templateAccount.type,
+        subtype: templateAccount.subtype,
+        isSubledger: templateAccount.isSubledger || false,
+        subledgerType: templateAccount.subledgerType,
+        parentId,
+        description: templateAccount.description,
+        active: true
+      });
+      
+      // Store the generated ID mapped to the account code
+      codeToIdMap.set(templateAccount.code, account.id);
+    }
+    
+    console.log(`MemStorage: Successfully seeded ${standardCoaTemplate.length} accounts for client ID: ${clientId}`);
+  }
 
   constructor() {
     this.users = new Map();
@@ -731,6 +785,17 @@ export class MemStorage implements IStorage {
     };
     
     this.clients.set(id, newClient);
+    
+    // Seed the standard Chart of Accounts for the new client
+    try {
+      await this.seedClientCoA(id);
+      console.log(`Automatically seeded standard Chart of Accounts for new client ${id}`);
+    } catch (error) {
+      console.error(`Failed to seed Chart of Accounts for new client ${id}:`, error);
+      // We don't want to fail the client creation if seeding fails
+      // Just log the error and continue
+    }
+    
     return newClient;
   }
   
@@ -3017,6 +3082,77 @@ export class MemStorage implements IStorage {
 
 // Database implementation
 export class DatabaseStorage implements IStorage {
+  // Chart of Accounts Seeding
+  async seedClientCoA(clientId: number): Promise<void> {
+    try {
+      console.log(`SEEDING: Starting Chart of Accounts seed for client ID ${clientId}`);
+      
+      // Import the standard template
+      const { standardCoaTemplate } = await import('./coaTemplate');
+      
+      // Check if accounts already exist for this client
+      const existingAccounts = await db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.clientId, clientId))
+        .limit(1);
+      
+      if (existingAccounts.length > 0) {
+        console.log(`SEEDING: Client ${clientId} already has accounts configured. Skipping seed.`);
+        return;
+      }
+      
+      // Map to store account codes to their generated IDs for parentId resolution
+      const codeToIdMap = new Map<string, number>();
+      
+      // Use a transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        console.log(`SEEDING: Processing ${standardCoaTemplate.length} account records in transaction`);
+        
+        // Process each template account
+        for (const templateAccount of standardCoaTemplate) {
+          // Determine parentId by looking up the parent code in our map
+          let parentId: number | null = null;
+          
+          if (templateAccount.parentCode) {
+            parentId = codeToIdMap.get(templateAccount.parentCode) || null;
+            if (!parentId && templateAccount.parentCode) {
+              console.warn(`SEEDING WARNING: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.code} (${templateAccount.name})`);
+            }
+          }
+          
+          // Insert the account
+          const [newAccount] = await tx
+            .insert(accounts)
+            .values({
+              clientId,
+              code: templateAccount.code,
+              name: templateAccount.name,
+              type: templateAccount.type,
+              subtype: templateAccount.subtype,
+              isSubledger: templateAccount.isSubledger || false,
+              subledgerType: templateAccount.subledgerType,
+              parentId,
+              description: templateAccount.description,
+              active: true
+            })
+            .returning({ id: accounts.id });
+          
+          // Store the generated ID mapped to the account code
+          if (newAccount && newAccount.id) {
+            codeToIdMap.set(templateAccount.code, newAccount.id);
+          } else {
+            console.error(`SEEDING ERROR: Failed to insert account ${templateAccount.code}`);
+          }
+        }
+      });
+      
+      console.log(`SEEDING: Successfully seeded ${standardCoaTemplate.length} accounts for client ID: ${clientId}`);
+    } catch (error) {
+      console.error(`SEEDING ERROR: Failed to seed Chart of Accounts for client ${clientId}:`, error);
+      throw error;
+    }
+  }
   // Client methods
   async getClient(id: number): Promise<Client | undefined> {
     const result = await db
@@ -3085,6 +3221,17 @@ export class DatabaseStorage implements IStorage {
         referralSource: client.referralSource || null
       })
       .returning();
+    
+    // Seed the standard Chart of Accounts for the new client
+    try {
+      await this.seedClientCoA(result.id);
+      console.log(`Automatically seeded standard Chart of Accounts for new client ${result.id}`);
+    } catch (error) {
+      console.error(`Failed to seed Chart of Accounts for new client ${result.id}:`, error);
+      // We don't want to fail the client creation if seeding fails
+      // Just log the error and continue
+    }
+    
     return result;
   }
   
