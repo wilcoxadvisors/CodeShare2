@@ -1,0 +1,64 @@
+Agent Instructions: Create Script to Seed CoA for Existing Clients
+
+Goal: Create a script that identifies existing clients without a Chart of Accounts and seeds the standard CoA template (standardCoaTemplate) for them.
+
+Relevant Files:
+
+Create: scripts/seed-existing-clients-coa.ts
+Create: scripts/seed-existing-coa.sh
+Create: scripts/README.md
+Reference: server/storage.ts (Contains seeding logic pattern)
+Reference: server/coaTemplate.ts (Contains standardCoaTemplate)
+Reference: shared/schema.ts (Definitions for clients and accounts tables)
+Reference: server/db.ts (For database connection)
+Implementation Steps:
+
+Create Script File (seed-existing-clients-coa.ts):
+
+Action: Create the file scripts/seed-existing-clients-coa.ts.
+Implement Script Logic:
+
+Action: Write the TypeScript code for the script. It should perform the following:
+Imports: Import necessary Drizzle functions (db, eq, isNull, and), schema objects (clients, accounts, AccountType - adjust paths as needed based on gitingest), the standardCoaTemplate from ../server/coaTemplate (adjust path).
+Find Eligible Clients: Implement an async function findClientsWithoutCoA(): Promise<number[]>:
+Use db.selectDistinct({ id: clients.id }) with a leftJoin on accounts where accounts.clientId equals clients.id.
+Filter using .where(isNull(accounts.id)).
+Return the array of client IDs: return result.map(row => row.id);.
+Implement Seeding Logic: Implement an async function seedCoAForClient(clientId: number): Promise<void>:
+Use await db.transaction(async (tx) => { ... });.
+Inside the transaction, create const codeToIdMap = new Map<string, number>();.
+Loop through standardCoaTemplate: for (const item of standardCoaTemplate)
+Resolve parentId: If item.parentCode, query accounts within the transaction (tx) using where(and(eq(accounts.clientId, clientId), eq(accounts.code, item.parentCode))) to get the parent's actual id. Use codeToIdMap.get(item.parentCode) as a fallback if the parent was just inserted in this loop. Handle cases where parent isn't found (log warning, set parentId to null).
+Prepare the full account data object for insertion (include clientId, resolved parentId, default active: true, handle optional fields from template).
+Insert using const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });.
+Store the new ID: if (inserted[0]?.id) { codeToIdMap.set(item.code, inserted[0].id); }.
+Add logging for success/failure of the transaction for this client.
+Main Script Flow:
+Implement the main async function (async function main() { ... }).
+Call findClientsWithoutCoA().
+Log how many clients need seeding.
+Loop through the clientIdsToSeed: for (const clientId of clientIdsToSeed).
+Inside the loop, call await seedCoAForClient(clientId); within a try/catch block. Log start, success, or failure for each client.
+Log a final summary (e.g., "Finished seeding process. Attempted to seed X clients.").
+Call main() and include process.exit(0) / process.exit(1).
+Create Run Script (seed-existing-coa.sh):
+
+Action: Create the file scripts/seed-existing-coa.sh.
+Action: Add the following content:
+Bash
+
+#!/bin/bash
+# Runs the script to seed existing clients with the standard CoA
+# WARNING: Run with caution. Backup database first if needed.
+echo "Executing CoA seeding script for existing clients..."
+npx tsx ./scripts/seed-existing-clients-coa.ts "$@"
+echo "Script execution finished."
+Action: Make the script executable: chmod +x scripts/seed-existing-coa.sh.
+Create Documentation (scripts/README.md):
+
+Action: Create the file scripts/README.md (or add to it if it exists).
+Action: Add content explaining seed-existing-clients-coa.ts (seeds standard CoA for clients without accounts), how to run it (./scripts/seed-existing-coa.sh), and warnings (manual execution, back up first).
+Verification Plan (Report Only):
+
+Action: Report that the script scripts/seed-existing-clients-coa.ts, the runner scripts/seed-existing-coa.sh, and the scripts/README.md have been created.
+Action: State clearly: "This script is intended for manual execution and should not be run automatically now. Verification involves running ./scripts/seed-existing-coa.sh manually later and checking the database/API for accounts linked to previously existing clients who lacked a CoA."

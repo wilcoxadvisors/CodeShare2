@@ -1,0 +1,59 @@
+Task: Create Test Data Cleanup Script
+
+Goal: Develop a script to safely remove test clients and their associated data (entities, accounts) from the database, while protecting essential core clients.
+
+1. Create Cleanup Script (scripts/cleanup-test-data.ts)
+
+Action: Create a new TypeScript file: scripts/cleanup-test-data.ts.
+Functionality:
+Import necessary Drizzle functions, schema (shared/schema.ts), and database connection (server/db.ts).
+Define a constant array CLIENT_IDS_TO_KEEP containing the integer IDs of clients that MUST NOT be deleted (e.g., [1] for the default admin client, add any other essential IDs if known).
+Implement logic to:
+Query the clients table for all clients whose name field contains the substring "Test" (case-insensitive).
+Filter this list, excluding any client whose id is present in the CLIENT_IDS_TO_KEEP array. Log skipped clients.
+For each remaining "Test" client ID:
+Use a database transaction (db.transaction(async (tx) => { ... })).
+Inside the transaction:
+Delete all records from accounts associated with the clientId. Log the count.
+Delete all records from entities associated with the clientId. Log the count.
+Delete the client record itself from the clients table. Log the deletion.
+Handle potential errors within the transaction and report them.
+Log the start and end of the script execution.
+Report a summary at the end: total "Test" clients found, number skipped (kept), number successfully deleted, number failed.
+2. Create Shell Script Runner (scripts/cleanup-test-data.sh)
+
+Action: Create a new shell script file: scripts/cleanup-test-data.sh.
+Content:
+Bash
+
+#!/bin/bash
+# WARNING: This script permanently deletes test clients and associated data.
+# Ensure you have a database backup before running.
+# Verify CLIENT_IDS_TO_KEEP in scripts/cleanup-test-data.ts first!
+
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+echo "!!! WARNING: DESTRUCTIVE ACTION !!!"
+echo "This script will delete clients with 'Test' in their name"
+echo "(excluding IDs in CLIENT_IDS_TO_KEEP) and all their related"
+echo "entities and accounts from the database."
+echo "!!!          Backup your database before running!          !!!"
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+read -p "Are you sure you want to continue? (y/N) " -n 1 -r
+echo # Move to a new line
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+    echo "Executing test data cleanup script..."
+    npx tsx ./scripts/cleanup-test-data.ts "$@"
+    echo "Cleanup script execution finished."
+else
+    echo "Cleanup cancelled."
+fi
+Action: Make the script executable: chmod +x scripts/cleanup-test-data.sh.
+3. Update Documentation (scripts/README.md)
+
+Action: Update scripts/README.md.
+Action: Add a new section for cleanup-test-data.ts. Explain its purpose (deleting test clients/entities/accounts based on name containing "Test", except for specified essential IDs). Detail the CLIENT_IDS_TO_KEEP safeguard mechanism within the script. Explain how to run it using the shell runner (./scripts/cleanup-test-data.sh). Include multiple strong warnings about its destructive nature, the absolute necessity of database backups, and the requirement to manually verify the CLIENT_IDS_TO_KEEP array in the script file before any execution.
+4. Verification Plan (Report Only)
+
+Action: Report that the cleanup script scripts/cleanup-test-data.ts, the runner scripts/cleanup-test-data.sh, and the updated scripts/README.md have been created.
+Action: State clearly: "This script is intended for manual execution only after careful review and database backup. It should not be run automatically now."
