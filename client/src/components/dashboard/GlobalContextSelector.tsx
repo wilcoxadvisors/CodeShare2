@@ -53,7 +53,6 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   const hasEntityContext = currentEntity !== null;
   
   // Find the current client's name if a client is selected
-  // Add defensive check to ensure clients is an array before calling find
   const selectedClient = Array.isArray(clients) 
     ? clients.find(client => client.id === selectedClientId)
     : undefined;
@@ -70,7 +69,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     buttonText = `Client: ${selectedClient.name}`;
   }
   
-  // Filter entities and clients based on search query
+  // Filter function for search
   const filterBySearchQuery = (item: { name: string; code?: string }) => {
     if (!searchQuery) return true;
     
@@ -81,9 +80,14 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     return nameMatch || codeMatch;
   };
   
-  // Filtered clients and entities - with defensive check
-  const filteredClients = Array.isArray(clients) ? clients.filter(filterBySearchQuery) : [];
+  // Get filtered and sorted clients
+  const filteredClients = Array.isArray(clients) 
+    ? clients
+        .filter(filterBySearchQuery)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
   
+  // Handle client selection
   const selectClient = (clientId: number) => {
     setSelectedClientId(clientId);
     setCurrentEntity(null);
@@ -91,6 +95,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     console.log(`DEBUG: Client selected: ${clientId}`);
   };
 
+  // Handle entity selection
   const selectEntity = (entity: Entity) => {
     setSelectedClientId(entity.clientId);
     setCurrentEntity(entity);
@@ -98,19 +103,18 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     console.log(`DEBUG: Entity selected: ${entity.id}, Client: ${entity.clientId}`);
   };
 
+  // Toggle client expansion
   const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
-    e.stopPropagation(); // Prevent triggering onSelect
+    e.stopPropagation();
     setExpandedClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
   };
 
   // Auto-expand the client of the currently selected entity
-  // If the client is selected but not expanded, expand it when component renders
-  if (selectedClientId && !expandedClients[selectedClientId]) {
-    // Using a timeout to avoid state updates during render
-    setTimeout(() => {
+  useEffect(() => {
+    if (selectedClientId && !expandedClients[selectedClientId]) {
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
-    }, 0);
-  }
+    }
+  }, [selectedClientId]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -137,14 +141,14 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
             <CommandEmpty>No matches found.</CommandEmpty>
 
             {filteredClients.map((client) => {
-              // Get all entities for this client - with defensive check
+              // Get entities for this client
               const clientEntities = Array.isArray(entities) 
-                ? entities.filter(
-                    (entity) => entity.clientId === client.id && filterBySearchQuery(entity)
-                  )
+                ? entities
+                    .filter(entity => entity.clientId === client.id && filterBySearchQuery(entity))
+                    .sort((a, b) => a.name.localeCompare(b.name))
                 : [];
               
-              // Only show clients that match the search query or have entities that match
+              // Skip if no matches
               if (!filterBySearchQuery(client) && clientEntities.length === 0) {
                 return null;
               }
@@ -153,50 +157,59 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
               
               return (
                 <div key={`client-group-${client.id}`}>
-                  {/* Client Group Header with client option */}
                   <CommandGroup heading={client.name}>
                     <CommandItem
                       value={`client-${client.id}`}
                       onSelect={() => selectClient(client.id)}
-                      className="cursor-pointer"
+                      className="cursor-pointer font-medium"
                     >
-                      <div className="flex items-center flex-1">
-                        {clientEntities.length > 0 && (
+                      <div className="flex items-center w-full overflow-hidden">
+                        {clientEntities.length > 0 ? (
                           <button 
                             onClick={(e) => toggleClientExpansion(e, client.id)}
-                            className="p-1 mr-1 rounded-sm hover:bg-accent hover:text-accent-foreground"
+                            className="mr-2 flex-shrink-0"
                           >
-                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            {isExpanded ? 
+                              <ChevronDown className="h-4 w-4" /> : 
+                              <ChevronRight className="h-4 w-4" />
+                            }
                           </button>
+                        ) : (
+                          <span className="w-4 mr-2"></span>
                         )}
                         <Building className="mr-2 h-4 w-4" />
-                        <span>Client: {client.name}</span>
-                      </div>
-                      {selectedClientId === client.id && !hasEntityContext && (
-                        <Check className="ml-auto h-4 w-4" />
-                      )}
-                    </CommandItem>
-                    
-                    {/* Entity options under this client - only show if expanded */}
-                    {isExpanded && clientEntities.map((entity) => (
-                      <CommandItem
-                        key={`entity-${entity.id}`}
-                        value={`entity-${entity.id}`}
-                        onSelect={() => selectEntity(entity)}
-                        className="cursor-pointer pl-8"
-                      >
-                        <Layers className="mr-2 h-4 w-4" />
-                        <div className="flex flex-col">
-                          <span>Entity: {entity.name}</span>
-                          {entity.code && (
-                            <span className="text-xs text-muted-foreground">{entity.code}</span>
-                          )}
-                        </div>
-                        {currentEntity?.id === entity.id && (
+                        <span className="truncate">{client.name}</span>
+                        {selectedClientId === client.id && !hasEntityContext && (
                           <Check className="ml-auto h-4 w-4" />
                         )}
-                      </CommandItem>
-                    ))}
+                      </div>
+                    </CommandItem>
+                    
+                    {isExpanded && clientEntities.length > 0 && (
+                      <div className="pt-1 pb-1">
+                        {clientEntities.map((entity) => (
+                          <CommandItem
+                            key={`entity-${entity.id}`}
+                            value={`entity-${entity.id}`}
+                            onSelect={() => selectEntity(entity)}
+                            className="cursor-pointer pl-8 py-1"
+                          >
+                            <div className="flex items-center w-full overflow-hidden">
+                              <Layers className="h-4 w-4 mr-2" />
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="truncate text-sm">{entity.name}</span>
+                                {entity.code && (
+                                  <span className="text-xs text-muted-foreground truncate">{entity.code}</span>
+                                )}
+                              </div>
+                              {currentEntity?.id === entity.id && (
+                                <Check className="ml-auto h-4 w-4" />
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </div>
+                    )}
                   </CommandGroup>
                   <CommandSeparator />
                 </div>
