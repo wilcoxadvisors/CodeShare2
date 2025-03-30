@@ -19,12 +19,18 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function EntitySelector() {
-  const { entities, currentEntity, setCurrentEntity } = useEntity();
+  const { entities, currentEntity, setCurrentEntity, selectedClientId } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Filter entities based on search query
+  // Filter entities based on selected client and search query
   const filteredEntities = entities?.filter(entity => {
+    // First filter by selected client if one is selected
+    if (selectedClientId && entity.clientId !== selectedClientId) {
+      return false;
+    }
+    
+    // Then filter by search query
     const query = searchQuery.toLowerCase();
     return (
       entity.name?.toLowerCase().includes(query) ||
@@ -47,8 +53,11 @@ export default function EntitySelector() {
           aria-expanded={open}
           aria-label="Select entity"
           className="w-[200px] justify-between"
+          disabled={!selectedClientId}
         >
-          {currentEntity ? currentEntity.name : "Select entity"}
+          {currentEntity 
+            ? currentEntity.name 
+            : (selectedClientId ? "Select entity" : "Select client first")}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -60,7 +69,11 @@ export default function EntitySelector() {
             onValueChange={setSearchQuery}
           />
           <CommandList>
-            <CommandEmpty>No entities found.</CommandEmpty>
+            <CommandEmpty>
+              {selectedClientId 
+                ? "No entities found for selected client." 
+                : "Please select a client first."}
+            </CommandEmpty>
             <CommandGroup>
               {filteredEntities.map((entity) => (
                 <CommandItem

@@ -1,8 +1,23 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
 import { useLocation } from 'wouter';
 import { Bell, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import EntitySelector from './EntitySelector';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useEntity } from '../contexts/EntityContext';
+
+interface Client {
+  id: number;
+  name: string;
+  [key: string]: any;
+}
 
 // Define section tabs outside the component for better performance
 const sectionTabs = {
@@ -58,6 +73,16 @@ function Header() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { selectedClientId, setSelectedClientId } = useEntity();
+  
+  // Query for clients to populate client selector
+  const { data: clientsData = [] } = useQuery({
+    queryKey: user ? ['/api/admin/clients'] : [],
+    enabled: !!user,
+  });
+  
+  // Cast to Client[] since we know the API returns this format
+  const clients = clientsData as Client[];
 
   // Function to determine the base section of the current path (memoized)
   const currentBaseSection = useMemo(() => {
@@ -212,6 +237,25 @@ function Header() {
           
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex-shrink-0 md:flex md:items-center">
+              {/* Client Selector */}
+              <div className="relative mr-3">
+                <Select
+                  value={selectedClientId?.toString() || ""}
+                  onValueChange={(value) => setSelectedClientId(value ? parseInt(value) : null)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client: Client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               {/* EntitySelector dropdown trigger button */}
               <div className="relative">
                 <EntitySelector />

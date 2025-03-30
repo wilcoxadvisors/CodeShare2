@@ -1,0 +1,47 @@
+Agent Instructions: Implement Client-Filtered Global Entity Selection (Corrected)
+
+Goal: Correctly implement the global state management and header components to allow users to first select a client, and then select an entity filtered by that client. Ensure the ChartOfAccounts page uses this context.
+
+Relevant Files:
+
+client/src/contexts/EntityContext.tsx    
+client/src/components/Header.tsx    
+client/src/components/EntitySelector.tsx    
+client/src/pages/ChartOfAccounts.tsx    
+server/adminRoutes.ts (For GET /api/admin/clients endpoint)    
+Implementation Steps:
+
+Enhance EntityContext.tsx:
+
+Action: Open client/src/contexts/EntityContext.tsx.   
+Action: Add state for selectedClientId: const [selectedClientId, setSelectedClientId] = useState<number | null>(null);.
+Action: Modify the setCurrentEntity function: Add logic so that if setCurrentEntity(null) is called, it also potentially clears selectedClientId if that makes sense for your desired workflow (or handle this clearing logic purely in the Header). For now, just ensure it correctly sets currentEntity to null.
+Action: Expose selectedClientId and setSelectedClientId in the context provider's value.
+Add Client Selector in Header.tsx:
+
+Action: Open client/src/components/Header.tsx.   
+Action: Import useContext, EntityContext, useQuery, Select, SelectContent, SelectItem, SelectTrigger, SelectValue.
+Action: Access context methods: const { selectedClientId, setSelectedClientId, setCurrentEntity } = useContext(EntityContext);.
+Action: Fetch clients: Add const { data: clients = [] } = useQuery({ queryKey: ['/api/admin/clients'], enabled: !!user });.
+Action: Render a new "Select Client" dropdown (Select component) before the existing <EntitySelector />.
+Action: Populate the client SelectContent with SelectItem components using the fetched clients data (display client.name, use client.id as value).
+Action: Implement onValueChange for the client Select:
+Parse the selected value to get the newClientId (it will be a string).
+Call setSelectedClientId(newClientIdAsNumber).
+Call setCurrentEntity(null) to clear the selected entity.
+Modify EntitySelector.tsx for Filtering:
+
+Action: Open client/src/components/EntitySelector.tsx.   
+Action: Access selectedClientId from the EntityContext.
+Action: Modify the filteredEntities logic: Use React.useMemo to filter the entities from the context based on selectedClientId. Only include entities where entity.clientId === selectedClientId. Return [] if selectedClientId is null.
+Action: Modify the PopoverTrigger's Button component: Add the disabled={!selectedClientId} prop.
+Verify ChartOfAccounts.tsx:
+
+Action: Open client/src/pages/ChartOfAccounts.tsx.   
+Action: Confirm it still uses currentEntity.clientId from useEntity() context for its API calls and is enabled only when currentEntity exists.
+Action: Ensure the message shown when !currentEntity guides the user to select both a client and an entity in the header.
+Verification:
+
+Action: Restart the application.
+Action: Report build success.
+Action: Describe the expected testing steps (as outlined in my previous thought process: select client, verify entity filter, select entity, check CoA page, switch client, etc.).
