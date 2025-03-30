@@ -1,0 +1,34 @@
+Agent Instructions: Fix Header Selector (Filtering, UI, Mobile, Search)
+
+Goal: Resolve the filtering bug, improve UI organization/navigation, fix mobile responsiveness, and ensure context updates correctly in the GlobalContextSelector component based on user feedback.
+
+Relevant Files:
+
+client/src/components/dashboard/GlobalContextSelector.tsx (Primary file for filtering, UI, search, context logic)
+client/src/components/Header.tsx (For mobile responsiveness)
+Implementation Steps:
+
+Fix Entity Filtering (CRITICAL):
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Carefully re-examine and fix the logic that renders entity items. Ensure that before mapping entities to CommandItem components, you are correctly filtering the entities prop based on the client.id of the currently expanded client group. Use console.log inside the component to verify the input entities prop, the selectedClientId, and the result of entities.filter(e => e.clientId === client.id) for a specific client when it's expanded. The user reports this is still failing.
+Improve UI/Organization & Search:
+
+Action: While fixing the filtering, ensure the structure within the CommandList is correct: Client Item (with expand toggle) -> Conditionally Rendered (Filtered and Indented) Entity Items.
+Action: Review the value prop assigned to each CommandItem (both client and entity items). Ensure they contain useful text (like Client Name, Entity Name) for the default Command search to work effectively. For example: value={client.name} and value={entity.name}.
+Fix Mobile Responsiveness:
+
+Action: Open client/src/components/Header.tsx.
+Action: Locate where <GlobalContextSelector /> is rendered.
+Action: Use TailwindCSS responsive utilities (hidden, sm:block, etc.) to ensure the selector (or a suitable mobile-friendly trigger like an icon button that opens the same popover/command list) is visible and usable on small screens. Check the parent flex/grid container classes as well.
+Verify Context Updates (onSelect):
+
+Action: Open client/src/components/dashboard/GlobalContextSelector.tsx.
+Action: Double-check the onSelect handlers for both Client and Entity CommandItems. Add temporary console.log statements just before calling setSelectedClientId, setCurrentEntity, and setOpen(false) in both handlers to ensure they are being called with the correct values when an item is clicked.
+Address Test Data (Proposal - Requires User OK):
+
+Action: Inform the user: "The large amount of test data makes verifying the UI difficult. To make testing easier after these fixes, I can create a script scripts/cleanup-test-data.ts to remove test clients/entities (e.g., those with 'Test' in the name or IDs above a certain number). I will only run this script if you explicitly approve it after the selector fixes are deployed."
+Verification:
+
+Action: Restart the application. Report build success.
+Action: Describe test steps focusing on the user's failure points: Verify filtering works when expanding clients, verify search usability, verify mobile view, verify context updates correctly via console.log and button text changes, verify CoA page loads correct data. Request user confirmation.

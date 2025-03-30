@@ -89,18 +89,30 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   
   // Handle client selection
   const selectClient = (clientId: number) => {
+    console.log(`DEBUG: Client selection triggered - clientId: ${clientId}`);
+    // Find client name for logging
+    const clientName = clients.find(c => c.id === clientId)?.name || 'Unknown';
+    console.log(`DEBUG: Setting client context: ${clientId} (${clientName})`);
+    
     setSelectedClientId(clientId);
     setCurrentEntity(null);
     setOpen(false);
-    console.log(`DEBUG: Client selected: ${clientId}`);
+    
+    console.log(`DEBUG: Context after client selection - clientId: ${clientId}, entityId: null`);
   };
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
+    console.log(`DEBUG: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
+    // Find client name for logging
+    const clientName = clients.find(c => c.id === entity.clientId)?.name || 'Unknown';
+    console.log(`DEBUG: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
+    
     setSelectedClientId(entity.clientId);
     setCurrentEntity(entity);
     setOpen(false);
-    console.log(`DEBUG: Entity selected: ${entity.id}, Client: ${entity.clientId}`);
+    
+    console.log(`DEBUG: Context after entity selection - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
   // Toggle client expansion
@@ -142,11 +154,17 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
 
             {filteredClients.map((client) => {
               // Get entities for this client
-              const clientEntities = Array.isArray(entities) 
-                ? entities
-                    .filter(entity => entity.clientId === client.id && filterBySearchQuery(entity))
-                    .sort((a, b) => a.name.localeCompare(b.name))
+              const filteredEntities = Array.isArray(entities) 
+                ? entities.filter(entity => entity.clientId === client.id)
                 : [];
+                
+              // Apply search filter separately for better debugging
+              const clientEntities = filteredEntities
+                .filter(filterBySearchQuery)
+                .sort((a, b) => a.name.localeCompare(b.name));
+                
+              // Debug logging to verify filtering
+              console.log(`Client ${client.id} (${client.name}): Found ${filteredEntities.length} entities, ${clientEntities.length} after search filter`);
               
               // Skip if no matches
               if (!filterBySearchQuery(client) && clientEntities.length === 0) {
@@ -159,7 +177,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                 <div key={`client-group-${client.id}`}>
                   <CommandGroup heading={client.name}>
                     <CommandItem
-                      value={`client-${client.id}`}
+                      value={client.name} // Use name for better search
                       onSelect={() => selectClient(client.id)}
                       className="cursor-pointer font-medium"
                     >
@@ -190,7 +208,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                         {clientEntities.map((entity) => (
                           <CommandItem
                             key={`entity-${entity.id}`}
-                            value={`entity-${entity.id}`}
+                            value={`${entity.name} ${entity.code || ''}`} // Use name and code for better search
                             onSelect={() => selectEntity(entity)}
                             className="cursor-pointer pl-8 py-1"
                           >

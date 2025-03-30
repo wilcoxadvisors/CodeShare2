@@ -98,10 +98,11 @@ function Header() {
               <button 
                 className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle mobile menu"
               >
                 <Menu className="h-6 w-6" />
               </button>
-              <h1 className="ml-2 md:hidden text-xl font-bold text-secondary-900">Wilcox Advisors</h1>
+              <a href="/dashboard" className="ml-2 text-xl font-bold text-secondary-900">Wilcox Advisors</a>
             </div>
             
             <nav className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -232,9 +233,21 @@ function Header() {
           
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex-shrink-0 md:flex md:items-center">
-              {/* GlobalContextSelector for client and entity selection */}
-              <div className="relative mr-3">
+              {/* GlobalContextSelector for client and entity selection - desktop */}
+              <div className="relative mr-3 hidden md:block">
                 <GlobalContextSelector clients={clients} entities={useEntity().entities} />
+              </div>
+              
+              {/* Mobile-friendly context button - show on smaller screens */}
+              <div className="sm:flex md:hidden items-center mr-3">
+                <button 
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  {selectedClientId ? 
+                    (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
+                    'Select Client'}
+                </button>
               </div>
               
               <button className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
@@ -262,7 +275,11 @@ function Header() {
         <div className="md:hidden">
           {/* Client/Entity context selector for mobile */}
           <div className="p-4 border-b border-gray-200">
-            <GlobalContextSelector clients={clients} entities={useEntity().entities} />
+            <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client & Entity</h2>
+            <GlobalContextSelector 
+              clients={clients} 
+              entities={useEntity().entities} 
+            />
           </div>
         
           <div className="pt-2 pb-3 space-y-1">
