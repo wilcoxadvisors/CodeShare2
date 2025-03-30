@@ -42,6 +42,37 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 
 // Register account routes
 export function registerAccountRoutes(app: Express) {
+  // Get hierarchical account tree for a client (must come before /:id route)
+  app.get("/api/clients/:clientId/accounts/tree", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
+    
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
+    }
+    
+    // Validate user has access to client
+    const userId = (req.user as AuthUser).id;
+    const client = await storage.getClient(clientId);
+    
+    if (!client) {
+      throwNotFound("Client");
+    }
+    
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
+    }
+    
+    // Get hierarchical account tree for client
+    const accountTree = await storage.getAccountsTree(clientId);
+    
+    // Return account tree with success status
+    res.json({
+      status: "success",
+      data: accountTree
+    });
+  }));
+  
   // Get all accounts for a client
   app.get("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const clientId = parseInt(req.params.clientId);

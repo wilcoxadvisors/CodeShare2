@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -21,9 +21,26 @@ import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Edit, Trash2, Download, Upload, Plus, FileSpreadsheet, 
-  FileText, Info, AlertTriangle
+  FileText, Info, AlertTriangle, ChevronRight, ChevronDown
 } from "lucide-react";
 import * as XLSX from "xlsx";
+
+// Account hierarchy interface matching backend AccountTreeNode
+interface AccountTreeNode {
+  id: number;
+  clientId: number;
+  code: string;
+  name: string;
+  type: string;
+  subtype: string | null;
+  isSubledger: boolean;
+  subledgerType: string | null;
+  parentId: number | null;
+  active: boolean;
+  description: string | null;
+  createdAt: string;
+  children: AccountTreeNode[];
+}
 
 function ChartOfAccounts() {
   const { currentEntity } = useEntity();
@@ -31,7 +48,20 @@ function ChartOfAccounts() {
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [formTab, setFormTab] = useState("basic");
   const [accountCodePrefix, setAccountCodePrefix] = useState("");
-  const [accountData, setAccountData] = useState({
+  // Define interface for account data
+  interface AccountData {
+    id: number | null;
+    code: string;
+    name: string;
+    type: string;
+    subtype: string;
+    isSubledger: boolean;
+    subledgerType: string;
+    active: boolean;
+    description: string;
+  }
+
+  const [accountData, setAccountData] = useState<AccountData>({
     id: null,
     code: "",
     name: "",
@@ -50,15 +80,48 @@ function ChartOfAccounts() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get accounts data using client-based API
-  const { data: accounts = [], isLoading, refetch } = useQuery({
-    queryKey: currentEntity ? [`/api/clients/${currentEntity.clientId}/accounts`] : ["no-entity-selected"],
+  // Get hierarchical account tree data using client-based API
+  const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
+    queryKey: currentEntity ? [`/api/clients/${currentEntity.clientId}/accounts/tree`] : ["no-entity-selected"],
     enabled: !!currentEntity && !!currentEntity.clientId,
   });
+  
+  // Extract the actual accounts array from the response
+  const accountTreeData = accountsTree?.data || [];
+  
+  // State for tracking expanded nodes
+  const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
+  
+  // Toggle node expansion
+  const toggleNodeExpansion = (nodeId: number) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeId]: !prev[nodeId]
+    }));
+  };
+  
+  // Function to flatten the hierarchical tree into a flat array with depth information
+  const flattenAccountTree = (nodes: AccountTreeNode[], depth = 0, result: Array<AccountTreeNode & { depth: number }> = []): Array<AccountTreeNode & { depth: number }> => {
+    for (const node of nodes) {
+      // Add current node with its depth
+      result.push({ ...node, depth });
+      
+      // If node is expanded and has children, recursively add them with increased depth
+      if (expandedNodes[node.id] && node.children && node.children.length > 0) {
+        flattenAccountTree(node.children, depth + 1, result);
+      }
+    }
+    return result;
+  };
+  
+  // Memoize the flattened account list to prevent unnecessary recalculations
+  const flattenedAccounts = useMemo(() => {
+    return flattenAccountTree(accountTreeData);
+  }, [accountTreeData, expandedNodes]);
 
   // Auto-generate account code based on type selection
   useEffect(() => {
-    if (!isEditMode && accountData.type && currentEntity && Array.isArray(accounts)) {
+    if (!isEditMode && accountData.type && currentEntity) {
       // Define account code prefixes
       const typePrefixes: Record<string, string> = {
         'asset': "1",
@@ -94,11 +157,11 @@ function ChartOfAccounts() {
       
       // Only auto-generate code for new accounts, not when editing
       if (prefix && !accountData.id) {
-        // Get accounts of the current type
-        const accountsOfType = accounts.filter(account => account.type === accountData.type);
+        // Get accounts of the current type from the flattened account tree
+        const accountsOfType = flattenedAccounts.filter(account => account.type === accountData.type);
         const existingCodes = accountsOfType
-          .map(a => a.code)
-          .filter(code => code.startsWith(prefix))
+          .map((a: {code: string}) => a.code)
+          .filter((code: string) => code.startsWith(prefix))
           .sort();
         
         if (existingCodes.length > 0) {
@@ -121,7 +184,7 @@ function ChartOfAccounts() {
         }
       }
     }
-  }, [accountData.type, isEditMode, currentEntity, accounts]);
+  }, [accountData.type, isEditMode, currentEntity, flattenedAccounts]);
 
   const createAccount = useMutation({
     mutationFn: async (data: any) => {
@@ -306,7 +369,7 @@ function ChartOfAccounts() {
         // Show deactivation dialog if we have the account details
         if (accountToDelete) {
           setAccountData({
-            id: accountToDelete.id || null,
+            id: accountToDelete.id,
             code: accountToDelete.code,
             name: accountToDelete.name,
             type: "",  // Will be filled when fetching account details
@@ -374,7 +437,7 @@ function ChartOfAccounts() {
   
   // Excel export functionality
   const handleExportToExcel = () => {
-    if (!Array.isArray(accounts) || accounts.length === 0) {
+    if (!Array.isArray(flattenedAccounts) || flattenedAccounts.length === 0) {
       toast({
         title: "No accounts to export",
         description: "Please add accounts to the chart of accounts before exporting.",
@@ -385,7 +448,7 @@ function ChartOfAccounts() {
     
     try {
       // Prepare data for export
-      const exportData = accounts.map(account => ({
+      const exportData = flattenedAccounts.map((account: any) => ({
         Code: account.code,
         Name: account.name,
         Type: account.type,
@@ -591,7 +654,17 @@ function ChartOfAccounts() {
     const errors: string[] = [];
     const processedData = data.map((row, index) => {
       const rowNum = index + 2; // +2 for Excel row number (1-based + header row)
-      const validatedRow = {
+      const validatedRow: {
+        code: string;
+        name: string;
+        type: string;
+        subtype: string | null;
+        isSubledger: boolean;
+        subledgerType: string | null;
+        active: boolean;
+        description: string | null;
+        parentId?: number | null;
+      } = {
         code: row.Code?.toString().trim(),
         name: row.Name?.toString().trim(),
         type: row.Type?.toString().toLowerCase().trim(),
@@ -599,7 +672,8 @@ function ChartOfAccounts() {
         isSubledger: row.IsSubledger?.toString().toUpperCase() === 'YES',
         subledgerType: row.SubledgerType?.toString().trim() || null,
         active: row.Active?.toString().toUpperCase() !== 'NO', // Default to active if not specified
-        description: row.Description?.toString().trim() || null
+        description: row.Description?.toString().trim() || null,
+        parentId: null // Default to no parent
       };
       
       // Validate required fields
@@ -672,7 +746,44 @@ function ChartOfAccounts() {
 
   const columns = [
     { header: "Code", accessor: "code", type: "text" },
-    { header: "Name", accessor: "name", type: "text" },
+    { 
+      header: "Name", 
+      accessor: "name", 
+      type: "text",
+      render: (row: Record<string, any>) => {
+        // Calculate indentation based on depth
+        const paddingLeft = row.depth ? `${row.depth * 1.5}rem` : '0';
+        
+        // Determine if the account has children
+        const hasChildren = row.children && row.children.length > 0;
+        
+        return (
+          <div className="flex items-center" style={{ paddingLeft }}>
+            {/* Show expand/collapse icon if the account has children */}
+            {hasChildren && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-1 p-0 h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleNodeExpansion(row.id);
+                }}
+              >
+                {expandedNodes[row.id] ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            {/* Add indentation for accounts without children */}
+            {!hasChildren && <span className="w-6"></span>}
+            <span>{row.name}</span>
+          </div>
+        );
+      }
+    },
     { header: "Type", accessor: "type", type: "text" },
     { header: "Subtype", accessor: "subtype", type: "text" },
     { 
@@ -788,7 +899,7 @@ function ChartOfAccounts() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <DataTable 
           columns={columns} 
-          data={accounts || []} 
+          data={flattenedAccounts || []} 
           isLoading={isLoading} 
         />
       </div>

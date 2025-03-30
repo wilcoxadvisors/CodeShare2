@@ -26,6 +26,11 @@ import {
   consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
   consolidationGroupEntities, InsertConsolidationGroupEntity
 } from "@shared/schema";
+
+// Define interface for hierarchical account structure
+export interface AccountTreeNode extends Account {
+  children: AccountTreeNode[];
+}
 import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
@@ -67,6 +72,7 @@ export interface IStorage {
   createAccount(account: InsertAccount): Promise<Account>;
   updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
   deleteAccount(id: number): Promise<void>;
+  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
   
   // Journal methods
   getJournal(id: number): Promise<Journal | undefined>;
@@ -966,6 +972,43 @@ export class MemStorage implements IStorage {
     if (this.accounts.has(id)) {
       this.accounts.delete(id);
     }
+  }
+  
+  async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
+    // Get all accounts for the given client
+    const clientAccounts = Array.from(this.accounts.values())
+      .filter(account => account.clientId === clientId)
+      .sort((a, b) => a.code.localeCompare(b.code));
+    
+    if (clientAccounts.length === 0) {
+      return [];
+    }
+
+    // Create a map of accounts by ID with empty children arrays
+    const accountsMap: Record<number, AccountTreeNode> = {};
+    
+    // First pass: Add all accounts to the map with empty children arrays
+    for (const account of clientAccounts) {
+      accountsMap[account.id] = {
+        ...account,
+        children: []
+      };
+    }
+    
+    // Second pass: Populate children arrays based on parentId relationships
+    const rootAccounts: AccountTreeNode[] = [];
+    
+    for (const account of clientAccounts) {
+      if (account.parentId === null || account.parentId === undefined || !accountsMap[account.parentId]) {
+        // This is a root account (no parent or parent doesn't exist in this client)
+        rootAccounts.push(accountsMap[account.id]);
+      } else {
+        // This account has a parent, add it to the parent's children array
+        accountsMap[account.parentId].children.push(accountsMap[account.id]);
+      }
+    }
+    
+    return rootAccounts;
   }
   
   // Journal methods
@@ -4023,6 +4066,45 @@ export class DatabaseStorage implements IStorage {
         eq(accounts.type, type)
       ))
       .orderBy(accounts.code);
+  }
+  
+  async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
+    // Get all accounts for the given client
+    const clientAccounts = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.clientId, clientId))
+      .orderBy(accounts.code);
+
+    if (clientAccounts.length === 0) {
+      return [];
+    }
+
+    // Create a map of accounts by ID with empty children arrays
+    const accountsMap: Record<number, AccountTreeNode> = {};
+    
+    // First pass: Add all accounts to the map with empty children arrays
+    for (const account of clientAccounts) {
+      accountsMap[account.id] = {
+        ...account,
+        children: []
+      };
+    }
+    
+    // Second pass: Populate children arrays based on parentId relationships
+    const rootAccounts: AccountTreeNode[] = [];
+    
+    for (const account of clientAccounts) {
+      if (account.parentId === null || account.parentId === undefined || !accountsMap[account.parentId]) {
+        // This is a root account (no parent or parent doesn't exist in this client)
+        rootAccounts.push(accountsMap[account.id]);
+      } else {
+        // This account has a parent, add it to the parent's children array
+        accountsMap[account.parentId].children.push(accountsMap[account.id]);
+      }
+    }
+    
+    return rootAccounts;
   }
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {

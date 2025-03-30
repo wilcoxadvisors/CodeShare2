@@ -1,0 +1,36 @@
+Agent Instructions: Implement CoA Hierarchy - Frontend Display
+
+Goal: Update the ChartOfAccounts.tsx component to fetch the hierarchical account data and display it in a way that reflects the parent-child structure (e.g., using an indented table).
+
+Relevant Files:
+
+client/src/pages/ChartOfAccounts.tsx (Primary UI component)
+server/accountRoutes.ts (Reference for the .../accounts/tree API endpoint)
+server/storage.ts (Reference for the AccountTreeNode type definition)
+Implementation Steps:
+
+Update Data Fetching (useQuery):
+
+Action: Open client/src/pages/ChartOfAccounts.tsx.
+Action: Locate the main useQuery hook currently fetching the flat list of accounts (queryKey likely ['clientAccounts', clientId], fetching /api/clients/:clientId/accounts).
+Action: Modify this useQuery hook to fetch the tree structure instead:
+Update the queryKey to reflect fetching the tree, e.g., queryKey: ['clientAccountsTree', clientId].
+Update the queryFn: Change the Workspace call inside the query function to target the new tree endpoint: /api/clients/${clientId}/accounts/tree.
+Update the expected return type in the useQuery generic to match the hierarchical structure, likely AccountTreeNode[] (import or define this type based on the backend AccountTreeNode structure defined in storage.ts).
+Action: Report the changes made to the useQuery hook.
+Implement Indented Table Display:
+
+Action: Locate the Shadcn DataTable component currently used to display the flat account list.
+Action: We need to process the hierarchical data (data returned from the updated useQuery, which is AccountTreeNode[]) into a flat list suitable for the table, but retaining depth information for indentation.
+Create a helper function (e.g., flattenTree(nodes: AccountTreeNode[], depth = 0)) that recursively traverses the tree and returns a flat array where each item includes the original account data plus a depth property.
+Use React.useMemo to call this flattenTree function whenever the fetched data changes, storing the result in a variable (e.g., flatAccountsWithDepth).
+Action: Modify the columns definition for the DataTable:
+Find the column definition for the "Account Name".
+Modify its cell renderer function. Inside the renderer, use the depth property of the row's data (row.original.depth) to dynamically add left padding or margin (e.g., style={{ paddingLeft:${row.original.depth * 1.5}rem}}).
+(Optional Enhancement) Add simple expand/collapse icons (e.g., small triangles) next to the account name if the account has children (row.original.children && row.original.children.length > 0). This requires managing expanded/collapsed state, which can be deferred if too complex initially.
+Action: Update the data prop passed to the DataTable component to use the new flatAccountsWithDepth array.
+Action: Report the changes made: the creation of flattenTree, the use of useMemo, and the modifications to the DataTable columns definition (specifically the name column's cell renderer).
+Verification (Code Review):
+
+Action: Review the changes to ensure the data fetching is updated and the table rendering logic correctly uses the flattened data with depth for indentation.
+Action: Report that the frontend changes for displaying the hierarchy via an indented table are complete, pending testing. (We will address updating the create/edit forms for parent selection in the next step).
