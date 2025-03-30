@@ -1,0 +1,5 @@
+Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
+1000,Cash,asset,current_asset,NO,,YES,Cash on hand and in banks,
+1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000
+1200,Savings Account,asset,bank,NO,,YES,Business savings account,1000
+2000,Accounts Payable,liability,accounts_payable,NO,,YES,Amounts owed to vendors,

@@ -1,0 +1,3 @@
+Code,Name,InvalidType,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
+1000,Cash,something_invalid,current_asset,NO,,YES,Cash on hand and in banks,
+1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000

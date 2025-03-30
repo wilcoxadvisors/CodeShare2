@@ -1,0 +1,42 @@
+Task: Test CoA Import/Export Functionality (CSV & Excel)
+
+Goal: Verify the complete end-to-end functionality of the newly implemented Chart of Accounts Import (CSV & Excel) and Export (CSV) features on the ChartOfAccounts.tsx page.
+
+Prerequisites:
+
+Ensure Test Client: Make sure a suitable client exists for testing (e.g., the default admin client ID 1, or create a client named "CoA Test Client"). Ensure this client has a small number of existing accounts with parent-child relationships that can be exported and potentially overwritten during import tests. If necessary, run the seeding script (scripts/seed-existing-coa.sh) for a specific client ID or manually add a few accounts via the UI first.
+Testing Steps:
+
+Authentication:
+Action: Authenticate programmatically as admin (admin/password123).
+Navigation:
+Action: Navigate to the Chart of Accounts page (/chart-of-accounts).
+Action: Use the global header context selector to choose the designated test client.
+Test Export CSV:
+Action: Click the "Export CSV" button.
+Action: Verify that a CSV file download is triggered. Note: You likely cannot directly inspect the downloaded file content programmatically. Report whether the download was initiated successfully based on browser behavior/network logs if possible. Assume the backend correctly generates the CSV based on previous instructions unless errors occur.
+Prepare Test Import Files (Simulated):
+Action: Define the content for three test files in your report (you don't need to physically create them):
+valid_import.csv: Define 3-4 rows of valid CoA data including headers (AccountNumber, AccountName, AccountType, ParentAccountNumber, Description) and at least one parent-child relationship using ParentAccountNumber. Ensure valid AccountType values are used.
+valid_import.xlsx: Define the same 3-4 rows of valid data, assuming an Excel format is still supported/expected by the UI logic.
+invalid_import.csv: Define 2-3 rows of data with an intentional error (e.g., missing the AccountName header, or an invalid value for AccountType in one row).
+Test Import Valid CSV:
+Action: Simulate clicking the "Import" button.
+Action: Simulate selecting the valid_import.csv file using the file input.
+Action: Simulate confirming the import.
+Observe & Report:
+Did a success notification (toast) appear?
+Did the displayed Chart of Accounts table in the UI update to show only the accounts defined in valid_import.csv (confirming the overwrite)?
+Does the parent-child hierarchy appear correct in the UI based on the ParentAccountNumber column used in the test file?
+(Optional Verification): Programmatically fetch accounts using GET /api/clients/:clientId/accounts/tree after the import simulation and report if the fetched data matches the valid_import.csv content.
+Test Import Valid Excel (If Applicable):
+Action: Reset the test client's CoA if necessary (e.g., re-seed or re-run the valid CSV import).
+Action: Repeat the import simulation steps (click Import, select file, confirm) using the valid_import.xlsx definition.
+Observe & Report: Report success/failure, UI update, and hierarchy appearance, similar to the CSV test.
+Test Import Invalid CSV:
+Action: Reset the test client's CoA to a known state (e.g., re-seed or re-run the valid CSV import). Note the state before this test.
+Action: Attempt to import the invalid_import.csv definition (click Import, select file, confirm).
+Observe & Report:
+Did an error notification (toast) appear? What did it say (approximately)?
+Crucially: Did the Chart of Accounts displayed in the UI remain unchanged from the state before attempting the invalid import? (Confirming no data was deleted or partially imported).
+Final Report: Summarize the results of each test step (Export CSV initiated?, Import Valid CSV success/UI update/hierarchy?, Import Valid Excel success/UI update/hierarchy?, Import Invalid CSV error handling/no data change?).
