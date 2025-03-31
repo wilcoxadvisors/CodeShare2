@@ -30,7 +30,15 @@ interface EntityContextType {
   setSelectedClientId: (clientId: number | null) => void;
 }
 
-export const EntityContext = createContext<EntityContextType | undefined>(undefined);
+// Create context with default values
+export const EntityContext = createContext<EntityContextType>({
+  entities: [],
+  currentEntity: null,
+  setCurrentEntity: () => {},
+  isLoading: true,
+  selectedClientId: null,
+  setSelectedClientId: () => {}
+});
 
 export function EntityProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();

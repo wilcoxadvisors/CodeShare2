@@ -4,7 +4,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClientEditForm } from "./ClientEditForm";
 import { EntityEditModal } from "./EntityEditModal";
-import { Loader2, Pencil, Power, AlertCircle } from "lucide-react";
+import { EntityAddModal } from "./EntityAddModal";
+import { Loader2, Pencil, Power, AlertCircle, PlusCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEntityEditModalOpen, setIsEntityEditModalOpen] = useState(false);
+  const [isEntityAddModalOpen, setIsEntityAddModalOpen] = useState(false);
   const [selectedEntityForEdit, setSelectedEntityForEdit] = useState<Entity | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [entityToToggle, setEntityToToggle] = useState<Entity | null>(null);
@@ -152,7 +154,16 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
               
               {/* Entities section */}
               <div className="mt-8 border-t pt-6">
-                <h2 className="text-lg font-semibold mb-4">Associated Entities</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold">Associated Entities</h2>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setIsEntityAddModalOpen(true)}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Entity
+                  </Button>
+                </div>
                 
                 {clientData.entities && clientData.entities.length > 0 ? (
                   <div className="overflow-auto">
@@ -202,7 +213,7 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                   </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">
-                    No associated entities found.
+                    No associated entities found. Click the "Add Entity" button to create one.
                   </div>
                 )}
               </div>
@@ -220,6 +231,19 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
           onUpdateSuccess={() => {
             setIsEntityEditModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
+          }}
+        />
+      )}
+      
+      {/* Entity Add Modal */}
+      {clientId && (
+        <EntityAddModal 
+          clientId={clientId}
+          isOpen={isEntityAddModalOpen}
+          onOpenChange={setIsEntityAddModalOpen}
+          onAddSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
           }}
         />
       )}
