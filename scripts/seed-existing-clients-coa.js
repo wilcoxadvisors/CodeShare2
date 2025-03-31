@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:5000';
 const API_BASE = '/api/clients';
 const COOKIES_FILE = path.join(__dirname, '..', 'cookies.txt');
 
@@ -785,7 +785,7 @@ async function login() {
 
     // If no cookie file exists, attempt to login with default credentials
     const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-      email: 'admin@example.com',
+      username: 'admin',
       password: 'password123'
     }, {
       withCredentials: true

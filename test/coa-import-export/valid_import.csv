@@ -1,11 +1,11 @@
 Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
-1000,Cash,ASSET,Current Asset,false,,true,Cash on hand and in checking accounts,
-1100,Accounts Receivable,ASSET,Current Asset,true,Customer,true,Amounts owed by customers,
-2000,Accounts Payable,LIABILITY,Current Liability,true,Vendor,true,Amounts owed to vendors,
-3000,Retained Earnings,EQUITY,Equity,false,,true,Accumulated earnings,
-4000,Revenue,REVENUE,Operating Revenue,false,,true,Revenue from operations,
-4100,Product Sales,REVENUE,Operating Revenue,false,,true,Revenue from product sales,4000
-4200,Service Revenue,REVENUE,Operating Revenue,false,,true,Revenue from services,4000
-5000,Cost of Goods Sold,EXPENSE,Cost of Sales,false,,true,Direct costs of products sold,
-6000,Operating Expenses,EXPENSE,Operating Expense,false,,true,General operating expenses,
-6100,Rent Expense,EXPENSE,Operating Expense,false,,true,Office and facility rent,6000
+1000,Test Cash,ASSET,Current Asset,false,,true,Cash on hand,
+1100,Test Bank Account,ASSET,Current Asset,false,,true,Primary bank account,1000
+1200,Test Accounts Receivable,ASSET,Current Asset,true,Customer,true,Amounts owed by customers,
+2000,Test Accounts Payable,LIABILITY,Current Liability,true,Vendor,true,Amounts owed to vendors,
+2100,Test Credit Card,LIABILITY,Current Liability,false,,true,Business credit card,2000
+3000,Test Owner Equity,EQUITY,Equity,false,,true,Owner investment,
+4000,Test Sales Revenue,REVENUE,Operating Revenue,false,,true,Revenue from sales,
+4100,Test Service Revenue,REVENUE,Operating Revenue,false,,true,Revenue from services,4000
+5000,Test Rent Expense,EXPENSE,Operating Expense,false,,true,Office rent,
+5100,Test Utilities Expense,EXPENSE,Operating Expense,false,,true,"Electricity, water, etc.",5000

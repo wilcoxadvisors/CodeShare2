@@ -1,7 +1,8 @@
 Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
-1000,Cash,ASSET,Current Asset,false,,true,Cash on hand,
-1000,Cash Duplicate,ASSET,Current Asset,false,,true,Duplicate cash account,
-2000,,LIABILITY,Current Liability,true,Vendor,true,Accounts payable,
-3000,Equity,INVALID_TYPE,Equity,false,,true,Equity account,
-4100,Product Sales,REVENUE,Operating Revenue,false,,true,Revenue from product sales,9999
-5100,Child COGS,ASSET,Cost of Sales,false,,true,Child COGS account,5000
+1000,Invalid Type,INVALID_TYPE,Current Asset,false,,true,Invalid account type,
+2000,,LIABILITY,Current Liability,false,,true,Missing name field,
+3000,First Equity Account,EQUITY,Equity,false,,true,First equity account with code 3000,
+3000,Duplicate Code,EQUITY,Equity,false,,true,Duplicate code 3000,
+4000,Invalid Parent,REVENUE,Operating Revenue,false,,true,Invalid parent code,9999
+5000,Parent Account,EXPENSE,Operating Expense,false,,true,Parent account,
+5100,Type Mismatch,REVENUE,Operating Revenue,false,,true,Type mismatch with parent,5000
