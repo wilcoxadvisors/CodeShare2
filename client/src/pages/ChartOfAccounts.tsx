@@ -617,7 +617,40 @@ function ChartOfAccounts() {
   };
   
   // Excel export functionality
-  const handleExportToExcel = () => {
+  // Function to fetch all accounts for export (not just visible ones)
+  const fetchAllAccountsForExport = async () => {
+    if (!clientIdToUse) {
+      toast({
+        title: "No client selected",
+        description: "Please select a client to export accounts.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    try {
+      // Fetch all accounts (not just the visible/expanded ones)
+      const response = await fetch(`/api/clients/${clientIdToUse}/accounts/export`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch accounts for export: ${response.status} ${response.statusText}`);
+      }
+      
+      const allAccounts = await response.json();
+      return allAccounts;
+    } catch (error) {
+      console.error("Error fetching accounts for export:", error);
+      toast({
+        title: "Export failed",
+        description: `Error fetching accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+  
+  const handleExportToExcel = async () => {
+    // First check if we have accounts in the current view
     if (!Array.isArray(flattenedAccounts) || flattenedAccounts.length === 0) {
       toast({
         title: "No accounts to export",
@@ -628,31 +661,66 @@ function ChartOfAccounts() {
     }
     
     try {
-      // Prepare data for export
-      const exportData = flattenedAccounts.map((account: any) => ({
-        Code: account.code,
-        Name: account.name,
-        Type: account.type,
-        Subtype: account.subtype || '',
-        IsSubledger: account.isSubledger ? 'Yes' : 'No',
-        SubledgerType: account.subledgerType || '',
-        Active: account.active ? 'Yes' : 'No',
-        Description: account.description || ''
-      }));
+      // Show loading toast
+      toast({
+        title: "Preparing export",
+        description: "Generating your Excel file...",
+      });
       
-      // Create worksheet
+      // Fetch all accounts including hidden ones
+      const allAccounts = await fetchAllAccountsForExport();
+      
+      if (!allAccounts || !Array.isArray(allAccounts)) {
+        throw new Error("Failed to retrieve accounts for export");
+      }
+      
+      console.log(`DEBUG: Export - Retrieved ${allAccounts.length} accounts for export`);
+      
+      // Build a map of account IDs to account objects for parent lookup
+      const accountMap = new Map();
+      allAccounts.forEach((account: any) => {
+        accountMap.set(account.id, account);
+      });
+      
+      // Prepare data for export with enhanced parent information
+      const exportData = allAccounts.map((account: any) => {
+        // Find parent account details if parentId exists
+        const parentAccount = account.parentId ? accountMap.get(account.parentId) : null;
+        
+        return {
+          Code: account.code,
+          Name: account.name,
+          Type: account.type,
+          Subtype: account.subtype || '',
+          IsSubledger: account.isSubledger ? 'Yes' : 'No',
+          SubledgerType: account.subledgerType || '',
+          Active: account.active ? 'Yes' : 'No',
+          Description: account.description || '',
+          ParentId: account.parentId || '',
+          ParentCode: parentAccount ? parentAccount.code : '',
+          ParentName: parentAccount ? parentAccount.name : ''
+        };
+      });
+      
+      // Sort by account code for better organization
+      exportData.sort((a: any, b: any) => a.Code.localeCompare(b.Code));
+      
+      // Create worksheet with styled headers
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
       // Column widths for better readability
       const columnWidths = [
-        { wch: 10 }, // Code
-        { wch: 30 }, // Name
-        { wch: 15 }, // Type
-        { wch: 20 }, // Subtype
-        { wch: 12 }, // IsSubledger
-        { wch: 20 }, // SubledgerType
-        { wch: 10 }, // Active
-        { wch: 40 }  // Description
+        { wch: 10 },  // Code
+        { wch: 30 },  // Name
+        { wch: 15 },  // Type
+        { wch: 20 },  // Subtype
+        { wch: 12 },  // IsSubledger
+        { wch: 20 },  // SubledgerType
+        { wch: 10 },  // Active
+        { wch: 40 },  // Description
+        { wch: 10 },  // ParentId
+        { wch: 10 },  // ParentCode
+        { wch: 30 }   // ParentName
       ];
       
       worksheet['!cols'] = columnWidths;
@@ -695,13 +763,26 @@ function ChartOfAccounts() {
   // Create template for import
   const handleGenerateTemplate = () => {
     try {
-      // Create template headers
+      // Create template headers with parent information
       const templateHeaders = [
-        "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description"
+        "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
+        "ParentCode", "Notes"
       ];
       
-      // Create sample data (one row per account type)
+      // Create sample data (one row per account type) with parent relationship examples
       const sampleData = [
+        { 
+          Code: "1000", 
+          Name: "Assets", 
+          Type: "asset", 
+          Subtype: "current_asset", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "All company assets", 
+          ParentCode: "",
+          Notes: "Top-level account, no parent"
+        },
         { 
           Code: "1001", 
           Name: "Cash", 
@@ -710,7 +791,33 @@ function ChartOfAccounts() {
           IsSubledger: "No", 
           SubledgerType: "", 
           Active: "Yes", 
-          Description: "Cash on hand" 
+          Description: "Cash on hand", 
+          ParentCode: "1000",
+          Notes: "Child of Assets"
+        },
+        { 
+          Code: "1002", 
+          Name: "Bank Accounts", 
+          Type: "asset", 
+          Subtype: "current_asset", 
+          IsSubledger: "Yes", 
+          SubledgerType: "bank", 
+          Active: "Yes", 
+          Description: "Company bank accounts", 
+          ParentCode: "1000",
+          Notes: "Child of Assets, with subledger capability"
+        },
+        { 
+          Code: "2000", 
+          Name: "Liabilities", 
+          Type: "liability", 
+          Subtype: "current_liability", 
+          IsSubledger: "No", 
+          SubledgerType: "", 
+          Active: "Yes", 
+          Description: "All company liabilities", 
+          ParentCode: "",
+          Notes: "Top-level account, no parent"
         },
         { 
           Code: "2001", 
@@ -720,27 +827,9 @@ function ChartOfAccounts() {
           IsSubledger: "No", 
           SubledgerType: "", 
           Active: "Yes", 
-          Description: "Short-term debt" 
-        },
-        { 
-          Code: "4001", 
-          Name: "Service Revenue", 
-          Type: "revenue", 
-          Subtype: "operating_revenue", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "Income from services" 
-        },
-        { 
-          Code: "5001", 
-          Name: "Office Supplies", 
-          Type: "expense", 
-          Subtype: "operating_expense", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "Office supplies expense" 
+          Description: "Short-term debt", 
+          ParentCode: "2000",
+          Notes: "Child of Liabilities"
         }
       ];
       
@@ -758,7 +847,9 @@ function ChartOfAccounts() {
         { wch: 12 }, // IsSubledger
         { wch: 20 }, // SubledgerType
         { wch: 10 }, // Active
-        { wch: 40 }  // Description
+        { wch: 40 }, // Description
+        { wch: 12 }, // ParentCode
+        { wch: 40 }  // Notes
       ];
       
       worksheet['!cols'] = columnWidths;
