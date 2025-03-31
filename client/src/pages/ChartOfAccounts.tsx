@@ -101,6 +101,12 @@ function ChartOfAccounts() {
     enabled: !!clientIdToUse
   });
   
+  // Fetch clients data for export functionality
+  const { data: clients = [] } = useQuery<any[]>({
+    queryKey: ['/api/clients'],
+    enabled: true
+  });
+  
   // Debug output for entity context and refresh data when client selection changes
   useEffect(() => {
     console.log("DEBUG: Entity context in ChartOfAccounts", { 
@@ -658,7 +664,15 @@ function ChartOfAccounts() {
       // Generate filename with entity name and current date
       const date = new Date().toISOString().split('T')[0];
       // Get entity name from the selected client context
-      const entityName = clients?.find(c => c.id === clientIdToUse)?.name || currentEntity?.name || 'Entity';
+      let entityName = 'Entity';
+      if (currentEntity?.name) {
+        entityName = currentEntity.name;
+      } else if (clientIdToUse && Array.isArray(clients)) {
+        const client = clients.find((c: any) => c.id === clientIdToUse);
+        if (client?.name) {
+          entityName = client.name;
+        }
+      }
       const fileName = `${entityName}_ChartOfAccounts_${date}.xlsx`;
       
       // Download the file
