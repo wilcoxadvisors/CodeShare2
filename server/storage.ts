@@ -82,6 +82,18 @@ export interface IStorage {
   
   // User Entity Access methods
   getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
+  
+  // Journal Entry methods
+  createJournalEntry(entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
+  getJournalEntry(id: number): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
+  updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
+  deleteJournalEntry(id: number): Promise<void>;
+  listJournalEntries(options?: { clientId?: number, entityId?: number, startDate?: Date, endDate?: Date, status?: string, limit?: number, offset?: number }): Promise<JournalEntry[]>;
+  
+  // Journal Entry Line methods
+  addJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
+  updateJournalEntryLine(id: number, line: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined>;
+  deleteJournalEntryLine(id: number): Promise<void>;
   grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
   
   // Account methods

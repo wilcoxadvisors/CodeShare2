@@ -167,14 +167,14 @@ export enum JournalEntryStatus {
 // Journal Entries
 export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
-  entityId: integer("entity_id").references(() => entities.id).notNull(),
-  // Removed journalId as it doesn't exist in the actual database
-  reference: text("reference").notNull(), // JE-2023-0001
-  date: timestamp("date").notNull(),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  entityId: integer("entity_id").notNull().references(() => entities.id),
+  date: timestamp("date", { mode: 'date' }).notNull(),
+  referenceNumber: text("reference_number"),
   description: text("description"),
-  status: text("status").$type<JournalEntryStatus>().notNull().default(JournalEntryStatus.DRAFT),
-  // needsReview and isRecurring fields don't exist in the actual database table
-  // recurringFrequency and recurringEndDate fields don't exist in the actual database table
+  isSystemGenerated: boolean("is_system_generated").notNull().default(false),
+  status: text("status", { enum: ['draft', 'posted', 'void'] }).notNull().default('draft'),
+  // Existing workflow fields
   requestedBy: integer("requested_by").references(() => users.id),
   requestedAt: timestamp("requested_at"),
   approvedBy: integer("approved_by").references(() => users.id),
@@ -184,6 +184,7 @@ export const journalEntries = pgTable("journal_entries", {
   rejectionReason: text("rejection_reason"),
   postedBy: integer("posted_by").references(() => users.id),
   postedAt: timestamp("posted_at"),
+  // Standard auditing fields
   createdBy: integer("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
@@ -192,23 +193,58 @@ export const journalEntries = pgTable("journal_entries", {
 // Journal Entry Lines
 export const journalEntryLines = pgTable("journal_entry_lines", {
   id: serial("id").primaryKey(),
-  journalEntryId: integer("journal_entry_id").references(() => journalEntries.id).notNull(),
-  accountId: integer("account_id").references(() => accounts.id).notNull(),
+  journalEntryId: integer("journal_entry_id").notNull().references(() => journalEntries.id),
+  accountId: integer("account_id").notNull().references(() => accounts.id),
+  type: text("type", { enum: ['debit', 'credit'] }).notNull(),
+  amount: numeric("amount", { precision: 19, scale: 4 }).notNull(),
   description: text("description"),
-  debit: numeric("debit").notNull().default("0"),
-  credit: numeric("credit").notNull().default("0"),
-  entityId: integer("entity_id").references(() => entities.id).notNull(),
+  // Existing fields that may be useful
   lineNo: integer("line_no"), // For ordering lines within a journal entry
   reference: text("reference"), // Line-specific reference (e.g., invoice number)
-  date: timestamp("date"), // Line-specific date if different from journal entry
-  taxId: integer("tax_id"), // For tax-related entries
-  taxAmount: numeric("tax_amount"), // Amount of tax
   reconciled: boolean("reconciled").default(false), // Whether this line has been reconciled
   reconciledAt: timestamp("reconciled_at"), // When it was reconciled
   reconciledBy: integer("reconciled_by").references(() => users.id), // Who reconciled it
-  reconciledWith: integer("reconciled_with"), // ID of the matching entry line
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  // Standard auditing fields
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
+
+// Relations for journalEntries and journalEntryLines
+export const journalEntriesRelations = {
+  client: (journalEntries) => ({
+    to: clients,
+    fields: [journalEntries.clientId],
+    references: [clients.id],
+    relationName: "journalEntries_client",
+  }),
+  entity: (journalEntries) => ({
+    to: entities,
+    fields: [journalEntries.entityId],
+    references: [entities.id],
+    relationName: "journalEntries_entity",
+  }),
+  lines: (journalEntries) => ({
+    to: journalEntryLines,
+    fields: [journalEntries.id],
+    references: [journalEntryLines.journalEntryId],
+    relationName: "journalEntries_lines",
+  }),
+};
+
+export const journalEntryLinesRelations = {
+  journalEntry: (journalEntryLines) => ({
+    to: journalEntries,
+    fields: [journalEntryLines.journalEntryId],
+    references: [journalEntries.id],
+    relationName: "journalEntryLines_journalEntry",
+  }),
+  account: (journalEntryLines) => ({
+    to: accounts,
+    fields: [journalEntryLines.accountId],
+    references: [accounts.id],
+    relationName: "journalEntryLines_account",
+  }),
+};
 
 // Journal Entry Files (supporting documents)
 export const journalEntryFiles = pgTable("journal_entry_files", {
@@ -484,7 +520,6 @@ export const insertAccountSchema = createInsertSchema(accounts).omit({
 // Schema for Journal Entry insertion
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({
   id: true,
-  // Removed journalId from schema since it doesn't exist in the database
   requestedAt: true,
   approvedAt: true,
   rejectedAt: true,
@@ -496,7 +531,8 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit(
 // Schema for Journal Entry Line insertion
 export const insertJournalEntryLineSchema = createInsertSchema(journalEntryLines).omit({
   id: true,
-  createdAt: true
+  createdAt: true,
+  updatedAt: true
 });
 
 // Schema for Fixed Asset insertion

@@ -1,0 +1,36 @@
+Task: Begin Task B.2: General Ledger (GL) and Journal Entries (JE) - Schema Design
+
+Goal: Define the database schema for storing Journal Entries and their associated lines.
+
+Define journalEntries Table Schema:
+Action: Open shared/schema.ts.
+Action: Define a new Drizzle table schema named journalEntries.
+Columns: Include the following columns with appropriate types and constraints (e.g., pgTable, serial, integer, text, boolean, timestamp, notNull, defaultNow, references):
+id: serial('id').primaryKey()
+clientId: integer('client_id').notNull().references(() => clients.id)
+entityId: integer('entity_id').notNull().references(() => entities.id) (Assuming JEs are always tied to an entity)
+date: timestamp('date', { mode: 'date' }).notNull()
+referenceNumber: text('reference_number')
+description: text('description')
+isSystemGenerated: boolean('is_system_generated').notNull().default(false)
+status: text('status', { enum: ['draft', 'posted', 'void'] }).notNull().default('draft')
+createdAt: timestamp('created_at').defaultNow().notNull()
+updatedAt: timestamp('updated_at').defaultNow().notNull() (Add Drizzle's mechanism for auto-update on change if available/desired)
+Define journalEntryLines Table Schema:
+Action: In shared/schema.ts, define another Drizzle table schema named journalEntryLines.
+Columns: Include:
+id: serial('id').primaryKey()
+journalEntryId: integer('journal_entry_id').notNull().references(() => journalEntries.id)
+accountId: integer('account_id').notNull().references(() => accounts.id)   
+type: text('type', { enum: ['debit', 'credit'] }).notNull()
+amount: numeric('amount', { precision: 19, scale: 4 }).notNull() (Use numeric for currency, ensure scale is appropriate)
+description: text('description')
+createdAt: timestamp('created_at').defaultNow().notNull()
+updatedAt: timestamp('updated_at').defaultNow().notNull()   
+Define Relations:
+Action: Use relations from Drizzle ORM to define the relationships:
+journalEntries has one client and one entity.
+journalEntries has many journalEntryLines.
+journalEntryLines has one journalEntry and one account.
+Report Changes:
+Action: Report that the journalEntries and journalEntryLines table schemas, along with their relations, have been added to shared/schema.ts.
