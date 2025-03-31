@@ -629,14 +629,15 @@ function ChartOfAccounts() {
     }
     
     try {
-      // Fetch all accounts (not just the visible/expanded ones)
-      const response = await fetch(`/api/clients/${clientIdToUse}/accounts/export`);
+      // Use the regular accounts API to get all accounts for the client
+      const response = await fetch(`/api/clients/${clientIdToUse}/accounts`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch accounts for export: ${response.status} ${response.statusText}`);
       }
       
       const allAccounts = await response.json();
+      console.log(`DEBUG: Export - Retrieved ${allAccounts?.length || 0} accounts from the server`);
       return allAccounts;
     } catch (error) {
       console.error("Error fetching accounts for export:", error);
