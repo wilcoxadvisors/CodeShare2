@@ -4819,6 +4819,7 @@ export class DatabaseStorage implements IStorage {
         
         if (accountsToUpdate.length > 0) {
           const batchSize = 100;
+          const updatedAccounts: Account[] = [];
           
           for (let i = 0; i < accountsToUpdate.length; i += batchSize) {
             const batch = accountsToUpdate.slice(i, i + batchSize);
@@ -4826,16 +4827,29 @@ export class DatabaseStorage implements IStorage {
             // Execute updates individually within the transaction
             for (const update of batch) {
               try {
-                await tx
+                console.log(`Updating account ID ${update.id} with data:`, update.data);
+                
+                // Execute update and return the updated record
+                const [updatedAccount] = await tx
                   .update(accounts)
                   .set(update.data)
-                  .where(eq(accounts.id, update.id));
+                  .where(eq(accounts.id, update.id))
+                  .returning();
+                
+                if (updatedAccount) {
+                  updatedAccounts.push(updatedAccount);
+                  console.log(`Successfully updated account: ${updatedAccount.code} (${updatedAccount.name})`);
+                } else {
+                  console.warn(`No rows updated for account ID ${update.id}`);
+                }
               } catch (updateError: any) {
                 console.error(`Error updating account ${update.id}:`, updateError);
                 result.errors.push(`Failed to update account with ID ${update.id}: ${updateError.message}`);
               }
             }
           }
+          
+          console.log(`Successfully updated ${updatedAccounts.length} accounts out of ${accountsToUpdate.length} attempted`);
         }
         
         // ==================== STEP 8: Second pass - parent-child relationships ====================
