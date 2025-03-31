@@ -89,18 +89,34 @@ export function registerAccountRoutes(app: Express) {
       // Get accounts for export
       const accounts = await storage.getAccountsForClient(clientId);
       
-      // Format accounts for export
-      const accountsData = accounts.map(account => ({
-        code: account.code,
-        name: account.name,
-        type: account.type,
-        subtype: account.subtype || '',
-        isSubledger: account.isSubledger ? 'Yes' : 'No',
-        subledgerType: account.subledgerType || '',
-        parentCode: account.parentId ? accounts.find(a => a.id === account.parentId)?.code || '' : '',
-        description: account.description || '',
-        active: account.active ? 'Yes' : 'No'
-      }));
+      // Build a map of account IDs to account objects for efficient parent lookup
+      const accountMap = new Map();
+      accounts.forEach(account => {
+        accountMap.set(account.id, account);
+      });
+      
+      // Format accounts for export with enhanced parent information
+      const accountsData = accounts.map(account => {
+        // Find parent account details if parentId exists
+        const parentAccount = account.parentId ? accountMap.get(account.parentId) : null;
+        
+        return {
+          Code: account.code,
+          Name: account.name,
+          Type: account.type,
+          Subtype: account.subtype || '',
+          IsSubledger: account.isSubledger ? 'Yes' : 'No',
+          SubledgerType: account.subledgerType || '',
+          Active: account.active ? 'Yes' : 'No',
+          Description: account.description || '',
+          ParentId: account.parentId || '',
+          ParentCode: parentAccount ? parentAccount.code : '',
+          ParentName: parentAccount ? parentAccount.name : ''
+        };
+      });
+      
+      // Sort by account code for better organization
+      accountsData.sort((a, b) => a.Code.localeCompare(b.Code));
       
       if (format === 'csv') {
         // Generate CSV using PapaParse
@@ -118,8 +134,26 @@ export function registerAccountRoutes(app: Express) {
       } else if (format === 'excel') {
         // Create Excel workbook using XLSX
         const worksheet = XLSX.utils.json_to_sheet(accountsData);
+        
+        // Column widths for better readability
+        const columnWidths = [
+          { wch: 10 },  // Code
+          { wch: 30 },  // Name
+          { wch: 15 },  // Type
+          { wch: 20 },  // Subtype
+          { wch: 12 },  // IsSubledger
+          { wch: 20 },  // SubledgerType
+          { wch: 10 },  // Active
+          { wch: 40 },  // Description
+          { wch: 10 },  // ParentId
+          { wch: 10 },  // ParentCode
+          { wch: 30 }   // ParentName
+        ];
+        
+        worksheet['!cols'] = columnWidths;
+        
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Accounts");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Chart of Accounts");
         
         // Generate Excel buffer
         const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
