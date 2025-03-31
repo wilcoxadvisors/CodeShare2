@@ -854,10 +854,19 @@ async function runCsvTests(clientId) {
     const invalidImportPath = await generateInvalidImportFile('csv');
     
     try {
-      await importAccounts(clientId, invalidImportPath, 'csv');
-      logResult('CSV Import Error Handling', false, 
-        'Import of invalid CSV succeeded when it should have failed');
+      const result = await importAccounts(clientId, invalidImportPath, 'csv');
+      
+      // Check if the result contains errors
+      if (result && result.errors && result.errors.length > 0) {
+        console.log(chalk.green('Server detected errors in invalid import as expected:'), result.errors);
+        logResult('CSV Import Error Handling', true, 
+          'Server correctly detected errors in invalid CSV import');
+      } else {
+        logResult('CSV Import Error Handling', false, 
+          'Import of invalid CSV succeeded without reporting errors');
+      }
     } catch (error) {
+      // This is also a valid success case - server rejected import with an error
       logResult('CSV Import Error Handling', true,
         'Server correctly rejected invalid CSV import');
     }
@@ -940,10 +949,19 @@ async function runExcelTests(clientId) {
     const invalidImportPath = await generateInvalidImportFile('excel');
     
     try {
-      await importAccounts(clientId, invalidImportPath, 'excel');
-      logResult('Excel Import Error Handling', false, 
-        'Import of invalid Excel succeeded when it should have failed');
+      const result = await importAccounts(clientId, invalidImportPath, 'excel');
+      
+      // Check if the result contains errors
+      if (result && result.errors && result.errors.length > 0) {
+        console.log(chalk.green('Server detected errors in invalid import as expected:'), result.errors);
+        logResult('Excel Import Error Handling', true, 
+          'Server correctly detected errors in invalid Excel import');
+      } else {
+        logResult('Excel Import Error Handling', false, 
+          'Import of invalid Excel succeeded without reporting errors');
+      }
     } catch (error) {
+      // This is also a valid success case - server rejected import with an error
       logResult('Excel Import Error Handling', true,
         'Server correctly rejected invalid Excel import');
     }

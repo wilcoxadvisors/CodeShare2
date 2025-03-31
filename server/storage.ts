@@ -4507,12 +4507,53 @@ export class DatabaseStorage implements IStorage {
       for (const row of rows) {
         const accountCode = row.code.trim();
         
-        // Handle potential case mismatches in field names
-        const parentCode = row.parentcode || row.parentCode || row.ParentCode;
+        // Debug: Print row data to help diagnose case sensitivity issues
+        console.log(`DEBUG: Processing row with code ${accountCode}, row keys:`, Object.keys(row));
+        console.log(`DEBUG: Row data:`, row);
+        
+        // Get all keys in lowercase for case-insensitive lookup
+        const lowercaseKeys = Object.keys(row).map(key => key.toLowerCase());
+        
+        // Look for any variant of "parentcode" in the keys
+        let parentCodeKey = null;
+        for (const key of Object.keys(row)) {
+          if (key.toLowerCase() === 'parentcode' || 
+              key.toLowerCase() === 'parent_code' || 
+              key.toLowerCase() === 'parent-code') {
+            parentCodeKey = key;
+            break;
+          }
+        }
+        
+        // Extract the parent code value using the found key
+        let parentCode = null;
+        if (parentCodeKey) {
+          parentCode = row[parentCodeKey];
+        } else {
+          // Fallback to explicit checks if no key found
+          parentCode = row.parentcode || row.parentCode || row.ParentCode || 
+                       row.PARENTCODE || row.ParentCODE || row.PARENT_CODE || 
+                       row.parent_code;
+        }
+        
+        console.log(`DEBUG: Extracted parentCode value: "${parentCode}", type: ${typeof parentCode}, from key: ${parentCodeKey || 'fallback checks'}`);
+        
+        // Trim the parent code if it's a string
+        if (typeof parentCode === 'string') {
+          parentCode = parentCode.trim();
+        }
+        
+        if (parentCode) {
+          console.log(`DEBUG: Found valid parentCode: ${parentCode}. Checking if it exists in codeToIdMap...`);
+          console.log(`DEBUG: codeToIdMap has parent code: ${codeToIdMap.has(parentCode)}`);
+          console.log(`DEBUG: All codes in map: ${Array.from(codeToIdMap.keys()).join(', ')}`);
+        }
         
         if (parentCode && codeToIdMap.has(parentCode)) {
           const accountId = codeToIdMap.get(accountCode);
           const parentId = codeToIdMap.get(parentCode);
+          
+          console.log(`DEBUG: Setting parent relationship: Account ${accountCode} (ID: ${accountId}) -> Parent ${parentCode} (ID: ${parentId})`);
           
           if (accountId && parentId) {
             try {
@@ -4524,12 +4565,22 @@ export class DatabaseStorage implements IStorage {
                 result.warnings.push(`Account ${accountCode} has transactions - parent relationship not updated`);
               } else {
                 // Update the account with the parent ID
+                console.log(`DEBUG: Updating account ${accountCode} with parentId ${parentId}`);
                 await this.updateAccount(accountId, { parentId });
+                
+                // Verify the update was successful
+                const updatedAccount = await this.getAccount(accountId);
+                console.log(`DEBUG: Update result - Account ${accountCode} now has parentId: ${updatedAccount?.parentId}`);
               }
             } catch (error: any) {
+              console.error(`DEBUG: Error setting parent: ${error.message || 'Unknown error'}`);
               result.errors.push(`Error setting parent for account ${row.code}: ${error.message || 'Unknown error'}`);
             }
+          } else {
+            console.log(`DEBUG: Missing ID mapping - accountId: ${accountId}, parentId: ${parentId}`);
           }
+        } else if (parentCode) {
+          console.log(`DEBUG: Parent code ${parentCode} not found in code map`);
         }
       }
       

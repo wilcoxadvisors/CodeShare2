@@ -264,6 +264,29 @@ async function listAccounts(clientId) {
         console.log(chalk.cyan(`${index + 1}. ${account.code}: ${account.name} (${account.type})`));
       });
       
+      // Check for our test accounts with more details
+      const testAccounts = accountsArray.filter(acc => acc.code.toString().startsWith('11122'));
+      if (testAccounts.length > 0) {
+        console.log(chalk.yellow('\nDetailed info for test accounts:'));
+        testAccounts.forEach(account => {
+          console.log(chalk.yellow(`Code: ${account.code}`));
+          console.log(chalk.yellow(`Name: ${account.name}`));
+          console.log(chalk.yellow(`Type: ${account.type}`));
+          // Get parent code by looking up the parent ID in the accountsArray
+          let parentCode = 'None';
+          if (account.parentId) {
+            const parentAccount = accountsArray.find(a => a.id === account.parentId);
+            parentCode = parentAccount ? parentAccount.code : 'Unknown';
+          }
+          console.log(chalk.yellow(`Parent Code: ${parentCode}`));
+          console.log(chalk.yellow(`Parent ID: ${account.parentId || 'None'}`));
+          console.log(chalk.yellow(`Description: ${account.description || 'None'}`));
+          console.log(chalk.yellow(`Is Subledger: ${account.isSubledger ? 'Yes' : 'No'}`));
+          console.log(chalk.yellow(`Active: ${account.active ? 'Yes' : 'No'}`));
+          console.log(chalk.yellow('---'));
+        });
+      }
+      
       if (accountsArray.length > 5) {
         console.log(chalk.cyan(`... and ${accountsArray.length - 5} more accounts`));
       }
@@ -452,7 +475,12 @@ async function importAccounts(clientId, filePath) {
     }
     
     console.log(chalk.green('Import successful!'));
-    console.log(chalk.green('Import results:'), JSON.stringify(importResults, null, 2));
+    console.log(chalk.green('Import results:'));
+    console.log(JSON.stringify(importResults, null, 2));
+    
+    // Display raw response data for debugging
+    console.log(chalk.blue('\nRaw server response:'));
+    console.log(chalk.blue(JSON.stringify(response.data, null, 2)));
     
     // Get updated account list to verify changes
     console.log(chalk.blue('\nVerifying account changes after import...'));
@@ -461,13 +489,62 @@ async function importAccounts(clientId, filePath) {
     return importResults;
   } catch (error) {
     console.error(chalk.red(`Failed to import accounts for client ${clientId}:`), error.message);
+    
     if (error.response) {
+      // We have a response from the server
       console.error(chalk.red('Server response status:'), error.response.status);
-      console.error(chalk.red('Server response data:'), error.response.data ? JSON.stringify(error.response.data, null, 2) : 'No response data');
+      
+      // Try to parse the response data
+      if (error.response.data) {
+        try {
+          // Handle different data types in the response
+          if (Buffer.isBuffer(error.response.data)) {
+            // For binary responses
+            console.error(chalk.red('Server response is binary data, size:'), error.response.data.length);
+            // Try to convert to string if it might be text
+            const contentType = error.response.headers['content-type'] || '';
+            if (contentType.includes('text') || contentType.includes('json')) {
+              console.error(chalk.red('Response data as text:'), error.response.data.toString('utf8').substring(0, 500));
+            }
+          } else if (typeof error.response.data === 'object') {
+            // For JSON or object responses
+            console.error(chalk.red('Server response data:'), JSON.stringify(error.response.data, null, 2));
+          } else {
+            // For string responses
+            console.error(chalk.red('Server response data:'), error.response.data);
+          }
+        } catch (parseError) {
+          console.error(chalk.red('Error parsing response data:'), parseError.message);
+        }
+      } else {
+        console.error(chalk.red('No response data received'));
+      }
+      
+      // Specific error handling based on status code
       if (error.response.status === 413) {
         console.error(chalk.red('File too large - server rejected the upload'));
+      } else if (error.response.status === 400) {
+        console.error(chalk.red('Bad request - check file format and content'));
+      } else if (error.response.status === 401 || error.response.status === 403) {
+        console.error(chalk.red('Authentication or authorization issue - try logging in again'));
+      } else if (error.response.status === 500) {
+        console.error(chalk.red('Server error - check server logs for details'));
       }
+      
+      // Display headers for debugging
+      console.error(chalk.red('Response headers:'), JSON.stringify(error.response.headers, null, 2));
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error(chalk.red('No response received. The request was sent but the server did not respond.'));
+      console.error(chalk.red('Request details:'));
+      console.error(chalk.red('- URL:'), error.config?.url || 'unknown');
+      console.error(chalk.red('- Method:'), error.config?.method?.toUpperCase() || 'unknown');
+      console.error(chalk.red('- Timeout:'), error.config?.timeout || 'default');
+    } else {
+      // Error setting up the request
+      console.error(chalk.red('Error before request could be sent:'), error.message);
     }
+    
     throw error;
   }
 }
