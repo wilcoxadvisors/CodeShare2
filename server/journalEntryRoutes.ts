@@ -424,4 +424,53 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       totalCredits
     });
   }));
+  
+  /**
+   * Reverse a journal entry
+   * Creates a new journal entry with opposite debits/credits to cancel out the original entry
+   */
+  app.post('/api/journal-entries/:id/reverse', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = req.user as { id: number };
+    
+    // Get the existing entry to check if it exists and has the correct status
+    const existingEntry = await storage.getJournalEntry(id);
+    
+    if (!existingEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Only posted entries can be reversed
+    if (existingEntry.status !== 'posted') {
+      throwBadRequest(`Only posted journal entries can be reversed. Current status: '${existingEntry.status}'`);
+    }
+    
+    try {
+      // Extract the reversal options
+      const { date, description, referenceNumber } = req.body;
+      
+      // Create the reversal entry
+      const reversalEntry = await storage.reverseJournalEntry(id, {
+        date: date ? new Date(date) : undefined,
+        description: description || `Reversal of ${existingEntry.referenceNumber || id}`,
+        createdBy: user.id,
+        referenceNumber: referenceNumber || `REV-${existingEntry.referenceNumber || id}`
+      });
+      
+      if (!reversalEntry) {
+        throw new Error('Failed to create reversal entry');
+      }
+      
+      res.status(201).json({
+        message: 'Journal entry reversed successfully',
+        originalEntry: existingEntry,
+        reversalEntry
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: formatZodError(error) });
+      }
+      throw error;
+    }
+  }));
 }

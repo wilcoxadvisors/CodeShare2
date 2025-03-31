@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User Roles
 export enum UserRole {
@@ -100,6 +101,23 @@ export const userEntityAccess = pgTable("user_entity_access", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
+// Locations table for tracking physical/business locations
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  description: text("description"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  postalCode: text("postal_code"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Account Types
 export enum AccountType {
   ASSET = "asset",
@@ -178,6 +196,13 @@ export const journalEntries = pgTable("journal_entries", {
   journalType: text("journal_type", { enum: ['JE', 'AJ', 'SJ', 'CL'] }).notNull().default('JE'), // JE=General Journal, AJ=Adjusting Journal, SJ=Statistical Journal, CL=Closing Journal
   supDocId: text("sup_doc_id"), // Supporting document ID/reference
   reversalDate: timestamp("reversal_date", { mode: 'date' }), // Date for reversing entries
+  
+  // Reversal tracking fields
+  isReversal: boolean("is_reversal").default(false), // Indicates this entry is a reversal of another
+  reversedEntryId: integer("reversed_entry_id"), // Will be set up with references after table creation
+  isReversed: boolean("is_reversed").default(false), // Indicates this entry has been reversed
+  reversedByEntryId: integer("reversed_by_entry_id"), // Will be set up with references after table creation
+  
   // Existing workflow fields
   requestedBy: integer("requested_by").references(() => users.id),
   requestedAt: timestamp("requested_at"),
@@ -216,41 +241,47 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
 });
 
 // Relations for journalEntries and journalEntryLines
-export const journalEntriesRelations = {
-  client: (journalEntries) => ({
-    to: clients,
+export const journalEntriesRelations = relations(journalEntries, ({ one, many }) => ({
+  client: one(clients, {
     fields: [journalEntries.clientId],
     references: [clients.id],
     relationName: "journalEntries_client",
   }),
-  entity: (journalEntries) => ({
-    to: entities,
+  entity: one(entities, {
     fields: [journalEntries.entityId],
     references: [entities.id],
     relationName: "journalEntries_entity",
   }),
-  lines: (journalEntries) => ({
-    to: journalEntryLines,
+  lines: many(journalEntryLines, {
     fields: [journalEntries.id],
     references: [journalEntryLines.journalEntryId],
     relationName: "journalEntries_lines",
   }),
-};
+  // Self-references for reversal tracking
+  originalEntry: one(journalEntries, {
+    fields: [journalEntries.reversedEntryId],
+    references: [journalEntries.id],
+    relationName: "journalEntries_originalEntry",
+  }),
+  reversalEntry: one(journalEntries, {
+    fields: [journalEntries.reversedByEntryId],
+    references: [journalEntries.id],
+    relationName: "journalEntries_reversalEntry",
+  }),
+}));
 
-export const journalEntryLinesRelations = {
-  journalEntry: (journalEntryLines) => ({
-    to: journalEntries,
+export const journalEntryLinesRelations = relations(journalEntryLines, ({ one }) => ({
+  journalEntry: one(journalEntries, {
     fields: [journalEntryLines.journalEntryId],
     references: [journalEntries.id],
     relationName: "journalEntryLines_journalEntry",
   }),
-  account: (journalEntryLines) => ({
-    to: accounts,
+  account: one(accounts, {
     fields: [journalEntryLines.accountId],
     references: [accounts.id],
     relationName: "journalEntryLines_account",
   }),
-};
+}));
 
 // Journal Entry Files (supporting documents)
 export const journalEntryFiles = pgTable("journal_entry_files", {
@@ -534,6 +565,23 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit(
   updatedAt: true
 });
 
+// Schema for Reversal Journal Entry creation
+export const insertReversalJournalEntrySchema = createInsertSchema(journalEntries).omit({
+  id: true,
+  requestedAt: true,
+  approvedAt: true,
+  rejectedAt: true,
+  postedAt: true,
+  createdAt: true,
+  updatedAt: true
+}).extend({
+  reversedEntryId: z.number(), // Original entry ID being reversed
+  isReversal: z.boolean().default(true), // Mark as reversal entry
+  date: z.date(), // Date for the reversal entry
+  description: z.string().optional(), // Optional description override
+  createdBy: z.number(), // Who created the reversal
+});
+
 // Schema for Journal Entry Line insertion
 export const insertJournalEntryLineSchema = createInsertSchema(journalEntryLines).omit({
   id: true,
@@ -688,6 +736,7 @@ export type InsertJournal = z.infer<typeof insertJournalSchema>;
 
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
+export type InsertReversalJournalEntry = z.infer<typeof insertReversalJournalEntrySchema>;
 
 export type JournalEntryLine = typeof journalEntryLines.$inferSelect;
 export type InsertJournalEntryLine = z.infer<typeof insertJournalEntryLineSchema>;
@@ -894,34 +943,18 @@ export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).om
 export type BlogSubscriber = typeof blogSubscribers.$inferSelect;
 export type InsertBlogSubscriber = z.infer<typeof insertBlogSubscriberSchema>;
 
-// Locations table - for use in journal entries and other location-specific records
-export const locations = pgTable("locations", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
-  name: text("name").notNull(),
-  code: text("code"),
-  description: text("description"),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull()
-});
-
 // Locations relation to client
-export const locationsRelations = {
-  client: (locations) => ({
-    client: one(clients, {
-      fields: [locations.clientId],
-      references: [clients.id]
-    })
+export const locationsRelations = relations(locations, ({ one }) => ({
+  client: one(clients, {
+    fields: [locations.clientId],
+    references: [clients.id]
   })
-};
+}));
 
 // Update clients relation to include locations
-export const clientsRelations = {
-  locations: (clients) => ({
-    locations: many(locations)
-  })
-};
+export const clientsRelations = relations(clients, ({ many }) => ({
+  locations: many(locations)
+}));
 
 // Schema for location insertion
 export const insertLocationSchema = createInsertSchema(locations).omit({

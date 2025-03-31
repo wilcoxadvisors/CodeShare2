@@ -1,0 +1,37 @@
+Task: Implement Journal Entry Backend API & Storage Logic (Task B.2 - Step 2)
+
+Goal: Implement the backend API routes and storage functions necessary for creating, reading, updating, and deleting/voiding Journal Entries and their lines.
+
+Reference: The enhanced schemas for journalEntries and journalEntryLines (including journalType, locationId, supDocId, reversalDate) are defined in shared/schema.ts.
+
+Implement/Verify Storage Logic (server/storage.ts):
+Action: Ensure the following methods are correctly implemented in the DatabaseStorage class (and MemStorage if applicable), matching signatures defined in IStorage:
+createJournalEntry(entryData, linesData):
+Must use a database transaction (db.transaction).
+Crucial Validation: Before inserting, calculate the sum of debits and sum of credits from linesData. Ensure sum(debits) === sum(credits) and the total is not zero. Throw a specific validation error if unbalanced.
+Insert the main entry data (including journalType, supDocId, reversalDate if provided) into journalEntries.
+Insert all associated lines into journalEntryLines, linking them to the created entry ID and including locationId if provided.
+Return the full created entry with its lines.
+listJournalEntries(clientId, entityId, filters): Implement fetching JEs, allowing filtering by date range, status, etc.
+getJournalEntry(id): Fetch a single JE header and all its associated journalEntryLines.
+updateJournalEntry(entryId, entryData, linesData):
+Use a transaction.
+Fetch the existing entry. Check its status. Prevent updates to posted/voided entries, or allow only specific fields (e.g., description) based on defined business rules.
+Handle updates to header fields.
+Handle updates to lines (deleting lines not in linesData, updating existing lines based on line ID or a unique key, adding new lines).
+Re-validate: If line amounts are modified, must re-validate that total debits equal total credits for the entire entry. Throw error if unbalanced.
+deleteJournalEntry(entryId): Implement the deletion/voiding strategy. Recommendation: If entry status is 'draft', allow deletion. If 'posted', change status to 'voided' (soft delete). Add necessary logic to prevent voiding if constraints exist (e.g., linked to reconciled items - future).
+Implement API Routes (server/journalEntryRoutes.ts):
+Action: Verify/Create server/journalEntryRoutes.ts.
+Action: Implement the following Express routes:
+POST /api/journal-entries: Expects { entryData: {...}, linesData: [...] } in body. Calls storage.createJournalEntry. Returns 201 with created entry or 400/500 on error.
+GET /api/journal-entries: Handles query parameters (e.g., ?clientId=, entityId=, startDate=, endDate=, status=) for filtering. Calls storage.listJournalEntries.
+GET /api/journal-entries/:id: Calls storage.getJournalEntry.
+PUT /api/journal-entries/:id: Expects { entryData: {...}, linesData: [...] }. Calls storage.updateJournalEntry.
+DELETE /api/journal-entries/:id: Calls storage.deleteJournalEntry.
+Action: Apply isAuthenticated middleware to all routes.
+Action: Add input validation to route handlers (check required fields, basic types).
+Register Routes (server/routes.ts):
+Action: Ensure the router defined in server/journalEntryRoutes.ts is imported and registered correctly in server/routes.ts.
+Report Completion:
+Action: Report that the backend API routes (journalEntryRoutes.ts) and storage logic (storage.ts) for Journal Entries have been implemented. Highlight how the debit/credit balance validation and transaction handling were implemented in createJournalEntry and updateJournalEntry.

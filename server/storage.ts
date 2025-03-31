@@ -32,7 +32,7 @@ import {
 export interface AccountTreeNode extends Account {
   children: AccountTreeNode[];
 }
-import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
@@ -97,6 +97,12 @@ export interface IStorage {
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
   deleteJournalEntry(id: number): Promise<void>;
   listJournalEntries(options?: { clientId?: number, entityId?: number, startDate?: Date, endDate?: Date, status?: string, limit?: number, offset?: number }): Promise<JournalEntry[]>;
+  reverseJournalEntry(journalEntryId: number, options: {
+    date?: Date;
+    description?: string;
+    createdBy: number;
+    referenceNumber?: string;
+  }): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
   
   // Journal Entry Line methods
   addJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
@@ -1316,6 +1322,96 @@ export class MemStorage implements IStorage {
     
     this.journalEntryFiles.set(id, journalEntryFile);
     return journalEntryFile;
+  }
+  
+  async reverseJournalEntry(journalEntryId: number, options: {
+    date?: Date;
+    description?: string;
+    createdBy: number;
+    referenceNumber?: string;
+  }): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined> {
+    // 1. Get the original journal entry with lines
+    const originalEntry = this.journalEntries.get(journalEntryId);
+    if (!originalEntry) {
+      throw new Error("Journal entry not found");
+    }
+    
+    // 2. Check if journal entry can be reversed (must be posted)
+    if (originalEntry.status !== "posted") {
+      throw new Error("Only posted journal entries can be reversed");
+    }
+    
+    // Get the lines for the original entry
+    const originalLines = Array.from(this.journalEntryLines.values())
+      .filter(line => line.journalEntryId === journalEntryId);
+    
+    // 3. Create the reversing journal entry
+    const id = this.currentJournalEntryId++;
+    const date = options.date || new Date();
+    const now = new Date();
+    
+    const reversalEntry: JournalEntry = {
+      id,
+      clientId: originalEntry.clientId,
+      entityId: originalEntry.entityId,
+      date: date,
+      description: options.description || `Reversal of ${originalEntry.referenceNumber || journalEntryId}`,
+      referenceNumber: options.referenceNumber || `REV-${originalEntry.referenceNumber || journalEntryId}`,
+      createdBy: options.createdBy,
+      journalType: originalEntry.journalType,
+      status: "draft", // Start as draft, to be reviewed
+      isSystemGenerated: true, // Mark as system-generated
+      isReversal: true, // Flag as a reversal entry
+      reversedEntryId: journalEntryId, // Reference to the original entry
+      createdAt: now,
+      updatedAt: now,
+      postedBy: null,
+      postedAt: null,
+      currency: originalEntry.currency,
+      locationId: originalEntry.locationId,
+      exchange_rate: originalEntry.exchange_rate
+    };
+    
+    this.journalEntries.set(id, reversalEntry);
+    
+    // 4. Create the reversed lines (with debits/credits flipped)
+    const reversalLines: JournalEntryLine[] = [];
+    
+    for (const line of originalLines) {
+      // Flip the type (debit/credit)
+      const reversedType = line.type === "debit" ? "credit" : "debit";
+      
+      const lineId = this.currentJournalEntryLineId++;
+      
+      // Create the reversal line
+      const reversalLine: JournalEntryLine = {
+        id: lineId,
+        journalEntryId: id,
+        accountId: line.accountId,
+        type: reversedType,
+        amount: line.amount,
+        description: line.description,
+        locationId: line.locationId,
+        lineNo: line.lineNo,
+        reference: line.reference,
+        reconciled: false, // New line is not reconciled
+        reconciledAt: null,
+        reconciledBy: null,
+        taxAmount: line.taxAmount,
+        taxId: line.taxId,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      this.journalEntryLines.set(lineId, reversalLine);
+      reversalLines.push(reversalLine);
+    }
+    
+    // 5. Return the new entry with its lines
+    return {
+      ...reversalEntry,
+      lines: reversalLines
+    };
   }
   
   // Fixed Asset methods
@@ -4380,60 +4476,68 @@ export class DatabaseStorage implements IStorage {
     
     return await db.transaction(async (tx) => {
       try {
+        // ==================== STEP 1: Parse the file ====================
         let rows: any[] = [];
+        console.log(`Parsing file for Chart of Accounts import. Client ID: ${clientId}`);
         
-        // Determine if this is an Excel file or CSV based on file extension
-        const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
-        
-        if (isExcel) {
-          // Process Excel file
-          const XLSX = await import('xlsx');
-          const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
+        try {
+          // Determine if this is an Excel file or CSV based on file extension
+          const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
           
-          // Convert to JSON with header option
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          // Extract headers and transform them
-          if (jsonData.length < 2) {
-            result.errors.push('Excel file is empty or missing data rows');
-            return result;
-          }
-          
-          const headers = (jsonData[0] as string[]).map(header => 
-            header ? this.normalizeHeaderField(header) : '');
-          
-          // Process data rows (skip header row)
-          rows = jsonData.slice(1).map(row => {
-            const rowData: any = {};
-            (row as any[]).forEach((cell, index) => {
-              if (index < headers.length && headers[index]) {
-                rowData[headers[index]] = cell;
-              }
-            });
-            return rowData;
-          });
-        } else {
-          // Parse CSV from buffer
-          const csvContent = fileBuffer.toString('utf-8');
-          const Papa = await import('papaparse');
-          const parseResult = Papa.default.parse(csvContent, {
-            header: true,
-            skipEmptyLines: true,
-            transformHeader: (header: string) => this.normalizeHeaderField(header)
-          });
-        
-          if (parseResult.errors && parseResult.errors.length > 0) {
-            for (const error of parseResult.errors) {
-              result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+          if (isExcel) {
+            // Process Excel file
+            const XLSX = await import('xlsx');
+            const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            // Convert to JSON with header option
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Extract headers and transform them
+            if (jsonData.length < 2) {
+              result.errors.push('Excel file is empty or missing data rows');
+              return result;
             }
-            return result;
-          }
+            
+            const headers = (jsonData[0] as string[]).map(header => 
+              header ? this.normalizeHeaderField(header) : '');
+            
+            // Process data rows (skip header row)
+            rows = jsonData.slice(1).map(row => {
+              const rowData: any = {};
+              (row as any[]).forEach((cell, index) => {
+                if (index < headers.length && headers[index]) {
+                  rowData[headers[index]] = cell;
+                }
+              });
+              return rowData;
+            });
+          } else {
+            // Parse CSV from buffer
+            const csvContent = fileBuffer.toString('utf-8');
+            const Papa = await import('papaparse');
+            const parseResult = Papa.default.parse(csvContent, {
+              header: true,
+              skipEmptyLines: true,
+              transformHeader: (header: string) => this.normalizeHeaderField(header)
+            });
           
-          rows = parseResult.data as any[];
+            if (parseResult.errors && parseResult.errors.length > 0) {
+              for (const error of parseResult.errors) {
+                result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+              }
+              return result;
+            }
+            
+            rows = parseResult.data as any[];
+          }
+        } catch (parseError: any) {
+          result.errors.push(`File parsing error: ${parseError.message}`);
+          return result;
         }
         
+        // ==================== STEP 2: Validate and normalize rows ====================
         if (!rows || rows.length === 0) {
           result.errors.push('No accounts found in the imported file');
           return result;
@@ -4441,54 +4545,111 @@ export class DatabaseStorage implements IStorage {
         
         // Process each row to normalize field names and handle case sensitivity
         rows = this.normalizeImportRows(rows);
+        console.log(`Normalized ${rows.length} rows from imported file`);
         
-        // Filter out any rows with empty required fields
-        rows = rows.filter(row => {
+        // Pre-validate rows to filter out any with missing required fields
+        const validRows: any[] = [];
+        const accountCodesInImport = new Set<string>();
+        
+        for (const row of rows) {
           const code = this.getCaseInsensitiveValue(row, 'code');
           const name = this.getCaseInsensitiveValue(row, 'name');
           const type = this.getCaseInsensitiveValue(row, 'type');
           
           if (!code || !name || !type) {
             result.skipped++;
-            return false;
+            continue;
           }
-          return true;
-        });
+          
+          // Standardize the code format (trim and store original case)
+          const trimmedCode = code.trim();
+          row.code = trimmedCode;
+          
+          // Track unique account codes to identify duplicates in the import file
+          const lowerCode = trimmedCode.toLowerCase();
+          if (accountCodesInImport.has(lowerCode)) {
+            result.warnings.push(`Duplicate account code in import: ${trimmedCode}. Only the first entry will be processed.`);
+            result.skipped++;
+            continue;
+          }
+          
+          accountCodesInImport.add(lowerCode);
+          validRows.push(row);
+        }
         
-        if (rows.length === 0) {
-          result.errors.push('No valid accounts found in the file after filtering empty rows');
+        if (validRows.length === 0) {
+          result.errors.push('No valid accounts found in the file after filtering rows with missing required fields');
           return result;
         }
         
-        // Get existing accounts to check for duplicates
-        const existingAccounts = await this.getAccounts(clientId);
+        console.log(`Found ${validRows.length} valid rows after filtering`);
+        
+        // ==================== STEP 3: Retrieve existing accounts efficiently ====================
+        // Get existing accounts to check for duplicates - do this ONCE to avoid multiple DB queries
+        const existingAccounts = await tx
+          .select()
+          .from(accounts)
+          .where(eq(accounts.clientId, clientId))
+          .execute();
+        
+        console.log(`Found ${existingAccounts.length} existing accounts for client ${clientId}`);
+        
+        // Create lookup maps for efficient access
         const existingCodeMap = new Map<string, Account>();
+        const existingIdMap = new Map<number, Account>();
+        const codeToIdMap = new Map<string, number>();
         
         // Map for faster lookups - storing lowercase codes for case-insensitive matching
         for (const account of existingAccounts) {
           existingCodeMap.set(account.code.toLowerCase(), account);
-        }
-        
-        // Map to store all account codes (existing + new) to their IDs for parent resolution
-        const codeToIdMap = new Map<string, number>();
-        
-        // First add all existing account codes to the map (preserving original case for display)
-        for (const account of existingAccounts) {
+          existingIdMap.set(account.id, account);
           codeToIdMap.set(account.code, account.id);
+          // Also map lowercase for more robust matching later
+          codeToIdMap.set(account.code.toLowerCase(), account.id);
         }
         
-        // First pass: Process accounts - creating new ones or updating existing ones
-        for (const row of rows) {
+        // ==================== STEP 4: Batch query for accounts with transactions ====================
+        // Efficiently query which accounts have transactions in one go
+        const accountsWithTransactions = new Set<number>();
+        
+        if (existingAccounts.length > 0) {
+          const accountIds = existingAccounts.map(a => a.id);
+          
+          // Split into chunks of 500 to avoid query size limitations
+          const chunkSize = 500;
+          for (let i = 0; i < accountIds.length; i += chunkSize) {
+            const chunk = accountIds.slice(i, i + chunkSize);
+            
+            const transactionCounts = await tx
+              .select({
+                accountId: journalEntryLines.accountId,
+                count: count()
+              })
+              .from(journalEntryLines)
+              .where(inArray(journalEntryLines.accountId, chunk))
+              .groupBy(journalEntryLines.accountId)
+              .having(gt(count(), 0))
+              .execute();
+            
+            transactionCounts.forEach(item => {
+              accountsWithTransactions.add(item.accountId);
+            });
+          }
+        }
+        
+        console.log(`Found ${accountsWithTransactions.size} accounts with transactions`);
+        
+        // ==================== STEP 5: First pass - create/update accounts ====================
+        // Prepare collections for batch operations
+        const accountsToCreate: InsertAccount[] = [];
+        const accountsToUpdate: { id: number, data: Partial<Account> }[] = [];
+        const newAccountCodeToRow = new Map<string, any>();
+        
+        for (const row of validRows) {
           try {
-            // Get code, name, and type with case-insensitive access
-            const accountCode = this.getCaseInsensitiveValue(row, 'code')?.trim();
+            const accountCode = row.code;
             const accountName = this.getCaseInsensitiveValue(row, 'name')?.trim();
             const accountTypeRaw = this.getCaseInsensitiveValue(row, 'type');
-            
-            if (!accountCode || !accountName || !accountTypeRaw) {
-              result.skipped++;
-              continue;
-            }
             
             // Normalize account type to match enum
             let normalizedType;
@@ -4502,24 +4663,29 @@ export class DatabaseStorage implements IStorage {
             
             // Check if the account already exists (case-insensitive comparison)
             const existingAccount = existingCodeMap.get(accountCode.toLowerCase());
+            const isActiveInImport = this.parseIsActive(row, true);
             
             if (existingAccount) {
-              // Check if this account has transactions
-              const hasTransactions = await this.accountHasTransactions(existingAccount.id);
+              // Check if this account has transactions using our pre-computed set
+              const hasTransactions = accountsWithTransactions.has(existingAccount.id);
               
               // Handle active status changes
-              const isActiveInImport = this.parseIsActive(row, true);
-              
               if (!isActiveInImport && existingAccount.active) {
                 // Mark as inactive
-                await this.updateAccount(existingAccount.id, { active: false });
+                accountsToUpdate.push({
+                  id: existingAccount.id,
+                  data: { active: false }
+                });
                 result.inactive++;
                 result.warnings.push(`Account ${accountCode} (${accountName}) has been marked inactive`);
                 result.count++;
                 continue;
               } else if (!existingAccount.active && isActiveInImport) {
                 // Reactivate the account
-                await this.updateAccount(existingAccount.id, { active: true });
+                accountsToUpdate.push({
+                  id: existingAccount.id,
+                  data: { active: true }
+                });
                 result.updated++;
                 result.count++;
                 continue;
@@ -4531,7 +4697,8 @@ export class DatabaseStorage implements IStorage {
                 
                 if (typeChanged) {
                   result.warnings.push(`Account ${accountCode} (${accountName}) has transactions and its type cannot be changed`);
-                  result.skipped++;
+                  result.unchanged++;
+                  result.count++;
                   continue;
                 }
                 
@@ -4546,7 +4713,10 @@ export class DatabaseStorage implements IStorage {
                 const descChanged = safeUpdate.description !== existingAccount.description;
                 
                 if (nameChanged || descChanged) {
-                  await this.updateAccount(existingAccount.id, safeUpdate);
+                  accountsToUpdate.push({
+                    id: existingAccount.id,
+                    data: safeUpdate
+                  });
                   result.updated++;
                   result.warnings.push(`Account ${accountCode} has transactions - only name and description were updated`);
                 } else {
@@ -4573,15 +4743,18 @@ export class DatabaseStorage implements IStorage {
                   updateData.subledgerType !== existingAccount.subledgerType;
                 
                 if (hasChanges) {
-                  await this.updateAccount(existingAccount.id, updateData);
+                  accountsToUpdate.push({
+                    id: existingAccount.id,
+                    data: updateData
+                  });
                   result.updated++;
                 } else {
                   result.unchanged++;
                 }
               }
             } else {
-              // Create a new account (without parent reference first)
-              const newAccount = await this.createAccount({
+              // Prepare new account for batch creation
+              accountsToCreate.push({
                 clientId,
                 code: accountCode,
                 name: accountName,
@@ -4591,15 +4764,11 @@ export class DatabaseStorage implements IStorage {
                 subledgerType: this.getSubledgerType(row),
                 parentId: null, // We'll update this in the second pass
                 description: this.getCaseInsensitiveValue(row, 'description') || null,
-                active: this.parseIsActive(row, true)
+                active: isActiveInImport
               });
               
-              // Store the new account code to ID mapping
-              codeToIdMap.set(accountCode, newAccount.id);
-              
-              // Also add to the lowercase map for lookups
-              existingCodeMap.set(accountCode.toLowerCase(), newAccount);
-              
+              // Store relationship between code and row for parent resolution
+              newAccountCodeToRow.set(accountCode.toLowerCase(), row);
               result.added++;
             }
             
@@ -4610,30 +4779,95 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
-        // Second pass: Resolve parent-child relationships
-        for (const row of rows) {
+        // ==================== STEP 6: Execute batch creations ====================
+        console.log(`Preparing to create ${accountsToCreate.length} new accounts`);
+        
+        // Create accounts in batches to improve performance
+        if (accountsToCreate.length > 0) {
+          const batchSize = 100;
+          const newAccounts: Account[] = [];
+          
+          for (let i = 0; i < accountsToCreate.length; i += batchSize) {
+            const batch = accountsToCreate.slice(i, i + batchSize);
+            try {
+              const createdBatch = await tx
+                .insert(accounts)
+                .values(batch)
+                .returning();
+              
+              newAccounts.push(...createdBatch);
+            } catch (batchError: any) {
+              console.error(`Error creating batch of accounts:`, batchError);
+              result.errors.push(`Failed to create some accounts: ${batchError.message}`);
+              // Continue with other batches even if one fails
+            }
+          }
+          
+          // Add newly created accounts to our lookup maps
+          for (const newAccount of newAccounts) {
+            codeToIdMap.set(newAccount.code, newAccount.id);
+            codeToIdMap.set(newAccount.code.toLowerCase(), newAccount.id); // Add lowercase version too
+            existingCodeMap.set(newAccount.code.toLowerCase(), newAccount);
+            existingIdMap.set(newAccount.id, newAccount);
+          }
+          
+          console.log(`Successfully created ${newAccounts.length} new accounts`);
+        }
+        
+        // ==================== STEP 7: Execute batch updates ====================
+        console.log(`Preparing to update ${accountsToUpdate.length} existing accounts`);
+        
+        if (accountsToUpdate.length > 0) {
+          const batchSize = 100;
+          
+          for (let i = 0; i < accountsToUpdate.length; i += batchSize) {
+            const batch = accountsToUpdate.slice(i, i + batchSize);
+            
+            // Execute updates individually within the transaction
+            for (const update of batch) {
+              try {
+                await tx
+                  .update(accounts)
+                  .set(update.data)
+                  .where(eq(accounts.id, update.id));
+              } catch (updateError: any) {
+                console.error(`Error updating account ${update.id}:`, updateError);
+                result.errors.push(`Failed to update account with ID ${update.id}: ${updateError.message}`);
+              }
+            }
+          }
+        }
+        
+        // ==================== STEP 8: Second pass - parent-child relationships ====================
+        console.log(`Processing parent-child relationships`);
+        
+        // First gather all parent relationships to resolve
+        const parentUpdates: { accountId: number, parentId: number, accountCode: string, parentCode: string }[] = [];
+        
+        // Process existing accounts that may need parent updates
+        for (const row of validRows) {
           try {
-            const accountCode = this.getCaseInsensitiveValue(row, 'code')?.trim();
-            if (!accountCode) continue;
+            const accountCode = row.code;
+            const lowerAccountCode = accountCode.toLowerCase();
+            
+            // If this is a new account or an existing one that doesn't have transactions
+            const accountId = codeToIdMap.get(lowerAccountCode);
+            if (!accountId) continue; // Skip if account wasn't successfully created/found
+            
+            // Skip accounts with transactions since we don't update parent relationships for those
+            if (accountsWithTransactions.has(accountId)) continue;
             
             // Extract parent code with comprehensive case-insensitive handling
             const parentCode = this.getParentCode(row);
+            if (!parentCode) continue; // No parent specified
             
-            if (!parentCode) continue;
+            const lowerParentCode = parentCode.toLowerCase();
             
-            console.log(`DEBUG: Extracted parentCode value: "${parentCode}", type: ${typeof parentCode}, from row for account ${accountCode}`);
-            
-            // Check if both the account and its parent exist in our map
-            const accountId = codeToIdMap.get(accountCode);
-            const parentId = codeToIdMap.get(parentCode);
-            
-            if (!accountId) {
-              result.warnings.push(`Cannot establish parent relationship: Account ${accountCode} not found in code map`);
-              continue;
-            }
+            // Get the parent ID, trying different case variations
+            const parentId = codeToIdMap.get(parentCode) || codeToIdMap.get(lowerParentCode);
             
             if (!parentId) {
-              result.warnings.push(`Cannot establish parent relationship: Parent account ${parentCode} not found in code map`);
+              result.warnings.push(`Cannot establish parent relationship: Parent account ${parentCode} not found for ${accountCode}`);
               continue;
             }
             
@@ -4643,33 +4877,72 @@ export class DatabaseStorage implements IStorage {
               continue;
             }
             
-            console.log(`DEBUG: Setting parent relationship: Account ${accountCode} (ID: ${accountId}) -> Parent ${parentCode} (ID: ${parentId})`);
+            // Check for circular references
+            let potentialParentId = parentId;
+            let isCircular = false;
+            const visited = new Set<number>();
             
-            // Check if account has transactions before updating parent
-            const hasTransactions = await this.accountHasTransactions(accountId);
+            while (potentialParentId) {
+              if (visited.has(potentialParentId)) {
+                isCircular = true;
+                break;
+              }
+              
+              visited.add(potentialParentId);
+              
+              const parent = existingIdMap.get(potentialParentId);
+              potentialParentId = parent?.parentId || null;
+              
+              // Would this create a circular reference?
+              if (potentialParentId === accountId) {
+                isCircular = true;
+                break;
+              }
+            }
             
-            if (hasTransactions) {
-              // Don't update parent if account has transactions as it could affect reports
-              result.warnings.push(`Account ${accountCode} has transactions - parent relationship not updated`);
+            if (isCircular) {
+              result.warnings.push(`Cannot set parent for ${accountCode}: Would create a circular reference`);
               continue;
             }
             
-            // Update the account with the parent ID
-            await this.updateAccount(accountId, { parentId });
+            // Queue up the parent relationship update
+            parentUpdates.push({
+              accountId,
+              parentId,
+              accountCode,
+              parentCode
+            });
             
-            // Verify the update was successful
-            const updatedAccount = await this.getAccount(accountId);
-            console.log(`DEBUG: Update result - Account ${accountCode} now has parentId: ${updatedAccount?.parentId}`);
           } catch (error: any) {
-            const accountCode = this.getCaseInsensitiveValue(row, 'code') || 'unknown';
-            console.error(`DEBUG: Error setting parent for ${accountCode}: ${error.message || 'Unknown error'}`);
-            result.errors.push(`Error setting parent for account ${accountCode}: ${error.message || 'Unknown error'}`);
+            const accountCode = row.code || 'unknown';
+            console.error(`Error resolving parent for ${accountCode}:`, error);
+            result.warnings.push(`Error resolving parent for account ${accountCode}: ${error.message || 'Unknown error'}`);
           }
         }
         
+        // ==================== STEP 9: Execute parent relationship updates ====================
+        console.log(`Applying ${parentUpdates.length} parent relationship updates`);
+        
+        if (parentUpdates.length > 0) {
+          for (const update of parentUpdates) {
+            try {
+              await tx
+                .update(accounts)
+                .set({ parentId: update.parentId })
+                .where(eq(accounts.id, update.accountId));
+                
+              console.log(`Updated parent relationship: ${update.accountCode} -> ${update.parentCode}`);
+            } catch (updateError: any) {
+              console.error(`Error updating parent relationship for account ${update.accountCode}:`, updateError);
+              result.warnings.push(`Failed to update parent for account ${update.accountCode}: ${updateError.message}`);
+            }
+          }
+        }
+        
+        console.log(`Chart of Accounts import completed successfully for client ${clientId}`);
         return result;
       } catch (error: any) {
-        console.error(`Import failed:`, error);
+        console.error(`Chart of Accounts import failed:`, error);
         result.errors.push(`Import failed: ${error.message || 'Unknown error'}`);
         throw error; // This will trigger a rollback of the transaction
       }
@@ -4706,6 +4979,7 @@ export class DatabaseStorage implements IStorage {
   
   /**
    * Helper to get value from a row with case-insensitive access
+   * Enhanced to handle different field naming conventions
    */
   private getCaseInsensitiveValue(row: any, fieldName: string): any {
     if (!row) return null;
@@ -4713,18 +4987,60 @@ export class DatabaseStorage implements IStorage {
     // Try direct access first
     if (row[fieldName] !== undefined) return row[fieldName];
     
-    // Try lowercase key
+    // Create variants of field names to try
+    const variants = new Set<string>();
+    
+    // Lowercase and uppercase variants
     const lowerFieldName = fieldName.toLowerCase();
-    if (row[lowerFieldName] !== undefined) return row[lowerFieldName];
-    
-    // Try uppercase key
     const upperFieldName = fieldName.toUpperCase();
-    if (row[upperFieldName] !== undefined) return row[upperFieldName];
+    variants.add(lowerFieldName);
+    variants.add(upperFieldName);
     
-    // Check all keys case-insensitively
+    // Handle camelCase, snake_case, kebab-case, and PascalCase conversions
+    // Convert to snake_case
+    const snakeCaseField = lowerFieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
+    variants.add(snakeCaseField);
+    
+    // Convert to kebab-case
+    const kebabCaseField = lowerFieldName.replace(/([A-Z])/g, '-$1').toLowerCase();
+    variants.add(kebabCaseField);
+    
+    // Convert to camelCase
+    const camelCaseField = lowerFieldName.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    variants.add(camelCaseField);
+    
+    // Convert to PascalCase
+    const pascalCaseField = lowerFieldName.charAt(0).toUpperCase() + 
+                            lowerFieldName.slice(1).replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    variants.add(pascalCaseField);
+    
+    // Try common variations with spaces
+    variants.add(lowerFieldName.replace(/_/g, ' '));
+    variants.add(lowerFieldName.replace(/-/g, ' '));
+    
+    // Check all variants
+    for (const variant of variants) {
+      if (row[variant] !== undefined) {
+        return row[variant];
+      }
+    }
+    
+    // Last resort: check all keys case-insensitively
     for (const key in row) {
       if (key.toLowerCase() === lowerFieldName) {
         return row[key];
+      }
+    }
+    
+    // Look for variant-like matches (partial matches or similar fields)
+    for (const key in row) {
+      const keyLower = key.toLowerCase();
+      // Check if the key contains the field name or vice versa
+      if (keyLower.includes(lowerFieldName) || lowerFieldName.includes(keyLower)) {
+        // Only match if at least 3 characters in length and the match is significant
+        if (lowerFieldName.length >= 3 && keyLower.length >= 3) {
+          return row[key];
+        }
       }
     }
     
@@ -4737,17 +5053,23 @@ export class DatabaseStorage implements IStorage {
   private getParentCode(row: any): string | null {
     if (!row) return null;
     
-    // Array of possible parent code field names
+    // Array of possible parent code field names - expanded with more variations
     const parentCodeFields = [
-      'parentcode', 'parentCode', 'ParentCode', 'PARENTCODE', 'ParentCODE',
-      'parent_code', 'PARENT_CODE', 'parent-code', 'PARENT-CODE'
+      'parentcode', 'parentCode', 'ParentCode', 'PARENTCODE', 'ParentCODE', 'parent code', 'parent_code',
+      'PARENT_CODE', 'parent-code', 'PARENT-CODE', 'parent', 'Parent', 'PARENT', 'parentaccountnumber',
+      'parentAccountNumber', 'ParentAccountNumber', 'PARENTACCOUNTNUMBER', 'parent_account_number',
+      'parent account number', 'Parent Account Number', 'parent_account', 'parent account'
     ];
     
     // Try each possible field name
     for (const field of parentCodeFields) {
       const value = this.getCaseInsensitiveValue(row, field);
-      if (value) {
-        return typeof value === 'string' ? value.trim() : String(value).trim();
+      if (value !== null && value !== undefined && value !== '') {
+        // Convert to string, trim, and check if it's not just whitespace
+        const trimmed = typeof value === 'string' ? value.trim() : String(value).trim();
+        if (trimmed) {
+          return trimmed;
+        }
       }
     }
     
@@ -4940,12 +5262,21 @@ export class DatabaseStorage implements IStorage {
     return journalLines[0]?.count > 0;
   }
 
-  async getJournalEntry(id: number): Promise<JournalEntry | undefined> {
+  async getJournalEntry(id: number): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined> {
     const [entry] = await db
       .select()
       .from(journalEntries)
       .where(eq(journalEntries.id, id));
-    return entry || undefined;
+    
+    if (!entry) return undefined;
+    
+    // Get the lines for this journal entry
+    const lines = await this.getJournalEntryLines(id);
+    
+    return {
+      ...entry,
+      lines
+    };
   }
 
   async getJournalEntries(entityId: number): Promise<JournalEntry[]> {
@@ -4954,6 +5285,54 @@ export class DatabaseStorage implements IStorage {
       .from(journalEntries)
       .where(eq(journalEntries.entityId, entityId))
       .orderBy(desc(journalEntries.date));
+  }
+  
+  async listJournalEntries(options?: { clientId?: number, entityId?: number, startDate?: Date, endDate?: Date, status?: string, limit?: number, offset?: number }): Promise<JournalEntry[]> {
+    let query = db.select().from(journalEntries);
+    
+    // Apply filters based on options
+    if (options) {
+      const conditions = [];
+      
+      if (options.clientId) {
+        conditions.push(eq(journalEntries.clientId, options.clientId));
+      }
+      
+      if (options.entityId) {
+        conditions.push(eq(journalEntries.entityId, options.entityId));
+      }
+      
+      if (options.startDate) {
+        conditions.push(gte(journalEntries.date, options.startDate));
+      }
+      
+      if (options.endDate) {
+        conditions.push(lte(journalEntries.date, options.endDate));
+      }
+      
+      if (options.status) {
+        conditions.push(eq(journalEntries.status, options.status));
+      }
+      
+      // Apply all conditions if there are any
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      // Apply pagination
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+      
+      if (options.offset) {
+        query = query.offset(options.offset);
+      }
+    }
+    
+    // Order by date (most recent first) and then by ID
+    query = query.orderBy(desc(journalEntries.date), journalEntries.id);
+    
+    return await query;
   }
 
   async getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]> {
@@ -4967,37 +5346,231 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(journalEntries.date));
   }
 
-  async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
-    const [entry] = await db
-      .insert(journalEntries)
-      .values({
-        date: insertEntry.date,
-        entityId: insertEntry.entityId,
-        reference: insertEntry.reference,
-        createdBy: insertEntry.createdBy,
-        status: insertEntry.status || JournalEntryStatus.DRAFT,
-        description: insertEntry.description,
-        requestedBy: insertEntry.requestedBy || null,
-        approvedBy: insertEntry.approvedBy || null,
-        rejectedBy: insertEntry.rejectedBy || null,
-        rejectionReason: insertEntry.rejectionReason || null,
-        postedBy: insertEntry.postedBy || null,
-        postedAt: insertEntry.postedAt || null,
-        voidedBy: insertEntry.voidedBy || null,
-        voidedAt: insertEntry.voidedAt || null,
-        voidReason: insertEntry.voidReason || null
-      })
-      .returning();
-    return entry;
+  async createJournalEntry(entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }> {
+    // Check if there's at least one line
+    if (!linesData || linesData.length === 0) {
+      throw new Error("Journal entry must have at least one line");
+    }
+    
+    // Calculate the sum of debits and credits
+    let totalDebits = 0;
+    let totalCredits = 0;
+    
+    linesData.forEach(line => {
+      const amount = parseFloat(line.amount.toString());
+      
+      if (line.type === 'debit') {
+        totalDebits += amount;
+      } else if (line.type === 'credit') {
+        totalCredits += amount;
+      }
+    });
+    
+    // Verify that debits = credits (within a small epsilon for floating point comparisons)
+    const epsilon = 0.001;
+    if (Math.abs(totalDebits - totalCredits) > epsilon) {
+      throw new Error("Journal entry must balance: total debits must equal total credits");
+    }
+    
+    // Verify the total is not zero
+    if (totalDebits < epsilon) {
+      throw new Error("Journal entry total amount cannot be zero");
+    }
+    
+    // Start a transaction for creating the entry and its lines
+    return await db.transaction(async (tx) => {
+      // Insert the journal entry
+      const [entry] = await tx
+        .insert(journalEntries)
+        .values({
+          clientId: entryData.clientId,
+          entityId: entryData.entityId,
+          date: entryData.date,
+          referenceNumber: entryData.referenceNumber,
+          description: entryData.description,
+          isSystemGenerated: entryData.isSystemGenerated || false,
+          status: entryData.status || 'draft',
+          journalType: entryData.journalType || 'JE',
+          supDocId: entryData.supDocId,
+          reversalDate: entryData.reversalDate,
+          isReversal: entryData.isReversal || false,
+          reversedEntryId: entryData.reversedEntryId,
+          isReversed: entryData.isReversed || false,
+          reversedByEntryId: entryData.reversedByEntryId,
+          requestedBy: entryData.requestedBy,
+          requestedAt: entryData.requestedAt,
+          approvedBy: entryData.approvedBy,
+          approvedAt: entryData.approvedAt,
+          rejectedBy: entryData.rejectedBy,
+          rejectedAt: entryData.rejectedAt,
+          rejectionReason: entryData.rejectionReason,
+          postedBy: entryData.postedBy,
+          postedAt: entryData.postedAt,
+          createdBy: entryData.createdBy
+        })
+        .returning();
+      
+      // Insert all journal entry lines
+      const insertedLines: JournalEntryLine[] = [];
+      
+      for (const lineData of linesData) {
+        const [line] = await tx
+          .insert(journalEntryLines)
+          .values({
+            journalEntryId: entry.id,
+            accountId: lineData.accountId,
+            type: lineData.type,
+            amount: lineData.amount,
+            description: lineData.description,
+            locationId: lineData.locationId,
+            lineNo: lineData.lineNo,
+            reference: lineData.reference,
+            reconciled: lineData.reconciled || false,
+            reconciledAt: lineData.reconciledAt,
+            reconciledBy: lineData.reconciledBy
+          })
+          .returning();
+        
+        insertedLines.push(line);
+      }
+      
+      // Return the full created entry with its lines
+      return {
+        ...entry,
+        lines: insertedLines
+      };
+    });
   }
 
-  async updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined> {
-    const [entry] = await db
-      .update(journalEntries)
-      .set(entryData)
-      .where(eq(journalEntries.id, id))
-      .returning();
-    return entry || undefined;
+  async updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData?: (Partial<JournalEntryLine> & { id?: number })[]): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined> {
+    // Start a transaction for updating entry and its lines
+    return await db.transaction(async (tx) => {
+      // Get the existing entry first to check its status
+      const [existingEntry] = await tx
+        .select()
+        .from(journalEntries)
+        .where(eq(journalEntries.id, id));
+        
+      if (!existingEntry) {
+        throw new Error("Journal entry not found");
+      }
+      
+      // Prevent updates to posted or voided entries (business rule)
+      if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+        // Allow only specific fields to be updated based on status
+        if (entryData.status === 'void' && existingEntry.status === 'posted') {
+          // Allow voiding a posted entry
+        } else if (!entryData.description && Object.keys(entryData).length > 1) {
+          // Only description changes are allowed for posted/voided entries
+          throw new Error(`Cannot modify a journal entry with status '${existingEntry.status}' except for description`);
+        }
+      }
+      
+      // Update the journal entry
+      const [updatedEntry] = await tx
+        .update(journalEntries)
+        .set({
+          ...entryData,
+          updatedAt: new Date()
+        })
+        .where(eq(journalEntries.id, id))
+        .returning();
+      
+      if (!updatedEntry) return undefined;
+      
+      // If we have lines data and the entry is not posted/voided, update the lines
+      if (linesData && linesData.length > 0 && existingEntry.status !== 'posted' && existingEntry.status !== 'void') {
+        // Get existing lines to determine what needs to be deleted
+        const existingLines = await tx
+          .select()
+          .from(journalEntryLines)
+          .where(eq(journalEntryLines.journalEntryId, id));
+        
+        // Find line IDs that are in existingLines but not in linesData (to be deleted)
+        const existingLineIds = existingLines.map(line => line.id);
+        const updatedLineIds = linesData.filter(line => line.id).map(line => line.id);
+        const linesToDelete = existingLineIds.filter(id => !updatedLineIds.includes(id));
+        
+        // Delete lines that are no longer needed
+        for (const lineId of linesToDelete) {
+          await tx
+            .delete(journalEntryLines)
+            .where(eq(journalEntryLines.id, lineId));
+        }
+        
+        // Handle each line - either update existing or create new
+        for (const lineData of linesData) {
+          if (lineData.id) {
+            // Update existing line
+            await tx
+              .update(journalEntryLines)
+              .set({
+                ...lineData,
+                updatedAt: new Date()
+              })
+              .where(eq(journalEntryLines.id, lineData.id));
+          } else {
+            // Create new line
+            await tx
+              .insert(journalEntryLines)
+              .values({
+                journalEntryId: id,
+                accountId: lineData.accountId!,
+                type: lineData.type!,
+                amount: lineData.amount!,
+                description: lineData.description || null,
+                locationId: lineData.locationId || null,
+                lineNo: lineData.lineNo || null,
+                reference: lineData.reference || null,
+                reconciled: lineData.reconciled || false,
+                reconciledAt: lineData.reconciledAt || null,
+                reconciledBy: lineData.reconciledBy || null
+              });
+          }
+        }
+      }
+      
+      // Get the updated lines for this journal entry
+      const lines = await tx
+        .select()
+        .from(journalEntryLines)
+        .where(eq(journalEntryLines.journalEntryId, id))
+        .orderBy(journalEntryLines.lineNo);
+      
+      // Only verify balance if we updated lines and entry is still in draft
+      if (linesData && linesData.length > 0 && updatedEntry.status === 'draft') {
+        // Validate that debits = credits
+        let totalDebits = 0;
+        let totalCredits = 0;
+        
+        lines.forEach(line => {
+          const amount = parseFloat(line.amount.toString());
+          
+          if (line.type === 'debit') {
+            totalDebits += amount;
+          } else if (line.type === 'credit') {
+            totalCredits += amount;
+          }
+        });
+        
+        // Verify that debits = credits (within a small epsilon for floating point comparisons)
+        const epsilon = 0.001;
+        if (Math.abs(totalDebits - totalCredits) > epsilon) {
+          throw new Error("Journal entry must balance: total debits must equal total credits");
+        }
+        
+        // Verify the total is not zero
+        if (totalDebits < epsilon) {
+          throw new Error("Journal entry total amount cannot be zero");
+        }
+      }
+      
+      // Return the entry with lines
+      return {
+        ...updatedEntry,
+        lines
+      };
+    });
   }
 
   async getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]> {
@@ -5014,6 +5587,140 @@ export class DatabaseStorage implements IStorage {
       .values(insertLine)
       .returning();
     return line;
+  }
+  
+  async updateJournalEntryLine(id: number, lineData: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined> {
+    const [updatedLine] = await db
+      .update(journalEntryLines)
+      .set({
+        ...lineData,
+        updatedAt: new Date()
+      })
+      .where(eq(journalEntryLines.id, id))
+      .returning();
+    
+    return updatedLine || undefined;
+  }
+  
+  async deleteJournalEntryLine(id: number): Promise<boolean> {
+    const result = await db
+      .delete(journalEntryLines)
+      .where(eq(journalEntryLines.id, id));
+    
+    return result.rowCount > 0;
+  }
+  
+  async reverseJournalEntry(journalEntryId: number, options: {
+    date?: Date;
+    description?: string;
+    createdBy: number;
+    referenceNumber?: string;
+  }): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined> {
+    // Start a transaction for creating the reversing entry and its lines
+    return await db.transaction(async (tx) => {
+      // 1. Get the original journal entry with lines
+      const originalEntry = await this.getJournalEntry(journalEntryId);
+      if (!originalEntry) {
+        throw new Error("Journal entry not found");
+      }
+      
+      // 2. Check if journal entry can be reversed (must be posted)
+      if (originalEntry.status !== "posted") {
+        throw new Error("Only posted journal entries can be reversed");
+      }
+      
+      // 3. Create the reversing journal entry
+      const date = options.date || new Date();
+      const currentDate = new Date();
+      
+      const [reversalEntry] = await tx
+        .insert(journalEntries)
+        .values({
+          clientId: originalEntry.clientId,
+          entityId: originalEntry.entityId,
+          date: date,
+          description: options.description || `Reversal of ${originalEntry.referenceNumber || journalEntryId}`,
+          referenceNumber: options.referenceNumber || `REV-${originalEntry.referenceNumber || journalEntryId}`,
+          createdBy: options.createdBy,
+          journalType: originalEntry.journalType,
+          status: "draft", // Start as draft, to be reviewed
+          isSystemGenerated: true, // Mark as system-generated
+          isReversal: true, // Flag as a reversal entry
+          reversedEntryId: journalEntryId, // Reference to the original entry
+          createdAt: currentDate,
+          updatedAt: currentDate
+        })
+        .returning();
+        
+      if (!reversalEntry) {
+        throw new Error("Failed to create reversal journal entry");
+      }
+      
+      // 4. Create the reversed lines (with debits/credits flipped)
+      const lines: JournalEntryLine[] = [];
+      
+      for (const line of originalEntry.lines) {
+        // Flip the type (debit/credit)
+        const reversedType = line.type === "debit" ? "credit" : "debit";
+        
+        // Create the reversal line
+        const [reversalLine] = await tx
+          .insert(journalEntryLines)
+          .values({
+            journalEntryId: reversalEntry.id,
+            accountId: line.accountId,
+            type: reversedType,
+            amount: line.amount,
+            description: line.description,
+            locationId: line.locationId,
+            lineNo: line.lineNo,
+            reference: line.reference,
+            reconciled: false, // New line is not reconciled
+            createdAt: currentDate,
+            updatedAt: currentDate
+          })
+          .returning();
+          
+        lines.push(reversalLine);
+      }
+      
+      // 5. Return the new entry with its lines
+      return {
+        ...reversalEntry,
+        lines
+      };
+    });
+  }
+  
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    // Check if journal entry exists and get its status
+    const entry = await this.getJournalEntry(id);
+    if (!entry) return false;
+    
+    // Only draft entries can be deleted (to ensure data integrity)
+    if (entry.status !== "draft") {
+      throw new Error("Cannot delete a journal entry that is not in 'draft' status");
+    }
+    
+    // Start a transaction for deleting the entry and its lines
+    return await db.transaction(async (tx) => {
+      // Delete all lines first
+      await tx
+        .delete(journalEntryLines)
+        .where(eq(journalEntryLines.journalEntryId, id));
+      
+      // Delete files associated with the entry if any
+      await tx
+        .delete(journalEntryFiles)
+        .where(eq(journalEntryFiles.journalEntryId, id));
+      
+      // Finally delete the journal entry
+      const result = await tx
+        .delete(journalEntries)
+        .where(eq(journalEntries.id, id));
+      
+      return result.rowCount > 0;
+    });
   }
 
   async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
