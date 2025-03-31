@@ -40,8 +40,7 @@ const sectionTabs = {
     { path: '/journal-entries/batch', label: 'Batch Upload' }
   ],
   '/chart-of-accounts': [
-    { path: '/chart-of-accounts', label: 'All Accounts' },
-    { path: '/chart-of-accounts/create', label: 'Create Account' }
+    { path: '/chart-of-accounts', label: 'All Accounts' }
   ],
   '/accounts-payable': [
     { path: '/accounts-payable', label: 'Overview' },
@@ -172,9 +171,6 @@ function Header() {
                 <>
                   <a href="/chart-of-accounts" className={`${location === '/chart-of-accounts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     All Accounts
-                  </a>
-                  <a href="/chart-of-accounts/create" className={`${location === '/chart-of-accounts/create' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                    Create Account
                   </a>
                 </>
               )}
