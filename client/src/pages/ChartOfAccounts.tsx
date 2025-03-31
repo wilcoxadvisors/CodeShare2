@@ -885,13 +885,29 @@ function ChartOfAccounts() {
         if (!clientIdToUse) {
           throw new Error("No client selected");
         }
-        return await apiRequest(
-          `/api/clients/${clientIdToUse}/accounts/batch`, 
-          {
-            method: 'POST',
-            data: { accounts }
-          }
-        );
+        console.log(`DEBUG: Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
+        
+        // Need to create FormData because the import endpoint expects multipart/form-data
+        const formData = new FormData();
+        
+        // Convert accounts to CSV string and add as a file
+        const csv = Papa.unparse(accounts);
+        const file = new Blob([csv], { type: 'text/csv' });
+        formData.append('file', file, 'accounts_import.csv');
+        
+        // Use fetch directly since apiRequest doesn't handle FormData
+        const response = await fetch(`/api/clients/${clientIdToUse}/accounts/import`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include' // Include cookies for authentication
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Unknown error occurred');
+        }
+        
+        return await response.json();
       },
       onSuccess: () => {
         toast({
