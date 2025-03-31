@@ -376,9 +376,12 @@ function ChartOfAccounts() {
   const useDeleteAccount = () => {
     return useMutation({
       mutationFn: async (id: number) => {
+        console.log("DEBUG: useDeleteAccount - Mutate called with id:", id);
         if (!currentEntity?.clientId) {
+          console.log("DEBUG: useDeleteAccount - Error: No client selected");
           throw new Error("No client selected");
         }
+        console.log(`DEBUG: useDeleteAccount - Sending DELETE to /api/clients/${currentEntity.clientId}/accounts/${id}`);
         return await apiRequest(
           `/api/clients/${currentEntity.clientId}/accounts/${id}`, 
           {
@@ -386,7 +389,8 @@ function ChartOfAccounts() {
           }
         );
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log("DEBUG: useDeleteAccount - onSuccess triggered", data);
         toast({
           title: "Account deleted",
           description: "The account has been deleted successfully.",
@@ -396,11 +400,13 @@ function ChartOfAccounts() {
         
         // Invalidate relevant queries to refresh UI
         if (currentEntity?.clientId) {
+          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${currentEntity.clientId}`);
           queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
           queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
+        console.log("DEBUG: useDeleteAccount - onError triggered:", error);
         if (error.response?.data?.canDeactivate) {
           // Show option to deactivate instead
           toast({
