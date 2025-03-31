@@ -459,15 +459,26 @@ function ChartOfAccounts() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that a client/entity is selected
+    if (!currentEntity?.clientId) {
+      toast({
+        title: "Client required",
+        description: "Please select a client from the header dropdown first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (isEditMode) {
       updateAccount.mutate({
         ...accountData,
-        clientId: currentEntity?.clientId
+        clientId: currentEntity.clientId
       });
     } else {
       createAccount.mutate({
         ...accountData,
-        clientId: currentEntity?.clientId
+        clientId: currentEntity.clientId
       });
     }
   };
@@ -940,8 +951,9 @@ function ChartOfAccounts() {
                 <AlertTriangle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">No entity selected</h3>
+                <h3 className="text-sm font-medium text-yellow-800">No client selected</h3>
                 <div className="mt-2 text-sm text-yellow-700">
+                  <p>Please select a client from the header dropdown to view and manage the Chart of Accounts.</p>
                   <p>
                     Please select an entity using the "Select entity" dropdown in the header.
                   </p>
