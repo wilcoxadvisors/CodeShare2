@@ -241,21 +241,34 @@ function ChartOfAccounts() {
         }
         
         const url = `/api/clients/${data.clientId}/accounts`;
-        console.log("DEBUG: useAddAccount - API URL:", url);
+        console.log("DEBUG: useAddAccount - API URL:", url, "Data:", JSON.stringify(data));
         
         try {
+          // Additional logging for the API call
+          console.log(`DEBUG: useAddAccount - Making POST request to ${url} with data:`, JSON.stringify(data, null, 2));
+          
           const result = await apiRequest(url, {
             method: 'POST',
             data
           });
           console.log("DEBUG: useAddAccount - API response:", result);
           return result;
-        } catch (error) {
+        } catch (error: any) { // Explicitly type error as any to handle different properties safely
           console.error("DEBUG: useAddAccount - API error:", error);
+          console.error("DEBUG: useAddAccount - Error message:", error.message);
+          console.error("DEBUG: useAddAccount - Error name:", error.name);
+          
           if (error.response) {
             console.error("DEBUG: useAddAccount - API error status:", error.response.status);
             console.error("DEBUG: useAddAccount - API error data:", error.response.data);
+            console.error("DEBUG: useAddAccount - API error headers:", error.response.headers);
           }
+          
+          if (error.request) {
+            console.error("DEBUG: useAddAccount - Request was made but no response received");
+            console.error("DEBUG: useAddAccount - Request:", error.request);
+          }
+          
           throw error;
         }
       },
@@ -1271,13 +1284,16 @@ function ChartOfAccounts() {
                 variant="outline"
                 className="inline-flex items-center text-sm font-medium text-gray-700"
                 onClick={() => {
+                  console.log("DEBUG: CSV export button clicked, clientIdToUse =", clientIdToUse);
                   if (clientIdToUse) {
+                    console.log(`DEBUG: Initiating CSV export to /api/clients/${clientIdToUse}/accounts/export`);
                     window.location.href = `/api/clients/${clientIdToUse}/accounts/export`;
                     toast({
                       title: "Export initiated",
                       description: "Your CSV file download should begin shortly.",
                     });
                   } else {
+                    console.log("DEBUG: CSV export failed - no client selected");
                     toast({
                       title: "No client selected",
                       description: "Please select a client before exporting accounts.",

@@ -55,16 +55,21 @@ const upload = multer({
 export function registerAccountRoutes(app: Express) {
   // Export Chart of Accounts (CSV or Excel)
   app.get("/api/clients/:clientId/accounts/export", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log("DEBUG: GET /api/clients/:clientId/accounts/export route hit");
     const clientId = parseInt(req.params.clientId);
     const format = (req.query.format as string || 'csv').toLowerCase();
     
+    console.log(`DEBUG: Export request received for clientId=${clientId}, format=${format}`);
+    
     // Validate format
     if (format !== 'csv' && format !== 'excel') {
+      console.log(`DEBUG: Invalid format requested: ${format}`);
       throwBadRequest("Invalid format. Supported formats: csv, excel");
     }
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
+      console.log(`DEBUG: Invalid client ID: ${clientId}`);
       throwBadRequest("Invalid client ID");
     }
     
@@ -293,10 +298,13 @@ export function registerAccountRoutes(app: Express) {
   
   // Create a new account
   app.post("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log("DEBUG: POST /api/clients/:clientId/accounts route hit");
     const clientId = parseInt(req.params.clientId);
+    console.log(`DEBUG: Create account request for clientId=${clientId}`, req.body);
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
+      console.log(`DEBUG: Invalid client ID: ${clientId}`);
       throwBadRequest("Invalid client ID");
     }
     
