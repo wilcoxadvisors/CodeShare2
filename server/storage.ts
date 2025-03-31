@@ -5053,9 +5053,18 @@ export class DatabaseStorage implements IStorage {
   private getParentCode(row: any): string | null {
     if (!row) return null;
     
+    // Check for ParentCode field first (from our new export format)
+    const parentCodeValue = this.getCaseInsensitiveValue(row, 'ParentCode');
+    if (parentCodeValue !== null && parentCodeValue !== undefined && parentCodeValue !== '') {
+      const trimmed = typeof parentCodeValue === 'string' ? parentCodeValue.trim() : String(parentCodeValue).trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+    
     // Array of possible parent code field names - expanded with more variations
     const parentCodeFields = [
-      'parentcode', 'parentCode', 'ParentCode', 'PARENTCODE', 'ParentCODE', 'parent code', 'parent_code',
+      'parentcode', 'parentCode', 'PARENTCODE', 'ParentCODE', 'parent code', 'parent_code',
       'PARENT_CODE', 'parent-code', 'PARENT-CODE', 'parent', 'Parent', 'PARENT', 'parentaccountnumber',
       'parentAccountNumber', 'ParentAccountNumber', 'PARENTACCOUNTNUMBER', 'parent_account_number',
       'parent account number', 'Parent Account Number', 'parent_account', 'parent account'

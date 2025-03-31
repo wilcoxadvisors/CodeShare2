@@ -777,10 +777,10 @@ function ChartOfAccounts() {
   // Create template for import
   const handleGenerateTemplate = () => {
     try {
-      // Create template headers with parent information
+      // Create template headers matching the export format
       const templateHeaders = [
         "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
-        "ParentCode", "Notes"
+        "ParentId", "ParentCode", "ParentName"
       ];
       
       // Create sample data (one row per account type) with parent relationship examples
@@ -794,8 +794,9 @@ function ChartOfAccounts() {
           SubledgerType: "", 
           Active: "Yes", 
           Description: "All company assets", 
+          ParentId: "",
           ParentCode: "",
-          Notes: "Top-level account, no parent"
+          ParentName: ""
         },
         { 
           Code: "1001", 
@@ -806,8 +807,9 @@ function ChartOfAccounts() {
           SubledgerType: "", 
           Active: "Yes", 
           Description: "Cash on hand", 
+          ParentId: "",
           ParentCode: "1000",
-          Notes: "Child of Assets"
+          ParentName: "Assets"
         },
         { 
           Code: "1002", 
@@ -818,8 +820,9 @@ function ChartOfAccounts() {
           SubledgerType: "bank", 
           Active: "Yes", 
           Description: "Company bank accounts", 
+          ParentId: "",
           ParentCode: "1000",
-          Notes: "Child of Assets, with subledger capability"
+          ParentName: "Assets"
         },
         { 
           Code: "2000", 
@@ -830,8 +833,9 @@ function ChartOfAccounts() {
           SubledgerType: "", 
           Active: "Yes", 
           Description: "All company liabilities", 
+          ParentId: "",
           ParentCode: "",
-          Notes: "Top-level account, no parent"
+          ParentName: ""
         },
         { 
           Code: "2001", 
@@ -842,8 +846,9 @@ function ChartOfAccounts() {
           SubledgerType: "", 
           Active: "Yes", 
           Description: "Short-term debt", 
+          ParentId: "",
           ParentCode: "2000",
-          Notes: "Child of Liabilities"
+          ParentName: "Liabilities"
         }
       ];
       
@@ -854,16 +859,17 @@ function ChartOfAccounts() {
       
       // Column widths for better readability
       const columnWidths = [
-        { wch: 10 }, // Code
-        { wch: 30 }, // Name
-        { wch: 15 }, // Type
-        { wch: 20 }, // Subtype
-        { wch: 12 }, // IsSubledger
-        { wch: 20 }, // SubledgerType
-        { wch: 10 }, // Active
-        { wch: 40 }, // Description
-        { wch: 12 }, // ParentCode
-        { wch: 40 }  // Notes
+        { wch: 10 },  // Code
+        { wch: 30 },  // Name
+        { wch: 15 },  // Type
+        { wch: 20 },  // Subtype
+        { wch: 12 },  // IsSubledger
+        { wch: 20 },  // SubledgerType
+        { wch: 10 },  // Active
+        { wch: 40 },  // Description
+        { wch: 10 },  // ParentId
+        { wch: 10 },  // ParentCode
+        { wch: 30 }   // ParentName
       ];
       
       worksheet['!cols'] = columnWidths;
