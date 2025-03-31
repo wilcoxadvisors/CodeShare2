@@ -1,11 +1,6 @@
-Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
-1000,Test Cash,ASSET,Current Asset,false,,true,Cash on hand,
-1100,Test Bank Account,ASSET,Current Asset,false,,true,Primary bank account,1000
-1200,Test Accounts Receivable,ASSET,Current Asset,true,Customer,true,Amounts owed by customers,
-2000,Test Accounts Payable,LIABILITY,Current Liability,true,Vendor,true,Amounts owed to vendors,
-2100,Test Credit Card,LIABILITY,Current Liability,false,,true,Business credit card,2000
-3000,Test Owner Equity,EQUITY,Equity,false,,true,Owner investment,
-4000,Test Sales Revenue,REVENUE,Operating Revenue,false,,true,Revenue from sales,
-4100,Test Service Revenue,REVENUE,Operating Revenue,false,,true,Revenue from services,4000
-5000,Test Rent Expense,EXPENSE,Operating Expense,false,,true,Office rent,
-5100,Test Utilities Expense,EXPENSE,Operating Expense,false,,true,"Electricity, water, etc.",5000
+code,name,type,subtype,description,isSubledger,subledgerType,active,parentCode
+6100,Marketing Expenses,EXPENSE,Operating Expense,Marketing and advertising expenses,false,,true,5100
+6200,Travel Expenses,EXPENSE,Operating Expense,Business travel expenses,false,,true,5100
+6300,Office Supplies,EXPENSE,Operating Expense,Office supplies and stationery,false,,true,5100
+6400,Professional Services,EXPENSE,Operating Expense,Professional service fees,false,,true,5100
+6500,Software Subscriptions,EXPENSE,Operating Expense,Software and online service subscriptions,false,,true,5100

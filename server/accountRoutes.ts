@@ -21,6 +21,7 @@ import { eq, sql } from "drizzle-orm";
 import { db, pool } from "./db";
 import Papa from "papaparse";
 import multer from "multer";
+import * as XLSX from "xlsx";
 
 // Type for authenticated user in request
 interface AuthUser {
@@ -52,9 +53,15 @@ const upload = multer({
 
 // Register account routes
 export function registerAccountRoutes(app: Express) {
-  // Export Chart of Accounts as CSV
+  // Export Chart of Accounts (CSV or Excel)
   app.get("/api/clients/:clientId/accounts/export", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const clientId = parseInt(req.params.clientId);
+    const format = (req.query.format as string || 'csv').toLowerCase();
+    
+    // Validate format
+    if (format !== 'csv' && format !== 'excel') {
+      throwBadRequest("Invalid format. Supported formats: csv, excel");
+    }
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
@@ -77,7 +84,7 @@ export function registerAccountRoutes(app: Express) {
       // Get accounts for export
       const accounts = await storage.getAccountsForClient(clientId);
       
-      // Format accounts for CSV export
+      // Format accounts for export
       const accountsData = accounts.map(account => ({
         code: account.code,
         name: account.name,
@@ -90,18 +97,35 @@ export function registerAccountRoutes(app: Express) {
         active: account.active ? 'Yes' : 'No'
       }));
       
-      // Generate CSV using PapaParse
-      const csv = Papa.unparse(accountsData, {
-        header: true,
-        skipEmptyLines: true
-      });
-      
-      // Set response headers for CSV download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="chart_of_accounts_${clientId}_${new Date().toISOString().slice(0,10)}.csv"`);
-      
-      // Send CSV response
-      res.send(csv);
+      if (format === 'csv') {
+        // Generate CSV using PapaParse
+        const csv = Papa.unparse(accountsData, {
+          header: true,
+          skipEmptyLines: true
+        });
+        
+        // Set response headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="chart_of_accounts_${clientId}_${new Date().toISOString().slice(0,10)}.csv"`);
+        
+        // Send CSV response
+        return res.send(csv);
+      } else if (format === 'excel') {
+        // Create Excel workbook using XLSX
+        const worksheet = XLSX.utils.json_to_sheet(accountsData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Accounts");
+        
+        // Generate Excel buffer
+        const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        
+        // Set response headers for Excel download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="chart_of_accounts_${clientId}_${new Date().toISOString().slice(0,10)}.xlsx"`);
+        
+        // Send Excel response
+        return res.send(excelBuffer);
+      }
     } catch (error) {
       console.error("Error exporting accounts:", error);
       throw error;
