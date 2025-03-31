@@ -6836,7 +6836,10 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(locations)
-      .where(eq(locations.clientId, clientId));
+      .where(and(
+        eq(locations.clientId, clientId),
+        eq(locations.isActive, true)
+      ));
   }
 
   async updateLocation(id: number, data: Partial<Location>): Promise<Location | undefined> {

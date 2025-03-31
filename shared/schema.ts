@@ -108,11 +108,6 @@ export const locations = pgTable("locations", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   description: text("description"),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  country: text("country"),
-  postalCode: text("postal_code"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow()

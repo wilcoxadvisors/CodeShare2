@@ -1,0 +1,33 @@
+Task: Implement Basic Location Management (Prerequisite for JE Form)
+
+Goal: Add the necessary schema, backend API, and storage functions to manage Locations per client, enabling the locationId dropdown in the JournalEntryForm.
+
+Define locations Table Schema:
+Action: Open shared/schema.ts.
+Action: Define a new Drizzle table schema named locations.
+Columns:
+id: serial('id').primaryKey()
+clientId: integer('client_id').notNull().references(() => clients.id)
+name: text('name').notNull()
+isActive: boolean('is_active').notNull().default(true)
+createdAt: timestamp('created_at').defaultNow().notNull()
+updatedAt: timestamp('updated_at').defaultNow().notNull()
+Action: Define relations for locations (belongs to client). Ensure the clients relations block is updated if needed (client has many locations).
+Action: Define and export the insertLocationSchema.
+Apply Schema Changes:
+Action: Generate the migration file: npm run db:generate.
+Action: Apply the migration: npm run db:push. Report if this command succeeds or fails (if it fails, we may need direct SQL again).
+Implement Backend API & Storage Logic:
+Action: Create server/locationRoutes.ts.
+Action: Add method signatures to IStorage in server/storage.ts for: createLocation, listLocationsByClient, updateLocation, setLocationActiveStatus.
+Action: Implement these methods in the DatabaseStorage class in server/storage.ts. Ensure listLocationsByClient(clientId) only returns active locations (isActive: true). Implement setLocationActiveStatus for soft deletes. Implement basic createLocation and updateLocation.
+Action: Implement API routes in server/locationRoutes.ts:
+GET /api/clients/:clientId/locations: Calls storage.listLocationsByClient(clientId).
+POST /api/locations: Calls storage.createLocation.
+PUT /api/locations/:id: Calls storage.updateLocation.
+DELETE /api/locations/:id: Calls storage.setLocationActiveStatus(id, false).
+Action: Apply isAuthenticated middleware to protect the routes.
+Action: Register the locationRouter in server/routes.ts.
+Frontend Fetching (Reminder): Acknowledge that the JournalEntryForm will receive the fetched locations via its locations prop from its parent component later.
+Report Completion:
+Action: Report that the locations schema, database migration status (db:push success/fail), backend storage functions, and API routes for basic Location management have been implemented. Confirm that GET /api/clients/:clientId/locations is ready.
