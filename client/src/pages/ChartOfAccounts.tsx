@@ -98,33 +98,25 @@ function ChartOfAccounts() {
   
   const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
     queryKey: clientIdToUse ? [`/api/clients/${clientIdToUse}/accounts/tree`] : ["no-client-selected"],
-    enabled: !!clientIdToUse,
-    onSuccess: (data) => {
-      console.log("DEBUG: Account tree fetched successfully", { 
-        clientId: clientIdToUse,
-        entityId: currentEntity?.id,
-        accountCount: data?.data?.length || 0,
-        data
-      });
-    },
-    onError: (error) => {
-      console.error("DEBUG: Error fetching account tree", { 
-        clientId: clientIdToUse,
-        entityId: currentEntity?.id, 
-        error 
-      });
-    }
+    enabled: !!clientIdToUse
   });
   
-  // Debug output for entity context
+  // Debug output for entity context and refresh data when client selection changes
   useEffect(() => {
     console.log("DEBUG: Entity context in ChartOfAccounts", { 
       entityExists: !!currentEntity,
       currentEntity,
       clientId: currentEntity?.clientId,
+      selectedClientId,
       time: new Date().toISOString()
     });
-  }, [currentEntity]);
+    
+    // Refetch account data when client or entity changes
+    if (clientIdToUse) {
+      console.log("DEBUG: Triggering account data refetch due to client/entity change", { clientIdToUse });
+      refetch();
+    }
+  }, [currentEntity, selectedClientId, clientIdToUse, refetch]);
   
   // Extract the actual accounts array from the response
   const accountTreeData = accountsTree?.data || [];
