@@ -787,13 +787,30 @@ function ChartOfAccounts() {
         "ParentId", "ParentCode", "ParentName"
       ];
       
-      if (accountsData && accountsData.length > 0) {
-        console.log("DEBUG: Using existing accounts data for template");
+      // Flatten the accounts tree to get all accounts
+      const flatAccounts: AccountTreeNode[] = [];
+      
+      const flattenTree = (nodes: AccountTreeNode[]) => {
+        for (const node of nodes) {
+          flatAccounts.push(node);
+          if (node.children && node.children.length > 0) {
+            flattenTree(node.children);
+          }
+        }
+      };
+      
+      // Only process if we have data and the tree is valid
+      if (accountsTree && accountsTree.data && accountsTree.data.length > 0) {
+        // Flatten the tree to get all accounts
+        flattenTree(accountsTree.data);
+        
+        console.log("DEBUG: Using existing accounts data for template, count:", flatAccounts.length);
+        
         // Map the actual account data to the template format
-        templateData = accountsData.map(account => {
+        templateData = flatAccounts.map((account: AccountTreeNode) => {
           // Find parent account if it exists
           const parent = account.parentId ? 
-            accountsData.find(a => a.id === account.parentId) : null;
+            flatAccounts.find((a: AccountTreeNode) => a.id === account.parentId) : null;
           
           return {
             Code: account.code,
@@ -804,7 +821,7 @@ function ChartOfAccounts() {
             SubledgerType: account.subledgerType || "",
             Active: account.active ? "Yes" : "No",
             Description: account.description || "",
-            ParentId: account.parentId || "",
+            ParentId: account.parentId ? String(account.parentId) : "",
             ParentCode: parent ? parent.code : "",
             ParentName: parent ? parent.name : ""
           };
