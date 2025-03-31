@@ -1,119 +1,142 @@
 # Chart of Accounts Import/Export Test Procedure
 
-This document outlines the testing procedure for the Chart of Accounts (CoA) import and export functionality, focusing on data integrity controls.
+This document outlines the manual test procedure for verifying the Chart of Accounts (CoA) import and export functionality works correctly.
 
 ## Prerequisites
 
-- A running instance of the application
-- Test account with admin permissions
-- Test client with existing CoA entries
-- Test files in the `/test/coa-import-export/` directory:
-  - `valid_import.csv` - A valid CSV file with account data
-  - `valid_import.xlsx` - A valid Excel file with account data
-  - `invalid_import.csv` - An invalid CSV file with problematic data
+1. Admin access to the application
+2. A test client with an existing Chart of Accounts
+3. Test CSV and Excel files (located in `/test/coa-import-export/`)
 
-## Running the Test Script
+## Test Procedure
 
-The automated test script (`scripts/test-coa-import-export.js`) performs a comprehensive test of the import/export functionality:
+### A. Export Functionality Tests
 
-```bash
-# Set environment variables for testing
-export TEST_CLIENT_ID=1  # Replace with an actual client ID
-export TEST_USERNAME=admin
-export TEST_PASSWORD=password
+#### A1. CSV Export Test
 
-# Run the test script
-node scripts/test-coa-import-export.js
-```
+1. Log in as an Admin user
+2. Navigate to a client's Chart of Accounts page
+3. Click the "Export" button
+4. Select "CSV" format
+5. Verify the CSV file downloads correctly
+6. Open the CSV file and confirm:
+   - All accounts are included
+   - Column headers are correct (Code, Name, Type, Subtype, etc.)
+   - Parent-child relationships are correctly represented
+   - Data integrity is maintained (no corrupted characters, etc.)
 
-## Manual Testing Procedure
+#### A2. Excel Export Test
 
-If you prefer to test manually, follow these steps:
+1. Log in as an Admin user
+2. Navigate to a client's Chart of Accounts page
+3. Click the "Export" button
+4. Select "Excel" format
+5. Verify the Excel file downloads correctly
+6. Open the Excel file and confirm:
+   - All accounts are included
+   - Column headers are correct (Code, Name, Type, Subtype, etc.)
+   - Parent-child relationships are correctly represented
+   - Formatting is clean and readable
 
-1. **Export the Current Chart of Accounts**
-   - Navigate to the Chart of Accounts page for a client
-   - Click the "Export" button
-   - Choose CSV format
-   - Verify the downloaded file contains all accounts with correct data
+### B. Import Functionality Tests
 
-2. **Modify the Exported File**
-   - Open the exported CSV file
-   - Make changes to some existing accounts (name, description)
-   - Mark some accounts as inactive (set active = "No")
-   - Add new accounts with appropriate parent account codes
-   - Add accounts with invalid data (for testing validation)
+#### B1. Valid CSV Import Test
 
-3. **Import the Modified File**
-   - Navigate back to the Chart of Accounts page
-   - Click "Import"
-   - Select your modified file
-   - Submit the import
-   - Review the import results
+1. Log in as an Admin user
+2. Navigate to a client's Chart of Accounts page
+3. Click the "Import" button
+4. Select "CSV" format
+5. Upload the valid test file (`valid_import.csv`)
+6. Verify the import preview shows correctly
+7. Confirm the import
+8. Verify:
+   - New accounts are added correctly
+   - Parent-child relationships are established
+   - No duplicate accounts are created
+   - Import summary shows correct counts (added, updated, skipped)
 
-4. **Verify Data Integrity**
-   - Check that new accounts were added correctly
-   - Verify that existing accounts were updated appropriately
-   - Confirm that accounts marked inactive are now inactive
-   - Verify hierarchical relationships were maintained or established properly
+#### B2. Valid Excel Import Test
 
-5. **Test Edge Cases**
-   - Import a file with missing required fields
-   - Import a file with duplicate account codes
-   - Import a file with invalid account types
-   - Test importing accounts that have existing transactions:
-     - Attempt to change account type (should be prevented)
-     - Update non-financial fields like name/description (should succeed)
-     - Verify parent relationship changes are handled appropriately
+1. Log in as an Admin user
+2. Navigate to a client's Chart of Accounts page
+3. Click the "Import" button
+4. Select "Excel" format
+5. Upload the valid test file (`valid_import.xlsx`)
+6. Verify the import preview shows correctly
+7. Confirm the import
+8. Verify:
+   - New accounts are added correctly
+   - Parent-child relationships are established
+   - No duplicate accounts are created
+   - Import summary shows correct counts (added, updated, skipped)
 
-## Data Integrity Features
+#### B3. Invalid Import Rejection Test
 
-The import process includes these key integrity controls:
+1. Log in as an Admin user
+2. Navigate to a client's Chart of Accounts page
+3. Click the "Import" button
+4. Upload the invalid test file (`invalid_import.csv`)
+5. Verify:
+   - Validation errors are shown clearly
+   - The import is rejected (no data is changed)
+   - Error messages are specific and actionable
+   - User can return to the CoA view without data corruption
 
-1. **Account Transaction Protection**
-   - Accounts with existing transactions cannot be deleted
-   - Critical fields (type, subtype) cannot be changed for accounts with transactions
-   - Only non-financial fields (name, description) can be updated
+### C. Data Integrity Tests
 
-2. **Hierarchical Integrity**
-   - Parent-child relationships are verified and established in a second pass
-   - Parent account changes are blocked for accounts with transactions
+#### C1. Transaction Protection Test
 
-3. **Duplicate Prevention**
-   - System checks for duplicate account codes
-   - Existing accounts are updated rather than duplicated
+1. Create a test account and add a transaction using that account
+2. Attempt to delete this account via import (by excluding it from import file)
+3. Verify:
+   - The account with transaction history cannot be deleted
+   - The import process continues without error
+   - Import summary shows account was skipped with appropriate reason
 
-4. **Inactive Handling**
-   - Accounts can be marked inactive rather than deleted
-   - Reactivation of inactive accounts is supported
+#### C2. Field Modification Test
 
-## Import Result Structure
+1. Identify an account with transaction history
+2. Prepare an import file that modifies:
+   - Non-financial fields (name, description) - should succeed
+   - Financial fields (type, code) - should be rejected
+3. Import the file and verify correct behavior on both types of modifications
 
-The import process returns a detailed result object:
+#### C3. Duplicate Detection Test
 
-```typescript
-interface ImportResult {
-  count: number;     // Total accounts processed
-  added: number;     // New accounts added
-  updated: number;   // Existing accounts updated
-  unchanged: number; // Existing accounts unchanged
-  skipped: number;   // Accounts skipped (validation failure)
-  inactive: number;  // Accounts marked inactive
-  errors: string[];  // Error messages
-  warnings: string[]; // Warning messages
-}
-```
+1. Prepare an import file with duplicate account codes
+2. Import the file
+3. Verify:
+   - Validation catches the duplicates
+   - Appropriate error messages are shown
+   - No partial import occurs (all or nothing)
 
-## Known Limitations
+## Test Scenarios (Combined)
 
-1. **Excel Date Formatting**: Excel may convert numeric account codes to dates. Always format account code columns as text before exporting from Excel.
+### Full End-to-End Test
 
-2. **Special Characters**: Some special characters may not transfer correctly between CSV exports and imports. Use standard alphanumeric characters when possible.
+1. Export existing accounts to both CSV and Excel
+2. Make controlled changes to both exported files:
+   - Add new accounts
+   - Modify existing accounts
+   - Add parent-child relationships
+3. Import the modified files one at a time
+4. Verify all changes are applied correctly
+5. Export again and verify the new exports match the expected state
 
-3. **Large Imports**: Very large imports (1000+ accounts) may timeout on some systems. Consider splitting large imports into multiple files.
+## Reporting Results
 
-## Troubleshooting
+For each test case, document:
+- Test date and tester name
+- Pass/Fail status
+- Any unexpected behavior or errors
+- Browser and device used for testing
+- Screenshots of any issues encountered
 
-- **Import Errors**: Check the returned errors array for specific validation failures
-- **Incorrect Updates**: Verify the CSV format, particularly that column headers match exactly
-- **Parent Relationships Not Setting**: Ensure parent codes exist in the system or in the same import file
-- **Transaction Protection**: If account updates aren't applying, check if the account has transactions
+## Clean-Up Procedure
+
+After completing tests:
+1. Run the cleanup script to remove test clients:
+   ```
+   node scripts/cleanup-test-data.js --client-id=<test_client_id>
+   ```
+2. Verify test clients and their data are completely removed

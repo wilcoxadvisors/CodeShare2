@@ -1,66 +1,11 @@
-code,name,type,subtype,isSubledger,subledgerType,parentCode,description,active
-1000,Cash and Cash Equivalents,ASSET,Current Asset,No,,,"Cash, bank accounts, and other cash equivalents",Yes
-1001,Checking Account,ASSET,Current Asset,No,,1000,Primary business checking account,Yes
-1002,Savings Account,ASSET,Current Asset,No,,1000,Business savings account,Yes
-1003,Petty Cash,ASSET,Current Asset,No,,1000,Office petty cash fund,Yes
-1010,Accounts Receivable,ASSET,Current Asset,Yes,Customer,,Amounts owed by customers,Yes
-1020,Inventory,ASSET,Current Asset,Yes,Product,,Inventory held for sale,Yes
-1100,Prepaid Expenses,ASSET,Current Asset,No,,,Expenses paid in advance,Yes
-1200,Fixed Assets,ASSET,Fixed Asset,No,,,Property and equipment,Yes
-1210,Equipment,ASSET,Fixed Asset,No,,1200,Office and operational equipment,Yes
-1220,Furniture,ASSET,Fixed Asset,No,,1200,Office furniture,Yes
-1230,Vehicles,ASSET,Fixed Asset,No,,1200,Company vehicles,Yes
-1240,Buildings,ASSET,Fixed Asset,No,,1200,Company-owned buildings,Yes
-1250,Land,ASSET,Fixed Asset,No,,1200,Company-owned land,Yes
-1260,Accumulated Depreciation,ASSET,Fixed Asset,No,,1200,Accumulated depreciation on all fixed assets,Yes
-1300,Other Assets,ASSET,Other Asset,No,,,Other long-term assets,Yes
-2000,Accounts Payable,LIABILITY,Current Liability,Yes,Vendor,,Amounts owed to vendors,Yes
-2100,Accrued Liabilities,LIABILITY,Current Liability,No,,,Accrued expenses not yet paid,Yes
-2200,Payroll Liabilities,LIABILITY,Current Liability,No,,,Payroll taxes and benefits payable,Yes
-2210,Federal Payroll Taxes,LIABILITY,Current Liability,No,,2200,Federal payroll taxes payable,Yes
-2220,State Payroll Taxes,LIABILITY,Current Liability,No,,2200,State payroll taxes payable,Yes
-2230,401(k) Contributions,LIABILITY,Current Liability,No,,2200,Employee and employer 401(k) contributions,Yes
-2300,Sales Tax Payable,LIABILITY,Current Liability,No,,,Sales tax collected but not yet remitted,Yes
-2400,Unearned Revenue,LIABILITY,Current Liability,No,,,Advance payments from customers,Yes
-2500,Short-term Loans,LIABILITY,Current Liability,No,,,Short-term loans and credit lines,Yes
-2600,Long-term Debt,LIABILITY,Long-term Liability,No,,,Long-term loans and obligations,Yes
-2700,Other Liabilities,LIABILITY,Long-term Liability,No,,,Other long-term liabilities,Yes
-3000,Owner's Equity,EQUITY,Equity,No,,,Owner's investment in the business,Yes
-3100,Common Stock,EQUITY,Equity,No,,,Common stock issued,Yes
-3200,Retained Earnings,EQUITY,Equity,No,,,Accumulated earnings retained in the business,Yes
-3300,Dividends Paid,EQUITY,Equity,No,,,Dividends distributed to shareholders,Yes
-3400,Current Year Earnings,EQUITY,Equity,No,,,Net income for the current fiscal year,Yes
-4000,Revenue,REVENUE,Operating Revenue,No,,,Primary business revenue,Yes
-4010,Product Sales,REVENUE,Operating Revenue,No,,4000,Revenue from product sales,Yes
-4020,Service Revenue,REVENUE,Operating Revenue,No,,4000,Revenue from services,Yes
-4030,Discounts Given,REVENUE,Operating Revenue,No,,4000,Discounts given to customers,Yes
-4100,Other Income,REVENUE,Non-operating Revenue,No,,,Income from secondary sources,Yes
-4110,Interest Income,REVENUE,Non-operating Revenue,No,,4100,Income from interest,Yes
-4120,Gain on Asset Sale,REVENUE,Non-operating Revenue,No,,4100,Gains from selling assets,Yes
-5000,Cost of Goods Sold,EXPENSE,Cost of Sales,No,,,Direct costs of producing goods sold,Yes
-5010,Materials,EXPENSE,Cost of Sales,No,,5000,Direct materials used in production,Yes
-5020,Direct Labor,EXPENSE,Cost of Sales,No,,5000,Direct labor costs,Yes
-5030,Manufacturing Overhead,EXPENSE,Cost of Sales,No,,5000,Manufacturing overhead costs,Yes
-6000,Operating Expenses,EXPENSE,Operating Expense,No,,,Business operating expenses,Yes
-6010,Salaries and Wages,EXPENSE,Operating Expense,No,,6000,Employee salaries and wages,Yes
-6020,Employee Benefits,EXPENSE,Operating Expense,No,,6000,Employee benefits costs,Yes
-6030,Payroll Taxes,EXPENSE,Operating Expense,No,,6000,Employer's share of payroll taxes,Yes
-6100,Rent Expense,EXPENSE,Operating Expense,No,,6000,Rent payments for facilities,Yes
-6110,Utilities,EXPENSE,Operating Expense,No,,6000,Electricity, water, gas, etc.,Yes
-6120,Telephone and Internet,EXPENSE,Operating Expense,No,,6000,Communication services,Yes
-6130,Office Supplies,EXPENSE,Operating Expense,No,,6000,Office and administrative supplies,Yes
-6200,Professional Services,EXPENSE,Operating Expense,No,,6000,Accounting, legal, consulting services,Yes
-6210,Legal Fees,EXPENSE,Operating Expense,No,,6200,Legal service fees,Yes
-6220,Accounting Fees,EXPENSE,Operating Expense,No,,6200,Accounting service fees,Yes
-6230,Consulting Fees,EXPENSE,Operating Expense,No,,6200,Consulting service fees,Yes
-6300,Marketing and Advertising,EXPENSE,Operating Expense,No,,6000,Marketing and advertising expenses,Yes
-6400,Travel Expenses,EXPENSE,Operating Expense,No,,6000,Business travel costs,Yes
-6500,Insurance,EXPENSE,Operating Expense,No,,6000,Business insurance premiums,Yes
-6600,Repairs and Maintenance,EXPENSE,Operating Expense,No,,6000,Repair and maintenance costs,Yes
-6700,Depreciation Expense,EXPENSE,Operating Expense,No,,6000,Depreciation of fixed assets,Yes
-6800,Bank Charges,EXPENSE,Operating Expense,No,,6000,Bank fees and charges,Yes
-7000,Interest Expense,EXPENSE,Non-operating Expense,No,,,Interest on loans and credit,Yes
-7100,Tax Expense,EXPENSE,Non-operating Expense,No,,,Business income taxes,Yes
-7200,Miscellaneous Expense,EXPENSE,Non-operating Expense,No,,,Other non-categorized expenses,Yes
-8000,Inactive Account,ASSET,Current Asset,No,,,This account is no longer used,No
-9000,Test Account,EXPENSE,Operating Expense,No,,,Account for testing purposes only,Yes
+Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,Current Asset,false,,true,Cash on hand and in checking accounts,
+1100,Accounts Receivable,ASSET,Current Asset,true,Customer,true,Amounts owed by customers,
+2000,Accounts Payable,LIABILITY,Current Liability,true,Vendor,true,Amounts owed to vendors,
+3000,Retained Earnings,EQUITY,Equity,false,,true,Accumulated earnings,
+4000,Revenue,REVENUE,Operating Revenue,false,,true,Revenue from operations,
+4100,Product Sales,REVENUE,Operating Revenue,false,,true,Revenue from product sales,4000
+4200,Service Revenue,REVENUE,Operating Revenue,false,,true,Revenue from services,4000
+5000,Cost of Goods Sold,EXPENSE,Cost of Sales,false,,true,Direct costs of products sold,
+6000,Operating Expenses,EXPENSE,Operating Expense,false,,true,General operating expenses,
+6100,Rent Expense,EXPENSE,Operating Expense,false,,true,Office and facility rent,6000

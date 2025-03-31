@@ -1,10 +1,7 @@
-code,name,type,subtype,isSubledger,subledgerType,parentCode,description,active
-,Empty Code Account,ASSET,Current Asset,No,,,Missing code is invalid,Yes
-1001,Duplicate Code,ASSET,Current Asset,No,,,This code already exists,Yes
-1001,Another Duplicate,ASSET,Current Asset,No,,,Also using an existing code,Yes
-ABC123,Invalid Type,INVALID_TYPE,Current Asset,No,,,Type must be ASSET/LIABILITY/EQUITY/REVENUE/EXPENSE,Yes
-5000,Missing Required,,,No,,,Missing required type field,Yes
-6000,Invalid Parent,EXPENSE,Operating Expense,No,,99999,Parent code doesn't exist,Yes
-7000,Invalid Boolean,,Operating Expense,Maybe,,6000,isSubledger must be Yes/No,Yes
-8000,Broken Format,ASSET,Current Asset,No,,1000,,Yes,Extra field
-9000,Type Mismatch,ASSET,Current Asset,Yes,,1000,Type doesn't match parent,Yes
+Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,Current Asset,false,,true,Cash on hand,
+1000,Cash Duplicate,ASSET,Current Asset,false,,true,Duplicate cash account,
+2000,,LIABILITY,Current Liability,true,Vendor,true,Accounts payable,
+3000,Equity,INVALID_TYPE,Equity,false,,true,Equity account,
+4100,Product Sales,REVENUE,Operating Revenue,false,,true,Revenue from product sales,9999
+5100,Child COGS,ASSET,Cost of Sales,false,,true,Child COGS account,5000
