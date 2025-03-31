@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 
 interface User {
@@ -17,7 +17,7 @@ interface AuthContextType {
 }
 
 // Create context with default value
-const AuthContext = React.createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   login: async () => false,
@@ -25,13 +25,13 @@ const AuthContext = React.createContext<AuthContextType>({
 });
 
 // Provider component
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   // Use useState hooks at the top level of the component
-  const [user, setUser] = React.useState<User | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check if user is already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     async function checkAuthStatus() {
       try {
         console.log('🔒 Checking authentication status...');
@@ -225,5 +225,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 // This hook must be used within an AuthProvider component
 export function useAuth() {
   // Use the context with our default values
-  return React.useContext(AuthContext);
+  return useContext(AuthContext);
 }
