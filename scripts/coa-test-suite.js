@@ -21,8 +21,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-// Accept URL as a command line argument or use a default
-const BASE_URL = process.argv[2] || 'https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev';
+// Accept URL as a command line argument or use a dynamic Replit URL
+const replSlug = process.env.REPL_SLUG || 'workspace';
+const replId = process.env.REPL_ID || '80550fad-9a85-4035-aa54-a26530837091';
+const replitUrl = `https://${replSlug}-00-${replId}.janeway.replit.dev`;
+const BASE_URL = process.argv[2] || replitUrl;
 console.log(chalk.blue(`Using base URL: ${BASE_URL}`));
 const COOKIES_FILE = path.join(__dirname, '../curl_cookies.txt');
 const TEMP_DIR = path.join(__dirname, '../tmp/coa-test');
