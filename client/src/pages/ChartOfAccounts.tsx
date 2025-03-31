@@ -231,13 +231,19 @@ function ChartOfAccounts() {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number }) => {
         console.log("DEBUG: useAddAccount - Mutate called with:", data);
-        return await apiRequest(
-          `/api/clients/${data.clientId}/accounts`, 
-          {
+        const url = `/api/clients/${data.clientId}/accounts`;
+        console.log("DEBUG: useAddAccount - API URL:", url);
+        try {
+          const result = await apiRequest(url, {
             method: 'POST',
             data
-          }
-        );
+          });
+          console.log("DEBUG: useAddAccount - API response:", result);
+          return result;
+        } catch (error) {
+          console.error("DEBUG: useAddAccount - API error:", error);
+          throw error;
+        }
       },
       onSuccess: (data) => {
         console.log("DEBUG: useAddAccount - onSuccess triggered", data);
@@ -519,14 +525,30 @@ function ChartOfAccounts() {
       return;
     }
     
+    // Create a copy of the data to submit
+    const submitData = {
+      ...accountData,
+      // Convert "none" parent value to null
+      parentId: accountData.parentId === "none" || accountData.parentId === undefined ? null : accountData.parentId
+    };
+    
+    console.log("DEBUG - parentId before:", accountData.parentId, "type:", typeof accountData.parentId);
+    console.log("DEBUG - parentId after:", submitData.parentId, "type:", typeof submitData.parentId);
+    
+    console.log("DEBUG - Submitting account data:", {
+      clientId: clientIdToUse,
+      submitData,
+      isEditMode
+    });
+    
     if (isEditMode) {
       updateAccount.mutate({
-        ...accountData,
+        ...submitData,
         clientId: clientIdToUse
       });
     } else {
       createAccount.mutate({
-        ...accountData,
+        ...submitData,
         clientId: clientIdToUse
       });
     }
@@ -1258,9 +1280,9 @@ function ChartOfAccounts() {
                   <div className="space-y-2">
                     <Label htmlFor="parentId">Parent Account</Label>
                     <Select
-                      value={accountData.parentId?.toString() || ""}
+                      value={accountData.parentId?.toString() || "none"}
                       onValueChange={(value) => {
-                        const parentId = value ? parseInt(value, 10) : null;
+                        const parentId = value === "none" ? null : parseInt(value, 10);
                         setAccountData(prev => ({
                           ...prev,
                           parentId
@@ -1271,7 +1293,7 @@ function ChartOfAccounts() {
                         <SelectValue placeholder="Select a parent account (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No Parent (Top Level)</SelectItem>
+                        <SelectItem value="none">No Parent (Top Level)</SelectItem>
                         {flattenedAccounts
                           .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
                           .map((account: any) => (
