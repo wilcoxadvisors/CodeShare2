@@ -1,0 +1,9 @@
+AccountNumber,AccountName,Type,SubType,ParentAccountNumber,Description,IsActive
+1110,Cash and Bank,ASSET,Current,1100,Updated name test,true
+1120,Accounts Receivable,ASSET,Current,1100,Accounts receivable from customers,true
+1100,Current Assets,ASSET,Current,,Current asset accounts,true
+2000,Liabilities,LIABILITY,,,All liability accounts,true
+2100,Accounts Payable,LIABILITY,Current,2000,Money owed to suppliers,true
+3000,Equity,EQUITY,,,Owner equity accounts,true
+4000,Revenue,REVENUE,,,All revenue accounts,true
+5000,Expenses,EXPENSE,,,All expense accounts,true

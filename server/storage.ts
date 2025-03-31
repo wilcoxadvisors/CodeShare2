@@ -4852,7 +4852,63 @@ export class DatabaseStorage implements IStorage {
           console.log(`Successfully updated ${updatedAccounts.length} accounts out of ${accountsToUpdate.length} attempted`);
         }
         
-        // ==================== STEP 8: Second pass - parent-child relationships ====================
+        // ==================== STEP 8: Handle missing accounts ====================
+        console.log(`Processing accounts present in database but missing from import file`);
+        
+        // Track account codes in the import file (using a Set for faster lookups)
+        const importedAccountCodes = new Set<string>();
+        for (const row of validRows) {
+          const accountCode = row.code.toLowerCase();
+          importedAccountCodes.add(accountCode);
+        }
+        
+        // Find accounts in the database that were not in the import file
+        const missingAccounts: number[] = [];
+        
+        for (const account of existingAccounts) {
+          // Skip accounts that are already inactive
+          if (!account.active) continue;
+          
+          // Skip if the account was in the import
+          if (importedAccountCodes.has(account.code.toLowerCase())) continue;
+          
+          // Skip accounts with transactions (we don't want to deactivate these)
+          if (accountsWithTransactions.has(account.id)) {
+            console.log(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
+            result.warnings.push(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
+            continue;
+          }
+          
+          console.log(`Account ${account.code} (${account.name}) is missing from import file - will mark inactive`);
+          missingAccounts.push(account.id);
+        }
+        
+        // Process accounts to mark as inactive (accounts that exist in DB but aren't in import)
+        console.log(`Found ${missingAccounts.length} accounts missing from import to mark as inactive`);
+        
+        if (missingAccounts.length > 0) {
+          for (const accountId of missingAccounts) {
+            try {
+              // Get the original account data for the log message
+              const account = existingIdMap.get(accountId);
+              
+              // Mark the account as inactive
+              await tx
+                .update(accounts)
+                .set({ active: false })
+                .where(eq(accounts.id, accountId));
+              
+              console.log(`Marked account ${account?.code} (${account?.name}) as inactive`);
+              result.inactive++;
+              result.count++;
+            } catch (inactiveError: any) {
+              console.error(`Error marking account ${accountId} as inactive:`, inactiveError);
+              result.errors.push(`Failed to mark account ID ${accountId} as inactive: ${inactiveError.message}`);
+            }
+          }
+        }
+        
+        // ==================== STEP 9: Second pass - parent-child relationships ====================
         console.log(`Processing parent-child relationships`);
         
         // First gather all parent relationships to resolve
