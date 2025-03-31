@@ -44,8 +44,17 @@ interface AccountTreeNode {
 }
 
 function ChartOfAccounts() {
-  const { currentEntity } = useEntity();
+  const { currentEntity, selectedClientId } = useEntity();
   const { toast } = useToast();
+  
+  console.log("DEBUG - ChartOfAccounts rendering with context:", {
+    hasEntity: !!currentEntity,
+    entityId: currentEntity?.id,
+    entityName: currentEntity?.name,
+    entityClientId: currentEntity?.clientId,
+    selectedClientId,
+    timestamp: new Date().toISOString()
+  });
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [formTab, setFormTab] = useState("basic");
   const [accountCodePrefix, setAccountCodePrefix] = useState("");
@@ -84,10 +93,38 @@ function ChartOfAccounts() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get hierarchical account tree data using client-based API
+  // Use selectedClientId as fallback when no entity is selected
+  const clientIdToUse = currentEntity?.clientId || selectedClientId;
+  
   const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
-    queryKey: currentEntity ? [`/api/clients/${currentEntity.clientId}/accounts/tree`] : ["no-entity-selected"],
-    enabled: !!currentEntity && !!currentEntity.clientId,
+    queryKey: clientIdToUse ? [`/api/clients/${clientIdToUse}/accounts/tree`] : ["no-client-selected"],
+    enabled: !!clientIdToUse,
+    onSuccess: (data) => {
+      console.log("DEBUG: Account tree fetched successfully", { 
+        clientId: clientIdToUse,
+        entityId: currentEntity?.id,
+        accountCount: data?.data?.length || 0,
+        data
+      });
+    },
+    onError: (error) => {
+      console.error("DEBUG: Error fetching account tree", { 
+        clientId: clientIdToUse,
+        entityId: currentEntity?.id, 
+        error 
+      });
+    }
   });
+  
+  // Debug output for entity context
+  useEffect(() => {
+    console.log("DEBUG: Entity context in ChartOfAccounts", { 
+      entityExists: !!currentEntity,
+      currentEntity,
+      clientId: currentEntity?.clientId,
+      time: new Date().toISOString()
+    });
+  }, [currentEntity]);
   
   // Extract the actual accounts array from the response
   const accountTreeData = accountsTree?.data || [];
@@ -211,9 +248,9 @@ function ChartOfAccounts() {
         setShowAccountForm(false);
         
         // Invalidate relevant queries to refresh UI
-        if (currentEntity?.clientId) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        if (clientIdToUse) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
         }
       },
       onError: (error: Error) => {
@@ -353,9 +390,9 @@ function ChartOfAccounts() {
         setShowAccountForm(false);
         
         // Invalidate relevant queries to refresh UI
-        if (currentEntity?.clientId) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        if (clientIdToUse) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
         }
       },
       onError: (error: Error) => {
@@ -399,10 +436,10 @@ function ChartOfAccounts() {
         setAccountToDelete(null);
         
         // Invalidate relevant queries to refresh UI
-        if (currentEntity?.clientId) {
-          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${currentEntity.clientId}`);
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        if (clientIdToUse) {
+          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${clientIdToUse}`);
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
@@ -472,8 +509,8 @@ function ChartOfAccounts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate that a client/entity is selected
-    if (!currentEntity?.clientId) {
+    // Validate that a client is selected
+    if (!clientIdToUse) {
       toast({
         title: "Client required",
         description: "Please select a client from the header dropdown first.",
@@ -485,12 +522,12 @@ function ChartOfAccounts() {
     if (isEditMode) {
       updateAccount.mutate({
         ...accountData,
-        clientId: currentEntity.clientId
+        clientId: clientIdToUse
       });
     } else {
       createAccount.mutate({
         ...accountData,
-        clientId: currentEntity.clientId
+        clientId: clientIdToUse
       });
     }
   };
@@ -548,7 +585,9 @@ function ChartOfAccounts() {
       
       // Generate filename with entity name and current date
       const date = new Date().toISOString().split('T')[0];
-      const fileName = `${currentEntity?.name || 'Entity'}_ChartOfAccounts_${date}.xlsx`;
+      // Get entity name from the selected client context
+      const entityName = clients?.find(c => c.id === clientIdToUse)?.name || currentEntity?.name || 'Entity';
+      const fileName = `${entityName}_ChartOfAccounts_${date}.xlsx`;
       
       // Download the file
       XLSX.writeFile(workbook, fileName);
@@ -821,11 +860,11 @@ function ChartOfAccounts() {
   const useImportAccounts = () => {
     return useMutation({
       mutationFn: async (accounts: any[]) => {
-        if (!currentEntity?.clientId) {
+        if (!clientIdToUse) {
           throw new Error("No client selected");
         }
         return await apiRequest(
-          `/api/clients/${currentEntity.clientId}/accounts/batch`, 
+          `/api/clients/${clientIdToUse}/accounts/batch`, 
           {
             method: 'POST',
             data: { accounts }
@@ -842,9 +881,9 @@ function ChartOfAccounts() {
         setImportErrors([]);
         
         // Invalidate relevant queries to refresh UI
-        if (currentEntity?.clientId) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        if (clientIdToUse) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
@@ -1006,8 +1045,8 @@ function ChartOfAccounts() {
                 variant="outline"
                 className="inline-flex items-center text-sm font-medium text-gray-700"
                 onClick={() => {
-                  if (currentEntity?.clientId) {
-                    window.location.href = `/api/clients/${currentEntity.clientId}/accounts/export`;
+                  if (clientIdToUse) {
+                    window.location.href = `/api/clients/${clientIdToUse}/accounts/export`;
                     toast({
                       title: "Export initiated",
                       description: "Your CSV file download should begin shortly.",
