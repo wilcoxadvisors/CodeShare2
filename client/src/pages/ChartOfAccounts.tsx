@@ -777,86 +777,115 @@ function ChartOfAccounts() {
   // Create template for import
   const handleGenerateTemplate = () => {
     try {
+      // If we have accounts data, use it for the template
+      // Otherwise use sample data
+      let templateData = [];
+      
       // Create template headers matching the export format
       const templateHeaders = [
         "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
         "ParentId", "ParentCode", "ParentName"
       ];
       
-      // Create sample data (one row per account type) with parent relationship examples
-      const sampleData = [
-        { 
-          Code: "1000", 
-          Name: "Assets", 
-          Type: "asset", 
-          Subtype: "current_asset", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "All company assets", 
-          ParentId: "",
-          ParentCode: "",
-          ParentName: ""
-        },
-        { 
-          Code: "1001", 
-          Name: "Cash", 
-          Type: "asset", 
-          Subtype: "current_asset", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "Cash on hand", 
-          ParentId: "",
-          ParentCode: "1000",
-          ParentName: "Assets"
-        },
-        { 
-          Code: "1002", 
-          Name: "Bank Accounts", 
-          Type: "asset", 
-          Subtype: "current_asset", 
-          IsSubledger: "Yes", 
-          SubledgerType: "bank", 
-          Active: "Yes", 
-          Description: "Company bank accounts", 
-          ParentId: "",
-          ParentCode: "1000",
-          ParentName: "Assets"
-        },
-        { 
-          Code: "2000", 
-          Name: "Liabilities", 
-          Type: "liability", 
-          Subtype: "current_liability", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "All company liabilities", 
-          ParentId: "",
-          ParentCode: "",
-          ParentName: ""
-        },
-        { 
-          Code: "2001", 
-          Name: "Accounts Payable", 
-          Type: "liability", 
-          Subtype: "current_liability", 
-          IsSubledger: "No", 
-          SubledgerType: "", 
-          Active: "Yes", 
-          Description: "Short-term debt", 
-          ParentId: "",
-          ParentCode: "2000",
-          ParentName: "Liabilities"
-        }
-      ];
+      if (accountsData && accountsData.length > 0) {
+        console.log("DEBUG: Using existing accounts data for template");
+        // Map the actual account data to the template format
+        templateData = accountsData.map(account => {
+          // Find parent account if it exists
+          const parent = account.parentId ? 
+            accountsData.find(a => a.id === account.parentId) : null;
+          
+          return {
+            Code: account.code,
+            Name: account.name,
+            Type: account.type,
+            Subtype: account.subtype || "",
+            IsSubledger: account.isSubledger ? "Yes" : "No",
+            SubledgerType: account.subledgerType || "",
+            Active: account.active ? "Yes" : "No",
+            Description: account.description || "",
+            ParentId: account.parentId || "",
+            ParentCode: parent ? parent.code : "",
+            ParentName: parent ? parent.name : ""
+          };
+        });
+      } else {
+        console.log("DEBUG: Using sample data for template - no accounts data available");
+        // Create sample data (one row per account type) with parent relationship examples
+        templateData = [
+          { 
+            Code: "1000", 
+            Name: "Assets", 
+            Type: "asset", 
+            Subtype: "current_asset", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "All company assets", 
+            ParentId: "",
+            ParentCode: "",
+            ParentName: ""
+          },
+          { 
+            Code: "1001", 
+            Name: "Cash", 
+            Type: "asset", 
+            Subtype: "current_asset", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Cash on hand", 
+            ParentId: "",
+            ParentCode: "1000",
+            ParentName: "Assets"
+          },
+          { 
+            Code: "1002", 
+            Name: "Bank Accounts", 
+            Type: "asset", 
+            Subtype: "current_asset", 
+            IsSubledger: "Yes", 
+            SubledgerType: "bank", 
+            Active: "Yes", 
+            Description: "Company bank accounts", 
+            ParentId: "",
+            ParentCode: "1000",
+            ParentName: "Assets"
+          },
+          { 
+            Code: "2000", 
+            Name: "Liabilities", 
+            Type: "liability", 
+            Subtype: "current_liability", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "All company liabilities", 
+            ParentId: "",
+            ParentCode: "",
+            ParentName: ""
+          },
+          { 
+            Code: "2001", 
+            Name: "Accounts Payable", 
+            Type: "liability", 
+            Subtype: "current_liability", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Short-term debt", 
+            ParentId: "",
+            ParentCode: "2000",
+            ParentName: "Liabilities"
+          }
+        ];
+      }
       
       // First create a worksheet with only the headers
       const worksheet = XLSX.utils.aoa_to_sheet([templateHeaders]);
       
-      // Then add the sample data starting at the second row
-      XLSX.utils.sheet_add_json(worksheet, sampleData, { 
+      // Then add the data starting at the second row
+      XLSX.utils.sheet_add_json(worksheet, templateData, { 
         origin: "A2",
         skipHeader: true 
       });
