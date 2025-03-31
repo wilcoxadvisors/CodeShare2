@@ -31,9 +31,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { z } from 'zod';
 import { validateForm } from '@/lib/validation';
 
+interface Location {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string | null;
+  active: boolean;
+}
+
 interface JournalEntryFormProps {
   entityId: number;
   accounts: Account[];
+  locations?: Location[];
   onSubmit: () => void;
   onCancel: () => void;
   existingEntry?: any;
@@ -45,6 +54,7 @@ interface JournalLine {
   description: string;
   debit: string;
   credit: string;
+  locationId?: string;
 }
 
 // Form validation schema
@@ -52,11 +62,15 @@ const FormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   reference: z.string().min(3, "Reference must be at least 3 characters"),
   description: z.string().optional(),
+  journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
+  supDocId: z.string().optional(),
+  reversalDate: z.string().optional(),
   lines: z.array(z.object({
     accountId: z.string().min(1, "Account is required"),
     description: z.string().optional(),
     debit: z.string(),
-    credit: z.string()
+    credit: z.string(),
+    locationId: z.string().optional()
   }))
   .min(2, "Journal entry must have at least 2 lines")
   .refine(lines => {
@@ -77,7 +91,7 @@ const FormSchema = z.object({
   })
 });
 
-function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
+function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
@@ -89,12 +103,15 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
     date: existingEntry?.date ? new Date(existingEntry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     description: existingEntry?.description || '',
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
+    journalType: existingEntry?.journalType || 'JE',
+    supDocId: existingEntry?.supDocId || '',
+    reversalDate: existingEntry?.reversalDate ? new Date(existingEntry.reversalDate).toISOString().split('T')[0] : '',
   });
   
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: '', description: '', debit: '', credit: '' },
-      { accountId: '', description: '', debit: '', credit: '' }
+      { accountId: '', description: '', debit: '', credit: '', locationId: '' },
+      { accountId: '', description: '', debit: '', credit: '', locationId: '' }
     ]
   );
   
@@ -240,7 +257,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
     // Validate form data
     const validation = validateForm(formData, FormSchema);
     
-    if (!validation.success) {
+    if (!validation.valid) {
       setFieldErrors(validation.errors || {});
       setFormError("Please correct the errors in the form.");
       return;
@@ -252,6 +269,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
+      locationId: line.locationId ? parseInt(line.locationId) : null,
       entityId
     }));
     
@@ -311,7 +329,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: '', description: '', debit: '', credit: '' }]);
+    setLines([...lines, { accountId: '', description: '', debit: '', credit: '', locationId: '' }]);
   };
   
   const removeLine = (index: number) => {
@@ -462,6 +480,7 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -530,6 +549,28 @@ function JournalEntryForm({ entityId, accounts, onSubmit, onCancel, existingEntr
                   />
                   {fieldErrors[`line_${index}_credit`] && (
                     <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_credit`]}</p>
+                  )}
+                </td>
+                
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Select 
+                    value={line.locationId || ''} 
+                    onValueChange={(value) => handleLineChange(index, 'locationId', value)}
+                  >
+                    <SelectTrigger className={fieldErrors[`line_${index}_locationId`] ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Select Location</SelectItem>
+                      {locations.map(location => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.code ? `${location.code} - ` : ''}{location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors[`line_${index}_locationId`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_locationId`]}</p>
                   )}
                 </td>
                 

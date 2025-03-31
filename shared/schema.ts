@@ -174,6 +174,10 @@ export const journalEntries = pgTable("journal_entries", {
   description: text("description"),
   isSystemGenerated: boolean("is_system_generated").notNull().default(false),
   status: text("status", { enum: ['draft', 'posted', 'void'] }).notNull().default('draft'),
+  // Additional fields for journal type and documentation
+  journalType: text("journal_type", { enum: ['JE', 'AJ', 'SJ', 'CL'] }).notNull().default('JE'), // JE=General Journal, AJ=Adjusting Journal, SJ=Statistical Journal, CL=Closing Journal
+  supDocId: text("sup_doc_id"), // Supporting document ID/reference
+  reversalDate: timestamp("reversal_date", { mode: 'date' }), // Date for reversing entries
   // Existing workflow fields
   requestedBy: integer("requested_by").references(() => users.id),
   requestedAt: timestamp("requested_at"),
@@ -198,6 +202,8 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
   type: text("type", { enum: ['debit', 'credit'] }).notNull(),
   amount: numeric("amount", { precision: 19, scale: 4 }).notNull(),
   description: text("description"),
+  // Additional fields for dimensionality
+  locationId: integer("location_id"), // FK to locations table (future)
   // Existing fields that may be useful
   lineNo: integer("line_no"), // For ordering lines within a journal entry
   reference: text("reference"), // Line-specific reference (e.g., invoice number)
