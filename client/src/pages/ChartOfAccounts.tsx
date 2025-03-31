@@ -1217,7 +1217,11 @@ function ChartOfAccounts() {
             <FileText className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
             Template
           </Button>
-          
+        </div>
+      </PageHeader>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        <div className="mb-4 flex justify-end">
           <Button
             variant="default"
             className="inline-flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -1227,9 +1231,6 @@ function ChartOfAccounts() {
             New Account
           </Button>
         </div>
-      </PageHeader>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <DataTable 
           columns={columns} 
           data={flattenedAccounts || []} 
