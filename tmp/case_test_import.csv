@@ -1,0 +1,75 @@
+CODE,Name,Type,subtype,issubledger,subledgerType,ParentCODE,description,active
+1,Assets,asset,,No,,,Resources owned by the business that have economic value,Yes
+1100,Current Assets,asset,,No,,1,Assets expected to be converted to cash or used within one year,Yes
+1110,Cash,asset,Bank,No,,1100,Money in bank accounts and cash on hand,Yes
+1120,Accounts Receivable,asset,Receivable,Yes,accounts_receivable,1100,Money owed to the business by customers,Yes
+1130,Inventory,asset,Inventory,No,,1100,Goods available for sale or materials used in production,Yes
+1140,Prepaid Expenses,asset,Other Current Asset,No,,1100,Expenses paid in advance such as insurance or rent,Yes
+1150,Short-term Investments,asset,Investment,No,,1100,Investments expected to be converted to cash within one year,Yes
+1400,Fixed Assets,asset,,No,,1,Long-term assets used in business operations,Yes
+1410,Equipment,asset,Fixed Asset,No,,1400,Machinery and equipment used in operations,Yes
+1420,Furniture and Fixtures,asset,Fixed Asset,No,,1400,Office furniture and permanent fixtures,Yes
+1430,Buildings,asset,Fixed Asset,No,,1400,Structures owned by the business,Yes
+1440,Land,asset,Fixed Asset,No,,1400,Real estate owned by the business,Yes
+1450,Vehicles,asset,Fixed Asset,No,,1400,"Cars, trucks, and other transportation equipment",Yes
+1490,Accumulated Depreciation,asset,Contra Asset,No,,1400,Total depreciation taken against fixed assets,Yes
+1800,Other Assets,asset,,No,,1,Assets not classified as current or fixed,Yes
+1810,Intangible Assets,asset,Other Asset,No,,1800,"Non-physical assets like patents, trademarks, and goodwill",Yes
+1820,Long-term Investments,asset,Investment,No,,1800,Investments held for more than one year,Yes
+2,Liabilities,liability,,No,,,Obligations and debts owed by the business,Yes
+2100,Current Liabilities,liability,,No,,2,Debts due within one year,Yes
+2110,Accounts Payable,liability,Payable,Yes,accounts_payable,2100,Money owed to suppliers for goods or services purchased on credit,Yes
+2120,Accrued Expenses,liability,Other Current Liability,No,,2100,Expenses incurred but not yet paid,Yes
+2130,Payroll Liabilities,liability,Payroll,No,,2100,Amounts owed to employees and tax authorities for payroll,Yes
+2140,Short-term Loans,liability,Loan,No,,2100,Loans due within one year,Yes
+2150,Current Portion of Long-term Debt,liability,Loan,No,,2100,Principal due within one year on long-term debt,Yes
+2160,Unearned Revenue,liability,Other Current Liability,No,,2100,Payments received from customers before goods or services are delivered,Yes
+2170,Sales Tax Payable,liability,Tax,No,,2100,Sales tax collected from customers but not yet paid to the government,Yes
+2400,Long-term Liabilities,liability,,No,,2,Debts due beyond one year,Yes
+2410,Mortgage Payable,liability,Loan,No,,2400,Long-term loans secured by real estate,Yes
+2420,Notes Payable,liability,Loan,No,,2400,Formal written promises to pay specified amounts,Yes
+2430,Bonds Payable,liability,Loan,No,,2400,Long-term debt securities issued by the business,Yes
+3,Equity,equity,,No,,,Ownership interest in the business,Yes
+3100,Owner's Equity,equity,,No,,3,Owner's investment in the business,Yes
+3110,Capital,equity,Capital,No,,3100,Owner's contributions to the business,Yes
+3120,Owner Draws,equity,Draw,No,,3100,Withdrawals of business assets for personal use,Yes
+3200,Retained Earnings,equity,,No,,3,Accumulated profits reinvested in the business,Yes
+3300,Common Stock,equity,,No,,3,Shares of ownership issued to stockholders,Yes
+3400,Additional Paid-in Capital,equity,,No,,3,Amount paid by shareholders for stock in excess of par value,Yes
+4,Revenue,revenue,,No,,,Income earned from business activities,Yes
+4100,Operating Revenue,revenue,,No,,4,Income from primary business activities,Yes
+4110,Service Revenue,revenue,Service,No,,4100,Income from services provided to customers,Yes
+4120,Product Sales,revenue,Sales,No,,4100,Income from selling goods to customers,Yes
+4200,Other Revenue,revenue,,No,,4,Income from secondary business activities,Yes
+4210,Interest Income,revenue,Other Revenue,No,,4200,Income earned from investments or bank accounts,Yes
+4220,Rental Income,revenue,Other Revenue,No,,4200,Income from renting property to others,Yes
+4230,Gain on Sale of Assets,revenue,Other Revenue,No,,4200,Profits from selling business assets,Yes
+5,Expenses,expense,,No,,,Costs incurred in business operations,Yes
+5100,Cost of Goods Sold,expense,,No,,5,Direct costs of producing goods or services sold,Yes
+5110,Purchases,expense,COGS,No,,5100,Cost of inventory bought for resale,Yes
+5120,Direct Labor,expense,COGS,No,,5100,Wages paid to employees directly involved in production,Yes
+5130,Manufacturing Overhead,expense,COGS,No,,5100,Indirect costs of production not easily traceable to specific products,Yes
+6000,Operating Expenses,expense,,No,,5,Costs of running the business not directly tied to production,Yes
+6100,Office Expenses,expense,,No,,6000,Costs related to office operations,Yes
+6110,Office Supplies,expense,Office,No,,6100,Consumable items used in the office,Yes
+6120,Office Equipment,expense,Office,No,,6100,Small equipment items not capitalized,Yes
+6200,Payroll Expenses,expense,,No,,6000,All costs related to employee compensation,Yes
+6210,Salaries and Wages,expense,Payroll,No,,6200,Regular pay to employees,Yes
+6220,Payroll Taxes,expense,Payroll,No,,6200,Employer portion of taxes on employee wages,Yes
+6230,Employee Benefits,expense,Payroll,No,,6200,"Health insurance, retirement plans, and other benefits",Yes
+6300,Rent and Utilities,expense,,No,,6000,Costs for business facilities,Yes
+6310,Rent,expense,Facilities,No,,6300,Payments for leased property,Yes
+6320,Utilities,expense,Facilities,No,,6300,"Electricity, water, gas, internet, and phone services",Yes
+6400,Professional Services,expense,,No,,6000,Fees paid to outside service providers,Yes
+6410,Legal Fees,expense,Professional Services,No,,6400,Costs for legal counsel and services,Yes
+6420,Accounting Fees,expense,Professional Services,No,,6400,Costs for accounting and bookkeeping services,Yes
+6430,Consulting Fees,expense,Professional Services,No,,6400,Payments to consultants and advisors,Yes
+6500,Insurance,expense,,No,,6000,Business insurance premiums,Yes
+6600,Marketing and Advertising,expense,,No,,6000,Costs to promote the business,Yes
+6700,Travel and Entertainment,expense,,No,,6000,"Business travel, meals, and entertainment expenses",Yes
+6800,Depreciation Expense,expense,Depreciation,No,,6000,Allocation of asset costs over their useful lives,Yes
+7000,Other Expenses,expense,,No,,5,Expenses not classified elsewhere,Yes
+7100,Interest Expense,expense,Other Expense,No,,7000,Interest paid on loans and credit,Yes
+7200,Bank Fees,expense,Other Expense,No,,7000,Charges for banking services,Yes
+7300,Loss on Sale of Assets,expense,Other Expense,No,,7000,Losses from selling business assets,Yes
+9000,Income Taxes,expense,,No,,5,Taxes paid on business profits,Yes

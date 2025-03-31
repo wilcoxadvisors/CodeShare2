@@ -1,6 +1,4 @@
-code,name,type,subtype,description,isSubledger,subledgerType,active,parentCode
-6100,Marketing Expenses,EXPENSE,Operating Expense,Marketing and advertising expenses,false,,true,5100
-6200,Travel Expenses,EXPENSE,Operating Expense,Business travel expenses,false,,true,5100
-6300,Office Supplies,EXPENSE,Operating Expense,Office supplies and stationery,false,,true,5100
-6400,Professional Services,EXPENSE,Operating Expense,Professional service fees,false,,true,5100
-6500,Software Subscriptions,EXPENSE,Operating Expense,Software and online service subscriptions,false,,true,5100
+code,name,type,subtype,isSubledger,subledgerType,description,active,parentCode
+9997,Test Asset Account,ASSET,Current Asset,false,,Test account for import,true,1100
+9998,Test Liability Account,LIABILITY,Current Liability,false,,Test account for import,true,2100
+9999,Test Revenue Account,REVENUE,Operating Revenue,false,,Test account for import,true,4000

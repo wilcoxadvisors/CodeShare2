@@ -30,11 +30,9 @@ for (let i = 2; i < process.argv.length; i++) {
   }
 }
 
-// If no URL was found, generate a dynamic Replit URL
+// If no URL was found, use the direct URL provided by the user
 if (!baseUrl) {
-  const replSlug = process.env.REPL_SLUG || 'workspace';
-  const replId = process.env.REPL_ID || '80550fad-9a85-4035-aa54-a26530837091';
-  baseUrl = `https://${replSlug}-00-${replId}.janeway.replit.dev`;
+  baseUrl = 'https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev';
 }
 
 const BASE_URL = baseUrl;

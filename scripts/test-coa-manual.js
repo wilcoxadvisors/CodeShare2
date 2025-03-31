@@ -30,11 +30,9 @@ for (let i = 2; i < process.argv.length; i++) {
   }
 }
 
-// If no URL was found, generate a dynamic Replit URL
+// If no URL was found, use the direct URL provided by the user
 if (!baseUrl) {
-  const replSlug = process.env.REPL_SLUG || 'workspace';
-  const replId = process.env.REPL_ID || '80550fad-9a85-4035-aa54-a26530837091';
-  baseUrl = `https://${replSlug}-00-${replId}.janeway.replit.dev`;
+  baseUrl = 'https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev';
 }
 
 const BASE_URL = baseUrl;
@@ -429,7 +427,8 @@ async function importAccounts(clientId, filePath) {
     console.log(chalk.blue(`Detected file format: ${format} from extension: ${fileExt}`));
     console.log(chalk.blue(`Importing file: ${filePath} (${fs.statSync(filePath).size} bytes)`));
     
-    // Make the import request
+    console.log(chalk.blue(`Making import request to: ${BASE_URL}/api/clients/${clientId}/accounts/import`));
+    // Make the import request with a longer timeout
     const response = await axios.post(
       `${BASE_URL}/api/clients/${clientId}/accounts/import`,
       formData,
@@ -439,9 +438,12 @@ async function importAccounts(clientId, filePath) {
           Cookie: cookies
         },
         maxContentLength: 100000000, // 100MB max
-        maxBodyLength: 100000000 // 100MB max
+        maxBodyLength: 100000000, // 100MB max
+        timeout: 60000 // 60 second timeout
       }
     );
+    
+    console.log(chalk.green(`Import request completed with status: ${response.status}`));
     
     // Handle nested response format
     let importResults = response.data;

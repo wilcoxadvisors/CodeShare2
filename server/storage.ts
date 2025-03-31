@@ -4397,8 +4397,23 @@ export class DatabaseStorage implements IStorage {
       // Process accounts - creating new ones and updating existing ones
       for (const row of rows) {
         try {
+          // Check if required fields exist
+          if (!row.code || !row.name || !row.type) {
+            result.skipped++;
+            result.errors.push(`Account skipped: Missing required fields (code, name, or type)`);
+            continue;
+          }
+          
           // Normalize account type to match enum
-          const normalizedType = this.normalizeAccountType(row.type.trim().toUpperCase());
+          let normalizedType;
+          try {
+            normalizedType = this.normalizeAccountType(row.type);
+          } catch (typeError) {
+            result.errors.push(`Account ${row.code}: ${typeError.message}`);
+            result.skipped++;
+            continue;
+          }
+          
           const accountCode = row.code.trim();
           
           // Check if the account already exists
@@ -4454,8 +4469,8 @@ export class DatabaseStorage implements IStorage {
                 subtype: row.subtype ? row.subtype.trim() : existingAccount.subtype,
                 description: row.description ? row.description.trim() : existingAccount.description,
                 // parentId will be updated in second pass
-                isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
-                subledgerType: row.subledgertype ? row.subledgertype.trim() : existingAccount.subledgerType,
+                isSubledger: this.parseIsSubledger(row, existingAccount),
+                subledgerType: this.getSubledgerType(row, existingAccount),
               };
               
               await this.updateAccount(existingAccount.id, updateData);
@@ -4469,8 +4484,8 @@ export class DatabaseStorage implements IStorage {
               name: row.name.trim(),
               type: normalizedType as AccountType,
               subtype: row.subtype ? row.subtype.trim() : null,
-              isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
-              subledgerType: row.subledgertype ? row.subledgertype.trim() : null,
+              isSubledger: this.parseIsSubledger(row),
+              subledgerType: this.getSubledgerType(row),
               parentId: null, // We'll update this in the second pass
               description: row.description ? row.description.trim() : null,
               active: row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false'
@@ -4491,9 +4506,13 @@ export class DatabaseStorage implements IStorage {
       // Second pass to set parent IDs - only for accounts that don't have transactions
       for (const row of rows) {
         const accountCode = row.code.trim();
-        if (row.parentcode && codeToIdMap.has(row.parentcode)) {
+        
+        // Handle potential case mismatches in field names
+        const parentCode = row.parentcode || row.parentCode || row.ParentCode;
+        
+        if (parentCode && codeToIdMap.has(parentCode)) {
           const accountId = codeToIdMap.get(accountCode);
-          const parentId = codeToIdMap.get(row.parentcode);
+          const parentId = codeToIdMap.get(parentCode);
           
           if (accountId && parentId) {
             try {
@@ -4523,7 +4542,11 @@ export class DatabaseStorage implements IStorage {
   
   // Helper method to normalize account types from imported data
   private normalizeAccountType(type: string): AccountType {
-    switch (type.toUpperCase()) {
+    if (!type) {
+      throw new Error("Account type is required");
+    }
+    
+    switch (type.trim().toUpperCase()) {
       case 'ASSET':
       case 'ASSETS':
         return AccountType.ASSET;
@@ -4548,6 +4571,51 @@ export class DatabaseStorage implements IStorage {
       default:
         throw new Error(`Invalid account type: ${type}`);
     }
+  }
+  
+  /**
+   * Helper method to parse isSubledger field with case-insensitive handling
+   * This handles different case variations and formats (yes/no, true/false, 1/0)
+   */
+  private parseIsSubledger(row: any, existingAccount?: Account): boolean {
+    // Check all possible case variations of isSubledger field
+    const isSubledgerField = row.issubledger || row.isSubledger || row.IsSubledger || row.ISSUBLEDGER;
+    
+    if (isSubledgerField === undefined && existingAccount) {
+      return existingAccount.isSubledger;
+    }
+    
+    if (typeof isSubledgerField === 'boolean') {
+      return isSubledgerField;
+    }
+    
+    // Check string values
+    if (isSubledgerField) {
+      const normalized = isSubledgerField.toString().toLowerCase().trim();
+      if (normalized === 'yes' || normalized === '1' || normalized === 'true') {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Helper method to get subledger type with case-insensitive handling
+   */
+  private getSubledgerType(row: any, existingAccount?: Account): string | null {
+    // Check all possible case variations of subledgerType field
+    const subledgerType = row.subledgertype || row.subledgerType || row.SubledgerType || row.SUBLEDGERTYPE;
+    
+    if (subledgerType) {
+      return subledgerType.trim();
+    }
+    
+    if (existingAccount) {
+      return existingAccount.subledgerType;
+    }
+    
+    return null;
   }
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {

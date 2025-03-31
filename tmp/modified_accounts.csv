@@ -1,0 +1,12 @@
+code,name,type,subtype,isSubledger,subledgerType,parentCode,description,active
+1,Assets,asset,,No,,,Resources owned by the business that have economic value,Yes
+1100,Current Assets,asset,,No,,1,Assets expected to be converted to cash or used within one year,Yes
+1110,Cash,asset,Bank,No,,1100,Money in bank accounts and cash on hand,Yes
+1120,Accounts Receivable,asset,Receivable,Yes,accounts_receivable,1100,Money owed to the business by customers,Yes
+1130,Inventory,asset,Inventory,No,,1100,Goods available for sale or materials used in production,Yes
+1140,Prepaid Expenses,asset,Other Current Asset,No,,1100,Expenses paid in advance such as insurance or rent,Yes
+1150,Short-term Investments,asset,Investment,No,,1100,Investments expected to be converted to cash within one year,Yes
+1400,Fixed Assets,asset,,No,,1,Long-term assets used in business operations,Yes
+1410,Equipment,asset,Fixed Asset,No,,1400,Machinery and equipment used in operations,Yes
+9999,Test Account,asset,Custom,No,,1100,This is a test account for import testing,Yes
+9998,Another Test Account,expense,Custom,No,,5000,This is another test account for import testing,Yes
