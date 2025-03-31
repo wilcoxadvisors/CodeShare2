@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 
@@ -45,27 +45,57 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   
-  const { data: entitiesData = [], isLoading } = useQuery({
+  // Get all entities for the user with refetch capability when client changes
+  const { data: entitiesData = [], isLoading, refetch: refetchEntities } = useQuery<Entity[]>({
     queryKey: user ? ['/api/entities'] : [],
-    enabled: !!user,
+    enabled: !!user
   });
 
-  // Cast to Entity[] since we know the API returns this format
+  // Just use the entities from the general list but trigger a refetch when client changes
   const entities = entitiesData as Entity[];
-
-  // Clear entity selection when changing client
+  
+  // Debug log when entities data changes
   useEffect(() => {
+    console.log(`DEBUG: Entities data updated - received ${entities?.length || 0} entities`);
+    if (selectedClientId && entities?.length > 0) {
+      const clientEntities = entities.filter(entity => entity.clientId === selectedClientId);
+      console.log(`DEBUG: After entities update, found ${clientEntities.length} entities for selected client ${selectedClientId}`);
+    }
+  }, [entities, selectedClientId]);
+
+  // When client selection changes: clear entity selection and refetch entities
+  useEffect(() => {
+    console.log("DEBUG: Client selection changed:", selectedClientId);
+    
+    // Clear entity selection if it doesn't match the new client
     if (currentEntity && selectedClientId && currentEntity.clientId !== selectedClientId) {
+      console.log("DEBUG: Clearing current entity as it belongs to a different client");
       setCurrentEntity(null);
     }
-  }, [selectedClientId, currentEntity]);
+    
+    // Refetch entities to ensure we have the latest data for the selected client
+    if (user && selectedClientId) {
+      console.log("DEBUG: Refetching entities for client:", selectedClientId);
+      refetchEntities();
+    }
+  }, [selectedClientId, currentEntity, user, refetchEntities]);
 
   // Auto-select first entity only if it belongs to the selected client
   useEffect(() => {
     if (entities.length > 0 && !currentEntity && selectedClientId) {
+      console.log(`DEBUG: Checking for auto-select of entity for client ${selectedClientId}`);
       const clientEntities = entities.filter((entity: Entity) => entity.clientId === selectedClientId);
+      console.log(`DEBUG: Found ${clientEntities.length} entities to potentially auto-select for client ${selectedClientId}`);
+      
       if (clientEntities.length > 0) {
+        console.log(`DEBUG: Auto-selecting first entity for client ${selectedClientId}:`, {
+          id: clientEntities[0].id,
+          name: clientEntities[0].name,
+          code: clientEntities[0].code
+        });
         setCurrentEntity(clientEntities[0]);
+      } else {
+        console.log(`DEBUG: No entities found for client ${selectedClientId} to auto-select`);
       }
     }
   }, [entities, currentEntity, selectedClientId]);

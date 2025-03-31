@@ -102,11 +102,27 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     const clientName = clients.find(c => c.id === clientId)?.name || 'Unknown';
     console.log(`DEBUG: Setting client context: ${clientId} (${clientName})`);
     
-    setSelectedClientId(clientId);
+    // Show detailed debugging for prior state
+    console.log('DEBUG: BEFORE client selection - Current state:', {
+      selectedClientId,
+      currentEntity: currentEntity ? {
+        id: currentEntity.id,
+        name: currentEntity.name,
+        clientId: currentEntity.clientId
+      } : null
+    });
+    
+    // Clear current entity selection first to avoid any state dependencies
     setCurrentEntity(null);
+    
+    // Then set client ID which will trigger refetch of entities in the EntityContext
+    setSelectedClientId(clientId);
+    
+    // Close the dropdown
     setOpen(false);
     
-    console.log(`DEBUG: Context after client selection - clientId: ${clientId}, entityId: null`);
+    // Show detailed debugging for after state change is initiated
+    console.log(`DEBUG: AFTER client selection initiated - clientId: ${clientId}, entityId: null`);
   };
 
   // Handle entity selection
@@ -123,20 +139,36 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     const clientName = clients.find(c => c.id === entity.clientId)?.name || 'Unknown';
     console.log(`DEBUG: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
     
-    // Critical - setting both context values
-    console.log('Setting entity context:', entity);
-    console.log('Setting client context via entity:', entity.clientId);
+    // Show detailed debugging for prior state
+    console.log('DEBUG: BEFORE entity selection - Current state:', {
+      selectedClientId,
+      currentEntity: currentEntity ? {
+        id: currentEntity.id,
+        name: currentEntity.name,
+        clientId: currentEntity.clientId
+      } : null
+    });
     
-    // Set client context FIRST to ensure proper state hierarchy
-    setSelectedClientId(entity.clientId); 
+    // Critical - only set the client ID if it's different from current 
+    if (selectedClientId !== entity.clientId) {
+      console.log(`DEBUG: Updating client context to: ${entity.clientId} (${clientName})`);
+      setSelectedClientId(entity.clientId);
+    } else {
+      console.log(`DEBUG: Client context already set to: ${entity.clientId}, skipping update`);
+    }
     
     // Then set entity context
+    console.log(`DEBUG: Setting entity context to:`, {
+      id: entity.id,
+      name: entity.name, 
+      clientId: entity.clientId
+    });
     setCurrentEntity(entity);
     
     // Close popover
     setOpen(false);
     
-    console.log(`DEBUG: Context after entity selection - clientId: ${entity.clientId}, entityId: ${entity.id}`);
+    console.log(`DEBUG: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
   // Toggle client expansion

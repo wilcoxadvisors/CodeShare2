@@ -108,13 +108,17 @@ function ChartOfAccounts() {
       currentEntity,
       clientId: currentEntity?.clientId,
       selectedClientId,
+      clientIdToUse,
       time: new Date().toISOString()
     });
     
     // Refetch account data when client or entity changes
     if (clientIdToUse) {
       console.log("DEBUG: Triggering account data refetch due to client/entity change", { clientIdToUse });
-      refetch();
+      // Using a small timeout to ensure the client context is fully updated
+      setTimeout(() => {
+        refetch();
+      }, 100);
     }
   }, [currentEntity, selectedClientId, clientIdToUse, refetch]);
   
