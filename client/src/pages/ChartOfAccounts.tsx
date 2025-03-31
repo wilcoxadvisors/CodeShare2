@@ -231,8 +231,16 @@ function ChartOfAccounts() {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number }) => {
         console.log("DEBUG: useAddAccount - Mutate called with:", data);
+        
+        // Enhanced validation for clientId
+        if (!data.clientId || typeof data.clientId !== 'number' || isNaN(data.clientId) || data.clientId <= 0) {
+          console.error("DEBUG: useAddAccount - Invalid clientId:", data.clientId, "type:", typeof data.clientId);
+          throw new Error(`Invalid client ID: ${data.clientId}. Please select a valid client before creating an account.`);
+        }
+        
         const url = `/api/clients/${data.clientId}/accounts`;
         console.log("DEBUG: useAddAccount - API URL:", url);
+        
         try {
           const result = await apiRequest(url, {
             method: 'POST',
@@ -242,6 +250,10 @@ function ChartOfAccounts() {
           return result;
         } catch (error) {
           console.error("DEBUG: useAddAccount - API error:", error);
+          if (error.response) {
+            console.error("DEBUG: useAddAccount - API error status:", error.response.status);
+            console.error("DEBUG: useAddAccount - API error data:", error.response.data);
+          }
           throw error;
         }
       },
@@ -515,11 +527,44 @@ function ChartOfAccounts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate that a client is selected
+    // Enhanced validation that a client is selected with detailed logging
+    console.log("DEBUG - handleSubmit - Client validation:", { 
+      currentEntity, 
+      selectedClientId,
+      clientIdToUse,
+      clientIdToUseType: typeof clientIdToUse
+    });
+    
     if (!clientIdToUse) {
+      console.error("DEBUG - handleSubmit - No client ID available");
       toast({
         title: "Client required",
         description: "Please select a client from the header dropdown first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
+      console.error("DEBUG - handleSubmit - Invalid client ID:", clientIdToUse);
+      toast({
+        title: "Invalid client",
+        description: "The selected client appears to be invalid. Please try selecting a different client.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate required fields
+    if (!accountData.name || !accountData.code || !accountData.type) {
+      console.error("DEBUG - handleSubmit - Missing required fields:", { 
+        name: accountData.name, 
+        code: accountData.code,
+        type: accountData.type
+      });
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields (Code, Name, and Type).",
         variant: "destructive"
       });
       return;
@@ -532,24 +577,33 @@ function ChartOfAccounts() {
       parentId: accountData.parentId === "none" || accountData.parentId === undefined ? null : accountData.parentId
     };
     
-    console.log("DEBUG - parentId before:", accountData.parentId, "type:", typeof accountData.parentId);
-    console.log("DEBUG - parentId after:", submitData.parentId, "type:", typeof submitData.parentId);
+    console.log("DEBUG - handleSubmit - parentId before:", accountData.parentId, "type:", typeof accountData.parentId);
+    console.log("DEBUG - handleSubmit - parentId after:", submitData.parentId, "type:", typeof submitData.parentId);
     
-    console.log("DEBUG - Submitting account data:", {
+    console.log("DEBUG - handleSubmit - Submitting account data:", {
       clientId: clientIdToUse,
       submitData,
       isEditMode
     });
     
-    if (isEditMode) {
-      updateAccount.mutate({
-        ...submitData,
-        clientId: clientIdToUse
-      });
-    } else {
-      createAccount.mutate({
-        ...submitData,
-        clientId: clientIdToUse
+    try {
+      if (isEditMode) {
+        updateAccount.mutate({
+          ...submitData,
+          clientId: clientIdToUse
+        });
+      } else {
+        createAccount.mutate({
+          ...submitData,
+          clientId: clientIdToUse
+        });
+      }
+    } catch (error) {
+      console.error("DEBUG - handleSubmit - Error during mutation call:", error);
+      toast({
+        title: "Submission error",
+        description: `An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
       });
     }
   };
@@ -882,10 +936,21 @@ function ChartOfAccounts() {
   const useImportAccounts = () => {
     return useMutation({
       mutationFn: async (accounts: any[]) => {
+        console.log("DEBUG: useImportAccounts - Starting import with clientIdToUse:", clientIdToUse);
+        
+        // Enhanced client validation
         if (!clientIdToUse) {
-          throw new Error("No client selected");
+          console.error("DEBUG: useImportAccounts - No client ID available");
+          throw new Error("No client selected. Please select a client before importing accounts.");
         }
-        console.log(`DEBUG: Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
+        
+        if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
+          console.error("DEBUG: useImportAccounts - Invalid client ID:", clientIdToUse);
+          throw new Error(`Invalid client ID: ${clientIdToUse}. Please select a valid client.`);
+        }
+        
+        console.log(`DEBUG: useImportAccounts - Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
+        console.log(`DEBUG: useImportAccounts - Number of accounts to import: ${accounts.length}`);
         
         // Need to create FormData because the import endpoint expects multipart/form-data
         const formData = new FormData();
@@ -895,19 +960,40 @@ function ChartOfAccounts() {
         const file = new Blob([csv], { type: 'text/csv' });
         formData.append('file', file, 'accounts_import.csv');
         
-        // Use fetch directly since apiRequest doesn't handle FormData
-        const response = await fetch(`/api/clients/${clientIdToUse}/accounts/import`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include' // Include cookies for authentication
-        });
+        console.log("DEBUG: useImportAccounts - FormData created with CSV file");
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Unknown error occurred');
+        try {
+          // Use fetch directly since apiRequest doesn't handle FormData
+          const response = await fetch(`/api/clients/${clientIdToUse}/accounts/import`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include' // Include cookies for authentication
+          });
+          
+          console.log("DEBUG: useImportAccounts - Response status:", response.status);
+          
+          if (!response.ok) {
+            console.error("DEBUG: useImportAccounts - Response error status:", response.status);
+            let errorMessage = 'Unknown error occurred';
+            
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.message || errorMessage;
+              console.error("DEBUG: useImportAccounts - Error data:", errorData);
+            } catch (jsonError) {
+              console.error("DEBUG: useImportAccounts - Failed to parse error JSON:", jsonError);
+            }
+            
+            throw new Error(errorMessage);
+          }
+          
+          const result = await response.json();
+          console.log("DEBUG: useImportAccounts - Import successful, result:", result);
+          return result;
+        } catch (error) {
+          console.error("DEBUG: useImportAccounts - Fetch error:", error);
+          throw error;
         }
-        
-        return await response.json();
       },
       onSuccess: () => {
         toast({

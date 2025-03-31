@@ -1,0 +1,25 @@
+Task: Verify CoA Page Population & Fix Create Account 404 Error
+
+Goal: Ensure the Chart of Accounts page loads data correctly upon client selection and fix the 404 error preventing new account creation.
+
+1. Verify CoA Page Client Selection & Population:
+* Issue: User previously reported the page wasn't updating/populating when a client was selected. The AuthContext fix might have resolved this.
+* Action: Navigate to the Chart of Accounts page (/chart-of-accounts).
+* Action: Use the GlobalContextSelector in the header to select a client known to have accounts (e.g., "OK" - Client ID 2).
+* Observe & Report:
+* Does the page UI now correctly reflect that "OK" is selected?
+* Does the main account table/tree populate with the accounts for client "OK"? Report clearly: Yes or No.
+
+2. Fix "Create Account" 404 Error:
+* Issue: User reports a 404 error when clicking the "Create Account" button (likely the "Add Account" button that opens the form). This is not related to the import fix you just did.
+* Action: (Proceed regardless of the outcome of Step 1 for now) Investigate the 404 error for the account creation process:
+* Frontend Check (client/src/pages/ChartOfAccounts.tsx):
+* Examine the useAddAccount mutation definition again. Confirm it is configured to send a POST request.
+* Verify the exact API endpoint URL it targets. It should be /api/clients/:clientId/accounts.
+* Add a console.log just before the axios call inside the useAddAccount mutation's mutationFn to log the exact URL and the clientId being used, like: console.log("DEBUG: Calling Add Account API:", \POST /api/clients/${clientId}/accounts`, "with data:", accountData);* **Backend Check (server/accountRoutes.ts):** * Verify the routerouter.post('/api/clients/:clientId/accounts', isAuthenticated, asyncHandler(async (req, res) => { ... }))exists and is correctly defined. * Add aconsole.log("DEBUG: POST /api/clients/:clientId/accounts route hit");at the very beginning of this route handler function inserver/accountRoutes.ts. * Checkserver/routes.tsto ensure theaccountRouter(containing this route) is correctly registered with the Express app. * **Action:** Based on whether the frontend is calling the wrong URL or the backend route isn't being hit/registered correctly, implement the necessary fix in the appropriate file (ChartOfAccounts.tsx,accountRoutes.ts, orroutes.ts`).
+* Report: Describe the root cause identified for the 404 error and the specific fix applied.
+
+3. Test Create Account Fix:
+* Action: Restart the application if backend changes were made.
+* Action: Simulate the Add Account flow again: Navigate to CoA, select client "OK", click "Add Account", fill required fields in the form, click "Save/Create".
+* Report: Did the 404 error resolve? Was the account created successfully (check for success toast, UI refresh)? Provide relevant DEBUG logs (from both frontend and backend if added) only if the error persists.
