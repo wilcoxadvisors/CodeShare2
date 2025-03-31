@@ -1,0 +1,29 @@
+Task: Implement Chart of Accounts UI Button Functionality
+
+Goal: Implement the frontend logic (primarily TanStack Query mutations) to make the Add, Edit, and Delete account buttons functional on the Chart of Accounts page. Verify Import/Export buttons are connected.
+
+Implement Add/Edit Account Logic:
+Action: Open client/src/pages/ChartOfAccounts.tsx and any related form component (e.g., AccountForm.tsx).
+Action: Define and implement the TanStack Query mutations:
+useAddAccount: Configure useMutation to make a POST request to /api/clients/:clientId/accounts (verify/adjust endpoint if needed) with the new account data.
+useUpdateAccount: Configure useMutation to make a PUT request to /api/clients/:clientId/accounts/:accountId with the updated account data.
+Action: Ensure the AccountForm component's submission handler correctly calls addAccountMutation.mutate(...) or updateAccountMutation.mutate(...) with the form data.
+Action: Implement onSuccess callbacks for both mutations to invalidate the necessary queries, ensuring the UI refreshes:
+JavaScript
+
+queryClient.invalidateQueries({ queryKey: ['accounts', clientId] });
+queryClient.invalidateQueries({ queryKey: ['accounts', 'tree', clientId] });
+Implement Delete Account Logic:
+Action: Locate the delete button/action handler in ChartOfAccounts.tsx (likely within the account table/tree row actions).
+Action: Ensure a confirmation dialog (<AlertDialog>) is used before deleting.
+Action: Define and implement the useDeleteAccount mutation:
+Configure useMutation to make a DELETE request to /api/clients/:clientId/accounts/:accountId (verify/adjust endpoint). The backend should perform a soft delete (set isActive = false).
+Action: Ensure the confirmation dialog's confirmation action triggers deleteAccountMutation.mutate(accountId).
+Action: Implement an onSuccess callback for the mutation to invalidate queries as shown above.
+Verify Import/Export Buttons:
+Action: Briefly check the "Import", "Export CSV", and "Export Excel" buttons in ChartOfAccounts.tsx.
+Action: Confirm their onClick handlers are correctly wired to the existing functions (handleImport..., handleExportCsv, handleExportToExcel).
+Report Completion:
+Action: Report the implementation status for the Add, Edit, and Delete functionalities, specifically confirming the creation and integration of the useAddAccount, useUpdateAccount, and useDeleteAccount mutations. Confirm the Import/Export buttons are connected.
+
+Sources and related content

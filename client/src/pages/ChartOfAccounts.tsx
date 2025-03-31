@@ -189,32 +189,43 @@ function ChartOfAccounts() {
     }
   }, [accountData.type, isEditMode, currentEntity, flattenedAccounts]);
 
-  const createAccount = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(
-        `/api/clients/${currentEntity?.clientId}/accounts`, 
-        {
-          method: 'POST',
-          data
+  // Custom hook for adding an account
+  const useAddAccount = () => {
+    return useMutation({
+      mutationFn: async (data: AccountData & { clientId: number }) => {
+        return await apiRequest(
+          `/api/clients/${data.clientId}/accounts`, 
+          {
+            method: 'POST',
+            data
+          }
+        );
+      },
+      onSuccess: () => {
+        toast({
+          title: "Account created",
+          description: "The account has been created successfully.",
+        });
+        setShowAccountForm(false);
+        
+        // Invalidate relevant queries to refresh UI
+        if (currentEntity?.clientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
         }
-      );
-    },
-    onSuccess: () => {
-      toast({
-        title: "Account created",
-        description: "The account has been created successfully.",
-      });
-      setShowAccountForm(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to create account: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: `Failed to create account: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    });
+  };
+  
+  // Initialize the add account mutation
+  const createAccount = useAddAccount();
 
   const handleNewAccount = () => {
     setAccountData({
@@ -317,109 +328,134 @@ function ChartOfAccounts() {
     }
   };
 
-  const updateAccount = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(
-        `/api/clients/${currentEntity?.clientId}/accounts/${data.id}`, 
-        {
-          method: 'PUT',
-          data
-        }
-      );
-    },
-    onSuccess: () => {
-      toast({
-        title: "Account updated",
-        description: "The account has been updated successfully.",
-      });
-      setShowAccountForm(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to update account: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  });
-  
-  const deleteAccount = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(
-        `/api/clients/${currentEntity?.clientId}/accounts/${id}`, 
-        {
-          method: 'DELETE'
-        }
-      );
-    },
-    onSuccess: () => {
-      toast({
-        title: "Account deleted",
-        description: "The account has been deleted successfully.",
-      });
-      setShowDeleteConfirm(false);
-      setAccountToDelete(null);
-      refetch();
-    },
-    onError: (error: any) => {
-      if (error.response?.data?.canDeactivate) {
-        // Show option to deactivate instead
+  // Custom hook for updating an account
+  const useUpdateAccount = () => {
+    return useMutation({
+      mutationFn: async (data: AccountData & { clientId: number, id: number }) => {
+        return await apiRequest(
+          `/api/clients/${data.clientId}/accounts/${data.id}`, 
+          {
+            method: 'PUT',
+            data
+          }
+        );
+      },
+      onSuccess: () => {
         toast({
-          title: "Cannot delete account",
-          description: "This account is used in journal entries and cannot be deleted. You can deactivate it instead.",
+          title: "Account updated",
+          description: "The account has been updated successfully.",
         });
+        setShowAccountForm(false);
         
-        setShowDeleteConfirm(false);
-        // Show deactivation dialog if we have the account details
-        if (accountToDelete) {
-          setAccountData({
-            id: accountToDelete.id,
-            code: accountToDelete.code,
-            name: accountToDelete.name,
-            type: "",  // Will be filled when fetching account details
-            subtype: "",
-            isSubledger: false,
-            subledgerType: "",
-            active: false,  // Set to inactive
-            description: "",
-            parentId: null // Will be updated when fetching account details
-          });
-          
-          // Get full account details before showing the form
-          apiRequest(`/api/clients/${currentEntity?.clientId}/accounts/${accountToDelete.id}`)
-            .then((accountDetails: any) => {
-              setAccountData(prev => ({
-                ...prev,
-                type: accountDetails.type,
-                subtype: accountDetails.subtype || "",
-                isSubledger: accountDetails.isSubledger,
-                subledgerType: accountDetails.subledgerType || "",
-                description: accountDetails.description || "",
-                parentId: accountDetails.parentId
-              }));
-              setIsEditMode(true);
-              setFormTab("basic");
-              setShowAccountForm(true);
-            })
-            .catch(fetchError => {
-              console.error("Error fetching account details:", fetchError);
-              toast({
-                title: "Error",
-                description: "Could not fetch account details for deactivation",
-                variant: "destructive",
-              });
-            });
+        // Invalidate relevant queries to refresh UI
+        if (currentEntity?.clientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
         }
-      } else {
+      },
+      onError: (error: Error) => {
         toast({
           title: "Error",
-          description: `Failed to delete account: ${error.message}`,
+          description: `Failed to update account: ${error.message}`,
           variant: "destructive",
         });
       }
-    }
-  });
+    });
+  };
+  
+  // Initialize the update account mutation
+  const updateAccount = useUpdateAccount();
+  
+  // Custom hook for deleting an account
+  const useDeleteAccount = () => {
+    return useMutation({
+      mutationFn: async (id: number) => {
+        if (!currentEntity?.clientId) {
+          throw new Error("No client selected");
+        }
+        return await apiRequest(
+          `/api/clients/${currentEntity.clientId}/accounts/${id}`, 
+          {
+            method: 'DELETE'
+          }
+        );
+      },
+      onSuccess: () => {
+        toast({
+          title: "Account deleted",
+          description: "The account has been deleted successfully.",
+        });
+        setShowDeleteConfirm(false);
+        setAccountToDelete(null);
+        
+        // Invalidate relevant queries to refresh UI
+        if (currentEntity?.clientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        }
+      },
+      onError: (error: any) => {
+        if (error.response?.data?.canDeactivate) {
+          // Show option to deactivate instead
+          toast({
+            title: "Cannot delete account",
+            description: "This account is used in journal entries and cannot be deleted. You can deactivate it instead.",
+          });
+          
+          setShowDeleteConfirm(false);
+          // Show deactivation dialog if we have the account details
+          if (accountToDelete) {
+            setAccountData({
+              id: accountToDelete.id,
+              code: accountToDelete.code,
+              name: accountToDelete.name,
+              type: "",  // Will be filled when fetching account details
+              subtype: "",
+              isSubledger: false,
+              subledgerType: "",
+              active: false,  // Set to inactive
+              description: "",
+              parentId: null // Will be updated when fetching account details
+            });
+            
+            // Get full account details before showing the form
+            apiRequest(`/api/clients/${currentEntity?.clientId}/accounts/${accountToDelete.id}`)
+              .then((accountDetails: any) => {
+                setAccountData(prev => ({
+                  ...prev,
+                  type: accountDetails.type,
+                  subtype: accountDetails.subtype || "",
+                  isSubledger: accountDetails.isSubledger,
+                  subledgerType: accountDetails.subledgerType || "",
+                  description: accountDetails.description || "",
+                  parentId: accountDetails.parentId
+                }));
+                setIsEditMode(true);
+                setFormTab("basic");
+                setShowAccountForm(true);
+              })
+              .catch(fetchError => {
+                console.error("Error fetching account details:", fetchError);
+                toast({
+                  title: "Error",
+                  description: "Could not fetch account details for deactivation",
+                  variant: "destructive",
+                });
+              });
+          }
+        } else {
+          toast({
+            title: "Error",
+            description: `Failed to delete account: ${error.message}`,
+            variant: "destructive",
+          });
+        }
+      }
+    });
+  };
+  
+  // Initialize the delete account mutation
+  const deleteAccount = useDeleteAccount();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -758,35 +794,48 @@ function ChartOfAccounts() {
     setShowImportDialog(true);
   };
   
-  // Import multiple accounts
-  const importAccounts = useMutation({
-    mutationFn: async (accounts: any[]) => {
-      return await apiRequest(
-        `/api/clients/${currentEntity?.clientId}/accounts/batch`, 
-        {
-          method: 'POST',
-          data: { accounts }
+  // Custom hook for batch importing accounts
+  const useImportAccounts = () => {
+    return useMutation({
+      mutationFn: async (accounts: any[]) => {
+        if (!currentEntity?.clientId) {
+          throw new Error("No client selected");
         }
-      );
-    },
-    onSuccess: () => {
-      toast({
-        title: "Accounts imported",
-        description: `Successfully imported ${importData.length} accounts.`,
-      });
-      setShowImportDialog(false);
-      setImportData([]);
-      setImportErrors([]);
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Import failed",
-        description: `Failed to import accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  });
+        return await apiRequest(
+          `/api/clients/${currentEntity.clientId}/accounts/batch`, 
+          {
+            method: 'POST',
+            data: { accounts }
+          }
+        );
+      },
+      onSuccess: () => {
+        toast({
+          title: "Accounts imported",
+          description: `Successfully imported ${importData.length} accounts.`,
+        });
+        setShowImportDialog(false);
+        setImportData([]);
+        setImportErrors([]);
+        
+        // Invalidate relevant queries to refresh UI
+        if (currentEntity?.clientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity.clientId}/accounts/tree`] });
+        }
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Import failed",
+          description: `Failed to import accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        });
+      }
+    });
+  };
+  
+  // Initialize the import accounts mutation
+  const importAccounts = useImportAccounts();
   
   const handleImportConfirm = () => {
     if (importData.length > 0) {
