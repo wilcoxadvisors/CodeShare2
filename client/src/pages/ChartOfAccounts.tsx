@@ -852,9 +852,13 @@ function ChartOfAccounts() {
         }
       ];
       
-      // Create worksheet with headers and sample data
-      const worksheet = XLSX.utils.json_to_sheet([...sampleData], { 
-        header: templateHeaders 
+      // First create a worksheet with only the headers
+      const worksheet = XLSX.utils.aoa_to_sheet([templateHeaders]);
+      
+      // Then add the sample data starting at the second row
+      XLSX.utils.sheet_add_json(worksheet, sampleData, { 
+        origin: "A2",
+        skipHeader: true 
       });
       
       // Column widths for better readability
