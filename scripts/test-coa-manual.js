@@ -1,276 +1,189 @@
 /**
- * Simple Manual Test Utility for Chart of Accounts Import/Export
+ * Manual Test Procedure for Chart of Accounts Import/Export Functionality
  * 
- * This script creates a test client and seeds it with standard accounts,
- * allowing for manual testing of the CoA functionality.
+ * This script documents the steps for manually testing the Chart of Accounts
+ * import/export functionality. The testing can be performed through both the UI
+ * and direct API calls.
  */
 
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
-import chalk from 'chalk';
-import { fileURLToPath } from 'url';
-
-// When using ES modules, __dirname is not available
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Required libraries for API testing approach
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const FormData = require('form-data');
+const Papa = require('papaparse');
+const chalk = require('chalk');
+const XLSX = require('xlsx');
 
 // Configuration
-const BASE_URL = 'http://localhost:5000';
-const TEST_CLIENT_PREFIX = 'COA_MANUAL_TEST_';
-const API_BASE = '/api/clients';
-const COOKIES_FILE = path.join(__dirname, '..', 'cookies.txt');
+const BASE_URL = 'http://localhost:3000'; // Change as needed
+const COOKIES_FILE = path.join(__dirname, '../curl_cookies.txt');
+const TEMP_DIR = path.join(__dirname, '../tmp/coa-test');
+const TEST_CLIENT_PREFIX = 'COA_TEST_MANUAL_';
 
-// Test account - should be replaced with proper credentials for your environment
-const TEST_USER = {
-  username: 'admin',
-  password: 'password123'
-};
+// Global variables to track created clients for cleanup
+const createdClients = [];
 
-/**
- * Login to get auth cookie
- */
-async function login() {
-  try {
-    console.log(chalk.blue(`Logging in as ${TEST_USER.username}...`));
-    
-    const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-      username: TEST_USER.username,
-      password: TEST_USER.password
-    });
-    
-    if (response.headers['set-cookie']) {
-      fs.writeFileSync(COOKIES_FILE, response.headers['set-cookie'].join(';'));
-      console.log(chalk.green('Login successful - auth cookie saved'));
-      return response.headers['set-cookie'];
-    } else {
-      throw new Error('No cookies received from login');
-    }
-  } catch (error) {
-    console.error(chalk.red('Login failed:'), error.message);
-    if (error.response) {
-      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-    }
-    throw new Error(`Authentication failed: ${error.message}`);
-  }
+// Function to format console output
+function printHeading(text) {
+  console.log('\n' + chalk.bgBlue.white(' ' + text + ' ') + '\n');
+}
+
+function printStep(number, text) {
+  console.log(chalk.cyan(`Step ${number}: ${text}`));
 }
 
 /**
- * Create a test client
+ * Manual Testing Procedure via UI
  */
-async function createTestClient() {
-  try {
-    const timestamp = Date.now();
-    const testClientName = `${TEST_CLIENT_PREFIX}${timestamp}`;
-    console.log(chalk.blue(`Creating test client: ${testClientName}`));
-    
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    const response = await axios.post(`${BASE_URL}/api/clients`, {
-      name: testClientName,
-      active: true,
-      industry: 'ACCOUNTING'
-    }, {
-      headers: {
-        Cookie: cookies
-      }
-    });
-    
-    if (!response.data || !response.data.id) {
-      throw new Error(`Failed to create test client. Response: ${JSON.stringify(response.data)}`);
-    }
-    
-    const clientId = response.data.id;
-    console.log(chalk.green(`Created test client with ID: ${clientId}`));
-    
-    return { id: clientId, name: testClientName };
-  } catch (error) {
-    console.error(chalk.red('Failed to create test client:'), error.message);
-    if (error.response) {
-      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-    }
-    throw error;
-  }
+function manualUiTestingSteps() {
+  printHeading('MANUAL TESTING VIA UI');
+
+  printStep(1, 'Login to the application as an admin user');
+  console.log('   - Navigate to the login page');
+  console.log('   - Enter admin credentials (username: admin, password: password123)');
+  console.log('   - Click "Login"');
+
+  printStep(2, 'Create a new test client');
+  console.log('   - Navigate to the Clients dashboard');
+  console.log('   - Click "Add Client"');
+  console.log('   - Enter test client details (name: "COA_TEST_MANUAL_UI")');
+  console.log('   - Complete the setup process and save the client');
+
+  printStep(3, 'Navigate to the Chart of Accounts page for the test client');
+  console.log('   - Select the test client from the client dropdown');
+  console.log('   - Navigate to "Chart of Accounts" from the main menu');
+
+  printStep(4, 'Verify initial Chart of Accounts state');
+  console.log('   - Note the number of accounts currently shown');
+  console.log('   - Check that account hierarchy is displayed correctly');
+  console.log('   - Verify account types (ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE)');
+
+  printStep(5, 'Export Chart of Accounts to CSV');
+  console.log('   - Click "Export" button');
+  console.log('   - Select "CSV" format');
+  console.log('   - Save the file to a known location');
+  console.log('   - Verify the CSV file contains all accounts with correct data');
+
+  printStep(6, 'Export Chart of Accounts to Excel');
+  console.log('   - Click "Export" button');
+  console.log('   - Select "Excel" format');
+  console.log('   - Save the file to a known location');
+  console.log('   - Open the Excel file and verify it contains all accounts with correct data');
+
+  printStep(7, 'Modify the exported CSV file');
+  console.log('   - Open the CSV file in a text editor or spreadsheet application');
+  console.log('   - Modify description of one existing account');
+  console.log('   - Add a new account with appropriate data (ensuring valid account type and parent code)');
+  console.log('   - Save the modified CSV file');
+
+  printStep(8, 'Import the modified CSV file');
+  console.log('   - Click "Import" button');
+  console.log('   - Select the modified CSV file');
+  console.log('   - Submit the import');
+  console.log('   - Verify successful import message');
+  console.log('   - Check that the modified account shows updated description');
+  console.log('   - Verify the new account appears in the correct location in the hierarchy');
+
+  printStep(9, 'Create an invalid CSV file');
+  console.log('   - Create a CSV file with invalid data (e.g., invalid account type, missing required field)');
+  console.log('   - Try importing the invalid file');
+  console.log('   - Verify appropriate error message is shown');
+  console.log('   - Confirm accounts were not modified by the failed import');
+
+  printStep(10, 'Repeat Excel import/export tests');
+  console.log('   - Perform similar modification and import tests with Excel format');
+  console.log('   - Verify results match the CSV testing experience');
+
+  printStep(11, 'Clean up');
+  console.log('   - Optional: Delete test accounts added during testing');
+  console.log('   - Optional: Delete test client if no longer needed');
 }
 
 /**
- * Seed initial Chart of Accounts for a client
+ * Manual Testing Procedure via API
  */
-async function seedInitialAccounts(clientId) {
-  try {
-    console.log(chalk.blue(`Seeding initial accounts for client ID: ${clientId}`));
-    
-    // Define standard accounts - a minimal set for testing
-    const standardAccounts = [
-      { code: '1000', name: 'Assets', type: 'ASSET', subtype: 'Asset', isSubledger: false, active: true, description: 'Asset accounts' },
-      { code: '1100', name: 'Cash', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Cash accounts', parentCode: '1000' },
-      { code: '1200', name: 'Accounts Receivable', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Money owed to the company', parentCode: '1000' },
-      { code: '2000', name: 'Liabilities', type: 'LIABILITY', subtype: 'Liability', isSubledger: false, active: true, description: 'Liability accounts' },
-      { code: '2100', name: 'Accounts Payable', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: false, active: true, description: 'Money owed by the company', parentCode: '2000' },
-      { code: '3000', name: 'Equity', type: 'EQUITY', subtype: 'Equity', isSubledger: false, active: true, description: 'Equity accounts' },
-      { code: '4000', name: 'Revenue', type: 'REVENUE', subtype: 'Revenue', isSubledger: false, active: true, description: 'Revenue accounts' },
-      { code: '5000', name: 'Expenses', type: 'EXPENSE', subtype: 'Expense', isSubledger: false, active: true, description: 'Expense accounts' }
-    ];
-    
-    // First pass: Create accounts without parent relationships
-    const firstPassAccounts = standardAccounts.map(acc => {
-      const { parentCode, ...accountWithoutParent } = acc;
-      return accountWithoutParent;
-    });
-    
-    // Create accounts one by one to avoid potential batch issues
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    
-    for (const account of firstPassAccounts) {
-      try {
-        const response = await axios.post(
-          `${BASE_URL}${API_BASE}/${clientId}/accounts`,
-          { ...account, clientId },
-          { headers: { Cookie: cookies } }
-        );
-        console.log(chalk.green(`Created account: ${account.code} - ${account.name}`));
-      } catch (error) {
-        console.error(chalk.red(`Failed to create account ${account.code} - ${account.name}:`), error.message);
-        if (error.response) {
-          console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-        }
-      }
-    }
-    
-    console.log(chalk.green(`Created ${firstPassAccounts.length} accounts in first pass`));
-    
-    // Second pass: Update parent relationships one by one
-    const accountsWithParents = standardAccounts.filter(acc => acc.parentCode);
-    
-    if (accountsWithParents.length > 0) {
-      // Get current accounts to get their IDs
-      const currentAccountsResponse = await getAccounts(clientId);
-      const currentAccounts = Array.isArray(currentAccountsResponse) ? 
-                             currentAccountsResponse : 
-                             (currentAccountsResponse.items || []);
-      
-      console.log(chalk.blue(`Processing ${currentAccounts.length} accounts for parent relationships`));
-      const accountMap = new Map(currentAccounts.map(acc => [acc.code, acc]));
-      
-      // For each account with a parent, update it individually
-      for (const account of accountsWithParents) {
-        try {
-          // Find the account and its parent IDs
-          const accountToUpdate = accountMap.get(account.code);
-          const parentAccount = accountMap.get(account.parentCode);
-          
-          if (!accountToUpdate) {
-            console.error(chalk.red(`Cannot find account with code ${account.code} to update its parent relationship`));
-            continue;
-          }
-          
-          if (!parentAccount) {
-            console.error(chalk.red(`Cannot find parent account with code ${account.parentCode} for account ${account.code}`));
-            continue;
-          }
-          
-          // Update the parent relationship
-          const response = await axios.patch(
-            `${BASE_URL}${API_BASE}/${clientId}/accounts/${accountToUpdate.id}`,
-            { 
-              parentId: parentAccount.id
-            },
-            { headers: { Cookie: cookies } }
-          );
-          
-          console.log(chalk.green(`Updated parent relationship for ${account.code} to parent ${account.parentCode}`));
-        } catch (error) {
-          console.error(chalk.red(`Failed to update parent relationship for account ${account.code}:`), error.message);
-          if (error.response) {
-            console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-          }
-        }
-      }
-      
-      console.log(chalk.green(`Attempted to update ${accountsWithParents.length} account parent relationships`));
-    }
-    
-    console.log(chalk.green(`Successfully seeded ${standardAccounts.length} accounts for client ID: ${clientId}`));
-    return standardAccounts;
-  } catch (error) {
-    console.error(chalk.red(`Failed to seed accounts for client ${clientId}:`), error.message);
-    if (error.response) {
-      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-    }
-    throw error;
-  }
+async function manualApiTestingSteps() {
+  printHeading('MANUAL TESTING VIA API');
+
+  printStep(1, 'Authenticate and get cookies');
+  console.log('   - Use curl to authenticate and save cookies:');
+  console.log('   - curl -c curl_cookies.txt -X POST -H "Content-Type: application/json" ' +
+              '-d \'{"username":"admin","password":"password123"}\' ' +
+              `${BASE_URL}/api/auth/login`);
+
+  printStep(2, 'Create a test client');
+  console.log('   - Use curl to create a new client:');
+  console.log('   - curl -b curl_cookies.txt -X POST -H "Content-Type: application/json" ' +
+              '-d \'{"name":"COA_TEST_MANUAL_API","active":true,"industry":"ACCOUNTING"}\' ' +
+              `${BASE_URL}/api/admin/clients`);
+  console.log('   - Note the client ID in the response');
+
+  printStep(3, 'Seed initial accounts for the client');
+  console.log('   - Use curl to create standard accounts:');
+  console.log('   - curl -b curl_cookies.txt -X POST -H "Content-Type: application/json" ' +
+              '-d \'{"accounts":[...standard accounts...]}\' ' +
+              `${BASE_URL}/api/clients/{clientId}/accounts/batch`);
+
+  printStep(4, 'Export accounts to CSV');
+  console.log('   - Use curl to export accounts:');
+  console.log('   - curl -b curl_cookies.txt -o accounts.csv ' +
+              `${BASE_URL}/api/clients/{clientId}/accounts/export?format=csv`);
+  console.log('   - Verify the CSV file content');
+
+  printStep(5, 'Export accounts to Excel');
+  console.log('   - Use curl to export accounts:');
+  console.log('   - curl -b curl_cookies.txt -o accounts.xlsx ' +
+              `${BASE_URL}/api/clients/{clientId}/accounts/export?format=xlsx`);
+  console.log('   - Verify the Excel file content');
+
+  printStep(6, 'Modify exported file and import');
+  console.log('   - Edit the CSV or Excel file to modify existing accounts and add new ones');
+  console.log('   - Use curl to import the modified file:');
+  console.log('   - curl -b curl_cookies.txt -X POST -F "file=@modified_accounts.csv" ' +
+              `${BASE_URL}/api/clients/{clientId}/accounts/import`);
+  console.log('   - Verify the import results in the response');
+
+  printStep(7, 'Test invalid import');
+  console.log('   - Create an invalid file with format or data errors');
+  console.log('   - Use curl to attempt import:');
+  console.log('   - curl -b curl_cookies.txt -X POST -F "file=@invalid_accounts.csv" ' +
+              `${BASE_URL}/api/clients/{clientId}/accounts/import`);
+  console.log('   - Verify error response');
+
+  printStep(8, 'Clean up');
+  console.log('   - Optional: Use curl to delete the test client:');
+  console.log('   - curl -b curl_cookies.txt -X DELETE ' +
+              `${BASE_URL}/api/admin/clients/{clientId}`);
 }
 
 /**
- * Get all accounts for a client
+ * Main function to show all test procedures
  */
-async function getAccounts(clientId) {
-  try {
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    console.log(chalk.blue(`Fetching accounts for client ID: ${clientId}`));
-    
-    const response = await axios.get(`${BASE_URL}${API_BASE}/${clientId}/accounts`, {
-      headers: { Cookie: cookies }
-    });
-    
-    if (!response.data) {
-      throw new Error(`No account data returned for client ID: ${clientId}`);
-    }
-    
-    const accountsLength = Array.isArray(response.data) ? 
-                          response.data.length : 
-                          (response.data.items ? response.data.items.length : 0);
-    
-    console.log(chalk.green(`Retrieved ${accountsLength} accounts for client ID: ${clientId}`));
-    return response.data;
-  } catch (error) {
-    console.error(chalk.red(`Failed to get accounts for client ${clientId}:`), error.message);
-    if (error.response) {
-      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-    }
-    throw error;
-  }
+async function showTestingProcedures() {
+  console.log(chalk.bold.green('CHART OF ACCOUNTS IMPORT/EXPORT MANUAL TESTING PROCEDURES'));
+  console.log(chalk.yellow('\nThis script documents the steps for manual testing of the Chart of Accounts'));
+  console.log(chalk.yellow('import/export functionality. It provides instructions for both UI and API testing.'));
+  
+  console.log(chalk.bold.yellow('\nUsage:'));
+  console.log('1. Read through the test steps to understand the testing procedures');
+  console.log('2. Follow the UI testing steps to test through the user interface');
+  console.log('3. Follow the API testing steps to test through direct API calls');
+  console.log('4. Document any issues or inconsistencies encountered');
+  
+  manualUiTestingSteps();
+  await manualApiTestingSteps();
+  
+  console.log(chalk.bold.green('\nTEST ACCEPTANCE CRITERIA:'));
+  console.log('✓ Export functionality works for both CSV and Excel formats');
+  console.log('✓ Exported files contain all account data in the correct format');
+  console.log('✓ Import functionality correctly processes valid CSV and Excel files');
+  console.log('✓ Changes to existing accounts are correctly applied during import');
+  console.log('✓ New accounts are correctly added during import');
+  console.log('✓ Parent-child relationships are correctly maintained in the hierarchy');
+  console.log('✓ Invalid imports are rejected with appropriate error messages');
+  console.log('✓ Application security is maintained (authentication required for all operations)');
 }
 
-/**
- * Main function
- */
-async function main() {
-  try {
-    console.log(chalk.blue('===== Chart of Accounts Manual Test Setup =====\n'));
-    
-    // Login
-    await login();
-    
-    // Create test client
-    const testClient = await createTestClient();
-    
-    // Seed initial accounts
-    await seedInitialAccounts(testClient.id);
-    
-    // Get accounts to verify
-    const accountsResponse = await getAccounts(testClient.id);
-    const accounts = Array.isArray(accountsResponse) ? 
-                    accountsResponse : 
-                    (accountsResponse.items || []);
-    
-    console.log(chalk.green(`\nSuccessfully created test client with ${accounts.length} accounts.`));
-    console.log(chalk.blue(`\nTest Client Information:`));
-    console.log(chalk.blue(`- Name: ${testClient.name}`));
-    console.log(chalk.blue(`- ID: ${testClient.id}`));
-    console.log(chalk.blue(`\nYou can now manually test the Chart of Accounts functionality for this client.`));
-    console.log(chalk.blue(`1. Navigate to the Chart of Accounts page`));
-    console.log(chalk.blue(`2. Select this client in the header or context selector`));
-    console.log(chalk.blue(`3. Test export functionality (CSV and Excel)`));
-    console.log(chalk.blue(`4. Test import functionality with valid and invalid data`));
-    
-  } catch (error) {
-    console.error(chalk.red('\nSetup encountered an error:'), error.message);
-    process.exit(1);
-  }
-}
-
-// Run the script
-main().catch(error => {
-  console.error(chalk.red('Unhandled exception:'), error);
-  process.exit(1);
-});
+// Run the test procedures documentation
+showTestingProcedures();

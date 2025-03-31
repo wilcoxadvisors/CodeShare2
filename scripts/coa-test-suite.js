@@ -6,36 +6,30 @@
  * with detailed verification of data integrity and error handling.
  */
 
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
-import chalk from 'chalk';
-import FormData from 'form-data';
-import Papa from 'papaparse';
-import XLSX from 'xlsx';
-import { fileURLToPath } from 'url';
-
-// When using ES modules, __dirname is not available
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Required libraries
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const FormData = require('form-data');
+const Papa = require('papaparse');
+const chalk = require('chalk');
+const XLSX = require('xlsx');
 
 // Configuration
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'http://localhost:3000'; // Change as needed
+const COOKIES_FILE = path.join(__dirname, '../curl_cookies.txt');
+const TEMP_DIR = path.join(__dirname, '../tmp/coa-test');
 const TEST_CLIENT_PREFIX = 'COA_TEST_';
-const API_BASE = '/api/clients';
-const TEST_DIR = path.join(__dirname, '..', 'test', 'coa-import-export');
-const COOKIES_FILE = path.join(__dirname, '..', 'cookies.txt');
-const TEMP_DIR = path.join(__dirname, '..', 'tmp');
+const API_BASE = '/api/admin/clients';
 
-// Test user credentials
-const TEST_USER = {
-  username: 'admin',
-  password: 'password123'
-};
-
-// Track test results for final summary
-const testResults = [];
+// Track created clients for cleanup
 const createdClients = [];
+
+// Test results
+const testResults = {
+  passed: [],
+  failed: []
+};
 
 /**
  * Ensure temporary directory exists
@@ -43,6 +37,7 @@ const createdClients = [];
 function ensureTempDir() {
   if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
+    console.log(chalk.blue(`Created temporary directory: ${TEMP_DIR}`));
   }
 }
 
@@ -50,17 +45,15 @@ function ensureTempDir() {
  * Log test results in a consistent format
  */
 function logResult(testName, success, message) {
-  const prefix = success ? chalk.green('✓ PASS') : chalk.red('✗ FAIL');
-  console.log(`${prefix} ${chalk.bold(testName)}: ${message}`);
-  
-  testResults.push({
-    name: testName,
-    success,
-    message,
-    timestamp: new Date()
-  });
-  
-  return success;
+  if (success) {
+    console.log(chalk.green(`✓ PASS: ${testName} - ${message}`));
+    testResults.passed.push({ name: testName, message });
+    return true;
+  } else {
+    console.log(chalk.red(`✗ FAIL: ${testName} - ${message}`));
+    testResults.failed.push({ name: testName, message });
+    return false;
+  }
 }
 
 /**
@@ -68,26 +61,41 @@ function logResult(testName, success, message) {
  */
 async function login() {
   try {
-    console.log(chalk.blue(`Logging in as ${TEST_USER.username}...`));
+    console.log(chalk.blue('Authenticating with admin credentials...'));
     
+    // Check if cookies file already exists
+    if (fs.existsSync(COOKIES_FILE)) {
+      console.log(chalk.green('Using existing authentication cookies'));
+      return fs.readFileSync(COOKIES_FILE, 'utf8');
+    }
+    
+    // Authenticate to get cookies
     const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-      username: TEST_USER.username,
-      password: TEST_USER.password
+      username: 'admin',
+      password: 'password123'
+    }, {
+      maxRedirects: 0,
+      validateStatus: status => status >= 200 && status < 400
     });
     
-    if (response.headers['set-cookie']) {
-      fs.writeFileSync(COOKIES_FILE, response.headers['set-cookie'].join(';'));
-      console.log(chalk.green('Login successful - auth cookie saved'));
-      return response.headers['set-cookie'];
-    } else {
-      throw new Error('No cookies received from login');
+    // Extract and save cookies
+    const cookies = response.headers['set-cookie'];
+    if (!cookies) {
+      throw new Error('No cookies received from authentication');
     }
+    
+    // Format and save cookies to file
+    const cookieString = cookies.join('; ');
+    fs.writeFileSync(COOKIES_FILE, cookieString);
+    
+    console.log(chalk.green('Successfully authenticated and saved cookies'));
+    return cookieString;
   } catch (error) {
-    console.error(chalk.red('Login failed:'), error.message);
+    console.error(chalk.red('Authentication failed:'), error.message);
     if (error.response) {
       console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
     }
-    throw new Error(`Authentication failed: ${error.message}`);
+    throw error;
   }
 }
 
@@ -102,16 +110,19 @@ async function createTestClient() {
     
     const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
     
+    // Use the correct admin API endpoint for client creation
+    const ADMIN_API_URL = '/api/admin/clients';
+    
     // Log the request details for debugging
     console.log(chalk.blue('Request details:'));
-    console.log(chalk.blue('URL:', `${BASE_URL}/api/clients`));
+    console.log(chalk.blue('URL:', `${BASE_URL}${ADMIN_API_URL}`));
     console.log(chalk.blue('Payload:', JSON.stringify({
       name: testClientName,
       active: true,
       industry: 'ACCOUNTING'
     }, null, 2)));
     
-    const response = await axios.post(`${BASE_URL}/api/clients`, {
+    const response = await axios.post(`${BASE_URL}${ADMIN_API_URL}`, {
       name: testClientName,
       active: true,
       industry: 'ACCOUNTING'
@@ -126,11 +137,13 @@ async function createTestClient() {
     console.log(chalk.green('Response data type:', typeof response.data));
     console.log(chalk.green('Response data:', JSON.stringify(response.data, null, 2)));
     
-    if (!response.data || !response.data.id) {
+    // Handle the nested response format
+    if (!response.data || !response.data.status || !response.data.data || !response.data.data.id) {
       throw new Error(`Failed to create test client. Response: ${JSON.stringify(response.data)}`);
     }
     
-    const clientId = response.data.id;
+    const clientData = response.data.data;
+    const clientId = clientData.id;
     console.log(chalk.green(`Created test client with ID: ${clientId}`));
     createdClients.push({ id: clientId, name: testClientName });
     
@@ -151,41 +164,84 @@ async function seedInitialAccounts(clientId) {
   try {
     console.log(chalk.blue(`Seeding initial accounts for client ID: ${clientId}`));
     
-    // Define standard accounts - a minimal set for testing
+    // Standard accounts for testing
     const standardAccounts = [
-      { code: '1000', name: 'Assets', type: 'ASSET', subtype: 'Asset', isSubledger: false, active: true, description: 'Asset accounts' },
-      { code: '1100', name: 'Cash', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Cash accounts', parentCode: '1000' },
-      { code: '1200', name: 'Accounts Receivable', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Money owed to the company', parentCode: '1000' },
-      { code: '2000', name: 'Liabilities', type: 'LIABILITY', subtype: 'Liability', isSubledger: false, active: true, description: 'Liability accounts' },
-      { code: '2100', name: 'Accounts Payable', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: false, active: true, description: 'Money owed by the company', parentCode: '2000' },
-      { code: '3000', name: 'Equity', type: 'EQUITY', subtype: 'Equity', isSubledger: false, active: true, description: 'Equity accounts' },
-      { code: '4000', name: 'Revenue', type: 'REVENUE', subtype: 'Revenue', isSubledger: false, active: true, description: 'Revenue accounts' },
-      { code: '5000', name: 'Expenses', type: 'EXPENSE', subtype: 'Expense', isSubledger: false, active: true, description: 'Expense accounts' }
+      // Assets (1000-1999)
+      { code: '1000', name: 'Assets', type: 'ASSET', subtype: 'Asset', isSubledger: false, active: true, description: 'Asset accounts', parentCode: null },
+      { code: '1100', name: 'Current Assets', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Current assets', parentCode: '1000' },
+      { code: '1200', name: 'Cash', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Cash accounts', parentCode: '1100' },
+      { code: '1201', name: 'Checking Account', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Primary checking account', parentCode: '1200' },
+      { code: '1202', name: 'Savings Account', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Savings account', parentCode: '1200' },
+      { code: '1300', name: 'Accounts Receivable', type: 'ASSET', subtype: 'Current Asset', isSubledger: true, subledgerType: 'CUSTOMER', active: true, description: 'Amounts owed by customers', parentCode: '1100' },
+      { code: '1400', name: 'Inventory', type: 'ASSET', subtype: 'Current Asset', isSubledger: false, active: true, description: 'Inventory assets', parentCode: '1100' },
+      { code: '1500', name: 'Fixed Assets', type: 'ASSET', subtype: 'Non-Current Asset', isSubledger: false, active: true, description: 'Long-term assets', parentCode: '1000' },
+      { code: '1600', name: 'Equipment', type: 'ASSET', subtype: 'Non-Current Asset', isSubledger: false, active: true, description: 'Equipment owned', parentCode: '1500' },
+      { code: '1700', name: 'Buildings', type: 'ASSET', subtype: 'Non-Current Asset', isSubledger: false, active: true, description: 'Buildings owned', parentCode: '1500' },
+      
+      // Liabilities (2000-2999)
+      { code: '2000', name: 'Liabilities', type: 'LIABILITY', subtype: 'Liability', isSubledger: false, active: true, description: 'Liability accounts', parentCode: null },
+      { code: '2100', name: 'Current Liabilities', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: false, active: true, description: 'Current liabilities', parentCode: '2000' },
+      { code: '2200', name: 'Accounts Payable', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: true, subledgerType: 'VENDOR', active: true, description: 'Amounts owed to vendors', parentCode: '2100' },
+      { code: '2300', name: 'Credit Cards', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: false, active: true, description: 'Credit card balances', parentCode: '2100' },
+      { code: '2400', name: 'Accrued Expenses', type: 'LIABILITY', subtype: 'Current Liability', isSubledger: false, active: true, description: 'Accrued expenses', parentCode: '2100' },
+      { code: '2500', name: 'Long-term Liabilities', type: 'LIABILITY', subtype: 'Non-Current Liability', isSubledger: false, active: true, description: 'Long-term liabilities', parentCode: '2000' },
+      { code: '2600', name: 'Loans Payable', type: 'LIABILITY', subtype: 'Non-Current Liability', isSubledger: false, active: true, description: 'Long-term loans', parentCode: '2500' },
+      
+      // Equity (3000-3999)
+      { code: '3000', name: 'Equity', type: 'EQUITY', subtype: 'Equity', isSubledger: false, active: true, description: 'Equity accounts', parentCode: null },
+      { code: '3100', name: 'Common Stock', type: 'EQUITY', subtype: 'Equity', isSubledger: false, active: true, description: 'Common stock issued', parentCode: '3000' },
+      { code: '3200', name: 'Retained Earnings', type: 'EQUITY', subtype: 'Equity', isSubledger: false, active: true, description: 'Accumulated earnings', parentCode: '3000' },
+      
+      // Revenue (4000-4999)
+      { code: '4000', name: 'Revenue', type: 'REVENUE', subtype: 'Revenue', isSubledger: false, active: true, description: 'Revenue accounts', parentCode: null },
+      { code: '4100', name: 'Service Revenue', type: 'REVENUE', subtype: 'Operating Revenue', isSubledger: false, active: true, description: 'Revenue from services', parentCode: '4000' },
+      { code: '4200', name: 'Product Sales', type: 'REVENUE', subtype: 'Operating Revenue', isSubledger: false, active: true, description: 'Revenue from product sales', parentCode: '4000' },
+      { code: '4300', name: 'Other Revenue', type: 'REVENUE', subtype: 'Non-Operating Revenue', isSubledger: false, active: true, description: 'Other revenue sources', parentCode: '4000' },
+      
+      // Expenses (5000-5999)
+      { code: '5000', name: 'Expenses', type: 'EXPENSE', subtype: 'Expense', isSubledger: false, active: true, description: 'Expense accounts', parentCode: null },
+      { code: '5100', name: 'Operating Expenses', type: 'EXPENSE', subtype: 'Operating Expense', isSubledger: false, active: true, description: 'Operating expenses', parentCode: '5000' },
+      { code: '5200', name: 'Payroll Expenses', type: 'EXPENSE', subtype: 'Operating Expense', isSubledger: false, active: true, description: 'Payroll-related expenses', parentCode: '5100' },
+      { code: '5300', name: 'Rent Expense', type: 'EXPENSE', subtype: 'Operating Expense', isSubledger: false, active: true, description: 'Rent payments', parentCode: '5100' },
+      { code: '5400', name: 'Utilities Expense', type: 'EXPENSE', subtype: 'Operating Expense', isSubledger: false, active: true, description: 'Utility payments', parentCode: '5100' },
+      { code: '5500', name: 'Insurance Expense', type: 'EXPENSE', subtype: 'Operating Expense', isSubledger: false, active: true, description: 'Insurance payments', parentCode: '5100' }
     ];
     
-    // First pass: Create accounts without parent relationships
-    const firstPassAccounts = standardAccounts.map(acc => {
-      const { parentCode, ...accountWithoutParent } = acc;
-      return accountWithoutParent;
-    });
-    
-    // Create accounts in a single batch
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    
-    // Log the batch request details
-    console.log(chalk.blue('Batch account creation request:'));
-    console.log(chalk.blue('URL:', `${BASE_URL}${API_BASE}/${clientId}/accounts/batch`));
-    console.log(chalk.blue('Payload:', JSON.stringify({ accounts: firstPassAccounts }, null, 2)));
-    
     try {
+      const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
+      const API_ACCOUNTS_BASE = `/api/clients/${clientId}/accounts`;
+      
+      // First pass: Create all accounts without parent relationships
+      const firstPassAccounts = standardAccounts.map(account => ({
+        code: account.code,
+        name: account.name,
+        type: account.type,
+        subtype: account.subtype || null,
+        isSubledger: account.isSubledger || false,
+        subledgerType: account.subledgerType || null,
+        active: account.active !== undefined ? account.active : true,
+        description: account.description || null
+      }));
+      
+      console.log(chalk.blue('Batch creation request:'));
+      console.log(chalk.blue('URL:', `${BASE_URL}${API_ACCOUNTS_BASE}/batch`));
+      console.log(chalk.blue('Payload:', JSON.stringify({ accounts: firstPassAccounts }, null, 2)));
+      
       const firstPassResponse = await axios.post(
-        `${BASE_URL}${API_BASE}/${clientId}/accounts/batch`,
+        `${BASE_URL}${API_ACCOUNTS_BASE}/batch`,
         { accounts: firstPassAccounts },
         { headers: { Cookie: cookies } }
       );
       
       console.log(chalk.green('Batch creation response status:', firstPassResponse.status));
-      console.log(chalk.green('Batch creation response data:', JSON.stringify(firstPassResponse.data, null, 2)));
+      
+      // Handle nested response format
+      let batchResponseData = firstPassResponse.data;
+      if (firstPassResponse.data && firstPassResponse.data.status === 'success' && firstPassResponse.data.data) {
+        batchResponseData = firstPassResponse.data.data;
+      }
+      
+      console.log(chalk.green('Batch creation response data:', JSON.stringify(batchResponseData, null, 2)));
       
       // Second pass: Update parent relationships
       const accountsWithParents = standardAccounts.filter(acc => acc.parentCode);
@@ -197,11 +253,11 @@ async function seedInitialAccounts(clientId) {
         }));
         
         console.log(chalk.blue('Parent relationship update request:'));
-        console.log(chalk.blue('URL:', `${BASE_URL}${API_BASE}/${clientId}/accounts/update-parents`));
+        console.log(chalk.blue('URL:', `${BASE_URL}${API_ACCOUNTS_BASE}/update-parents`));
         console.log(chalk.blue('Payload:', JSON.stringify({ updates }, null, 2)));
         
         const secondPassResponse = await axios.post(
-          `${BASE_URL}${API_BASE}/${clientId}/accounts/update-parents`,
+          `${BASE_URL}${API_ACCOUNTS_BASE}/update-parents`,
           { updates },
           { headers: { Cookie: cookies } }
         );
@@ -241,7 +297,8 @@ async function getAccounts(clientId) {
     const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
     console.log(chalk.blue(`Fetching accounts for client ID: ${clientId}`));
     
-    const response = await axios.get(`${BASE_URL}${API_BASE}/${clientId}/accounts`, {
+    const API_ACCOUNTS_BASE = `/api/clients/${clientId}/accounts`;
+    const response = await axios.get(`${BASE_URL}${API_ACCOUNTS_BASE}`, {
       headers: { Cookie: cookies }
     });
     
@@ -249,12 +306,18 @@ async function getAccounts(clientId) {
       throw new Error(`No account data returned for client ID: ${clientId}`);
     }
     
-    const accountsLength = Array.isArray(response.data) ? 
-                          response.data.length : 
-                          (response.data.items ? response.data.items.length : 0);
+    // Handle the nested response format
+    let accounts = response.data;
+    if (response.data.status === 'success' && response.data.data) {
+      accounts = response.data.data;
+    }
+    
+    const accountsLength = Array.isArray(accounts) ? 
+                          accounts.length : 
+                          (accounts.items ? accounts.items.length : 0);
                           
     console.log(chalk.green(`Retrieved ${accountsLength} accounts for client ID: ${clientId}`));
-    return response.data;
+    return accounts;
   } catch (error) {
     console.error(chalk.red(`Failed to get accounts for client ${clientId}:`), error.message);
     if (error.response) {
@@ -272,8 +335,9 @@ async function exportAccounts(clientId, format = 'csv') {
     console.log(chalk.blue(`Exporting accounts for client ${clientId} to ${format.toUpperCase()} format`));
     
     const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
+    const API_ACCOUNTS_BASE = `/api/clients/${clientId}/accounts`;
     const response = await axios.get(
-      `${BASE_URL}${API_BASE}/${clientId}/accounts/export?format=${format}`, 
+      `${BASE_URL}${API_ACCOUNTS_BASE}/export?format=${format}`, 
       {
         headers: { Cookie: cookies },
         responseType: 'arraybuffer'
@@ -319,8 +383,9 @@ async function importAccounts(clientId, filePath, format = 'csv') {
     // Add content type based on format
     const contentType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     
+    const API_ACCOUNTS_BASE = `/api/clients/${clientId}/accounts`;
     const response = await axios.post(
-      `${BASE_URL}${API_BASE}/${clientId}/accounts/import`,
+      `${BASE_URL}${API_ACCOUNTS_BASE}/import`,
       formData,
       {
         headers: {
@@ -332,6 +397,12 @@ async function importAccounts(clientId, filePath, format = 'csv') {
     );
     
     console.log(chalk.green(`Import successful for client ${clientId}`));
+    
+    // Handle the nested response format
+    if (response.data && response.data.status === 'success' && response.data.data) {
+      return response.data.data;
+    }
+    
     return response.data;
   } catch (error) {
     console.error(chalk.red(`Failed to import accounts for client ${clientId}:`), error.message);
@@ -517,7 +588,9 @@ async function cleanup() {
     
     for (const client of createdClients) {
       try {
-        await axios.delete(`${BASE_URL}${API_BASE}/clients/${client.id}`, {
+        // Use the admin API endpoint for deleting clients
+        const ADMIN_API_URL = `/api/admin/clients/${client.id}`;
+        await axios.delete(`${BASE_URL}${ADMIN_API_URL}`, {
           headers: { Cookie: cookies }
         });
         deletedCount++;
@@ -566,67 +639,69 @@ async function runCsvTests(clientId) {
     const csvHeadersTestResult = logResult(
       'CSV Headers',
       missingHeaders.length === 0,
-      missingHeaders.length === 0
-        ? 'All required headers present'
+      missingHeaders.length === 0 
+        ? 'All required headers present' 
         : `Missing headers: ${missingHeaders.join(', ')}`
     );
     
-    // Test 2: Import valid CSV with new accounts
-    console.log(chalk.blue('\nTest 2: Import valid CSV with new accounts'));
-    const validCsvImport = await generateValidImportFile('csv');
+    // Test 2: Generate and import valid CSV
+    console.log(chalk.blue('\nTest 2: Import valid CSV'));
+    const validCsvFile = await generateValidImportFile('csv');
+    const validImportResult = await importAccounts(clientId, validCsvFile.filePath, 'csv');
     
-    let validCsvImportResult;
-    try {
-      validCsvImportResult = await importAccounts(clientId, validCsvImport.filePath, 'csv');
-      
-      // Verify accounts were added
-      const accountsAfterValidImport = await getAccounts(clientId);
-      const expectedAccountCount = initialAccounts.length + validCsvImport.accountCount;
-      
-      const validCsvImportTestResult = logResult(
-        'Valid CSV Import',
-        accountsAfterValidImport.length === expectedAccountCount,
-        `Added ${validCsvImport.accountCount} accounts. Total now: ${accountsAfterValidImport.length}`
-      );
-    } catch (error) {
-      logResult('Valid CSV Import', false, `Import failed: ${error.message}`);
-    }
+    // Verify import results
+    const afterValidImport = await getAccounts(clientId);
     
-    // Test 3: Import invalid CSV (should fail gracefully)
-    console.log(chalk.blue('\nTest 3: Import invalid CSV (should fail gracefully)'));
-    const invalidCsvImport = await generateInvalidImportFile('csv');
+    const validImportTestResult = logResult(
+      'Valid CSV Import',
+      afterValidImport.length >= initialAccounts.length + validCsvFile.accountCount,
+      `Successfully imported ${validCsvFile.accountCount} new accounts`
+    );
     
-    let invalidImportFailed = false;
-    try {
-      await importAccounts(clientId, invalidCsvImport.filePath, 'csv');
-      logResult('Invalid CSV Import', false, 'Import should have failed but succeeded');
-    } catch (error) {
-      invalidImportFailed = true;
-      logResult('Invalid CSV Import', true, `Import correctly failed: ${error.message}`);
-    }
-    
-    // Test 4: Modify and re-import (update accounts)
-    console.log(chalk.blue('\nTest 4: Modify and re-import (update accounts)'));
-    const modifiedCsvImport = await createModifiedImportFile(csvExport.filePath, 'csv');
+    // Test 3: Generate and attempt invalid CSV import
+    console.log(chalk.blue('\nTest 3: Import invalid CSV'));
+    const invalidCsvFile = await generateInvalidImportFile('csv');
+    let invalidImportSucceeded = false;
+    let errorMessage = '';
     
     try {
-      const modifyImportResult = await importAccounts(clientId, modifiedCsvImport.filePath, 'csv');
-      
-      // Verify accounts were updated and added
-      const accountsAfterModifyImport = await getAccounts(clientId);
-      
-      const modifyImportTestResult = logResult(
-        'Modify and Re-import CSV',
-        true, // Check success response only since count might vary based on other tests
-        `Import successful with ${modifyImportResult.added || 0} accounts added, ${modifyImportResult.updated || 0} updated`
-      );
+      await importAccounts(clientId, invalidCsvFile.filePath, 'csv');
+      invalidImportSucceeded = true;
     } catch (error) {
-      logResult('Modify and Re-import CSV', false, `Import failed: ${error.message}`);
+      errorMessage = error.message;
+      if (error.response && error.response.data) {
+        errorMessage = JSON.stringify(error.response.data);
+      }
     }
     
-    return true;
+    const invalidImportTestResult = logResult(
+      'Invalid CSV Import Rejection',
+      !invalidImportSucceeded,
+      invalidImportSucceeded
+        ? 'Invalid import succeeded when it should have failed'
+        : `Properly rejected invalid import: ${errorMessage}`
+    );
+    
+    // Test 4: Export, modify and re-import CSV
+    console.log(chalk.blue('\nTest 4: Modify and re-import CSV'));
+    const reExport = await exportAccounts(clientId, 'csv');
+    const modifiedCsvFile = await createModifiedImportFile(reExport.filePath, 'csv');
+    
+    const modifiedImportResult = await importAccounts(clientId, modifiedCsvFile.filePath, 'csv');
+    const afterModifiedImport = await getAccounts(clientId);
+    
+    const modifiedImportTestResult = logResult(
+      'Modified CSV Import',
+      afterModifiedImport.length > afterValidImport.length,
+      `Successfully imported modified CSV with ${modifiedCsvFile.modifications} modifications and ${modifiedCsvFile.additions} additions`
+    );
+    
+    return csvExportTestResult && csvHeadersTestResult && 
+           validImportTestResult && invalidImportTestResult && 
+           modifiedImportTestResult;
   } catch (error) {
-    console.error(chalk.red('CSV Tests failed:'), error.message);
+    console.error(chalk.red('CSV tests encountered an error:'), error.message);
+    logResult('CSV Tests', false, `Error: ${error.message}`);
     return false;
   }
 }
@@ -654,60 +729,77 @@ async function runExcelTests(clientId) {
       `Successfully exported ${excelData.length} accounts`
     );
     
-    // Test 2: Import valid Excel with new accounts
-    console.log(chalk.blue('\nTest 2: Import valid Excel with new accounts'));
-    const validExcelImport = await generateValidImportFile('xlsx');
+    // Verify Excel headers
+    const firstRow = excelData[0];
+    const requiredHeaders = ['Code', 'Name', 'Type', 'Subtype', 'IsSubledger', 'Active', 'Description'];
+    const missingHeaders = requiredHeaders.filter(header => !Object.keys(firstRow).includes(header));
+    
+    const excelHeadersTestResult = logResult(
+      'Excel Headers',
+      missingHeaders.length === 0,
+      missingHeaders.length === 0 
+        ? 'All required headers present' 
+        : `Missing headers: ${missingHeaders.join(', ')}`
+    );
+    
+    // Test 2: Generate and import valid Excel
+    console.log(chalk.blue('\nTest 2: Import valid Excel'));
+    const validExcelFile = await generateValidImportFile('xlsx');
+    const validImportResult = await importAccounts(clientId, validExcelFile.filePath, 'xlsx');
+    
+    // Verify import results
+    const afterValidImport = await getAccounts(clientId);
+    
+    const validImportTestResult = logResult(
+      'Valid Excel Import',
+      afterValidImport.length >= initialAccounts.length + validExcelFile.accountCount,
+      `Successfully imported ${validExcelFile.accountCount} new accounts`
+    );
+    
+    // Test 3: Generate and attempt invalid Excel import
+    console.log(chalk.blue('\nTest 3: Import invalid Excel'));
+    const invalidExcelFile = await generateInvalidImportFile('xlsx');
+    let invalidImportSucceeded = false;
+    let errorMessage = '';
     
     try {
-      const validExcelImportResult = await importAccounts(clientId, validExcelImport.filePath, 'xlsx');
-      
-      // Verify accounts were added
-      const accountsAfterValidImport = await getAccounts(clientId);
-      
-      const validExcelImportTestResult = logResult(
-        'Valid Excel Import',
-        true, // Check success response only since count might vary based on other tests
-        `Import successful with ${validExcelImportResult.added || 0} accounts added, ${validExcelImportResult.updated || 0} updated`
-      );
+      await importAccounts(clientId, invalidExcelFile.filePath, 'xlsx');
+      invalidImportSucceeded = true;
     } catch (error) {
-      logResult('Valid Excel Import', false, `Import failed: ${error.message}`);
+      errorMessage = error.message;
+      if (error.response && error.response.data) {
+        errorMessage = JSON.stringify(error.response.data);
+      }
     }
     
-    // Test 3: Import invalid Excel (should fail gracefully)
-    console.log(chalk.blue('\nTest 3: Import invalid Excel (should fail gracefully)'));
-    const invalidExcelImport = await generateInvalidImportFile('xlsx');
+    const invalidImportTestResult = logResult(
+      'Invalid Excel Import Rejection',
+      !invalidImportSucceeded,
+      invalidImportSucceeded
+        ? 'Invalid import succeeded when it should have failed'
+        : `Properly rejected invalid import: ${errorMessage}`
+    );
     
-    let invalidImportFailed = false;
-    try {
-      await importAccounts(clientId, invalidExcelImport.filePath, 'xlsx');
-      logResult('Invalid Excel Import', false, 'Import should have failed but succeeded');
-    } catch (error) {
-      invalidImportFailed = true;
-      logResult('Invalid Excel Import', true, `Import correctly failed: ${error.message}`);
-    }
+    // Test 4: Export, modify and re-import Excel
+    console.log(chalk.blue('\nTest 4: Modify and re-import Excel'));
+    const reExport = await exportAccounts(clientId, 'xlsx');
+    const modifiedExcelFile = await createModifiedImportFile(reExport.filePath, 'xlsx');
     
-    // Test 4: Modify and re-import (update accounts)
-    console.log(chalk.blue('\nTest 4: Modify and re-import (update accounts)'));
-    const modifiedExcelImport = await createModifiedImportFile(excelExport.filePath, 'xlsx');
+    const modifiedImportResult = await importAccounts(clientId, modifiedExcelFile.filePath, 'xlsx');
+    const afterModifiedImport = await getAccounts(clientId);
     
-    try {
-      const modifyImportResult = await importAccounts(clientId, modifiedExcelImport.filePath, 'xlsx');
-      
-      // Verify accounts were updated and added
-      const accountsAfterModifyImport = await getAccounts(clientId);
-      
-      const modifyImportTestResult = logResult(
-        'Modify and Re-import Excel',
-        true, // Check success response only since count might vary based on other tests
-        `Import successful with ${modifyImportResult.added || 0} accounts added, ${modifyImportResult.updated || 0} updated`
-      );
-    } catch (error) {
-      logResult('Modify and Re-import Excel', false, `Import failed: ${error.message}`);
-    }
+    const modifiedImportTestResult = logResult(
+      'Modified Excel Import',
+      afterModifiedImport.length > afterValidImport.length,
+      `Successfully imported modified Excel with ${modifiedExcelFile.modifications} modifications and ${modifiedExcelFile.additions} additions`
+    );
     
-    return true;
+    return excelExportTestResult && excelHeadersTestResult && 
+           validImportTestResult && invalidImportTestResult && 
+           modifiedImportTestResult;
   } catch (error) {
-    console.error(chalk.red('Excel Tests failed:'), error.message);
+    console.error(chalk.red('Excel tests encountered an error:'), error.message);
+    logResult('Excel Tests', false, `Error: ${error.message}`);
     return false;
   }
 }
@@ -716,50 +808,36 @@ async function runExcelTests(clientId) {
  * Print test summary
  */
 function printSummary() {
-  const totalTests = testResults.length;
-  const passedTests = testResults.filter(result => result.success).length;
-  const failedTests = totalTests - passedTests;
-  
-  console.log(chalk.blue('\n===== Test Summary ====='));
-  console.log(chalk.blue(`Total Tests: ${totalTests}`));
-  console.log(chalk.green(`Passed: ${passedTests}`));
-  console.log(chalk.red(`Failed: ${failedTests}`));
-  
-  if (failedTests > 0) {
-    console.log(chalk.red('\nFailed Tests:'));
-    testResults
-      .filter(result => !result.success)
-      .forEach(failedTest => {
-        console.log(chalk.red(`- ${failedTest.name}: ${failedTest.message}`));
-      });
-  }
-  
-  console.log(chalk.blue('\nTest clients created:'));
-  createdClients.forEach(client => {
-    console.log(chalk.blue(`- ${client.name} (ID: ${client.id})`));
+  console.log(chalk.bold.blue('\n===== TEST SUMMARY ====='));
+  console.log(chalk.green(`Passed: ${testResults.passed.length} tests`));
+  console.log(chalk.red(`Failed: ${testResults.failed.length} tests`));
+  console.log(chalk.bold.blue('\nPassed Tests:'));
+  testResults.passed.forEach((test, index) => {
+    console.log(chalk.green(`  ${index+1}. ${test.name}: ${test.message}`));
   });
   
-  return { total: totalTests, passed: passedTests, failed: failedTests };
+  if (testResults.failed.length > 0) {
+    console.log(chalk.bold.red('\nFailed Tests:'));
+    testResults.failed.forEach((test, index) => {
+      console.log(chalk.red(`  ${index+1}. ${test.name}: ${test.message}`));
+    });
+  }
+  
+  return { passed: testResults.passed.length, failed: testResults.failed.length };
 }
 
 /**
  * Main function to run all tests
  */
 async function runAllTests() {
-  console.log(chalk.blue('===== Chart of Accounts Import/Export Test Suite =====\n'));
+  console.log(chalk.bold.green('CHART OF ACCOUNTS IMPORT/EXPORT TEST SUITE'));
   console.log(chalk.yellow('Start Time:', new Date().toLocaleString()));
   
-  // Create temp directory if it doesn't exist
-  if (!fs.existsSync(TEMP_DIR)) {
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-  }
-  
-  // Initialize
-  testResults.length = 0;
-  createdClients.length = 0;
-  
   try {
-    // Login
+    // Ensure temp directory exists
+    ensureTempDir();
+    
+    // Login to get auth cookies
     await login();
     
     // Create test client
@@ -805,21 +883,19 @@ async function runAllTests() {
     // Set exit code based on test results
     process.exit(summary.failed > 0 ? 1 : 0);
   } catch (error) {
-    console.error(chalk.red('\nTest suite encountered fatal error:'), error.message);
+    console.error(chalk.red('Test suite execution failed:'), error.message);
+    console.error(error.stack);
     
-    // Try to clean up even if tests fail
+    // Try cleanup anyway
     try {
       await cleanup();
     } catch (cleanupError) {
-      console.error(chalk.red('Additional error during cleanup:'), cleanupError.message);
+      console.error(chalk.red('Cleanup failed:'), cleanupError.message);
     }
     
     process.exit(1);
   }
 }
 
-// Run the tests
-runAllTests().catch(error => {
-  console.error(chalk.red('Unhandled exception:'), error);
-  process.exit(1);
-});
+// Run the test suite
+runAllTests();

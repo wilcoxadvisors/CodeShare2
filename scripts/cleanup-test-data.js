@@ -1,79 +1,65 @@
 /**
  * Chart of Accounts Test Data Cleanup Script
  * 
- * This script safely removes test clients and their data created during CoA import/export testing.
- * It identifies test clients by their name prefix and deletes them, ensuring a clean testing environment.
+ * This script safely removes test clients and their associated data
+ * created during CoA import/export testing.
  */
 
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import chalk from 'chalk';
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const chalk = require('chalk');
 
 // Configuration
-const COOKIES_FILE = path.join(process.cwd(), '..', 'cookies.txt');
-const BASE_URL = 'http://localhost:5000';
-const API_BASE = '/api';
-const TEST_CLIENT_PREFIXES = ['COA_TEST_', 'COA_MANUAL_TEST_'];
-const TMP_DIR = path.join(process.cwd(), '..', 'tmp');
+const BASE_URL = 'http://localhost:3000'; // Change as needed
+const COOKIES_FILE = path.join(__dirname, '../curl_cookies.txt');
+const TEST_CLIENT_PREFIX = 'COA_TEST_';
+const API_ADMIN_BASE = '/api/admin/clients';
+
+// Statistics for reporting
+const stats = {
+  foundClients: 0,
+  deletedClients: 0,
+  failedClients: 0,
+  deletedFiles: 0
+};
 
 /**
- * Ensure cookies file exists
+ * Authenticate and get session cookies
  */
-function ensureCookiesFile() {
-  if (!fs.existsSync(COOKIES_FILE)) {
-    console.error(chalk.red(`Cookies file not found at ${COOKIES_FILE}. Please run login first.`));
-    process.exit(1);
-  }
-}
-
-/**
- * Login to get auth cookie
- */
-async function login() {
+async function authenticate() {
   try {
-    console.log(chalk.blue('Logging in as admin...'));
+    console.log(chalk.blue('Authenticating with admin credentials...'));
     
-    const response = await axios.post(`${BASE_URL}${API_BASE}/auth/login`, {
+    // Check if cookies file already exists
+    if (fs.existsSync(COOKIES_FILE)) {
+      console.log(chalk.green('Using existing authentication cookies'));
+      return fs.readFileSync(COOKIES_FILE, 'utf8');
+    }
+    
+    // Authenticate to get cookies
+    const response = await axios.post(`${BASE_URL}/api/auth/login`, {
       username: 'admin',
       password: 'password123'
     }, {
-      withCredentials: true
+      maxRedirects: 0,
+      validateStatus: status => status >= 200 && status < 400
     });
     
-    if (response.headers['set-cookie']) {
-      const cookies = response.headers['set-cookie'].join('; ');
-      fs.writeFileSync(COOKIES_FILE, cookies);
-      console.log(chalk.green('Login successful - auth cookie saved'));
-      return cookies;
-    } else {
-      throw new Error('No cookies received from login');
+    // Extract and save cookies
+    const cookies = response.headers['set-cookie'];
+    if (!cookies) {
+      throw new Error('No cookies received from authentication');
     }
-  } catch (error) {
-    console.error(chalk.red('Login failed:'), error.message);
-    if (error.response) {
-      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
-    }
-    process.exit(1);
-  }
-}
-
-/**
- * Get all clients
- */
-async function getAllClients() {
-  try {
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    console.log(chalk.blue('Fetching all clients...'));
     
-    const response = await axios.get(`${BASE_URL}${API_BASE}/clients`, {
-      headers: { Cookie: cookies }
-    });
+    // Format and save cookies to file
+    const cookieString = cookies.join('; ');
+    fs.writeFileSync(COOKIES_FILE, cookieString);
     
-    console.log(chalk.green(`Retrieved ${response.data.length} clients`));
-    return response.data;
+    console.log(chalk.green('Successfully authenticated and saved cookies'));
+    return cookieString;
   } catch (error) {
-    console.error(chalk.red('Failed to get clients:'), error.message);
+    console.error(chalk.red('Authentication failed:'), error.message);
     if (error.response) {
       console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
     }
@@ -82,108 +68,141 @@ async function getAllClients() {
 }
 
 /**
- * Delete a client
+ * Find all test clients
  */
-async function deleteClient(clientId) {
+async function findTestClients(cookies) {
   try {
-    const cookies = fs.readFileSync(COOKIES_FILE, 'utf8');
-    console.log(chalk.blue(`Deleting client with ID: ${clientId}...`));
+    console.log(chalk.blue('Searching for test clients...'));
     
-    const response = await axios.delete(`${BASE_URL}${API_BASE}/clients/${clientId}`, {
+    const response = await axios.get(`${BASE_URL}${API_ADMIN_BASE}`, {
       headers: { Cookie: cookies }
     });
     
-    console.log(chalk.green(`Successfully deleted client ID: ${clientId}`));
-    return response.data;
+    // Handle nested response format
+    let clients = response.data;
+    if (response.data && response.data.status === 'success' && response.data.data) {
+      clients = response.data.data;
+    }
+    
+    // Filter clients with test prefix
+    const testClients = clients.filter(client => 
+      client.name && client.name.startsWith(TEST_CLIENT_PREFIX)
+    );
+    
+    stats.foundClients = testClients.length;
+    console.log(chalk.green(`Found ${testClients.length} test clients`));
+    
+    return testClients;
   } catch (error) {
-    console.error(chalk.red(`Failed to delete client ${clientId}:`), error.message);
+    console.error(chalk.red('Failed to find test clients:'), error.message);
     if (error.response) {
       console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
     }
+    return [];
+  }
+}
+
+/**
+ * Delete a test client and its data
+ */
+async function deleteTestClient(client, cookies) {
+  try {
+    console.log(chalk.blue(`Deleting test client: ${client.name} (ID: ${client.id})...`));
+    
+    // Use the admin API endpoint for deleting clients
+    const response = await axios.delete(`${BASE_URL}${API_ADMIN_BASE}/${client.id}`, {
+      headers: { Cookie: cookies }
+    });
+    
+    // Handle nested response format
+    let result = response.data;
+    if (response.data && response.data.status === 'success' && response.data.data) {
+      result = response.data.data;
+    }
+    
+    console.log(chalk.green(`Successfully deleted client ${client.name} (ID: ${client.id})`));
+    stats.deletedClients++;
+    return true;
+  } catch (error) {
+    console.error(chalk.red(`Failed to delete test client ${client.name} (ID: ${client.id}):`), error.message);
+    if (error.response) {
+      console.error(chalk.red('Server response:'), JSON.stringify(error.response.data, null, 2));
+    }
+    stats.failedClients++;
     return false;
   }
 }
 
 /**
- * Clean up temporary files
+ * Clean up temporary files in the tmp directory
  */
 function cleanupTempFiles() {
   try {
     console.log(chalk.blue('Cleaning up temporary files...'));
     
-    // Create tmp directory if it doesn't exist
-    if (!fs.existsSync(TMP_DIR)) {
-      fs.mkdirSync(TMP_DIR, { recursive: true });
-      console.log(chalk.green(`Created temporary directory at ${TMP_DIR}`));
+    const tempDir = path.join(__dirname, '../tmp/coa-test');
+    
+    // Check if temp directory exists
+    if (!fs.existsSync(tempDir)) {
+      console.log(chalk.yellow('Temporary directory does not exist, nothing to clean up'));
       return;
     }
     
-    // Read all files in the tmp directory
-    const files = fs.readdirSync(TMP_DIR);
-    let deletedCount = 0;
-    
-    // Delete all files
+    // Read and delete each file
+    const files = fs.readdirSync(tempDir);
     for (const file of files) {
-      try {
-        const filePath = path.join(TMP_DIR, file);
-        fs.unlinkSync(filePath);
-        deletedCount++;
-      } catch (err) {
-        console.error(chalk.red(`Failed to delete file ${file}:`), err.message);
-      }
+      fs.unlinkSync(path.join(tempDir, file));
+      stats.deletedFiles++;
     }
     
-    console.log(chalk.green(`Deleted ${deletedCount} temporary files`));
+    console.log(chalk.green(`Deleted ${stats.deletedFiles} temporary files`));
   } catch (error) {
     console.error(chalk.red('Failed to clean up temporary files:'), error.message);
   }
 }
 
 /**
- * Main function
+ * Main function to run the cleanup
  */
-async function main() {
+async function runCleanup() {
+  console.log(chalk.bold.green('CHART OF ACCOUNTS TEST DATA CLEANUP'));
+  console.log(chalk.yellow('This script will remove all test clients and associated data created during testing.'));
+  console.log(chalk.yellow('Test clients are identified by names starting with:', TEST_CLIENT_PREFIX));
+  
   try {
-    console.log(chalk.blue('===== Chart of Accounts Test Data Cleanup =====\n'));
+    // Authenticate
+    const cookies = await authenticate();
     
-    // Login
-    await login();
+    // Find test clients
+    const testClients = await findTestClients(cookies);
     
-    // Get all clients
-    const clientsResponse = await getAllClients();
-    const clients = Array.isArray(clientsResponse) ? clientsResponse : (clientsResponse.items || []);
-    
-    console.log(chalk.blue(`Processing ${clients.length} clients`));
-    
-    // Filter test clients
-    const testClients = clients.filter(client => 
-      client && client.name && TEST_CLIENT_PREFIXES.some(prefix => client.name.startsWith(prefix))
-    );
-    
-    console.log(chalk.blue(`Found ${testClients.length} test clients to delete`));
-    
-    // Delete test clients
-    let deletedCount = 0;
-    for (const client of testClients) {
-      const success = await deleteClient(client.id);
-      if (success) deletedCount++;
+    if (testClients.length === 0) {
+      console.log(chalk.yellow('No test clients found, nothing to clean up'));
+    } else {
+      // Delete test clients
+      console.log(chalk.blue(`Proceeding to delete ${testClients.length} test clients...`));
+      
+      for (const client of testClients) {
+        await deleteTestClient(client, cookies);
+      }
     }
     
-    console.log(chalk.green(`\nSuccessfully deleted ${deletedCount} of ${testClients.length} test clients`));
-    
-    // Clean up temporary files
+    // Clean up temp files
     cleanupTempFiles();
     
-    console.log(chalk.green('\nCleanup completed successfully!'));
+    // Print summary
+    console.log(chalk.bold.green('\nCLEANUP SUMMARY:'));
+    console.log(chalk.green(`Found test clients: ${stats.foundClients}`));
+    console.log(chalk.green(`Successfully deleted clients: ${stats.deletedClients}`));
+    console.log(chalk.yellow(`Failed to delete clients: ${stats.failedClients}`));
+    console.log(chalk.green(`Deleted temporary files: ${stats.deletedFiles}`));
     
+    console.log(chalk.bold.green('\nCleanup completed!'));
   } catch (error) {
-    console.error(chalk.red('\nCleanup encountered an error:'), error.message);
+    console.error(chalk.red('Cleanup script failed:'), error.message);
     process.exit(1);
   }
 }
 
-// Run the script
-main().catch(error => {
-  console.error(chalk.red('Unhandled exception:'), error);
-  process.exit(1);
-});
+// Run the cleanup
+runCleanup();
