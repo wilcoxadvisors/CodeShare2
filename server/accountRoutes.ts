@@ -171,6 +171,55 @@ export function registerAccountRoutes(app: Express) {
     }
   }));
   
+  // Generate Chart of Accounts import preview
+  app.post("/api/clients/:clientId/accounts/import-preview", isAuthenticated, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
+    
+    // Validate client ID
+    if (isNaN(clientId) || clientId <= 0) {
+      throwBadRequest("Invalid client ID");
+    }
+    
+    // Validate user has access to client
+    const userId = (req.user as AuthUser).id;
+    const client = await storage.getClient(clientId);
+    
+    if (!client) {
+      throwNotFound("Client");
+    }
+    
+    if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      throwForbidden("You don't have access to this client");
+    }
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      throwBadRequest("No file uploaded. Please provide a CSV file.");
+    }
+    
+    // Check file type for CSV or Excel
+    const fileName = req.file.originalname.toLowerCase();
+    const isCSV = req.file.mimetype === 'text/csv' || fileName.endsWith('.csv');
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    
+    if (!isCSV && !isExcel) {
+      throwBadRequest("Invalid file format. Please upload a CSV or Excel file.");
+    }
+    
+    try {
+      // Generate preview for the import file
+      const preview = await storage.generateCoaImportPreview(clientId, req.file.buffer, fileName);
+      
+      res.json({
+        status: "success",
+        preview
+      });
+    } catch (error: any) {
+      console.error("Error generating import preview:", error);
+      throwBadRequest(`Error generating import preview: ${error.message || "Unknown error"}`);
+    }
+  }));
+
   // Import Chart of Accounts from CSV
   app.post("/api/clients/:clientId/accounts/import", isAuthenticated, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
     const clientId = parseInt(req.params.clientId);
@@ -207,8 +256,11 @@ export function registerAccountRoutes(app: Express) {
     }
     
     try {
+      // Extract selected changes if provided
+      const selections = req.body.selections ? JSON.parse(req.body.selections) : null;
+      
       // Process the imported file - pass the filename to determine type
-      const result = await storage.importCoaForClient(clientId, req.file.buffer, fileName);
+      const result = await storage.importCoaForClient(clientId, req.file.buffer, fileName, selections);
       
       // Return success response with detailed import stats
       const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive.`;

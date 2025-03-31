@@ -1,5 +1,6 @@
 Code,Name,Type,Active,ParentCode,Description,Subtype,IsSubledger,SubledgerType
-1100,Cash Modified,ASSET,yes,,Main cash account modified,Current Assets,no,
+1000,Cash,ASSET,yes,,Operating Cash,Current Assets,no,
+1100,Bank Accounts,ASSET,yes,1000,Main Bank Account,Current Assets,no,
 1200,Accounts Receivable,ASSET,yes,,Money owed to us,Current Assets,yes,Customer
 2000,Accounts Payable,LIABILITY,yes,,Money we owe,Current Liabilities,yes,Vendor
 3000,Equity,EQUITY,yes,,Company Equity,Retained Earnings,no,

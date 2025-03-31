@@ -45,18 +45,59 @@ export interface ImportResult {
   unchanged: number;   // Existing accounts that were left unchanged
   skipped: number;     // Accounts that weren't processed (e.g., due to validation failures)
   inactive: number;    // Accounts marked as inactive 
+  deleted: number;     // Accounts that were deleted
   errors: string[];    // Error messages
   warnings: string[];  // Warning messages (less severe than errors)
 }
 
 // Storage interface for data access
+// Types for the import preview and selections
+export interface ImportAccountChange {
+  id?: number;
+  code: string;  
+  existingName?: string;
+  newName?: string;
+  existingType?: string;
+  newType?: string;
+  existingSubtype?: string | null;
+  newSubtype?: string | null;
+  existingDescription?: string | null;
+  newDescription?: string | null;
+  existingIsSubledger?: boolean;
+  newIsSubledger?: boolean;
+  existingSubledgerType?: string | null;
+  newSubledgerType?: string | null;
+  existingParentCode?: string | null;
+  newParentCode?: string | null;
+  changeType: 'add' | 'update' | 'remove' | 'unchanged';
+  hasTransactions?: boolean;
+}
+
+export interface ImportPreview {
+  changes: ImportAccountChange[];
+  totalChanges: number;
+  totalAdds: number;
+  totalUpdates: number;
+  totalRemoves: number;
+  totalUnchanged: number;
+  accountsWithTransactions: number;
+}
+
+export interface ImportSelections {
+  updateStrategy: 'all' | 'selected' | 'none';
+  includedCodes?: string[];
+  excludedCodes?: string[];
+  removeStrategy?: 'inactive' | 'delete' | 'none';
+}
+
 export interface IStorage {
   // Chart of Accounts Seeding
   seedClientCoA(clientId: number): Promise<void>;
   
   // Chart of Accounts Import/Export
   getAccountsForClient(clientId: number): Promise<Account[]>;
-  importCoaForClient(clientId: number, fileBuffer: Buffer): Promise<ImportResult>;
+  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
+  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
   
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -4462,7 +4503,292 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Implementation for Chart of Accounts import
-  async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string): Promise<ImportResult> {
+  async generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview> {
+    console.log(`Generating Chart of Accounts import preview. Client ID: ${clientId}`);
+    
+    const preview: ImportPreview = {
+      changes: [],
+      totalChanges: 0,
+      totalAdds: 0,
+      totalUpdates: 0,
+      totalRemoves: 0,
+      totalUnchanged: 0,
+      accountsWithTransactions: 0
+    };
+    
+    return await db.transaction(async (tx) => {
+      try {
+        // ==================== STEP 1: Parse the file ====================
+        let rows: any[] = [];
+        
+        try {
+          // Determine if this is an Excel file or CSV based on file extension
+          const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
+          
+          if (isExcel) {
+            // Process Excel file
+            const XLSX = await import('xlsx');
+            const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            // Convert to JSON with header option
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Extract headers and transform them
+            if (jsonData.length < 2) {
+              throw new Error('Excel file is empty or missing data rows');
+            }
+            
+            const headers = (jsonData[0] as string[]).map(header => 
+              header ? this.normalizeHeaderField(header) : '');
+            
+            // Process data rows (skip header row)
+            rows = jsonData.slice(1).map(row => {
+              const rowData: any = {};
+              (row as any[]).forEach((cell, index) => {
+                if (index < headers.length && headers[index]) {
+                  rowData[headers[index]] = cell;
+                }
+              });
+              return rowData;
+            });
+          } else {
+            // Process CSV file
+            const csvParser = await import('csv-parser');
+            const { Readable } = await import('stream');
+            
+            // Create in-memory stream from buffer
+            const bufferStream = new Readable();
+            bufferStream.push(fileBuffer);
+            bufferStream.push(null);
+            
+            // Parse CSV
+            const results: any[] = [];
+            
+            await new Promise<void>((resolve, reject) => {
+              bufferStream
+                .pipe(csvParser({
+                  mapHeaders: ({ header }: { header: string }) => this.normalizeHeaderField(header)
+                }))
+                .on('data', (data: any) => results.push(data))
+                .on('end', () => resolve())
+                .on('error', (error: Error) => reject(error));
+            });
+            
+            rows = results;
+          }
+        } catch (error: any) {
+          console.error('Error parsing import file', error);
+          throw new Error(`Error parsing file: ${error.message}`);
+        }
+        
+        if (rows.length === 0) {
+          throw new Error('No data rows found in the imported file');
+        }
+        
+        // ==================== STEP 2: Get existing accounts for this client ====================
+        const existingAccounts = await this.getAccounts(clientId);
+        
+        // Create lookup maps for more efficient processing
+        const existingCodeMap = new Map<string, Account>();
+        const existingIdMap = new Map<number, Account>();
+        
+        // Map for faster lookups - storing lowercase codes for case-insensitive matching
+        for (const account of existingAccounts) {
+          existingCodeMap.set(account.code.toLowerCase(), account);
+          existingIdMap.set(account.id, account);
+        }
+        
+        // ==================== STEP 3: Batch query for accounts with transactions ====================
+        // Efficiently query which accounts have transactions
+        const accountsWithTransactions = new Set<number>();
+        
+        if (existingAccounts.length > 0) {
+          const accountIds = existingAccounts.map(a => a.id);
+          
+          // Split into chunks of 500 to avoid query size limitations
+          const chunkSize = 500;
+          for (let i = 0; i < accountIds.length; i += chunkSize) {
+            const chunk = accountIds.slice(i, i + chunkSize);
+            
+            const transactionCounts = await tx
+              .select({
+                accountId: journalEntryLines.accountId,
+                count: count()
+              })
+              .from(journalEntryLines)
+              .where(inArray(journalEntryLines.accountId, chunk))
+              .groupBy(journalEntryLines.accountId)
+              .having(gt(count(), 0))
+              .execute();
+            
+            transactionCounts.forEach(item => {
+              accountsWithTransactions.add(item.accountId);
+            });
+          }
+        }
+        
+        preview.accountsWithTransactions = accountsWithTransactions.size;
+        
+        // ==================== STEP 4: Process import data ====================
+        // Track account codes seen in the import file
+        const importedCodes = new Set<string>();
+        let processedCount = 0;
+        
+        // Process each row in the import file
+        for (const row of rows) {
+          processedCount++;
+          
+          // Extract account code from the row (required field)
+          const accountCode = this.getCaseInsensitiveValue(row, 'code') || 
+                             this.getCaseInsensitiveValue(row, 'accountcode') || 
+                             this.getCaseInsensitiveValue(row, 'account_code');
+          
+          if (!accountCode) {
+            // Skip rows without account code
+            continue;
+          }
+          
+          // Add to set of imported codes
+          importedCodes.add(accountCode.toLowerCase());
+          
+          // Check if account already exists (case insensitive)
+          const existingAccount = existingCodeMap.get(accountCode.toLowerCase());
+          
+          // Get account name (required field)
+          const accountName = this.getCaseInsensitiveValue(row, 'name') || 
+                             this.getCaseInsensitiveValue(row, 'accountname') || 
+                             this.getCaseInsensitiveValue(row, 'account_name');
+          
+          if (!accountName) {
+            // Skip rows without account name
+            continue;
+          }
+          
+          // Get account type (required field) and normalize it
+          const accountType = this.getCaseInsensitiveValue(row, 'type') || 
+                             this.getCaseInsensitiveValue(row, 'accounttype') || 
+                             this.getCaseInsensitiveValue(row, 'account_type');
+          
+          if (!accountType) {
+            // Skip rows without account type
+            continue;
+          }
+          
+          // Normalize the account type
+          const normalizedType = this.normalizeAccountType(accountType);
+          
+          // If it's not a valid type, skip this account
+          if (!normalizedType) {
+            continue;
+          }
+          
+          // Extract parent code if present
+          const parentCode = this.getCaseInsensitiveValue(row, 'parentcode') || 
+                           this.getCaseInsensitiveValue(row, 'parent_code') || 
+                           this.getCaseInsensitiveValue(row, 'parent');
+          
+          // Create change record
+          const change: ImportAccountChange = {
+            code: accountCode,
+            changeType: existingAccount ? 'update' : 'add',
+          };
+          
+          if (existingAccount) {
+            change.id = existingAccount.id;
+            change.existingName = existingAccount.name;
+            change.existingType = existingAccount.type;
+            change.existingSubtype = existingAccount.subtype;
+            change.existingDescription = existingAccount.description;
+            change.existingIsSubledger = existingAccount.isSubledger;
+            change.existingSubledgerType = existingAccount.subledgerType;
+            
+            // Lookup parent code if existingAccount has parentId
+            if (existingAccount.parentId) {
+              const parentAccount = existingIdMap.get(existingAccount.parentId);
+              if (parentAccount) {
+                change.existingParentCode = parentAccount.code;
+              }
+            }
+            
+            // Check if account has transactions
+            if (existingAccount.id && accountsWithTransactions.has(existingAccount.id)) {
+              change.hasTransactions = true;
+            }
+            
+            // Add new values
+            change.newName = accountName;
+            change.newType = normalizedType as string;
+            change.newSubtype = this.getCaseInsensitiveValue(row, 'subtype') || existingAccount.subtype;
+            change.newDescription = this.getCaseInsensitiveValue(row, 'description') || existingAccount.description;
+            change.newIsSubledger = this.parseIsSubledger(row, existingAccount);
+            change.newSubledgerType = this.getSubledgerType(row, existingAccount);
+            change.newParentCode = parentCode;
+            
+            // Check if anything changed
+            if (
+              change.existingName === change.newName &&
+              change.existingType === change.newType &&
+              change.existingSubtype === change.newSubtype &&
+              change.existingDescription === change.newDescription &&
+              change.existingIsSubledger === change.newIsSubledger &&
+              change.existingSubledgerType === change.newSubledgerType &&
+              change.existingParentCode === change.newParentCode
+            ) {
+              change.changeType = 'unchanged';
+              preview.totalUnchanged++;
+            } else {
+              preview.totalUpdates++;
+            }
+          } else {
+            // New account
+            change.newName = accountName;
+            change.newType = normalizedType as string;
+            change.newSubtype = this.getCaseInsensitiveValue(row, 'subtype');
+            change.newDescription = this.getCaseInsensitiveValue(row, 'description');
+            change.newIsSubledger = this.parseIsSubledger(row);
+            change.newSubledgerType = this.getSubledgerType(row);
+            change.newParentCode = parentCode;
+            preview.totalAdds++;
+          }
+          
+          preview.changes.push(change);
+        }
+        
+        // Identify accounts missing from import for potential deactivation
+        for (const account of existingAccounts) {
+          if (!importedCodes.has(account.code.toLowerCase()) && account.active) {
+            const hasTransactions = account.id && accountsWithTransactions.has(account.id);
+            
+            preview.changes.push({
+              id: account.id,
+              code: account.code,
+              existingName: account.name,
+              existingType: account.type,
+              existingSubtype: account.subtype,
+              existingDescription: account.description,
+              existingIsSubledger: account.isSubledger,
+              existingSubledgerType: account.subledgerType,
+              changeType: 'remove',
+              hasTransactions
+            });
+            
+            preview.totalRemoves++;
+          }
+        }
+        
+        preview.totalChanges = preview.totalAdds + preview.totalUpdates + preview.totalRemoves;
+        
+        return preview;
+      } catch (error: any) {
+        console.error("Error generating import preview:", error);
+        throw error;
+      }
+    });
+  }
+  
+  async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string, selections?: ImportSelections | null): Promise<ImportResult> {
     const result: ImportResult = {
       count: 0,     // Total accounts processed
       added: 0,     // New accounts added
@@ -4470,6 +4796,7 @@ export class DatabaseStorage implements IStorage {
       unchanged: 0, // Existing accounts unchanged
       skipped: 0,   // Accounts skipped (validation failure)
       inactive: 0,  // Accounts marked inactive
+      deleted: 0,   // Accounts that were deleted
       errors: [],   // Error messages
       warnings: []  // Warning messages
     };
@@ -4666,6 +4993,30 @@ export class DatabaseStorage implements IStorage {
             const isActiveInImport = this.parseIsActive(row, true);
             
             if (existingAccount) {
+              // Check if there are selections and this account should be skipped
+              if (selections && selections.excludedCodes && selections.excludedCodes.includes(accountCode)) {
+                result.skipped++;
+                result.count++;
+                continue;
+              }
+              
+              // Skip updates if selections specify not to update
+              if (selections && selections.updateStrategy === 'none') {
+                result.unchanged++;
+                result.count++;
+                continue;
+              }
+              
+              // If selections specify to update only selected accounts and this account is not included
+              if (selections && 
+                  selections.updateStrategy === 'selected' && 
+                  selections.includedCodes && 
+                  !selections.includedCodes.includes(accountCode)) {
+                result.unchanged++;
+                result.count++;
+                continue;
+              }
+              
               // Check if this account has transactions using our pre-computed set
               const hasTransactions = accountsWithTransactions.has(existingAccount.id);
               
@@ -4753,6 +5104,21 @@ export class DatabaseStorage implements IStorage {
                 }
               }
             } else {
+              // If selections specify not to add new accounts, skip
+              if (selections && selections.updateStrategy === 'none') {
+                result.skipped++;
+                continue;
+              }
+              
+              // If selections specify to only add selected accounts and this one is not included
+              if (selections && 
+                  selections.updateStrategy === 'selected' && 
+                  selections.includedCodes && 
+                  !selections.includedCodes.includes(accountCode)) {
+                result.skipped++;
+                continue;
+              }
+              
               // Prepare new account for batch creation
               accountsToCreate.push({
                 clientId,
@@ -4854,6 +5220,13 @@ export class DatabaseStorage implements IStorage {
         
         // ==================== STEP 8: Handle missing accounts ====================
         console.log(`Processing accounts present in database but missing from import file`);
+        console.log(`DEBUG: Selections update strategy: ${selections?.updateStrategy || 'all (default)'}`);
+        console.log(`DEBUG: Selections remove strategy: ${selections?.removeStrategy || 'inactive (default)'}`);
+        
+        if (selections?.includedCodes) {
+          console.log(`DEBUG: Selected accounts count: ${selections.includedCodes.length}`);
+          console.log(`DEBUG: First 5 selected accounts: ${selections.includedCodes.slice(0, 5).join(', ')}`);
+        }
         
         // Track account codes in the import file (using a Set for faster lookups)
         const importedAccountCodes = new Set<string>();
@@ -4861,55 +5234,143 @@ export class DatabaseStorage implements IStorage {
           const accountCode = row.code.toLowerCase();
           importedAccountCodes.add(accountCode);
         }
+        console.log(`DEBUG: Found ${importedAccountCodes.size} account codes in import file`);
         
         // Find accounts in the database that were not in the import file
         const missingAccounts: number[] = [];
         
-        for (const account of existingAccounts) {
-          // Skip accounts that are already inactive
-          if (!account.active) continue;
+        // Determine how to handle accounts not in the import
+        // Options:
+        // - 'inactive': Mark accounts as inactive (default)
+        // - 'delete': Delete accounts (if they don't have transactions)
+        // - 'none': Leave accounts unchanged
+        const removeStrategy = selections?.removeStrategy || 'inactive'; // Default to 'inactive' if not specified
+        
+        // If selections specify not to make any updates or removeStrategy is 'none', skip marking accounts
+        if ((selections && selections.updateStrategy === 'none') || removeStrategy === 'none') {
+          console.log(`Skipping processing of missing accounts due to ${selections?.updateStrategy === 'none' ? 'updateStrategy = none' : 'removeStrategy = none'}`);
+        } else {
+          console.log(`DEBUG: Starting check for missing accounts from ${existingAccounts.length} existing accounts`);
+          let skipInactiveCount = 0;
+          let skipImportedCount = 0;
+          let skipTransactionsCount = 0;
+          let skipNotSelectedCount = 0;
           
-          // Skip if the account was in the import
-          if (importedAccountCodes.has(account.code.toLowerCase())) continue;
-          
-          // Skip accounts with transactions (we don't want to deactivate these)
-          if (accountsWithTransactions.has(account.id)) {
-            console.log(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
-            result.warnings.push(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
-            continue;
+          for (const account of existingAccounts) {
+            // Skip accounts that are already inactive
+            if (!account.active) {
+              skipInactiveCount++;
+              continue;
+            }
+            
+            const lowerAccountCode = account.code.toLowerCase();
+            // Skip if the account was in the import
+            if (importedAccountCodes.has(lowerAccountCode)) {
+              skipImportedCount++;
+              continue;
+            }
+            
+            // Skip accounts with transactions (we don't want to deactivate these)
+            if (accountsWithTransactions.has(account.id)) {
+              console.log(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
+              result.warnings.push(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
+              skipTransactionsCount++;
+              continue;
+            }
+            
+            // If selections specify to only update selected accounts and this is not included, skip
+            if (selections && 
+                selections.updateStrategy === 'selected' &&
+                selections.includedCodes) {
+              // For missing accounts, we'll skip if this account is not explicitly selected for update
+              if (!selections.includedCodes.includes(account.code)) {
+                console.log(`Account ${account.code} (${account.name}) is missing from import but not selected for update - keeping active`);
+                skipNotSelectedCount++;
+                continue;
+              }
+            }
+            
+            console.log(`Account ${account.code} (${account.name}) is missing from import file - will mark inactive`);
+            missingAccounts.push(account.id);
           }
           
-          console.log(`Account ${account.code} (${account.name}) is missing from import file - will mark inactive`);
-          missingAccounts.push(account.id);
+          console.log(`DEBUG: Skipped marking inactive - Already inactive: ${skipInactiveCount}, Present in import: ${skipImportedCount}, Has transactions: ${skipTransactionsCount}, Not selected: ${skipNotSelectedCount}`);
         }
         
-        // Process accounts to mark as inactive (accounts that exist in DB but aren't in import)
-        console.log(`Found ${missingAccounts.length} accounts missing from import to mark as inactive`);
+        // Process accounts to mark as inactive or delete (accounts that exist in DB but aren't in import)
+        console.log(`Found ${missingAccounts.length} accounts missing from import to process with strategy: ${removeStrategy}`);
         
         if (missingAccounts.length > 0) {
-          for (const accountId of missingAccounts) {
-            try {
-              // Get the original account data for the log message
-              const account = existingIdMap.get(accountId);
-              
-              // Mark the account as inactive
-              await tx
-                .update(accounts)
-                .set({ active: false })
-                .where(eq(accounts.id, accountId));
-              
-              console.log(`Marked account ${account?.code} (${account?.name}) as inactive`);
-              result.inactive++;
-              result.count++;
-            } catch (inactiveError: any) {
-              console.error(`Error marking account ${accountId} as inactive:`, inactiveError);
-              result.errors.push(`Failed to mark account ID ${accountId} as inactive: ${inactiveError.message}`);
+          // Skip if removeStrategy is 'none'
+          if (removeStrategy === 'none') {
+            console.log(`Skipping processing of missing accounts due to removeStrategy = none`);
+          } else if (removeStrategy === 'inactive') {
+            // Mark accounts as inactive (default behavior)
+            for (const accountId of missingAccounts) {
+              try {
+                // Get the original account data for the log message
+                const account = existingIdMap.get(accountId);
+                
+                // Mark the account as inactive
+                await tx
+                  .update(accounts)
+                  .set({ active: false })
+                  .where(eq(accounts.id, accountId));
+                
+                console.log(`Marked account ${account?.code} (${account?.name}) as inactive`);
+                result.inactive++;
+                result.count++;
+              } catch (inactiveError: any) {
+                console.error(`Error marking account ${accountId} as inactive:`, inactiveError);
+                result.errors.push(`Failed to mark account ID ${accountId} as inactive: ${inactiveError.message}`);
+              }
+            }
+          } else if (removeStrategy === 'delete') {
+            // Delete accounts - only if they don't have transactions
+            for (const accountId of missingAccounts) {
+              try {
+                // Get the original account data for the log message
+                const account = existingIdMap.get(accountId);
+                
+                // Check if the account has transactions - don't delete if it does
+                if (accountsWithTransactions.has(accountId)) {
+                  console.log(`Cannot delete account ${account?.code} (${account?.name}) as it has transactions - marking inactive instead`);
+                  result.warnings.push(`Account ${account?.code} (${account?.name}) has transactions and cannot be deleted - marked inactive instead`);
+                  
+                  // Mark as inactive instead
+                  await tx
+                    .update(accounts)
+                    .set({ active: false })
+                    .where(eq(accounts.id, accountId));
+                    
+                  result.inactive++;
+                } else {
+                  // Delete the account
+                  await tx
+                    .delete(accounts)
+                    .where(eq(accounts.id, accountId));
+                  
+                  console.log(`Deleted account ${account?.code} (${account?.name})`);
+                  result.inactive++; // We still count this as "inactive" for stats purposes
+                }
+                
+                result.count++;
+              } catch (deleteError: any) {
+                console.error(`Error processing account ${accountId} for deletion:`, deleteError);
+                result.errors.push(`Failed to process account ID ${accountId} for deletion: ${deleteError.message}`);
+              }
             }
           }
         }
         
         // ==================== STEP 9: Second pass - parent-child relationships ====================
         console.log(`Processing parent-child relationships`);
+        
+        // Skip parent relationship processing if selections specify not to make updates
+        if (selections && selections.updateStrategy === 'none') {
+          console.log('Skipping parent relationship processing due to updateStrategy = none');
+          return result;
+        }
         
         // First gather all parent relationships to resolve
         const parentUpdates: { accountId: number, parentId: number, accountCode: string, parentCode: string }[] = [];
@@ -4919,6 +5380,14 @@ export class DatabaseStorage implements IStorage {
           try {
             const accountCode = row.code;
             const lowerAccountCode = accountCode.toLowerCase();
+            
+            // If selections specify to only update selected accounts and this is not included, skip
+            if (selections && 
+                selections.updateStrategy === 'selected' && 
+                selections.includedCodes && 
+                !selections.includedCodes.includes(accountCode)) {
+              continue;
+            }
             
             // If this is a new account or an existing one that doesn't have transactions
             const accountId = codeToIdMap.get(lowerAccountCode);

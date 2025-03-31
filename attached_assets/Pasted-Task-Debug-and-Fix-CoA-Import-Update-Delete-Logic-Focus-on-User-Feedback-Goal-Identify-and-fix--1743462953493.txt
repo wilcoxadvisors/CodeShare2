@@ -1,0 +1,38 @@
+Task: Debug and Fix CoA Import Update/Delete Logic (Focus on User Feedback)
+
+Goal: Identify and fix the root cause within server/storage.ts (importCoaForClient) that prevents updates and deletions/inactivations from being processed correctly during CoA import.
+
+Add Focused Logging to importCoaForClient:
+Action: Open server/storage.ts.
+Action: Add detailed console.log statements specifically targeting the update vs. create decision and the deletion/inactivation logic:
+Update Logic Debugging:
+Inside the loop processing normalizedRows, before the if (existingAccount) check: console.log("DEBUG: Processing import row code:", row.accountNumber, "Name:", row.accountName);
+Inside the if (existingAccount) block: console.log("DEBUG: Found existing account for code:", existingAccount.code, "ID:", existingAccount.id);
+Add logs to show the result of the comparison checking if the row data differs from existingAccount.
+Crucially, log the decision: console.log("DEBUG: Decision for code", row.accountNumber, ": ADDING TO accountsToUpdate"); OR console.log("DEBUG: Decision for code", row.accountNumber, ": ADDING TO accountsToCreate"); OR console.log("DEBUG: Decision for code", row.accountNumber, ": Skipping update (no changes detected)");
+Deletion/Inactivation Logic Debugging:
+Inside the loop that iterates through existingAccountsMap to find accounts not in the import file (!importedAccountCodes.has(...)): console.log("DEBUG: Checking existing account for inactivation:", existingAccount.code, "ID:", existingAccount.id);
+Log if the account is identified as missing from the import: console.log("DEBUG: Account", existingAccount.code, "missing from import. Identified for inactivation.");
+Before calling markAccountInactive (or delete): console.log("DEBUG: Attempting to mark account inactive:", accountToMarkInactive.id);
+After calling markAccountInactive: Log the success/failure.
+Prepare Targeted Test Case:
+Action: Ensure the test file test/coa-import-export/test_update_delete.csv exists and contains:
+A row for an existing account (e.g., 1110) with a modified AccountName (e.g., Cash Modified).
+Rows for other standard accounts but omitting at least one standard account (e.g., omit 1130 Inventory).
+Execute Targeted Manual Test:
+Action: Ensure a test client (e.g., Client ID 85 or create/seed a new one) has the standard CoA. Record the CLIENT_ID.
+Action: Run the import using the manual test script with verbose logging:
+Bash
+
+node scripts/test-coa-manual.js import [CLIENT_ID] test/coa-import-export/test_update_delete.csv --verbose
+Analyze Logs & Report Findings:
+Action: Provide the full console output from the script execution, including the new DEBUG logs.
+Analyze: Based only on the logs:
+Update: Was the modified account (1110) correctly identified as existing? Was the decision logged as "ADDING TO accountsToUpdate"? Was the subsequent database update successful? Or was it incorrectly added to accountsToCreate?
+Deletion/Inactivation: Was the omitted account (1130) correctly identified as missing? Was the attempt to mark it inactive logged? Was the database update successful?
+Report: Clearly state the findings for both the update and deletion scenarios based on the logs. Pinpoint where the logic failed.
+Implement Fix:
+Action: Based on the analysis, implement the necessary corrections in the importCoaForClient function in server/storage.ts. Ensure the logic correctly distinguishes updates from adds and correctly identifies/processes missing accounts for inactivation.
+Re-run Test & Verify:
+Action: Re-run the command from Step 3: node scripts/test-coa-manual.js import [CLIENT_ID] test/coa-import-export/test_update_delete.csv --verbose.
+Report: Provide the new full console output. Confirm (based on the logs and by checking the data via list-accounts or export-csv after import) that account '1110' was updated (not duplicated) and account '1130' was marked inactive.

@@ -1319,7 +1319,7 @@ function ChartOfAccounts() {
   // Custom hook for batch importing accounts
   const useImportAccounts = () => {
     return useMutation({
-      mutationFn: async (accounts: any[]) => {
+      mutationFn: async (payload: any) => {
         console.log("DEBUG: useImportAccounts - Starting import with clientIdToUse:", clientIdToUse);
         
         // Enhanced client validation
@@ -1334,17 +1334,27 @@ function ChartOfAccounts() {
         }
         
         console.log(`DEBUG: useImportAccounts - Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
-        console.log(`DEBUG: useImportAccounts - Number of accounts to import: ${accounts.length}`);
         
-        // Need to create FormData because the import endpoint expects multipart/form-data
-        const formData = new FormData();
-        
-        // Convert accounts to CSV string and add as a file
-        const csv = Papa.unparse(accounts);
-        const file = new Blob([csv], { type: 'text/csv' });
-        formData.append('file', file, 'accounts_import.csv');
-        
-        console.log("DEBUG: useImportAccounts - FormData created with CSV file");
+        // Check if payload is already FormData (from handleImportConfirm)
+        let formData;
+        if (payload instanceof FormData) {
+          formData = payload;
+          console.log("DEBUG: useImportAccounts - Using prepared FormData with selections");
+        } else {
+          // Legacy path for simple array import
+          const accounts = payload as any[];
+          console.log(`DEBUG: useImportAccounts - Number of accounts to import: ${accounts.length}`);
+          
+          // Need to create FormData because the import endpoint expects multipart/form-data
+          formData = new FormData();
+          
+          // Convert accounts to CSV string and add as a file
+          const csv = Papa.unparse(accounts);
+          const file = new Blob([csv], { type: 'text/csv' });
+          formData.append('file', file, 'accounts_import.csv');
+          
+          console.log("DEBUG: useImportAccounts - FormData created with CSV file (no selections)");
+        }
         
         try {
           // Use fetch directly since apiRequest doesn't handle FormData
@@ -1407,9 +1417,61 @@ function ChartOfAccounts() {
   // Initialize the import accounts mutation
   const importAccounts = useImportAccounts();
   
+  // Add additional state and types for selective imports
+  interface ImportSelections {
+    updateStrategy: 'all' | 'none' | 'selected';
+    includedCodes?: string[];
+    excludedCodes?: string[];
+    removeStrategy?: 'inactive' | 'delete' | 'none';
+  }
+  
+  const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
+  const [removeStrategy, setRemoveStrategy] = useState<'inactive' | 'delete' | 'none'>('inactive');
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  
   const handleImportConfirm = () => {
     if (importData.length > 0) {
-      importAccounts.mutate(importData);
+      console.log("DEBUG: handleImportConfirm - About to import accounts with strategy:", updateStrategy);
+      
+      // Create selections object to pass to backend
+      const selections: ImportSelections = {
+        updateStrategy: updateStrategy,
+        removeStrategy: removeStrategy
+      };
+      
+      // If using selective update, include the account codes
+      if (updateStrategy === 'selected' && selectedAccounts.length > 0) {
+        console.log(`DEBUG: handleImportConfirm - Using selective update with ${selectedAccounts.length} accounts`);
+        selections.includedCodes = selectedAccounts;
+      }
+      
+      console.log(`DEBUG: handleImportConfirm - Using remove strategy: ${removeStrategy}`);
+      
+      
+      try {
+        // Need to create FormData because the import endpoint expects multipart/form-data
+        const formData = new FormData();
+        
+        // Convert accounts to CSV string and add as a file
+        const csv = Papa.unparse(importData);
+        const file = new Blob([csv], { type: 'text/csv' });
+        formData.append('file', file, 'accounts_import.csv');
+        
+        // Add selections as a JSON string
+        formData.append('selections', JSON.stringify(selections));
+        
+        console.log("DEBUG: handleImportConfirm - Prepared form data with selections:", selections);
+        
+        // Use the import mutation but pass the FormData manually
+        importAccounts.mutate(formData as any);
+      } catch (error) {
+        console.error("DEBUG: handleImportConfirm - Error preparing import:", error);
+        toast({
+          title: "Import preparation failed",
+          description: `Error setting up import: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -2159,6 +2221,207 @@ function ChartOfAccounts() {
               </div>
             )}
             
+            {/* Import Strategy Selection */}
+            <div className="mt-6 border rounded-md p-4 bg-gray-50">
+              <h3 className="text-base font-medium text-gray-900 mb-3">Import Options</h3>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Update Strategy</label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="strategy-all"
+                        name="import-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={updateStrategy === 'all'}
+                        onChange={() => setUpdateStrategy('all')}
+                      />
+                      <label htmlFor="strategy-all" className="ml-2 block text-sm text-gray-700">
+                        Import all changes (default)
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="strategy-selected"
+                        name="import-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={updateStrategy === 'selected'}
+                        onChange={() => setUpdateStrategy('selected')}
+                      />
+                      <label htmlFor="strategy-selected" className="ml-2 block text-sm text-gray-700">
+                        Import selected changes only
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="strategy-none"
+                        name="import-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={updateStrategy === 'none'}
+                        onChange={() => setUpdateStrategy('none')}
+                      />
+                      <label htmlFor="strategy-none" className="ml-2 block text-sm text-gray-700">
+                        Don't update existing accounts, only add new ones
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border-t pt-4">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Missing Accounts Strategy
+                    <span className="ml-2 text-xs text-gray-500 font-normal">
+                      (What to do with accounts in the database that are not in the import file)
+                    </span>
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="remove-inactive"
+                        name="remove-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={removeStrategy === 'inactive'}
+                        onChange={() => setRemoveStrategy('inactive')}
+                      />
+                      <label htmlFor="remove-inactive" className="ml-2 block text-sm text-gray-700">
+                        Mark as inactive (default)
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="remove-delete"
+                        name="remove-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={removeStrategy === 'delete'}
+                        onChange={() => setRemoveStrategy('delete')}
+                      />
+                      <label htmlFor="remove-delete" className="ml-2 block text-sm text-gray-700">
+                        Delete permanently (if no transactions exist)
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        id="remove-none"
+                        name="remove-strategy"
+                        type="radio"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        checked={removeStrategy === 'none'}
+                        onChange={() => setRemoveStrategy('none')}
+                      />
+                      <label htmlFor="remove-none" className="ml-2 block text-sm text-gray-700">
+                        Leave unchanged
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Account Selection section for 'selected' strategy */}
+                {updateStrategy === 'selected' && (
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-gray-700 block mb-2">Select Accounts to Update</label>
+                    
+                    <div className="max-h-60 overflow-y-auto border rounded-md p-2 bg-white">
+                      {/* New accounts selection */}
+                      {changesPreview.additions.length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="text-sm font-medium text-gray-900 mb-1">New Accounts</h4>
+                          <div className="space-y-1 pl-2">
+                            {changesPreview.additions.map((account, idx) => (
+                              <div key={`add-${idx}`} className="flex items-center">
+                                <input
+                                  id={`add-${account.code}`}
+                                  type="checkbox"
+                                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  checked={selectedAccounts.includes(account.code)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedAccounts(prev => [...prev, account.code]);
+                                    } else {
+                                      setSelectedAccounts(prev => prev.filter(code => code !== account.code));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`add-${account.code}`} className="ml-2 block text-sm text-gray-700">
+                                  {account.code} - {account.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Modified accounts selection */}
+                      {changesPreview.modifications.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 mb-1">Modified Accounts</h4>
+                          <div className="space-y-1 pl-2">
+                            {changesPreview.modifications.map((mod, idx) => (
+                              <div key={`mod-${idx}`} className="flex items-center">
+                                <input
+                                  id={`mod-${mod.original.code}`}
+                                  type="checkbox"
+                                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  checked={selectedAccounts.includes(mod.original.code)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedAccounts(prev => [...prev, mod.original.code]);
+                                    } else {
+                                      setSelectedAccounts(prev => prev.filter(code => code !== mod.original.code));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`mod-${mod.original.code}`} className="ml-2 block text-sm text-gray-700">
+                                  {mod.original.code} - {mod.original.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Selection controls */}
+                    <div className="mt-2 flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const allCodes = [
+                            ...changesPreview.additions.map(a => a.code),
+                            ...changesPreview.modifications.map(m => m.original.code)
+                          ];
+                          setSelectedAccounts(allCodes);
+                        }}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedAccounts([])}
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+                    
+                    <div className="mt-1 text-sm text-gray-500">
+                      {selectedAccounts.length} account{selectedAccounts.length !== 1 ? 's' : ''} selected for update
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <DialogFooter className="mt-6">
               <Button 
                 variant="outline" 
@@ -2174,7 +2437,7 @@ function ChartOfAccounts() {
                   setShowPreviewDialog(false);
                   handleImportConfirm(); // Proceed with import
                 }}
-                disabled={importAccounts.isPending}
+                disabled={importAccounts.isPending || (updateStrategy === 'selected' && selectedAccounts.length === 0)}
               >
                 {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
               </Button>
