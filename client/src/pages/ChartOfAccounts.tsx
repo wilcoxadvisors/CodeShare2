@@ -88,8 +88,18 @@ function ChartOfAccounts() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string, code: string} | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [changesPreview, setChangesPreview] = useState<{
+    additions: Array<Record<string, any>>;
+    modifications: Array<{
+      original: Record<string, any>;
+      updated: Record<string, any>;
+      changes: string[];
+    }>;
+    unchanged: number;
+  }>({ additions: [], modifications: [], unchanged: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get hierarchical account tree data using client-based API
@@ -828,9 +838,12 @@ function ChartOfAccounts() {
         });
       } else {
         console.log("DEBUG: Using sample data for template - no accounts data available");
-        // Create sample data (one row per account type) with parent relationship examples
-        templateData = [
+        // Create sample data (one row per account type) with consistent parent relationship examples
+        
+        // Create a temporary map structure to simulate real database relationships
+        const rootAccounts = [
           { 
+            tempId: 1001, // Synthetic ID just for relationship example
             Code: "1000", 
             Name: "Assets", 
             Type: "asset", 
@@ -844,32 +857,7 @@ function ChartOfAccounts() {
             ParentName: ""
           },
           { 
-            Code: "1001", 
-            Name: "Cash", 
-            Type: "asset", 
-            Subtype: "current_asset", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Cash on hand", 
-            ParentId: "",
-            ParentCode: "1000",
-            ParentName: "Assets"
-          },
-          { 
-            Code: "1002", 
-            Name: "Bank Accounts", 
-            Type: "asset", 
-            Subtype: "current_asset", 
-            IsSubledger: "Yes", 
-            SubledgerType: "bank", 
-            Active: "Yes", 
-            Description: "Company bank accounts", 
-            ParentId: "",
-            ParentCode: "1000",
-            ParentName: "Assets"
-          },
-          { 
+            tempId: 2001,
             Code: "2000", 
             Name: "Liabilities", 
             Type: "liability", 
@@ -883,6 +871,77 @@ function ChartOfAccounts() {
             ParentName: ""
           },
           { 
+            tempId: 3001,
+            Code: "3000", 
+            Name: "Equity", 
+            Type: "equity", 
+            Subtype: "", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Owner's equity", 
+            ParentId: "",
+            ParentCode: "",
+            ParentName: ""
+          },
+          { 
+            tempId: 4001,
+            Code: "4000", 
+            Name: "Revenue", 
+            Type: "revenue", 
+            Subtype: "", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Income from operations", 
+            ParentId: "",
+            ParentCode: "",
+            ParentName: ""
+          },
+          { 
+            tempId: 5001,
+            Code: "5000", 
+            Name: "Expenses", 
+            Type: "expense", 
+            Subtype: "", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Company expenses", 
+            ParentId: "",
+            ParentCode: "",
+            ParentName: ""
+          }
+        ];
+        
+        const childAccounts = [
+          { 
+            Code: "1001", 
+            Name: "Cash", 
+            Type: "asset", 
+            Subtype: "current_asset", 
+            IsSubledger: "No", 
+            SubledgerType: "", 
+            Active: "Yes", 
+            Description: "Cash on hand", 
+            ParentId: "1001", // Reference to Assets tempId
+            ParentCode: "1000",
+            ParentName: "Assets"
+          },
+          { 
+            Code: "1002", 
+            Name: "Bank Accounts", 
+            Type: "asset", 
+            Subtype: "current_asset", 
+            IsSubledger: "Yes", 
+            SubledgerType: "bank", 
+            Active: "Yes", 
+            Description: "Company bank accounts", 
+            ParentId: "1001", // Reference to Assets tempId
+            ParentCode: "1000",
+            ParentName: "Assets"
+          },
+          { 
             Code: "2001", 
             Name: "Accounts Payable", 
             Type: "liability", 
@@ -891,10 +950,34 @@ function ChartOfAccounts() {
             SubledgerType: "", 
             Active: "Yes", 
             Description: "Short-term debt", 
-            ParentId: "",
+            ParentId: "2001", // Reference to Liabilities tempId
             ParentCode: "2000",
             ParentName: "Liabilities"
+          },
+          {
+            Code: "5001",
+            Name: "Operating Expenses",
+            Type: "expense",
+            Subtype: "",
+            IsSubledger: "No",
+            SubledgerType: "",
+            Active: "Yes",
+            Description: "Day-to-day operational expenses",
+            ParentId: "5001", // Reference to Expenses tempId
+            ParentCode: "5000",
+            ParentName: "Expenses"
           }
+        ];
+        
+        // Combine root and child accounts for the template
+        // Remove the temporary IDs from the root accounts before outputting
+        templateData = [
+          ...rootAccounts.map(root => {
+            // Create a new object without the tempId property
+            const { tempId, ...accountWithoutTempId } = root;
+            return accountWithoutTempId;
+          }),
+          ...childAccounts
         ];
       }
       
@@ -1045,6 +1128,28 @@ function ChartOfAccounts() {
       return;
     }
     
+    // Flatten the accounts tree to get all accounts (for parent resolution)
+    const flatAccounts: AccountTreeNode[] = [];
+    
+    const flattenTree = (nodes: AccountTreeNode[]) => {
+      for (const node of nodes) {
+        flatAccounts.push(node);
+        if (node.children && node.children.length > 0) {
+          flattenTree(node.children);
+        }
+      }
+    };
+    
+    if (accountsTree && accountsTree.data) {
+      flattenTree(accountsTree.data);
+    }
+    
+    // Map of codes to account IDs for parent resolution
+    const codeToIdMap = new Map<string, number>();
+    flatAccounts.forEach(account => {
+      codeToIdMap.set(account.code, account.id);
+    });
+    
     // Validate required fields
     const errors: string[] = [];
     const processedData = data.map((row, index) => {
@@ -1071,6 +1176,21 @@ function ChartOfAccounts() {
         parentId: null // Default to no parent
       };
       
+      // Resolve parent account from ParentId, ParentCode, or both
+      if (row.ParentId) {
+        // If numeric ID is provided, use it directly
+        const parentId = parseInt(row.ParentId, 10);
+        if (!isNaN(parentId)) {
+          validatedRow.parentId = parentId;
+        }
+      } else if (row.ParentCode) {
+        // If parent code is provided, look up its ID
+        const parentCode = row.ParentCode?.toString().trim();
+        if (parentCode && codeToIdMap.has(parentCode)) {
+          validatedRow.parentId = codeToIdMap.get(parentCode) || null;
+        }
+      }
+      
       // Validate required fields
       if (!validatedRow.code) {
         errors.push(`Row ${rowNum}: Code is required`);
@@ -1093,14 +1213,107 @@ function ChartOfAccounts() {
     if (errors.length > 0) {
       setImportErrors(errors);
       setImportData([]);
-    } else {
-      // No errors, prepare for import
-      setImportData(processedData);
-      setImportErrors([]);
+      setShowImportDialog(true);
+      return;
+    } 
+    
+    // No validation errors, prepare for preview
+    setImportData(processedData);
+    setImportErrors([]);
+    
+    // Generate preview with change detection
+    generateChangePreview(processedData);
+  };
+  
+  // Compare imported data with existing accounts to detect changes
+  const generateChangePreview = (importData: Array<Record<string, any>>) => {
+    // Flatten the accounts tree to get a list of all accounts
+    const flatAccounts: AccountTreeNode[] = [];
+    
+    const flattenTree = (nodes: AccountTreeNode[]) => {
+      for (const node of nodes) {
+        flatAccounts.push(node);
+        if (node.children && node.children.length > 0) {
+          flattenTree(node.children);
+        }
+      }
+    };
+    
+    if (accountsTree && accountsTree.data) {
+      flattenTree(accountsTree.data);
     }
     
-    // Show import dialog
-    setShowImportDialog(true);
+    const additions: Array<Record<string, any>> = [];
+    const modifications: Array<{
+      original: Record<string, any>;
+      updated: Record<string, any>;
+      changes: string[];
+    }> = [];
+    
+    // Process each imported account
+    importData.forEach(importedAccount => {
+      // Try to find matching account by code (primary identifier)
+      const existingAccount = flatAccounts.find(acc => acc.code === importedAccount.code);
+      
+      if (!existingAccount) {
+        // New account
+        additions.push(importedAccount);
+      } else {
+        // Check for modifications in existing account
+        const changes: string[] = [];
+        
+        // Check each field for changes
+        if (importedAccount.name !== existingAccount.name) {
+          changes.push(`Name: "${existingAccount.name}" → "${importedAccount.name}"`);
+        }
+        
+        if (importedAccount.type !== existingAccount.type) {
+          changes.push(`Type: "${existingAccount.type}" → "${importedAccount.type}"`);
+        }
+        
+        if (importedAccount.subtype !== (existingAccount.subtype || null)) {
+          changes.push(`Subtype: "${existingAccount.subtype || 'None'}" → "${importedAccount.subtype || 'None'}"`);
+        }
+        
+        if (importedAccount.isSubledger !== existingAccount.isSubledger) {
+          changes.push(`Is Subledger: "${existingAccount.isSubledger ? 'Yes' : 'No'}" → "${importedAccount.isSubledger ? 'Yes' : 'No'}"`);
+        }
+        
+        if (importedAccount.subledgerType !== (existingAccount.subledgerType || null)) {
+          changes.push(`Subledger Type: "${existingAccount.subledgerType || 'None'}" → "${importedAccount.subledgerType || 'None'}"`);
+        }
+        
+        if (importedAccount.active !== existingAccount.active) {
+          changes.push(`Active: "${existingAccount.active ? 'Yes' : 'No'}" → "${importedAccount.active ? 'Yes' : 'No'}"`);
+        }
+        
+        if (importedAccount.description !== (existingAccount.description || null)) {
+          changes.push(`Description: "${existingAccount.description || 'None'}" → "${importedAccount.description || 'None'}"`);
+        }
+        
+        // If any changes were found, add to modifications list
+        if (changes.length > 0) {
+          modifications.push({
+            original: existingAccount,
+            updated: importedAccount,
+            changes: changes
+          });
+        }
+      }
+    });
+    
+    // Calculate unchanged accounts
+    const unchangedCount = importData.length - additions.length - modifications.length;
+    
+    // Set preview data
+    setChangesPreview({
+      additions: additions,
+      modifications: modifications,
+      unchanged: unchangedCount
+    });
+    
+    // Show preview dialog
+    setShowPreviewDialog(true);
   };
   
   // Custom hook for batch importing accounts
@@ -1801,12 +2014,25 @@ function ChartOfAccounts() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleImportConfirm}
-                  disabled={importAccounts.isPending}
-                >
-                  {importAccounts.isPending ? "Importing..." : "Import Accounts"}
-                </Button>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Show preview dialog with comparison between existing and new data
+                      generateChangePreview(importData);
+                      setShowImportDialog(false);
+                      setShowPreviewDialog(true);
+                    }}
+                  >
+                    Preview Changes
+                  </Button>
+                  <Button
+                    onClick={handleImportConfirm}
+                    disabled={importAccounts.isPending}
+                  >
+                    {importAccounts.isPending ? "Importing..." : "Import Accounts"}
+                  </Button>
+                </div>
               </DialogFooter>
             </div>
           ) : (
@@ -1838,6 +2064,122 @@ function ChartOfAccounts() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Changes Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <FileSpreadsheet className="h-5 w-5 mr-2" />
+              Preview Changes Before Import
+            </DialogTitle>
+            <DialogDescription>
+              Review the changes that will be made to your Chart of Accounts before confirming the import.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+              <div className="flex items-start">
+                <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Summary of Changes
+                  </h3>
+                  <ul className="mt-1 text-sm text-blue-700 list-disc pl-5">
+                    <li>{changesPreview.additions.length} new accounts will be added</li>
+                    <li>{changesPreview.modifications.length} existing accounts will be modified</li>
+                    <li>{changesPreview.unchanged} accounts are unchanged</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {changesPreview.additions.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-base font-medium text-gray-900 mb-2">New Accounts ({changesPreview.additions.length})</h3>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subtype</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {changesPreview.additions.slice(0, 5).map((account, index) => (
+                        <tr key={index} className="bg-green-50">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.code}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.type}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.subtype || 'None'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.active ? 'Yes' : 'No'}</td>
+                        </tr>
+                      ))}
+                      {changesPreview.additions.length > 5 && (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-2 text-sm text-gray-500 text-center">
+                            And {changesPreview.additions.length - 5} more new accounts...
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            {changesPreview.modifications.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-base font-medium text-gray-900 mb-2">Modified Accounts ({changesPreview.modifications.length})</h3>
+                <div className="space-y-4">
+                  {changesPreview.modifications.slice(0, 5).map((mod, index) => (
+                    <div key={index} className="border rounded-md overflow-hidden bg-yellow-50 p-3">
+                      <h4 className="font-medium text-gray-900 text-sm">
+                        {mod.original.code} - {mod.original.name}
+                      </h4>
+                      <ul className="mt-2 text-sm text-gray-700 space-y-1 list-disc pl-5">
+                        {mod.changes.map((change, i) => (
+                          <li key={i}>{change}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  {changesPreview.modifications.length > 5 && (
+                    <div className="text-sm text-gray-500 text-center py-2">
+                      And {changesPreview.modifications.length - 5} more modifications...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter className="mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  setShowImportDialog(true); // Go back to import dialog
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  handleImportConfirm(); // Proceed with import
+                }}
+                disabled={importAccounts.isPending}
+              >
+                {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>
