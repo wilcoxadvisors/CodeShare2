@@ -24,7 +24,8 @@ import {
   forecasts, Forecast, InsertForecast,
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
   consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
-  consolidationGroupEntities, InsertConsolidationGroupEntity
+  consolidationGroupEntities, InsertConsolidationGroupEntity,
+  locations, Location, InsertLocation
 } from "@shared/schema";
 
 // Define interface for hierarchical account structure
@@ -82,6 +83,13 @@ export interface IStorage {
   
   // User Entity Access methods
   getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
+  
+  // Location methods
+  createLocation(location: InsertLocation): Promise<Location>;
+  getLocation(id: number): Promise<Location | undefined>;
+  listLocationsByClient(clientId: number): Promise<Location[]>;
+  updateLocation(id: number, location: Partial<Location>): Promise<Location | undefined>;
+  setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean>;
   
   // Journal Entry methods
   createJournalEntry(entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
@@ -207,6 +215,13 @@ export interface IStorage {
   updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined>;
   deleteBlogSubscriber(id: number): Promise<void>;
   
+  // Location methods
+  getLocation(id: number): Promise<Location | undefined>;
+  listLocationsByClient(clientId: number): Promise<Location[]>;
+  createLocation(location: InsertLocation): Promise<Location>;
+  updateLocation(id: number, location: Partial<Location>): Promise<Location | undefined>;
+  setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean>;
+  
   // Budget methods
   getBudget(id: number): Promise<Budget | undefined>;
   getBudgets(entityId: number): Promise<Budget[]>;
@@ -296,6 +311,7 @@ export class MemStorage implements IStorage {
   private consultationSubmissions: Map<number, ConsultationSubmission>;
   private checklistFiles: Map<number, ChecklistFile>;
   private blogSubscribers: Map<number, BlogSubscriber>;
+  private locations: Map<number, Location> = new Map();
   
   private currentUserId: number = 1;
   private currentClientId: number = 1;
@@ -332,6 +348,7 @@ export class MemStorage implements IStorage {
   private currentChecklistFileId: number = 1;
   private currentConsultationSubmissionId: number = 1;
   private currentBlogSubscriberId: number = 1;
+  private currentLocationId: number = 1;
 
   async seedClientCoA(clientId: number): Promise<void> {
     console.log(`MemStorage: Seeding Chart of Accounts for client ID: ${clientId}`);
@@ -409,6 +426,7 @@ export class MemStorage implements IStorage {
     this.checklistFiles = new Map();
     this.consultationSubmissions = new Map();
     this.blogSubscribers = new Map();
+    this.locations = new Map();
     
     // Initialize budget and forecast tables
     this.budgets = new Map();
@@ -2190,6 +2208,63 @@ export class MemStorage implements IStorage {
   
   async deleteBlogSubscriber(id: number): Promise<void> {
     this.blogSubscribers.delete(id);
+  }
+  
+  // Location methods
+  async getLocation(id: number): Promise<Location | undefined> {
+    return this.locations.get(id);
+  }
+  
+  async listLocationsByClient(clientId: number): Promise<Location[]> {
+    return Array.from(this.locations.values())
+      .filter(location => location.clientId === clientId);
+  }
+  
+  async createLocation(location: InsertLocation): Promise<Location> {
+    const id = this.currentLocationId++;
+    const newLocation: Location = {
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      name: location.name,
+      code: location.code || null,
+      description: location.description || null,
+      clientId: location.clientId,
+      isActive: location.isActive !== undefined ? location.isActive : true,
+      address: location.address || null,
+      city: location.city || null,
+      state: location.state || null,
+      country: location.country || null,
+      postalCode: location.postalCode || null
+    };
+    
+    this.locations.set(id, newLocation);
+    return newLocation;
+  }
+  
+  async updateLocation(id: number, data: Partial<Location>): Promise<Location | undefined> {
+    const location = this.locations.get(id);
+    if (!location) return undefined;
+    
+    const updatedLocation: Location = {
+      ...location,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.locations.set(id, updatedLocation);
+    return updatedLocation;
+  }
+  
+  async setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean> {
+    const location = this.locations.get(id);
+    if (!location) return false;
+    
+    location.isActive = isActive;
+    location.updatedAt = new Date();
+    this.locations.set(id, location);
+    
+    return true;
   }
 
   // Budget methods
@@ -6023,6 +6098,64 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(blogSubscribers)
       .where(eq(blogSubscribers.id, id));
+  }
+  
+  // Location methods
+  async createLocation(location: InsertLocation): Promise<Location> {
+    const [result] = await db
+      .insert(locations)
+      .values({
+        clientId: location.clientId,
+        name: location.name,
+        code: location.code || null,
+        description: location.description || null,
+        isActive: location.isActive !== undefined ? location.isActive : true
+      })
+      .returning();
+    
+    return result;
+  }
+
+  async getLocation(id: number): Promise<Location | undefined> {
+    const [result] = await db
+      .select()
+      .from(locations)
+      .where(eq(locations.id, id));
+    
+    return result;
+  }
+
+  async listLocationsByClient(clientId: number): Promise<Location[]> {
+    return await db
+      .select()
+      .from(locations)
+      .where(eq(locations.clientId, clientId));
+  }
+
+  async updateLocation(id: number, data: Partial<Location>): Promise<Location | undefined> {
+    const [updatedLocation] = await db
+      .update(locations)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(locations.id, id))
+      .returning();
+    
+    return updatedLocation;
+  }
+
+  async setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean> {
+    const [result] = await db
+      .update(locations)
+      .set({
+        isActive: isActive,
+        updatedAt: new Date()
+      })
+      .where(eq(locations.id, id))
+      .returning();
+    
+    return !!result;
   }
 
   // Checklist Files methods

@@ -27,6 +27,7 @@ import { registerForecastRoutes } from "./forecastRoutes";
 import { registerConsolidationRoutes } from "./consolidationRoutes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerJournalEntryRoutes } from "./journalEntryRoutes";
+import { registerLocationRoutes } from "./locationRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -1268,6 +1269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register the Journal Entry routes
   registerJournalEntryRoutes(app, storage);
+  
+  // Register the Location routes
+  registerLocationRoutes(app, storage);
   
   const httpServer = createServer(app);
   return httpServer;

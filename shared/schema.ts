@@ -893,3 +893,43 @@ export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).om
 // Types for blog subscribers
 export type BlogSubscriber = typeof blogSubscribers.$inferSelect;
 export type InsertBlogSubscriber = z.infer<typeof insertBlogSubscriberSchema>;
+
+// Locations table - for use in journal entries and other location-specific records
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  name: text("name").notNull(),
+  code: text("code"),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Locations relation to client
+export const locationsRelations = {
+  client: (locations) => ({
+    client: one(clients, {
+      fields: [locations.clientId],
+      references: [clients.id]
+    })
+  })
+};
+
+// Update clients relation to include locations
+export const clientsRelations = {
+  locations: (clients) => ({
+    locations: many(locations)
+  })
+};
+
+// Schema for location insertion
+export const insertLocationSchema = createInsertSchema(locations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Types for locations
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
