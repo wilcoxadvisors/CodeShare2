@@ -1,3 +1,10 @@
-Code,Name,InvalidType,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
-1000,Cash,something_invalid,current_asset,NO,,YES,Cash on hand and in banks,
-1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000
+code,name,type,subtype,isSubledger,subledgerType,parentCode,description,active
+,Empty Code Account,ASSET,Current Asset,No,,,Missing code is invalid,Yes
+1001,Duplicate Code,ASSET,Current Asset,No,,,This code already exists,Yes
+1001,Another Duplicate,ASSET,Current Asset,No,,,Also using an existing code,Yes
+ABC123,Invalid Type,INVALID_TYPE,Current Asset,No,,,Type must be ASSET/LIABILITY/EQUITY/REVENUE/EXPENSE,Yes
+5000,Missing Required,,,No,,,Missing required type field,Yes
+6000,Invalid Parent,EXPENSE,Operating Expense,No,,99999,Parent code doesn't exist,Yes
+7000,Invalid Boolean,,Operating Expense,Maybe,,6000,isSubledger must be Yes/No,Yes
+8000,Broken Format,ASSET,Current Asset,No,,1000,,Yes,Extra field
+9000,Type Mismatch,ASSET,Current Asset,Yes,,1000,Type doesn't match parent,Yes

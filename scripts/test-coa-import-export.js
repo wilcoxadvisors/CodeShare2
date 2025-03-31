@@ -1,318 +1,308 @@
 /**
- * Test Script for Chart of Accounts Import/Export Functionality
+ * Chart of Accounts Import/Export Test Script
  * 
- * This script tests the end-to-end functionality of CoA import and export
- * including the handling of different file formats (CSV & Excel)
- * and error handling for invalid data.
+ * This script tests the CoA import and export functionality 
+ * including the enhanced data integrity features.
  */
 
-const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const FormData = require('form-data');
+const XLSX = require('xlsx');
 
 // Configuration
-const BASE_URL = 'http://localhost:3000'; // Update if using a different port
-const AUTH = {
-  username: 'admin',
-  password: 'password123'
-};
-const TEST_CLIENT_ID = 1; // Using the default admin client ID
+const BASE_URL = 'http://localhost:3000';
+const TEST_CLIENT_ID = process.env.TEST_CLIENT_ID || 2; // Default to client ID 2 (OK)
+const TEST_USERNAME = process.env.TEST_USERNAME || 'admin';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'password';
 
-// Test data for import files
-const VALID_CSV_CONTENT = 
-`Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
-1000,Cash,asset,current_asset,NO,,YES,Cash on hand and in banks,
-1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000
-1200,Savings Account,asset,bank,NO,,YES,Business savings account,1000
-2000,Accounts Payable,liability,accounts_payable,NO,,YES,Amounts owed to vendors,`;
+// Test files
+const TEST_FILES_DIR = path.join(__dirname, '..', 'test', 'coa-import-export');
+const EXPORT_DIR = path.join(__dirname, '..', 'test', 'exports');
+const VALID_CSV = path.join(TEST_FILES_DIR, 'valid_import.csv');
+const VALID_XLSX = path.join(TEST_FILES_DIR, 'valid_import.xlsx');
+const INVALID_CSV = path.join(TEST_FILES_DIR, 'invalid_import.csv');
 
-const VALID_EXCEL_DATA = [
-  { Code: "1000", Name: "Cash", Type: "asset", Subtype: "current_asset", IsSubledger: "NO", SubledgerType: "", Active: "YES", Description: "Cash on hand and in banks", ParentId: "" },
-  { Code: "1100", Name: "Checking Account", Type: "asset", Subtype: "bank", IsSubledger: "NO", SubledgerType: "", Active: "YES", Description: "Primary business checking account", ParentId: "1000" },
-  { Code: "1200", Name: "Savings Account", Type: "asset", Subtype: "bank", IsSubledger: "NO", SubledgerType: "", Active: "YES", Description: "Business savings account", ParentId: "1000" },
-  { Code: "2000", Name: "Accounts Payable", Type: "liability", Subtype: "accounts_payable", IsSubledger: "NO", SubledgerType: "", Active: "YES", Description: "Amounts owed to vendors", ParentId: "" }
-];
-
-const INVALID_CSV_CONTENT = 
-`Code,Name,InvalidType,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
-1000,Cash,something_invalid,current_asset,NO,,YES,Cash on hand and in banks,
-1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000`;
-
-// Helper function to create test files
-function createTestFiles() {
-  const testFilesDir = path.join(__dirname, 'test-files');
-  
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(testFilesDir)) {
-    fs.mkdirSync(testFilesDir, { recursive: true });
-  }
-  
-  // Create valid CSV file
-  fs.writeFileSync(path.join(testFilesDir, 'valid_import.csv'), VALID_CSV_CONTENT);
-  
-  // Create invalid CSV file
-  fs.writeFileSync(path.join(testFilesDir, 'invalid_import.csv'), INVALID_CSV_CONTENT);
-  
-  // For Excel files, we'll need to use a library like xlsx to create them
-  // For simplicity in this test script, we'll simulate the Excel test
-  console.log('Test files created in', testFilesDir);
-  
-  return testFilesDir;
+// Ensure export directory exists
+if (!fs.existsSync(EXPORT_DIR)) {
+  fs.mkdirSync(EXPORT_DIR, { recursive: true });
 }
 
-// Test authentication and setup
-async function authenticate() {
+// Track test results
+const testResults = [];
+
+/**
+ * Log test results in a consistent format
+ */
+function logResult(testName, success, message) {
+  const result = {
+    name: testName,
+    success,
+    message
+  };
+  
+  testResults.push(result);
+  
+  console.log(`Test: ${testName}`);
+  console.log(`Result: ${success ? 'PASS ✓' : 'FAIL ✗'}`);
+  console.log(`Message: ${message}`);
+  console.log('----------------------------------------');
+  
+  return result;
+}
+
+/**
+ * Log in to get auth cookie
+ */
+async function login() {
   try {
-    const response = await axios.post(`${BASE_URL}/api/auth/login`, AUTH);
+    const response = await axios.post(`${BASE_URL}/api/auth/login`, {
+      username: TEST_USERNAME,
+      password: TEST_PASSWORD
+    }, {
+      withCredentials: true
+    });
+    
+    // Save cookies for future requests
     const cookies = response.headers['set-cookie'];
+    axios.defaults.headers.Cookie = cookies.join('; ');
+    axios.defaults.withCredentials = true;
     
-    if (!cookies) {
-      throw new Error('No cookies returned from login. Authentication failed.');
-    }
-    
-    console.log('✅ Authentication successful');
-    return cookies[0]; // Return the session cookie for subsequent requests
+    return logResult('Authentication', true, 'Successfully logged in');
   } catch (error) {
-    console.error('❌ Authentication failed:', error.message);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
-    }
-    throw error;
+    return logResult('Authentication', false, `Login failed: ${error.message}`);
   }
 }
 
-// Test export CSV
-async function testExportCsv(sessionCookie) {
+/**
+ * Get all accounts for a client
+ */
+async function getAccounts(clientId) {
   try {
-    console.log('\n--- Testing CSV Export ---');
+    const response = await axios.get(`${BASE_URL}/api/clients/${clientId}/accounts`);
+    return response.data;
+  } catch (error) {
+    logResult('Get Accounts', false, `Failed to get accounts: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Export accounts to CSV or Excel
+ */
+async function exportAccounts(clientId, format = 'csv') {
+  try {
     const response = await axios.get(
-      `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/export`,
-      {
-        headers: { Cookie: sessionCookie },
-        responseType: 'stream'
-      }
+      `${BASE_URL}/api/clients/${clientId}/accounts/export?format=${format}`,
+      { responseType: 'arraybuffer' }
     );
     
-    if (response.status === 200) {
-      const contentDisposition = response.headers['content-disposition'];
-      const isCSV = contentDisposition && contentDisposition.includes('.csv');
-      
-      if (isCSV) {
-        console.log('✅ CSV export successful');
-        console.log('Content-Disposition:', contentDisposition);
-        
-        // Save the exported file for inspection
-        const filePath = path.join(__dirname, 'test-files', 'exported_coa.csv');
-        const writer = fs.createWriteStream(filePath);
-        response.data.pipe(writer);
-        
-        await new Promise((resolve, reject) => {
-          writer.on('finish', resolve);
-          writer.on('error', reject);
-        });
-        
-        console.log('Exported file saved to:', filePath);
-        return true;
-      } else {
-        console.error('❌ Export response not recognized as CSV');
-        return false;
-      }
-    } else {
-      console.error('❌ Export failed with status:', response.status);
-      return false;
-    }
+    const contentType = response.headers['content-type'];
+    const filename = `client_${clientId}_accounts_export.${format}`;
+    const outputPath = path.join(EXPORT_DIR, filename);
+    
+    fs.writeFileSync(outputPath, Buffer.from(response.data));
+    
+    logResult(`Export to ${format.toUpperCase()}`, true, `Successfully exported to ${outputPath}`);
+    return outputPath;
   } catch (error) {
-    console.error('❌ Export CSV test failed:', error.message);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-    }
-    return false;
+    logResult(`Export to ${format.toUpperCase()}`, false, `Export failed: ${error.message}`);
+    return null;
   }
 }
 
-// Test import valid CSV
-async function testImportValidCsv(sessionCookie, testFilesDir) {
+/**
+ * Import accounts from file
+ */
+async function importAccounts(clientId, filePath) {
   try {
-    console.log('\n--- Testing Valid CSV Import ---');
-    
-    const filePath = path.join(testFilesDir, 'valid_import.csv');
     const formData = new FormData();
     formData.append('file', fs.createReadStream(filePath));
     
     const response = await axios.post(
-      `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/import`,
+      `${BASE_URL}/api/clients/${clientId}/accounts/import`,
       formData,
       {
         headers: {
-          Cookie: sessionCookie,
-          ...formData.getHeaders()
+          ...formData.getHeaders(),
         }
       }
     );
     
-    if (response.status === 200) {
-      console.log('✅ Valid CSV import successful');
-      console.log('Response:', response.data);
-      
-      // Verify the accounts were imported by fetching the tree
-      await verifyImportedAccounts(sessionCookie);
-      
-      return true;
+    const extension = path.extname(filePath).toLowerCase();
+    const format = extension === '.csv' ? 'CSV' : 'Excel';
+    
+    logResult(`Import from ${format}`, true, `Successfully imported from ${filePath}. Result: ${JSON.stringify(response.data)}`);
+    return response.data;
+  } catch (error) {
+    const extension = path.extname(filePath).toLowerCase();
+    const format = extension === '.csv' ? 'CSV' : 'Excel';
+    
+    if (error.response && error.response.data) {
+      logResult(`Import from ${format}`, false, `Import failed: ${JSON.stringify(error.response.data)}`);
     } else {
-      console.error('❌ Valid CSV import failed with status:', response.status);
-      return false;
+      logResult(`Import from ${format}`, false, `Import failed: ${error.message}`);
     }
-  } catch (error) {
-    console.error('❌ Valid CSV import test failed:', error.message);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
-    }
-    return false;
+    return null;
   }
 }
 
-// Test import invalid CSV
-async function testImportInvalidCsv(sessionCookie, testFilesDir) {
+/**
+ * Verify account integrity after import
+ */
+async function verifyAccountIntegrity(clientId, beforeAccounts, importResult) {
   try {
-    console.log('\n--- Testing Invalid CSV Import ---');
+    const afterAccounts = await getAccounts(clientId);
     
-    // First, fetch the current accounts to compare after the invalid import
-    const beforeImportResponse = await axios.get(
-      `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/tree`,
-      { headers: { Cookie: sessionCookie } }
-    );
-    const beforeImportAccounts = beforeImportResponse.data;
-    
-    // Try importing invalid CSV
-    const filePath = path.join(testFilesDir, 'invalid_import.csv');
-    const formData = new FormData();
-    formData.append('file', fs.createReadStream(filePath));
-    
-    try {
-      await axios.post(
-        `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/import`,
-        formData,
-        {
-          headers: {
-            Cookie: sessionCookie,
-            ...formData.getHeaders()
-          }
-        }
-      );
-      console.error('❌ Invalid import unexpectedly succeeded when it should have failed');
-      return false;
-    } catch (importError) {
-      if (importError.response && importError.response.status === 400) {
-        console.log('✅ Invalid CSV import correctly rejected with 400 status');
-        console.log('Error response:', importError.response.data);
-        
-        // Check the accounts haven't changed
-        const afterImportResponse = await axios.get(
-          `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/tree`,
-          { headers: { Cookie: sessionCookie } }
-        );
-        const afterImportAccounts = afterImportResponse.data;
-        
-        if (JSON.stringify(beforeImportAccounts) === JSON.stringify(afterImportAccounts)) {
-          console.log('✅ Account data remained unchanged after invalid import attempt');
-          return true;
-        } else {
-          console.error('❌ Account data was modified despite invalid import');
-          return false;
-        }
-      } else {
-        console.error('❌ Invalid import failed with unexpected status:', importError.response?.status);
-        return false;
-      }
+    if (!afterAccounts) {
+      return logResult('Data Integrity', false, 'Could not retrieve accounts after import');
     }
-  } catch (error) {
-    console.error('❌ Invalid CSV import test errored:', error.message);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
+    
+    // Verify account count matches expected result
+    const expectedCount = beforeAccounts.length + importResult.added - importResult.skipped;
+    const actualCount = afterAccounts.length;
+    
+    if (actualCount !== expectedCount) {
+      return logResult('Data Integrity', false, 
+        `Account count mismatch. Expected ${expectedCount}, got ${actualCount}`);
     }
-    return false;
-  }
-}
-
-// Helper to verify imported accounts match the test data
-async function verifyImportedAccounts(sessionCookie) {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/api/clients/${TEST_CLIENT_ID}/accounts/tree`,
-      { headers: { Cookie: sessionCookie } }
-    );
     
-    const accounts = response.data;
-    console.log('Fetched accounts:', accounts.length);
+    // Verify no duplicate account codes
+    const accountCodes = afterAccounts.map(acc => acc.code);
+    const uniqueCodes = new Set(accountCodes);
     
-    // Verify the main accounts were imported
-    const cashAccount = accounts.find(a => a.code === '1000');
-    const checkingAccount = accounts.find(a => a.code === '1100');
-    const savingsAccount = accounts.find(a => a.code === '1200');
-    const accountsPayable = accounts.find(a => a.code === '2000');
-    
-    if (!cashAccount || !checkingAccount || !savingsAccount || !accountsPayable) {
-      console.error('❌ Not all expected accounts were found after import');
-      return false;
+    if (accountCodes.length !== uniqueCodes.size) {
+      return logResult('Data Integrity', false, 'Duplicate account codes found after import');
     }
     
     // Verify parent-child relationships
-    if (checkingAccount.parentId !== cashAccount.id || savingsAccount.parentId !== cashAccount.id) {
-      console.error('❌ Parent-child relationships not correctly established');
-      return false;
+    const accountMap = {};
+    afterAccounts.forEach(acc => {
+      accountMap[acc.code] = acc;
+    });
+    
+    for (const account of afterAccounts) {
+      if (account.parentId) {
+        const parent = afterAccounts.find(acc => acc.id === account.parentId);
+        
+        if (!parent) {
+          return logResult('Data Integrity', false, 
+            `Account ${account.code} has parentId ${account.parentId} but parent account not found`);
+        }
+      }
     }
     
-    console.log('✅ Account validation successful - all accounts found with correct hierarchy');
-    return true;
+    return logResult('Data Integrity', true, 'Account data integrity verified successfully');
   } catch (error) {
-    console.error('❌ Account verification failed:', error.message);
+    return logResult('Data Integrity', false, `Integrity verification failed: ${error.message}`);
+  }
+}
+
+/**
+ * Run the full test suite
+ */
+async function runTests() {
+  console.log('Starting Chart of Accounts Import/Export Tests');
+  console.log('============================================');
+  
+  // Login first
+  const loginResult = await login();
+  if (!loginResult.success) {
+    console.log('Cannot proceed with tests due to authentication failure');
     return false;
   }
-}
-
-// Main test runner
-async function runTests() {
-  try {
-    console.log('Starting Chart of Accounts Import/Export Tests');
-    console.log('==============================================');
-    
-    // Create test files
-    const testFilesDir = createTestFiles();
-    
-    // Authenticate
-    const sessionCookie = await authenticate();
-    
-    // Test export CSV
-    const exportResult = await testExportCsv(sessionCookie);
-    
-    // Test import valid CSV
-    const importValidCsvResult = await testImportValidCsv(sessionCookie, testFilesDir);
-    
-    // Test import invalid CSV
-    const importInvalidCsvResult = await testImportInvalidCsv(sessionCookie, testFilesDir);
-    
-    // For Excel import, we would need a similar test but for simplicity we're simulating
-    console.log('\n--- Excel Import Test (Simulated) ---');
-    console.log('Note: Full Excel import testing would require additional libraries and handling');
-    console.log('Based on code inspection, Excel files should be processed using XLSX.read()');
-    
-    // Summary
-    console.log('\n=== Test Summary ===');
-    console.log(`Export CSV: ${exportResult ? 'PASSED ✅' : 'FAILED ❌'}`);
-    console.log(`Import Valid CSV: ${importValidCsvResult ? 'PASSED ✅' : 'FAILED ❌'}`);
-    console.log(`Import Invalid CSV: ${importInvalidCsvResult ? 'PASSED ✅' : 'FAILED ❌'}`);
-    console.log(`Import Excel: SIMULATED (not fully tested)`);
-    
-    process.exit(0);
-  } catch (error) {
-    console.error('Test suite failed with error:', error);
-    process.exit(1);
+  
+  // Get initial accounts state
+  const beforeAccounts = await getAccounts(TEST_CLIENT_ID);
+  if (!beforeAccounts) {
+    console.log('Cannot proceed with tests due to failure to retrieve accounts');
+    return false;
   }
+  
+  console.log(`Initial state: ${beforeAccounts.length} accounts found for client ID ${TEST_CLIENT_ID}`);
+  
+  // Test CSV export
+  const csvExportPath = await exportAccounts(TEST_CLIENT_ID, 'csv');
+  
+  // Test Excel export
+  const xlsxExportPath = await exportAccounts(TEST_CLIENT_ID, 'xlsx');
+  
+  // Test valid CSV import
+  const csvImportResult = await importAccounts(TEST_CLIENT_ID, VALID_CSV);
+  if (csvImportResult) {
+    await verifyAccountIntegrity(TEST_CLIENT_ID, beforeAccounts, csvImportResult);
+  }
+  
+  // Test valid Excel import
+  const xlsxImportResult = await importAccounts(TEST_CLIENT_ID, VALID_XLSX);
+  if (xlsxImportResult) {
+    await verifyAccountIntegrity(TEST_CLIENT_ID, beforeAccounts, xlsxImportResult);
+  }
+  
+  // Test invalid CSV import (should fail with validation errors)
+  const invalidImportResult = await importAccounts(TEST_CLIENT_ID, INVALID_CSV);
+  if (invalidImportResult && invalidImportResult.errors && invalidImportResult.errors.length > 0) {
+    logResult('Invalid Import Validation', true, 
+      `Correctly rejected invalid file with ${invalidImportResult.errors.length} errors`);
+  } else {
+    logResult('Invalid Import Validation', false, 
+      'Invalid file was accepted without expected validation errors');
+  }
+  
+  // Export our own test data to file for verification
+  // This helps us manually inspect the exported data structure
+  const exportedData = beforeAccounts.map(acc => ({
+    code: acc.code,
+    name: acc.name,
+    type: acc.type,
+    subtype: acc.subtype,
+    isSubledger: acc.isSubledger ? 'Yes' : 'No',
+    subledgerType: acc.subledgerType || '',
+    parentCode: acc.parentId ? beforeAccounts.find(a => a.id === acc.parentId)?.code || '' : '',
+    description: acc.description || '',
+    active: acc.active ? 'Yes' : 'No'
+  }));
+  
+  // Write CSV version
+  const csvOutput = 'code,name,type,subtype,isSubledger,subledgerType,parentCode,description,active\n' + 
+    exportedData.map(row => 
+      Object.values(row).map(val => `"${val}"`).join(',')
+    ).join('\n');
+  
+  fs.writeFileSync(path.join(EXPORT_DIR, 'verification_export.csv'), csvOutput);
+  
+  // Write Excel version
+  const worksheet = XLSX.utils.json_to_sheet(exportedData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Accounts');
+  XLSX.writeFile(workbook, path.join(EXPORT_DIR, 'verification_export.xlsx'));
+  
+  // Print summary
+  console.log('\nTest Summary:');
+  console.log('============================================');
+  
+  const passes = testResults.filter(r => r.success).length;
+  const failures = testResults.filter(r => !r.success).length;
+  
+  console.log(`Total tests: ${testResults.length}`);
+  console.log(`Passed: ${passes}`);
+  console.log(`Failed: ${failures}`);
+  
+  if (failures > 0) {
+    console.log('\nFailed Tests:');
+    testResults.filter(r => !r.success).forEach(failure => {
+      console.log(`- ${failure.name}: ${failure.message}`);
+    });
+  }
+  
+  return failures === 0;
 }
 
-// Run tests
-runTests();
+// Run the tests
+runTests().then(success => {
+  process.exit(success ? 0 : 1);
+}).catch(error => {
+  console.error('Test suite failed with error:', error);
+  process.exit(1);
+});

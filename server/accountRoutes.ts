@@ -134,21 +134,33 @@ export function registerAccountRoutes(app: Express) {
       throwBadRequest("No file uploaded. Please provide a CSV file.");
     }
     
-    // Check file type
-    if (req.file.mimetype !== 'text/csv' && !req.file.originalname.endsWith('.csv')) {
-      throwBadRequest("Invalid file format. Please upload a CSV file.");
+    // Check file type for CSV or Excel
+    const fileName = req.file.originalname.toLowerCase();
+    const isCSV = req.file.mimetype === 'text/csv' || fileName.endsWith('.csv');
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    
+    if (!isCSV && !isExcel) {
+      throwBadRequest("Invalid file format. Please upload a CSV or Excel file.");
     }
     
     try {
-      // Process the imported CSV file
-      const result = await storage.importCoaForClient(clientId, req.file.buffer);
+      // Process the imported file - pass the filename to determine type
+      const result = await storage.importCoaForClient(clientId, req.file.buffer, fileName);
       
-      // Return success response with import stats
+      // Return success response with detailed import stats
+      const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive.`;
+      
       res.json({
         status: "success",
-        message: `Successfully imported ${result.count} accounts.`,
+        message: message,
         count: result.count,
-        errors: result.errors
+        added: result.added,
+        updated: result.updated,
+        unchanged: result.unchanged,
+        skipped: result.skipped,
+        inactive: result.inactive,
+        errors: result.errors,
+        warnings: result.warnings
       });
     } catch (error: any) {
       console.error("Error importing accounts:", error);

@@ -38,8 +38,14 @@ import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } fro
 
 // Interface for import results
 export interface ImportResult {
-  count: number;
-  errors: string[];
+  count: number;       // Total accounts successfully processed
+  added: number;       // New accounts added
+  updated: number;     // Existing accounts updated
+  unchanged: number;   // Existing accounts that were left unchanged
+  skipped: number;     // Accounts that weren't processed (e.g., due to validation failures)
+  inactive: number;    // Accounts marked as inactive 
+  errors: string[];    // Error messages
+  warnings: string[];  // Warning messages (less severe than errors)
 }
 
 // Storage interface for data access
@@ -87,7 +93,7 @@ export interface IStorage {
   deleteAccount(id: number): Promise<void>;
   getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
   getAccountsForClient(clientId: number): Promise<Account[]>; // For CoA export
-  importCoaForClient(clientId: number, csvData: Buffer): Promise<{ count: number, errors: string[] }>;
+  importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string): Promise<ImportResult>;
   
   // Journal methods
   getJournal(id: number): Promise<Journal | undefined>;
@@ -4273,36 +4279,93 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Implementation for Chart of Accounts import
-  async importCoaForClient(clientId: number, fileBuffer: Buffer): Promise<ImportResult> {
+  async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string): Promise<ImportResult> {
     const result: ImportResult = {
-      count: 0,
-      errors: []
+      count: 0,     // Total accounts processed
+      added: 0,     // New accounts added
+      updated: 0,   // Existing accounts updated
+      unchanged: 0, // Existing accounts unchanged
+      skipped: 0,   // Accounts skipped (validation failure)
+      inactive: 0,  // Accounts marked inactive
+      errors: [],   // Error messages
+      warnings: []  // Warning messages
     };
     
     try {
-      // Parse CSV from buffer
-      const csvContent = fileBuffer.toString('utf-8');
-      const Papa = await import('papaparse');
-      const parseResult = Papa.parse(csvContent, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header: string) => header.trim().toLowerCase()
-      });
+      let rows: any[] = [];
       
-      if (parseResult.errors && parseResult.errors.length > 0) {
-        for (const error of parseResult.errors) {
-          result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+      // Determine if this is an Excel file or CSV based on file extension
+      const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
+      
+      if (isExcel) {
+        // Process Excel file
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON with header option
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Extract headers and transform them
+        if (jsonData.length < 2) {
+          result.errors.push('Excel file is empty or missing data rows');
+          return result;
         }
-        return result;
+        
+        const headers = (jsonData[0] as string[]).map(header => 
+          header ? header.trim().toLowerCase() : '');
+        
+        // Process data rows (skip header row)
+        rows = jsonData.slice(1).map(row => {
+          const rowData: any = {};
+          (row as any[]).forEach((cell, index) => {
+            if (index < headers.length && headers[index]) {
+              rowData[headers[index]] = cell;
+            }
+          });
+          return rowData;
+        });
+      } else {
+        // Parse CSV from buffer
+        const csvContent = fileBuffer.toString('utf-8');
+        const Papa = await import('papaparse');
+        const parseResult = Papa.default.parse(csvContent, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header: string) => header ? header.trim().toLowerCase() : ''
+        });
+      
+        if (parseResult.errors && parseResult.errors.length > 0) {
+          for (const error of parseResult.errors) {
+            result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+          }
+          return result;
+        }
+        
+        rows = parseResult.data as any[];
       }
       
-      const rows = parseResult.data as any[];
       if (!rows || rows.length === 0) {
         result.errors.push('No accounts found in the imported file');
         return result;
       }
       
-      // Validate expected CSV structure
+      // Filter out any rows with empty required fields
+      rows = rows.filter(row => {
+        if (!row.code || !row.name || !row.type) {
+          result.skipped++;
+          return false;
+        }
+        return true;
+      });
+      
+      if (rows.length === 0) {
+        result.errors.push('No valid accounts found in the file after filtering empty rows');
+        return result;
+      }
+      
+      // Validate expected structure
       const requiredFields = ['code', 'name', 'type'];
       const firstRow = rows[0];
       
@@ -4325,50 +4388,125 @@ export class DatabaseStorage implements IStorage {
         codeToIdMap.set(account.code, account.id);
       }
       
-      // Process new accounts first without setting parent IDs
+      // Create a map of existing accounts by code for easier lookup
+      const existingAccountsByCode = new Map<string, Account>();
+      for (const account of existingAccounts) {
+        existingAccountsByCode.set(account.code, account);
+      }
+      
+      // Process accounts - creating new ones and updating existing ones
       for (const row of rows) {
         try {
           // Normalize account type to match enum
           const normalizedType = this.normalizeAccountType(row.type.trim().toUpperCase());
+          const accountCode = row.code.trim();
           
-          // Skip accounts with duplicate codes
-          if (existingCodes.has(row.code)) {
-            result.errors.push(`Account with code ${row.code} already exists`);
-            continue;
+          // Check if the account already exists
+          if (existingCodes.has(accountCode)) {
+            const existingAccount = existingAccountsByCode.get(accountCode);
+            if (!existingAccount) continue; // This shouldn't happen, but just in case
+            
+            // Check if this account has transactions
+            const hasTransactions = await this.accountHasTransactions(existingAccount.id);
+            
+            // If inactive in import but active in system, set to inactive
+            const isActive = row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false';
+            
+            if (!isActive && existingAccount.active) {
+              // Mark as inactive
+              await this.markAccountInactive(existingAccount.id);
+              result.inactive++;
+              result.warnings.push(`Account ${accountCode} (${row.name}) has been marked inactive`);
+              continue;
+            } else if (!existingAccount.active && isActive) {
+              // Reactivating an account
+              await this.updateAccount(existingAccount.id, { active: true });
+              result.updated++;
+              continue;
+            }
+            
+            // For accounts with transactions, be very selective about what can be updated
+            if (hasTransactions) {
+              // Check if there are significant changes that can't be made
+              const typeChanged = normalizedType !== existingAccount.type;
+              
+              if (typeChanged) {
+                result.warnings.push(`Account ${accountCode} (${row.name}) has transactions and its type cannot be changed`);
+                result.skipped++;
+                continue;
+              }
+              
+              // Only update non-critical fields for accounts with transactions
+              const safeUpdate = {
+                name: row.name.trim(),
+                description: row.description ? row.description.trim() : existingAccount.description,
+                // Don't update: type, subtype, isSubledger, subledgerType, parentId
+              };
+              
+              await this.updateAccount(existingAccount.id, safeUpdate);
+              result.updated++;
+              result.warnings.push(`Account ${accountCode} (${row.name}) has transactions - only name and description were updated`);
+            } else {
+              // For accounts without transactions, we can update more fields
+              const updateData = {
+                name: row.name.trim(),
+                type: normalizedType as AccountType,
+                subtype: row.subtype ? row.subtype.trim() : existingAccount.subtype,
+                description: row.description ? row.description.trim() : existingAccount.description,
+                // parentId will be updated in second pass
+                isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
+                subledgerType: row.subledgertype ? row.subledgertype.trim() : existingAccount.subledgerType,
+              };
+              
+              await this.updateAccount(existingAccount.id, updateData);
+              result.updated++;
+            }
+          } else {
+            // Create a new account (without parent reference first)
+            const newAccount = await this.createAccount({
+              clientId,
+              code: accountCode,
+              name: row.name.trim(),
+              type: normalizedType as AccountType,
+              subtype: row.subtype ? row.subtype.trim() : null,
+              isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
+              subledgerType: row.subledgertype ? row.subledgertype.trim() : null,
+              parentId: null, // We'll update this in the second pass
+              description: row.description ? row.description.trim() : null,
+              active: row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false'
+            });
+            
+            // Store the new account code to ID mapping
+            codeToIdMap.set(accountCode, newAccount.id);
+            result.added++;
           }
           
-          // Create the account (without parent reference first)
-          const newAccount = await this.createAccount({
-            clientId,
-            code: row.code.trim(),
-            name: row.name.trim(),
-            type: normalizedType as AccountType,
-            subtype: row.subtype ? row.subtype.trim() : null,
-            isSubledger: row.issubledger?.toLowerCase() === 'yes' || row.issubledger === '1' || row.issubledger === 'true',
-            subledgerType: row.subledgertype ? row.subledgertype.trim() : null,
-            parentId: null, // We'll update this in the second pass
-            description: row.description ? row.description.trim() : null,
-            active: row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false'
-          });
-          
-          // Store the new account code to ID mapping
-          codeToIdMap.set(row.code, newAccount.id);
           result.count++;
         } catch (error: any) {
-          result.errors.push(`Error creating account ${row.code}: ${error.message || 'Unknown error'}`);
+          result.errors.push(`Error processing account ${row.code}: ${error.message || 'Unknown error'}`);
+          result.skipped++;
         }
       }
       
-      // Second pass to set parent IDs
+      // Second pass to set parent IDs - only for accounts that don't have transactions
       for (const row of rows) {
+        const accountCode = row.code.trim();
         if (row.parentcode && codeToIdMap.has(row.parentcode)) {
-          const accountId = codeToIdMap.get(row.code);
+          const accountId = codeToIdMap.get(accountCode);
           const parentId = codeToIdMap.get(row.parentcode);
           
           if (accountId && parentId) {
             try {
-              // Update the account with the parent ID
-              await this.updateAccount(accountId, { parentId });
+              // Check if account has transactions before updating parent
+              const hasTransactions = await this.accountHasTransactions(accountId);
+              
+              if (hasTransactions) {
+                // Don't update parent if account has transactions as it could affect reports
+                result.warnings.push(`Account ${accountCode} has transactions - parent relationship not updated`);
+              } else {
+                // Update the account with the parent ID
+                await this.updateAccount(accountId, { parentId });
+              }
             } catch (error: any) {
               result.errors.push(`Error setting parent for account ${row.code}: ${error.message || 'Unknown error'}`);
             }
@@ -4441,9 +4579,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAccount(id: number): Promise<void> {
+    // First check if this account has any transactions associated with it
+    const journalLines = await db
+      .select({ count: count() })
+      .from(journalEntryLines)
+      .where(eq(journalEntryLines.accountId, id));
+    
+    // If there are transactions, don't allow deletion
+    if (journalLines[0]?.count > 0) {
+      throw new Error('Cannot delete account with existing transactions. Mark it as inactive instead.');
+    }
+    
+    // Check if this account has any child accounts
+    const childAccounts = await db
+      .select({ count: count() })
+      .from(accounts)
+      .where(eq(accounts.parentId, id));
+    
+    // If there are child accounts, don't allow deletion
+    if (childAccounts[0]?.count > 0) {
+      throw new Error('Cannot delete account with child accounts. Remove child accounts first or mark this account as inactive.');
+    }
+    
+    // If no transactions and no child accounts exist, proceed with deletion
     await db
       .delete(accounts)
       .where(eq(accounts.id, id));
+  }
+  
+  /**
+   * Marks an account as inactive instead of deleting it
+   * This is used when an account has transactions and cannot be deleted
+   */
+  async markAccountInactive(id: number): Promise<Account | undefined> {
+    return this.updateAccount(id, { active: false });
+  }
+  
+  /**
+   * Checks if an account has any transactions
+   */
+  async accountHasTransactions(id: number): Promise<boolean> {
+    const journalLines = await db
+      .select({ count: count() })
+      .from(journalEntryLines)
+      .where(eq(journalEntryLines.accountId, id));
+    
+    return journalLines[0]?.count > 0;
   }
 
   async getJournalEntry(id: number): Promise<JournalEntry | undefined> {

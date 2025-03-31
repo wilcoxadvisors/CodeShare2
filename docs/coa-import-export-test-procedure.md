@@ -1,100 +1,119 @@
-# Chart of Accounts Import/Export Testing Procedure
+# Chart of Accounts Import/Export Test Procedure
 
-This document outlines the procedure for testing the Chart of Accounts (CoA) import and export functionality, including CSV and Excel file handling.
+This document outlines the testing procedure for the Chart of Accounts (CoA) import and export functionality, focusing on data integrity controls.
 
 ## Prerequisites
 
-1. **Test Client:** Ensure a client exists with a small set of accounts to test with (e.g., Client ID 1)
-2. **Test Files:** Prepare the following test files:
-   - `valid_import.csv`: Valid CSV file with proper headers and account data
-   - `valid_import.xlsx`: Valid Excel file with the same data as the CSV
-   - `invalid_import.csv`: Invalid CSV file with intentional errors
+- A running instance of the application
+- Test account with admin permissions
+- Test client with existing CoA entries
+- Test files in the `/test/coa-import-export/` directory:
+  - `valid_import.csv` - A valid CSV file with account data
+  - `valid_import.xlsx` - A valid Excel file with account data
+  - `invalid_import.csv` - An invalid CSV file with problematic data
 
-## Test Procedure
+## Running the Test Script
 
-### A. Authentication
+The automated test script (`scripts/test-coa-import-export.js`) performs a comprehensive test of the import/export functionality:
 
-1. Log in as admin user (username: `admin`, password: `password123`)
-2. Verify successful authentication
+```bash
+# Set environment variables for testing
+export TEST_CLIENT_ID=1  # Replace with an actual client ID
+export TEST_USERNAME=admin
+export TEST_PASSWORD=password
 
-### B. Navigation
+# Run the test script
+node scripts/test-coa-import-export.js
+```
 
-1. Navigate to the Chart of Accounts page (`/chart-of-accounts`)
-2. Use the global header context selector to choose the test client
-3. Verify accounts are displayed in the table
+## Manual Testing Procedure
 
-### C. Test Export CSV
+If you prefer to test manually, follow these steps:
 
-1. Click the "Export CSV" button
-2. Verify a CSV file download is triggered
-3. Open the downloaded file and confirm it contains:
-   - Correct headers: `Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId`
-   - Complete set of accounts from the selected client
-   - Properly formatted CSV with correct delimiters and encoding
+1. **Export the Current Chart of Accounts**
+   - Navigate to the Chart of Accounts page for a client
+   - Click the "Export" button
+   - Choose CSV format
+   - Verify the downloaded file contains all accounts with correct data
 
-### D. Test Import Valid CSV
+2. **Modify the Exported File**
+   - Open the exported CSV file
+   - Make changes to some existing accounts (name, description)
+   - Mark some accounts as inactive (set active = "No")
+   - Add new accounts with appropriate parent account codes
+   - Add accounts with invalid data (for testing validation)
 
-1. Prepare `valid_import.csv` with the following structure:
-   ```
-   Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
-   1000,Cash,asset,current_asset,NO,,YES,Cash on hand and in banks,
-   1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000
-   1200,Savings Account,asset,bank,NO,,YES,Business savings account,1000
-   2000,Accounts Payable,liability,accounts_payable,NO,,YES,Amounts owed to vendors,
-   ```
+3. **Import the Modified File**
+   - Navigate back to the Chart of Accounts page
+   - Click "Import"
+   - Select your modified file
+   - Submit the import
+   - Review the import results
 
-2. Click the "Import" button
-3. Select the `valid_import.csv` file
-4. Confirm the import in the dialog
-5. Verify:
-   - Success notification appears
-   - Table updates to show imported accounts
-   - Parent-child hierarchy is correctly displayed (Checking and Savings accounts indent under Cash)
-   - API check: GET `/api/clients/{clientId}/accounts/tree` returns the correct accounts
+4. **Verify Data Integrity**
+   - Check that new accounts were added correctly
+   - Verify that existing accounts were updated appropriately
+   - Confirm that accounts marked inactive are now inactive
+   - Verify hierarchical relationships were maintained or established properly
 
-### E. Test Import Valid Excel
+5. **Test Edge Cases**
+   - Import a file with missing required fields
+   - Import a file with duplicate account codes
+   - Import a file with invalid account types
+   - Test importing accounts that have existing transactions:
+     - Attempt to change account type (should be prevented)
+     - Update non-financial fields like name/description (should succeed)
+     - Verify parent relationship changes are handled appropriately
 
-1. Prepare `valid_import.xlsx` with the same data structure as the CSV file
-2. Click the "Import" button
-3. Select the `valid_import.xlsx` file
-4. Confirm the import in the dialog
-5. Verify:
-   - Success notification appears
-   - Table updates to show imported accounts
-   - Parent-child hierarchy is correctly displayed
+## Data Integrity Features
 
-### F. Test Import Invalid CSV
+The import process includes these key integrity controls:
 
-1. Prepare `invalid_import.csv` with an intentional error:
-   ```
-   Code,Name,InvalidType,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId
-   1000,Cash,something_invalid,current_asset,NO,,YES,Cash on hand and in banks,
-   1100,Checking Account,asset,bank,NO,,YES,Primary business checking account,1000
-   ```
+1. **Account Transaction Protection**
+   - Accounts with existing transactions cannot be deleted
+   - Critical fields (type, subtype) cannot be changed for accounts with transactions
+   - Only non-financial fields (name, description) can be updated
 
-2. Note the current state of accounts displayed in the table
-3. Click the "Import" button
-4. Select the `invalid_import.csv` file
-5. Confirm the import in the dialog
-6. Verify:
-   - Error notification appears with a descriptive message
-   - Table remains unchanged (no partial import occurred)
-   - Database check: The accounts haven't changed in the database
+2. **Hierarchical Integrity**
+   - Parent-child relationships are verified and established in a second pass
+   - Parent account changes are blocked for accounts with transactions
 
-## Test Results
+3. **Duplicate Prevention**
+   - System checks for duplicate account codes
+   - Existing accounts are updated rather than duplicated
 
-Document the results of each test step:
+4. **Inactive Handling**
+   - Accounts can be marked inactive rather than deleted
+   - Reactivation of inactive accounts is supported
 
-| Test Case | Expected Result | Actual Result | Pass/Fail |
-|-----------|-----------------|---------------|-----------|
-| Export CSV | CSV download triggered | | |
-| Import Valid CSV | Accounts imported successfully | | |
-| Import Valid Excel | Accounts imported successfully | | |
-| Import Invalid CSV | Error displayed, data unchanged | | |
+## Import Result Structure
 
-## Notes
+The import process returns a detailed result object:
 
-- CSV and Excel files should follow the same data structure
-- The system should validate account types against allowed values
-- Import process should maintain parent-child relationships
-- Error handling should prevent partial or corrupted imports
+```typescript
+interface ImportResult {
+  count: number;     // Total accounts processed
+  added: number;     // New accounts added
+  updated: number;   // Existing accounts updated
+  unchanged: number; // Existing accounts unchanged
+  skipped: number;   // Accounts skipped (validation failure)
+  inactive: number;  // Accounts marked inactive
+  errors: string[];  // Error messages
+  warnings: string[]; // Warning messages
+}
+```
+
+## Known Limitations
+
+1. **Excel Date Formatting**: Excel may convert numeric account codes to dates. Always format account code columns as text before exporting from Excel.
+
+2. **Special Characters**: Some special characters may not transfer correctly between CSV exports and imports. Use standard alphanumeric characters when possible.
+
+3. **Large Imports**: Very large imports (1000+ accounts) may timeout on some systems. Consider splitting large imports into multiple files.
+
+## Troubleshooting
+
+- **Import Errors**: Check the returned errors array for specific validation failures
+- **Incorrect Updates**: Verify the CSV format, particularly that column headers match exactly
+- **Parent Relationships Not Setting**: Ensure parent codes exist in the system or in the same import file
+- **Transaction Protection**: If account updates aren't applying, check if the account has transactions
