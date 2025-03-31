@@ -4291,304 +4291,411 @@ export class DatabaseStorage implements IStorage {
       warnings: []  // Warning messages
     };
     
-    try {
-      let rows: any[] = [];
-      
-      // Determine if this is an Excel file or CSV based on file extension
-      const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
-      
-      if (isExcel) {
-        // Process Excel file
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+    return await db.transaction(async (tx) => {
+      try {
+        let rows: any[] = [];
         
-        // Convert to JSON with header option
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        // Determine if this is an Excel file or CSV based on file extension
+        const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
         
-        // Extract headers and transform them
-        if (jsonData.length < 2) {
-          result.errors.push('Excel file is empty or missing data rows');
-          return result;
-        }
-        
-        const headers = (jsonData[0] as string[]).map(header => 
-          header ? header.trim().toLowerCase() : '');
-        
-        // Process data rows (skip header row)
-        rows = jsonData.slice(1).map(row => {
-          const rowData: any = {};
-          (row as any[]).forEach((cell, index) => {
-            if (index < headers.length && headers[index]) {
-              rowData[headers[index]] = cell;
-            }
+        if (isExcel) {
+          // Process Excel file
+          const XLSX = await import('xlsx');
+          const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Convert to JSON with header option
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Extract headers and transform them
+          if (jsonData.length < 2) {
+            result.errors.push('Excel file is empty or missing data rows');
+            return result;
+          }
+          
+          const headers = (jsonData[0] as string[]).map(header => 
+            header ? this.normalizeHeaderField(header) : '');
+          
+          // Process data rows (skip header row)
+          rows = jsonData.slice(1).map(row => {
+            const rowData: any = {};
+            (row as any[]).forEach((cell, index) => {
+              if (index < headers.length && headers[index]) {
+                rowData[headers[index]] = cell;
+              }
+            });
+            return rowData;
           });
-          return rowData;
-        });
-      } else {
-        // Parse CSV from buffer
-        const csvContent = fileBuffer.toString('utf-8');
-        const Papa = await import('papaparse');
-        const parseResult = Papa.default.parse(csvContent, {
-          header: true,
-          skipEmptyLines: true,
-          transformHeader: (header: string) => header ? header.trim().toLowerCase() : ''
-        });
-      
-        if (parseResult.errors && parseResult.errors.length > 0) {
-          for (const error of parseResult.errors) {
-            result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+        } else {
+          // Parse CSV from buffer
+          const csvContent = fileBuffer.toString('utf-8');
+          const Papa = await import('papaparse');
+          const parseResult = Papa.default.parse(csvContent, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: (header: string) => this.normalizeHeaderField(header)
+          });
+        
+          if (parseResult.errors && parseResult.errors.length > 0) {
+            for (const error of parseResult.errors) {
+              result.errors.push(`CSV parsing error at row ${error.row}: ${error.message}`);
+            }
+            return result;
           }
+          
+          rows = parseResult.data as any[];
+        }
+        
+        if (!rows || rows.length === 0) {
+          result.errors.push('No accounts found in the imported file');
           return result;
         }
         
-        rows = parseResult.data as any[];
-      }
-      
-      if (!rows || rows.length === 0) {
-        result.errors.push('No accounts found in the imported file');
-        return result;
-      }
-      
-      // Filter out any rows with empty required fields
-      rows = rows.filter(row => {
-        if (!row.code || !row.name || !row.type) {
-          result.skipped++;
-          return false;
-        }
-        return true;
-      });
-      
-      if (rows.length === 0) {
-        result.errors.push('No valid accounts found in the file after filtering empty rows');
-        return result;
-      }
-      
-      // Validate expected structure
-      const requiredFields = ['code', 'name', 'type'];
-      const firstRow = rows[0];
-      
-      for (const field of requiredFields) {
-        if (!(field in firstRow)) {
-          result.errors.push(`Missing required field: ${field}`);
+        // Process each row to normalize field names and handle case sensitivity
+        rows = this.normalizeImportRows(rows);
+        
+        // Filter out any rows with empty required fields
+        rows = rows.filter(row => {
+          const code = this.getCaseInsensitiveValue(row, 'code');
+          const name = this.getCaseInsensitiveValue(row, 'name');
+          const type = this.getCaseInsensitiveValue(row, 'type');
+          
+          if (!code || !name || !type) {
+            result.skipped++;
+            return false;
+          }
+          return true;
+        });
+        
+        if (rows.length === 0) {
+          result.errors.push('No valid accounts found in the file after filtering empty rows');
           return result;
         }
-      }
-      
-      // Get existing accounts to check for duplicates
-      const existingAccounts = await this.getAccounts(clientId);
-      const existingCodes = new Set(existingAccounts.map(acc => acc.code));
-      
-      // Map to store newly created account codes to their IDs for parent resolution
-      const codeToIdMap = new Map<string, number>();
-      
-      // First add all existing account codes to the map
-      for (const account of existingAccounts) {
-        codeToIdMap.set(account.code, account.id);
-      }
-      
-      // Create a map of existing accounts by code for easier lookup
-      const existingAccountsByCode = new Map<string, Account>();
-      for (const account of existingAccounts) {
-        existingAccountsByCode.set(account.code, account);
-      }
-      
-      // Process accounts - creating new ones and updating existing ones
-      for (const row of rows) {
-        try {
-          // Check if required fields exist
-          if (!row.code || !row.name || !row.type) {
-            result.skipped++;
-            result.errors.push(`Account skipped: Missing required fields (code, name, or type)`);
-            continue;
-          }
-          
-          // Normalize account type to match enum
-          let normalizedType;
+        
+        // Get existing accounts to check for duplicates
+        const existingAccounts = await this.getAccounts(clientId);
+        const existingCodeMap = new Map<string, Account>();
+        
+        // Map for faster lookups - storing lowercase codes for case-insensitive matching
+        for (const account of existingAccounts) {
+          existingCodeMap.set(account.code.toLowerCase(), account);
+        }
+        
+        // Map to store all account codes (existing + new) to their IDs for parent resolution
+        const codeToIdMap = new Map<string, number>();
+        
+        // First add all existing account codes to the map (preserving original case for display)
+        for (const account of existingAccounts) {
+          codeToIdMap.set(account.code, account.id);
+        }
+        
+        // First pass: Process accounts - creating new ones or updating existing ones
+        for (const row of rows) {
           try {
-            normalizedType = this.normalizeAccountType(row.type);
-          } catch (typeError) {
-            result.errors.push(`Account ${row.code}: ${typeError.message}`);
-            result.skipped++;
-            continue;
-          }
-          
-          const accountCode = row.code.trim();
-          
-          // Check if the account already exists
-          if (existingCodes.has(accountCode)) {
-            const existingAccount = existingAccountsByCode.get(accountCode);
-            if (!existingAccount) continue; // This shouldn't happen, but just in case
+            // Get code, name, and type with case-insensitive access
+            const accountCode = this.getCaseInsensitiveValue(row, 'code')?.trim();
+            const accountName = this.getCaseInsensitiveValue(row, 'name')?.trim();
+            const accountTypeRaw = this.getCaseInsensitiveValue(row, 'type');
             
-            // Check if this account has transactions
-            const hasTransactions = await this.accountHasTransactions(existingAccount.id);
-            
-            // If inactive in import but active in system, set to inactive
-            const isActive = row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false';
-            
-            if (!isActive && existingAccount.active) {
-              // Mark as inactive
-              await this.markAccountInactive(existingAccount.id);
-              result.inactive++;
-              result.warnings.push(`Account ${accountCode} (${row.name}) has been marked inactive`);
-              continue;
-            } else if (!existingAccount.active && isActive) {
-              // Reactivating an account
-              await this.updateAccount(existingAccount.id, { active: true });
-              result.updated++;
+            if (!accountCode || !accountName || !accountTypeRaw) {
+              result.skipped++;
               continue;
             }
             
-            // For accounts with transactions, be very selective about what can be updated
-            if (hasTransactions) {
-              // Check if there are significant changes that can't be made
-              const typeChanged = normalizedType !== existingAccount.type;
+            // Normalize account type to match enum
+            let normalizedType;
+            try {
+              normalizedType = this.normalizeAccountType(accountTypeRaw);
+            } catch (typeError: any) {
+              result.errors.push(`Account ${accountCode}: ${typeError.message}`);
+              result.skipped++;
+              continue;
+            }
+            
+            // Check if the account already exists (case-insensitive comparison)
+            const existingAccount = existingCodeMap.get(accountCode.toLowerCase());
+            
+            if (existingAccount) {
+              // Check if this account has transactions
+              const hasTransactions = await this.accountHasTransactions(existingAccount.id);
               
-              if (typeChanged) {
-                result.warnings.push(`Account ${accountCode} (${row.name}) has transactions and its type cannot be changed`);
-                result.skipped++;
+              // Handle active status changes
+              const isActiveInImport = this.parseIsActive(row, true);
+              
+              if (!isActiveInImport && existingAccount.active) {
+                // Mark as inactive
+                await this.updateAccount(existingAccount.id, { active: false });
+                result.inactive++;
+                result.warnings.push(`Account ${accountCode} (${accountName}) has been marked inactive`);
+                result.count++;
+                continue;
+              } else if (!existingAccount.active && isActiveInImport) {
+                // Reactivate the account
+                await this.updateAccount(existingAccount.id, { active: true });
+                result.updated++;
+                result.count++;
                 continue;
               }
               
-              // Only update non-critical fields for accounts with transactions
-              const safeUpdate = {
-                name: row.name.trim(),
-                description: row.description ? row.description.trim() : existingAccount.description,
-                // Don't update: type, subtype, isSubledger, subledgerType, parentId
-              };
-              
-              await this.updateAccount(existingAccount.id, safeUpdate);
-              result.updated++;
-              result.warnings.push(`Account ${accountCode} (${row.name}) has transactions - only name and description were updated`);
-            } else {
-              // For accounts without transactions, we can update more fields
-              const updateData = {
-                name: row.name.trim(),
-                type: normalizedType as AccountType,
-                subtype: row.subtype ? row.subtype.trim() : existingAccount.subtype,
-                description: row.description ? row.description.trim() : existingAccount.description,
-                // parentId will be updated in second pass
-                isSubledger: this.parseIsSubledger(row, existingAccount),
-                subledgerType: this.getSubledgerType(row, existingAccount),
-              };
-              
-              await this.updateAccount(existingAccount.id, updateData);
-              result.updated++;
-            }
-          } else {
-            // Create a new account (without parent reference first)
-            const newAccount = await this.createAccount({
-              clientId,
-              code: accountCode,
-              name: row.name.trim(),
-              type: normalizedType as AccountType,
-              subtype: row.subtype ? row.subtype.trim() : null,
-              isSubledger: this.parseIsSubledger(row),
-              subledgerType: this.getSubledgerType(row),
-              parentId: null, // We'll update this in the second pass
-              description: row.description ? row.description.trim() : null,
-              active: row.active?.toLowerCase() !== 'no' && row.active !== '0' && row.active?.toLowerCase() !== 'false'
-            });
-            
-            // Store the new account code to ID mapping
-            codeToIdMap.set(accountCode, newAccount.id);
-            result.added++;
-          }
-          
-          result.count++;
-        } catch (error: any) {
-          result.errors.push(`Error processing account ${row.code}: ${error.message || 'Unknown error'}`);
-          result.skipped++;
-        }
-      }
-      
-      // Second pass to set parent IDs - only for accounts that don't have transactions
-      for (const row of rows) {
-        const accountCode = row.code.trim();
-        
-        // Debug: Print row data to help diagnose case sensitivity issues
-        console.log(`DEBUG: Processing row with code ${accountCode}, row keys:`, Object.keys(row));
-        console.log(`DEBUG: Row data:`, row);
-        
-        // Get all keys in lowercase for case-insensitive lookup
-        const lowercaseKeys = Object.keys(row).map(key => key.toLowerCase());
-        
-        // Look for any variant of "parentcode" in the keys
-        let parentCodeKey = null;
-        for (const key of Object.keys(row)) {
-          if (key.toLowerCase() === 'parentcode' || 
-              key.toLowerCase() === 'parent_code' || 
-              key.toLowerCase() === 'parent-code') {
-            parentCodeKey = key;
-            break;
-          }
-        }
-        
-        // Extract the parent code value using the found key
-        let parentCode = null;
-        if (parentCodeKey) {
-          parentCode = row[parentCodeKey];
-        } else {
-          // Fallback to explicit checks if no key found
-          parentCode = row.parentcode || row.parentCode || row.ParentCode || 
-                       row.PARENTCODE || row.ParentCODE || row.PARENT_CODE || 
-                       row.parent_code;
-        }
-        
-        console.log(`DEBUG: Extracted parentCode value: "${parentCode}", type: ${typeof parentCode}, from key: ${parentCodeKey || 'fallback checks'}`);
-        
-        // Trim the parent code if it's a string
-        if (typeof parentCode === 'string') {
-          parentCode = parentCode.trim();
-        }
-        
-        if (parentCode) {
-          console.log(`DEBUG: Found valid parentCode: ${parentCode}. Checking if it exists in codeToIdMap...`);
-          console.log(`DEBUG: codeToIdMap has parent code: ${codeToIdMap.has(parentCode)}`);
-          console.log(`DEBUG: All codes in map: ${Array.from(codeToIdMap.keys()).join(', ')}`);
-        }
-        
-        if (parentCode && codeToIdMap.has(parentCode)) {
-          const accountId = codeToIdMap.get(accountCode);
-          const parentId = codeToIdMap.get(parentCode);
-          
-          console.log(`DEBUG: Setting parent relationship: Account ${accountCode} (ID: ${accountId}) -> Parent ${parentCode} (ID: ${parentId})`);
-          
-          if (accountId && parentId) {
-            try {
-              // Check if account has transactions before updating parent
-              const hasTransactions = await this.accountHasTransactions(accountId);
-              
+              // For accounts with transactions, be very selective about updates
               if (hasTransactions) {
-                // Don't update parent if account has transactions as it could affect reports
-                result.warnings.push(`Account ${accountCode} has transactions - parent relationship not updated`);
-              } else {
-                // Update the account with the parent ID
-                console.log(`DEBUG: Updating account ${accountCode} with parentId ${parentId}`);
-                await this.updateAccount(accountId, { parentId });
+                const typeChanged = normalizedType !== existingAccount.type;
                 
-                // Verify the update was successful
-                const updatedAccount = await this.getAccount(accountId);
-                console.log(`DEBUG: Update result - Account ${accountCode} now has parentId: ${updatedAccount?.parentId}`);
+                if (typeChanged) {
+                  result.warnings.push(`Account ${accountCode} (${accountName}) has transactions and its type cannot be changed`);
+                  result.skipped++;
+                  continue;
+                }
+                
+                // Only update non-critical fields for accounts with transactions
+                const safeUpdate = {
+                  name: accountName,
+                  description: this.getCaseInsensitiveValue(row, 'description') || existingAccount.description,
+                };
+                
+                // Check if there are actual changes
+                const nameChanged = safeUpdate.name !== existingAccount.name;
+                const descChanged = safeUpdate.description !== existingAccount.description;
+                
+                if (nameChanged || descChanged) {
+                  await this.updateAccount(existingAccount.id, safeUpdate);
+                  result.updated++;
+                  result.warnings.push(`Account ${accountCode} has transactions - only name and description were updated`);
+                } else {
+                  result.unchanged++;
+                }
+              } else {
+                // For accounts without transactions, we can update more fields
+                const updateData = {
+                  name: accountName,
+                  type: normalizedType as AccountType,
+                  subtype: this.getCaseInsensitiveValue(row, 'subtype') || existingAccount.subtype,
+                  description: this.getCaseInsensitiveValue(row, 'description') || existingAccount.description,
+                  isSubledger: this.parseIsSubledger(row, existingAccount),
+                  subledgerType: this.getSubledgerType(row, existingAccount),
+                };
+                
+                // Check if anything actually changed before updating
+                const hasChanges = 
+                  updateData.name !== existingAccount.name ||
+                  updateData.type !== existingAccount.type ||
+                  updateData.subtype !== existingAccount.subtype ||
+                  updateData.description !== existingAccount.description ||
+                  updateData.isSubledger !== existingAccount.isSubledger ||
+                  updateData.subledgerType !== existingAccount.subledgerType;
+                
+                if (hasChanges) {
+                  await this.updateAccount(existingAccount.id, updateData);
+                  result.updated++;
+                } else {
+                  result.unchanged++;
+                }
               }
-            } catch (error: any) {
-              console.error(`DEBUG: Error setting parent: ${error.message || 'Unknown error'}`);
-              result.errors.push(`Error setting parent for account ${row.code}: ${error.message || 'Unknown error'}`);
+            } else {
+              // Create a new account (without parent reference first)
+              const newAccount = await this.createAccount({
+                clientId,
+                code: accountCode,
+                name: accountName,
+                type: normalizedType as AccountType,
+                subtype: this.getCaseInsensitiveValue(row, 'subtype') || null,
+                isSubledger: this.parseIsSubledger(row),
+                subledgerType: this.getSubledgerType(row),
+                parentId: null, // We'll update this in the second pass
+                description: this.getCaseInsensitiveValue(row, 'description') || null,
+                active: this.parseIsActive(row, true)
+              });
+              
+              // Store the new account code to ID mapping
+              codeToIdMap.set(accountCode, newAccount.id);
+              
+              // Also add to the lowercase map for lookups
+              existingCodeMap.set(accountCode.toLowerCase(), newAccount);
+              
+              result.added++;
             }
-          } else {
-            console.log(`DEBUG: Missing ID mapping - accountId: ${accountId}, parentId: ${parentId}`);
+            
+            result.count++;
+          } catch (error: any) {
+            result.errors.push(`Error processing account ${this.getCaseInsensitiveValue(row, 'code') || 'unknown'}: ${error.message || 'Unknown error'}`);
+            result.skipped++;
           }
-        } else if (parentCode) {
-          console.log(`DEBUG: Parent code ${parentCode} not found in code map`);
         }
+        
+        // Second pass: Resolve parent-child relationships
+        for (const row of rows) {
+          try {
+            const accountCode = this.getCaseInsensitiveValue(row, 'code')?.trim();
+            if (!accountCode) continue;
+            
+            // Extract parent code with comprehensive case-insensitive handling
+            const parentCode = this.getParentCode(row);
+            
+            if (!parentCode) continue;
+            
+            console.log(`DEBUG: Extracted parentCode value: "${parentCode}", type: ${typeof parentCode}, from row for account ${accountCode}`);
+            
+            // Check if both the account and its parent exist in our map
+            const accountId = codeToIdMap.get(accountCode);
+            const parentId = codeToIdMap.get(parentCode);
+            
+            if (!accountId) {
+              result.warnings.push(`Cannot establish parent relationship: Account ${accountCode} not found in code map`);
+              continue;
+            }
+            
+            if (!parentId) {
+              result.warnings.push(`Cannot establish parent relationship: Parent account ${parentCode} not found in code map`);
+              continue;
+            }
+            
+            // Don't allow self-referencing parent
+            if (accountId === parentId) {
+              result.warnings.push(`Account ${accountCode} cannot be its own parent`);
+              continue;
+            }
+            
+            console.log(`DEBUG: Setting parent relationship: Account ${accountCode} (ID: ${accountId}) -> Parent ${parentCode} (ID: ${parentId})`);
+            
+            // Check if account has transactions before updating parent
+            const hasTransactions = await this.accountHasTransactions(accountId);
+            
+            if (hasTransactions) {
+              // Don't update parent if account has transactions as it could affect reports
+              result.warnings.push(`Account ${accountCode} has transactions - parent relationship not updated`);
+              continue;
+            }
+            
+            // Update the account with the parent ID
+            await this.updateAccount(accountId, { parentId });
+            
+            // Verify the update was successful
+            const updatedAccount = await this.getAccount(accountId);
+            console.log(`DEBUG: Update result - Account ${accountCode} now has parentId: ${updatedAccount?.parentId}`);
+          } catch (error: any) {
+            const accountCode = this.getCaseInsensitiveValue(row, 'code') || 'unknown';
+            console.error(`DEBUG: Error setting parent for ${accountCode}: ${error.message || 'Unknown error'}`);
+            result.errors.push(`Error setting parent for account ${accountCode}: ${error.message || 'Unknown error'}`);
+          }
+        }
+        
+        return result;
+      } catch (error: any) {
+        console.error(`Import failed:`, error);
+        result.errors.push(`Import failed: ${error.message || 'Unknown error'}`);
+        throw error; // This will trigger a rollback of the transaction
+      }
+    });
+  }
+  
+  /**
+   * Helper to normalize CSV/Excel header fields for consistent access
+   */
+  private normalizeHeaderField(header: string): string {
+    if (!header) return '';
+    return header.trim().toLowerCase();
+  }
+  
+  /**
+   * Normalize import rows to handle case sensitivity and field variations
+   */
+  private normalizeImportRows(rows: any[]): any[] {
+    return rows.map(row => {
+      // Create a new object with all lowercase keys
+      const normalizedRow: any = {};
+      
+      for (const key in row) {
+        const normalizedKey = key.toLowerCase();
+        normalizedRow[normalizedKey] = row[key];
+        
+        // Also preserve the original key for backward compatibility
+        normalizedRow[key] = row[key];
       }
       
-      return result;
-    } catch (error: any) {
-      result.errors.push(`Import failed: ${error.message || 'Unknown error'}`);
-      return result;
+      return normalizedRow;
+    });
+  }
+  
+  /**
+   * Helper to get value from a row with case-insensitive access
+   */
+  private getCaseInsensitiveValue(row: any, fieldName: string): any {
+    if (!row) return null;
+    
+    // Try direct access first
+    if (row[fieldName] !== undefined) return row[fieldName];
+    
+    // Try lowercase key
+    const lowerFieldName = fieldName.toLowerCase();
+    if (row[lowerFieldName] !== undefined) return row[lowerFieldName];
+    
+    // Try uppercase key
+    const upperFieldName = fieldName.toUpperCase();
+    if (row[upperFieldName] !== undefined) return row[upperFieldName];
+    
+    // Check all keys case-insensitively
+    for (const key in row) {
+      if (key.toLowerCase() === lowerFieldName) {
+        return row[key];
+      }
     }
+    
+    return null;
+  }
+  
+  /**
+   * Helper to extract parent code from row with comprehensive case handling
+   */
+  private getParentCode(row: any): string | null {
+    if (!row) return null;
+    
+    // Array of possible parent code field names
+    const parentCodeFields = [
+      'parentcode', 'parentCode', 'ParentCode', 'PARENTCODE', 'ParentCODE',
+      'parent_code', 'PARENT_CODE', 'parent-code', 'PARENT-CODE'
+    ];
+    
+    // Try each possible field name
+    for (const field of parentCodeFields) {
+      const value = this.getCaseInsensitiveValue(row, field);
+      if (value) {
+        return typeof value === 'string' ? value.trim() : String(value).trim();
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Helper to parse active status with comprehensive case handling
+   */
+  private parseIsActive(row: any, defaultValue: boolean = true): boolean {
+    const activeValue = this.getCaseInsensitiveValue(row, 'active') || 
+                        this.getCaseInsensitiveValue(row, 'isactive') || 
+                        this.getCaseInsensitiveValue(row, 'is_active');
+    
+    if (activeValue === undefined || activeValue === null) {
+      return defaultValue;
+    }
+    
+    if (typeof activeValue === 'boolean') {
+      return activeValue;
+    }
+    
+    const normalizedValue = String(activeValue).toLowerCase().trim();
+    
+    // Recognize common "false" values
+    if (normalizedValue === 'no' || 
+        normalizedValue === 'false' || 
+        normalizedValue === 'n' || 
+        normalizedValue === '0' || 
+        normalizedValue === 'inactive') {
+      return false;
+    }
+    
+    // Anything else is considered true (yes, true, 1, active, etc.)
+    return true;
   }
   
   // Helper method to normalize account types from imported data
