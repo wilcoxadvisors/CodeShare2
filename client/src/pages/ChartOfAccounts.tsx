@@ -193,6 +193,7 @@ function ChartOfAccounts() {
   const useAddAccount = () => {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number }) => {
+        console.log("DEBUG: useAddAccount - Mutate called with:", data);
         return await apiRequest(
           `/api/clients/${data.clientId}/accounts`, 
           {
@@ -201,7 +202,8 @@ function ChartOfAccounts() {
           }
         );
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log("DEBUG: useAddAccount - onSuccess triggered", data);
         toast({
           title: "Account created",
           description: "The account has been created successfully.",
@@ -215,6 +217,7 @@ function ChartOfAccounts() {
         }
       },
       onError: (error: Error) => {
+        console.log("DEBUG: useAddAccount - onError triggered:", error);
         toast({
           title: "Error",
           description: `Failed to create account: ${error.message}`,
@@ -332,6 +335,7 @@ function ChartOfAccounts() {
   const useUpdateAccount = () => {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number, id: number }) => {
+        console.log("DEBUG: useUpdateAccount - Mutate called with:", data);
         return await apiRequest(
           `/api/clients/${data.clientId}/accounts/${data.id}`, 
           {
@@ -340,7 +344,8 @@ function ChartOfAccounts() {
           }
         );
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log("DEBUG: useUpdateAccount - onSuccess triggered", data);
         toast({
           title: "Account updated",
           description: "The account has been updated successfully.",
@@ -354,6 +359,7 @@ function ChartOfAccounts() {
         }
       },
       onError: (error: Error) => {
+        console.log("DEBUG: useUpdateAccount - onError triggered:", error);
         toast({
           title: "Error",
           description: `Failed to update account: ${error.message}`,
