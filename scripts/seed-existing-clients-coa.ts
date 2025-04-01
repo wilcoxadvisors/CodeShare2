@@ -82,13 +82,13 @@ async function seedCoAForClient(clientId: number): Promise<boolean> {
       
       // Process each template account
       for (const templateAccount of standardCoaTemplate) {
-        // Determine parentId by looking up the parent code in our map
+        // Determine parentId by looking up the parent accountCode in our map
         let parentId: number | null = null;
         
         if (templateAccount.parentCode) {
           parentId = codeToIdMap.get(templateAccount.parentCode) || null;
           if (!parentId && templateAccount.parentCode) {
-            console.warn(chalk.yellow(`Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.code} (${templateAccount.name})`));
+            console.warn(chalk.yellow(`Parent account with accountCode ${templateAccount.parentCode} not found for ${templateAccount.accountCode} (${templateAccount.name})`));
           }
         }
         
@@ -97,7 +97,8 @@ async function seedCoAForClient(clientId: number): Promise<boolean> {
           .insert(accounts)
           .values({
             clientId,
-            code: templateAccount.code,
+            accountCode: templateAccount.accountCode,
+            code: templateAccount.accountCode, // For backward compatibility
             name: templateAccount.name,
             type: templateAccount.type,
             subtype: templateAccount.subtype,
@@ -111,9 +112,9 @@ async function seedCoAForClient(clientId: number): Promise<boolean> {
         
         // Store the generated ID mapped to the account code
         if (newAccount && newAccount.id) {
-          codeToIdMap.set(templateAccount.code, newAccount.id);
+          codeToIdMap.set(templateAccount.accountCode, newAccount.id);
         } else {
-          console.error(chalk.red(`Failed to insert account ${templateAccount.code}`));
+          console.error(chalk.red(`Failed to insert account ${templateAccount.accountCode}`));
         }
       }
     });

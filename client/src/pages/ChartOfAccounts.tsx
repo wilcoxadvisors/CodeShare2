@@ -31,6 +31,7 @@ interface AccountTreeNode {
   id: number;
   clientId: number;
   accountCode: string;
+  code?: string; // For backward compatibility
   name: string;
   type: string;
   subtype: string | null;
@@ -1795,17 +1796,17 @@ function ChartOfAccounts() {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="code">Account Code <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="accountCode">Account Code <span className="text-red-500">*</span></Label>
                       <Input
-                        id="code"
-                        name="code"
-                        value={accountData.code}
+                        id="accountCode"
+                        name="accountCode"
+                        value={accountData.accountCode}
                         onChange={handleCodeManualChange}
                         required
                       />
                       {accountCodePrefix && (
                         <p className="text-xs text-gray-500 mt-1">
-                          {accountCodePrefix && !accountData.code.startsWith(accountCodePrefix) && 
+                          {accountCodePrefix && !accountData.accountCode.startsWith(accountCodePrefix) && 
                             "Code will be prefixed with " + accountCodePrefix}
                         </p>
                       )}
@@ -1856,7 +1857,7 @@ function ChartOfAccounts() {
                           .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
                           .map((account: any) => (
                             <SelectItem key={account.id} value={account.id.toString()}>
-                              {account.code} - {account.name}
+                              {account.accountCode} - {account.name}
                             </SelectItem>
                           ))
                         }
@@ -1950,7 +1951,7 @@ function ChartOfAccounts() {
             <AlertDialogTitle>Are you sure you want to delete this account?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the account 
-              {accountToDelete && <span className="font-semibold"> {accountToDelete.code} - {accountToDelete.name}</span>}.
+              {accountToDelete && <span className="font-semibold"> {accountToDelete.accountCode} - {accountToDelete.name}</span>}.
               <br /><br />
               <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
                 <span className="text-amber-800">
@@ -2054,7 +2055,7 @@ function ChartOfAccounts() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {importData.slice(0, 5).map((account, index) => (
                       <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.code}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.accountCode || account.code}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.type}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.subtype || '-'}</td>
@@ -2182,7 +2183,7 @@ function ChartOfAccounts() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {changesPreview.additions.slice(0, 5).map((account, index) => (
                         <tr key={index} className="bg-green-50">
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.code}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.accountCode || account.code}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.type}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.subtype || 'None'}</td>
@@ -2345,20 +2346,21 @@ function ChartOfAccounts() {
                             {changesPreview.additions.map((account, idx) => (
                               <div key={`add-${idx}`} className="flex items-center">
                                 <input
-                                  id={`add-${account.code}`}
+                                  id={`add-${account.accountCode || account.code}`}
                                   type="checkbox"
                                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  checked={selectedAccounts.includes(account.code)}
+                                  checked={selectedAccounts.includes(account.accountCode || account.code)}
                                   onChange={(e) => {
+                                    const accountId = account.accountCode || account.code;
                                     if (e.target.checked) {
-                                      setSelectedAccounts(prev => [...prev, account.code]);
+                                      setSelectedAccounts(prev => [...prev, accountId]);
                                     } else {
-                                      setSelectedAccounts(prev => prev.filter(code => code !== account.code));
+                                      setSelectedAccounts(prev => prev.filter(code => code !== accountId));
                                     }
                                   }}
                                 />
-                                <label htmlFor={`add-${account.code}`} className="ml-2 block text-sm text-gray-700">
-                                  {account.code} - {account.name}
+                                <label htmlFor={`add-${account.accountCode || account.code}`} className="ml-2 block text-sm text-gray-700">
+                                  {account.accountCode || account.code} - {account.name}
                                 </label>
                               </div>
                             ))}
@@ -2374,20 +2376,21 @@ function ChartOfAccounts() {
                             {changesPreview.modifications.map((mod, idx) => (
                               <div key={`mod-${idx}`} className="flex items-center">
                                 <input
-                                  id={`mod-${mod.original.code}`}
+                                  id={`mod-${mod.original.accountCode || mod.original.code}`}
                                   type="checkbox"
                                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  checked={selectedAccounts.includes(mod.original.code)}
+                                  checked={selectedAccounts.includes(mod.original.accountCode || mod.original.code)}
                                   onChange={(e) => {
+                                    const accountId = mod.original.accountCode || mod.original.code;
                                     if (e.target.checked) {
-                                      setSelectedAccounts(prev => [...prev, mod.original.code]);
+                                      setSelectedAccounts(prev => [...prev, accountId]);
                                     } else {
-                                      setSelectedAccounts(prev => prev.filter(code => code !== mod.original.code));
+                                      setSelectedAccounts(prev => prev.filter(code => code !== accountId));
                                     }
                                   }}
                                 />
-                                <label htmlFor={`mod-${mod.original.code}`} className="ml-2 block text-sm text-gray-700">
-                                  {mod.original.code} - {mod.original.name}
+                                <label htmlFor={`mod-${mod.original.accountCode || mod.original.code}`} className="ml-2 block text-sm text-gray-700">
+                                  {mod.original.accountCode || mod.original.code} - {mod.original.name}
                                 </label>
                               </div>
                             ))}
@@ -2403,8 +2406,8 @@ function ChartOfAccounts() {
                         size="sm"
                         onClick={() => {
                           const allCodes = [
-                            ...changesPreview.additions.map(a => a.code),
-                            ...changesPreview.modifications.map(m => m.original.code)
+                            ...changesPreview.additions.map(a => a.accountCode || a.code),
+                            ...changesPreview.modifications.map(m => m.original.accountCode || m.original.code)
                           ];
                           setSelectedAccounts(allCodes);
                         }}
