@@ -142,8 +142,31 @@ function ChartOfAccounts() {
   // Extract the actual accounts array from the response
   const accountTreeData = accountsTree?.data || [];
   
+  // Debug output to understand the account tree structure
+  console.log("DEBUG: Account Tree Data", {
+    rawData: accountsTree,
+    extractedData: accountTreeData,
+    count: accountTreeData.length,
+    sample: accountTreeData.length > 0 ? accountTreeData[0] : null,
+    clientId: clientIdToUse
+  });
+  
   // State for tracking expanded nodes
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
+  
+  // Update expanded nodes when account tree data changes
+  useEffect(() => {
+    if (accountTreeData.length > 0) {
+      setExpandedNodes(prev => {
+        const newExpanded = { ...prev };
+        // Ensure top-level nodes are expanded
+        accountTreeData.forEach(node => {
+          newExpanded[node.id] = true;
+        });
+        return newExpanded;
+      });
+    }
+  }, [accountTreeData]);
   
   // Toggle node expansion
   const toggleNodeExpansion = (nodeId: number) => {
