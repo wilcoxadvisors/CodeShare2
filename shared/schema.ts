@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -135,16 +135,24 @@ export enum JournalType {
 export const accounts = pgTable("accounts", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
-  code: text("code").notNull(),
+  accountCode: text("account_code").notNull(),
   name: text("name").notNull(),
   type: text("type").$type<AccountType>().notNull(),
   subtype: text("subtype"), // like "current_asset", "fixed_asset", etc.
   isSubledger: boolean("is_subledger").notNull().default(false),
   subledgerType: text("subledger_type"), // "accounts_payable", "accounts_receivable", etc.
-  parentId: integer("parent_id").references((): any => accounts.id),
+  parentId: integer("parent_id").references((): any => accounts.id, { onDelete: 'restrict' }),
   active: boolean("active").notNull().default(true),
   description: text("description"),
+  fsliBucket: text("fsli_bucket"), // Financial Statement Line Item
+  internalReportingBucket: text("internal_reporting_bucket"),
+  item: text("item"), // For further categorization/detail
   createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => {
+  return {
+    accountCodeClientUnique: uniqueIndex('account_code_client_unique').on(table.clientId, table.accountCode),
+    parentIdx: index('parent_idx').on(table.parentId)
+  };
 });
 
 // Journals
