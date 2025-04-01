@@ -1,37 +1,43 @@
-const axios = require('axios');
-const fs = require('fs');
+import fetch from 'node-fetch';
+import fs from 'fs';
 
 async function login() {
+  console.log("Starting login process...");
+  
+  const LOGIN_URL = 'http://localhost:5000/api/auth/login';
+  const CREDENTIALS = {
+    username: 'admin',
+    password: 'password123'
+  };
+  
   try {
-    const response = await axios.post('http://localhost:5000/api/auth/login', {
-      username: 'admin',
-      password: 'password123'
+    // Login to get session cookie
+    const loginResponse = await fetch(LOGIN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(CREDENTIALS)
     });
     
-    if (response.status === 200) {
-      const cookies = response.headers['set-cookie'];
-      if (cookies) {
-        fs.writeFileSync('verification-logs/auth-cookies.txt', cookies.join('; '));
-        console.log('Login successful, cookies saved');
-        return cookies.join('; ');
-      } else {
-        console.error('No cookies in response');
-        return null;
-      }
-    } else {
-      console.error('Login failed with status:', response.status);
-      return null;
+    if (!loginResponse.ok) {
+      throw new Error(`Login failed with status: ${loginResponse.status}`);
     }
+    
+    const loginData = await loginResponse.json();
+    console.log('Login successful:', loginData);
+    
+    // Get cookies
+    const cookies = loginResponse.headers.get('set-cookie');
+    console.log('Cookies received:', cookies);
+    
+    // Save cookies to file for reuse
+    fs.writeFileSync('verification-logs/cookies.txt', cookies);
+    console.log('Cookies saved to verification-logs/cookies.txt');
+    
+    return cookies;
   } catch (error) {
-    console.error('Login error:', error.message);
-    return null;
+    console.error('Login error:', error);
+    throw error;
   }
 }
 
-login().then(cookie => {
-  if (cookie) {
-    console.log('Auth cookie acquired');
-  } else {
-    console.log('Failed to get auth cookie');
-  }
-});
+login().catch(console.error);
