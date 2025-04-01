@@ -1,0 +1,38 @@
+Task Assignment: Perform UI Verification for CoA Display Fix (Agent Task - REVISED)
+
+Context:
+The code to accountCode refactoring and associated file cleanup are complete (checkpoint ab36eb17). Code review suggests the implementation is correct. However, the critical UI verification to confirm the original "CoA data not displaying" bug is resolved has not been performed by the agent. The tsc --noEmit check also continues to time out (noted as unresolved).
+
+Goal:
+Verify via UI simulation/observation that the original "CoA data not displaying" bug is resolved by checking the Chart of Accounts page for both a newly created client and an existing client.
+
+Instructions:
+
+(Re-confirm) Part 1: Verify New Client CoA Display
+
+Action: Ensure Application is Running:
+Verify the application is running (npm run dev). Restart if necessary.
+Action: Create New Client via UI Simulation:
+Using available browser/UI simulation tools, simulate the full "Add Client" workflow:
+Log in as admin (admin / password123 - credentials confirmed from .auth-credentials).
+Navigate to the Dashboard. Click "Add Client".
+Complete all steps in SetupStepper.tsx to create a new test client.
+Record the ID of the newly created client.
+Action: Verify New Client CoA in UI:
+After successfully creating the new client, simulate navigating to the Chart of Accounts page for this new client ID.
+Observe & Record: Does the standard Chart of Accounts data (with accountCode) display correctly in the UI? Describe the observed UI state or capture evidence (e.g., screenshot).
+(Re-confirm) Part 2: Verify Existing Client CoA Display
+
+Action: Verify Existing Client CoA in UI:
+Simulate navigating to the Chart of Accounts page for an existing client (e.g., Client ID 1). Ensure you are still logged in as admin.
+Observe & Record: Does the Chart of Accounts data now display correctly in the UI for this existing client, showing accountCode? Describe the observed UI state or capture evidence.
+Verification:
+
+Confirm CoA data is visible and correct in the UI for the newly created client.
+Confirm CoA data is visible and correct in the UI for the existing client.
+Reporting:
+
+Report PASS/FAIL for the New Client UI Verification (Step 3), including the new Client ID and evidence/description/screenshot.
+Report PASS/FAIL for the Existing Client UI Verification (Step 4), including evidence/description/screenshot.
+Note the status of the tsc --noEmit check (still timing out).
+If both UI verifications pass, explicitly state that the original "CoA data not displaying" bug is resolved and Task B.1 (Chart of Accounts) can be considered functionally complete.
