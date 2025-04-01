@@ -1389,10 +1389,10 @@ function ChartOfAccounts() {
           throw error;
         }
       },
-      onSuccess: () => {
+      onSuccess: (result) => {
         toast({
           title: "Accounts imported",
-          description: `Successfully imported ${importData.length} accounts.`,
+          description: result.message || `Successfully imported ${importData.length} accounts.`,
         });
         setShowImportDialog(false);
         setImportData([]);

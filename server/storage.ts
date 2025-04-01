@@ -5351,7 +5351,7 @@ export class DatabaseStorage implements IStorage {
                     .where(eq(accounts.id, accountId));
                   
                   console.log(`Deleted account ${account?.code} (${account?.name})`);
-                  result.inactive++; // We still count this as "inactive" for stats purposes
+                  result.deleted++; // Track accounts that were actually deleted
                 }
                 
                 result.count++;

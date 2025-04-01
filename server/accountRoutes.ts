@@ -263,7 +263,7 @@ export function registerAccountRoutes(app: Express) {
       const result = await storage.importCoaForClient(clientId, req.file.buffer, fileName, selections);
       
       // Return success response with detailed import stats
-      const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive.`;
+      const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive, ${result.deleted} deleted.`;
       
       res.json({
         status: "success",
@@ -274,6 +274,7 @@ export function registerAccountRoutes(app: Express) {
         unchanged: result.unchanged,
         skipped: result.skipped,
         inactive: result.inactive,
+        deleted: result.deleted,
         errors: result.errors,
         warnings: result.warnings
       });
