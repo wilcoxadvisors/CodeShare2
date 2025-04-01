@@ -55,6 +55,7 @@
         * Maintain `parentId` for explicit hierarchy.
         * Add fields for additional categorization and reporting: `fsliBucket`, `internalReportingBucket`, and `item`.
 * **(Task B.2)** **General Ledger (GL) and Journal Entries (JE):**
+
     * 📝 Next: Design/Finalize JE schema (`shared/schema.ts`, linking to CoA).
     * 📝 Next: Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
     * 📝 Next: Build frontend UI for manual JE creation (`ManualJournalEntry.tsx`).
@@ -69,12 +70,14 @@
 
 * **(Task C.1)** **Standard Reporting:** Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
 * **(Task C.2)** **Custom Reporting:**
+
     * Define backend API capabilities for fetching data with flexible filters (dates, entities, accounts, custom tags).
     * Build a frontend UI allowing users to select fields, apply filters, and save custom report layouts.
 * **(Task C.3)** **Data Collection and Analysis:**
+
     * Implement data collection mechanisms to gather user data for analysis and potential sale.
     * Ensure robust anonymization, transparent privacy policies, and explicit user consent are in place.
-    * Design the system to support AI/ML and predictive forecasting, leveraging user data and external sources for advanced analytics.
+    * Design the system to maximize data availability for AI/ML and forecasting.
     * Prioritize state-of-the-art, innovative, customer-focused, and easy-to-use solutions.
     * Create a great design that influences emotions such as trust, and is trendy and fun.
 
@@ -86,7 +89,12 @@
 **Phase E: AI/ML & Predictive Forecasting**
 
 * **(Task E.1)** **Verify Python Service Integration:** Ensure `python_service/ml_service.py` has secure, reliable read/write access to relevant PostgreSQL tables (GL, JE, Budgets, Forecasts) using env variables. Document permissions.
-* **(Task E.2)** **Implement Forecasting:** Integrate predictive forecasting models (`prophet` etc.) for cash flow and budget variance analysis. Connect via `server/aiRoutes.ts`, `server/mlService.ts`. Display results in frontend (`AIAnalyticsDashboard.tsx`, `ForecastGeneration.tsx`). Test accuracy.
+* **(Task E.2)** **Implement AI/ML and Predictive Forecasting:**
+    * Integrate AI/ML models and techniques for predictive forecasting, transaction auto-categorization, anomaly detection, and NLP queries.
+    * Ensure AI/ML is inclusive of every aspect of the accounting system.
+    * Design and implement advanced analytics features.
+    * Prioritize state-of-the-art, innovative, customer-focused, and easy-to-use AI/ML solutions.
+    * Strive for a great design that influences emotions such as trust, and is trendy and fun.
 * **(Task E.3)** **Implement Other AI Features:** Build out transaction auto-categorization, anomaly detection, and NLP query capabilities as planned [cite: uploaded:Outline for Accounting System Integration.docx], [cite: uploaded:Accounting System Implementation Plan.docx].
 
 **Phase F: Deferred Features & Final Polish**
@@ -112,3 +120,8 @@
 * **Ask for Clarification:** If unsure, ask before proceeding.
 * **Design Considerations:** Prioritize state-of-the-art, innovative, customer-focused, and easy-to-use design in every aspect of the system. Strive for a great design that influences emotions such as trust, and is trendy and fun.
 * **Data Strategy:** Implement data collection mechanisms to enable selling data and creating valuable reports for investors and economists. Ensure robust anonymization, transparent privacy policies, and explicit user consent are in place. Design the system to maximize data availability for AI/ML and forecasting.
+* **Code Quality:** Write clean, well-organized, and well-documented code to avoid confusion and ensure maintainability.
+* **Efficiency:** Prioritize efficient algorithms and data structures for optimal performance.
+* **Testing:** Implement comprehensive automated test scripts to ensure functionality and prevent regressions.
+* **Error Handling:** Implement robust error catching and user-friendly error messages for both users and administrators.
+* **Documentation:** Maintain great documentation, including clear file and directory organization, so human coders and AI can easily understand the codebase and its functionality.
