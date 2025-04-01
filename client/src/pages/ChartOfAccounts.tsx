@@ -157,13 +157,23 @@ function ChartOfAccounts() {
   // Update expanded nodes when account tree data changes
   useEffect(() => {
     if (accountTreeData.length > 0) {
+      // Create a function to recursively expand all nodes
+      const expandAllNodes = (nodes: AccountTreeNode[], result: Record<number, boolean>) => {
+        for (const node of nodes) {
+          // Set this node as expanded
+          result[node.id] = true;
+          
+          // If it has children, recursively expand them as well
+          if (node.children && node.children.length > 0) {
+            expandAllNodes(node.children, result);
+          }
+        }
+        return result;
+      };
+      
+      // Create a new expanded nodes object with all nodes expanded
       setExpandedNodes(prev => {
-        const newExpanded = { ...prev };
-        // Ensure top-level nodes are expanded
-        accountTreeData.forEach(node => {
-          newExpanded[node.id] = true;
-        });
-        return newExpanded;
+        return expandAllNodes(accountTreeData, { ...prev });
       });
     }
   }, [accountTreeData]);
@@ -237,17 +247,23 @@ function ChartOfAccounts() {
         const accountsOfType = flattenedAccounts.filter(account => account.type === accountData.type);
         const existingCodes = accountsOfType
           .map((a) => a.accountCode || a.code) // Support both formats for backward compatibility
-          .filter((code: string) => code.startsWith(prefix))
+          .filter((code): code is string => 
+            typeof code === 'string' && code.startsWith(prefix)
+          )
           .sort();
         
         if (existingCodes.length > 0) {
           const lastCode = existingCodes[existingCodes.length - 1];
-          const numericPart = parseInt(lastCode.replace(/\D/g, ''));
-          const newCode = `${prefix}${String(numericPart + 1).padStart(3, '0')}`;
+          // Since we filtered for valid strings, we know lastCode is defined here
+          // but we'll add a check just to satisfy TypeScript
+          if (lastCode) {
+            const numericPart = parseInt(lastCode.replace(/\D/g, ''));
+            const newCode = `${prefix}${String(numericPart + 1).padStart(3, '0')}`;
           
-          // Only update if code is empty or doesn't match our format
-          if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
-            setAccountData(prev => ({ ...prev, accountCode: newCode }));
+            // Only update if code is empty or doesn't match our format
+            if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
+              setAccountData(prev => ({ ...prev, accountCode: newCode }));
+            }
           }
         } else {
           // No existing accounts of this type, start with 001
@@ -620,10 +636,12 @@ function ChartOfAccounts() {
     }
     
     // Create a copy of the data to submit
+    // Create a copy of the data to submit with proper TypeScript type narrowing
     const submitData = {
       ...accountData,
-      // Convert "none" parent value to null
-      parentId: accountData.parentId === "none" || accountData.parentId === undefined ? null : accountData.parentId
+      // Ensure parentId is either null or a valid number
+      parentId: accountData.parentId === null || accountData.parentId === undefined ? null : 
+                typeof accountData.parentId === 'string' ? parseInt(accountData.parentId, 10) : accountData.parentId
     };
     
     console.log("DEBUG - handleSubmit - parentId before:", accountData.parentId, "type:", typeof accountData.parentId);
@@ -636,12 +654,25 @@ function ChartOfAccounts() {
     });
     
     try {
-      if (isEditMode) {
-        updateAccount.mutate({
-          ...submitData,
-          clientId: clientIdToUse
-        });
+      if (isEditMode && submitData.id !== null) {
+        // For edit mode, ensure we have a valid ID and it's not null
+        // Create a new object with only the properties expected by the updateAccount mutation
+        const updateData = {
+          id: submitData.id as number, // Type assertion since we've verified it's not null
+          clientId: clientIdToUse,
+          accountCode: submitData.accountCode,
+          name: submitData.name,
+          type: submitData.type,
+          subtype: submitData.subtype,
+          isSubledger: submitData.isSubledger,
+          subledgerType: submitData.subledgerType,
+          active: submitData.active,
+          description: submitData.description,
+          parentId: submitData.parentId
+        };
+        updateAccount.mutate(updateData);
       } else {
+        // For create mode
         createAccount.mutate({
           ...submitData,
           clientId: clientIdToUse
@@ -1104,17 +1135,22 @@ function ChartOfAccounts() {
           });
         } else {
           // Process Excel file
-          const workbook = XLSX.read(content, { type: 'binary' });
-          
-          // Get first sheet
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          
-          // Convert to JSON
-          const data = XLSX.utils.sheet_to_json(worksheet);
-          
-          // Validate and process data
-          validateAndProcessImportData(data);
+          // Ensure content is not undefined before using XLSX.read
+          if (content) {
+            const workbook = XLSX.read(content, { type: 'binary' });
+            
+            // Get first sheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to JSON
+            const data = XLSX.utils.sheet_to_json(worksheet);
+            
+            // Validate and process data
+            validateAndProcessImportData(data);
+          } else {
+            throw new Error('Failed to read Excel file: File content is empty');
+          }
         }
       } catch (error) {
         console.error("Error processing file:", error);
@@ -1173,7 +1209,10 @@ function ChartOfAccounts() {
     flatAccounts.forEach(account => {
       // Use accountCode if available, fall back to code for backward compatibility
       const accountIdentifier = account.accountCode || account.code;
-      codeToIdMap.set(accountIdentifier, account.id);
+      // Only add to map if we have a valid string identifier
+      if (accountIdentifier && typeof accountIdentifier === 'string') {
+        codeToIdMap.set(accountIdentifier, account.id);
+      }
     });
     
     // Validate required fields
@@ -1512,7 +1551,18 @@ function ChartOfAccounts() {
       type: "text",
       render: (row: Record<string, any>) => {
         // Support both accountCode and code fields for backward compatibility
-        return row.accountCode || row.code || "";
+        const displayCode = row.accountCode || row.code || "";
+        
+        // Debug output to understand what code is being displayed
+        console.log("DEBUG: Rendering account code", { 
+          id: row.id, 
+          accountCode: row.accountCode, 
+          code: row.code, 
+          displayCode,
+          clientId: clientIdToUse
+        });
+        
+        return displayCode;
       } 
     },
     { 
