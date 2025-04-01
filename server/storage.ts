@@ -423,14 +423,14 @@ export class MemStorage implements IStorage {
       if (templateAccount.parentCode) {
         parentId = codeToIdMap.get(templateAccount.parentCode) || null;
         if (!parentId && templateAccount.parentCode) {
-          console.warn(`MemStorage: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.code} (${templateAccount.name})`);
+          console.warn(`MemStorage: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.accountCode} (${templateAccount.name})`);
         }
       }
       
       // Create the account
       const account = await this.createAccount({
         clientId,
-        code: templateAccount.code,
+        accountCode: templateAccount.accountCode,
         name: templateAccount.name,
         type: templateAccount.type,
         subtype: templateAccount.subtype,
@@ -438,11 +438,14 @@ export class MemStorage implements IStorage {
         subledgerType: templateAccount.subledgerType,
         parentId,
         description: templateAccount.description,
+        fsliBucket: templateAccount.fsliBucket,
+        internalReportingBucket: templateAccount.internalReportingBucket,
+        item: templateAccount.item,
         active: true
       });
       
       // Store the generated ID mapped to the account code
-      codeToIdMap.set(templateAccount.code, account.id);
+      codeToIdMap.set(templateAccount.accountCode, account.id);
     }
     
     console.log(`MemStorage: Successfully seeded ${standardCoaTemplate.length} accounts for client ID: ${clientId}`);
@@ -580,23 +583,23 @@ export class MemStorage implements IStorage {
     
     // Create basic chart of accounts for default entity
     const accounts = [
-      { code: '1000', name: 'Cash', type: AccountType.ASSET, subtype: 'current_asset' },
-      { code: '1200', name: 'Accounts Receivable', type: AccountType.ASSET, subtype: 'current_asset', isSubledger: true, subledgerType: 'accounts_receivable' },
-      { code: '1500', name: 'Fixed Assets: Equipment', type: AccountType.ASSET, subtype: 'fixed_asset' },
-      { code: '1600', name: 'Accumulated Depreciation', type: AccountType.ASSET, subtype: 'fixed_asset' },
-      { code: '2000', name: 'Accounts Payable', type: AccountType.LIABILITY, subtype: 'current_liability', isSubledger: true, subledgerType: 'accounts_payable' },
-      { code: '3000', name: 'Owner\'s Equity', type: AccountType.EQUITY, subtype: 'equity' },
-      { code: '4000', name: 'Revenue', type: AccountType.REVENUE, subtype: 'revenue' },
-      { code: '5000', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, subtype: 'cost_of_sales' },
-      { code: '6000', name: 'Operating Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
-      { code: '6150', name: 'Office Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
+      { accountCode: '1000', name: 'Cash', type: AccountType.ASSET, subtype: 'current_asset' },
+      { accountCode: '1200', name: 'Accounts Receivable', type: AccountType.ASSET, subtype: 'current_asset', isSubledger: true, subledgerType: 'accounts_receivable' },
+      { accountCode: '1500', name: 'Fixed Assets: Equipment', type: AccountType.ASSET, subtype: 'fixed_asset' },
+      { accountCode: '1600', name: 'Accumulated Depreciation', type: AccountType.ASSET, subtype: 'fixed_asset' },
+      { accountCode: '2000', name: 'Accounts Payable', type: AccountType.LIABILITY, subtype: 'current_liability', isSubledger: true, subledgerType: 'accounts_payable' },
+      { accountCode: '3000', name: 'Owner\'s Equity', type: AccountType.EQUITY, subtype: 'equity' },
+      { accountCode: '4000', name: 'Revenue', type: AccountType.REVENUE, subtype: 'revenue' },
+      { accountCode: '5000', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, subtype: 'cost_of_sales' },
+      { accountCode: '6000', name: 'Operating Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
+      { accountCode: '6150', name: 'Office Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
     ];
     
     accounts.forEach(account => {
       const newAccount: Account = {
         id: this.currentAccountId++,
         clientId: defaultClient.id,
-        code: account.code,
+        accountCode: account.accountCode,
         name: account.name,
         type: account.type,
         subtype: account.subtype || null,
@@ -605,7 +608,10 @@ export class MemStorage implements IStorage {
         parentId: null,
         description: null,
         active: true,
-        createdAt: new Date()
+        createdAt: new Date(),
+        fsliBucket: null,
+        internalReportingBucket: null,
+        item: null
       };
       this.accounts.set(newAccount.id, newAccount);
     });
@@ -758,7 +764,7 @@ export class MemStorage implements IStorage {
       // Add journal entry lines
       entry.lines.forEach(line => {
         const accountEntry = Array.from(this.accounts.values())
-          .find(a => a.clientId === defaultClient.id && a.code === line.accountCode);
+          .find(a => a.clientId === defaultClient.id && a.accountCode === line.accountCode);
         
         if (accountEntry) {
           const journalEntryLine: JournalEntryLine = {
@@ -1138,7 +1144,7 @@ export class MemStorage implements IStorage {
     // Get all accounts for the given client
     const clientAccounts = Array.from(this.accounts.values())
       .filter(account => account.clientId === clientId)
-      .sort((a, b) => a.code.localeCompare(b.code));
+      .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
     
     if (clientAccounts.length === 0) {
       return [];
@@ -1557,7 +1563,7 @@ export class MemStorage implements IStorage {
       if (formattedDebit > 0 || formattedCredit > 0) {
         result.push({
           accountId: account.id,
-          accountCode: account.code,
+          accountCode: account.accountCode,
           accountName: account.name,
           type: account.type,
           debit: formattedDebit,
@@ -1628,7 +1634,7 @@ export class MemStorage implements IStorage {
       
       return {
         accountId: account.id,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         accountName: account.name,
         subtype: account.subtype,
         balance
@@ -1708,7 +1714,7 @@ export class MemStorage implements IStorage {
       
       return {
         accountId: account.id,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         accountName: account.name,
         subtype: account.subtype,
         balance
@@ -1741,7 +1747,7 @@ export class MemStorage implements IStorage {
       .filter(account => 
         account.clientId === clientId && 
         account.type === AccountType.ASSET && 
-        account.code.startsWith('1000')
+        account.accountCode.startsWith('1000')
       );
     
     if (cashAccounts.length === 0) {
@@ -1870,7 +1876,7 @@ export class MemStorage implements IStorage {
           date: entry.date,
           journalId: entry.reference,
           accountId: line.accountId,
-          accountCode: account.code,
+          accountCode: account.accountCode,
           accountName: account.name,
           description: line.description || entry.description || '',
           debit,
@@ -2704,7 +2710,7 @@ export class MemStorage implements IStorage {
     forecastData.accounts = accounts.map(account => ({
       id: account.id,
       name: account.name,
-      code: account.code,
+      accountCode: account.accountCode,
       type: account.type
     }));
     
@@ -4443,7 +4449,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(accounts)
       .where(eq(accounts.clientId, clientId))
-      .orderBy(accounts.code);
+      .orderBy(accounts.accountCode);
   }
 
   async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
@@ -4454,7 +4460,7 @@ export class DatabaseStorage implements IStorage {
         eq(accounts.clientId, clientId),
         eq(accounts.type, type)
       ))
-      .orderBy(accounts.code);
+      .orderBy(accounts.accountCode);
   }
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
@@ -4463,7 +4469,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(accounts)
       .where(eq(accounts.clientId, clientId))
-      .orderBy(accounts.code);
+      .orderBy(accounts.accountCode);
 
     if (clientAccounts.length === 0) {
       return [];
@@ -4596,7 +4602,7 @@ export class DatabaseStorage implements IStorage {
         
         // Map for faster lookups - storing lowercase codes for case-insensitive matching
         for (const account of existingAccounts) {
-          existingCodeMap.set(account.code.toLowerCase(), account);
+          existingCodeMap.set(account.accountCode.toLowerCase(), account);
           existingIdMap.set(account.id, account);
         }
         
@@ -4758,12 +4764,12 @@ export class DatabaseStorage implements IStorage {
         
         // Identify accounts missing from import for potential deactivation
         for (const account of existingAccounts) {
-          if (!importedCodes.has(account.code.toLowerCase()) && account.active) {
+          if (!importedCodes.has(account.accountCode.toLowerCase()) && account.active) {
             const hasTransactions = account.id && accountsWithTransactions.has(account.id);
             
             preview.changes.push({
               id: account.id,
-              code: account.code,
+              accountCode: account.accountCode,
               existingName: account.name,
               existingType: account.type,
               existingSubtype: account.subtype,
@@ -4928,11 +4934,11 @@ export class DatabaseStorage implements IStorage {
         
         // Map for faster lookups - storing lowercase codes for case-insensitive matching
         for (const account of existingAccounts) {
-          existingCodeMap.set(account.code.toLowerCase(), account);
+          existingCodeMap.set(account.accountCode.toLowerCase(), account);
           existingIdMap.set(account.id, account);
-          codeToIdMap.set(account.code, account.id);
+          codeToIdMap.set(account.accountCode, account.id);
           // Also map lowercase for more robust matching later
-          codeToIdMap.set(account.code.toLowerCase(), account.id);
+          codeToIdMap.set(account.accountCode.toLowerCase(), account.id);
         }
         
         // ==================== STEP 4: Batch query for accounts with transactions ====================
@@ -5122,7 +5128,7 @@ export class DatabaseStorage implements IStorage {
               // Prepare new account for batch creation
               accountsToCreate.push({
                 clientId,
-                code: accountCode,
+                accountCode: accountCode,
                 name: accountName,
                 type: normalizedType as AccountType,
                 subtype: this.getCaseInsensitiveValue(row, 'subtype') || null,
@@ -5171,9 +5177,9 @@ export class DatabaseStorage implements IStorage {
           
           // Add newly created accounts to our lookup maps
           for (const newAccount of newAccounts) {
-            codeToIdMap.set(newAccount.code, newAccount.id);
-            codeToIdMap.set(newAccount.code.toLowerCase(), newAccount.id); // Add lowercase version too
-            existingCodeMap.set(newAccount.code.toLowerCase(), newAccount);
+            codeToIdMap.set(newAccount.accountCode, newAccount.id);
+            codeToIdMap.set(newAccount.accountCode.toLowerCase(), newAccount.id); // Add lowercase version too
+            existingCodeMap.set(newAccount.accountCode.toLowerCase(), newAccount);
             existingIdMap.set(newAccount.id, newAccount);
           }
           
@@ -5263,7 +5269,7 @@ export class DatabaseStorage implements IStorage {
               continue;
             }
             
-            const lowerAccountCode = account.code.toLowerCase();
+            const lowerAccountCode = account.accountCode.toLowerCase();
             // Skip if the account was in the import
             if (importedAccountCodes.has(lowerAccountCode)) {
               skipImportedCount++;
@@ -5272,8 +5278,8 @@ export class DatabaseStorage implements IStorage {
             
             // Skip accounts with transactions (we don't want to deactivate these)
             if (accountsWithTransactions.has(account.id)) {
-              console.log(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
-              result.warnings.push(`Account ${account.code} (${account.name}) has transactions and is missing from import - keeping active`);
+              console.log(`Account ${account.accountCode} (${account.name}) has transactions and is missing from import - keeping active`);
+              result.warnings.push(`Account ${account.accountCode} (${account.name}) has transactions and is missing from import - keeping active`);
               skipTransactionsCount++;
               continue;
             }
@@ -5283,14 +5289,14 @@ export class DatabaseStorage implements IStorage {
                 selections.updateStrategy === 'selected' &&
                 selections.includedCodes) {
               // For missing accounts, we'll skip if this account is not explicitly selected for update
-              if (!selections.includedCodes.includes(account.code)) {
-                console.log(`Account ${account.code} (${account.name}) is missing from import but not selected for update - keeping active`);
+              if (!selections.includedCodes.includes(account.accountCode)) {
+                console.log(`Account ${account.accountCode} (${account.name}) is missing from import but not selected for update - keeping active`);
                 skipNotSelectedCount++;
                 continue;
               }
             }
             
-            console.log(`Account ${account.code} (${account.name}) is missing from import file - will mark inactive`);
+            console.log(`Account ${account.accountCode} (${account.name}) is missing from import file - will mark inactive`);
             missingAccounts.push(account.id);
           }
           
@@ -5317,7 +5323,7 @@ export class DatabaseStorage implements IStorage {
                   .set({ active: false })
                   .where(eq(accounts.id, accountId));
                 
-                console.log(`Marked account ${account?.code} (${account?.name}) as inactive`);
+                console.log(`Marked account ${account?.accountCode} (${account?.name}) as inactive`);
                 result.inactive++;
                 result.count++;
               } catch (inactiveError: any) {
@@ -5334,8 +5340,8 @@ export class DatabaseStorage implements IStorage {
                 
                 // Check if the account has transactions - don't delete if it does
                 if (accountsWithTransactions.has(accountId)) {
-                  console.log(`Cannot delete account ${account?.code} (${account?.name}) as it has transactions - marking inactive instead`);
-                  result.warnings.push(`Account ${account?.code} (${account?.name}) has transactions and cannot be deleted - marked inactive instead`);
+                  console.log(`Cannot delete account ${account?.accountCode} (${account?.name}) as it has transactions - marking inactive instead`);
+                  result.warnings.push(`Account ${account?.accountCode} (${account?.name}) has transactions and cannot be deleted - marked inactive instead`);
                   
                   // Mark as inactive instead
                   await tx
@@ -5353,8 +5359,8 @@ export class DatabaseStorage implements IStorage {
                   
                   // If there are child accounts, don't allow deletion
                   if (childAccounts[0]?.count > 0) {
-                    console.log(`Cannot delete account ${account?.code} (${account?.name}) as it has child accounts - marking inactive instead`);
-                    result.warnings.push(`Account ${account?.code} (${account?.name}) has child accounts and cannot be deleted - marked inactive instead`);
+                    console.log(`Cannot delete account ${account?.accountCode} (${account?.name}) as it has child accounts - marking inactive instead`);
+                    result.warnings.push(`Account ${account?.accountCode} (${account?.name}) has child accounts and cannot be deleted - marked inactive instead`);
                     
                     // Mark as inactive instead
                     await tx
@@ -5369,7 +5375,7 @@ export class DatabaseStorage implements IStorage {
                       .delete(accounts)
                       .where(eq(accounts.id, accountId));
                     
-                    console.log(`Deleted account ${account?.code} (${account?.name})`);
+                    console.log(`Deleted account ${account?.accountCode} (${account?.name})`);
                     result.deleted++; // Track accounts that were actually deleted
                   }
                 }
@@ -5398,7 +5404,7 @@ export class DatabaseStorage implements IStorage {
         // Process existing accounts that may need parent updates
         for (const row of validRows) {
           try {
-            const accountCode = row.code;
+            const accountCode = row.accountCode;
             const lowerAccountCode = accountCode.toLowerCase();
             
             // If selections specify to only update selected accounts and this is not included, skip
@@ -5473,7 +5479,7 @@ export class DatabaseStorage implements IStorage {
             });
             
           } catch (error: any) {
-            const accountCode = row.code || 'unknown';
+            const accountCode = row.accountCode || 'unknown';
             console.error(`Error resolving parent for ${accountCode}:`, error);
             result.warnings.push(`Error resolving parent for account ${accountCode}: ${error.message || 'Unknown error'}`);
           }
@@ -5758,7 +5764,7 @@ export class DatabaseStorage implements IStorage {
       .insert(accounts)
       .values({
         name: insertAccount.name,
-        code: insertAccount.code,
+        accountCode: insertAccount.accountCode,
         type: insertAccount.type,
         clientId: insertAccount.clientId,
         active: insertAccount.active ?? true,
@@ -5766,7 +5772,10 @@ export class DatabaseStorage implements IStorage {
         isSubledger: insertAccount.isSubledger ?? false,
         subledgerType: insertAccount.subledgerType,
         parentId: insertAccount.parentId,
-        description: insertAccount.description
+        description: insertAccount.description,
+        fsliBucket: insertAccount.fsliBucket,
+        internalReportingBucket: insertAccount.internalReportingBucket,
+        item: insertAccount.item
       })
       .returning();
     return account;
@@ -6383,7 +6392,7 @@ export class DatabaseStorage implements IStorage {
       
       result.push({
         accountId: account.id,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         accountName: account.name,
         debit,
         credit
@@ -6413,7 +6422,7 @@ export class DatabaseStorage implements IStorage {
       assetItems.push({
         accountId: account.id,
         accountName: account.name,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         balance
       });
       
@@ -6427,7 +6436,7 @@ export class DatabaseStorage implements IStorage {
       liabilityItems.push({
         accountId: account.id,
         accountName: account.name,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         balance
       });
       
@@ -6441,7 +6450,7 @@ export class DatabaseStorage implements IStorage {
       equityItems.push({
         accountId: account.id,
         accountName: account.name,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         balance
       });
       
@@ -6476,7 +6485,7 @@ export class DatabaseStorage implements IStorage {
       revenueItems.push({
         accountId: account.id,
         accountName: account.name,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         balance: Math.abs(balance) // Revenue is normally credited, so positive balance is negative
       });
       
@@ -6490,7 +6499,7 @@ export class DatabaseStorage implements IStorage {
       expenseItems.push({
         accountId: account.id,
         accountName: account.name,
-        accountCode: account.code,
+        accountCode: account.accountCode,
         balance // Expenses are normally debited, so positive balance is positive
       });
       
@@ -6540,7 +6549,7 @@ export class DatabaseStorage implements IStorage {
       date: journalEntries.date,
       journalId: journalEntries.reference,
       accountId: journalEntryLines.accountId,
-      accountCode: accounts.code,
+      accountCode: accounts.accountCode,
       accountName: accounts.name,
       description: journalEntryLines.description,
       debit: journalEntryLines.debit,
