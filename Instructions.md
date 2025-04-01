@@ -24,7 +24,7 @@
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS. Focus has shifted to implementing the Chart of Accounts with client-specific organization and hierarchical structure.
-    * **Current Update:** Backend for client-specific Chart of Accounts with hierarchy support is complete. Frontend hierarchy visualization and management is in progress.
+    * **Current Update:** Chart of Accounts implementation is complete, including backend and frontend hierarchy management, import/export functionality (CSV and Excel), and data integrity protections for parent-child relationships. Fixed a key issue where parent accounts with child accounts were being properly marked inactive instead of deleted during imports.
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -46,8 +46,11 @@
     * ✅ Basic CRUD API Testing - Complete with client-specific tests
     * ✅ Backend Hierarchy Implementation - Complete with parent-child relationship
     * ✅ Single Header Context Selector - Complete with combined client/entity dropdown
-    * 🔄 **Current Task:** Frontend Hierarchy UI - Complete parent selection form and hierarchical tree display
-    * 📝 Next: Implement CoA Import/Export functionality
+    * ✅ Frontend Hierarchy UI - Completed parent selection form and hierarchical tree display
+    * ✅ CoA Import/Export functionality - Implemented CSV and Excel import/export capabilities
+    * ✅ Fixed CoA Import Deletion Logic - Added proper handling of parent-child relationships during import 
+      (parent accounts with children are now marked inactive instead of attempted deletion)
+    * ✅ CoA Automated Testing - Created comprehensive test suite for CSV/Excel import/export operations, verified all operations functional
 * **(Task B.2)** **General Ledger (GL) and Journal Entries (JE):**
     * 📝 Next: Design/Finalize JE schema (`shared/schema.ts`, linking to CoA).
     * 📝 Next: Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
@@ -87,7 +90,7 @@
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Focus on completing the Chart of Accounts frontend hierarchy implementation before moving to Journal Entries.
+* **Prioritize:** Focus on implementing the Journal Entries module, now that the Chart of Accounts implementation is complete.
 * **Maintain Structure:** Keep the client-specific accounting design consistent across features.
 * **Test Thoroughly:** Ensure all functionality works with the new combined client-entity context selector.
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
