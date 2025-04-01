@@ -19,7 +19,7 @@ let sessionCookie = '';
 
 // Test accounts data
 const testAccountData = {
-  code: `TESTCOA${Date.now().toString().substring(8)}`, // Unique code using timestamp
+  accountCode: `TESTCOA${Date.now().toString().substring(8)}`, // Unique code using timestamp
   name: 'Test Chart of Accounts',
   type: 'expense',
   subtype: 'operating_expense',
@@ -147,12 +147,17 @@ async function runTests() {
       console.log('Retrieved Account Data:', JSON.stringify(fetchCreatedResult.data, null, 2));
       
       // Verify account data
-      const verifyFields = ['code', 'name', 'type', 'description'];
+      const verifyFields = [
+        { apiField: 'accountCode', testField: 'accountCode' },
+        { apiField: 'name', testField: 'name' },
+        { apiField: 'type', testField: 'type' },
+        { apiField: 'description', testField: 'description' }
+      ];
       let allFieldsMatch = true;
       
       for (const field of verifyFields) {
-        if (fetchCreatedResult.data[field] !== testAccountData[field]) {
-          console.error(`❌ Field '${field}' doesn't match. Expected: ${testAccountData[field]}, Actual: ${fetchCreatedResult.data[field]}`);
+        if (fetchCreatedResult.data[field.apiField] !== testAccountData[field.testField]) {
+          console.error(`❌ Field '${field.apiField}' doesn't match. Expected: ${testAccountData[field.testField]}, Actual: ${fetchCreatedResult.data[field.apiField]}`);
           allFieldsMatch = false;
         }
       }
@@ -166,6 +171,7 @@ async function runTests() {
     console.log('\n--- Step 5: Update Account ---');
     const updateData = {
       id: createdAccountId,
+      accountCode: testAccountData.accountCode, // maintain the same account code 
       name: 'Updated Test CoA Account',
       description: 'This account has been updated',
       active: true,

@@ -6,10 +6,25 @@
  */
 
 import { db } from '../server/db';
-import { clients, accounts } from '../shared/schema';
+import { clients, accounts, AccountType } from '../shared/schema';
 import { eq, isNull } from 'drizzle-orm';
 import { standardCoaTemplate } from '../server/coaTemplate';
 import chalk from 'chalk';
+
+// Define the CoATemplateEntry interface to match the standardCoaTemplate structure
+interface CoATemplateEntry {
+  accountCode: string;
+  name: string;
+  type: AccountType;
+  subtype?: string;
+  parentCode?: string | null;
+  isSubledger?: boolean;
+  subledgerType?: string;
+  description?: string;
+  fsliBucket?: string;
+  internalReportingBucket?: string;
+  item?: string;
+}
 
 /**
  * Find clients without any accounts (no Chart of Accounts)
@@ -95,10 +110,9 @@ async function seedCoAForClient(clientId: number): Promise<boolean> {
         // Insert the account
         const [newAccount] = await tx
           .insert(accounts)
-          .values({
+          .values([{
             clientId,
             accountCode: templateAccount.accountCode,
-            code: templateAccount.accountCode, // For backward compatibility
             name: templateAccount.name,
             type: templateAccount.type,
             subtype: templateAccount.subtype,
@@ -106,8 +120,11 @@ async function seedCoAForClient(clientId: number): Promise<boolean> {
             subledgerType: templateAccount.subledgerType,
             parentId,
             description: templateAccount.description,
-            active: true
-          })
+            active: true,
+            fsliBucket: templateAccount.fsliBucket,
+            internalReportingBucket: templateAccount.internalReportingBucket,
+            item: templateAccount.item
+          }])
           .returning({ id: accounts.id });
         
         // Store the generated ID mapped to the account code
