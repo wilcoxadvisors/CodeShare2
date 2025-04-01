@@ -1,217 +1,163 @@
-/**
- * Manual test script for Chart of Accounts import/export functionality
- * 
- * Usage:
- *   - Export Chart of Accounts: node scripts/test-coa-manual.js export [CLIENT_ID] [OUTPUT_FILE]
- *   - Import Chart of Accounts: node scripts/test-coa-manual.js import [CLIENT_ID] [INPUT_FILE] [--verbose]
- *   - List all accounts for a client: node scripts/test-coa-manual.js list-accounts [CLIENT_ID]
- * 
- * Examples:
- *   - Export: node scripts/test-coa-manual.js export 1 ./test-export.csv
- *   - Import: node scripts/test-coa-manual.js import 1 ./test-import.csv
- *   - List: node scripts/test-coa-manual.js list-accounts 1
- */
-
-import { db } from '../server/db.js';
-import { accounts, AccountType } from '../shared/schema.js';
-import { eq } from 'drizzle-orm';
 import fs from 'fs';
-import DatabaseStorage from '../server/db-storage.js';
+import path from 'path';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
 
-const storage = new DatabaseStorage();
-
-async function exportChartOfAccounts(clientId, outputPath) {
-  console.log(`Exporting Chart of Accounts for client ${clientId} to ${outputPath}`);
-  
+async function authenticate() {
   try {
-    // Get all accounts for this client
-    const clientAccounts = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.clientId, clientId));
-    
-    if (clientAccounts.length === 0) {
-      console.log(`No accounts found for client ${clientId}`);
-      return;
-    }
-    
-    console.log(`Found ${clientAccounts.length} accounts`);
-    
-    // Create CSV header
-    let csv = 'Code,Name,Type,Active,ParentCode,Description,Subtype,IsSubledger,SubledgerType\n';
-    
-    // Add accounts data
-    for (const account of clientAccounts) {
-      // Get parent code if parent exists
-      let parentCode = '';
-      if (account.parentId) {
-        const parent = clientAccounts.find(a => a.id === account.parentId);
-        if (parent) {
-          parentCode = parent.code;
-        }
-      }
-      
-      // Format each field and handle null values
-      const row = [
-        account.code,
-        escapeCsvField(account.name),
-        account.type,
-        account.active ? 'yes' : 'no',
-        escapeCsvField(parentCode),
-        escapeCsvField(account.description || ''),
-        escapeCsvField(account.subtype || ''),
-        account.isSubledger ? 'yes' : 'no',
-        escapeCsvField(account.subledgerType || '')
-      ];
-      
-      csv += row.join(',') + '\n';
-    }
-    
-    // Write to file
-    fs.writeFileSync(outputPath, csv);
-    console.log(`Export completed successfully. File saved to ${outputPath}`);
-  } catch (error) {
-    console.error('Error exporting Chart of Accounts:', error);
-  }
-}
-
-async function importChartOfAccounts(clientId, inputPath, verbose) {
-  console.log(`Importing Chart of Accounts for client ${clientId} from ${inputPath}`);
-  
-  try {
-    // Check if file exists
-    if (!fs.existsSync(inputPath)) {
-      console.error(`File not found: ${inputPath}`);
-      return;
-    }
-    
-    // Read and parse CSV
-    const fileContent = fs.readFileSync(inputPath, 'utf8');
-    
-    // Call storage method to import
-    console.log(`Starting import process...`);
-    const result = await storage.importCoaForClient(clientId, fileContent, { 
-      fileType: 'csv',
-      verbose: verbose || false
+    const response = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: 'password123',
+      }),
     });
-    
-    if (result.success) {
-      console.log(`✅ Import successful!`);
-      console.log(`- Created: ${result.created} accounts`);
-      console.log(`- Updated: ${result.updated} accounts`);
-      console.log(`- Inactive: ${result.inactivated} accounts`);
-      console.log(`- Skipped: ${result.skipped} accounts`); 
-      
-      if (result.warnings.length > 0) {
-        console.log('\nWarnings:');
-        result.warnings.forEach(warning => console.log(`- ${warning}`));
-      }
-    } else {
-      console.error(`❌ Import failed: ${result.errors.join(', ')}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to authenticate: ${response.statusText}`);
     }
+
+    // Extract cookies from response
+    const cookies = response.headers.raw()['set-cookie'];
+    return cookies ? cookies.join('; ') : '';
   } catch (error) {
-    console.error('Error importing Chart of Accounts:', error);
+    console.error('Authentication error:', error.message);
+    process.exit(1);
   }
 }
 
-async function listAccounts(clientId) {
-  console.log(`Listing all accounts for client ${clientId}`);
+async function importAccounts(clientId, filePath, options = {}) {
+  const { verbose = false, removeStrategy = 'inactive' } = options;
   
   try {
-    // Get all accounts for this client
-    const clientAccounts = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.clientId, clientId));
+    // Authenticate first
+    const cookies = await authenticate();
+    console.log('Authentication successful');
+
+    // Create multipart form data
+    const form = new FormData();
+    form.append('file', fs.createReadStream(filePath));
     
-    if (clientAccounts.length === 0) {
-      console.log(`No accounts found for client ${clientId}`);
-      return;
+    // Add import selections
+    const selections = {
+      updateStrategy: 'all',
+      removeStrategy: removeStrategy
+    };
+    form.append('selections', JSON.stringify(selections));
+
+    if (verbose) {
+      console.log(`Starting import for client ID: ${clientId}`);
+      console.log(`Import file: ${filePath}`);
+      console.log(`Import selections: ${JSON.stringify(selections, null, 2)}`);
     }
-    
-    console.log(`Found ${clientAccounts.length} accounts:`);
-    console.log('---------------------------------------------');
-    console.log('ID\tCode\tName\tType\tActive\tParent\tSubledger');
-    console.log('---------------------------------------------');
-    
-    for (const account of clientAccounts) {
-      // Get parent code if parent exists
-      let parentCode = '';
-      if (account.parentId) {
-        const parent = clientAccounts.find(a => a.id === account.parentId);
-        if (parent) {
-          parentCode = parent.code;
-        }
-      }
-      
-      console.log(`${account.id}\t${account.code}\t${account.name}\t${account.type}\t${account.active ? 'Yes' : 'No'}\t${parentCode}\t${account.isSubledger ? 'Yes' : 'No'}`);
+
+    // Send import request
+    const importResponse = await fetch(`http://localhost:5000/api/clients/${clientId}/accounts/import`, {
+      method: 'POST',
+      headers: {
+        Cookie: cookies,
+      },
+      body: form,
+    });
+
+    const result = await importResponse.json();
+
+    if (!importResponse.ok) {
+      console.error('Import failed:', result.error || importResponse.statusText);
+      process.exit(1);
     }
+
+    console.log('Import successful:');
+    console.log(JSON.stringify(result, null, 2));
     
-    console.log('---------------------------------------------');
+    return result;
   } catch (error) {
-    console.error('Error listing accounts:', error);
+    console.error('Import error:', error.message);
+    process.exit(1);
   }
 }
 
-// Helper function to escape CSV fields with commas or quotes
-function escapeCsvField(field) {
-  if (!field) return '';
-  
-  // If the field contains a comma, quote, or newline, wrap it in quotes
-  if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-    // Double up any quotes
-    return '"' + field.replace(/"/g, '""') + '"';
+async function exportAccounts(clientId) {
+  try {
+    // Authenticate first
+    const cookies = await authenticate();
+    console.log('Authentication successful');
+
+    // Send export request
+    const exportResponse = await fetch(`http://localhost:5000/api/clients/${clientId}/accounts/export`, {
+      method: 'GET',
+      headers: {
+        Cookie: cookies,
+      },
+    });
+
+    if (!exportResponse.ok) {
+      throw new Error(`Export failed: ${exportResponse.statusText}`);
+    }
+
+    const csv = await exportResponse.text();
+    console.log('Export successful, data:');
+    console.log(csv);
+    
+    return csv;
+  } catch (error) {
+    console.error('Export error:', error.message);
+    process.exit(1);
   }
-  
-  return field;
 }
 
-// Run the appropriate command based on arguments
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
   
   if (!command) {
-    console.log('Please specify a command: export, import, or list-accounts');
-    return;
+    console.error('Please specify a command: import or export');
+    process.exit(1);
   }
-  
-  const clientId = parseInt(args[1], 10);
-  
-  if (isNaN(clientId)) {
-    console.log('Please provide a valid client ID');
-    return;
-  }
-  
-  switch (command) {
-    case 'export':
-      const outputPath = args[2] || './coa-export.csv';
-      await exportChartOfAccounts(clientId, outputPath);
-      break;
-      
-    case 'import':
-      const inputPath = args[2];
-      if (!inputPath) {
-        console.log('Please provide an input file path');
-        return;
+
+  if (command === 'import') {
+    // Format: node test-coa-manual.js import CLIENT_ID FILE_PATH [--verbose] [--remove=[inactive|delete|none]]
+    if (args.length < 3) {
+      console.error('Usage: node test-coa-manual.js import CLIENT_ID FILE_PATH [--verbose] [--remove=strategy]');
+      process.exit(1);
+    }
+
+    const clientId = args[1];
+    const filePath = args[2];
+    const options = {
+      verbose: args.includes('--verbose'),
+      removeStrategy: 'inactive' // default
+    };
+
+    // Check for removal strategy option
+    const removeArg = args.find(arg => arg.startsWith('--remove='));
+    if (removeArg) {
+      const strategy = removeArg.split('=')[1];
+      if (['inactive', 'delete', 'none'].includes(strategy)) {
+        options.removeStrategy = strategy;
+      } else {
+        console.error('Invalid remove strategy. Must be inactive, delete, or none');
+        process.exit(1);
       }
-      const verbose = args.includes('--verbose');
-      await importChartOfAccounts(clientId, inputPath, verbose);
-      break;
-      
-    case 'list-accounts':
-      await listAccounts(clientId);
-      break;
-      
-    default:
-      console.log('Unknown command. Please use export, import, or list-accounts');
+    }
+
+    await importAccounts(clientId, filePath, options);
+  } else if (command === 'export') {
+    // Format: node test-coa-manual.js export CLIENT_ID
+    if (args.length < 2) {
+      console.error('Usage: node test-coa-manual.js export CLIENT_ID');
+      process.exit(1);
+    }
+
+    const clientId = args[1];
+    await exportAccounts(clientId);
+  } else {
+    console.error('Unknown command. Use import or export');
+    process.exit(1);
   }
-  
-  // Close DB connection
-  await db.end();
 }
 
-main().catch(error => {
-  console.error('Error in main execution:', error);
-  process.exit(1);
-});
+main();

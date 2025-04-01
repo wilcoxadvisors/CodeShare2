@@ -5326,7 +5326,7 @@ export class DatabaseStorage implements IStorage {
               }
             }
           } else if (removeStrategy === 'delete') {
-            // Delete accounts - only if they don't have transactions
+            // Delete accounts - only if they don't have transactions or child accounts
             for (const accountId of missingAccounts) {
               try {
                 // Get the original account data for the log message
@@ -5345,13 +5345,33 @@ export class DatabaseStorage implements IStorage {
                     
                   result.inactive++;
                 } else {
-                  // Delete the account
-                  await tx
-                    .delete(accounts)
-                    .where(eq(accounts.id, accountId));
+                  // Check if this account has any child accounts
+                  const childAccounts = await tx
+                    .select({ count: count() })
+                    .from(accounts)
+                    .where(eq(accounts.parentId, accountId));
                   
-                  console.log(`Deleted account ${account?.code} (${account?.name})`);
-                  result.deleted++; // Track accounts that were actually deleted
+                  // If there are child accounts, don't allow deletion
+                  if (childAccounts[0]?.count > 0) {
+                    console.log(`Cannot delete account ${account?.code} (${account?.name}) as it has child accounts - marking inactive instead`);
+                    result.warnings.push(`Account ${account?.code} (${account?.name}) has child accounts and cannot be deleted - marked inactive instead`);
+                    
+                    // Mark as inactive instead
+                    await tx
+                      .update(accounts)
+                      .set({ active: false })
+                      .where(eq(accounts.id, accountId));
+                      
+                    result.inactive++;
+                  } else {
+                    // Delete the account - it has no transactions and no child accounts
+                    await tx
+                      .delete(accounts)
+                      .where(eq(accounts.id, accountId));
+                    
+                    console.log(`Deleted account ${account?.code} (${account?.name})`);
+                    result.deleted++; // Track accounts that were actually deleted
+                  }
                 }
                 
                 result.count++;

@@ -1,7 +1,14 @@
-Code,Name,Type,Active,ParentCode,Description,Subtype,IsSubledger,SubledgerType
-1100,Cash Modified,ASSET,yes,,Main cash account modified,Current Assets,no,
-1200,Accounts Receivable,ASSET,yes,,Money owed to us,Current Assets,yes,Customer
-2000,Accounts Payable,LIABILITY,yes,,Money we owe,Current Liabilities,yes,Vendor
-3000,Equity,EQUITY,yes,,Company Equity,Retained Earnings,no,
-4000,Revenue,REVENUE,yes,,Company Revenue,Operating Revenue,no,
-5000,Expenses,EXPENSE,yes,,Company Expenses,Operating Expenses,no,
+Code,AccountName,AccountType,Subtype,IsSubledger,SubledgerType,ParentAccount,Active,Description
+1,Assets,asset,,,,,TRUE,Top level asset account
+1100,Current Assets,asset,current_asset,,,1,TRUE,Current assets
+1110,Cash Modified,asset,bank,,,1100,TRUE,Modified cash account name
+1120,Accounts Receivable,asset,accounts_receivable,,,1100,TRUE,Accounts receivable
+2,Liabilities,liability,,,,,TRUE,Top level liability account
+2100,Current Liabilities,liability,current_liability,,,2,TRUE,Current liabilities
+2110,Accounts Payable,liability,accounts_payable,,,2100,TRUE,Accounts payable
+3,Equity,equity,,,,,TRUE,Top level equity account
+3100,Owner's Equity,equity,owner_equity,,,3,TRUE,Owner's equity
+4,Revenue,revenue,,,,,TRUE,Top level revenue account
+4100,Sales Revenue,revenue,operating_revenue,,,4,TRUE,Sales revenue
+5,Expenses,expense,,,,,TRUE,Top level expense account
+5100,Operating Expenses,expense,operating_expense,,,5,TRUE,Operating expenses

@@ -1,0 +1,4 @@
+Code,Name,Type,Subtype,Description,Parent,IsSubledger,SubledgerType,Active
+1000,Cash,Asset,Current,Cash and cash equivalents,,FALSE,,TRUE
+1100,Accounts Receivable,Asset,Current,Money owed by customers,,FALSE,,TRUE
+1200,Inventory,Asset,Current,Inventory of goods,,FALSE,,TRUE
