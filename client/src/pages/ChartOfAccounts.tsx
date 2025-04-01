@@ -1483,7 +1483,15 @@ function ChartOfAccounts() {
   };
 
   const columns = [
-    { header: "Code", accessor: "accountCode", type: "text" },
+    { 
+      header: "Code", 
+      accessor: "accountCode", 
+      type: "text",
+      render: (row: Record<string, any>) => {
+        // Support both accountCode and code fields for backward compatibility
+        return row.accountCode || row.code || "";
+      } 
+    },
     { 
       header: "Name", 
       accessor: "name", 
