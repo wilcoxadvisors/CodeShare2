@@ -219,7 +219,7 @@ class AiDataService {
       const safeAccount = {
         id: account.id,
         name: account.name,
-        code: account.code,
+        code: account.accountCode, // Updated from account.code to account.accountCode
         type: account.type,
         category: account.category,
         active: account.active

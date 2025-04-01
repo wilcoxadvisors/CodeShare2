@@ -108,9 +108,9 @@ export async function initDatabase() {
 
       // Create basic chart of accounts for default entity
       const accountsData = [
-        { code: "1000", name: "Cash", type: AccountType.ASSET, subtype: "current_asset" },
+        { accountCode: "1000", name: "Cash", type: AccountType.ASSET, subtype: "current_asset" },
         {
-          code: "1200",
+          accountCode: "1200",
           name: "Accounts Receivable",
           type: AccountType.ASSET,
           subtype: "current_asset",
@@ -118,19 +118,19 @@ export async function initDatabase() {
           subledgerType: "accounts_receivable",
         },
         {
-          code: "1500",
+          accountCode: "1500",
           name: "Fixed Assets: Equipment",
           type: AccountType.ASSET,
           subtype: "fixed_asset",
         },
         {
-          code: "1600",
+          accountCode: "1600",
           name: "Accumulated Depreciation",
           type: AccountType.ASSET,
           subtype: "fixed_asset",
         },
         {
-          code: "2000",
+          accountCode: "2000",
           name: "Accounts Payable",
           type: AccountType.LIABILITY,
           subtype: "current_liability",
@@ -138,26 +138,26 @@ export async function initDatabase() {
           subledgerType: "accounts_payable",
         },
         {
-          code: "3000",
+          accountCode: "3000",
           name: "Owner's Equity",
           type: AccountType.EQUITY,
           subtype: "equity",
         },
-        { code: "4000", name: "Revenue", type: AccountType.REVENUE, subtype: "revenue" },
+        { accountCode: "4000", name: "Revenue", type: AccountType.REVENUE, subtype: "revenue" },
         {
-          code: "5000",
+          accountCode: "5000",
           name: "Cost of Goods Sold",
           type: AccountType.EXPENSE,
           subtype: "cost_of_sales",
         },
         {
-          code: "6000",
+          accountCode: "6000",
           name: "Operating Expenses",
           type: AccountType.EXPENSE,
           subtype: "operating_expense",
         },
         {
-          code: "6150",
+          accountCode: "6150",
           name: "Office Expenses",
           type: AccountType.EXPENSE,
           subtype: "operating_expense",
@@ -168,7 +168,7 @@ export async function initDatabase() {
       for (const account of accountsData) {
         await db.insert(accounts).values({
           entityId: defaultEntity.id,
-          code: account.code,
+          accountCode: account.accountCode,
           name: account.name,
           type: account.type,
           subtype: account.subtype || null,
@@ -177,6 +177,9 @@ export async function initDatabase() {
           active: true,
           description: null,
           parentId: null,
+          fsliBucket: null,
+          internalReportingBucket: null,
+          item: null
         });
       }
 

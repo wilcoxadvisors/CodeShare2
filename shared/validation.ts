@@ -21,7 +21,7 @@ export const enhancedEntitySchema = schema.insertEntitySchema.extend({
  * Enhanced schema for validating account input
  */
 export const enhancedAccountSchema = schema.insertAccountSchema.extend({
-  code: z.string().min(3, "Account code must be at least 3 characters long"),
+  accountCode: z.string().min(3, "Account code must be at least 3 characters long"),
   name: z.string().min(2, "Account name must be at least 2 characters long")
 });
 

@@ -1,0 +1,29 @@
+Task Assignment: Investigate Unrelated Uses of Identifier code
+
+Context:
+We have extensively refactored server/storage.ts and server/coaTemplate.ts to rename the Chart of Accounts code field to accountCode. Before verifying the fix for CoA data display, we need to check if the identifier code is used for unrelated purposes elsewhere in the project, which might cause conflicts.
+
+Goal:
+Search the codebase (server/, client/src/, shared/, scripts/) to identify potential uses of the identifier code that are not related to the Chart of Accounts code/accountCode concept.
+
+Instructions:
+
+Action: Perform Broad Code Search:
+
+Use command-line tools (like grep) to search for the standalone word or property code across key directories. Focus on identifying usages outside the known CoA context.
+Suggested Searches (run from project root):
+grep -nrw "code:" server/ client/src/ shared/ scripts/ (Find code: in object literals)
+grep -nrw "\.code" server/ client/src/ shared/ scripts/ (Find property access .code)
+grep -nrw "Code" server/ client/src/ shared/ scripts/ (Look for variables/types like errorCode, statusCode, accessCode, languageCode, etc.)
+Filter out known CoA usages in storage.ts / coaTemplate.ts / schema.ts if possible, or review results carefully. Pay attention to files related to error handling, API responses, authentication, utilities, or UI components that aren't directly CoA-related.
+Action: Analyze Potential Conflicts:
+
+Review the search results. Identify any instances where code clearly refers to something other than an account code (e.g., error.code, res.statusCode, languageCode, accessCode).
+Verification:
+
+Confirm that the search commands were executed.
+Confirm that the results were analyzed for non-CoA uses of code.
+Reporting:
+
+If unrelated uses are found: List the file path(s), line number(s), and the relevant code snippet(s) where code is used for a different purpose.
+If NO unrelated uses are found: Report clearly that the search was performed across key directories and no potentially conflicting uses of the identifier code were identified outside the expected CoA context.

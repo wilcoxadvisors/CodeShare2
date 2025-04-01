@@ -1111,7 +1111,7 @@ export class MemStorage implements IStorage {
       id,
       clientId: insertAccount.clientId,
       name: insertAccount.name,
-      code: insertAccount.code,
+      accountCode: insertAccount.accountCode,
       type: insertAccount.type as AccountType,
       subtype: insertAccount.subtype || null,
       isSubledger: insertAccount.isSubledger || false,
@@ -3365,7 +3365,7 @@ export class DatabaseStorage implements IStorage {
           if (templateAccount.parentCode) {
             parentId = codeToIdMap.get(templateAccount.parentCode) || null;
             if (!parentId && templateAccount.parentCode) {
-              console.warn(`SEEDING WARNING: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.code} (${templateAccount.name})`);
+              console.warn(`SEEDING WARNING: Parent account with accountCode ${templateAccount.parentCode} not found for ${templateAccount.accountCode} (${templateAccount.name})`);
             }
           }
           
@@ -3374,7 +3374,7 @@ export class DatabaseStorage implements IStorage {
             .insert(accounts)
             .values({
               clientId,
-              code: templateAccount.code,
+              accountCode: templateAccount.accountCode,
               name: templateAccount.name,
               type: templateAccount.type,
               subtype: templateAccount.subtype,
@@ -3388,9 +3388,9 @@ export class DatabaseStorage implements IStorage {
           
           // Store the generated ID mapped to the account code
           if (newAccount && newAccount.id) {
-            codeToIdMap.set(templateAccount.code, newAccount.id);
+            codeToIdMap.set(templateAccount.accountCode, newAccount.id);
           } else {
-            console.error(`SEEDING ERROR: Failed to insert account ${templateAccount.code}`);
+            console.error(`SEEDING ERROR: Failed to insert account ${templateAccount.accountCode}`);
           }
         }
       });
@@ -4647,9 +4647,10 @@ export class DatabaseStorage implements IStorage {
           processedCount++;
           
           // Extract account code from the row (required field)
-          const accountCode = this.getCaseInsensitiveValue(row, 'code') || 
+          const accountCode = this.getCaseInsensitiveValue(row, 'accountCode') || 
                              this.getCaseInsensitiveValue(row, 'accountcode') || 
-                             this.getCaseInsensitiveValue(row, 'account_code');
+                             this.getCaseInsensitiveValue(row, 'account_code') ||
+                             this.getCaseInsensitiveValue(row, 'code'); // Legacy support
           
           if (!accountCode) {
             // Skip rows without account code
@@ -4714,7 +4715,7 @@ export class DatabaseStorage implements IStorage {
             if (existingAccount.parentId) {
               const parentAccount = existingIdMap.get(existingAccount.parentId);
               if (parentAccount) {
-                change.existingParentCode = parentAccount.code;
+                change.existingParentCode = parentAccount.accountCode;
               }
             }
             
@@ -4885,7 +4886,11 @@ export class DatabaseStorage implements IStorage {
         const accountCodesInImport = new Set<string>();
         
         for (const row of rows) {
-          const code = this.getCaseInsensitiveValue(row, 'code');
+          // Check for accountCode first, then fall back to 'code' for backward compatibility
+          const code = this.getCaseInsensitiveValue(row, 'accountCode') || 
+                       this.getCaseInsensitiveValue(row, 'account_code') || 
+                       this.getCaseInsensitiveValue(row, 'accountcode') || 
+                       this.getCaseInsensitiveValue(row, 'code'); // Legacy support
           const name = this.getCaseInsensitiveValue(row, 'name');
           const type = this.getCaseInsensitiveValue(row, 'type');
           
@@ -4894,9 +4899,9 @@ export class DatabaseStorage implements IStorage {
             continue;
           }
           
-          // Standardize the code format (trim and store original case)
+          // Standardize the accountCode format (trim and store original case)
           const trimmedCode = code.trim();
-          row.code = trimmedCode;
+          row.accountCode = trimmedCode;
           
           // Track unique account codes to identify duplicates in the import file
           const lowerCode = trimmedCode.toLowerCase();
@@ -4980,7 +4985,7 @@ export class DatabaseStorage implements IStorage {
         
         for (const row of validRows) {
           try {
-            const accountCode = row.code;
+            const accountCode = row.accountCode;
             const accountName = this.getCaseInsensitiveValue(row, 'name')?.trim();
             const accountTypeRaw = this.getCaseInsensitiveValue(row, 'type');
             
@@ -5146,7 +5151,7 @@ export class DatabaseStorage implements IStorage {
             
             result.count++;
           } catch (error: any) {
-            result.errors.push(`Error processing account ${this.getCaseInsensitiveValue(row, 'code') || 'unknown'}: ${error.message || 'Unknown error'}`);
+            result.errors.push(`Error processing account ${this.getCaseInsensitiveValue(row, 'accountCode') || 'unknown'}: ${error.message || 'Unknown error'}`);
             result.skipped++;
           }
         }
@@ -5210,7 +5215,7 @@ export class DatabaseStorage implements IStorage {
                 
                 if (updatedAccount) {
                   updatedAccounts.push(updatedAccount);
-                  console.log(`Successfully updated account: ${updatedAccount.code} (${updatedAccount.name})`);
+                  console.log(`Successfully updated account: ${updatedAccount.accountCode} (${updatedAccount.name})`);
                 } else {
                   console.warn(`No rows updated for account ID ${update.id}`);
                 }
@@ -5237,7 +5242,7 @@ export class DatabaseStorage implements IStorage {
         // Track account codes in the import file (using a Set for faster lookups)
         const importedAccountCodes = new Set<string>();
         for (const row of validRows) {
-          const accountCode = row.code.toLowerCase();
+          const accountCode = row.accountCode.toLowerCase();
           importedAccountCodes.add(accountCode);
         }
         console.log(`DEBUG: Found ${importedAccountCodes.size} account codes in import file`);

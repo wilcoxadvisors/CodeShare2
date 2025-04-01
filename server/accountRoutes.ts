@@ -101,7 +101,7 @@ export function registerAccountRoutes(app: Express) {
         const parentAccount = account.parentId ? accountMap.get(account.parentId) : null;
         
         return {
-          Code: account.code,
+          Code: account.accountCode,
           Name: account.name,
           Type: account.type,
           Subtype: account.subtype || '',
@@ -110,7 +110,7 @@ export function registerAccountRoutes(app: Express) {
           Active: account.active ? 'Yes' : 'No',
           Description: account.description || '',
           ParentId: account.parentId || '',
-          ParentCode: parentAccount ? parentAccount.code : '',
+          ParentCode: parentAccount ? parentAccount.accountCode : '',
           ParentName: parentAccount ? parentAccount.name : ''
         };
       });
@@ -422,7 +422,7 @@ export function registerAccountRoutes(app: Express) {
     // Check for duplicate account code
     const existingAccounts = await storage.getAccounts(clientId);
     const isDuplicateCode = existingAccounts.some(
-      acc => acc.code === accountData.code
+      acc => acc.accountCode === accountData.accountCode
     );
     
     if (isDuplicateCode) {
@@ -485,11 +485,11 @@ export function registerAccountRoutes(app: Express) {
     
     const updateData = validationResult.data;
     
-    // Check for duplicate account code if code is being updated
-    if (updateData.code && updateData.code !== existingAccount.code) {
+    // Check for duplicate account code if accountCode is being updated
+    if (updateData.accountCode && updateData.accountCode !== existingAccount.accountCode) {
       const existingAccounts = await storage.getAccounts(clientId);
       const isDuplicateCode = existingAccounts.some(
-        acc => acc.code === updateData.code && acc.id !== accountId
+        acc => acc.accountCode === updateData.accountCode && acc.id !== accountId
       );
       
       if (isDuplicateCode) {
