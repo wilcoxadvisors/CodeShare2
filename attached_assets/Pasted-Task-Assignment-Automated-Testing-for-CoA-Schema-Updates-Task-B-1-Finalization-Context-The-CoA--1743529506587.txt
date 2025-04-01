@@ -1,0 +1,58 @@
+Task Assignment: Automated Testing for CoA Schema Updates (Task B.1 Finalization)
+
+Context:
+The CoA schema (shared/schema.ts) has been updated with new fields (fsliBucket, internalReportingBucket, item), a unique constraint on accountCode per client, and verified parentId constraints. A manual SQL migration file (migrations/accounts_schema_updates.sql) has been created due to Drizzle command timeouts. We now need automated tests to confirm these changes and check for regressions.
+
+Goal:
+Create and run automated tests to verify the new schema constraints and ensure existing Chart of Accounts API functionality (CRUD, hierarchy) works correctly with the updated schema.
+
+Instructions:
+
+Action: Create Test File:
+
+Create a new test file, potentially named test/chart-of-accounts/coa-schema-update-verification.test.ts (or .js if using JavaScript for tests). Follow existing test file structure and naming conventions.
+Action: Test Setup (Handle Migration):
+
+Crucial: The tests need to run against a database state reflecting the latest schema changes. Since Drizzle commands timed out, you might need to:
+Option A (Preferred if feasible): Modify existing test setup routines (if any) to manually apply the migrations/accounts_schema_updates.sql file before tests run.
+Option B (Verification): Alternatively, ensure the test database is already migrated (perhaps manually outside the script) and write tests that directly query/verify the schema information_schema or perform actions expected to trigger the constraints.
+Include necessary setup for database connections, authentication, and potentially seeding basic client/account data needed for the tests. Leverage existing test helpers if available.
+Action: Write Schema Constraint Tests:
+
+Test accountCode Uniqueness:
+Create a client.
+Create an account for that client with a specific accountCode.
+Attempt to create another account for the same client with the same accountCode. Assert that this attempt fails (e.g., throws a unique constraint violation error).
+Create a different client.
+Attempt to create an account for this new client using the same accountCode as the first client. Assert that this attempt succeeds.
+Test parentId onDelete: 'restrict':
+Create a parent account and a child account linked via parentId.
+Attempt to delete the parent account. Assert that this attempt fails (e.g., throws a foreign key constraint violation error).
+Test New Fields:
+Create an account, explicitly setting values for fsliBucket, internalReportingBucket, and item. Retrieve the account and assert that the values were saved correctly.
+Create an account without setting these fields. Retrieve the account and assert that these fields are present and have null values.
+Action: Write Regression Tests for Core CoA API:
+
+Re-use or adapt existing tests (if any) or create new basic tests for the main CoA API endpoints defined in server/accountRoutes.ts:
+Test creating an account (POST /api/clients/:clientId/accounts).
+Test retrieving accounts for a client (GET /api/clients/:clientId/accounts).
+Test retrieving the account hierarchy (GET /api/clients/:clientId/accounts/tree).
+Test updating an account (PUT /api/clients/:clientId/accounts/:accountId).
+Test deleting an account (DELETE /api/clients/:clientId/accounts/:accountId - ensure it works for accounts without children).
+Ensure these basic operations still function correctly after the schema changes.
+Action: Execute Tests:
+
+Run the newly created test suite.
+Verification:
+
+Confirm the new test file is created in the correct location.
+Confirm the test setup correctly handles the schema state (either by applying the migration or assuming it's applied).
+Confirm tests exist for each specified constraint (accountCode uniqueness, parentId restriction, new field handling).
+Confirm basic regression tests exist for core CoA API endpoints.
+Confirm all tests pass when executed.
+Reporting:
+
+Report success once the test script is created and all tests pass.
+Provide the path to the new test file.
+Report any difficulties encountered during test setup (especially regarding the manual migration) or test execution. If any tests fail, provide the error messages.
+Confirm that Task B.1 can now be considered fully complete (including testing).
