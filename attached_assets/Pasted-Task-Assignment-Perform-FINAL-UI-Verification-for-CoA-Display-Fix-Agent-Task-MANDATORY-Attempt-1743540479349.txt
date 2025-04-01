@@ -1,0 +1,40 @@
+Task Assignment: Perform FINAL UI Verification for CoA Display Fix (Agent Task - MANDATORY - Attempt 2)
+
+Context:
+The code to accountCode refactoring and associated TypeScript fixes are complete (checkpoint 819ffb78). The tsc --noEmit check continues to have issues (timeouts/JSX errors), which we will defer addressing for now. The absolute final step for Task B.1 is verifying the fix for the original "CoA data not displaying" bug via the UI. This verification must be performed by the agent.
+
+Goal:
+Confirm via UI simulation/observation that the Chart of Accounts data displays correctly for both a newly created client and an existing client.
+
+Instructions:
+
+Part 1: Verify New Client CoA Display in UI
+
+Action: Ensure Application is Running & Logged In:
+
+Verify the application is running (npm run dev).
+Simulate logging in as admin (admin / password123). Use the credentials previously confirmed from .auth-credentials.
+Action: Create New Client via UI Simulation (if necessary):
+
+Check: Determine if the test client (ID 100) created previously is still valid and accessible.
+If Not Valid/Accessible: Simulate the full "Add Client" workflow again to create a new test client. Record its ID.
+If Valid (ID 100): Proceed using Client ID 100.
+Action: Navigate & Verify New Client CoA in UI:
+
+Simulate navigating within the web application to the Chart of Accounts page for the new client (ID 100 or the newly created one).
+Observe & Record: Does the standard Chart of Accounts data display correctly in the UI now? Is the table populated? Is the hierarchy visible and expanded? Describe the observed UI state or capture evidence (e.g., screenshot using available tools). Do not rely only on API checks.
+Part 2: Verify Existing Client CoA Display in UI
+
+Action: Navigate & Verify Existing Client CoA in UI:
+Simulate navigating within the web application to the Chart of Accounts page for an existing client (e.g., Client ID 1).
+Observe & Record: Does the Chart of Accounts data display correctly in the UI for this existing client? Is the hierarchy visible and expanded? Describe the observed UI state or capture evidence. Do not rely only on API checks.
+Verification:
+
+Confirm CoA data is visible and correct in the UI for the newly created client.
+Confirm CoA data is visible and correct in the UI for the existing client.
+Reporting:
+
+Report PASS/FAIL for the New Client UI Verification (Step 3), including the Client ID used and evidence/description/screenshot.
+Report PASS/FAIL for the Existing Client UI Verification (Step 4), including evidence/description/screenshot.
+Note the status of the tsc --noEmit check (still unresolved/timing out).
+If both UI verifications PASS, explicitly state that the original "CoA data not displaying" bug IS RESOLVED and Task B.1 (Chart of Accounts) is functionally complete and verified.
