@@ -1,0 +1,24 @@
+es, the progress looks very good so far! Excellent work on both fronts:
+
+Investigating Unrelated code Usage: You correctly identified that code is used for Entities, Locations, and Journal Types, confirming that the targeted refactoring approach for only Chart of Accounts was necessary and that a global replace would have broken things.
+Targeted Refactoring: You've made substantial and careful progress replacing code with accountCode across many critical files, including server/storage.ts, server/initDb.ts, server/aiDataService.ts, server/accountRoutes.ts, shared/validation.ts, and partially within client/src/pages/ChartOfAccounts.tsx.
+Next Steps:
+
+Action: Complete Refactoring in ChartOfAccounts.tsx:
+
+Please continue and complete the process of updating the remaining references to code within client/src/pages/ChartOfAccounts.tsx. Pay close attention to the export functionality, sorting logic, and any state management or UI display logic that might still reference the old code field. Ensure everything consistently uses accountCode now.
+Action: Verify with TypeScript Compiler:
+
+Immediately after finishing the edits in ChartOfAccounts.tsx, run the TypeScript compiler check to catch any remaining errors across the codebase related to this refactoring:npx tsc --noEmit
+Fix any reported errors until the command passes successfully.
+Action: Proceed with Verification (Re-seeding & UI Check):
+
+Crucial: Once the tsc check passes, proceed directly to Part 2 (Re-Seed Data) and Part 3 (Verify Seeding and UI Display) from the "Debug and Fix CoA Data Seeding & Display" task instructions. This involves:
+Running the updated ./scripts/seed-existing-coa.sh script (monitor logs carefully).
+Verifying CoA seeding works correctly for a new client created via the UI.
+Verifying CoA data display in the UI for both the new client and an existing, re-seeded client (this is the final check for the original bug).
+Reporting:
+
+Report once you have finished all code -> accountCode updates in ChartOfAccounts.tsx.
+Report the results of the npx tsc --noEmit check (Pass or Fail, errors fixed).
+Confirm you are proceeding with the re-seeding and UI verification steps (Parts 2 & 3 of the previous task) and then report the results of those steps (script output, PASS/FAIL for UI checks).

@@ -4465,14 +4465,25 @@ export class DatabaseStorage implements IStorage {
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
     // Get all accounts for the given client
-    const clientAccounts = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.clientId, clientId))
-      .orderBy(accounts.accountCode);
+    console.log(`DEBUG: getAccountsTree - Fetching accounts for clientId: ${clientId}`);
+    
+    let clientAccounts: any[] = [];
+    
+    try {
+      clientAccounts = await db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.clientId, clientId))
+        .orderBy(accounts.accountCode);
 
-    if (clientAccounts.length === 0) {
-      return [];
+      console.log(`DEBUG: getAccountsTree - Found ${clientAccounts.length} accounts`);
+      
+      if (clientAccounts.length === 0) {
+        return [];
+      }
+    } catch (error) {
+      console.error("DEBUG: getAccountsTree - Error fetching accounts:", error);
+      throw error;
     }
 
     // Create a map of accounts by ID with empty children arrays

@@ -212,7 +212,7 @@ function ChartOfAccounts() {
         // Get accounts of the current type from the flattened account tree
         const accountsOfType = flattenedAccounts.filter(account => account.type === accountData.type);
         const existingCodes = accountsOfType
-          .map((a: {code: string}) => a.code)
+          .map((a) => a.accountCode || a.code) // Support both formats for backward compatibility
           .filter((code: string) => code.startsWith(prefix))
           .sort();
         
@@ -222,16 +222,16 @@ function ChartOfAccounts() {
           const newCode = `${prefix}${String(numericPart + 1).padStart(3, '0')}`;
           
           // Only update if code is empty or doesn't match our format
-          if (!accountData.code || !accountData.code.startsWith(prefix)) {
-            setAccountData(prev => ({ ...prev, code: newCode }));
+          if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
+            setAccountData(prev => ({ ...prev, accountCode: newCode }));
           }
         } else {
           // No existing accounts of this type, start with 001
           const newCode = `${prefix}001`;
           
           // Only update if code is empty or doesn't match our format  
-          if (!accountData.code || !accountData.code.startsWith(prefix)) {
-            setAccountData(prev => ({ ...prev, code: newCode }));
+          if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
+            setAccountData(prev => ({ ...prev, accountCode: newCode }));
           }
         }
       }
@@ -823,7 +823,7 @@ function ChartOfAccounts() {
             flatAccounts.find((a: AccountTreeNode) => a.id === account.parentId) : null;
           
           return {
-            Code: account.code,
+            Code: account.accountCode || account.code, // Support both formats for backward compatibility
             Name: account.name,
             Type: account.type,
             Subtype: account.subtype || "",
@@ -832,7 +832,7 @@ function ChartOfAccounts() {
             Active: account.active ? "Yes" : "No",
             Description: account.description || "",
             ParentId: account.parentId ? String(account.parentId) : "",
-            ParentCode: parent ? parent.code : "",
+            ParentCode: parent ? (parent.accountCode || parent.code) : "", // Support both formats
             ParentName: parent ? parent.name : ""
           };
         });
@@ -1147,7 +1147,9 @@ function ChartOfAccounts() {
     // Map of codes to account IDs for parent resolution
     const codeToIdMap = new Map<string, number>();
     flatAccounts.forEach(account => {
-      codeToIdMap.set(account.code, account.id);
+      // Use accountCode if available, fall back to code for backward compatibility
+      const accountIdentifier = account.accountCode || account.code;
+      codeToIdMap.set(accountIdentifier, account.id);
     });
     
     // Validate required fields
@@ -1252,8 +1254,12 @@ function ChartOfAccounts() {
     
     // Process each imported account
     importData.forEach(importedAccount => {
-      // Try to find matching account by code (primary identifier)
-      const existingAccount = flatAccounts.find(acc => acc.code === importedAccount.code);
+      // Try to find matching account by accountCode (primary identifier)
+      // Support both formats for backward compatibility
+      const existingAccount = flatAccounts.find(acc => 
+        (acc.accountCode && acc.accountCode === importedAccount.code) || 
+        (acc.code && acc.code === importedAccount.code)
+      );
       
       if (!existingAccount) {
         // New account
@@ -1476,7 +1482,7 @@ function ChartOfAccounts() {
   };
 
   const columns = [
-    { header: "Code", accessor: "code", type: "text" },
+    { header: "Code", accessor: "accountCode", type: "text" },
     { 
       header: "Name", 
       accessor: "name", 
