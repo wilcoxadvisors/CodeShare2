@@ -1,0 +1,836 @@
+ [vite] connecting...
+ [vite] connected.
+ Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ 🔒 Checking authentication status...
+ 🔒 Debug session ID found: arMCyVGCURpnbfYBaa8DuQqEtBYM9VId
+ 🔒 Auth check response status: 200
+ 🔒 User authenticated: Object
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ DEBUG: Entities data updated - received 41 entities
+ DEBUG: Rendering entities for Client 1 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 1. Length: 5 Array(5)
+ Final result - Client 1 (Admin Client): Found 5 entities, 5 after search filter
+ DEBUG: Rendering entities for Client 96 (COA Seed Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 96. Length: 1 Array(1)
+ Final result - Client 96 (COA Seed Test Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 117 (CoA Test Client 1743625696848). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 117. Length: 0 Array(0)
+ Final result - Client 117 (CoA Test Client 1743625696848): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 118 (CoA Test Client 1743625716144). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 118. Length: 0 Array(0)
+ Final result - Client 118 (CoA Test Client 1743625716144): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 119 (CoA Test Client 1743625758204). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 119. Length: 0 Array(0)
+ Final result - Client 119 (CoA Test Client 1743625758204): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 120 (CoA Test Client 1743625863856). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 120. Length: 0 Array(0)
+ Final result - Client 120 (CoA Test Client 1743625863856): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 121 (CoA Test Client 1743626221879). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 121. Length: 0 Array(0)
+ Final result - Client 121 (CoA Test Client 1743626221879): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 122 (CoA Test Client 1743626286544). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 122. Length: 0 Array(0)
+ Final result - Client 122 (CoA Test Client 1743626286544): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 123 (CoA Test Client 1743626413213). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 123. Length: 0 Array(0)
+ Final result - Client 123 (CoA Test Client 1743626413213): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 124 (CoA Test Client 1743626720582). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 124. Length: 0 Array(0)
+ Final result - Client 124 (CoA Test Client 1743626720582): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 125 (CoA Test Client 1743628341636). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 125. Length: 0 Array(0)
+ Final result - Client 125 (CoA Test Client 1743628341636): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 98 (COA_TEST_1743521487527). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 98. Length: 0 Array(0)
+ Final result - Client 98 (COA_TEST_1743521487527): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 99 (COA_TEST_1743521606732). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 99. Length: 0 Array(0)
+ Final result - Client 99 (COA_TEST_1743521606732): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 126 (COA_TEST_1743628379215). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 126. Length: 0 Array(0)
+ Final result - Client 126 (COA_TEST_1743628379215): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 104 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 104. Length: 0 Array(0)
+ Final result - Client 104 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 103 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 103. Length: 0 Array(0)
+ Final result - Client 103 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 101 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 101. Length: 0 Array(0)
+ Final result - Client 101 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 106 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 106. Length: 0 Array(0)
+ Final result - Client 106 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 107 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 107. Length: 0 Array(0)
+ Final result - Client 107 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 108 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 108. Length: 0 Array(0)
+ Final result - Client 108 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 111 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 111. Length: 0 Array(0)
+ Final result - Client 111 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 113 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 113. Length: 1 Array(1)
+ Final result - Client 113 (Import RE-Verify CSV): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 115 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 115. Length: 0 Array(0)
+ Final result - Client 115 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 110 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 110. Length: 0 Array(0)
+ Final result - Client 110 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 105 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 105. Length: 0 Array(0)
+ Final result - Client 105 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 109 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 109. Length: 0 Array(0)
+ Final result - Client 109 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 102 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 102. Length: 0 Array(0)
+ Final result - Client 102 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 116 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 116. Length: 0 Array(0)
+ Final result - Client 116 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 114 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 114. Length: 0 Array(0)
+ Final result - Client 114 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 112 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 112. Length: 0 Array(0)
+ Final result - Client 112 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 2. Length: 10 Array(10)
+ Final result - Client 2 (OK): Found 10 entities, 10 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Rendering entities for Client 97 (Test CoA Auto-Seeding Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 97. Length: 1 Array(1)
+ Final result - Client 97 (Test CoA Auto-Seeding Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 100 (UI Verification Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 100. Length: 1 Array(1)
+ Final result - Client 100 (UI Verification Test Client): Found 1 entities, 1 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ DEBUG: Entity context in ChartOfAccounts Object
+ DEBUG: Rendering entities for Client 1 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 1. Length: 5 Array(5)
+ Final result - Client 1 (Admin Client): Found 5 entities, 5 after search filter
+ DEBUG: Rendering entities for Client 96 (COA Seed Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 96. Length: 1 Array(1)
+ Final result - Client 96 (COA Seed Test Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 117 (CoA Test Client 1743625696848). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 117. Length: 0 Array(0)
+ Final result - Client 117 (CoA Test Client 1743625696848): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 118 (CoA Test Client 1743625716144). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 118. Length: 0 Array(0)
+ Final result - Client 118 (CoA Test Client 1743625716144): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 119 (CoA Test Client 1743625758204). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 119. Length: 0 Array(0)
+ Final result - Client 119 (CoA Test Client 1743625758204): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 120 (CoA Test Client 1743625863856). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 120. Length: 0 Array(0)
+ Final result - Client 120 (CoA Test Client 1743625863856): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 121 (CoA Test Client 1743626221879). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 121. Length: 0 Array(0)
+ Final result - Client 121 (CoA Test Client 1743626221879): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 122 (CoA Test Client 1743626286544). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 122. Length: 0 Array(0)
+ Final result - Client 122 (CoA Test Client 1743626286544): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 123 (CoA Test Client 1743626413213). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 123. Length: 0 Array(0)
+ Final result - Client 123 (CoA Test Client 1743626413213): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 124 (CoA Test Client 1743626720582). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 124. Length: 0 Array(0)
+ Final result - Client 124 (CoA Test Client 1743626720582): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 125 (CoA Test Client 1743628341636). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 125. Length: 0 Array(0)
+ Final result - Client 125 (CoA Test Client 1743628341636): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 98 (COA_TEST_1743521487527). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 98. Length: 0 Array(0)
+ Final result - Client 98 (COA_TEST_1743521487527): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 99 (COA_TEST_1743521606732). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 99. Length: 0 Array(0)
+ Final result - Client 99 (COA_TEST_1743521606732): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 126 (COA_TEST_1743628379215). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 126. Length: 0 Array(0)
+ Final result - Client 126 (COA_TEST_1743628379215): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 104 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 104. Length: 0 Array(0)
+ Final result - Client 104 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 103 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 103. Length: 0 Array(0)
+ Final result - Client 103 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 101 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 101. Length: 0 Array(0)
+ Final result - Client 101 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 106 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 106. Length: 0 Array(0)
+ Final result - Client 106 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 107 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 107. Length: 0 Array(0)
+ Final result - Client 107 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 108 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 108. Length: 0 Array(0)
+ Final result - Client 108 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 111 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 111. Length: 0 Array(0)
+ Final result - Client 111 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 113 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 113. Length: 1 Array(1)
+ Final result - Client 113 (Import RE-Verify CSV): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 115 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 115. Length: 0 Array(0)
+ Final result - Client 115 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 110 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 110. Length: 0 Array(0)
+ Final result - Client 110 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 105 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 105. Length: 0 Array(0)
+ Final result - Client 105 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 109 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 109. Length: 0 Array(0)
+ Final result - Client 109 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 102 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 102. Length: 0 Array(0)
+ Final result - Client 102 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 116 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 116. Length: 0 Array(0)
+ Final result - Client 116 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 114 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 114. Length: 0 Array(0)
+ Final result - Client 114 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 112 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 112. Length: 0 Array(0)
+ Final result - Client 112 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 2. Length: 10 Array(10)
+ Final result - Client 2 (OK): Found 10 entities, 10 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Rendering entities for Client 97 (Test CoA Auto-Seeding Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 97. Length: 1 Array(1)
+ Final result - Client 97 (Test CoA Auto-Seeding Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 100 (UI Verification Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 100. Length: 1 Array(1)
+ Final result - Client 100 (UI Verification Test Client): Found 1 entities, 1 after search filter
+ DEBUG: Client selection triggered - clientId: 2
+ DEBUG: Setting client context: 2 (OK)
+ DEBUG: BEFORE client selection - Current state: Object
+ DEBUG: AFTER client selection initiated - clientId: 2, entityId: null
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 2. Length: 10 Array(10)
+ Final result - Client 2 (OK): Found 10 entities, 10 after search filter
+ DEBUG: Rendering entities for Client 1 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 1. Length: 5 Array(5)
+ Final result - Client 1 (Admin Client): Found 5 entities, 5 after search filter
+ DEBUG: Rendering entities for Client 96 (COA Seed Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 96. Length: 1 Array(1)
+ Final result - Client 96 (COA Seed Test Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 117 (CoA Test Client 1743625696848). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 117. Length: 0 Array(0)
+ Final result - Client 117 (CoA Test Client 1743625696848): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 118 (CoA Test Client 1743625716144). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 118. Length: 0 Array(0)
+ Final result - Client 118 (CoA Test Client 1743625716144): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 119 (CoA Test Client 1743625758204). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 119. Length: 0 Array(0)
+ Final result - Client 119 (CoA Test Client 1743625758204): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 120 (CoA Test Client 1743625863856). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 120. Length: 0 Array(0)
+ Final result - Client 120 (CoA Test Client 1743625863856): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 121 (CoA Test Client 1743626221879). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 121. Length: 0 Array(0)
+ Final result - Client 121 (CoA Test Client 1743626221879): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 122 (CoA Test Client 1743626286544). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 122. Length: 0 Array(0)
+ Final result - Client 122 (CoA Test Client 1743626286544): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 123 (CoA Test Client 1743626413213). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 123. Length: 0 Array(0)
+ Final result - Client 123 (CoA Test Client 1743626413213): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 124 (CoA Test Client 1743626720582). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 124. Length: 0 Array(0)
+ Final result - Client 124 (CoA Test Client 1743626720582): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 125 (CoA Test Client 1743628341636). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 125. Length: 0 Array(0)
+ Final result - Client 125 (CoA Test Client 1743628341636): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 98 (COA_TEST_1743521487527). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 98. Length: 0 Array(0)
+ Final result - Client 98 (COA_TEST_1743521487527): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 99 (COA_TEST_1743521606732). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 99. Length: 0 Array(0)
+ Final result - Client 99 (COA_TEST_1743521606732): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 126 (COA_TEST_1743628379215). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 126. Length: 0 Array(0)
+ Final result - Client 126 (COA_TEST_1743628379215): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 104 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 104. Length: 0 Array(0)
+ Final result - Client 104 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 103 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 103. Length: 0 Array(0)
+ Final result - Client 103 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 101 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 101. Length: 0 Array(0)
+ Final result - Client 101 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 106 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 106. Length: 0 Array(0)
+ Final result - Client 106 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 107 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 107. Length: 0 Array(0)
+ Final result - Client 107 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 108 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 108. Length: 0 Array(0)
+ Final result - Client 108 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 111 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 111. Length: 0 Array(0)
+ Final result - Client 111 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 113 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 113. Length: 1 Array(1)
+ Final result - Client 113 (Import RE-Verify CSV): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 115 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 115. Length: 0 Array(0)
+ Final result - Client 115 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 110 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 110. Length: 0 Array(0)
+ Final result - Client 110 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 105 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 105. Length: 0 Array(0)
+ Final result - Client 105 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 109 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 109. Length: 0 Array(0)
+ Final result - Client 109 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 102 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 102. Length: 0 Array(0)
+ Final result - Client 102 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 116 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 116. Length: 0 Array(0)
+ Final result - Client 116 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 114 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 114. Length: 0 Array(0)
+ Final result - Client 114 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 112 (Import RE-Verify Excel). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 112. Length: 0 Array(0)
+ Final result - Client 112 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Rendering entities for Client 97 (Test CoA Auto-Seeding Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 97. Length: 1 Array(1)
+ Final result - Client 97 (Test CoA Auto-Seeding Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 100 (UI Verification Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 100. Length: 1 Array(1)
+ Final result - Client 100 (UI Verification Test Client): Found 1 entities, 1 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ DEBUG: Entity context in ChartOfAccounts Object
+ DEBUG: Triggering account data refetch due to client/entity change Object
+ DEBUG: Entities data updated - received 41 entities
+ DEBUG: After entities update, found 10 entities for selected client 2
+ DEBUG: Client selection changed: 2
+ DEBUG: Refetching entities for client: 2
+ DEBUG: Checking for auto-select of entity for client 2
+ DEBUG: Found 10 entities to potentially auto-select for client 2
+ DEBUG: Auto-selecting first entity for client 2: Object
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: true
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 2. Length: 10 Array(10)
+ Final result - Client 2 (OK): Found 10 entities, 10 after search filter
+ DEBUG: Rendering entities for Client 1 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 1. Length: 5 Array(5)
+ Final result - Client 1 (Admin Client): Found 5 entities, 5 after search filter
+ DEBUG: Rendering entities for Client 96 (COA Seed Test Client). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 96. Length: 1 Array(1)
+ Final result - Client 96 (COA Seed Test Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 117 (CoA Test Client 1743625696848). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 117. Length: 0 Array(0)
+ Final result - Client 117 (CoA Test Client 1743625696848): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 118 (CoA Test Client 1743625716144). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 118. Length: 0 Array(0)
+ Final result - Client 118 (CoA Test Client 1743625716144): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 119 (CoA Test Client 1743625758204). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 119. Length: 0 Array(0)
+ Final result - Client 119 (CoA Test Client 1743625758204): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 120 (CoA Test Client 1743625863856). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 120. Length: 0 Array(0)
+ Final result - Client 120 (CoA Test Client 1743625863856): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 121 (CoA Test Client 1743626221879). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 121. Length: 0 Array(0)
+ Final result - Client 121 (CoA Test Client 1743626221879): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 122 (CoA Test Client 1743626286544). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 122. Length: 0 Array(0)
+ Final result - Client 122 (CoA Test Client 1743626286544): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 123 (CoA Test Client 1743626413213). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 123. Length: 0 Array(0)
+ Final result - Client 123 (CoA Test Client 1743626413213): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 124 (CoA Test Client 1743626720582). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 124. Length: 0 Array(0)
+ Final result - Client 124 (CoA Test Client 1743626720582): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 125 (CoA Test Client 1743628341636). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 125. Length: 0 Array(0)
+ Final result - Client 125 (CoA Test Client 1743628341636): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 98 (COA_TEST_1743521487527). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 98. Length: 0 Array(0)
+ Final result - Client 98 (COA_TEST_1743521487527): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 99 (COA_TEST_1743521606732). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 99. Length: 0 Array(0)
+ Final result - Client 99 (COA_TEST_1743521606732): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 126 (COA_TEST_1743628379215). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 126. Length: 0 Array(0)
+ Final result - Client 126 (COA_TEST_1743628379215): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 104 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 104. Length: 0 Array(0)
+ Final result - Client 104 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 103 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 103. Length: 0 Array(0)
+ Final result - Client 103 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 101 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 101. Length: 0 Array(0)
+ Final result - Client 101 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 106 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 106. Length: 0 Array(0)
+ Final result - Client 106 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 107 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 107. Length: 0 Array(0)
+ Final result - Client 107 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 108 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 108. Length: 0 Array(0)
+ Final result - Client 108 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 111 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 111. Length: 0 Array(0)
+ Final result - Client 111 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 113 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 113. Length: 1 Array(1)
+ Final result - Client 113 (Import RE-Verify CSV): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 115 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 115. Length: 0 Array(0)
+ Final result - Client 115 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 110 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+ DEBUG: Filtered list for Client 110. Length: 0 Array(0)
+ Final result - Client 110 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 105 (Import RE-Verify CSV). Expanded: false
+ DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 105. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 105 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 109 (Import RE-Verify CSV). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 109. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 109 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 102 (Import RE-Verify CSV). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 102. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 102 (Import RE-Verify CSV): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 116 (Import RE-Verify Excel). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 116. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 116 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 114 (Import RE-Verify Excel). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 114. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 114 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 112 (Import RE-Verify Excel). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 112. Length: 0 Array(0)
+GlobalContextSelector.tsx:266 Final result - Client 112 (Import RE-Verify Excel): Found 0 entities, 0 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+GlobalContextSelector.tsx:266 Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+GlobalContextSelector.tsx:266 Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 97 (Test CoA Auto-Seeding Client). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 97. Length: 1 Array(1)
+GlobalContextSelector.tsx:266 Final result - Client 97 (Test CoA Auto-Seeding Client): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:244 DEBUG: Rendering entities for Client 100 (UI Verification Test Client). Expanded: false
+GlobalContextSelector.tsx:245 DEBUG: Full entities list length: 41
+GlobalContextSelector.tsx:252 DEBUG: Filtered list for Client 100. Length: 1 Array(1)
+GlobalContextSelector.tsx:266 Final result - Client 100 (UI Verification Test Client): Found 1 entities, 1 after search filter
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:125 DEBUG: Entity context in ChartOfAccounts Object
+ChartOfAccounts.tsx:136 DEBUG: Triggering account data refetch due to client/entity change Object
+EntityContext.tsx:68 DEBUG: Client selection changed: 2
+EntityContext.tsx:78 DEBUG: Refetching entities for client: 2
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:874 DEBUG: Using existing accounts data for template, count: 74
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1342 Matching by code 1 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1140 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1150 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1440 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1450 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1490 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1800 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1810 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1820 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2140 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2150 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2160 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2170 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4210 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4220 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4230 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6000 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6210 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6220 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6230 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6310 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6320 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6500 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6700 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6800 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7000 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 9000 - match found: true
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+injected.js:8 [USO] Button detection aborting due to timeout.
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1342 Matching by code 1 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1140 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1150 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1440 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1450 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1490 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1800 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1810 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 1820 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2140 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2150 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2160 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2170 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 2430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 3400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4210 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4220 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 4230 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 5130 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6000 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6110 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6120 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6210 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6220 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6230 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6310 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6320 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6400 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6410 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6420 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6430 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6500 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6700 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 6800 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7000 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7100 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7200 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 7300 - match found: true
+ChartOfAccounts.tsx:1342 Matching by code 9000 - match found: true
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+injected.js:8 [USO] Button detection aborting due to timeout.
+ChartOfAccounts.tsx:52 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:148 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object
+ChartOfAccounts.tsx:1598 DEBUG: Rendering account code Object

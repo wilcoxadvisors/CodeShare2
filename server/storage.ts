@@ -93,6 +93,7 @@ export interface ImportSelections {
   includedCodes?: string[];
   excludedCodes?: string[];
   removeStrategy?: 'inactive' | 'delete' | 'none';
+  missingAccountActions?: Record<string, 'inactive' | 'delete'>;
 }
 
 export interface IStorage {
@@ -5386,57 +5387,44 @@ export class DatabaseStorage implements IStorage {
           // Skip if removeStrategy is 'none'
           if (removeStrategy === 'none') {
             console.log(`Skipping processing of missing accounts due to removeStrategy = none`);
-          } else if (removeStrategy === 'inactive') {
-            // Mark accounts as inactive (default behavior)
+          } else {
+            // Process each missing account based on the action specified in missingAccountActions
             for (const accountId of missingAccounts) {
-              try {
-                // Get the original account data for the log message
-                const account = existingIdMap.get(accountId);
-                
-                // Mark the account as inactive
-                await tx
-                  .update(accounts)
-                  .set({ active: false })
-                  .where(eq(accounts.id, accountId));
-                
-                console.log(`Marked account ${account?.accountCode} (${account?.name}) as inactive`);
-                result.inactive++;
-                result.count++;
-              } catch (inactiveError: any) {
-                console.error(`Error marking account ${accountId} as inactive:`, inactiveError);
-                result.errors.push(`Failed to mark account ID ${accountId} as inactive: ${inactiveError.message}`);
+              // Get the original account data for the log message
+              const account = existingIdMap.get(accountId);
+              if (!account) {
+                console.error(`Missing account ID ${accountId} not found in existingIdMap`);
+                continue;
               }
-            }
-          } else if (removeStrategy === 'delete') {
-            // Delete accounts - only if they don't have transactions or child accounts
-            for (const accountId of missingAccounts) {
+              
+              // Determine action for this account (default to removeStrategy if no specific action)
+              let action = removeStrategy;
+              
+              // Check if we have a specific action for this account in missingAccountActions
+              if (selections?.missingAccountActions && 
+                  account.accountCode in selections.missingAccountActions) {
+                action = selections.missingAccountActions[account.accountCode];
+                console.log(`Using specified action '${action}' for account ${account.accountCode}`);
+              } else {
+                console.log(`Using default action '${action}' for account ${account.accountCode}`);
+              }
+              
               try {
-                // Get the original account data for the log message
-                const account = existingIdMap.get(accountId);
-                
-                // Check if the account has transactions - don't delete if it does
-                if (accountsWithTransactions.has(accountId)) {
-                  console.log(`Cannot delete account ${account?.accountCode} (${account?.name}) as it has transactions - marking inactive instead`);
-                  result.warnings.push(`Account ${account?.accountCode} (${account?.name}) has transactions and cannot be deleted - marked inactive instead`);
-                  
-                  // Mark as inactive instead
+                if (action === 'inactive') {
+                  // Mark the account as inactive
                   await tx
                     .update(accounts)
                     .set({ active: false })
                     .where(eq(accounts.id, accountId));
-                    
-                  result.inactive++;
-                } else {
-                  // Check if this account has any child accounts
-                  const childAccounts = await tx
-                    .select({ count: count() })
-                    .from(accounts)
-                    .where(eq(accounts.parentId, accountId));
                   
-                  // If there are child accounts, don't allow deletion
-                  if (childAccounts[0]?.count > 0) {
-                    console.log(`Cannot delete account ${account?.accountCode} (${account?.name}) as it has child accounts - marking inactive instead`);
-                    result.warnings.push(`Account ${account?.accountCode} (${account?.name}) has child accounts and cannot be deleted - marked inactive instead`);
+                  console.log(`Marked account ${account.accountCode} (${account.name}) as inactive`);
+                  result.inactive++;
+                  result.count++;
+                } else if (action === 'delete') {
+                  // Check if the account has transactions - don't delete if it does
+                  if (accountsWithTransactions.has(accountId)) {
+                    console.log(`Cannot delete account ${account.accountCode} (${account.name}) as it has transactions - marking inactive instead`);
+                    result.warnings.push(`Account ${account.accountCode} (${account.name}) has transactions and cannot be deleted - marked inactive instead`);
                     
                     // Mark as inactive instead
                     await tx
@@ -5446,20 +5434,39 @@ export class DatabaseStorage implements IStorage {
                       
                     result.inactive++;
                   } else {
-                    // Delete the account - it has no transactions and no child accounts
-                    await tx
-                      .delete(accounts)
-                      .where(eq(accounts.id, accountId));
+                    // Check if this account has any child accounts
+                    const childAccounts = await tx
+                      .select({ count: count() })
+                      .from(accounts)
+                      .where(eq(accounts.parentId, accountId));
                     
-                    console.log(`Deleted account ${account?.accountCode} (${account?.name})`);
-                    result.deleted++; // Track accounts that were actually deleted
+                    // If there are child accounts, don't allow deletion
+                    if (childAccounts[0]?.count > 0) {
+                      console.log(`Cannot delete account ${account.accountCode} (${account.name}) as it has child accounts - marking inactive instead`);
+                      result.warnings.push(`Account ${account.accountCode} (${account.name}) has child accounts and cannot be deleted - marked inactive instead`);
+                      
+                      // Mark as inactive instead
+                      await tx
+                        .update(accounts)
+                        .set({ active: false })
+                        .where(eq(accounts.id, accountId));
+                        
+                      result.inactive++;
+                    } else {
+                      // Delete the account - it has no transactions and no child accounts
+                      await tx
+                        .delete(accounts)
+                        .where(eq(accounts.id, accountId));
+                      
+                      console.log(`Deleted account ${account.accountCode} (${account.name})`);
+                      result.deleted++; // Track accounts that were actually deleted
+                    }
                   }
+                  result.count++;
                 }
-                
-                result.count++;
-              } catch (deleteError: any) {
-                console.error(`Error processing account ${accountId} for deletion:`, deleteError);
-                result.errors.push(`Failed to process account ID ${accountId} for deletion: ${deleteError.message}`);
+              } catch (processError) {
+                console.error(`Error processing missing account ${account.accountCode}:`, processError);
+                result.errors.push(`Failed to process missing account ${account.accountCode}: ${(processError as Error).message || 'Unknown error'}`);
               }
             }
           }
