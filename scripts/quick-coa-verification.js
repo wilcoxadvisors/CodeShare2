@@ -2,7 +2,8 @@
  * Quick Chart of Accounts Verification Script
  * 
  * This script verifies that the Chart of Accounts functionality correctly
- * handles the 'accountCode' field and new reporting fields.
+ * handles the 'accountCode' field. It also verifies that reporting fields have been
+ * successfully removed from the accounts table as part of the schema migration.
  */
 
 import axios from 'axios';
@@ -110,25 +111,30 @@ function verifyAccountCodeField(accounts) {
 }
 
 /**
- * Verify at least some accounts have reporting fields
+ * Verify accounts don't have reporting fields (after migration)
  */
 function verifyReportingFields(accounts) {
   try {
-    // Check if any accounts have the new reporting fields
+    // After migration, none of the accounts should have reporting fields
     const hasReportingFields = accounts.some(account => 
       account.fsliBucket !== undefined || 
       account.internalReportingBucket !== undefined || 
       account.item !== undefined
     );
     
-    if (hasReportingFields) {
-      logResult('Verify Reporting Fields', true, 'Some accounts have reporting fields');
+    if (!hasReportingFields) {
+      logResult('Verify Reporting Fields Removed', true, 'No accounts have reporting fields (as expected after migration)');
       return true;
     } else {
-      throw new Error('No accounts have any reporting fields');
+      const accountsWithFields = accounts.filter(account => 
+        account.fsliBucket !== undefined || 
+        account.internalReportingBucket !== undefined || 
+        account.item !== undefined
+      ).map(a => a.id).join(', ');
+      throw new Error(`Accounts still have reporting fields: ${accountsWithFields}`);
     }
   } catch (error) {
-    logResult('Verify Reporting Fields', false, error.message);
+    logResult('Verify Reporting Fields Removed', false, error.message);
     return false;
   }
 }

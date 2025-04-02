@@ -1,0 +1,15 @@
+AccountCode,Name,Type,Subtype,Description,ParentCode,IsSubledger,SubledgerType
+10000,ASSETS,ASSET,Current,Assets Category,,FALSE,
+10100,Cash and Cash Equivalents,ASSET,Current,Cash and equivalents,10000,FALSE,
+10101,Checking Account,ASSET,Current,Main checking account,10100,FALSE,
+10102,Savings Account,ASSET,Current,Interest-bearing savings,10100,FALSE,
+10200,Accounts Receivable,ASSET,Current,Money owed by customers,10000,TRUE,CUSTOMER
+20000,LIABILITIES,LIABILITY,Current,Liabilities Category,,FALSE,
+20100,Accounts Payable,LIABILITY,Current,Money owed to suppliers,20000,TRUE,VENDOR
+30000,EQUITY,EQUITY,Retained Earnings,Equity Category,,FALSE,
+40000,REVENUE,REVENUE,Sales,Revenue Category,,FALSE,
+40100,Services Revenue,REVENUE,Sales,Services income,40000,FALSE,
+50000,EXPENSES,EXPENSE,Operating,Expenses Category,,FALSE,
+50100,Rent Expense,EXPENSE,Operating,Office rent costs,50000,FALSE,
+50200,Utilities Expense,EXPENSE,Operating,Utility costs,50000,FALSE,
+50300,Salaries Expense,EXPENSE,Operating,Employee salaries,50000,FALSE,
