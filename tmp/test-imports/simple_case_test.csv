@@ -1,3 +1,0 @@
-CODE,Name,Type,subtype,issubledger,ParentCODE,description,active
-111222,Case Test Account,asset,Testing,No,,This is a test account,Yes
-111223,Case Test Sub Account,asset,Testing,No,111222,This is a test sub account,Yes

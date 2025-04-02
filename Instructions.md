@@ -23,8 +23,8 @@
 * **Phase 1 (Stabilization & Migration):** COMPLETE. Database migration (junction table for consolidation groups) is finished. Backend logic updated. Code cleanup done.
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
-* **Phase 3 (Core Accounting Features):** IN PROGRESS. Focus has shifted to implementing the Chart of Accounts with client-specific organization and hierarchical structure.
-    * **Current Update:** Chart of Accounts implementation is complete, including backend and frontend hierarchy management, import/export functionality (CSV and Excel), and data integrity protections for parent-child relationships. Fixed a key issue where parent accounts with child accounts were being properly marked inactive instead of deleted during imports. Enhanced the import workflow by simplifying the UI, removing unnecessary options, and fixing cancel button functionality to ensure smoother import operations. Improved case-insensitive matching of account codes during imports to correctly identify missing and modified accounts.
+* **Phase 3 (Core Accounting Features):** IN PROGRESS.
+    * **Current Update:** Task B.1 (Chart of Accounts) is now **COMPLETE**. This includes implementation of client-specific hierarchical CoA, backend/frontend management, `code` -> `accountCode` refactoring, import/export functionality (CSV/Excel) with fixes for update logic and UI improvements, resolution of display bugs, and successful verification. Schema refactoring was performed to move reporting fields (`fsliBucket`, `internalReportingBucket`, `item`) from `accounts` to `journalEntryLines`. Focus now shifts to implementing Journal Entry functionality (Task B.2).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -40,27 +40,22 @@
 
 **Phase B: Core Accounting Module (IN PROGRESS)**
 
-* **(Task B.1)** **Customizable Chart of Accounts (CoA):**
+* **(Task B.1)** **Customizable Chart of Accounts (CoA): COMPLETE**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`) - Complete with client-specific account linking
     * ✅ Implement backend CRUD API (`server/accountRoutes.ts`) - Complete with `/accounts/tree` endpoint for hierarchy
     * ✅ Basic CRUD API Testing - Complete with client-specific tests
     * ✅ Backend Hierarchy Implementation - Complete with parent-child relationship
     * ✅ Single Header Context Selector - Complete with combined client/entity dropdown
     * ✅ Frontend Hierarchy UI - Completed parent selection form and hierarchical tree display
-    * ✅ CoA Import/Export functionality - Implemented CSV and Excel import/export capabilities
-    * ✅ Fixed CoA Import Deletion Logic - Added proper handling of parent-child relationships during import (parent accounts with children are now marked inactive instead of attempted deletion)
+    * ✅ CoA Import/Export functionality - Implemented and verified CSV/Excel import/export, including fixes for update logic and `accountCode` refactoring
+    * ✅ Fixed CoA Import Deletion Logic - Proper handling of parent-child relationships (inactive marking)
     * ✅ Enhanced CoA Import UI - Simplified the import workflow by removing unnecessary options and fixing the cancel functionality
-    * ✅ CoA Automated Testing - Created comprehensive test suite for CSV/Excel import/export operations, verified all operations functional
-    * **CoA Schema Update:**
-        * Ensure consistency in account code storage (`accountCode`).
-        * Maintain `parentId` for explicit hierarchy.
-        * Add fields for additional categorization and reporting: `fsliBucket`, `internalReportingBucket`, and `item`.
+    * ✅ CoA Automated Testing - Comprehensive test suite created and verified for import/export API
 * **(Task B.2)** **General Ledger (GL) and Journal Entries (JE):**
-
-    * 📝 Next: Design/Finalize JE schema (`shared/schema.ts`, linking to CoA).
-    * 📝 Next: Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
-    * 📝 Next: Build frontend UI for manual JE creation (`ManualJournalEntry.tsx`).
-    * 📝 Next: Implement logic for processing batch JE uploads (from parsed CSV/JSON provided by user).
+    * ✅ Design/Finalize JE schema (`shared/schema.ts`, linking to CoA) - Completed during schema refactor. Includes `fsliBucket`, `internalReportingBucket`, `item` fields moved from `accounts`.
+    * 📝 **Next:** Implement backend CRUD API (`server/journalEntryRoutes.ts`), including validation (debits=credits).
+    * 📝 Build frontend UI for manual JE creation (`ManualJournalEntry.tsx`).
+    * 📝 Implement logic for processing batch JE uploads (from parsed CSV/JSON provided by user).
     * **(AI Link - Future):** Consider hooks for "JE learning" - suggesting entries based on historical data (requires AI module).
 * **(Task B.3)** **Accounting Modules:**
     * Implement core accounting modules: Accounts Receivable (AR), Accounts Payable (AP), Debt/Notes Payable, Inventory Management, Fixed Assets, Lease Accounting (including ASC 842 compliance), and Prepaid Expenses.
@@ -113,7 +108,7 @@
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Ensure the Chart of Accounts is solid, adaptable, and customizable before proceeding with Journal Entries.
+* **Prioritize:** Focus on implementing the Journal Entries backend API and storage logic (Task B.2), now that the Chart of Accounts implementation is complete and verified.
 * **Maintain Structure:** Keep the client-specific accounting design consistent across features.
 * **Test Thoroughly:** Ensure all functionality works with the new combined client-entity context selector.
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
