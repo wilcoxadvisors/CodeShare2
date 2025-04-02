@@ -108,7 +108,7 @@ export default function MobileContextSelector({ clients, entities, onSelect }: M
   return (
     <Command className="rounded-lg border shadow-md">
       <CommandInput 
-        placeholder="Search clients and entities..." 
+        placeholder="Search clients..." 
         value={searchQuery}
         onValueChange={setSearchQuery}
       />

@@ -241,14 +241,14 @@ function Header() {
           </div>
           
           <div className="flex items-center">
-            {/* GlobalContextSelector for client and entity selection - desktop only */}
+            {/* Client Selector for client and entity selection - desktop only */}
             {!hideSelectorRoutes.includes(location) && (
               <div className="relative mr-3 hidden md:block">
                 <GlobalContextSelector clients={clients} entities={useEntity().entities} />
               </div>
             )}
             
-            {/* Mobile-friendly context button with indicator - visible on mobile and small screens */}
+            {/* Mobile-friendly client selector button - visible on mobile and small screens */}
             {!hideSelectorRoutes.includes(location) && (
               <div className="flex md:hidden items-center mr-3">
                 <Button 
@@ -258,12 +258,12 @@ function Header() {
                   aria-label="Select client and entity"
                 >
                   <Building className="h-4 w-4 mr-1.5" />
-                  <span className="truncate max-w-[120px]">
+                  <span className="truncate max-w-[150px]">
                     {currentEntity ? 
                       `${currentEntity.name}` : 
                       selectedClientId ? 
                         (clients.find(c => c.id === selectedClientId)?.name || 'Select Client') : 
-                        'Select Context'}
+                        'Select Client'}
                   </span>
                 </Button>
                 
@@ -271,7 +271,7 @@ function Header() {
                 <Drawer open={mobileContextOpen} onOpenChange={setMobileContextOpen}>
                   <DrawerContent className="h-[90vh] max-h-[90vh]">
                     <DrawerHeader className="border-b border-gray-200">
-                      <DrawerTitle>Select Client & Entity</DrawerTitle>
+                      <DrawerTitle>Select Client</DrawerTitle>
                       <DrawerClose className="absolute right-4 top-4">
                         <Button variant="ghost" size="sm">
                           <X className="h-4 w-4" />
@@ -314,10 +314,10 @@ function Header() {
       {/* Mobile menu, show/hide based on menu state */}
       {mobileMenuOpen && (
         <div className="md:hidden">
-          {/* Client/Entity context selector for mobile */}
+          {/* Client/Entity selector for mobile */}
           {!hideSelectorRoutes.includes(location) && (
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client & Entity</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client</h2>
               <GlobalContextSelector 
                 clients={clients} 
                 entities={useEntity().entities} 

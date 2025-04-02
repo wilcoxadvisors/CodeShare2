@@ -58,7 +58,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     : undefined;
   
   // Determine the button text
-  let buttonText = "Select Context...";
+  let buttonText = "Select Client...";
   if (hasEntityContext && currentEntity) {
     if (selectedClient) {
       buttonText = `Entity: ${currentEntity.name} (${selectedClient.name})`;
@@ -219,8 +219,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          aria-label="Select context"
-          className="w-[250px] justify-between"
+          aria-label="Select client"
+          className="w-[280px] justify-between text-ellipsis overflow-hidden"
         >
           {buttonText}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -232,7 +232,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       >
         <Command>
           <CommandInput 
-            placeholder="Search clients and entities..." 
+            placeholder="Search clients..." 
             value={searchQuery}
             onValueChange={setSearchQuery}
           />

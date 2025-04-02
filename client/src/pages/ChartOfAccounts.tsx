@@ -1583,7 +1583,11 @@ function ChartOfAccounts() {
           clientId: clientIdToUse
         });
         
-        return displayCode;
+        return (
+          <span className={row.active ? "" : "text-gray-400 italic"}>
+            {displayCode}
+          </span>
+        );
       } 
     },
     { 
@@ -1619,7 +1623,7 @@ function ChartOfAccounts() {
             )}
             {/* Add indentation for accounts without children */}
             {!hasChildren && <span className="w-6"></span>}
-            <span>{row.name}</span>
+            <span className={row.active ? "" : "text-gray-400 italic"}>{row.name}</span>
           </div>
         );
       }
@@ -1633,10 +1637,20 @@ function ChartOfAccounts() {
       render: (row: Record<string, any>) => row.isSubledger ? "Yes" : "No"
     },
     { 
-      header: "Active", 
+      header: "Status", 
       accessor: "active", 
       type: "boolean",
-      render: (row: Record<string, any>) => row.active ? "Yes" : "No"
+      render: (row: Record<string, any>) => (
+        <div className="flex items-center">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            row.active 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {row.active ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      )
     },
     {
       header: "Actions",
@@ -1652,15 +1666,6 @@ function ChartOfAccounts() {
           >
             <Edit className="h-4 w-4 mr-1" />
             Edit
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => handleDeleteClick(row)}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete
           </Button>
         </div>
       )
