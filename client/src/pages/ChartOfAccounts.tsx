@@ -42,10 +42,6 @@ interface AccountTreeNode {
   description: string | null;
   createdAt: string;
   children: AccountTreeNode[];
-  // The reporting fields have been moved to journal entry lines and are no longer in the accounts table
-  fsliBucket?: string | null;
-  internalReportingBucket?: string | null;
-  item?: string | null;
 }
 
 function ChartOfAccounts() {
