@@ -10,16 +10,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load cookies for authentication
-const cookiesPath = path.resolve('cookies.txt');
-console.log(`Looking for cookies at: ${cookiesPath}`);
+// First try to load from the test directory, then fallback to root
+const testDirCookiesPath = path.resolve(__dirname, 'cookies.txt');
+const rootCookiesPath = path.resolve('cookies.txt');
+console.log(`Looking for cookies at: ${testDirCookiesPath} or ${rootCookiesPath}`);
+
 let cookies = '';
 try {
-  const cookiesFile = fs.readFileSync(cookiesPath, 'utf8');
-  cookies = cookiesFile.split('\n')
-    .filter(line => line.trim() && !line.startsWith('#'))
-    .map(cookie => cookie.split('\t').pop().trim())
-    .join('; ');
+  // Try to read from test directory first
+  let cookiesFile;
+  try {
+    cookiesFile = fs.readFileSync(testDirCookiesPath, 'utf8');
+    console.log('Cookies loaded from test directory');
+  } catch (err) {
+    // Fallback to root directory
+    cookiesFile = fs.readFileSync(rootCookiesPath, 'utf8');
+    console.log('Cookies loaded from root directory');
+  }
+  
+  // Parse the cookie file
+  cookies = cookiesFile.trim();
   console.log('Cookies loaded successfully');
+  console.log('Cookie value:', cookies);
 } catch (err) {
   console.error(`Error loading cookies: ${err.message}`);
   console.error('Continuing with empty cookies, authentication might fail');
