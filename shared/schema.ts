@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -144,9 +144,6 @@ export const accounts = pgTable("accounts", {
   parentId: integer("parent_id").references((): any => accounts.id, { onDelete: 'restrict' }),
   active: boolean("active").notNull().default(true),
   description: text("description"),
-  fsliBucket: text("fsli_bucket"), // Financial Statement Line Item
-  internalReportingBucket: text("internal_reporting_bucket"),
-  item: text("item"), // For further categorization/detail
   createdAt: timestamp("created_at").defaultNow().notNull()
 }, (table) => {
   return {
@@ -184,6 +181,10 @@ export enum JournalEntryStatus {
   REJECTED = "rejected",
   VOIDED = "voided"
 }
+
+// Database enums for journal entries
+export const journalEntryStatusEnum = pgEnum('journal_entry_status', ['Draft', 'Posted', 'Reversed']);
+export const journalEntryLineTypeEnum = pgEnum('journal_entry_line_type', ['Debit', 'Credit']);
 
 // Journal Entries
 export const journalEntries = pgTable("journal_entries", {
@@ -232,6 +233,10 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
   description: text("description"),
   // Additional fields for dimensionality
   locationId: integer("location_id"), // FK to locations table (future)
+  // Reporting fields moved from accounts
+  fsliBucket: text("fsli_bucket"), // Financial Statement Line Item
+  internalReportingBucket: text("internal_reporting_bucket"),
+  item: text("item"), // For further categorization/detail
   // Existing fields that may be useful
   lineNo: integer("line_no"), // For ordering lines within a journal entry
   reference: text("reference"), // Line-specific reference (e.g., invoice number)

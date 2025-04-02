@@ -31,6 +31,11 @@ import {
 // Define interface for hierarchical account structure
 export interface AccountTreeNode extends Account {
   children: AccountTreeNode[];
+  // These fields have been moved to journal entry lines but we need them in the interface
+  // for backward compatibility during the transition
+  fsliBucket?: string | null;
+  internalReportingBucket?: string | null;
+  item?: string | null;
 }
 import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt } from "drizzle-orm";
 import { db } from "./db";
@@ -438,9 +443,6 @@ export class MemStorage implements IStorage {
         subledgerType: templateAccount.subledgerType,
         parentId,
         description: templateAccount.description,
-        fsliBucket: templateAccount.fsliBucket,
-        internalReportingBucket: templateAccount.internalReportingBucket,
-        item: templateAccount.item,
         active: true
       });
       
@@ -608,10 +610,7 @@ export class MemStorage implements IStorage {
         parentId: null,
         description: null,
         active: true,
-        createdAt: new Date(),
-        fsliBucket: null,
-        internalReportingBucket: null,
-        item: null
+        createdAt: new Date()
       };
       this.accounts.set(newAccount.id, newAccount);
     });
@@ -5788,10 +5787,7 @@ export class DatabaseStorage implements IStorage {
         isSubledger: insertAccount.isSubledger ?? false,
         subledgerType: insertAccount.subledgerType,
         parentId: insertAccount.parentId,
-        description: insertAccount.description,
-        fsliBucket: insertAccount.fsliBucket,
-        internalReportingBucket: insertAccount.internalReportingBucket,
-        item: insertAccount.item
+        description: insertAccount.description
       })
       .returning();
     return account;

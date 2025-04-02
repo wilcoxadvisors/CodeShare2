@@ -41,10 +41,11 @@ interface AccountTreeNode {
   active: boolean;
   description: string | null;
   createdAt: string;
+  children: AccountTreeNode[];
+  // The reporting fields have been moved to journal entry lines and are no longer in the accounts table
   fsliBucket?: string | null;
   internalReportingBucket?: string | null;
   item?: string | null;
-  children: AccountTreeNode[];
 }
 
 function ChartOfAccounts() {
@@ -74,9 +75,6 @@ function ChartOfAccounts() {
     active: boolean;
     description: string;
     parentId: number | null;
-    fsliBucket?: string | null;
-    internalReportingBucket?: string | null;
-    item?: string | null;
   }
 
   const [accountData, setAccountData] = useState<AccountData>({
@@ -367,10 +365,7 @@ function ChartOfAccounts() {
       subledgerType: "",
       active: true,
       description: "",
-      parentId: null,
-      fsliBucket: null,
-      internalReportingBucket: null,
-      item: null
+      parentId: null
     });
     setIsEditMode(false);
     setFormTab("basic");
@@ -388,10 +383,7 @@ function ChartOfAccounts() {
       subledgerType: account.subledgerType || "",
       active: account.active,
       description: account.description || "",
-      parentId: account.parentId,
-      fsliBucket: account.fsliBucket || null,
-      internalReportingBucket: account.internalReportingBucket || null,
-      item: account.item || null
+      parentId: account.parentId
     });
     setIsEditMode(true);
     setFormTab("basic");
@@ -680,10 +672,7 @@ function ChartOfAccounts() {
           subledgerType: submitData.subledgerType,
           active: submitData.active,
           description: submitData.description,
-          parentId: submitData.parentId,
-          fsliBucket: submitData.fsliBucket,
-          internalReportingBucket: submitData.internalReportingBucket,
-          item: submitData.item
+          parentId: submitData.parentId
         };
         updateAccount.mutate(updateData);
       } else {
@@ -792,10 +781,7 @@ function ChartOfAccounts() {
           Description: account.description || '',
           ParentId: account.parentId || '',
           ParentCode: parentAccount ? (parentAccount.accountCode || parentAccount.code) : '', // Support both formats
-          ParentName: parentAccount ? parentAccount.name : '',
-          FSLI_Bucket: account.fsliBucket || '',
-          Internal_Reporting_Bucket: account.internalReportingBucket || '',
-          Item: account.item || ''
+          ParentName: parentAccount ? parentAccount.name : ''
         };
       });
       
@@ -867,7 +853,7 @@ function ChartOfAccounts() {
       // Create template headers matching the export format
       const templateHeaders = [
         "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
-        "ParentId", "ParentCode", "ParentName", "FSLI_Bucket", "Internal_Reporting_Bucket", "Item"
+        "ParentId", "ParentCode", "ParentName"
       ];
       
       // Flatten the accounts tree to get all accounts
@@ -906,10 +892,7 @@ function ChartOfAccounts() {
             Description: account.description || "",
             ParentId: account.parentId ? String(account.parentId) : "",
             ParentCode: parent ? (parent.accountCode || parent.code) : "", // Support both formats
-            ParentName: parent ? parent.name : "",
-            FSLI_Bucket: account.fsliBucket || "",
-            Internal_Reporting_Bucket: account.internalReportingBucket || "",
-            Item: account.item || ""
+            ParentName: parent ? parent.name : ""
           };
         });
       } else {
@@ -930,10 +913,7 @@ function ChartOfAccounts() {
             Description: "All company assets", 
             ParentId: "",
             ParentCode: "",
-            ParentName: "",
-            FSLI_Bucket: "Assets",
-            Internal_Reporting_Bucket: "Current Assets",
-            Item: "Cash and Cash Equivalents"
+            ParentName: ""
           },
           { 
             tempId: 2001,
@@ -2011,47 +1991,7 @@ function ChartOfAccounts() {
                     </div>
                   )}
                   
-                  <div className="space-y-2 mt-2">
-                    <Label htmlFor="fsliBucket">FSLI Bucket</Label>
-                    <Input
-                      id="fsliBucket"
-                      name="fsliBucket"
-                      value={accountData.fsliBucket || ""}
-                      onChange={handleChange}
-                      placeholder="e.g., Assets, Liabilities, Equity"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Financial Statement Line Item category for reporting purposes.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="internalReportingBucket">Internal Reporting Bucket</Label>
-                    <Input
-                      id="internalReportingBucket"
-                      name="internalReportingBucket"
-                      value={accountData.internalReportingBucket || ""}
-                      onChange={handleChange}
-                      placeholder="e.g., Current Assets, Long-term Liabilities"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Used for grouping accounts in internal reports.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="item">Item</Label>
-                    <Input
-                      id="item"
-                      name="item"
-                      value={accountData.item || ""}
-                      onChange={handleChange}
-                      placeholder="e.g., Cash, Inventory, Accounts Receivable"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Specific item category for detailed reporting.
-                    </p>
-                  </div>
+
                   
                   <div className="flex items-center space-x-2 pt-4">
                     <Checkbox

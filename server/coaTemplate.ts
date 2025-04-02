@@ -2,6 +2,8 @@ import { AccountType } from '../shared/schema';
 
 /**
  * Interface for Chart of Accounts template entries
+ * Note: The reporting fields (fsliBucket, internalReportingBucket, item) are kept in the template
+ * but are now stored in journal entry lines, not in the accounts table
  */
 export interface CoATemplateEntry {
   accountCode: string;
@@ -12,9 +14,9 @@ export interface CoATemplateEntry {
   isSubledger?: boolean;
   subledgerType?: string;
   description?: string;
-  fsliBucket?: string;
-  internalReportingBucket?: string;
-  item?: string;
+  fsliBucket?: string;         // Now stored in journal entry lines
+  internalReportingBucket?: string;  // Now stored in journal entry lines
+  item?: string;               // Now stored in journal entry lines
 }
 
 /**

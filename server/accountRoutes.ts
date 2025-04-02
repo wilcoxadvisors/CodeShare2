@@ -109,9 +109,6 @@ export function registerAccountRoutes(app: Express) {
           SubledgerType: account.subledgerType || '',
           Active: account.active ? 'Yes' : 'No',
           Description: account.description || '',
-          FsliBucket: account.fsliBucket || '',
-          InternalReportingBucket: account.internalReportingBucket || '',
-          Item: account.item || '',
           ParentId: account.parentId || '',
           ParentCode: parentAccount ? parentAccount.accountCode : '',
           ParentName: parentAccount ? parentAccount.name : ''
