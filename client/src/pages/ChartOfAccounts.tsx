@@ -2301,11 +2301,42 @@ function ChartOfAccounts() {
             
             {changesPreview.additions.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-base font-medium text-gray-900 mb-2">New Accounts ({changesPreview.additions.length})</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-medium text-gray-900">New Accounts ({changesPreview.additions.length})</h3>
+                  <div className="flex items-center">
+                    <Checkbox 
+                      id="select-all-additions"
+                      checked={changesPreview.additions.every(account => 
+                        selectedAccounts.includes(account.accountCode || account.code)
+                      )}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Add all addition account codes that aren't already in the selection
+                          const newCodes = changesPreview.additions
+                            .map(a => a.accountCode || a.code)
+                            .filter(code => !selectedAccounts.includes(code));
+                          
+                          setSelectedAccounts(prev => [...prev, ...newCodes]);
+                        } else {
+                          // Remove all addition account codes from the selection
+                          const additionCodes = changesPreview.additions.map(a => a.accountCode || a.code);
+                          setSelectedAccounts(prev => prev.filter(code => !additionCodes.includes(code)));
+                        }
+                      }}
+                      className="mr-2 h-4 w-4"
+                    />
+                    <Label htmlFor="select-all-additions" className="text-sm font-medium text-gray-700">
+                      Select All
+                    </Label>
+                  </div>
+                </div>
                 <div className="border rounded-md overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          Approve
+                        </th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -2314,8 +2345,22 @@ function ChartOfAccounts() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {changesPreview.additions.slice(0, 5).map((account, index) => (
-                        <tr key={index} className="bg-green-50">
+                      {changesPreview.additions.map((account, index) => (
+                        <tr key={index} className="bg-green-50 hover:bg-green-100 transition-colors">
+                          <td className="px-3 py-2 text-sm text-center">
+                            <Checkbox 
+                              id={`add-${account.accountCode || account.code}`}
+                              checked={selectedAccounts.includes(account.accountCode || account.code)}
+                              onCheckedChange={(checked) => {
+                                const accountId = account.accountCode || account.code;
+                                if (checked) {
+                                  setSelectedAccounts(prev => [...prev, accountId]);
+                                } else {
+                                  setSelectedAccounts(prev => prev.filter(code => code !== accountId));
+                                }
+                              }}
+                            />
+                          </td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.accountCode || account.code}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.type}</td>
@@ -2323,13 +2368,6 @@ function ChartOfAccounts() {
                           <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.active ? 'Yes' : 'No'}</td>
                         </tr>
                       ))}
-                      {changesPreview.additions.length > 5 && (
-                        <tr>
-                          <td colSpan={5} className="px-3 py-2 text-sm text-gray-500 text-center">
-                            And {changesPreview.additions.length - 5} more new accounts...
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
@@ -2338,25 +2376,83 @@ function ChartOfAccounts() {
             
             {changesPreview.modifications.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-base font-medium text-gray-900 mb-2">Modified Accounts ({changesPreview.modifications.length})</h3>
-                <div className="space-y-4">
-                  {changesPreview.modifications.slice(0, 5).map((mod, index) => (
-                    <div key={index} className="border rounded-md overflow-hidden bg-yellow-50 p-3">
-                      <h4 className="font-medium text-gray-900 text-sm">
-                        {mod.original.code} - {mod.original.name}
-                      </h4>
-                      <ul className="mt-2 text-sm text-gray-700 space-y-1 list-disc pl-5">
-                        {mod.changes.map((change, i) => (
-                          <li key={i}>{change}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                  {changesPreview.modifications.length > 5 && (
-                    <div className="text-sm text-gray-500 text-center py-2">
-                      And {changesPreview.modifications.length - 5} more modifications...
-                    </div>
-                  )}
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-medium text-gray-900">Modified Accounts ({changesPreview.modifications.length})</h3>
+                  <div className="flex items-center">
+                    <Checkbox 
+                      id="select-all-modifications"
+                      checked={changesPreview.modifications.every(mod => 
+                        selectedAccounts.includes(mod.original.accountCode || mod.original.code)
+                      )}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Add all modification account codes that aren't already in the selection
+                          const newCodes = changesPreview.modifications
+                            .map(m => m.original.accountCode || m.original.code)
+                            .filter(code => !selectedAccounts.includes(code));
+                          
+                          setSelectedAccounts(prev => [...prev, ...newCodes]);
+                        } else {
+                          // Remove all modification account codes from the selection
+                          const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
+                          setSelectedAccounts(prev => prev.filter(code => !modCodes.includes(code)));
+                        }
+                      }}
+                      className="mr-2 h-4 w-4"
+                    />
+                    <Label htmlFor="select-all-modifications" className="text-sm font-medium text-gray-700">
+                      Select All
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          Approve
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Account
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Changes
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {changesPreview.modifications.map((mod, index) => (
+                        <tr key={index} className="bg-yellow-50 hover:bg-yellow-100 transition-colors">
+                          <td className="px-3 py-2 text-sm text-center">
+                            <Checkbox 
+                              id={`mod-${mod.original.accountCode || mod.original.code}`}
+                              checked={selectedAccounts.includes(mod.original.accountCode || mod.original.code)}
+                              onCheckedChange={(checked) => {
+                                const accountId = mod.original.accountCode || mod.original.code;
+                                if (checked) {
+                                  setSelectedAccounts(prev => [...prev, accountId]);
+                                } else {
+                                  setSelectedAccounts(prev => prev.filter(code => code !== accountId));
+                                }
+                              }}
+                            />
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                            <div className="font-medium">{mod.original.accountCode || mod.original.code} - {mod.original.name}</div>
+                            <div className="text-gray-500 text-xs">{mod.original.type}</div>
+                          </td>
+                          <td className="px-3 py-2 text-sm">
+                            <ul className="text-gray-700 space-y-1 list-disc pl-5">
+                              {mod.changes.map((change, i) => (
+                                <li key={i}>{change}</li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -2465,75 +2561,26 @@ function ChartOfAccounts() {
                   </div>
                 </div>
                 
-                {/* Account Selection section for 'selected' strategy */}
+                {/* Account selection statistics */}
                 {updateStrategy === 'selected' && (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-gray-700 block mb-2">Select Accounts to Update</label>
-                    
-                    <div className="max-h-60 overflow-y-auto border rounded-md p-2 bg-white">
-                      {/* New accounts selection */}
-                      {changesPreview.additions.length > 0 && (
-                        <div className="mb-3">
-                          <h4 className="text-sm font-medium text-gray-900 mb-1">New Accounts</h4>
-                          <div className="space-y-1 pl-2">
-                            {changesPreview.additions.map((account, idx) => (
-                              <div key={`add-${idx}`} className="flex items-center">
-                                <input
-                                  id={`add-${account.accountCode || account.code}`}
-                                  type="checkbox"
-                                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  checked={selectedAccounts.includes(account.accountCode || account.code)}
-                                  onChange={(e) => {
-                                    const accountId = account.accountCode || account.code;
-                                    if (e.target.checked) {
-                                      setSelectedAccounts(prev => [...prev, accountId]);
-                                    } else {
-                                      setSelectedAccounts(prev => prev.filter(code => code !== accountId));
-                                    }
-                                  }}
-                                />
-                                <label htmlFor={`add-${account.accountCode || account.code}`} className="ml-2 block text-sm text-gray-700">
-                                  {account.accountCode || account.code} - {account.name}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Modified accounts selection */}
-                      {changesPreview.modifications.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-1">Modified Accounts</h4>
-                          <div className="space-y-1 pl-2">
-                            {changesPreview.modifications.map((mod, idx) => (
-                              <div key={`mod-${idx}`} className="flex items-center">
-                                <input
-                                  id={`mod-${mod.original.accountCode || mod.original.code}`}
-                                  type="checkbox"
-                                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  checked={selectedAccounts.includes(mod.original.accountCode || mod.original.code)}
-                                  onChange={(e) => {
-                                    const accountId = mod.original.accountCode || mod.original.code;
-                                    if (e.target.checked) {
-                                      setSelectedAccounts(prev => [...prev, accountId]);
-                                    } else {
-                                      setSelectedAccounts(prev => prev.filter(code => code !== accountId));
-                                    }
-                                  }}
-                                />
-                                <label htmlFor={`mod-${mod.original.accountCode || mod.original.code}`} className="ml-2 block text-sm text-gray-700">
-                                  {mod.original.accountCode || mod.original.code} - {mod.original.name}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div className="flex items-center">
+                      <Info className="h-5 w-5 text-blue-600 mr-2" />
+                      <div className="text-sm text-blue-700">
+                        <span className="font-medium">{selectedAccounts.length}</span> accounts selected for update 
+                        (<span className="font-medium">{
+                          changesPreview.additions.filter(a => 
+                            selectedAccounts.includes(a.accountCode || a.code)
+                          ).length
+                        }</span> new, <span className="font-medium">{
+                          changesPreview.modifications.filter(m => 
+                            selectedAccounts.includes(m.original.accountCode || m.original.code)
+                          ).length
+                        }</span> modified)
+                      </div>
                     </div>
                     
-                    {/* Selection controls */}
-                    <div className="mt-2 flex justify-end space-x-2">
+                    <div className="flex mt-2 space-x-2 justify-end">
                       <Button
                         variant="outline"
                         size="sm"
@@ -2554,10 +2601,6 @@ function ChartOfAccounts() {
                       >
                         Clear Selection
                       </Button>
-                    </div>
-                    
-                    <div className="mt-1 text-sm text-gray-500">
-                      {selectedAccounts.length} account{selectedAccounts.length !== 1 ? 's' : ''} selected for update
                     </div>
                   </div>
                 )}
