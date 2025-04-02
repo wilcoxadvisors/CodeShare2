@@ -1,15 +1,11 @@
-AccountCode,Name,Type,Subtype,Description,ParentCode,IsSubledger,SubledgerType
-10000,ASSETS,ASSET,Current,Assets Category,,FALSE,
-10100,Cash and Cash Equivalents,ASSET,Current,Cash and equivalents,10000,FALSE,
-10101,Checking Account,ASSET,Current,Main checking account,10100,FALSE,
-10102,Savings Account,ASSET,Current,Interest-bearing savings,10100,FALSE,
-10200,Accounts Receivable,ASSET,Current,Money owed by customers,10000,TRUE,CUSTOMER
-20000,LIABILITIES,LIABILITY,Current,Liabilities Category,,FALSE,
-20100,Accounts Payable,LIABILITY,Current,Money owed to suppliers,20000,TRUE,VENDOR
-30000,EQUITY,EQUITY,Retained Earnings,Equity Category,,FALSE,
-40000,REVENUE,REVENUE,Sales,Revenue Category,,FALSE,
-40100,Services Revenue,REVENUE,Sales,Services income,40000,FALSE,
-50000,EXPENSES,EXPENSE,Operating,Expenses Category,,FALSE,
-50100,Rent Expense,EXPENSE,Operating,Office rent costs,50000,FALSE,
-50200,Utilities Expense,EXPENSE,Operating,Utility costs,50000,FALSE,
-50300,Salaries Expense,EXPENSE,Operating,Employee salaries,50000,FALSE,
+Name,AccountCode,Type,Subtype,Description,Active,IsSubledger,SubledgerType,ParentId
+"Cash and Cash Equivalents",10100,ASSET,Current,"Cash and cash equivalent accounts",TRUE,FALSE,,
+"Checking Account",10101,ASSET,Current,"Primary checking account",TRUE,FALSE,,10100
+"Savings Account",10102,ASSET,Current,"Business savings account",TRUE,FALSE,,10100
+"Accounts Receivable",10200,ASSET,Current,"Amounts owed by customers",TRUE,TRUE,Customer,
+"Long-term Investments",10500,ASSET,NonCurrent,"Investment accounts with terms > 1 year",TRUE,FALSE,,
+"Accounts Payable",20100,LIABILITY,Current,"Amounts owed to vendors",TRUE,TRUE,Vendor,
+"Sales Revenue",40100,REVENUE,Operating,"Income from primary business operations",TRUE,FALSE,,
+"Direct Expenses",50100,EXPENSE,Operating,"Expenses directly tied to sales",TRUE,FALSE,,
+"Indirect Expenses",50200,EXPENSE,Operating,"Overhead expenses",TRUE,FALSE,,
+"Utilities",50300,EXPENSE,Operating,"Updated utility expenses for facilities",TRUE,FALSE,,50200

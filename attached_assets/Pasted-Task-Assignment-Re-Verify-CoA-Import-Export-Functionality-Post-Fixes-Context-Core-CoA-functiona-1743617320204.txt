@@ -1,0 +1,58 @@
+Task Assignment: Re-Verify CoA Import/Export Functionality (Post-Fixes)
+
+Context:
+Core CoA functionality (Task B.1) is complete. Fixes have been implemented for the import logic (handling updates correctly based on accountCode/ID instead of creating duplicates) and export logic (correct headers). We now need to re-verify the end-to-end Import/Export functionality.
+
+Goal:
+Verify that the Chart of Accounts Import (CSV/Excel) correctly processes files (adds, updates existing accounts properly, inactivates) using accountCode and that Export generates files containing the correct AccountCode header and data (without the removed reporting fields).
+
+Instructions:
+
+Part 1: Use Updated Test Files
+
+Action: Confirm Test Files:
+Use the updated test files created previously (which exclude the removed reporting fields):
+test/data/coa-import/updated-tests/test-accounts-import-updated.csv
+test/data/coa-import/updated-tests/test-accounts-import-updated.xlsx
+Confirm: Ensure these files contain rows designed to test adding accounts, updating existing accounts (with changed names/descriptions/etc. but matching accountCode or ID), and omitting accounts (for inactivation).
+Part 2: Verify CoA Import via API/Script (Focus on Updates)
+
+Action: Ensure Application is Running & Authenticated:
+
+Verify the application is running (npm run dev).
+Ensure valid authentication cookies are available (regenerate using scripts/login.js if needed).
+Action: Test CSV Import via API:
+
+Create a new test client via API (e.g., "Import RE-Verify CSV") for a clean state. Record its ID.
+Seed this client with a minimal, known set of accounts before the import, ensuring some accountCodes will match the update rows in your test file. (You might need a small script or manual seeding via API/DB for this initial state).
+Execute an API call (curl or test script) to import the updated test CSV file (test-accounts-import-updated.csv) for the new test client ID.
+Observe & Report: Did the import API call complete successfully? Record the response message (counts of added/updated/inactive).
+Verify Data (Crucial): Make API calls (GET /api/clients/:clientId/accounts) to fetch the accounts.
+Verify Updates: Confirm accounts intended for update were actually updated (check changed fields) and not duplicated.
+Verify adds and inactivations occurred correctly.
+Action: Test Excel Import via API:
+
+Create another new test client (e.g., "Import RE-Verify Excel"). Record its ID.
+Seed this client similarly to Step 3.
+Repeat Step 3 using the updated test Excel file (test-accounts-import-updated.xlsx). Verify updates, adds, and inactivations.
+Part 3: Re-Verify CoA Export via API
+
+Action: Test CSV Export via API:
+
+Use a client with a known CoA state (e.g., one of the clients just used for import testing after the import finished).
+Execute an API call (curl or script) to export the CoA to CSV (GET /api/clients/:clientId/accounts/export?format=csv). Save the output.
+Analyze Exported File: Confirm AccountCode header, correct data, and absence of removed reporting fields.
+Action: Test Excel Export via API:
+
+Repeat Step 5 using the Excel export format (?format=excel).
+Verification:
+
+Confirm CSV and Excel imports successfully update existing accounts (based on accountCode or ID) without creating duplicates, correctly handle adds, and correctly mark omitted accounts as inactive.
+Confirm CSV and Excel exports generate files with the correct AccountCode header and data, and do not include the removed reporting fields.
+Reporting:
+
+Report PASS/FAIL for CSV Import verification (Step 3), explicitly confirming updates worked correctly. Detail API responses and data verification results.
+Report PASS/FAIL for Excel Import verification (Step 4), explicitly confirming updates worked correctly. Detail API responses and data verification results.
+Report PASS/FAIL for CSV Export verification (Step 5). Describe the exported file's structure.
+Report PASS/FAIL for Excel Export verification (Step 6). Describe the exported file's structure.
+If all checks pass, confirm that CoA Import/Export functionality, including the update logic fix, is working correctly.
