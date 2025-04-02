@@ -1317,12 +1317,28 @@ function ChartOfAccounts() {
     
     // Process each imported account
     importData.forEach(importedAccount => {
-      // Try to find matching account by accountCode (primary identifier)
-      // Support both formats for backward compatibility
-      const existingAccount = flatAccounts.find(acc => 
-        (acc.accountCode && acc.accountCode === importedAccount.code) || 
-        (acc.code && acc.code === importedAccount.code)
-      );
+      // Try to find matching account using multiple strategies:
+      // 1. First try to match by ID if available in the import data (most reliable)
+      // 2. Then try matching by accountCode (for backward compatibility)
+      let existingAccount = null;
+      
+      // Check if we have an ID in the imported data
+      if (importedAccount.id) {
+        const importedId = parseInt(importedAccount.id, 10);
+        if (!isNaN(importedId) && importedId > 0) {
+          existingAccount = flatAccounts.find(acc => acc.id === importedId);
+          console.log(`Matching by ID ${importedId} - match found: ${Boolean(existingAccount)}`);
+        }
+      }
+      
+      // If no match by ID, try to match by code
+      if (!existingAccount) {
+        existingAccount = flatAccounts.find(acc => 
+          (acc.accountCode && acc.accountCode.toLowerCase() === importedAccount.code.toLowerCase()) || 
+          (acc.code && acc.code.toLowerCase() === importedAccount.code.toLowerCase())
+        );
+        console.log(`Matching by code ${importedAccount.code} - match found: ${Boolean(existingAccount)}`);
+      }
       
       if (!existingAccount) {
         // New account
@@ -1331,7 +1347,12 @@ function ChartOfAccounts() {
         // Check for modifications in existing account
         const changes: string[] = [];
         
-        // Check each field for changes
+        // Check each field for changes, starting with accountCode
+        const existingCode = existingAccount.accountCode || existingAccount.code || '';
+        if (importedAccount.code !== existingCode) {
+          changes.push(`Account Code: "${existingCode}" → "${importedAccount.code}"`);
+        }
+        
         if (importedAccount.name !== existingAccount.name) {
           changes.push(`Name: "${existingAccount.name}" → "${importedAccount.name}"`);
         }

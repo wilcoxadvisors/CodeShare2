@@ -5009,8 +5009,30 @@ export class DatabaseStorage implements IStorage {
               continue;
             }
             
-            // Check if the account already exists (case-insensitive comparison)
-            const existingAccount = existingCodeMap.get(accountCode.toLowerCase());
+            // Check if the account already exists using various matching strategies:
+            // 1. First try to match by accountId if provided in the import file
+            // 2. Then try to match by accountCode (case-insensitive)
+            let existingAccount = null;
+            
+            // If the import file includes account IDs, try to match by ID first
+            if (row.id) {
+              const accountId = parseInt(row.id, 10);
+              if (!isNaN(accountId) && accountId > 0) {
+                existingAccount = existingIdMap.get(accountId);
+                if (existingAccount) {
+                  console.log(`Found existing account by ID: ${accountId}, code: ${existingAccount.accountCode}`);
+                }
+              }
+            }
+            
+            // If we didn't find by ID, try to match by accountCode (case-insensitive)
+            if (!existingAccount) {
+              existingAccount = existingCodeMap.get(accountCode.toLowerCase());
+              if (existingAccount) {
+                console.log(`Found existing account by code: ${accountCode.toLowerCase()}`);
+              }
+            }
+            
             const isActiveInImport = this.parseIsActive(row, true);
             
             if (existingAccount) {
@@ -5097,6 +5119,8 @@ export class DatabaseStorage implements IStorage {
               } else {
                 // For accounts without transactions, we can update more fields
                 const updateData = {
+                  // Allow updating the accountCode itself if changed
+                  accountCode: accountCode !== existingAccount.accountCode ? accountCode : existingAccount.accountCode,
                   name: accountName,
                   type: normalizedType as AccountType,
                   subtype: this.getCaseInsensitiveValue(row, 'subtype') || existingAccount.subtype,
@@ -5107,6 +5131,7 @@ export class DatabaseStorage implements IStorage {
                 
                 // Check if anything actually changed before updating
                 const hasChanges = 
+                  updateData.accountCode !== existingAccount.accountCode ||
                   updateData.name !== existingAccount.name ||
                   updateData.type !== existingAccount.type ||
                   updateData.subtype !== existingAccount.subtype ||
