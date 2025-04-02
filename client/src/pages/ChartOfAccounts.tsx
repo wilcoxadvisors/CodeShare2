@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -1393,6 +1394,14 @@ function ChartOfAccounts() {
       }
     });
     
+    // Find accounts in the database that are not in the import (missing/removals)
+    // These are accounts that exist in flatAccounts but their accountCode is not in importAccountCodes
+    const importAccountCodes = new Set(importData.map(row => row.accountCode));
+    const removals = flatAccounts.filter(account => {
+      const accountCode = account.accountCode || account.code;
+      return accountCode && !importAccountCodes.has(accountCode);
+    });
+    
     // Calculate unchanged accounts
     const unchangedCount = importData.length - additions.length - modifications.length;
     
@@ -1400,6 +1409,7 @@ function ChartOfAccounts() {
     setChangesPreview({
       additions: additions,
       modifications: modifications,
+      removals: removals,
       unchanged: unchangedCount
     });
     
@@ -1525,23 +1535,27 @@ function ChartOfAccounts() {
   const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
   const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete'>>({});
   
+  // Legacy state to keep compatibility - will be removed in future refactors
+  const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
+  const [removeStrategy, setRemoveStrategy] = useState<'inactive' | 'delete' | 'none'>('inactive');
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  
   const handleImportConfirm = () => {
     if (importData.length > 0) {
-      console.log("DEBUG: handleImportConfirm - About to import accounts with strategy:", updateStrategy);
+      console.log("DEBUG: handleImportConfirm - About to import accounts with granular selections");
       
       // Create selections object to pass to backend
       const selections: ImportSelections = {
-        updateStrategy: updateStrategy,
-        removeStrategy: removeStrategy
+        // Specific accounts to include in each category
+        newAccountCodes: selectedNewAccounts,
+        modifiedAccountCodes: selectedModifiedAccounts,
+        missingAccountCodes: selectedMissingAccounts,
+        
+        // For missing accounts, specify the action for each account
+        missingAccountActions: missingAccountActions
       };
       
-      // If using selective update, include the account codes
-      if (updateStrategy === 'selected' && selectedAccounts.length > 0) {
-        console.log(`DEBUG: handleImportConfirm - Using selective update with ${selectedAccounts.length} accounts`);
-        selections.includedCodes = selectedAccounts;
-      }
-      
-      console.log(`DEBUG: handleImportConfirm - Using remove strategy: ${removeStrategy}`);
+      console.log(`DEBUG: handleImportConfirm - Selected ${selectedNewAccounts.length} new accounts, ${selectedModifiedAccounts.length} modified accounts, and ${selectedMissingAccounts.length} missing accounts`);
       
       
       try {
@@ -2299,6 +2313,7 @@ function ChartOfAccounts() {
                   <ul className="mt-1 text-sm text-blue-700 list-disc pl-5">
                     <li>{changesPreview.additions.length} new accounts will be added</li>
                     <li>{changesPreview.modifications.length} existing accounts will be modified</li>
+                    <li>{changesPreview.removals.length} accounts are missing from import</li>
                     <li>{changesPreview.unchanged} accounts are unchanged</li>
                   </ul>
                 </div>
@@ -2313,20 +2328,20 @@ function ChartOfAccounts() {
                     <Checkbox 
                       id="select-all-additions"
                       checked={changesPreview.additions.every(account => 
-                        selectedAccounts.includes(account.accountCode || account.code)
+                        selectedNewAccounts.includes(account.accountCode || account.code)
                       )}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           // Add all addition account codes that aren't already in the selection
                           const newCodes = changesPreview.additions
                             .map(a => a.accountCode || a.code)
-                            .filter(code => !selectedAccounts.includes(code));
+                            .filter(code => !selectedNewAccounts.includes(code));
                           
-                          setSelectedAccounts(prev => [...prev, ...newCodes]);
+                          setSelectedNewAccounts(prev => [...prev, ...newCodes]);
                         } else {
                           // Remove all addition account codes from the selection
                           const additionCodes = changesPreview.additions.map(a => a.accountCode || a.code);
-                          setSelectedAccounts(prev => prev.filter(code => !additionCodes.includes(code)));
+                          setSelectedNewAccounts(prev => prev.filter(code => !additionCodes.includes(code)));
                         }
                       }}
                       className="mr-2 h-4 w-4"
@@ -2356,13 +2371,13 @@ function ChartOfAccounts() {
                           <td className="px-3 py-2 text-sm text-center">
                             <Checkbox 
                               id={`add-${account.accountCode || account.code}`}
-                              checked={selectedAccounts.includes(account.accountCode || account.code)}
+                              checked={selectedNewAccounts.includes(account.accountCode || account.code)}
                               onCheckedChange={(checked) => {
                                 const accountId = account.accountCode || account.code;
                                 if (checked) {
-                                  setSelectedAccounts(prev => [...prev, accountId]);
+                                  setSelectedNewAccounts(prev => [...prev, accountId]);
                                 } else {
-                                  setSelectedAccounts(prev => prev.filter(code => code !== accountId));
+                                  setSelectedNewAccounts(prev => prev.filter(code => code !== accountId));
                                 }
                               }}
                             />
@@ -2388,20 +2403,20 @@ function ChartOfAccounts() {
                     <Checkbox 
                       id="select-all-modifications"
                       checked={changesPreview.modifications.every(mod => 
-                        selectedAccounts.includes(mod.original.accountCode || mod.original.code)
+                        selectedModifiedAccounts.includes(mod.original.accountCode || mod.original.code)
                       )}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           // Add all modification account codes that aren't already in the selection
                           const newCodes = changesPreview.modifications
                             .map(m => m.original.accountCode || m.original.code)
-                            .filter(code => !selectedAccounts.includes(code));
+                            .filter(code => !selectedModifiedAccounts.includes(code));
                           
-                          setSelectedAccounts(prev => [...prev, ...newCodes]);
+                          setSelectedModifiedAccounts(prev => [...prev, ...newCodes]);
                         } else {
                           // Remove all modification account codes from the selection
                           const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
-                          setSelectedAccounts(prev => prev.filter(code => !modCodes.includes(code)));
+                          setSelectedModifiedAccounts(prev => prev.filter(code => !modCodes.includes(code)));
                         }
                       }}
                       className="mr-2 h-4 w-4"
@@ -2433,13 +2448,13 @@ function ChartOfAccounts() {
                           <td className="px-3 py-2 text-sm text-center">
                             <Checkbox 
                               id={`mod-${mod.original.accountCode || mod.original.code}`}
-                              checked={selectedAccounts.includes(mod.original.accountCode || mod.original.code)}
+                              checked={selectedModifiedAccounts.includes(mod.original.accountCode || mod.original.code)}
                               onCheckedChange={(checked) => {
                                 const accountId = mod.original.accountCode || mod.original.code;
                                 if (checked) {
-                                  setSelectedAccounts(prev => [...prev, accountId]);
+                                  setSelectedModifiedAccounts(prev => [...prev, accountId]);
                                 } else {
-                                  setSelectedAccounts(prev => prev.filter(code => code !== accountId));
+                                  setSelectedModifiedAccounts(prev => prev.filter(code => code !== accountId));
                                 }
                               }}
                             />
@@ -2454,6 +2469,114 @@ function ChartOfAccounts() {
                                 <li key={i}>{change}</li>
                               ))}
                             </ul>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {changesPreview.removals.length > 0 && (
+              <div className="mt-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-medium text-gray-900">Missing Accounts ({changesPreview.removals.length})</h3>
+                  <div className="flex items-center">
+                    <Checkbox 
+                      id="select-all-removals"
+                      checked={changesPreview.removals.every(account => 
+                        selectedMissingAccounts.includes(account.accountCode || account.code)
+                      )}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Add all removal account codes that aren't already in the selection
+                          const newCodes = changesPreview.removals
+                            .map(a => a.accountCode || a.code)
+                            .filter(code => !selectedMissingAccounts.includes(code));
+                          
+                          setSelectedMissingAccounts(prev => [...prev, ...newCodes]);
+                        } else {
+                          // Remove all removal account codes from the selection
+                          const removalCodes = changesPreview.removals.map(a => a.accountCode || a.code);
+                          setSelectedMissingAccounts(prev => prev.filter(code => !removalCodes.includes(code)));
+                        }
+                      }}
+                      className="mr-2 h-4 w-4"
+                    />
+                    <Label htmlFor="select-all-removals" className="text-sm font-medium text-gray-700">
+                      Select All
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          Include
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Account
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {changesPreview.removals.map((account, index) => (
+                        <tr key={index} className="bg-red-50 hover:bg-red-100 transition-colors">
+                          <td className="px-3 py-2 text-sm text-center">
+                            <Checkbox 
+                              id={`remove-${account.accountCode || account.code}`}
+                              checked={selectedMissingAccounts.includes(account.accountCode || account.code)}
+                              onCheckedChange={(checked) => {
+                                const accountId = account.accountCode || account.code;
+                                if (checked) {
+                                  setSelectedMissingAccounts(prev => [...prev, accountId]);
+                                } else {
+                                  setSelectedMissingAccounts(prev => prev.filter(code => code !== accountId));
+                                }
+                              }}
+                            />
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                            <div className="font-medium">{account.accountCode || account.code} - {account.name}</div>
+                            <div className="text-gray-500 text-xs">{account.type}</div>
+                          </td>
+                          <td className="px-3 py-2 text-sm">
+                            <RadioGroup 
+                              value={missingAccountActions[account.accountCode || account.code] || 'inactive'} 
+                              onValueChange={(value) => {
+                                const accountId = account.accountCode || account.code;
+                                setMissingAccountActions(prev => ({
+                                  ...prev,
+                                  [accountId]: value as 'inactive' | 'delete'
+                                }));
+                              }}
+                              className="flex flex-col space-y-1"
+                            >
+                              <div className="flex items-center">
+                                <RadioGroupItem value="inactive" id={`inactive-${account.accountCode || account.code}`} className="mr-2" />
+                                <Label 
+                                  htmlFor={`inactive-${account.accountCode || account.code}`}
+                                  className="text-sm text-gray-700"
+                                >
+                                  Mark as inactive
+                                </Label>
+                              </div>
+                              <div className="flex items-center">
+                                <RadioGroupItem value="delete" id={`delete-${account.accountCode || account.code}`} className="mr-2" />
+                                <Label 
+                                  htmlFor={`delete-${account.accountCode || account.code}`}
+                                  className="text-sm text-gray-700"
+                                >
+                                  Delete (if no transactions exist)
+                                </Label>
+                              </div>
+                            </RadioGroup>
                           </td>
                         </tr>
                       ))}
@@ -2573,16 +2696,12 @@ function ChartOfAccounts() {
                     <div className="flex items-center">
                       <Info className="h-5 w-5 text-blue-600 mr-2" />
                       <div className="text-sm text-blue-700">
-                        <span className="font-medium">{selectedAccounts.length}</span> accounts selected for update 
-                        (<span className="font-medium">{
-                          changesPreview.additions.filter(a => 
-                            selectedAccounts.includes(a.accountCode || a.code)
-                          ).length
-                        }</span> new, <span className="font-medium">{
-                          changesPreview.modifications.filter(m => 
-                            selectedAccounts.includes(m.original.accountCode || m.original.code)
-                          ).length
-                        }</span> modified)
+                        <span className="font-medium">
+                          {selectedNewAccounts.length + selectedModifiedAccounts.length + selectedMissingAccounts.length}
+                        </span> accounts selected for update 
+                        (<span className="font-medium">{selectedNewAccounts.length}</span> new, 
+                        <span className="font-medium"> {selectedModifiedAccounts.length}</span> modified,
+                        <span className="font-medium"> {selectedMissingAccounts.length}</span> missing)
                       </div>
                     </div>
                     
@@ -2591,11 +2710,17 @@ function ChartOfAccounts() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const allCodes = [
-                            ...changesPreview.additions.map(a => a.accountCode || a.code),
-                            ...changesPreview.modifications.map(m => m.original.accountCode || m.original.code)
-                          ];
-                          setSelectedAccounts(allCodes);
+                          // Select all new accounts
+                          const newCodes = changesPreview.additions.map(a => a.accountCode || a.code);
+                          setSelectedNewAccounts(newCodes);
+                          
+                          // Select all modified accounts
+                          const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
+                          setSelectedModifiedAccounts(modCodes);
+                          
+                          // Select all missing accounts
+                          const missCodes = changesPreview.removals.map(a => a.accountCode || a.code);
+                          setSelectedMissingAccounts(missCodes);
                         }}
                       >
                         Select All
@@ -2603,7 +2728,11 @@ function ChartOfAccounts() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedAccounts([])}
+                        onClick={() => {
+                          setSelectedNewAccounts([]);
+                          setSelectedModifiedAccounts([]);
+                          setSelectedMissingAccounts([]);
+                        }}
                       >
                         Clear Selection
                       </Button>
@@ -2628,7 +2757,11 @@ function ChartOfAccounts() {
                   setShowPreviewDialog(false);
                   handleImportConfirm(); // Proceed with import
                 }}
-                disabled={importAccounts.isPending || (updateStrategy === 'selected' && selectedAccounts.length === 0)}
+                disabled={importAccounts.isPending || (updateStrategy === 'selected' && 
+                  selectedNewAccounts.length === 0 && 
+                  selectedModifiedAccounts.length === 0 && 
+                  selectedMissingAccounts.length === 0
+                )}
               >
                 {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
               </Button>
