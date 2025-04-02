@@ -99,8 +99,9 @@ function ChartOfAccounts() {
       updated: Record<string, any>;
       changes: string[];
     }>;
+    removals: Array<Record<string, any>>; // Accounts present in DB but not in import
     unchanged: number;
-  }>({ additions: [], modifications: [], unchanged: 0 });
+  }>({ additions: [], modifications: [], removals: [], unchanged: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get hierarchical account tree data using client-based API
@@ -1507,17 +1508,22 @@ function ChartOfAccounts() {
   // Initialize the import accounts mutation
   const importAccounts = useImportAccounts();
   
-  // Add additional state and types for selective imports
+  // Updated state and types for more granular selective imports
   interface ImportSelections {
-    updateStrategy: 'all' | 'none' | 'selected';
-    includedCodes?: string[];
-    excludedCodes?: string[];
-    removeStrategy?: 'inactive' | 'delete' | 'none';
+    // Specific accounts to include in each category
+    newAccountCodes: string[];
+    modifiedAccountCodes: string[];
+    missingAccountCodes: string[];
+    
+    // For missing accounts, specify the action for each account
+    missingAccountActions: Record<string, 'inactive' | 'delete'>;
   }
   
-  const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
-  const [removeStrategy, setRemoveStrategy] = useState<'inactive' | 'delete' | 'none'>('inactive');
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  // State for selected accounts in each category
+  const [selectedNewAccounts, setSelectedNewAccounts] = useState<string[]>([]);
+  const [selectedModifiedAccounts, setSelectedModifiedAccounts] = useState<string[]>([]);
+  const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
+  const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete'>>({});
   
   const handleImportConfirm = () => {
     if (importData.length > 0) {
