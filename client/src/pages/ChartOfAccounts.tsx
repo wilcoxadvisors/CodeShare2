@@ -7,6 +7,12 @@ import DataTable from "../components/DataTable";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from "@/components/ui/dialog";
+
+// Helper function to capitalize first letter of a string
+const capitalizeFirstLetter = (string: string) => {
+  if (!string) return '';
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
 import {
   Accordion,
   AccordionContent,
@@ -151,6 +157,9 @@ function ChartOfAccounts() {
   const [selectedNewAccounts, setSelectedNewAccounts] = useState<string[]>([]);
   const [selectedModifiedAccounts, setSelectedModifiedAccounts] = useState<string[]>([]);
   const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
+  
+  // Actions for missing accounts (mark as inactive or delete)
+  const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete'>>({});
   
   // Form refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -440,11 +449,20 @@ function ChartOfAccounts() {
     formData.append('strategy', updateStrategy);
     
     if (updateStrategy === 'selected') {
-      // Include the selected accounts data
+      // For each selected missing account, make sure there's an action (default to 'inactive')
+      const missingAccountActionsWithDefaults = selectedMissingAccounts.reduce((acc, code) => {
+        return {
+          ...acc,
+          [code]: missingAccountActions[code] || 'inactive'
+        };
+      }, {});
+      
+      // Include the selected accounts data with missing account actions
       formData.append('selections', JSON.stringify({
         newAccountCodes: selectedNewAccounts,
         modifiedAccountCodes: selectedModifiedAccounts,
         missingAccountCodes: selectedMissingAccounts,
+        missingAccountActions: missingAccountActionsWithDefaults
       }));
     }
     
@@ -569,7 +587,6 @@ function ChartOfAccounts() {
                   onClick={() => {
                     // Toggle account active status
                     setCurrentAccount(account);
-                    setAccountToDelete(account);
                     setShowDeleteConfirm(true);
                   }}
                 >
@@ -597,6 +614,110 @@ function ChartOfAccounts() {
       </div>
     );
   };
+  
+  // Form validation schema for creating/editing accounts
+  const accountFormSchema = z.object({
+    accountCode: z.string().min(1, "Account code is required"),
+    name: z.string().min(1, "Account name is required"),
+    type: z.enum(["asset", "liability", "equity", "revenue", "expense"], {
+      required_error: "Account type is required",
+    }),
+    subtype: z.string().optional(),
+    isSubledger: z.boolean().default(false),
+    subledgerType: z.string().optional(),
+    parentId: z.number().optional().nullable(),
+    description: z.string().optional(),
+    active: z.boolean().default(true),
+  });
+
+  // Create account mutation
+  const createAccount = useMutation({
+    mutationFn: async (data: z.infer<typeof accountFormSchema>) => {
+      return apiRequest(`/api/clients/${currentEntity?.id}/accounts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts/tree`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts`] });
+      setIsCreateModalOpen(false);
+      toast({
+        title: "Account created",
+        description: "Account has been created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error creating account",
+        description: error.message || "An error occurred while creating the account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update account mutation
+  const updateAccount = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: z.infer<typeof accountFormSchema> }) => {
+      return apiRequest(`/api/clients/${currentEntity?.id}/accounts/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts/tree`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts`] });
+      setIsEditModalOpen(false);
+      setCurrentAccount(null);
+      toast({
+        title: "Account updated",
+        description: "Account has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating account",
+        description: error.message || "An error occurred while updating the account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle account deletion (deactivation)
+  const deactivateAccount = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/clients/${currentEntity?.id}/accounts/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ active: false }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts/tree`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${currentEntity?.id}/accounts`] });
+      setShowDeleteConfirm(false);
+      setCurrentAccount(null);
+      toast({
+        title: "Account deactivated",
+        description: "Account has been deactivated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deactivating account",
+        description: error.message || "An error occurred while deactivating the account",
+        variant: "destructive",
+      });
+    },
+  });
   
   return (
     <>
@@ -1235,7 +1356,7 @@ function ChartOfAccounts() {
                 <div className="bg-gray-50 p-3 mb-2 rounded-md text-sm">
                   <p className="text-gray-500">
                     These accounts exist in your current Chart of Accounts but are not present in the import file.
-                    Selected accounts will be kept as <span className="font-medium">inactive</span>.
+                    For selected accounts, choose whether to mark them as inactive or delete them.
                   </p>
                 </div>
                 <div className="border rounded-md overflow-hidden">
@@ -1243,7 +1364,7 @@ function ChartOfAccounts() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                          Keep
+                          Select
                         </th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Code
@@ -1257,48 +1378,90 @@ function ChartOfAccounts() {
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Current Status
                         </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {changesPreview.removals.map((account, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <Checkbox 
-                              id={`missing-account-${index}`}
-                              checked={selectedMissingAccounts.includes(account.accountCode || account.code)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedMissingAccounts(prev => [...prev, account.accountCode || account.code]);
-                                } else {
-                                  setSelectedMissingAccounts(prev => 
-                                    prev.filter(code => code !== (account.accountCode || account.code))
-                                  );
-                                }
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {account.accountCode || account.code}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                            {account.name}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                            {account.type}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                            {account.active ? (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Active
-                              </span>
-                            ) : (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                Inactive
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {changesPreview.removals.map((account, index) => {
+                        const accountCode = account.accountCode || account.code;
+                        // Check if account has transactions - dummy check for now
+                        // This would be replaced with actual logic to check if the account has transactions
+                        const hasTransactions = false; // In real implementation, this would be dynamic
+                        
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <Checkbox 
+                                id={`missing-account-${index}`}
+                                checked={selectedMissingAccounts.includes(accountCode)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    // When selecting, also set default action to 'inactive'
+                                    setSelectedMissingAccounts(prev => [...prev, accountCode]);
+                                    if (!missingAccountActions[accountCode]) {
+                                      setMissingAccountActions(prev => ({
+                                        ...prev,
+                                        [accountCode]: 'inactive'
+                                      }));
+                                    }
+                                  } else {
+                                    setSelectedMissingAccounts(prev => 
+                                      prev.filter(code => code !== accountCode)
+                                    );
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {accountCode}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {account.name}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {account.type}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {account.active ? (
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                  Inactive
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              <Select
+                                value={selectedMissingAccounts.includes(accountCode) ? missingAccountActions[accountCode] || 'inactive' : undefined}
+                                onValueChange={(value: 'inactive' | 'delete') => {
+                                  setMissingAccountActions(prev => ({
+                                    ...prev,
+                                    [accountCode]: value
+                                  }));
+                                  
+                                  // If selecting an action but account is not selected, also select the account
+                                  if (!selectedMissingAccounts.includes(accountCode)) {
+                                    setSelectedMissingAccounts(prev => [...prev, accountCode]);
+                                  }
+                                }}
+                                disabled={!selectedMissingAccounts.includes(accountCode)}
+                              >
+                                <SelectTrigger className="w-36 h-8">
+                                  <SelectValue placeholder="Select action" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="inactive">Mark inactive</SelectItem>
+                                  <SelectItem value="delete" disabled={hasTransactions}>Delete</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1389,6 +1552,521 @@ function ChartOfAccounts() {
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Account Dialog */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Plus className="h-5 w-5 mr-2" />
+              Create New Account
+            </DialogTitle>
+            <DialogDescription>
+              Add a new account to your Chart of Accounts.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form
+            schema={accountFormSchema}
+            onSubmit={(values) => {
+              createAccount.mutate(values);
+            }}
+            defaultValues={{
+              accountCode: "",
+              name: "",
+              type: "asset" as AccountType,
+              subtype: "",
+              isSubledger: false,
+              subledgerType: "",
+              parentId: null,
+              description: "",
+              active: true,
+            }}
+            className="space-y-4 py-2"
+          >
+            {({ register, formState, control }) => (
+              <>
+                <FormField
+                  control={control}
+                  name="accountCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g. 1000" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g. Cash" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account Type</FormLabel>
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select account type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="asset">Asset</SelectItem>
+                          <SelectItem value="liability">Liability</SelectItem>
+                          <SelectItem value="equity">Equity</SelectItem>
+                          <SelectItem value="revenue">Revenue</SelectItem>
+                          <SelectItem value="expense">Expense</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="subtype"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subtype (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="e.g. Current Asset" 
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="parentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Parent Account (Optional)</FormLabel>
+                      <Select 
+                        value={field.value ? String(field.value) : ""} 
+                        onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select parent account" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">No Parent</SelectItem>
+                          {accounts && Array.isArray(accounts) && accounts.map((account) => (
+                            <SelectItem 
+                              key={account.id} 
+                              value={String(account.id)}
+                            >
+                              {account.accountCode} - {account.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Enter a description of this account"
+                          value={field.value || ""}
+                          rows={3}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="isSubledger"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Is Subledger</FormLabel>
+                        <FormDescription>
+                          Check if this account is a subledger account
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={control}
+                  name="subledgerType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subledger Type (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="e.g. Accounts Receivable" 
+                          value={field.value || ""}
+                          disabled={!formState.getValues().isSubledger}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsCreateModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createAccount.isPending || !formState.isValid}
+                  >
+                    {createAccount.isPending ? "Creating..." : "Create Account"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Account Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+        setIsEditModalOpen(open);
+        if (!open) setCurrentAccount(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Edit className="h-5 w-5 mr-2" />
+              Edit Account
+            </DialogTitle>
+            <DialogDescription>
+              Modify the selected account details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {currentAccount && (
+            <Form
+              schema={accountFormSchema}
+              onSubmit={(values) => {
+                updateAccount.mutate({ id: currentAccount.id, data: values });
+              }}
+              defaultValues={{
+                accountCode: currentAccount.accountCode || "",
+                name: currentAccount.name || "",
+                type: currentAccount.type || "asset",
+                subtype: currentAccount.subtype || "",
+                isSubledger: currentAccount.isSubledger || false,
+                subledgerType: currentAccount.subledgerType || "",
+                parentId: currentAccount.parentId || null,
+                description: currentAccount.description || "",
+                active: currentAccount.active !== undefined ? currentAccount.active : true,
+              }}
+              className="space-y-4 py-2"
+            >
+              {({ register, formState, control }) => (
+                <>
+                  <FormField
+                    control={control}
+                    name="accountCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Code</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. 1000" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. Cash" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Type</FormLabel>
+                        <Select 
+                          value={field.value} 
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select account type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="asset">Asset</SelectItem>
+                            <SelectItem value="liability">Liability</SelectItem>
+                            <SelectItem value="equity">Equity</SelectItem>
+                            <SelectItem value="revenue">Revenue</SelectItem>
+                            <SelectItem value="expense">Expense</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="subtype"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subtype (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="e.g. Current Asset" 
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="parentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Parent Account (Optional)</FormLabel>
+                        <Select 
+                          value={field.value ? String(field.value) : ""} 
+                          onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select parent account" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">No Parent</SelectItem>
+                            {accounts && Array.isArray(accounts) && accounts
+                              .filter(account => account.id !== currentAccount.id) // Prevent selecting self
+                              .map((account) => (
+                                <SelectItem 
+                                  key={account.id} 
+                                  value={String(account.id)}
+                                >
+                                  {account.accountCode} - {account.name}
+                                </SelectItem>
+                              ))
+                            }
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            placeholder="Enter a description of this account"
+                            value={field.value || ""}
+                            rows={3}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="isSubledger"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Is Subledger</FormLabel>
+                          <FormDescription>
+                            Check if this account is a subledger account
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="subledgerType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subledger Type (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="e.g. Accounts Receivable" 
+                            value={field.value || ""}
+                            disabled={!formState.getValues().isSubledger}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={control}
+                    name="active"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Active</FormLabel>
+                          <FormDescription>
+                            Uncheck to deactivate this account
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsEditModalOpen(false);
+                        setCurrentAccount(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={updateAccount.isPending || !formState.isValid}
+                    >
+                      {updateAccount.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Deactivate Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate this account? 
+              This action can be reversed later by editing the account.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6">
+            {currentAccount && (
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm font-medium">Account details:</div>
+                <div className="mt-2">
+                  <div><strong>Code:</strong> {currentAccount.accountCode}</div>
+                  <div><strong>Name:</strong> {currentAccount.name}</div>
+                  <div><strong>Type:</strong> {capitalizeFirstLetter(currentAccount.type)}</div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setCurrentAccount(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => currentAccount && deactivateAccount.mutate(currentAccount.id)}
+              disabled={deactivateAccount.isPending}
+            >
+              {deactivateAccount.isPending ? "Deactivating..." : "Deactivate Account"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
