@@ -4518,36 +4518,12 @@ export class DatabaseStorage implements IStorage {
         accountsMap[account.parentId].children.push(accountsMap[account.id]);
       }
     }
-    
-    // Third pass: Recursively sort children arrays in each node by active status and then by accountCode
-    const sortAccountNodes = (nodes: AccountTreeNode[]) => {
-      // Sort the nodes array - active accounts first, then by accountCode
-      nodes.sort((a, b) => {
-        // First sort by active status (active first)
-        if (a.active !== b.active) {
-          return a.active ? -1 : 1;
-        }
-        // Then sort by accountCode
-        return a.accountCode.localeCompare(b.accountCode);
-      });
-      
-      // Recursively sort children
-      for (const node of nodes) {
-        if (node.children && node.children.length > 0) {
-          sortAccountNodes(node.children);
-        }
-      }
-    };
-    
-    // Sort children at all levels
-    for (const root of rootAccounts) {
-      if (root.children && root.children.length > 0) {
-        sortAccountNodes(root.children);
-      }
-    }
+    sortAccountNodes(rootAccounts);
     
     return rootAccounts;
-  }  
+    return rootAccounts;
+  }
+  
   // Implementation for Chart of Accounts export
   async getAccountsForClient(clientId: number): Promise<Account[]> {
     // We can reuse the getAccounts method as it already fetches accounts by clientId
