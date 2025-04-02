@@ -25,8 +25,8 @@ const __dirname = path.dirname(__filename);
 const API_BASE_URL = 'http://localhost:5000/api';
 const COOKIE_FILE = './cookies.txt';
 const TEMP_DIR = './tmp/verification';
-const TEST_CSV_PATH = path.join(__dirname, '../test/data/coa-import/test-accounts-import-with-accountcode.csv');
-const TEST_EXCEL_PATH = path.join(__dirname, '../test/data/coa-import/test-accounts-import-with-accountcode.xlsx');
+const TEST_CSV_PATH = './test/data/coa-import/test-accounts-import-with-accountcode.csv';
+const TEST_EXCEL_PATH = './test/data/coa-import/test-accounts-import-with-accountcode.xlsx';
 const LOG_FILE = './verification-logs/coa-import-export-verification.log';
 
 // Verification counters
@@ -43,40 +43,6 @@ function getCookieHeader() {
     return cookieContent.trim();
   } catch (error) {
     console.error(chalk.red('Error reading cookie file:'), error.message);
-    process.exit(1);
-  }
-}
-
-/**
- * Login to get auth cookie
- */
-async function login() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username: 'admin',
-        password: 'password123'
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
-    }
-    
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      fs.writeFileSync(COOKIE_FILE, setCookieHeader);
-      console.log(chalk.green('✓ Successfully logged in and updated cookie'));
-      return setCookieHeader;
-    } else {
-      throw new Error('No cookie received from login');
-    }
-  } catch (error) {
-    console.error(chalk.red('Login error:'), error.message);
     process.exit(1);
   }
 }
@@ -118,7 +84,7 @@ function logResult(testName, success, message) {
 async function createTestClient(cookie) {
   try {
     const clientName = `CoA Test Client ${Date.now()}`;
-    const response = await fetch(`${API_BASE_URL}/admin/clients`, {
+    const response = await fetch(`${API_BASE_URL}/clients`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -136,16 +102,7 @@ async function createTestClient(cookie) {
       throw new Error(`Failed to create test client: ${response.status} ${response.statusText}`);
     }
     
-    const responseData = await response.json();
-    console.log('Created client response:', responseData);
-    
-    // Handle response structure - the client data may be in a 'data' property
-    const client = responseData.data || responseData;
-    
-    if (!client || !client.id) {
-      throw new Error('Failed to get a valid client ID from the response');
-    }
-    
+    const client = await response.json();
     logResult('Create Test Client', true, `Created test client: ${clientName} (ID: ${client.id})`);
     return client;
   } catch (error) {
@@ -190,7 +147,7 @@ async function exportAccountsCSV(clientId, cookie) {
  */
 async function exportAccountsExcel(clientId, cookie) {
   try {
-    const response = await fetch(`${API_BASE_URL}/clients/${clientId}/accounts/export?format=excel`, {
+    const response = await fetch(`${API_BASE_URL}/clients/${clientId}/accounts/export?format=xlsx`, {
       headers: {
         'Cookie': cookie
       }
@@ -288,9 +245,7 @@ async function verifyExportedExcelHasAccountCode(filePath) {
 }
 
 /**
- * Verify exported file has essential fields (post migration)
- * Note: Reporting fields have been migrated to journal entry lines 
- * and are no longer part of the accounts table
+ * Verify exported file has new reporting fields
  */
 async function verifyExportedFileHasReportingFields(filePath, isExcel = false) {
   try {
@@ -307,31 +262,28 @@ async function verifyExportedFileHasReportingFields(filePath, isExcel = false) {
     }
     
     const format = isExcel ? 'Excel' : 'CSV';
-    const requiredFields = ['accountcode', 'name', 'type', 'active'];
     const missingFields = [];
     
-    requiredFields.forEach(field => {
+    ['fslibucket', 'internalreportingbucket', 'item'].forEach(field => {
       if (!headers.includes(field)) {
         missingFields.push(field);
       }
     });
     
     if (missingFields.length === 0) {
-      logResult(`Verify ${format} Has Required Fields`, true, `Exported ${format} has all required fields`);
+      logResult(`Verify ${format} Has Reporting Fields`, true, `Exported ${format} has all reporting fields`);
       return true;
     } else {
-      throw new Error(`Exported ${format} is missing required fields: ${missingFields.join(', ')}`);
+      throw new Error(`Exported ${format} is missing fields: ${missingFields.join(', ')}`);
     }
   } catch (error) {
-    logResult(`Verify ${isExcel ? 'Excel' : 'CSV'} Has Required Fields`, false, error.message);
+    logResult(`Verify ${isExcel ? 'Excel' : 'CSV'} Has Reporting Fields`, false, error.message);
     return false;
   }
 }
 
 /**
  * Get all accounts for a client and verify accountCode field
- * Note: Reporting fields have been migrated to journal entry lines
- * and are no longer part of the accounts table
  */
 async function getAccountsAndVerifyAccountCode(clientId, cookie) {
   try {
@@ -356,21 +308,20 @@ async function getAccountsAndVerifyAccountCode(clientId, cookie) {
     
     logResult('Verify Accounts Have AccountCode', true, `All ${accounts.length} accounts have accountCode field`);
     
-    // Verify required fields exist on accounts
-    const requiredFields = ['id', 'name', 'type', 'active'];
-    let missingRequiredFields = false;
+    // Verify reporting fields exist on accounts
+    const missingReportingFields = [];
+    const fieldsToCheck = ['fsliBucket', 'internalReportingBucket', 'item'];
     
-    for (const field of requiredFields) {
-      const missingField = accounts.find(account => account[field] === undefined);
-      if (missingField) {
-        logResult('Verify Accounts Have Required Fields', false, `Account ID ${missingField.id} is missing required field: ${field}`);
-        missingRequiredFields = true;
-        break;
+    for (const field of fieldsToCheck) {
+      if (accounts.every(account => !account[field])) {
+        missingReportingFields.push(field);
       }
     }
     
-    if (!missingRequiredFields) {
-      logResult('Verify Accounts Have Required Fields', true, 'All accounts have required fields');
+    if (missingReportingFields.length > 0) {
+      logResult('Verify Accounts Have Reporting Fields', false, `Accounts are missing fields: ${missingReportingFields.join(', ')}`);
+    } else {
+      logResult('Verify Accounts Have Reporting Fields', true, 'Accounts have all reporting fields');
     }
     
     return accounts;
@@ -385,7 +336,7 @@ async function getAccountsAndVerifyAccountCode(clientId, cookie) {
  */
 async function cleanupTestClient(clientId, cookie) {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/clients/${clientId}`, {
+    const response = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
       method: 'DELETE',
       headers: {
         'Cookie': cookie
@@ -430,8 +381,7 @@ async function runVerification() {
   ensureTempDir();
   fs.writeFileSync(LOG_FILE, `Chart of Accounts Import/Export Verification - ${new Date().toISOString()}\n\n`);
   
-  // Login to refresh cookie
-  const cookie = await login();
+  const cookie = getCookieHeader();
   let testClientId = null;
   
   try {

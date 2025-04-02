@@ -1,11 +1,4 @@
-Code,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
-1000,Test Cash,ASSET,Current Asset,false,,true,Cash on hand,
-1100,Test Bank Account,ASSET,Current Asset,false,,true,Primary bank account,1000
-1200,Test Accounts Receivable,ASSET,Current Asset,true,Customer,true,Amounts owed by customers,
-2000,Test Accounts Payable,LIABILITY,Current Liability,true,Vendor,true,Amounts owed to vendors,
-2100,Test Credit Card,LIABILITY,Current Liability,false,,true,Business credit card,2000
-3000,Test Owner Equity,EQUITY,Equity,false,,true,Owner investment,
-4000,Test Sales Revenue,REVENUE,Operating Revenue,false,,true,Revenue from sales,
-4100,Test Service Revenue,REVENUE,Operating Revenue,false,,true,Revenue from services,4000
-5000,Test Rent Expense,EXPENSE,Operating Expense,false,,true,Office rent,
-5100,Test Utilities Expense,EXPENSE,Operating Expense,false,,true,"Electricity, water, etc.",5000
+code,name,type,subtype,isSubledger,subledgerType,description,active,parentCode
+9997,Test Asset Account,ASSET,Current Asset,false,,Test account for import,true,1100
+9998,Test Liability Account,LIABILITY,Current Liability,false,,Test account for import,true,2100
+9999,Test Revenue Account,REVENUE,Operating Revenue,false,,Test account for import,true,4000

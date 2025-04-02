@@ -8,15 +8,10 @@
  * It performs both API checks and UI verification.
  */
 
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import puppeteer from 'puppeteer';
-
-// Get current directory (equivalent to __dirname in CommonJS)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const puppeteer = require('puppeteer');
 
 // Configuration
 const BASE_URL = 'http://localhost:5000';
@@ -26,7 +21,7 @@ const CREDENTIALS = {
 };
 const TEST_CLIENT_ID = 100; // UI Verification Test Client
 const EXISTING_CLIENT_ID = 1;
-const OUTPUT_DIR = path.join(__dirname, '../verification-logs');
+const OUTPUT_DIR = path.join(__dirname, 'verification-output');
 
 // Colors for console output
 const colors = {
@@ -96,30 +91,12 @@ async function verifyCoaDisplay() {
       // Steps 4-5: Verify UI for both clients
       console.log(`\n${colors.blue}Step 4-5: Starting UI verification with Puppeteer...${colors.reset}`);
       
-      try {
-        // Try to launch browser for UI tests
-        browser = await puppeteer.launch({
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-          headless: 'new',
-          defaultViewport: { width: 1280, height: 800 }
-        });
-        
-        // Initialize UI verification flag
-        results.uiVerificationSkipped = false;
-      } catch (error) {
-        console.log(`${colors.yellow}⚠ Puppeteer browser initialization error: ${error.message}${colors.reset}`);
-        console.log(`${colors.yellow}⚠ UI verification will be skipped${colors.reset}`);
-        
-        // Set browser to null to indicate we should skip UI tests
-        browser = null;
-        
-        // Mark UI verification as skipped
-        results.uiVerificationSkipped = true;
-        
-        // UI tests will be skipped
-        results.newClientUi = false;
-        results.existingClientUi = false;
-      }
+      // Launch browser for UI tests
+      browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        headless: 'new',
+        defaultViewport: { width: 1280, height: 800 }
+      });
       
       // Step 4: Verify UI for test client
       console.log(`\n${colors.blue}Step 4: Verifying UI for test client (ID ${TEST_CLIENT_ID})...${colors.reset}`);
@@ -159,12 +136,8 @@ async function verifyClientCoaApi(api, clientId) {
     
     // Check if both requests were successful
     if (accountsResponse.status === 200 && treeResponse.status === 200) {
-      // Handle possible response formats
-      const accounts = accountsResponse.data.data || accountsResponse.data;
-      const accountsTree = treeResponse.data.data || treeResponse.data;
-      
-      console.log(`  - Raw accounts response structure:`, JSON.stringify(accountsResponse.data).substring(0, 100) + '...');
-      console.log(`  - Raw tree response structure:`, JSON.stringify(treeResponse.data).substring(0, 100) + '...');
+      const accounts = accountsResponse.data;
+      const accountsTree = treeResponse.data;
       
       // Save API responses to files for inspection
       fs.writeFileSync(
@@ -225,14 +198,8 @@ async function verifyClientCoaApi(api, clientId) {
 
 /**
  * Verify client CoA via UI with Puppeteer
- * Note: If browser is null, this function will return false with a warning
  */
 async function verifyClientCoaUi(browser, clientId) {
-  // Check if browser is null (Puppeteer couldn't launch)
-  if (!browser) {
-    console.log(`${colors.yellow}⚠ Client ${clientId} CoA UI check SKIPPED - No browser available${colors.reset}`);
-    return false;
-  }
   try {
     // Create a new page
     const page = await browser.newPage();
@@ -449,37 +416,20 @@ function printResults() {
   
   // Print UI verification results
   console.log(`\n${colors.magenta}UI Verification:${colors.reset}`);
-  
-  // Handle the case when UI verification was skipped
-  const uiSkipped = results.uiVerificationSkipped === true;
-  
-  if (uiSkipped) {
-    console.log(` - New Client (ID ${TEST_CLIENT_ID}): ${colors.yellow}SKIPPED${colors.reset} (browser not available)`);
-    console.log(` - Existing Client (ID ${EXISTING_CLIENT_ID}): ${colors.yellow}SKIPPED${colors.reset} (browser not available)`);
-  } else {
-    console.log(` - New Client (ID ${TEST_CLIENT_ID}): ${results.newClientUi ? colors.green + 'PASS' : colors.red + 'FAIL'}${colors.reset}`);
-    console.log(` - Existing Client (ID ${EXISTING_CLIENT_ID}): ${results.existingClientUi ? colors.green + 'PASS' : colors.red + 'FAIL'}${colors.reset}`);
-  }
+  console.log(` - New Client (ID ${TEST_CLIENT_ID}): ${results.newClientUi ? colors.green + 'PASS' : colors.red + 'FAIL'}${colors.reset}`);
+  console.log(` - Existing Client (ID ${EXISTING_CLIENT_ID}): ${results.existingClientUi ? colors.green + 'PASS' : colors.red + 'FAIL'}${colors.reset}`);
   
   // Print final summary
   console.log(`\n${colors.magenta}Final Summary:${colors.reset}`);
   
   const apiPassed = results.newClientApi && results.existingClientApi;
   const uiPassed = results.newClientUi && results.existingClientUi;
-  
-  // For overall status, if UI was skipped, only consider API check
-  const allPassed = apiPassed && (uiPassed || uiSkipped);
+  const allPassed = apiPassed && uiPassed;
   
   if (allPassed) {
-    if (uiSkipped) {
-      console.log(`${colors.green}✓ VERIFICATION PARTIALLY PASSED: Chart of Accounts API checks successful${colors.reset}`);
-      console.log(`${colors.yellow}⚠ UI verification was skipped due to browser initialization issues${colors.reset}`);
-      console.log(`${colors.yellow}⚠ To complete UI verification, run this script in an environment with Chrome installed${colors.reset}`);
-    } else {
-      console.log(`${colors.green}✓ VERIFICATION PASSED: Chart of Accounts display is working correctly${colors.reset}`);
-      console.log(`${colors.green}✓ The original "CoA data not displaying" bug IS RESOLVED${colors.reset}`);
-      console.log(`${colors.green}✓ Task B.1 (Chart of Accounts) is functionally complete and verified${colors.reset}`);
-    }
+    console.log(`${colors.green}✓ VERIFICATION PASSED: Chart of Accounts display is working correctly${colors.reset}`);
+    console.log(`${colors.green}✓ The original "CoA data not displaying" bug IS RESOLVED${colors.reset}`);
+    console.log(`${colors.green}✓ Task B.1 (Chart of Accounts) is functionally complete and verified${colors.reset}`);
   } else {
     console.log(`${colors.red}✗ VERIFICATION FAILED: Chart of Accounts display has issues${colors.reset}`);
     
@@ -488,10 +438,8 @@ function printResults() {
       console.log(`${colors.red}  - API checks failed: The backend may not be returning data correctly${colors.reset}`);
     }
     
-    if (!uiPassed && !uiSkipped) {
+    if (!uiPassed) {
       console.log(`${colors.red}  - UI checks failed: The frontend may not be displaying data correctly${colors.reset}`);
-    } else if (uiSkipped) {
-      console.log(`${colors.yellow}  - UI checks skipped: Browser initialization failed${colors.reset}`);
     }
   }
   
@@ -504,8 +452,4 @@ function printResults() {
 }
 
 // Execute verification
-// Call the main function
-verifyCoaDisplay().catch(error => {
-  console.error(`${colors.red}Unhandled error:${colors.reset}`, error);
-  process.exit(1);
-});
+verifyCoaDisplay();
