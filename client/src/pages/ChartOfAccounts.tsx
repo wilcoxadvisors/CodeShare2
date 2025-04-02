@@ -2338,17 +2338,22 @@ function ChartOfAccounts() {
         onOpenChange={(open) => {
           setShowPreviewDialog(open);
           if (!open) {
-            // Reset all preview-related state when closing the dialog
+            // Close the entire import process when the preview dialog is closed
+            setShowImportDialog(false);
+            // Reset all import-related state
             setChangesPreview({
               additions: [],
               modifications: [],
               removals: [],
               unchanged: 0
             });
+            setImportData([]);
+            setImportErrors([]);
             setSelectedNewAccounts([]);
             setSelectedModifiedAccounts([]);
             setSelectedMissingAccounts([]);
-            setImportData([]);
+            setUpdateStrategy('all');
+            setRemoveStrategy('inactive');
           }
         }}
       >
@@ -2656,228 +2661,61 @@ function ChartOfAccounts() {
               </div>
             )}
             
-            {/* Import Strategy Selection */}
-            <div className="mt-6 border rounded-md p-4 bg-gray-50">
-              <h3 className="text-base font-medium text-gray-900 mb-3">Import Options</h3>
-              
-              <div className="space-y-5">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-2">Update Strategy</label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-all"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'all'}
-                        onChange={() => setUpdateStrategy('all')}
-                      />
-                      <label htmlFor="strategy-all" className="ml-2 block text-sm text-gray-700">
-                        Process all changes (default)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-selected"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'selected'}
-                        onChange={() => setUpdateStrategy('selected')}
-                      />
-                      <label htmlFor="strategy-selected" className="ml-2 block text-sm text-gray-700">
-                        Process only the accounts selected with checkboxes
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-none"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'none'}
-                        onChange={() => setUpdateStrategy('none')}
-                      />
-                      <label htmlFor="strategy-none" className="ml-2 block text-sm text-gray-700">
-                        Only add new accounts, don't update existing ones
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <label className="text-sm font-medium text-gray-700 block mb-2">
-                    Missing Accounts Strategy
-                    <span className="ml-2 text-xs text-gray-500 font-normal">
-                      (What to do with accounts that exist in the system but are not in the import file)
-                    </span>
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="remove-inactive"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'inactive'}
-                        onChange={() => setRemoveStrategy('inactive')}
-                      />
-                      <label htmlFor="remove-inactive" className="ml-2 block text-sm text-gray-700">
-                        Mark as inactive (default)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="remove-delete"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'delete'}
-                        onChange={() => setRemoveStrategy('delete')}
-                      />
-                      <label htmlFor="remove-delete" className="ml-2 block text-sm text-gray-700">
-                        Delete permanently (if no transactions exist)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="remove-none"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'none'}
-                        onChange={() => setRemoveStrategy('none')}
-                      />
-                      <label htmlFor="remove-none" className="ml-2 block text-sm text-gray-700">
-                        Leave unchanged
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Account selection statistics */}
-                {updateStrategy === 'selected' && (
-                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
-                    <div className="flex items-center">
-                      <Info className="h-5 w-5 text-blue-600 mr-2" />
-                      <div className="text-sm text-blue-700">
-                        <span className="font-medium">
-                          {selectedNewAccounts.length + selectedModifiedAccounts.length + selectedMissingAccounts.length}
-                        </span> accounts selected for update 
-                        (<span className="font-medium">{selectedNewAccounts.length}</span> new, 
-                        <span className="font-medium"> {selectedModifiedAccounts.length}</span> modified,
-                        <span className="font-medium"> {selectedMissingAccounts.length}</span> missing)
-                      </div>
-                    </div>
-                    
-                    <div className="flex mt-2 space-x-2 justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Select all new accounts
-                          const newCodes = changesPreview.additions
-                            .map(a => a.accountCode || a.code || '')
-                            .filter(Boolean);
-                          setSelectedNewAccounts(newCodes);
-                          
-                          // Select all modified accounts
-                          const modCodes = changesPreview.modifications
-                            .map(m => m.original.accountCode || m.original.code || '')
-                            .filter(Boolean);
-                          setSelectedModifiedAccounts(modCodes);
-                          
-                          // Select all missing accounts
-                          const missCodes = changesPreview.removals
-                            .map(a => a.accountCode || a.code || '')
-                            .filter(Boolean);
-                          setSelectedMissingAccounts(missCodes);
-                        }}
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedNewAccounts([]);
-                          setSelectedModifiedAccounts([]);
-                          setSelectedMissingAccounts([]);
-                        }}
-                      >
-                        Clear Selection
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Hidden settings for import functionality - using defaults */}
+            <div className="hidden">
+              <input 
+                type="hidden" 
+                name="import-strategy" 
+                value="all" 
+                checked={updateStrategy === 'all'} 
+                onChange={() => setUpdateStrategy('all')} 
+              />
+              <input 
+                type="hidden" 
+                name="remove-strategy" 
+                value="inactive" 
+                checked={removeStrategy === 'inactive'}
+                onChange={() => setRemoveStrategy('inactive')} 
+              />
             </div>
             
             <DialogFooter className="mt-6">
-              <div className="flex justify-between w-full">
-                <div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      // Return to the import dialog
-                      setShowPreviewDialog(false);
-                      setShowImportDialog(true);
-                      // Keep the import data but reset preview selections
-                      setSelectedNewAccounts([]);
-                      setSelectedModifiedAccounts([]);
-                      setSelectedMissingAccounts([]);
-                      setUpdateStrategy('all');
-                      setRemoveStrategy('inactive');
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back to File Selection
-                  </Button>
-                </div>
-                <div className="flex space-x-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      // Close both dialogs completely and reset all import-related state
-                      setShowPreviewDialog(false);
-                      setShowImportDialog(false);
-                      setImportData([]);
-                      setImportErrors([]);
-                      setChangesPreview({
-                        additions: [],
-                        modifications: [],
-                        removals: [],
-                        unchanged: 0
-                      });
-                      setSelectedNewAccounts([]);
-                      setSelectedModifiedAccounts([]);
-                      setSelectedMissingAccounts([]);
-                      setUpdateStrategy('all');
-                      setRemoveStrategy('inactive');
-                    }}
-                  >
-                    Cancel Import
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowPreviewDialog(false);
-                      handleImportConfirm(); // Proceed with import
-                    }}
-                    disabled={importAccounts.isPending || (updateStrategy === 'selected' && 
-                      selectedNewAccounts.length === 0 && 
-                      selectedModifiedAccounts.length === 0 && 
-                      selectedMissingAccounts.length === 0
-                    )}
-                  >
-                    {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
-                  </Button>
-                </div>
-              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  // Close both dialogs completely and reset all import-related state
+                  setShowPreviewDialog(false);
+                  setShowImportDialog(false);
+                  setImportData([]);
+                  setImportErrors([]);
+                  setChangesPreview({
+                    additions: [],
+                    modifications: [],
+                    removals: [],
+                    unchanged: 0
+                  });
+                  setSelectedNewAccounts([]);
+                  setSelectedModifiedAccounts([]);
+                  setSelectedMissingAccounts([]);
+                  setUpdateStrategy('all');
+                  setRemoveStrategy('inactive');
+                }}
+              >
+                Cancel Import
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  handleImportConfirm(); // Proceed with import
+                }}
+                disabled={importAccounts.isPending || (updateStrategy === 'selected' && 
+                  selectedNewAccounts.length === 0 && 
+                  selectedModifiedAccounts.length === 0 && 
+                  selectedMissingAccounts.length === 0
+                )}
+              >
+                {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
+              </Button>
             </DialogFooter>
           </div>
         </DialogContent>
