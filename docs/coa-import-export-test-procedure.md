@@ -45,7 +45,9 @@ Once the test client is created, follow these steps:
    - Create a valid CSV file with new accounts or modifications to existing ones
    - Click the "Import" button
    - Select the CSV file
-   - Verify the system correctly processes and adds/updates accounts
+   - Verify the preview dialog shows the changes that will be made
+   - Check the accuracy of accounts categorized as new, modified, or missing
+   - Proceed with the import and verify changes are applied correctly
    - Repeat with an Excel file
 
 4. **Import Testing - Invalid Data**
@@ -155,3 +157,6 @@ This script will:
 - The automated test suite will log detailed results to the console
 - Both manual and automated tests validate the two-pass approach for handling hierarchical data
 - Tests verify that parent-child relationships are correctly preserved during import/export
+- The import UI has been simplified, removing explicit update strategy options in favor of default behaviors
+- The import process now shows a clearer preview of changes with case-insensitive account code matching
+- The "Cancel Import" button properly resets the import process

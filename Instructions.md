@@ -24,7 +24,7 @@
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS. Focus has shifted to implementing the Chart of Accounts with client-specific organization and hierarchical structure.
-    * **Current Update:** Chart of Accounts implementation is complete, including backend and frontend hierarchy management, import/export functionality (CSV and Excel), and data integrity protections for parent-child relationships. Fixed a key issue where parent accounts with child accounts were being properly marked inactive instead of deleted during imports.
+    * **Current Update:** Chart of Accounts implementation is complete, including backend and frontend hierarchy management, import/export functionality (CSV and Excel), and data integrity protections for parent-child relationships. Fixed a key issue where parent accounts with child accounts were being properly marked inactive instead of deleted during imports. Enhanced the import workflow by simplifying the UI, removing unnecessary options, and fixing cancel button functionality to ensure smoother import operations. Improved case-insensitive matching of account codes during imports to correctly identify missing and modified accounts.
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -49,6 +49,7 @@
     * ✅ Frontend Hierarchy UI - Completed parent selection form and hierarchical tree display
     * ✅ CoA Import/Export functionality - Implemented CSV and Excel import/export capabilities
     * ✅ Fixed CoA Import Deletion Logic - Added proper handling of parent-child relationships during import (parent accounts with children are now marked inactive instead of attempted deletion)
+    * ✅ Enhanced CoA Import UI - Simplified the import workflow by removing unnecessary options and fixing the cancel functionality
     * ✅ CoA Automated Testing - Created comprehensive test suite for CSV/Excel import/export operations, verified all operations functional
     * **CoA Schema Update:**
         * Ensure consistency in account code storage (`accountCode`).
