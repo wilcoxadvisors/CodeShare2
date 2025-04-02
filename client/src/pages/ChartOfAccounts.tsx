@@ -41,6 +41,9 @@ interface AccountTreeNode {
   active: boolean;
   description: string | null;
   createdAt: string;
+  fsliBucket?: string | null;
+  internalReportingBucket?: string | null;
+  item?: string | null;
   children: AccountTreeNode[];
 }
 
@@ -789,7 +792,10 @@ function ChartOfAccounts() {
           Description: account.description || '',
           ParentId: account.parentId || '',
           ParentCode: parentAccount ? (parentAccount.accountCode || parentAccount.code) : '', // Support both formats
-          ParentName: parentAccount ? parentAccount.name : ''
+          ParentName: parentAccount ? parentAccount.name : '',
+          FSLI_Bucket: account.fsliBucket || '',
+          Internal_Reporting_Bucket: account.internalReportingBucket || '',
+          Item: account.item || ''
         };
       });
       
@@ -861,7 +867,7 @@ function ChartOfAccounts() {
       // Create template headers matching the export format
       const templateHeaders = [
         "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
-        "ParentId", "ParentCode", "ParentName"
+        "ParentId", "ParentCode", "ParentName", "FSLI_Bucket", "Internal_Reporting_Bucket", "Item"
       ];
       
       // Flatten the accounts tree to get all accounts
@@ -900,7 +906,10 @@ function ChartOfAccounts() {
             Description: account.description || "",
             ParentId: account.parentId ? String(account.parentId) : "",
             ParentCode: parent ? (parent.accountCode || parent.code) : "", // Support both formats
-            ParentName: parent ? parent.name : ""
+            ParentName: parent ? parent.name : "",
+            FSLI_Bucket: account.fsliBucket || "",
+            Internal_Reporting_Bucket: account.internalReportingBucket || "",
+            Item: account.item || ""
           };
         });
       } else {
@@ -921,7 +930,10 @@ function ChartOfAccounts() {
             Description: "All company assets", 
             ParentId: "",
             ParentCode: "",
-            ParentName: ""
+            ParentName: "",
+            FSLI_Bucket: "Assets",
+            Internal_Reporting_Bucket: "Current Assets",
+            Item: "Cash and Cash Equivalents"
           },
           { 
             tempId: 2001,
@@ -1788,7 +1800,7 @@ function ChartOfAccounts() {
       </div>
 
       <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditMode ? "Edit Account" : "Create New Account"}</DialogTitle>
           </DialogHeader>
@@ -1977,13 +1989,13 @@ function ChartOfAccounts() {
                   </div>
                   
                   {accountData.isSubledger && (
-                    <div className="space-y-2 ml-6">
+                    <div className="space-y-2 ml-6 mt-2 max-w-full">
                       <Label htmlFor="subledgerType">Subledger Type</Label>
                       <Select 
                         value={accountData.subledgerType} 
                         onValueChange={(value) => handleSelectChange("subledgerType", value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select subledger type" />
                         </SelectTrigger>
                         <SelectContent>
