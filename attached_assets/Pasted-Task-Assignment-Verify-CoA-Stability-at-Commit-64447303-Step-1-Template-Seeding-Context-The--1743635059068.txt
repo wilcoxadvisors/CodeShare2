@@ -1,0 +1,41 @@
+Task Assignment: Verify CoA Stability at Commit 64447303 (Step 1: Template & Seeding)
+
+Context:
+The codebase is at commit 64447303 and file cleanup is complete. We must now systematically verify the core Chart of Accounts functionality at this commit state, starting with the template and data seeding, to address previously reported potential regressions.
+
+Goal:
+Verify the integrity of the CoA template and the functionality of both automatic (new client) and manual seeding processes at commit 64447303.
+
+Instructions (Step 1 of Verification Plan):
+
+Action: Verify CoA Template:
+
+Examine the file server/coaTemplate.ts.
+Verify: Is the standardCoaTemplate array correctly defined and structurally intact (using accountCode, appropriate types, etc.)?
+Report: State clearly whether the template file and its contents are correct and present.
+Action: Verify Automatic Seeding (New Clients):
+
+Review Logic: Briefly review the code responsible for seeding a new client upon creation (likely in server/storage.ts or triggered by client creation routes).
+Add Logging (Optional but Recommended): Add temporary, detailed console.log statements within this automatic seeding logic to trace execution if needed for debugging.
+Test Creation: Use an API call (curl or script, ensure authentication using scripts/login.js output) to create a new test client (e.g., name it "Stable CoA Test Client").
+Monitor Logs: Observe the backend logs during client creation for seeding activity and any errors.
+Check Database: Immediately after creation, query the database: psql $DATABASE_URL -c "SELECT COUNT(*) FROM accounts WHERE client_id = <new_client_id>;". Substitute <new_client_id> with the actual ID returned from the creation step.
+Report Findings: Did the automatic seeding logic execute (check logs)? Did it complete without errors? Did the database check confirm the correct number of accounts (e.g., 74) were created for the new client? Provide relevant log snippets and the DB query result.
+Action: Check Manual Seeding Script Configuration:
+
+Review Script: Examine scripts/seed-existing-clients-coa.ts. Does it correctly reference the template from server/coaTemplate.ts? Does it use the correct field names (accountCode, etc.)?
+Review Runner: Check the runner script (likely ./scripts/seed-existing-coa.sh if restored or check scripts/archive/seed-existing-coa.sh for reference). Does it correctly execute the TypeScript script (e.g., using npx tsx ...)?
+Report Findings: Confirm whether the manual seeding scripts (.ts and .sh if present) appear correctly configured according to the codebase at this commit. (Do not run the script yet).
+Verification:
+
+CoA template file (server/coaTemplate.ts) is correct.
+Automatic seeding for new clients functions correctly, populating the database.
+Manual seeding scripts (scripts/...) are correctly configured.
+Reporting:
+
+Provide a detailed report for this specific step (Step 1), including:
+Status of the CoA template file.
+Success/Failure of the automatic seeding test for a new client, including logs and DB results.
+Confirmation of whether the manual seeding scripts are correctly configured.
+Clearly state if each sub-point (Template, Auto-Seeding, Manual Script Config) is Working or Not Working.
+Await confirmation before proceeding to Step 2 (API Verification).

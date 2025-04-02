@@ -3334,9 +3334,11 @@ export class DatabaseStorage implements IStorage {
   async seedClientCoA(clientId: number): Promise<void> {
     try {
       console.log(`SEEDING: Starting Chart of Accounts seed for client ID ${clientId}`);
+      console.log(`SEEDING: VERIFICATION TEST - CoA seeding triggered at ${new Date().toISOString()}`);
       
       // Import the standard template
       const { standardCoaTemplate } = await import('./coaTemplate');
+      console.log(`SEEDING: VERIFICATION TEST - Loaded template with ${standardCoaTemplate.length} accounts`);
       
       // Check if accounts already exist for this client
       const existingAccounts = await db
@@ -3472,10 +3474,11 @@ export class DatabaseStorage implements IStorage {
     
     // Seed the standard Chart of Accounts for the new client
     try {
+      console.log(`VERIFICATION TEST: Starting automatic CoA seeding for new client ${result.id} at ${new Date().toISOString()}`);
       await this.seedClientCoA(result.id);
-      console.log(`Automatically seeded standard Chart of Accounts for new client ${result.id}`);
+      console.log(`VERIFICATION TEST: Successfully seeded standard Chart of Accounts for new client ${result.id}`);
     } catch (error) {
-      console.error(`Failed to seed Chart of Accounts for new client ${result.id}:`, error);
+      console.error(`VERIFICATION TEST: Failed to seed Chart of Accounts for new client ${result.id}:`, error);
       // We don't want to fail the client creation if seeding fails
       // Just log the error and continue
     }
