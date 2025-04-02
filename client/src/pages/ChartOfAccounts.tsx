@@ -22,7 +22,7 @@ import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Edit, Trash2, Download, Upload, Plus, FileSpreadsheet, 
-  FileText, Info, AlertTriangle, ChevronRight, ChevronDown
+  FileText, Info, AlertTriangle, ChevronRight, ChevronDown, ChevronLeft
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -2819,35 +2819,65 @@ function ChartOfAccounts() {
             </div>
             
             <DialogFooter className="mt-6">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowPreviewDialog(false);
-                  setShowImportDialog(false); // Close import completely
-                  setImportData([]); // Clear import data
-                  setChangesPreview({
-                    additions: [],
-                    modifications: [],
-                    removals: [],
-                    unchanged: 0
-                  }); // Reset preview
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowPreviewDialog(false);
-                  handleImportConfirm(); // Proceed with import
-                }}
-                disabled={importAccounts.isPending || (updateStrategy === 'selected' && 
-                  selectedNewAccounts.length === 0 && 
-                  selectedModifiedAccounts.length === 0 && 
-                  selectedMissingAccounts.length === 0
-                )}
-              >
-                {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
-              </Button>
+              <div className="flex justify-between w-full">
+                <div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // Return to the import dialog
+                      setShowPreviewDialog(false);
+                      setShowImportDialog(true);
+                      // Keep the import data but reset preview selections
+                      setSelectedNewAccounts([]);
+                      setSelectedModifiedAccounts([]);
+                      setSelectedMissingAccounts([]);
+                      setUpdateStrategy('all');
+                      setRemoveStrategy('inactive');
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Back to File Selection
+                  </Button>
+                </div>
+                <div className="flex space-x-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // Close both dialogs completely and reset all import-related state
+                      setShowPreviewDialog(false);
+                      setShowImportDialog(false);
+                      setImportData([]);
+                      setImportErrors([]);
+                      setChangesPreview({
+                        additions: [],
+                        modifications: [],
+                        removals: [],
+                        unchanged: 0
+                      });
+                      setSelectedNewAccounts([]);
+                      setSelectedModifiedAccounts([]);
+                      setSelectedMissingAccounts([]);
+                      setUpdateStrategy('all');
+                      setRemoveStrategy('inactive');
+                    }}
+                  >
+                    Cancel Import
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowPreviewDialog(false);
+                      handleImportConfirm(); // Proceed with import
+                    }}
+                    disabled={importAccounts.isPending || (updateStrategy === 'selected' && 
+                      selectedNewAccounts.length === 0 && 
+                      selectedModifiedAccounts.length === 0 && 
+                      selectedMissingAccounts.length === 0
+                    )}
+                  >
+                    {importAccounts.isPending ? "Importing..." : "Confirm and Import"}
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </div>
         </DialogContent>
