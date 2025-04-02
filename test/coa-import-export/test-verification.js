@@ -122,7 +122,7 @@ async function createTestClient(name) {
     
     // Try the admin route first
     try {
-      const response = await clientAxios.post('/admin/clients', clientData);
+      const response = await clientAxios.post('/admin/clients'.replace('/api/api/', '/api/').replace('//admin', '/admin'), clientData);
       
       // Make sure the client ID is actually returned
       if (!response.data) {
@@ -164,7 +164,7 @@ async function createTestClient(name) {
       // Try the non-admin route as fallback
       console.log('Attempting fallback client creation route...');
       try {
-        const fallbackResponse = await clientAxios.post('/clients', clientData);
+        const fallbackResponse = await clientAxios.post('/clients'.replace('/api/api/', '/api/'), clientData);
         
         if (fallbackResponse.data && fallbackResponse.data.id) {
           console.log(`Client created via fallback with ID: ${fallbackResponse.data.id}`);
@@ -228,7 +228,7 @@ async function seedInitialAccounts(clientId) {
     for (const account of seedAccounts) {
       try {
         // Use admin route for account creation to avoid auth issues
-        const response = await seedAxios.post(`/admin/clients/${clientId}/accounts`, account);
+        const response = await seedAxios.post(`/admin/clients/${clientId}/accounts`.replace('/api/api/', '/api/').replace('//admin', '/admin'), account);
         console.log(`Seeded account: ${account.name} (${account.accountCode})`);
       } catch (accountError) {
         console.error(`Error creating account ${account.accountCode}:`, accountError.message);
@@ -236,7 +236,7 @@ async function seedInitialAccounts(clientId) {
         // Try fallback approach with non-admin route
         try {
           console.log(`Attempting fallback route for account ${account.accountCode}...`);
-          await seedAxios.post(`/clients/${clientId}/accounts`, account);
+          await seedAxios.post(`/clients/${clientId}/accounts`.replace('/api/api/', '/api/'), account);
           console.log(`Seeded account via fallback: ${account.name} (${account.accountCode})`);
         } catch (fallbackError) {
           console.error(`Fallback also failed for ${account.accountCode}:`, fallbackError.message);
@@ -457,7 +457,7 @@ async function getAccounts(clientId) {
     
     // Use client accounts API endpoint
     console.log(`Making request to: /clients/${clientId}/accounts`);
-    const response = await accountsAxios.get(`/clients/${clientId}/accounts`);
+    const response = await accountsAxios.get(`/clients/${clientId}/accounts`.replace('/api/api/', '/api/'));
     
     // Handle HTML responses - these indicate auth issues
     if (typeof response.data === 'string' && response.data.includes('<!DOCTYPE html>')) {
@@ -526,7 +526,7 @@ async function exportCoa(clientId, format) {
     
     // Use client API route for exporting accounts
     console.log(`Making request to: /clients/${clientId}/accounts/export?format=${format}`);
-    const response = await exportAxios.get(`/clients/${clientId}/accounts/export?format=${format}`, {
+    const response = await exportAxios.get(`/clients/${clientId}/accounts/export?format=${format}`.replace('/api/api/', '/api/'), {
       responseType: 'arraybuffer'
     });
     

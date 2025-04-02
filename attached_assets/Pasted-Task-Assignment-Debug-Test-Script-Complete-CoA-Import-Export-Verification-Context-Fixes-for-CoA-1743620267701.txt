@@ -1,0 +1,41 @@
+Task Assignment: Debug Test Script & Complete CoA Import/Export Verification
+
+Context:
+Fixes for CoA import logic (handling updates) and export headers are implemented. Updated test files (test/data/coa-import/updated-tests/...) are ready. However, the automated test script (test/coa-import-export/test-verification.js) failed to run due to API/auth/routing issues, preventing full verification.
+
+Goal:
+Successfully execute the comprehensive CoA Import/Export verification by debugging the test script or using alternative methods (like careful curl commands) to confirm that adds, updates (without duplicates), inactivations, and exports work correctly with accountCode.
+
+Instructions:
+
+Action: Debug/Fix Test Script (test-verification.js):
+
+Focus: Resolve the issues preventing test/coa-import-export/test-verification.js from running successfully. Based on the logs, investigate:
+Authentication: Ensure cookies from scripts/login.js are correctly read and passed in axios request headers (Cookie: ...). Ensure the Accept: application/json header is always sent.
+API Routes: Double-check all API URLs used in the script. Use the correct admin routes (/api/admin/clients/...) where necessary, ensuring no double prefixes (like /api/api/...). Verify the exact paths for creating clients, importing accounts, getting accounts, and exporting accounts.
+Response Handling: Ensure axios responses are correctly parsed, especially when extracting the clientId after creation. Add more detailed logging around API calls and responses within the script.
+Modify: Update test/coa-import-export/test-verification.js to fix these issues.
+Action: Execute Fixed Test Script:
+
+Run the debugged test script: node test/coa-import-export/test-verification.js (ensure cookies are generated first: node scripts/login.js && cd test/coa-import-export && node test-verification.js).
+Observe & Report: Does the script now complete successfully? Do all assertions pass, specifically confirming that updates worked without creating duplicates? Provide the script's final output/summary.
+Action: Alternative Verification (If Script Debugging Fails):
+
+If Step 2 still fails: Abandon the complex script for now and use manual curl commands combined with data verification:
+Create Client: Use curl with correct headers/route to create a new test client, successfully extracting its ID.
+Seed Initial State (if needed): Use curl or DB commands to add a few accounts to this client that match update rows in your test CSV.
+Import CSV: Use curl with -F "file=@..." to import the test CSV (test/data/coa-import/updated-tests/test-accounts-import-updated.csv). Check the HTTP status and response message.
+Verify CSV Import Results: Use curl to GET the accounts for the test client. Manually inspect the JSON output or use jq to confirm adds, updates (no duplicates!), and inactivations match the test CSV.
+Repeat for Excel: Create another client, seed, import the test Excel file via curl, and verify results via curl.
+Verify Export: Use curl to GET the CSV and Excel export endpoints. Save the files and manually inspect headers (AccountCode, no reporting fields) and data.
+Report: Detail the steps taken and the results observed for each import/export test using this manual curl method.
+Verification:
+
+Confirm (either via script or curl method) that CSV/Excel imports successfully update existing accounts without creating duplicates, correctly handle adds, and correctly mark omitted accounts as inactive.
+Confirm (either via script or curl method) that CSV/Excel exports generate files with the correct AccountCode header and data, and do not include the removed reporting fields.
+Reporting:
+
+Report PASS/FAIL for the overall Import/Export verification.
+Detail the method used (fixed script execution or manual curl verification).
+Provide relevant logs/outputs/file analysis supporting the Pass/Fail conclusion.
+If all checks pass, confirm that CoA Import/Export functionality, including the update logic fix, is working correctly and Task B.1 is truly complete (pending tsc).
