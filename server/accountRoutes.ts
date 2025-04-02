@@ -101,7 +101,7 @@ export function registerAccountRoutes(app: Express) {
         const parentAccount = account.parentId ? accountMap.get(account.parentId) : null;
         
         return {
-          Code: account.accountCode,
+          AccountCode: account.accountCode,
           Name: account.name,
           Type: account.type,
           Subtype: account.subtype || '',
@@ -109,6 +109,9 @@ export function registerAccountRoutes(app: Express) {
           SubledgerType: account.subledgerType || '',
           Active: account.active ? 'Yes' : 'No',
           Description: account.description || '',
+          FsliBucket: account.fsliBucket || '',
+          InternalReportingBucket: account.internalReportingBucket || '',
+          Item: account.item || '',
           ParentId: account.parentId || '',
           ParentCode: parentAccount ? parentAccount.accountCode : '',
           ParentName: parentAccount ? parentAccount.name : ''
@@ -116,7 +119,7 @@ export function registerAccountRoutes(app: Express) {
       });
       
       // Sort by account code for better organization
-      accountsData.sort((a, b) => a.Code.localeCompare(b.Code));
+      accountsData.sort((a, b) => a.AccountCode.localeCompare(b.AccountCode));
       
       if (format === 'csv') {
         // Generate CSV using PapaParse
