@@ -2624,7 +2624,7 @@ function ChartOfAccounts() {
                         onChange={() => setUpdateStrategy('all')}
                       />
                       <label htmlFor="strategy-all" className="ml-2 block text-sm text-gray-700">
-                        Import all changes (default)
+                        Process all changes (default)
                       </label>
                     </div>
                     
@@ -2638,7 +2638,7 @@ function ChartOfAccounts() {
                         onChange={() => setUpdateStrategy('selected')}
                       />
                       <label htmlFor="strategy-selected" className="ml-2 block text-sm text-gray-700">
-                        Import selected changes only
+                        Process only the accounts selected with checkboxes
                       </label>
                     </div>
                     
@@ -2652,7 +2652,7 @@ function ChartOfAccounts() {
                         onChange={() => setUpdateStrategy('none')}
                       />
                       <label htmlFor="strategy-none" className="ml-2 block text-sm text-gray-700">
-                        Don't update existing accounts, only add new ones
+                        Only add new accounts, don't update existing ones
                       </label>
                     </div>
                   </div>
@@ -2662,7 +2662,7 @@ function ChartOfAccounts() {
                   <label className="text-sm font-medium text-gray-700 block mb-2">
                     Missing Accounts Strategy
                     <span className="ml-2 text-xs text-gray-500 font-normal">
-                      (What to do with accounts in the database that are not in the import file)
+                      (What to do with accounts that exist in the system but are not in the import file)
                     </span>
                   </label>
                   <div className="space-y-2">
