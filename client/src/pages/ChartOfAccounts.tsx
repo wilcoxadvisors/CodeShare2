@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEntity } from "../contexts/EntityContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -26,6 +26,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { z } from "zod";
+import { AccountType } from "../lib/schema";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +78,27 @@ import {
   Folder,
   Sparkles
 } from "lucide-react";
+
+// Account form validation schema
+const accountFormSchema = z.object({
+  accountCode: z.string().min(3, "Account code must be at least 3 characters"),
+  name: z.string().min(2, "Account name must be at least 2 characters"),
+  type: z.enum([
+    AccountType.ASSET, 
+    AccountType.LIABILITY, 
+    AccountType.EQUITY, 
+    AccountType.REVENUE, 
+    AccountType.EXPENSE
+  ], {
+    required_error: "Account type is required"
+  }),
+  subtype: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  parentId: z.number().nullable().optional(),
+  isSubledger: z.boolean().default(false),
+  subledgerType: z.string().nullable().optional(),
+  active: z.boolean().default(true),
+});
 
 /**
  * Chart of Accounts Component
@@ -1111,7 +1137,7 @@ function ChartOfAccounts() {
                         }
                         
                         return (
-                          <React.Fragment key={index}>
+                          <Fragment key={index}>
                             <tr className="bg-gray-50 border-t border-gray-200">
                               <td rowSpan={changes.length > 0 ? changes.length : 1} className="px-3 py-2 align-top">
                                 <Checkbox 
@@ -1164,7 +1190,7 @@ function ChartOfAccounts() {
                                 </td>
                               </tr>
                             ))}
-                          </React.Fragment>
+                          </Fragment>
                         );
                       })}
                     </tbody>
