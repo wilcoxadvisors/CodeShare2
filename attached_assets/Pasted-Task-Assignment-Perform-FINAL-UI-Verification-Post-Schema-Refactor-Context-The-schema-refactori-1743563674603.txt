@@ -1,0 +1,39 @@
+Task Assignment: Perform FINAL UI Verification (Post-Schema Refactor)
+
+Context:
+The schema refactoring (moving reporting fields from accounts to journalEntryLines) and corresponding code updates (in backend and frontend interfaces like AccountTreeNode) are complete (checkpoint c8083cf3). The final step is to verify that the Chart of Accounts UI displays correctly after these changes and that the removed fields are indeed gone from the account display/forms. The tsc check remains unresolved (timeout issues).
+
+Goal:
+Confirm via UI simulation/observation that the Chart of Accounts data displays correctly and that the removed reporting fields are no longer present in account-related UI elements for both new and existing clients.
+
+Instructions:
+
+Action: Ensure Application is Running & Logged In:
+
+Verify the application is running with the latest code (npm run dev).
+Simulate logging in as admin (admin / password123).
+Action: Verify New Client CoA Display via Web Tool:
+
+Use the web application tool to simulate navigating to the Chart of Accounts page for the new client (ID 100) created previously.
+Observe & Report: Look at the UI rendered in the tool.
+Does the CoA data display correctly (table populated, hierarchy visible/expanded)?
+Are the fields fsliBucket, internalReportingBucket, item correctly absent from the account table columns and any account detail/edit forms?
+Describe what you see regarding data display and the absence of the removed fields. Capture a screenshot as evidence.
+Action: Verify Existing Client CoA Display via Web Tool:
+
+Use the web application tool to simulate navigating to the Chart of Accounts page for an existing client (e.g., Client ID 1).
+Observe & Report: Look at the UI rendered in the tool.
+Does the CoA data display correctly?
+Are the fields fsliBucket, internalReportingBucket, item correctly absent from the account table columns and any account detail/edit forms?
+Describe what you see. Capture a screenshot as evidence.
+Verification:
+
+Confirm based on direct observation via the web tool that CoA data is visible and correct in the UI for the newly created client (ID 100).
+Confirm based on direct observation via the web tool that CoA data is visible and correct in the UI for the existing client (e.g., Client ID 1).
+Confirm based on direct observation via the web tool that the removed reporting fields (fsliBucket, internalReportingBucket, item) are no longer present in the account table display or account forms/details.
+Reporting:
+
+Report PASS/FAIL for the New Client UI Verification (Step 2), including a description of the observed UI state (CoA display, absence of fields) and the final screenshot.
+Report PASS/FAIL for the Existing Client UI Verification (Step 3), including a description of the observed UI state and the final screenshot.
+Note the status of the tsc --noEmit check (still unresolved/timing out).
+If both UI verifications PASS, explicitly state that the schema refactoring is visually verified, and we are ready to proceed with the next step of Task B.2 (Implement JE Backend API & Storage Logic).
