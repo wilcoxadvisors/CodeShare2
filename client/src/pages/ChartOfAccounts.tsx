@@ -1520,6 +1520,12 @@ function ChartOfAccounts() {
   
   // Updated state and types for more granular selective imports
   interface ImportSelections {
+    // Account inclusion/exclusion strategies
+    updateStrategy?: 'all' | 'none' | 'selected';
+    removeStrategy?: 'inactive' | 'delete' | 'none';
+    includedCodes?: string[];
+    excludedCodes?: string[];
+    
     // Specific accounts to include in each category
     newAccountCodes: string[];
     modifiedAccountCodes: string[];
@@ -1546,6 +1552,10 @@ function ChartOfAccounts() {
       
       // Create selections object to pass to backend
       const selections: ImportSelections = {
+        // Account inclusion/exclusion strategies
+        updateStrategy: updateStrategy,
+        removeStrategy: removeStrategy,
+        
         // Specific accounts to include in each category
         newAccountCodes: selectedNewAccounts,
         modifiedAccountCodes: selectedModifiedAccounts,
