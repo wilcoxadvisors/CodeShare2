@@ -8,2288 +8,866 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
-} from "@/components/ui/alert-dialog";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AccountType } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
 import { 
-  Edit, Trash2, Download, Upload, Plus, FileSpreadsheet, 
-  FileText, Info, AlertTriangle, ChevronRight, ChevronDown
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  Search,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  Check,
+  X,
+  Info,
+  AlertTriangle,
+  RefreshCw,
+  Filter,
+  User,
+  Folder,
+  Sparkles
 } from "lucide-react";
-import * as XLSX from "xlsx";
-import Papa from "papaparse";
 
-// Account hierarchy interface matching backend AccountTreeNode
-interface AccountTreeNode {
-  id: number;
-  clientId: number;
-  accountCode: string;
-  code?: string; // For backward compatibility
-  name: string;
-  type: string;
-  subtype: string | null;
-  isSubledger: boolean;
-  subledgerType: string | null;
-  parentId: number | null;
-  active: boolean;
-  description: string | null;
-  createdAt: string;
-  children: AccountTreeNode[];
-}
-
+/**
+ * Chart of Accounts Component
+ * 
+ * This component renders the Chart of Accounts page for a specific entity.
+ * It provides functionality to:
+ * 1. View, filter, and search accounts
+ * 2. Create, edit, and deactivate accounts
+ * 3. Import and export accounts
+ * 4. View account details and hierarchy
+ */
 function ChartOfAccounts() {
-  const { currentEntity, selectedClientId } = useEntity();
-  const { toast } = useToast();
+  const { currentEntity, setCurrentEntity } = useEntity();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [accountType, setAccountType] = useState("");
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [showInactive, setShowInactive] = useState(false);
+  const [filterBy, setFilterBy] = useState("");
   
-  console.log("DEBUG - ChartOfAccounts rendering with context:", {
-    hasEntity: !!currentEntity,
-    entityId: currentEntity?.id,
-    entityName: currentEntity?.name,
-    entityClientId: currentEntity?.clientId,
-    selectedClientId,
-    timestamp: new Date().toISOString()
-  });
-  const [showAccountForm, setShowAccountForm] = useState(false);
-  const [formTab, setFormTab] = useState("basic");
-  const [accountCodePrefix, setAccountCodePrefix] = useState("");
-  // Define interface for account data
-  interface AccountData {
-    id: number | null;
-    accountCode: string;
-    name: string;
-    type: string;
-    subtype: string;
-    isSubledger: boolean;
-    subledgerType: string;
-    active: boolean;
-    description: string;
-    parentId: number | null;
-  }
-
-  const [accountData, setAccountData] = useState<AccountData>({
-    id: null,
-    accountCode: "",
-    name: "",
-    type: "",
-    subtype: "",
-    isSubledger: false,
-    subledgerType: "",
-    active: true,
-    description: "",
-    parentId: null
-  });
-  const [isEditMode, setIsEditMode] = useState(false);
+  // Account modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [currentAccount, setCurrentAccount] = useState<any>(null);
+  
+  // Account deletion confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string, accountCode: string} | null>(null);
+  const [accountToDelete, setAccountToDelete] = useState<any>(null);
+  
+  // Import/Export state
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
-  const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
-  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importFormat, setImportFormat] = useState<"csv" | "excel">("csv");
+  const [updateStrategy, setUpdateStrategy] = useState<"all" | "selected">("selected");
+  
+  // Import preview data
   const [changesPreview, setChangesPreview] = useState<{
-    additions: Array<Record<string, any>>;
-    modifications: Array<{
-      original: Record<string, any>;
-      updated: Record<string, any>;
-      changes: string[];
-    }>;
-    removals: Array<Record<string, any>>; // Accounts present in DB but not in import
+    additions: any[];
+    modifications: any[];
+    removals: any[];
     unchanged: number;
-  }>({ additions: [], modifications: [], removals: [], unchanged: 0 });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Get hierarchical account tree data using client-based API
-  // Use selectedClientId as fallback when no entity is selected
-  const clientIdToUse = currentEntity?.clientId || selectedClientId;
-  
-  const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
-    queryKey: clientIdToUse ? [`/api/clients/${clientIdToUse}/accounts/tree`] : ["no-client-selected"],
-    enabled: !!clientIdToUse
+  }>({
+    additions: [],
+    modifications: [],
+    removals: [],
+    unchanged: 0
   });
   
-  // Fetch clients data for export functionality
-  const { data: clients = [] } = useQuery<any[]>({
-    queryKey: ['/api/clients'],
-    enabled: true
-  });
-  
-  // Debug output for entity context and refresh data when client selection changes
-  useEffect(() => {
-    console.log("DEBUG: Entity context in ChartOfAccounts", { 
-      entityExists: !!currentEntity,
-      currentEntity,
-      clientId: currentEntity?.clientId,
-      selectedClientId,
-      clientIdToUse,
-      time: new Date().toISOString()
-    });
-    
-    // Refetch account data when client or entity changes
-    if (clientIdToUse) {
-      console.log("DEBUG: Triggering account data refetch due to client/entity change", { clientIdToUse });
-      // Using a small timeout to ensure the client context is fully updated
-      setTimeout(() => {
-        refetch();
-      }, 100);
-    }
-  }, [currentEntity, selectedClientId, clientIdToUse, refetch]);
-  
-  // Extract the actual accounts array from the response
-  const accountTreeData = accountsTree?.data || [];
-  
-  // Debug output to understand the account tree structure
-  console.log("DEBUG: Account Tree Data", {
-    rawData: accountsTree,
-    extractedData: accountTreeData,
-    count: accountTreeData.length,
-    sample: accountTreeData.length > 0 ? accountTreeData[0] : null,
-    clientId: clientIdToUse
-  });
-  
-  // State for tracking expanded nodes
-  const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
-  
-  // Update expanded nodes when account tree data changes
-  useEffect(() => {
-    if (accountTreeData.length > 0) {
-      // Create a function to recursively expand all nodes
-      const expandAllNodes = (nodes: AccountTreeNode[], result: Record<number, boolean>) => {
-        for (const node of nodes) {
-          // Set this node as expanded
-          result[node.id] = true;
-          
-          // If it has children, recursively expand them as well
-          if (node.children && node.children.length > 0) {
-            expandAllNodes(node.children, result);
-          }
-        }
-        return result;
-      };
-      
-      // Create a new expanded nodes object with all nodes expanded
-      setExpandedNodes(prev => {
-        return expandAllNodes(accountTreeData, { ...prev });
-      });
-    }
-  }, [accountTreeData]);
-  
-  // Toggle node expansion
-  const toggleNodeExpansion = (nodeId: number) => {
-    setExpandedNodes(prev => ({
-      ...prev,
-      [nodeId]: !prev[nodeId]
-    }));
-  };
-  
-  // Function to flatten the hierarchical tree into a flat array with depth information
-  const flattenAccountTree = (nodes: AccountTreeNode[], depth = 0, result: Array<AccountTreeNode & { depth: number }> = []): Array<AccountTreeNode & { depth: number }> => {
-    for (const node of nodes) {
-      // Add current node with its depth
-      result.push({ ...node, depth });
-      
-      // If node is expanded and has children, recursively add them with increased depth
-      if (expandedNodes[node.id] && node.children && node.children.length > 0) {
-        flattenAccountTree(node.children, depth + 1, result);
-      }
-    }
-    return result;
-  };
-  
-  // Memoize the flattened account list to prevent unnecessary recalculations
-  const flattenedAccounts = useMemo(() => {
-    return flattenAccountTree(accountTreeData);
-  }, [accountTreeData, expandedNodes]);
-
-  // Auto-generate account code based on type selection
-  useEffect(() => {
-    if (!isEditMode && accountData.type && currentEntity) {
-      // Define account code prefixes
-      const typePrefixes: Record<string, string> = {
-        'asset': "1",
-        'liability': "2",
-        'equity': "3",
-        'revenue': "4", 
-        'expense': "5" // Base expense prefix
-      };
-      
-      // For expense accounts, use more specific prefixes based on subtype
-      let prefix = typePrefixes[accountData.type as keyof typeof typePrefixes] || "";
-      if (accountData.type === 'expense' && accountData.subtype) {
-        const expensePrefixes: Record<string, string> = {
-          'operating_expense': "5",
-          'non_operating_expense': "5",
-          'cost_of_goods_sold': "5",
-          'marketing': "6",
-          'rent': "6",
-          'payroll': "6",
-          'utilities': "7",
-          'equipment': "7",
-          'professional_services': "7",
-          'travel': "8",
-          'insurance': "8",
-          'taxes': "8",
-          'depreciation': "9"
-        };
-        if (expensePrefixes[accountData.subtype]) {
-          prefix = expensePrefixes[accountData.subtype];
-        }
-      }
-      setAccountCodePrefix(prefix);
-      
-      // Only auto-generate code for new accounts, not when editing
-      if (prefix && !accountData.id) {
-        // Get accounts of the current type from the flattened account tree
-        const accountsOfType = flattenedAccounts.filter(account => account.type === accountData.type);
-        const existingCodes = accountsOfType
-          .map((a) => a.accountCode || a.code) // Support both formats for backward compatibility
-          .filter((code): code is string => 
-            typeof code === 'string' && code.startsWith(prefix)
-          )
-          .sort();
-        
-        if (existingCodes.length > 0) {
-          const lastCode = existingCodes[existingCodes.length - 1];
-          // Since we filtered for valid strings, we know lastCode is defined here
-          // but we'll add a check just to satisfy TypeScript
-          if (lastCode) {
-            const numericPart = parseInt(lastCode.replace(/\D/g, ''));
-            const newCode = `${prefix}${String(numericPart + 1).padStart(3, '0')}`;
-          
-            // Only update if code is empty or doesn't match our format
-            if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
-              setAccountData(prev => ({ ...prev, accountCode: newCode }));
-            }
-          }
-        } else {
-          // No existing accounts of this type, start with 001
-          const newCode = `${prefix}001`;
-          
-          // Only update if code is empty or doesn't match our format  
-          if (!accountData.accountCode || !accountData.accountCode.startsWith(prefix)) {
-            setAccountData(prev => ({ ...prev, accountCode: newCode }));
-          }
-        }
-      }
-    }
-  }, [accountData.type, isEditMode, currentEntity, flattenedAccounts]);
-
-  // Custom hook for adding an account
-  const useAddAccount = () => {
-    return useMutation({
-      mutationFn: async (data: AccountData & { clientId: number }) => {
-        console.log("DEBUG: useAddAccount - Mutate called with:", data);
-        
-        // Enhanced validation for clientId
-        if (!data.clientId || typeof data.clientId !== 'number' || isNaN(data.clientId) || data.clientId <= 0) {
-          console.error("DEBUG: useAddAccount - Invalid clientId:", data.clientId, "type:", typeof data.clientId);
-          throw new Error(`Invalid client ID: ${data.clientId}. Please select a valid client before creating an account.`);
-        }
-        
-        const url = `/api/clients/${data.clientId}/accounts`;
-        console.log("DEBUG: useAddAccount - API URL:", url, "Data:", JSON.stringify(data));
-        
-        try {
-          // Additional logging for the API call
-          console.log(`DEBUG: useAddAccount - Making POST request to ${url} with data:`, JSON.stringify(data, null, 2));
-          
-          const result = await apiRequest(url, {
-            method: 'POST',
-            data
-          });
-          console.log("DEBUG: useAddAccount - API response:", result);
-          return result;
-        } catch (error: any) { // Explicitly type error as any to handle different properties safely
-          console.error("DEBUG: useAddAccount - API error:", error);
-          console.error("DEBUG: useAddAccount - Error message:", error.message);
-          console.error("DEBUG: useAddAccount - Error name:", error.name);
-          
-          if (error.response) {
-            console.error("DEBUG: useAddAccount - API error status:", error.response.status);
-            console.error("DEBUG: useAddAccount - API error data:", error.response.data);
-            console.error("DEBUG: useAddAccount - API error headers:", error.response.headers);
-          }
-          
-          if (error.request) {
-            console.error("DEBUG: useAddAccount - Request was made but no response received");
-            console.error("DEBUG: useAddAccount - Request:", error.request);
-          }
-          
-          throw error;
-        }
-      },
-      onSuccess: (data) => {
-        console.log("DEBUG: useAddAccount - onSuccess triggered", data);
-        toast({
-          title: "Account created",
-          description: "The account has been created successfully.",
-        });
-        setShowAccountForm(false);
-        
-        // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
-        }
-      },
-      onError: (error: Error) => {
-        console.log("DEBUG: useAddAccount - onError triggered:", error);
-        toast({
-          title: "Error",
-          description: `Failed to create account: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    });
-  };
-  
-  // Initialize the add account mutation
-  const createAccount = useAddAccount();
-
-  const handleNewAccount = () => {
-    setAccountData({
-      id: null,
-      accountCode: "",
-      name: "",
-      type: "",
-      subtype: "",
-      isSubledger: false,
-      subledgerType: "",
-      active: true,
-      description: "",
-      parentId: null
-    });
-    setIsEditMode(false);
-    setFormTab("basic");
-    setShowAccountForm(true);
-  };
-  
-  const handleEditAccount = (account: Record<string, any>) => {
-    setAccountData({
-      id: account.id,
-      accountCode: account.accountCode || account.code, // Fallback for backward compatibility
-      name: account.name,
-      type: account.type,
-      subtype: account.subtype || "",
-      isSubledger: account.isSubledger,
-      subledgerType: account.subledgerType || "",
-      active: account.active,
-      description: account.description || "",
-      parentId: account.parentId
-    });
-    setIsEditMode(true);
-    setFormTab("basic");
-    setShowAccountForm(true);
-  };
-  
-  const handleDeleteClick = (account: Record<string, any>) => {
-    setAccountToDelete({
-      id: account.id,
-      name: account.name,
-      accountCode: account.accountCode || account.code // Fallback for backward compatibility
-    });
-    setShowDeleteConfirm(true);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
-    
-    // Special handling for account name standardization
-    if (name === 'name' && value.length > 0) {
-      // Capitalize first letter of each word and standardize spacing
-      const standardizedName = value
-        .split(' ')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ')
-        .trim();
-      
-      setAccountData(prev => ({
-        ...prev,
-        [name]: standardizedName
-      }));
-    } else {
-      setAccountData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    if (name === 'type') {
-      // When account type changes, reset code to trigger auto-generation
-      setAccountData(prev => ({
-        ...prev,
-        [name]: value,
-        accountCode: ""  // Will be auto-generated by effect
-      }));
-    } else {
-      setAccountData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
-  };
-
-  const handleCodeManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    // Keep the type prefix intact when manually editing
-    if (accountCodePrefix && !value.startsWith(accountCodePrefix)) {
-      setAccountData(prev => ({
-        ...prev,
-        accountCode: accountCodePrefix + value.replace(/^\D+/g, '')
-      }));
-    } else {
-      setAccountData(prev => ({
-        ...prev,
-        accountCode: value
-      }));
-    }
-  };
-
-  // Custom hook for updating an account
-  const useUpdateAccount = () => {
-    return useMutation({
-      mutationFn: async (data: AccountData & { clientId: number, id: number }) => {
-        console.log("DEBUG: useUpdateAccount - Mutate called with:", data);
-        return await apiRequest(
-          `/api/clients/${data.clientId}/accounts/${data.id}`, 
-          {
-            method: 'PUT',
-            data
-          }
-        );
-      },
-      onSuccess: (data) => {
-        console.log("DEBUG: useUpdateAccount - onSuccess triggered", data);
-        toast({
-          title: "Account updated",
-          description: "The account has been updated successfully.",
-        });
-        setShowAccountForm(false);
-        
-        // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
-        }
-      },
-      onError: (error: Error) => {
-        console.log("DEBUG: useUpdateAccount - onError triggered:", error);
-        toast({
-          title: "Error",
-          description: `Failed to update account: ${error.message}`,
-          variant: "destructive",
-        });
-      }
-    });
-  };
-  
-  // Initialize the update account mutation
-  const updateAccount = useUpdateAccount();
-  
-  // Custom hook for deleting an account
-  const useDeleteAccount = () => {
-    return useMutation({
-      mutationFn: async (id: number) => {
-        console.log("DEBUG: useDeleteAccount - Mutate called with id:", id);
-        if (!currentEntity?.clientId) {
-          console.log("DEBUG: useDeleteAccount - Error: No client selected");
-          throw new Error("No client selected");
-        }
-        console.log(`DEBUG: useDeleteAccount - Sending DELETE to /api/clients/${currentEntity.clientId}/accounts/${id}`);
-        return await apiRequest(
-          `/api/clients/${currentEntity.clientId}/accounts/${id}`, 
-          {
-            method: 'DELETE'
-          }
-        );
-      },
-      onSuccess: (data) => {
-        console.log("DEBUG: useDeleteAccount - onSuccess triggered", data);
-        toast({
-          title: "Account deleted",
-          description: "The account has been deleted successfully.",
-        });
-        setShowDeleteConfirm(false);
-        setAccountToDelete(null);
-        
-        // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${clientIdToUse}`);
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
-        }
-      },
-      onError: (error: any) => {
-        console.log("DEBUG: useDeleteAccount - onError triggered:", error);
-        if (error.response?.data?.canDeactivate) {
-          // Show option to deactivate instead
-          toast({
-            title: "Cannot delete account",
-            description: "This account is used in journal entries and cannot be deleted. You can deactivate it instead.",
-          });
-          
-          setShowDeleteConfirm(false);
-          // Show deactivation dialog if we have the account details
-          if (accountToDelete) {
-            setAccountData({
-              id: accountToDelete.id,
-              accountCode: accountToDelete.accountCode,
-              name: accountToDelete.name,
-              type: "",  // Will be filled when fetching account details
-              subtype: "",
-              isSubledger: false,
-              subledgerType: "",
-              active: false,  // Set to inactive
-              description: "",
-              parentId: null // Will be updated when fetching account details
-            });
-            
-            // Get full account details before showing the form
-            apiRequest(`/api/clients/${currentEntity?.clientId}/accounts/${accountToDelete.id}`)
-              .then((accountDetails: any) => {
-                setAccountData(prev => ({
-                  ...prev,
-                  type: accountDetails.type,
-                  subtype: accountDetails.subtype || "",
-                  isSubledger: accountDetails.isSubledger,
-                  subledgerType: accountDetails.subledgerType || "",
-                  description: accountDetails.description || "",
-                  parentId: accountDetails.parentId
-                }));
-                setIsEditMode(true);
-                setFormTab("basic");
-                setShowAccountForm(true);
-              })
-              .catch(fetchError => {
-                console.error("Error fetching account details:", fetchError);
-                toast({
-                  title: "Error",
-                  description: "Could not fetch account details for deactivation",
-                  variant: "destructive",
-                });
-              });
-          }
-        } else {
-          toast({
-            title: "Error",
-            description: `Failed to delete account: ${error.message}`,
-            variant: "destructive",
-          });
-        }
-      }
-    });
-  };
-  
-  // Initialize the delete account mutation
-  const deleteAccount = useDeleteAccount();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Enhanced validation that a client is selected with detailed logging
-    console.log("DEBUG - handleSubmit - Client validation:", { 
-      currentEntity, 
-      selectedClientId,
-      clientIdToUse,
-      clientIdToUseType: typeof clientIdToUse
-    });
-    
-    if (!clientIdToUse) {
-      console.error("DEBUG - handleSubmit - No client ID available");
-      toast({
-        title: "Client required",
-        description: "Please select a client from the header dropdown first.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
-      console.error("DEBUG - handleSubmit - Invalid client ID:", clientIdToUse);
-      toast({
-        title: "Invalid client",
-        description: "The selected client appears to be invalid. Please try selecting a different client.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Validate required fields
-    if (!accountData.name || !accountData.accountCode || !accountData.type) {
-      console.error("DEBUG - handleSubmit - Missing required fields:", { 
-        name: accountData.name, 
-        accountCode: accountData.accountCode,
-        type: accountData.type
-      });
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields (Account Code, Name, and Type).",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Create a copy of the data to submit
-    // Create a copy of the data to submit with proper TypeScript type narrowing
-    const submitData = {
-      ...accountData,
-      // Ensure parentId is either null or a valid number
-      parentId: accountData.parentId === null || accountData.parentId === undefined ? null : 
-                typeof accountData.parentId === 'string' ? parseInt(accountData.parentId, 10) : accountData.parentId
-    };
-    
-    console.log("DEBUG - handleSubmit - parentId before:", accountData.parentId, "type:", typeof accountData.parentId);
-    console.log("DEBUG - handleSubmit - parentId after:", submitData.parentId, "type:", typeof submitData.parentId);
-    
-    console.log("DEBUG - handleSubmit - Submitting account data:", {
-      clientId: clientIdToUse,
-      submitData,
-      isEditMode
-    });
-    
-    try {
-      if (isEditMode && submitData.id !== null) {
-        // For edit mode, ensure we have a valid ID and it's not null
-        // Create a new object with only the properties expected by the updateAccount mutation
-        const updateData = {
-          id: submitData.id as number, // Type assertion since we've verified it's not null
-          clientId: clientIdToUse,
-          accountCode: submitData.accountCode,
-          name: submitData.name,
-          type: submitData.type,
-          subtype: submitData.subtype,
-          isSubledger: submitData.isSubledger,
-          subledgerType: submitData.subledgerType,
-          active: submitData.active,
-          description: submitData.description,
-          parentId: submitData.parentId
-        };
-        updateAccount.mutate(updateData);
-      } else {
-        // For create mode
-        createAccount.mutate({
-          ...submitData,
-          clientId: clientIdToUse
-        });
-      }
-    } catch (error) {
-      console.error("DEBUG - handleSubmit - Error during mutation call:", error);
-      toast({
-        title: "Submission error",
-        description: `An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleDeleteConfirm = () => {
-    if (accountToDelete) {
-      deleteAccount.mutate(accountToDelete.id);
-    }
-  };
-  
-  // Excel export functionality
-  // Function to fetch all accounts for export (not just visible ones)
-  const fetchAllAccountsForExport = async () => {
-    if (!clientIdToUse) {
-      toast({
-        title: "No client selected",
-        description: "Please select a client to export accounts.",
-        variant: "destructive",
-      });
-      return null;
-    }
-    
-    try {
-      // Use the regular accounts API to get all accounts for the client
-      const response = await fetch(`/api/clients/${clientIdToUse}/accounts`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accounts for export: ${response.status} ${response.statusText}`);
-      }
-      
-      const allAccounts = await response.json();
-      console.log(`DEBUG: Export - Retrieved ${allAccounts?.length || 0} accounts from the server`);
-      return allAccounts;
-    } catch (error) {
-      console.error("Error fetching accounts for export:", error);
-      toast({
-        title: "Export failed",
-        description: `Error fetching accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-  
-  const handleExportToExcel = async () => {
-    // First check if we have accounts in the current view
-    if (!Array.isArray(flattenedAccounts) || flattenedAccounts.length === 0) {
-      toast({
-        title: "No accounts to export",
-        description: "Please add accounts to the chart of accounts before exporting.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Show loading toast
-      toast({
-        title: "Preparing export",
-        description: "Generating your Excel file...",
-      });
-      
-      // Fetch all accounts including hidden ones
-      const allAccounts = await fetchAllAccountsForExport();
-      
-      if (!allAccounts || !Array.isArray(allAccounts)) {
-        throw new Error("Failed to retrieve accounts for export");
-      }
-      
-      console.log(`DEBUG: Export - Retrieved ${allAccounts.length} accounts for export`);
-      
-      // Build a map of account IDs to account objects for parent lookup
-      const accountMap = new Map();
-      allAccounts.forEach((account: any) => {
-        accountMap.set(account.id, account);
-      });
-      
-      // Prepare data for export with enhanced parent information
-      const exportData = allAccounts.map((account: any) => {
-        // Find parent account details if parentId exists
-        const parentAccount = account.parentId ? accountMap.get(account.parentId) : null;
-        
-        return {
-          Code: account.accountCode || account.code, // Support both formats for backward compatibility
-          Name: account.name,
-          Type: account.type,
-          Subtype: account.subtype || '',
-          IsSubledger: account.isSubledger ? 'Yes' : 'No',
-          SubledgerType: account.subledgerType || '',
-          Active: account.active ? 'Yes' : 'No',
-          Description: account.description || '',
-          ParentId: account.parentId || '',
-          ParentCode: parentAccount ? (parentAccount.accountCode || parentAccount.code) : '', // Support both formats
-          ParentName: parentAccount ? parentAccount.name : ''
-        };
-      });
-      
-      // Sort by account code for better organization
-      exportData.sort((a: any, b: any) => a.Code.localeCompare(b.Code));
-      
-      // Create worksheet with styled headers
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Column widths for better readability
-      const columnWidths = [
-        { wch: 10 },  // Code
-        { wch: 30 },  // Name
-        { wch: 15 },  // Type
-        { wch: 20 },  // Subtype
-        { wch: 12 },  // IsSubledger
-        { wch: 20 },  // SubledgerType
-        { wch: 10 },  // Active
-        { wch: 40 },  // Description
-        { wch: 10 },  // ParentId
-        { wch: 10 },  // ParentCode
-        { wch: 30 }   // ParentName
-      ];
-      
-      worksheet['!cols'] = columnWidths;
-      
-      // Create workbook and add worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Chart of Accounts");
-      
-      // Generate filename with entity name and current date
-      const date = new Date().toISOString().split('T')[0];
-      // Get entity name from the selected client context
-      let entityName = 'Entity';
-      if (currentEntity?.name) {
-        entityName = currentEntity.name;
-      } else if (clientIdToUse && Array.isArray(clients)) {
-        const client = clients.find((c: any) => c.id === clientIdToUse);
-        if (client?.name) {
-          entityName = client.name;
-        }
-      }
-      const fileName = `${entityName}_ChartOfAccounts_${date}.xlsx`;
-      
-      // Download the file
-      XLSX.writeFile(workbook, fileName);
-      
-      toast({
-        title: "Export successful",
-        description: `Chart of accounts exported as ${fileName}`,
-      });
-    } catch (error) {
-      console.error("Export error:", error);
-      toast({
-        title: "Export failed",
-        description: `Error exporting chart of accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Create template for import
-  const handleGenerateTemplate = () => {
-    try {
-      // If we have accounts data, use it for the template
-      // Otherwise use sample data
-      let templateData = [];
-      
-      // Create template headers matching the export format
-      const templateHeaders = [
-        "Code", "Name", "Type", "Subtype", "IsSubledger", "SubledgerType", "Active", "Description", 
-        "ParentId", "ParentCode", "ParentName"
-      ];
-      
-      // Flatten the accounts tree to get all accounts
-      const flatAccounts: AccountTreeNode[] = [];
-      
-      const flattenTree = (nodes: AccountTreeNode[]) => {
-        for (const node of nodes) {
-          flatAccounts.push(node);
-          if (node.children && node.children.length > 0) {
-            flattenTree(node.children);
-          }
-        }
-      };
-      
-      // Only process if we have data and the tree is valid
-      if (accountsTree && accountsTree.data && accountsTree.data.length > 0) {
-        // Flatten the tree to get all accounts
-        flattenTree(accountsTree.data);
-        
-        console.log("DEBUG: Using existing accounts data for template, count:", flatAccounts.length);
-        
-        // Map the actual account data to the template format
-        templateData = flatAccounts.map((account: AccountTreeNode) => {
-          // Find parent account if it exists
-          const parent = account.parentId ? 
-            flatAccounts.find((a: AccountTreeNode) => a.id === account.parentId) : null;
-          
-          return {
-            Code: account.accountCode || account.code, // Support both formats for backward compatibility
-            Name: account.name,
-            Type: account.type,
-            Subtype: account.subtype || "",
-            IsSubledger: account.isSubledger ? "Yes" : "No",
-            SubledgerType: account.subledgerType || "",
-            Active: account.active ? "Yes" : "No",
-            Description: account.description || "",
-            ParentId: account.parentId ? String(account.parentId) : "",
-            ParentCode: parent ? (parent.accountCode || parent.code) : "", // Support both formats
-            ParentName: parent ? parent.name : ""
-          };
-        });
-      } else {
-        console.log("DEBUG: Using sample data for template - no accounts data available");
-        // Create sample data (one row per account type) with consistent parent relationship examples
-        
-        // Create a temporary map structure to simulate real database relationships
-        const rootAccounts = [
-          { 
-            tempId: 1001, // Synthetic ID just for relationship example
-            Code: "1000", 
-            Name: "Assets", 
-            Type: "asset", 
-            Subtype: "current_asset", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "All company assets", 
-            ParentId: "",
-            ParentCode: "",
-            ParentName: ""
-          },
-          { 
-            tempId: 2001,
-            Code: "2000", 
-            Name: "Liabilities", 
-            Type: "liability", 
-            Subtype: "current_liability", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "All company liabilities", 
-            ParentId: "",
-            ParentCode: "",
-            ParentName: ""
-          },
-          { 
-            tempId: 3001,
-            Code: "3000", 
-            Name: "Equity", 
-            Type: "equity", 
-            Subtype: "", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Owner's equity", 
-            ParentId: "",
-            ParentCode: "",
-            ParentName: ""
-          },
-          { 
-            tempId: 4001,
-            Code: "4000", 
-            Name: "Revenue", 
-            Type: "revenue", 
-            Subtype: "", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Income from operations", 
-            ParentId: "",
-            ParentCode: "",
-            ParentName: ""
-          },
-          { 
-            tempId: 5001,
-            Code: "5000", 
-            Name: "Expenses", 
-            Type: "expense", 
-            Subtype: "", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Company expenses", 
-            ParentId: "",
-            ParentCode: "",
-            ParentName: ""
-          }
-        ];
-        
-        const childAccounts = [
-          { 
-            Code: "1001", 
-            Name: "Cash", 
-            Type: "asset", 
-            Subtype: "current_asset", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Cash on hand", 
-            ParentId: "1001", // Reference to Assets tempId
-            ParentCode: "1000",
-            ParentName: "Assets"
-          },
-          { 
-            Code: "1002", 
-            Name: "Bank Accounts", 
-            Type: "asset", 
-            Subtype: "current_asset", 
-            IsSubledger: "Yes", 
-            SubledgerType: "bank", 
-            Active: "Yes", 
-            Description: "Company bank accounts", 
-            ParentId: "1001", // Reference to Assets tempId
-            ParentCode: "1000",
-            ParentName: "Assets"
-          },
-          { 
-            Code: "2001", 
-            Name: "Accounts Payable", 
-            Type: "liability", 
-            Subtype: "current_liability", 
-            IsSubledger: "No", 
-            SubledgerType: "", 
-            Active: "Yes", 
-            Description: "Short-term debt", 
-            ParentId: "2001", // Reference to Liabilities tempId
-            ParentCode: "2000",
-            ParentName: "Liabilities"
-          },
-          {
-            Code: "5001",
-            Name: "Operating Expenses",
-            Type: "expense",
-            Subtype: "",
-            IsSubledger: "No",
-            SubledgerType: "",
-            Active: "Yes",
-            Description: "Day-to-day operational expenses",
-            ParentId: "5001", // Reference to Expenses tempId
-            ParentCode: "5000",
-            ParentName: "Expenses"
-          }
-        ];
-        
-        // Combine root and child accounts for the template
-        // Remove the temporary IDs from the root accounts before outputting
-        templateData = [
-          ...rootAccounts.map(root => {
-            // Create a new object without the tempId property
-            const { tempId, ...accountWithoutTempId } = root;
-            return accountWithoutTempId;
-          }),
-          ...childAccounts
-        ];
-      }
-      
-      // First create a worksheet with only the headers
-      const worksheet = XLSX.utils.aoa_to_sheet([templateHeaders]);
-      
-      // Then add the data starting at the second row
-      XLSX.utils.sheet_add_json(worksheet, templateData, { 
-        origin: "A2",
-        skipHeader: true 
-      });
-      
-      // Column widths for better readability
-      const columnWidths = [
-        { wch: 10 },  // Code
-        { wch: 30 },  // Name
-        { wch: 15 },  // Type
-        { wch: 20 },  // Subtype
-        { wch: 12 },  // IsSubledger
-        { wch: 20 },  // SubledgerType
-        { wch: 10 },  // Active
-        { wch: 40 },  // Description
-        { wch: 10 },  // ParentId
-        { wch: 10 },  // ParentCode
-        { wch: 30 }   // ParentName
-      ];
-      
-      worksheet['!cols'] = columnWidths;
-      
-      // Create workbook and add worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-      
-      // Generate filename with entity name and current date
-      const date = new Date().toISOString().split('T')[0];
-      const fileName = `ChartOfAccounts_Template_${date}.xlsx`;
-      
-      // Download the file
-      XLSX.writeFile(workbook, fileName);
-      
-      toast({
-        title: "Template generated",
-        description: "Chart of accounts template has been downloaded. Fill in your accounts and use the Import function when ready.",
-      });
-    } catch (error) {
-      console.error("Template generation error:", error);
-      toast({
-        title: "Template generation failed",
-        description: `Error creating template: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Handle file selection for import
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const file = e.target.files[0];
-    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
-    const reader = new FileReader();
-    
-    reader.onload = (evt) => {
-      try {
-        const content = evt.target?.result as string;
-        
-        if (fileType === 'csv') {
-          // Process CSV file
-          Papa.parse(content, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              if (results.errors && results.errors.length > 0) {
-                console.error("CSV parsing errors:", results.errors);
-                
-                // Format the error message
-                const errorMessage = results.errors.length === 1 
-                  ? `Error parsing CSV file: ${results.errors[0].message}`
-                  : `Error parsing CSV file: ${results.errors.length} errors found. First error: ${results.errors[0].message}`;
-                
-                toast({
-                  title: "Import failed",
-                  description: errorMessage,
-                  variant: "destructive",
-                });
-                return;
-              }
-              
-              // Validate and process the data
-              validateAndProcessImportData(results.data);
-            },
-            error: (error: any) => {
-              console.error("Error parsing CSV:", error);
-              toast({
-                title: "Import failed",
-                description: `Error parsing CSV file: ${error.message || 'Unknown parsing error'}`,
-                variant: "destructive",
-              });
-            }
-          });
-        } else {
-          // Process Excel file
-          // Ensure content is not undefined before using XLSX.read
-          if (content) {
-            const workbook = XLSX.read(content, { type: 'binary' });
-            
-            // Get first sheet
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            // Convert to JSON
-            const data = XLSX.utils.sheet_to_json(worksheet);
-            
-            // Validate and process data
-            validateAndProcessImportData(data);
-          } else {
-            throw new Error('Failed to read Excel file: File content is empty');
-          }
-        }
-      } catch (error) {
-        console.error("Error processing file:", error);
-        toast({
-          title: "Import failed",
-          description: `Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          variant: "destructive",
-        });
-      }
-    };
-    
-    reader.onerror = () => {
-      toast({
-        title: "Import failed",
-        description: "Failed to read the file. Please check the file format.",
-        variant: "destructive",
-      });
-    };
-    
-    if (fileType === 'csv') {
-      reader.readAsText(file);
-    } else {
-      reader.readAsBinaryString(file);
-    }
-  };
-  
-  // Validate and process import data
-  const validateAndProcessImportData = (data: any[]) => {
-    if (!data || data.length === 0) {
-      toast({
-        title: "Import failed",
-        description: "The file contains no data. Please check the file content.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Flatten the accounts tree to get all accounts (for parent resolution)
-    const flatAccounts: AccountTreeNode[] = [];
-    
-    const flattenTree = (nodes: AccountTreeNode[]) => {
-      for (const node of nodes) {
-        flatAccounts.push(node);
-        if (node.children && node.children.length > 0) {
-          flattenTree(node.children);
-        }
-      }
-    };
-    
-    if (accountsTree && accountsTree.data) {
-      flattenTree(accountsTree.data);
-    }
-    
-    // Map of codes to account IDs for parent resolution
-    const codeToIdMap = new Map<string, number>();
-    flatAccounts.forEach(account => {
-      // Use accountCode if available, fall back to code for backward compatibility
-      const accountIdentifier = account.accountCode || account.code;
-      // Only add to map if we have a valid string identifier
-      if (accountIdentifier && typeof accountIdentifier === 'string') {
-        codeToIdMap.set(accountIdentifier, account.id);
-      }
-    });
-    
-    // Validate required fields
-    const errors: string[] = [];
-    const processedData = data.map((row, index) => {
-      const rowNum = index + 2; // +2 for Excel row number (1-based + header row)
-      const validatedRow: {
-        code: string;
-        name: string;
-        type: string;
-        subtype: string | null;
-        isSubledger: boolean;
-        subledgerType: string | null;
-        active: boolean;
-        description: string | null;
-        parentId?: number | null;
-      } = {
-        code: row.Code?.toString().trim(),
-        name: row.Name?.toString().trim(),
-        type: row.Type?.toString().toLowerCase().trim(),
-        subtype: row.Subtype?.toString().trim() || null,
-        isSubledger: row.IsSubledger?.toString().toUpperCase() === 'YES',
-        subledgerType: row.SubledgerType?.toString().trim() || null,
-        active: row.Active?.toString().toUpperCase() !== 'NO', // Default to active if not specified
-        description: row.Description?.toString().trim() || null,
-        parentId: null // Default to no parent
-      };
-      
-      // Resolve parent account from ParentId, ParentCode, or both
-      if (row.ParentId) {
-        // If numeric ID is provided, use it directly
-        const parentId = parseInt(row.ParentId, 10);
-        if (!isNaN(parentId)) {
-          validatedRow.parentId = parentId;
-        }
-      } else if (row.ParentCode) {
-        // If parent code is provided, look up its ID
-        const parentCode = row.ParentCode?.toString().trim();
-        if (parentCode && codeToIdMap.has(parentCode)) {
-          validatedRow.parentId = codeToIdMap.get(parentCode) || null;
-        }
-      }
-      
-      // Validate required fields
-      if (!validatedRow.code) {
-        errors.push(`Row ${rowNum}: Code is required`);
-      }
-      
-      if (!validatedRow.name) {
-        errors.push(`Row ${rowNum}: Name is required`);
-      }
-      
-      // Validate account type is one of the allowed values
-      const validTypes = ['asset', 'liability', 'equity', 'revenue', 'expense'];
-      if (!validatedRow.type || !validTypes.includes(validatedRow.type)) {
-        errors.push(`Row ${rowNum}: Invalid account type. Must be one of: ${validTypes.join(', ')}`);
-      }
-      
-      return validatedRow;
-    });
-    
-    // If validation errors, show them
-    if (errors.length > 0) {
-      setImportErrors(errors);
-      setImportData([]);
-      setShowImportDialog(true);
-      return;
-    } 
-    
-    // No validation errors, prepare for preview
-    setImportData(processedData);
-    setImportErrors([]);
-    
-    // Generate preview with change detection
-    generateChangePreview(processedData);
-  };
-  
-  // Compare imported data with existing accounts to detect changes
-  const generateChangePreview = (importData: Array<Record<string, any>>) => {
-    // Flatten the accounts tree to get a list of all accounts
-    const flatAccounts: AccountTreeNode[] = [];
-    
-    const flattenTree = (nodes: AccountTreeNode[]) => {
-      for (const node of nodes) {
-        flatAccounts.push(node);
-        if (node.children && node.children.length > 0) {
-          flattenTree(node.children);
-        }
-      }
-    };
-    
-    if (accountsTree && accountsTree.data) {
-      flattenTree(accountsTree.data);
-    }
-    
-    const additions: Array<Record<string, any>> = [];
-    const modifications: Array<{
-      original: Record<string, any>;
-      updated: Record<string, any>;
-      changes: string[];
-    }> = [];
-    
-    // Process each imported account
-    importData.forEach(importedAccount => {
-      // Try to find matching account using multiple strategies:
-      // 1. First try to match by ID if available in the import data (most reliable)
-      // 2. Then try matching by accountCode (for backward compatibility)
-      let existingAccount = null;
-      
-      // Check if we have an ID in the imported data
-      if (importedAccount.id) {
-        const importedId = parseInt(importedAccount.id, 10);
-        if (!isNaN(importedId) && importedId > 0) {
-          existingAccount = flatAccounts.find(acc => acc.id === importedId);
-          console.log(`Matching by ID ${importedId} - match found: ${Boolean(existingAccount)}`);
-        }
-      }
-      
-      // If no match by ID, try to match by code
-      if (!existingAccount) {
-        existingAccount = flatAccounts.find(acc => 
-          (acc.accountCode && acc.accountCode.toLowerCase() === importedAccount.code.toLowerCase()) || 
-          (acc.code && acc.code.toLowerCase() === importedAccount.code.toLowerCase())
-        );
-        console.log(`Matching by code ${importedAccount.code} - match found: ${Boolean(existingAccount)}`);
-      }
-      
-      if (!existingAccount) {
-        // New account
-        additions.push(importedAccount);
-      } else {
-        // Check for modifications in existing account
-        const changes: string[] = [];
-        
-        // Check each field for changes, starting with accountCode
-        const existingCode = existingAccount.accountCode || existingAccount.code || '';
-        if (importedAccount.code !== existingCode) {
-          changes.push(`Account Code: "${existingCode}" → "${importedAccount.code}"`);
-        }
-        
-        if (importedAccount.name !== existingAccount.name) {
-          changes.push(`Name: "${existingAccount.name}" → "${importedAccount.name}"`);
-        }
-        
-        if (importedAccount.type !== existingAccount.type) {
-          changes.push(`Type: "${existingAccount.type}" → "${importedAccount.type}"`);
-        }
-        
-        if (importedAccount.subtype !== (existingAccount.subtype || null)) {
-          changes.push(`Subtype: "${existingAccount.subtype || 'None'}" → "${importedAccount.subtype || 'None'}"`);
-        }
-        
-        if (importedAccount.isSubledger !== existingAccount.isSubledger) {
-          changes.push(`Is Subledger: "${existingAccount.isSubledger ? 'Yes' : 'No'}" → "${importedAccount.isSubledger ? 'Yes' : 'No'}"`);
-        }
-        
-        if (importedAccount.subledgerType !== (existingAccount.subledgerType || null)) {
-          changes.push(`Subledger Type: "${existingAccount.subledgerType || 'None'}" → "${importedAccount.subledgerType || 'None'}"`);
-        }
-        
-        if (importedAccount.active !== existingAccount.active) {
-          changes.push(`Active: "${existingAccount.active ? 'Yes' : 'No'}" → "${importedAccount.active ? 'Yes' : 'No'}"`);
-        }
-        
-        if (importedAccount.description !== (existingAccount.description || null)) {
-          changes.push(`Description: "${existingAccount.description || 'None'}" → "${importedAccount.description || 'None'}"`);
-        }
-        
-        // If any changes were found, add to modifications list
-        if (changes.length > 0) {
-          modifications.push({
-            original: existingAccount,
-            updated: importedAccount,
-            changes: changes
-          });
-        }
-      }
-    });
-    
-    // Find accounts in the database that are not in the import (missing/removals)
-    // These are accounts that exist in flatAccounts but their accountCode is not in importAccountCodes
-    const importAccountCodes = new Set(importData.map(row => row.accountCode));
-    const removals = flatAccounts.filter(account => {
-      const accountCode = account.accountCode || account.code;
-      return accountCode && !importAccountCodes.has(accountCode);
-    });
-    
-    // Calculate unchanged accounts
-    const unchangedCount = importData.length - additions.length - modifications.length;
-    
-    // Set preview data
-    setChangesPreview({
-      additions: additions,
-      modifications: modifications,
-      removals: removals,
-      unchanged: unchangedCount
-    });
-    
-    // Show preview dialog
-    setShowPreviewDialog(true);
-  };
-  
-  // Custom hook for batch importing accounts
-  const useImportAccounts = () => {
-    return useMutation({
-      mutationFn: async (payload: any) => {
-        console.log("DEBUG: useImportAccounts - Starting import with clientIdToUse:", clientIdToUse);
-        
-        // Enhanced client validation
-        if (!clientIdToUse) {
-          console.error("DEBUG: useImportAccounts - No client ID available");
-          throw new Error("No client selected. Please select a client before importing accounts.");
-        }
-        
-        if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
-          console.error("DEBUG: useImportAccounts - Invalid client ID:", clientIdToUse);
-          throw new Error(`Invalid client ID: ${clientIdToUse}. Please select a valid client.`);
-        }
-        
-        console.log(`DEBUG: useImportAccounts - Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
-        
-        // Check if payload is already FormData (from handleImportConfirm)
-        let formData;
-        if (payload instanceof FormData) {
-          formData = payload;
-          console.log("DEBUG: useImportAccounts - Using prepared FormData with selections");
-        } else {
-          // Legacy path for simple array import
-          const accounts = payload as any[];
-          console.log(`DEBUG: useImportAccounts - Number of accounts to import: ${accounts.length}`);
-          
-          // Need to create FormData because the import endpoint expects multipart/form-data
-          formData = new FormData();
-          
-          // Convert accounts to CSV string and add as a file
-          const csv = Papa.unparse(accounts);
-          const file = new Blob([csv], { type: 'text/csv' });
-          formData.append('file', file, 'accounts_import.csv');
-          
-          console.log("DEBUG: useImportAccounts - FormData created with CSV file (no selections)");
-        }
-        
-        try {
-          // Use fetch directly since apiRequest doesn't handle FormData
-          const response = await fetch(`/api/clients/${clientIdToUse}/accounts/import`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include' // Include cookies for authentication
-          });
-          
-          console.log("DEBUG: useImportAccounts - Response status:", response.status);
-          
-          if (!response.ok) {
-            console.error("DEBUG: useImportAccounts - Response error status:", response.status);
-            let errorMessage = 'Unknown error occurred';
-            
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.message || errorMessage;
-              console.error("DEBUG: useImportAccounts - Error data:", errorData);
-            } catch (jsonError) {
-              console.error("DEBUG: useImportAccounts - Failed to parse error JSON:", jsonError);
-            }
-            
-            throw new Error(errorMessage);
-          }
-          
-          const result = await response.json();
-          console.log("DEBUG: useImportAccounts - Import successful, result:", result);
-          return result;
-        } catch (error) {
-          console.error("DEBUG: useImportAccounts - Fetch error:", error);
-          throw error;
-        }
-      },
-      onSuccess: (result) => {
-        toast({
-          title: "Accounts imported",
-          description: result.message || `Successfully imported ${importData.length} accounts.`,
-        });
-        setShowImportDialog(false);
-        setImportData([]);
-        setImportErrors([]);
-        
-        // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
-        }
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Import failed",
-          description: `Failed to import accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          variant: "destructive",
-        });
-      }
-    });
-  };
-  
-  // Initialize the import accounts mutation
-  const importAccounts = useImportAccounts();
-  
-  // Updated state and types for more granular selective imports
-  interface ImportSelections {
-    // Specific accounts to include in each category
-    newAccountCodes: string[];
-    modifiedAccountCodes: string[];
-    missingAccountCodes: string[];
-    
-    // For missing accounts, specify the action for each account
-    missingAccountActions: Record<string, 'inactive' | 'delete'>;
-  }
-  
-  // State for selected accounts in each category
+  // Selected accounts for import (when using "selected" strategy)
   const [selectedNewAccounts, setSelectedNewAccounts] = useState<string[]>([]);
   const [selectedModifiedAccounts, setSelectedModifiedAccounts] = useState<string[]>([]);
   const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
-  const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete'>>({});
   
-  // Legacy state to keep compatibility - will be removed in future refactors
-  const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
-  const [removeStrategy, setRemoveStrategy] = useState<'inactive' | 'delete' | 'none'>('inactive');
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  // Form refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const handleImportConfirm = () => {
-    if (importData.length > 0) {
-      console.log("DEBUG: handleImportConfirm - About to import accounts with granular selections");
+  // Fetch accounts
+  const { data: accounts, isLoading, refetch } = useQuery({
+    queryKey: ['/api/accounts', currentEntity?.id],
+    enabled: !!currentEntity?.id,
+  });
+  
+  // Import accounts mutation
+  const importAccounts = useMutation({
+    mutationFn: async (formData: FormData) => {
+      return apiRequest(`/api/accounts/${currentEntity?.id}/import`, {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Accounts imported successfully",
+        description: "Your Chart of Accounts has been updated.",
+      });
+      refetch();
+      setShowPreviewDialog(false);
+      setShowImportDialog(false);
+      setImportFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to import accounts",
+        description: error.message || "There was an error importing the accounts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Export accounts mutation
+  const exportAccounts = useMutation({
+    mutationFn: async (format: 'csv' | 'excel') => {
+      const response = await apiRequest(`/api/accounts/${currentEntity?.id}/export?format=${format}`, {
+        method: 'GET',
+        responseType: 'blob',
+      });
       
-      // Create selections object to pass to backend
-      const selections: ImportSelections = {
-        // Specific accounts to include in each category
-        newAccountCodes: selectedNewAccounts,
-        modifiedAccountCodes: selectedModifiedAccounts,
-        missingAccountCodes: selectedMissingAccounts,
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `chart_of_accounts_${currentEntity?.name}_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to export accounts",
+        description: error.message || "There was an error exporting the accounts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Transform flat accounts list into hierarchical structure
+  const accountsTree = useMemo(() => {
+    if (!accounts) return [];
+    
+    // First pass: Create a lookup map and identify root nodes
+    const accountMap = new Map();
+    const rootAccounts: any[] = [];
+    
+    // Clone the accounts to avoid modifying the original data
+    const flatAccounts = JSON.parse(JSON.stringify(accounts));
+    
+    // Add a children array to each account
+    flatAccounts.forEach((account: any) => {
+      account.children = [];
+      accountMap.set(account.id, account);
+    });
+    
+    // Second pass: Build the tree structure
+    flatAccounts.forEach((account: any) => {
+      if (account.parentId && accountMap.has(account.parentId)) {
+        // This is a child node, add it to its parent's children array
+        const parent = accountMap.get(account.parentId);
+        parent.children.push(account);
+      } else {
+        // This is a root node with no parent
+        rootAccounts.push(account);
+      }
+    });
+    
+    // Sort the accounts
+    const sortAccountNodes = (nodes: any[]) => {
+      // First sort by active status (active first)
+      nodes.sort((a, b) => {
+        // First by active status
+        if (a.active && !b.active) return -1;
+        if (!a.active && b.active) return 1;
         
-        // For missing accounts, specify the action for each account
-        missingAccountActions: missingAccountActions
-      };
+        // Then by accountCode
+        return a.accountCode.localeCompare(b.accountCode);
+      });
       
-      console.log(`DEBUG: handleImportConfirm - Selected ${selectedNewAccounts.length} new accounts, ${selectedModifiedAccounts.length} modified accounts, and ${selectedMissingAccounts.length} missing accounts`);
+      // Then recursively sort children
+      nodes.forEach(node => {
+        if (node.children && node.children.length) {
+          sortAccountNodes(node.children);
+        }
+      });
       
+      return nodes;
+    };
+    
+    return sortAccountNodes(rootAccounts);
+  }, [accounts]);
+  
+  // Filtered accounts based on search term, type filter, and inactive filter
+  const filteredAccounts = useMemo(() => {
+    let filtered = [...accountsTree];
+    
+    // Helper function to recursively filter accounts
+    const filterAccountsRecursive = (accounts: any[]) => {
+      return accounts.filter(account => {
+        // Apply active/inactive filter
+        if (!showInactive && !account.active) {
+          return false;
+        }
+        
+        // Filter by account type if selected
+        if (accountType && account.type !== accountType) {
+          // Check if any children match the type filter
+          const matchingChildren = account.children.length ? 
+            filterAccountsRecursive(account.children).length > 0 : false;
+          
+          if (!matchingChildren) {
+            return false;
+          }
+        }
+        
+        // Filter by search term (case insensitive)
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = searchTerm === "" || 
+          account.name.toLowerCase().includes(searchLower) || 
+          account.accountCode.toLowerCase().includes(searchLower) ||
+          (account.description && account.description.toLowerCase().includes(searchLower));
+        
+        if (matchesSearch) {
+          // This account matches the search term
+          // Recursively filter its children
+          if (account.children.length) {
+            account.children = filterAccountsRecursive(account.children);
+          }
+          return true;
+        } else {
+          // This account doesn't match the search term, but maybe its children do
+          if (account.children.length) {
+            const filteredChildren = filterAccountsRecursive(account.children);
+            if (filteredChildren.length > 0) {
+              account.children = filteredChildren;
+              return true;
+            }
+          }
+          return false;
+        }
+      });
+    };
+    
+    // Apply filters
+    filtered = filterAccountsRecursive(filtered);
+    
+    return filtered;
+  }, [accountsTree, searchTerm, accountType, showInactive]);
+  
+  // Function to toggle expansion of an account node
+  const toggleExpand = (accountId: number) => {
+    setExpanded(prev => ({
+      ...prev,
+      [accountId]: !prev[accountId]
+    }));
+  };
+  
+  // Function to expand all nodes
+  const expandAll = () => {
+    const newExpanded: Record<number, boolean> = {};
+    
+    const traverseAndExpand = (nodes: any[]) => {
+      nodes.forEach(node => {
+        newExpanded[node.id] = true;
+        if (node.children && node.children.length) {
+          traverseAndExpand(node.children);
+        }
+      });
+    };
+    
+    traverseAndExpand(accountsTree);
+    setExpanded(newExpanded);
+  };
+  
+  // Function to collapse all nodes
+  const collapseAll = () => {
+    setExpanded({});
+  };
+  
+  // Reset filters
+  const resetFilters = () => {
+    setSearchTerm("");
+    setAccountType("");
+    setShowInactive(false);
+  };
+  
+  // Count total accounts
+  const totalAccounts = useMemo(() => {
+    if (!accounts) return 0;
+    return accounts.length;
+  }, [accounts]);
+  
+  // Count active accounts
+  const activeAccounts = useMemo(() => {
+    if (!accounts) return 0;
+    return accounts.filter((account: any) => account.active).length;
+  }, [accounts]);
+  
+  // Handle import file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImportFile(file);
       
-      try {
-        // Need to create FormData because the import endpoint expects multipart/form-data
-        const formData = new FormData();
-        
-        // Convert accounts to CSV string and add as a file
-        const csv = Papa.unparse(importData);
-        const file = new Blob([csv], { type: 'text/csv' });
-        formData.append('file', file, 'accounts_import.csv');
-        
-        // Add selections as a JSON string
-        formData.append('selections', JSON.stringify(selections));
-        
-        console.log("DEBUG: handleImportConfirm - Prepared form data with selections:", selections);
-        
-        // Use the import mutation but pass the FormData manually
-        importAccounts.mutate(formData as any);
-      } catch (error) {
-        console.error("DEBUG: handleImportConfirm - Error preparing import:", error);
-        toast({
-          title: "Import preparation failed",
-          description: `Error setting up import: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          variant: "destructive",
-        });
+      // Auto-detect format from file extension
+      if (file.name.endsWith('.csv')) {
+        setImportFormat('csv');
+      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        setImportFormat('excel');
       }
     }
   };
-
-  const columns = [
-    { 
-      header: "Code", 
-      accessor: "accountCode", 
-      type: "text",
-      render: (row: Record<string, any>) => {
-        // Support both accountCode and code fields for backward compatibility
-        const displayCode = row.accountCode || row.code || "";
-        
-        // Debug output to understand what code is being displayed
-        console.log("DEBUG: Rendering account code", { 
-          id: row.id, 
-          accountCode: row.accountCode, 
-          code: row.code, 
-          displayCode,
-          clientId: clientIdToUse
-        });
-        
-        return (
-          <span className={row.active ? "" : "text-gray-400 italic"}>
-            {displayCode}
-          </span>
-        );
-      } 
-    },
-    { 
-      header: "Name", 
-      accessor: "name", 
-      type: "text",
-      render: (row: Record<string, any>) => {
-        // Calculate indentation based on depth
-        const paddingLeft = row.depth ? `${row.depth * 1.5}rem` : '0';
-        
-        // Determine if the account has children
-        const hasChildren = row.children && row.children.length > 0;
-        
-        return (
-          <div className="flex items-center" style={{ paddingLeft }}>
-            {/* Show expand/collapse icon if the account has children */}
-            {hasChildren && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mr-1 p-0 h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleNodeExpansion(row.id);
-                }}
-              >
-                {expandedNodes[row.id] ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {/* Add indentation for accounts without children */}
-            {!hasChildren && <span className="w-6"></span>}
-            <span className={row.active ? "" : "text-gray-400 italic"}>{row.name}</span>
-          </div>
-        );
-      }
-    },
-    { header: "Type", accessor: "type", type: "text" },
-    { header: "Subtype", accessor: "subtype", type: "text" },
-    { 
-      header: "Subledger", 
-      accessor: "isSubledger", 
-      type: "boolean",
-      render: (row: Record<string, any>) => row.isSubledger ? "Yes" : "No"
-    },
-    { 
-      header: "Status", 
-      accessor: "active", 
-      type: "boolean",
-      render: (row: Record<string, any>) => (
-        <div className="flex items-center">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            row.active 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}>
-            {row.active ? 'Active' : 'Inactive'}
-          </span>
-        </div>
-      )
-    },
-    {
-      header: "Actions",
-      accessor: "id",
-      type: "actions",
-      render: (row: Record<string, any>) => (
-        <div className="flex justify-end space-x-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => handleEditAccount(row)}
-            className="text-blue-800 hover:text-blue-900 hover:bg-blue-50"
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-        </div>
-      )
+  
+  // Function to preview import changes
+  const handlePreviewImport = async () => {
+    if (!importFile || !currentEntity?.id) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('format', importFormat);
+      
+      const response = await apiRequest(`/api/accounts/${currentEntity.id}/import/preview`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      // Populate preview data
+      setChangesPreview({
+        additions: response.additions || [],
+        modifications: response.modifications || [],
+        removals: response.removals || [],
+        unchanged: response.unchanged || 0
+      });
+      
+      // Pre-select all new accounts by default
+      setSelectedNewAccounts(response.additions.map((a: any) => a.accountCode || a.code));
+      setSelectedModifiedAccounts(response.modifications.map((m: any) => m.original.accountCode || m.original.code));
+      
+      // Close import dialog and open preview dialog
+      setShowImportDialog(false);
+      setShowPreviewDialog(true);
+    } catch (error) {
+      toast({
+        title: "Failed to preview import",
+        description: (error as Error).message || "There was an error previewing the import. Please try again.",
+        variant: "destructive",
+      });
     }
-  ];
-
-  if (!currentEntity) {
+  };
+  
+  // Function to handle final import after preview
+  const handleImportConfirm = () => {
+    if (!importFile || !currentEntity?.id) return;
+    
+    const formData = new FormData();
+    formData.append('file', importFile);
+    formData.append('format', importFormat);
+    formData.append('strategy', updateStrategy);
+    
+    if (updateStrategy === 'selected') {
+      // Include the selected accounts data
+      formData.append('selections', JSON.stringify({
+        newAccountCodes: selectedNewAccounts,
+        modifiedAccountCodes: selectedModifiedAccounts,
+        missingAccountCodes: selectedMissingAccounts,
+      }));
+    }
+    
+    importAccounts.mutate(formData);
+  };
+  
+  // Validate import data to check if it has proper fields
+  const validateAndProcessImportData = async (data: any) => {
+    // Check if the data has required fields
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid data format. Expected an array of accounts.");
+    }
+    
+    if (data.length === 0) {
+      throw new Error("The file contains no account data.");
+    }
+    
+    // Check for required fields in the first row
+    const firstRow = data[0];
+    const hasRequiredFields = firstRow.hasOwnProperty('name') && 
+      (firstRow.hasOwnProperty('accountCode') || firstRow.hasOwnProperty('code'));
+    
+    if (!hasRequiredFields) {
+      throw new Error("The file is missing required fields. Each account must have a name and accountCode (or code).");
+    }
+    
+    // Map account types to standard types if needed
+    return data.map((account: any) => {
+      // Use accountCode as the primary field, but fall back to code if needed
+      const processedAccount = {
+        ...account,
+        accountCode: account.accountCode || account.code
+      };
+      
+      return processedAccount;
+    });
+  };
+  
+  // Render account row (recursive for tree structure)
+  const renderAccountRow = (account: any, level = 0, parentExpanded = true) => {
+    const isExpanded = !!expanded[account.id];
+    const hasChildren = account.children && account.children.length > 0;
+    const isVisible = parentExpanded;
+    
+    const paddingLeft = level * 20; // Indentation based on level
+    
+    if (!isVisible) return null;
+    
     return (
-      <div className="py-6">
-        <PageHeader 
-          title="Chart of Accounts" 
-          description="Manage your chart of accounts"
-        />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">No client selected</h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>Please select a client from the header dropdown to view and manage the Chart of Accounts.</p>
-                  <p>
-                    Please select an entity using the "Select entity" dropdown in the header.
-                  </p>
-                  <p className="mt-1">
-                    The Chart of Accounts is shared across all entities belonging to the same client, 
-                    allowing consistent account structure across multiple entities.
-                  </p>
-                </div>
-              </div>
-            </div>
+      <div key={account.id}>
+        <div 
+          className={`
+            flex items-center border-b border-gray-100 py-2 
+            ${!account.active ? 'text-gray-400 bg-gray-50' : ''}
+          `}
+        >
+          <div style={{ paddingLeft: `${paddingLeft}px` }} className="flex items-center min-w-[350px]">
+            {hasChildren ? (
+              <button 
+                onClick={() => toggleExpand(account.id)}
+                className="mr-1 p-1 rounded-sm hover:bg-gray-100 focus:outline-none"
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            ) : (
+              <span className="w-6"></span> // Placeholder for alignment
+            )}
+            
+            <span className="font-medium mr-2">{account.accountCode}</span>
+            <span className="truncate">{account.name}</span>
           </div>
-          <div className="text-center py-10">
-            <h1 className="text-xl font-semibold text-gray-900">Select an entity to view the Chart of Accounts</h1>
+          
+          <div className="flex-1 px-4 max-w-xs truncate">
+            {account.description || "-"}
+          </div>
+          
+          <div className="px-4 w-36 text-sm">
+            <Badge variant={account.active ? "outline" : "secondary"}>
+              {account.type}
+            </Badge>
+          </div>
+          
+          <div className="px-4 w-24 text-sm">
+            {account.isSubledger ? (
+              <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                Subledger
+              </Badge>
+            ) : "-"}
+          </div>
+          
+          <div className="px-4 w-24 text-center">
+            {account.active ? (
+              <Badge variant="outline" className="border-green-500 text-green-700">
+                Active
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="border-gray-300 text-gray-500">
+                Inactive
+              </Badge>
+            )}
+          </div>
+          
+          <div className="px-4 flex justify-end w-24">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setCurrentAccount(account);
+                    setIsEditModalOpen(true);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Edit</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Toggle account active status
+                    setCurrentAccount(account);
+                    setAccountToDelete(account);
+                    setShowDeleteConfirm(true);
+                  }}
+                >
+                  {account.active ? (
+                    <>
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      <span>Deactivate</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      <span>Activate</span>
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
+        
+        {/* Render children recursively if expanded */}
+        {isExpanded && account.children && account.children.map((child: any) => 
+          renderAccountRow(child, level + 1, isVisible)
+        )}
       </div>
     );
-  }
-
+  };
+  
   return (
     <>
       <PageHeader 
         title="Chart of Accounts" 
-        description="Manage your chart of accounts"
-      >
-        <div className="flex space-x-3">
-          <div className="relative group">
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline"
-                className="inline-flex items-center text-sm font-medium text-gray-700"
-                onClick={handleExportToExcel}
-              >
-                <FileSpreadsheet className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-                Export Excel
-              </Button>
-              <Button 
-                variant="outline"
-                className="inline-flex items-center text-sm font-medium text-gray-700"
-                onClick={() => {
-                  console.log("DEBUG: CSV export button clicked, clientIdToUse =", clientIdToUse);
-                  if (clientIdToUse) {
-                    console.log(`DEBUG: Initiating CSV export to /api/clients/${clientIdToUse}/accounts/export`);
-                    window.location.href = `/api/clients/${clientIdToUse}/accounts/export`;
-                    toast({
-                      title: "Export initiated",
-                      description: "Your CSV file download should begin shortly.",
-                    });
-                  } else {
-                    console.log("DEBUG: CSV export failed - no client selected");
-                    toast({
-                      title: "No client selected",
-                      description: "Please select a client before exporting accounts.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-                Export CSV
-              </Button>
-            </div>
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="file"
-              id="file-input"
-              className="hidden"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleFileSelect}
-              ref={fileInputRef}
+        description="Manage your organization's chart of accounts to track financial transactions."
+      />
+      
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        {/* Search and filters */}
+        <div className="flex flex-1 items-center space-x-2 min-w-[320px]">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Search accounts by code or name..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button 
-              variant="outline"
-              className="inline-flex items-center text-sm font-medium text-gray-700"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-              Import
-            </Button>
           </div>
           
-          <Button
-            variant="outline"
-            className="inline-flex items-center text-sm font-medium text-gray-700"
-            onClick={handleGenerateTemplate}
-          >
-            <FileText className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-            Template
-          </Button>
-        </div>
-      </PageHeader>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <div className="mb-4 flex justify-end">
-          <Button
-            variant="default"
-            className="inline-flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            onClick={handleNewAccount}
-          >
-            <Plus className="-ml-1 mr-2 h-5 w-5" />
-            New Account
-          </Button>
-        </div>
-        <DataTable 
-          columns={columns} 
-          data={flattenedAccounts || []} 
-          isLoading={isLoading} 
-        />
-      </div>
-
-      <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Account" : "Create New Account"}</DialogTitle>
-          </DialogHeader>
+          <Select value={accountType} onValueChange={(value) => setAccountType(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Account Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Account Types</SelectItem>
+              <SelectItem value="Assets">Assets</SelectItem>
+              <SelectItem value="Liabilities">Liabilities</SelectItem>
+              <SelectItem value="Equity">Equity</SelectItem>
+              <SelectItem value="Revenue">Revenue</SelectItem>
+              <SelectItem value="Expenses">Expenses</SelectItem>
+            </SelectContent>
+          </Select>
           
-          <form onSubmit={handleSubmit}>
-            <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="basic">Basic Information</TabsTrigger>
-                <TabsTrigger value="advanced">Advanced Settings</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="basic" className="mt-4">
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Account Type <span className="text-red-500">*</span></Label>
-                      <Select 
-                        value={accountData.type} 
-                        onValueChange={(value) => handleSelectChange("type", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={AccountType.ASSET}>Asset</SelectItem>
-                          <SelectItem value={AccountType.LIABILITY}>Liability</SelectItem>
-                          <SelectItem value={AccountType.EQUITY}>Equity</SelectItem>
-                          <SelectItem value={AccountType.REVENUE}>Revenue</SelectItem>
-                          <SelectItem value={AccountType.EXPENSE}>Expense</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {accountCodePrefix && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Type prefix: {accountCodePrefix}xxx
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="subtype">Subtype</Label>
-                      <Select 
-                        value={accountData.subtype || ""} 
-                        onValueChange={(value) => handleSelectChange("subtype", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subtype" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accountData.type === AccountType.ASSET && (
-                            <>
-                              <SelectItem value="current_asset">Current Asset</SelectItem>
-                              <SelectItem value="fixed_asset">Fixed Asset</SelectItem>
-                              <SelectItem value="bank">Bank</SelectItem>
-                              <SelectItem value="accounts_receivable">Accounts Receivable</SelectItem>
-                            </>
-                          )}
-                          {accountData.type === AccountType.LIABILITY && (
-                            <>
-                              <SelectItem value="current_liability">Current Liability</SelectItem>
-                              <SelectItem value="long_term_liability">Long-term Liability</SelectItem>
-                              <SelectItem value="accounts_payable">Accounts Payable</SelectItem>
-                            </>
-                          )}
-                          {accountData.type === AccountType.EQUITY && (
-                            <>
-                              <SelectItem value="retained_earnings">Retained Earnings</SelectItem>
-                              <SelectItem value="common_stock">Common Stock</SelectItem>
-                              <SelectItem value="owner_equity">Owner's Equity</SelectItem>
-                            </>
-                          )}
-                          {accountData.type === AccountType.REVENUE && (
-                            <>
-                              <SelectItem value="operating_revenue">Operating Revenue</SelectItem>
-                              <SelectItem value="non_operating_revenue">Non-operating Revenue</SelectItem>
-                            </>
-                          )}
-                          {accountData.type === AccountType.EXPENSE && (
-                            <>
-                              <SelectItem value="operating_expense">Operating Expense</SelectItem>
-                              <SelectItem value="non_operating_expense">Non-operating Expense</SelectItem>
-                              <SelectItem value="cost_of_goods_sold">Cost of Goods Sold</SelectItem>
-                              <SelectItem value="marketing">Marketing & Advertising</SelectItem>
-                              <SelectItem value="rent">Rent & Facilities</SelectItem>
-                              <SelectItem value="payroll">Payroll & Benefits</SelectItem>
-                              <SelectItem value="utilities">Utilities</SelectItem>
-                              <SelectItem value="equipment">Equipment & Supplies</SelectItem>
-                              <SelectItem value="professional_services">Professional Services</SelectItem>
-                              <SelectItem value="travel">Travel & Entertainment</SelectItem>
-                              <SelectItem value="insurance">Insurance</SelectItem>
-                              <SelectItem value="taxes">Taxes & Licenses</SelectItem>
-                              <SelectItem value="depreciation">Depreciation & Amortization</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="accountCode">Account Code <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="accountCode"
-                        name="accountCode"
-                        value={accountData.accountCode}
-                        onChange={handleCodeManualChange}
-                        required
-                      />
-                      {accountCodePrefix && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {accountCodePrefix && !accountData.accountCode.startsWith(accountCodePrefix) && 
-                            "Code will be prefixed with " + accountCodePrefix}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Account Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={accountData.name}
-                        onChange={handleChange}
-                        placeholder="e.g., Cash in Bank"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      name="description"
-                      value={accountData.description}
-                      onChange={handleChange}
-                      placeholder="Brief description of the account's purpose"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="parentId">Parent Account</Label>
-                    <Select
-                      value={accountData.parentId?.toString() || "none"}
-                      onValueChange={(value) => {
-                        const parentId = value === "none" ? null : parseInt(value, 10);
-                        setAccountData(prev => ({
-                          ...prev,
-                          parentId
-                        }));
-                      }}
-                    >
-                      <SelectTrigger id="parentId">
-                        <SelectValue placeholder="Select a parent account (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Parent (Top Level)</SelectItem>
-                        {flattenedAccounts
-                          .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
-                          .map((account: any) => (
-                            <SelectItem key={account.id} value={account.id.toString()}>
-                              {account.accountCode} - {account.name}
-                            </SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Selecting a parent will place this account under it in the hierarchy
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="advanced" className="mt-4">
-                <div className="grid gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isSubledger"
-                      checked={accountData.isSubledger}
-                      onCheckedChange={(checked) => 
-                        handleSelectChange("isSubledger", String(checked === true))
-                      }
-                    />
-                    <Label htmlFor="isSubledger">This is a subledger account</Label>
-                  </div>
-                  
-                  {accountData.isSubledger && (
-                    <div className="space-y-2 ml-6 mt-2 max-w-full">
-                      <Label htmlFor="subledgerType">Subledger Type</Label>
-                      <Select 
-                        value={accountData.subledgerType} 
-                        onValueChange={(value) => handleSelectChange("subledgerType", value)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select subledger type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="accounts_payable">Accounts Payable</SelectItem>
-                          <SelectItem value="accounts_receivable">Accounts Receivable</SelectItem>
-                          <SelectItem value="inventory">Inventory</SelectItem>
-                          <SelectItem value="fixed_assets">Fixed Assets</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Subledger accounts can be used to track detailed transaction information.
-                      </p>
-                    </div>
-                  )}
-                  
-
-                  
-                  <div className="flex items-center space-x-2 pt-4">
-                    <Checkbox
-                      id="active"
-                      checked={accountData.active}
-                      onCheckedChange={(checked) => {
-                        setAccountData(prev => ({
-                          ...prev,
-                          active: checked === true
-                        }));
-                      }}
-                    />
-                    <Label htmlFor="active">Active</Label>
-                  </div>
-                  <p className="text-xs text-gray-500 ml-6">
-                    Inactive accounts won't appear in dropdown menus for new transactions.
-                  </p>
-                  
-                  {isEditMode && (
-                    <div className="pt-6 border-t mt-4">
-                      <Button 
-                        type="button" 
-                        variant="destructive" 
-                        onClick={() => handleDeleteClick({
-                          id: accountData.id,
-                          name: accountData.name,
-                          accountCode: accountData.accountCode
-                        })}
-                        className="w-full"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Warning: This will permanently delete the account. This action cannot be undone.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-            
-            <DialogFooter className="mt-6">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowAccountForm(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={isEditMode ? updateAccount.isPending : createAccount.isPending}
-              >
-                {isEditMode 
-                  ? (updateAccount.isPending ? "Updating..." : "Update Account") 
-                  : (createAccount.isPending ? "Creating..." : "Create Account")
-                }
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the account 
-              {accountToDelete && <span className="font-semibold"> {accountToDelete.accountCode} - {accountToDelete.name}</span>}.
-              <br /><br />
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
-                <span className="text-amber-800">
-                  <strong>Important:</strong> Accounts that have been used in journal entries cannot be deleted
-                  and will be automatically deactivated instead.
-                  <br /><br />
-                  Only accounts with no transaction history can be fully deleted from the system.
-                </span>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteAccount.isPending}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={(checked) => setShowInactive(!!checked)}
+            />
+            <Label
+              htmlFor="show-inactive"
+              className="text-sm text-gray-700 cursor-pointer"
             >
-              {deleteAccount.isPending ? "Deleting..." : "Delete Account"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Show inactive
+            </Label>
+          </div>
+          
+          {(searchTerm || accountType || showInactive) && (
+            <Button variant="outline" size="sm" onClick={resetFilters}>
+              <RefreshCw className="mr-2 h-3 w-3" />
+              Reset
+            </Button>
+          )}
+        </div>
+        
+        {/* Action buttons */}
+        <div className="flex items-center space-x-2">
+          {/* Import/Export dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Import / Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                <span>Import Accounts</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportAccounts.mutate('csv')}>
+                <Download className="mr-2 h-4 w-4" />
+                <span>Export as CSV</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportAccounts.mutate('excel')}>
+                <Download className="mr-2 h-4 w-4" />
+                <span>Export as Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Expand/Collapse dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Expand / Collapse
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={expandAll}>
+                <span>Expand All</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={collapseAll}>
+                <span>Collapse All</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Add account button */}
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Account
+          </Button>
+        </div>
+      </div>
+      
+      {/* Accounts list with header */}
+      <div className="bg-white rounded-md border">
+        {/* Header */}
+        <div className="flex items-center border-b border-gray-100 bg-gray-50 py-3 text-sm font-medium text-gray-500">
+          <div className="px-4 min-w-[350px]">Account</div>
+          <div className="flex-1 px-4 max-w-xs">Description</div>
+          <div className="px-4 w-36">Type</div>
+          <div className="px-4 w-24">Subledger</div>
+          <div className="px-4 w-24 text-center">Status</div>
+          <div className="px-4 w-24 text-right">Actions</div>
+        </div>
+        
+        {/* Account rows */}
+        <div>
+          {isLoading ? (
+            // Loading skeleton
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center border-b py-3">
+                <div className="px-4 min-w-[350px]">
+                  <Skeleton className="h-5 w-40" />
+                </div>
+                <div className="flex-1 px-4 max-w-xs">
+                  <Skeleton className="h-5 w-24" />
+                </div>
+                <div className="px-4 w-36">
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <div className="px-4 w-24">
+                  <Skeleton className="h-5 w-12" />
+                </div>
+                <div className="px-4 w-24 text-center">
+                  <Skeleton className="h-5 w-16 mx-auto" />
+                </div>
+                <div className="px-4 w-24 text-right">
+                  <Skeleton className="h-8 w-8 ml-auto" />
+                </div>
+              </div>
+            ))
+          ) : filteredAccounts.length > 0 ? (
+            filteredAccounts.map(account => renderAccountRow(account))
+          ) : (
+            <div className="py-8 text-center text-gray-500">
+              {accounts && accounts.length > 0 ? (
+                <div>
+                  <Filter className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p>No accounts match your search criteria.</p>
+                  <Button 
+                    variant="link" 
+                    onClick={resetFilters}
+                    className="mt-2"
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <Folder className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p>No accounts found. Let's add your first account!</p>
+                  <Button 
+                    variant="link" 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="mt-2"
+                  >
+                    Create account
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Accounts summary */}
+      <div className="mt-4 flex items-center text-sm text-gray-500">
+        <div className="mr-6">
+          Total accounts: <span className="font-medium text-gray-700">{totalAccounts}</span>
+        </div>
+        <div>
+          Active accounts: <span className="font-medium text-gray-700">{activeAccounts}</span>
+        </div>
+      </div>
       
       {/* Import Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center">
-              <FileSpreadsheet className="h-5 w-5 mr-2" />
+              <Upload className="h-5 w-5 mr-2" />
               Import Chart of Accounts
             </DialogTitle>
             <DialogDescription>
-              Import accounts from your Excel spreadsheet. The system will validate the data before importing.
+              Upload a CSV or Excel file with your Chart of Accounts data.
             </DialogDescription>
           </DialogHeader>
           
-          {importErrors.length > 0 ? (
-            <div className="mt-4">
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-                <div className="flex items-start">
-                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
-                  <div>
-                    <h3 className="text-sm font-medium text-red-800">
-                      The following errors were found in your Excel file:
-                    </h3>
-                    <ul className="mt-2 text-sm text-red-700 space-y-1 list-disc pl-5">
-                      {importErrors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="import-file" className="text-right">
+                File
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="import-file"
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileChange}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Accepted formats: CSV, Excel (.xlsx, .xls)
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="import-format" className="text-right">
+                Format
+              </Label>
+              <div className="col-span-3">
+                <Select
+                  value={importFormat}
+                  onValueChange={(value) => setImportFormat(value as "csv" | "excel")}
+                >
+                  <SelectTrigger id="import-format">
+                    <SelectValue placeholder="Select format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="csv">CSV</SelectItem>
+                    <SelectItem value="excel">Excel</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">
+                Import Options
+              </Label>
+              <div className="col-span-3">
+                <RadioGroup 
+                  value={updateStrategy} 
+                  onValueChange={(value) => setUpdateStrategy(value as "all" | "selected")}
+                >
+                  <div className="flex items-center space-x-2 mb-2">
+                    <RadioGroupItem value="all" id="strategy-all" />
+                    <Label htmlFor="strategy-all">Import all accounts</Label>
                   </div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center mt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowImportDialog(false);
-                    setImportErrors([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Select Different File
-                </Button>
-              </div>
-            </div>
-          ) : importData.length > 0 ? (
-            <div className="mt-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-                <div className="flex items-start">
-                  <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
-                  <div>
-                    <h3 className="text-sm font-medium text-blue-800">
-                      Ready to import {importData.length} accounts
-                    </h3>
-                    <p className="mt-1 text-sm text-blue-700">
-                      The file has been validated and is ready to import. 
-                      Click "Import Accounts" to proceed or "Cancel" to abort.
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="selected" id="strategy-selected" />
+                    <Label htmlFor="strategy-selected">Select accounts to import (preview changes first)</Label>
                   </div>
-                </div>
-              </div>
-              
-              <div className="mt-4 border rounded-md overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subtype</th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {importData.slice(0, 5).map((account, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.accountCode || account.code}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.type}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.subtype || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{account.active ? 'Yes' : 'No'}</td>
-                      </tr>
-                    ))}
-                    {importData.length > 5 && (
-                      <tr>
-                        <td colSpan={5} className="px-3 py-2 text-sm text-gray-500 text-center">
-                          And {importData.length - 5} more accounts...
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              
-              <DialogFooter className="mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowImportDialog(false);
-                    setImportData([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Show preview dialog with comparison between existing and new data
-                      generateChangePreview(importData);
-                      setShowImportDialog(false);
-                      setShowPreviewDialog(true);
-                    }}
-                  >
-                    Preview Changes
-                  </Button>
-                  <Button
-                    onClick={handleImportConfirm}
-                    disabled={importAccounts.isPending}
-                  >
-                    {importAccounts.isPending ? "Importing..." : "Import Accounts"}
-                  </Button>
-                </div>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="mt-4 text-center py-8">
-              <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Select a file to import</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Upload an Excel file with your chart of accounts data.
-              </p>
-              <div className="mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mx-auto"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Select File
-                </Button>
-              </div>
-              <div className="mt-4">
-                <Button
-                  variant="link"
-                  onClick={handleGenerateTemplate}
-                  className="mx-auto text-blue-600"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Download Template
-                </Button>
+                </RadioGroup>
               </div>
             </div>
-          )}
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 col-span-full">
+              <div className="flex items-start">
+                <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">Import Instructions</h3>
+                  <ul className="mt-1 text-sm text-blue-700 list-disc pl-5">
+                    <li>Your file should include columns for accountCode, name, type, and parentId.</li>
+                    <li>The accountCode must be unique for each account.</li>
+                    <li>Account types should be one of: Assets, Liabilities, Equity, Revenue, Expenses.</li>
+                    <li>For parent-child relationships, use the accountCode to identify the parent.</li>
+                    <li>Set "active" to false to import inactive accounts.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePreviewImport} 
+              disabled={!importFile}
+            >
+              {updateStrategy === 'selected' ? 'Preview Changes' : 'Import Accounts'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Changes Preview Dialog */}
+      {/* Import Preview Dialog */}
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -2361,34 +939,48 @@ function ChartOfAccounts() {
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subtype</th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {changesPreview.additions.map((account, index) => (
-                        <tr key={index} className="bg-green-50 hover:bg-green-100 transition-colors">
-                          <td className="px-3 py-2 text-sm text-center">
-                            <Checkbox 
-                              id={`add-${account.accountCode || account.code}`}
-                              checked={selectedNewAccounts.includes(account.accountCode || account.code)}
-                              onCheckedChange={(checked) => {
-                                const accountId = account.accountCode || account.code;
-                                if (checked) {
-                                  setSelectedNewAccounts(prev => [...prev, accountId]);
-                                } else {
-                                  setSelectedNewAccounts(prev => prev.filter(code => code !== accountId));
-                                }
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.accountCode || account.code}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.type}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.subtype || 'None'}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{account.active ? 'Yes' : 'No'}</td>
-                        </tr>
-                      ))}
+                      {changesPreview.additions.map((account, index) => {
+                        const parentAccount = account.parentId ? 
+                          accounts.find((a: any) => a.id === account.parentId) : null;
+                          
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <Checkbox 
+                                id={`new-account-${index}`}
+                                checked={selectedNewAccounts.includes(account.accountCode || account.code)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedNewAccounts(prev => [...prev, account.accountCode || account.code]);
+                                  } else {
+                                    setSelectedNewAccounts(prev => 
+                                      prev.filter(code => code !== (account.accountCode || account.code))
+                                    );
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {account.accountCode || account.code}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {account.name}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {account.type}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {parentAccount ? 
+                                `${parentAccount.accountCode} - ${parentAccount.name}` : 
+                                "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2398,7 +990,9 @@ function ChartOfAccounts() {
             {changesPreview.modifications.length > 0 && (
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium text-gray-900">Modified Accounts ({changesPreview.modifications.length})</h3>
+                  <h3 className="text-base font-medium text-gray-900">
+                    Modified Accounts ({changesPreview.modifications.length})
+                  </h3>
                   <div className="flex items-center">
                     <Checkbox 
                       id="select-all-modifications"
@@ -2408,11 +1002,11 @@ function ChartOfAccounts() {
                       onCheckedChange={(checked) => {
                         if (checked) {
                           // Add all modification account codes that aren't already in the selection
-                          const newCodes = changesPreview.modifications
+                          const modCodes = changesPreview.modifications
                             .map(m => m.original.accountCode || m.original.code)
                             .filter(code => !selectedModifiedAccounts.includes(code));
                           
-                          setSelectedModifiedAccounts(prev => [...prev, ...newCodes]);
+                          setSelectedModifiedAccounts(prev => [...prev, ...modCodes]);
                         } else {
                           // Remove all modification account codes from the selection
                           const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
@@ -2426,7 +1020,7 @@ function ChartOfAccounts() {
                     </Label>
                   </div>
                 </div>
-
+                
                 <div className="border rounded-md overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -2438,50 +1032,153 @@ function ChartOfAccounts() {
                           Account
                         </th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Changes
+                          Fields Changed
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Current Value
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          New Value
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {changesPreview.modifications.map((mod, index) => (
-                        <tr key={index} className="bg-yellow-50 hover:bg-yellow-100 transition-colors">
-                          <td className="px-3 py-2 text-sm text-center">
-                            <Checkbox 
-                              id={`mod-${mod.original.accountCode || mod.original.code}`}
-                              checked={selectedModifiedAccounts.includes(mod.original.accountCode || mod.original.code)}
-                              onCheckedChange={(checked) => {
-                                const accountId = mod.original.accountCode || mod.original.code;
-                                if (checked) {
-                                  setSelectedModifiedAccounts(prev => [...prev, accountId]);
-                                } else {
-                                  setSelectedModifiedAccounts(prev => prev.filter(code => code !== accountId));
-                                }
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                            <div className="font-medium">{mod.original.accountCode || mod.original.code} - {mod.original.name}</div>
-                            <div className="text-gray-500 text-xs">{mod.original.type}</div>
-                          </td>
-                          <td className="px-3 py-2 text-sm">
-                            <ul className="text-gray-700 space-y-1 list-disc pl-5">
-                              {mod.changes.map((change, i) => (
-                                <li key={i}>{change}</li>
-                              ))}
-                            </ul>
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody>
+                      {changesPreview.modifications.map((mod, index) => {
+                        // Determine which fields have changed
+                        const changes = [];
+                        
+                        // Check all fields for changes
+                        if (mod.original.name !== mod.modified.name) {
+                          changes.push({
+                            field: 'Name',
+                            current: mod.original.name,
+                            new: mod.modified.name
+                          });
+                        }
+                        
+                        if ((mod.original.accountCode || mod.original.code) !== (mod.modified.accountCode || mod.modified.code)) {
+                          changes.push({
+                            field: 'Account Code',
+                            current: mod.original.accountCode || mod.original.code,
+                            new: mod.modified.accountCode || mod.modified.code
+                          });
+                        }
+                        
+                        if (mod.original.type !== mod.modified.type) {
+                          changes.push({
+                            field: 'Type',
+                            current: mod.original.type,
+                            new: mod.modified.type
+                          });
+                        }
+                        
+                        if (mod.original.description !== mod.modified.description) {
+                          changes.push({
+                            field: 'Description',
+                            current: mod.original.description || 'None',
+                            new: mod.modified.description || 'None'
+                          });
+                        }
+                        
+                        if (mod.original.parentId !== mod.modified.parentId) {
+                          const currentParent = mod.original.parentId ? 
+                            accounts.find((a: any) => a.id === mod.original.parentId) : null;
+                            
+                          const newParent = mod.modified.parentId ?
+                            accounts.find((a: any) => a.id === mod.modified.parentId) : null;
+                            
+                          changes.push({
+                            field: 'Parent',
+                            current: currentParent ? `${currentParent.accountCode} - ${currentParent.name}` : 'None',
+                            new: newParent ? `${newParent.accountCode} - ${newParent.name}` : 'None'
+                          });
+                        }
+                        
+                        if (mod.original.active !== mod.modified.active) {
+                          changes.push({
+                            field: 'Status',
+                            current: mod.original.active ? 'Active' : 'Inactive',
+                            new: mod.modified.active ? 'Active' : 'Inactive'
+                          });
+                        }
+                        
+                        if (mod.original.isSubledger !== mod.modified.isSubledger) {
+                          changes.push({
+                            field: 'Subledger',
+                            current: mod.original.isSubledger ? 'Yes' : 'No',
+                            new: mod.modified.isSubledger ? 'Yes' : 'No'
+                          });
+                        }
+                        
+                        return (
+                          <React.Fragment key={index}>
+                            <tr className="bg-gray-50 border-t border-gray-200">
+                              <td rowSpan={changes.length > 0 ? changes.length : 1} className="px-3 py-2 align-top">
+                                <Checkbox 
+                                  id={`mod-account-${index}`}
+                                  checked={selectedModifiedAccounts.includes(mod.original.accountCode || mod.original.code)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedModifiedAccounts(prev => [...prev, mod.original.accountCode || mod.original.code]);
+                                    } else {
+                                      setSelectedModifiedAccounts(prev => 
+                                        prev.filter(code => code !== (mod.original.accountCode || mod.original.code))
+                                      );
+                                    }
+                                  }}
+                                />
+                              </td>
+                              <td rowSpan={changes.length > 0 ? changes.length : 1} className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 align-top">
+                                {mod.original.accountCode || mod.original.code} - {mod.original.name}
+                              </td>
+                              {changes.length > 0 ? (
+                                <>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {changes[0].field}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {changes[0].current}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-blue-600">
+                                    {changes[0].new}
+                                  </td>
+                                </>
+                              ) : (
+                                <td colSpan={3} className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                  No changes detected
+                                </td>
+                              )}
+                            </tr>
+                            
+                            {/* Additional rows for each change */}
+                            {changes.slice(1).map((change, changeIndex) => (
+                              <tr key={`${index}-change-${changeIndex}`}>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 border-t border-gray-100">
+                                  {change.field}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 border-t border-gray-100">
+                                  {change.current}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-blue-600 border-t border-gray-100">
+                                  {change.new}
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
-
+            
             {changesPreview.removals.length > 0 && (
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium text-gray-900">Missing Accounts ({changesPreview.removals.length})</h3>
+                  <h3 className="text-base font-medium text-gray-900">
+                    Missing Accounts ({changesPreview.removals.length})
+                  </h3>
                   <div className="flex items-center">
                     <Checkbox 
                       id="select-all-removals"
@@ -2490,16 +1187,16 @@ function ChartOfAccounts() {
                       )}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          // Add all removal account codes that aren't already in the selection
-                          const newCodes = changesPreview.removals
+                          // Select all missing accounts
+                          const missingCodes = changesPreview.removals
                             .map(a => a.accountCode || a.code)
                             .filter(code => !selectedMissingAccounts.includes(code));
                           
-                          setSelectedMissingAccounts(prev => [...prev, ...newCodes]);
+                          setSelectedMissingAccounts(prev => [...prev, ...missingCodes]);
                         } else {
-                          // Remove all removal account codes from the selection
-                          const removalCodes = changesPreview.removals.map(a => a.accountCode || a.code);
-                          setSelectedMissingAccounts(prev => prev.filter(code => !removalCodes.includes(code)));
+                          // Deselect all missing accounts
+                          const missingCodes = changesPreview.removals.map(a => a.accountCode || a.code);
+                          setSelectedMissingAccounts(prev => prev.filter(code => !missingCodes.includes(code)));
                         }
                       }}
                       className="mr-2 h-4 w-4"
@@ -2509,74 +1206,70 @@ function ChartOfAccounts() {
                     </Label>
                   </div>
                 </div>
-
+                <div className="bg-gray-50 p-3 mb-2 rounded-md text-sm">
+                  <p className="text-gray-500">
+                    These accounts exist in your current Chart of Accounts but are not present in the import file.
+                    Selected accounts will be kept as <span className="font-medium">inactive</span>.
+                  </p>
+                </div>
                 <div className="border rounded-md overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                          Include
+                          Keep
                         </th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Account
+                          Code
                         </th>
                         <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Action
+                          Name
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Current Status
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {changesPreview.removals.map((account, index) => (
-                        <tr key={index} className="bg-red-50 hover:bg-red-100 transition-colors">
-                          <td className="px-3 py-2 text-sm text-center">
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             <Checkbox 
-                              id={`remove-${account.accountCode || account.code}`}
+                              id={`missing-account-${index}`}
                               checked={selectedMissingAccounts.includes(account.accountCode || account.code)}
                               onCheckedChange={(checked) => {
-                                const accountId = account.accountCode || account.code;
                                 if (checked) {
-                                  setSelectedMissingAccounts(prev => [...prev, accountId]);
+                                  setSelectedMissingAccounts(prev => [...prev, account.accountCode || account.code]);
                                 } else {
-                                  setSelectedMissingAccounts(prev => prev.filter(code => code !== accountId));
+                                  setSelectedMissingAccounts(prev => 
+                                    prev.filter(code => code !== (account.accountCode || account.code))
+                                  );
                                 }
                               }}
                             />
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                            <div className="font-medium">{account.accountCode || account.code} - {account.name}</div>
-                            <div className="text-gray-500 text-xs">{account.type}</div>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {account.accountCode || account.code}
                           </td>
-                          <td className="px-3 py-2 text-sm">
-                            <RadioGroup 
-                              value={missingAccountActions[account.accountCode || account.code] || 'inactive'} 
-                              onValueChange={(value) => {
-                                const accountId = account.accountCode || account.code;
-                                setMissingAccountActions(prev => ({
-                                  ...prev,
-                                  [accountId]: value as 'inactive' | 'delete'
-                                }));
-                              }}
-                              className="flex flex-col space-y-1"
-                            >
-                              <div className="flex items-center">
-                                <RadioGroupItem value="inactive" id={`inactive-${account.accountCode || account.code}`} className="mr-2" />
-                                <Label 
-                                  htmlFor={`inactive-${account.accountCode || account.code}`}
-                                  className="text-sm text-gray-700"
-                                >
-                                  Mark as inactive
-                                </Label>
-                              </div>
-                              <div className="flex items-center">
-                                <RadioGroupItem value="delete" id={`delete-${account.accountCode || account.code}`} className="mr-2" />
-                                <Label 
-                                  htmlFor={`delete-${account.accountCode || account.code}`}
-                                  className="text-sm text-gray-700"
-                                >
-                                  Delete (if no transactions exist)
-                                </Label>
-                              </div>
-                            </RadioGroup>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {account.name}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {account.type}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {account.active ? (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Inactive
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -2586,109 +1279,13 @@ function ChartOfAccounts() {
               </div>
             )}
             
-            {/* Import Strategy Selection */}
+            {/* Import Accounts Selection */}
             <div className="mt-6 border rounded-md p-4 bg-gray-50">
               <h3 className="text-base font-medium text-gray-900 mb-3">Import Options</h3>
               
-              <div className="space-y-5">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-2">Update Strategy</label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-all"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'all'}
-                        onChange={() => setUpdateStrategy('all')}
-                      />
-                      <label htmlFor="strategy-all" className="ml-2 block text-sm text-gray-700">
-                        Import all changes (default)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-selected"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'selected'}
-                        onChange={() => setUpdateStrategy('selected')}
-                      />
-                      <label htmlFor="strategy-selected" className="ml-2 block text-sm text-gray-700">
-                        Import selected changes only
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="strategy-none"
-                        name="import-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={updateStrategy === 'none'}
-                        onChange={() => setUpdateStrategy('none')}
-                      />
-                      <label htmlFor="strategy-none" className="ml-2 block text-sm text-gray-700">
-                        Don't update existing accounts, only add new ones
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <label className="text-sm font-medium text-gray-700 block mb-2">
-                    Missing Accounts Strategy
-                    <span className="ml-2 text-xs text-gray-500 font-normal">
-                      (What to do with accounts in the database that are not in the import file)
-                    </span>
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="remove-inactive"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'inactive'}
-                        onChange={() => setRemoveStrategy('inactive')}
-                      />
-                      <label htmlFor="remove-inactive" className="ml-2 block text-sm text-gray-700">
-                        Mark as inactive (default)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="remove-delete"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'delete'}
-                        onChange={() => setRemoveStrategy('delete')}
-                      />
-                      <label htmlFor="remove-delete" className="ml-2 block text-sm text-gray-700">
-                        Delete permanently (if no transactions exist)
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        id="remove-none"
-                        name="remove-strategy"
-                        type="radio"
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        checked={removeStrategy === 'none'}
-                        onChange={() => setRemoveStrategy('none')}
-                      />
-                      <label htmlFor="remove-none" className="ml-2 block text-sm text-gray-700">
-                        Leave unchanged
-                      </label>
-                    </div>
-                  </div>
-                </div>
+              <p className="text-sm text-gray-600 mb-3">
+                You can select which accounts to import below. Select or deselect checkboxes in each section to customize your import.
+              </p>
                 
                 {/* Account selection statistics */}
                 {updateStrategy === 'selected' && (
@@ -2739,7 +1336,6 @@ function ChartOfAccounts() {
                     </div>
                   </div>
                 )}
-              </div>
             </div>
             
             <DialogFooter className="mt-6">
