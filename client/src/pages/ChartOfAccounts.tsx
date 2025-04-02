@@ -71,6 +71,9 @@ function ChartOfAccounts() {
     active: boolean;
     description: string;
     parentId: number | null;
+    fsliBucket?: string | null;
+    internalReportingBucket?: string | null;
+    item?: string | null;
   }
 
   const [accountData, setAccountData] = useState<AccountData>({
@@ -361,7 +364,10 @@ function ChartOfAccounts() {
       subledgerType: "",
       active: true,
       description: "",
-      parentId: null
+      parentId: null,
+      fsliBucket: null,
+      internalReportingBucket: null,
+      item: null
     });
     setIsEditMode(false);
     setFormTab("basic");
@@ -379,7 +385,10 @@ function ChartOfAccounts() {
       subledgerType: account.subledgerType || "",
       active: account.active,
       description: account.description || "",
-      parentId: account.parentId
+      parentId: account.parentId,
+      fsliBucket: account.fsliBucket || null,
+      internalReportingBucket: account.internalReportingBucket || null,
+      item: account.item || null
     });
     setIsEditMode(true);
     setFormTab("basic");
@@ -668,7 +677,10 @@ function ChartOfAccounts() {
           subledgerType: submitData.subledgerType,
           active: submitData.active,
           description: submitData.description,
-          parentId: submitData.parentId
+          parentId: submitData.parentId,
+          fsliBucket: submitData.fsliBucket,
+          internalReportingBucket: submitData.internalReportingBucket,
+          item: submitData.item
         };
         updateAccount.mutate(updateData);
       } else {
@@ -1987,19 +1999,85 @@ function ChartOfAccounts() {
                     </div>
                   )}
                   
+                  <div className="space-y-2 mt-2">
+                    <Label htmlFor="fsliBucket">FSLI Bucket</Label>
+                    <Input
+                      id="fsliBucket"
+                      name="fsliBucket"
+                      value={accountData.fsliBucket || ""}
+                      onChange={handleChange}
+                      placeholder="e.g., Assets, Liabilities, Equity"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Financial Statement Line Item category for reporting purposes.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="internalReportingBucket">Internal Reporting Bucket</Label>
+                    <Input
+                      id="internalReportingBucket"
+                      name="internalReportingBucket"
+                      value={accountData.internalReportingBucket || ""}
+                      onChange={handleChange}
+                      placeholder="e.g., Current Assets, Long-term Liabilities"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Used for grouping accounts in internal reports.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="item">Item</Label>
+                    <Input
+                      id="item"
+                      name="item"
+                      value={accountData.item || ""}
+                      onChange={handleChange}
+                      placeholder="e.g., Cash, Inventory, Accounts Receivable"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Specific item category for detailed reporting.
+                    </p>
+                  </div>
+                  
                   <div className="flex items-center space-x-2 pt-4">
                     <Checkbox
                       id="active"
                       checked={accountData.active}
-                      onCheckedChange={(checked) => 
-                        handleSelectChange("active", String(checked === true))
-                      }
+                      onCheckedChange={(checked) => {
+                        setAccountData(prev => ({
+                          ...prev,
+                          active: checked === true
+                        }));
+                      }}
                     />
                     <Label htmlFor="active">Active</Label>
                   </div>
                   <p className="text-xs text-gray-500 ml-6">
                     Inactive accounts won't appear in dropdown menus for new transactions.
                   </p>
+                  
+                  {isEditMode && (
+                    <div className="pt-6 border-t mt-4">
+                      <Button 
+                        type="button" 
+                        variant="destructive" 
+                        onClick={() => handleDeleteClick({
+                          id: accountData.id,
+                          name: accountData.name,
+                          accountCode: accountData.accountCode
+                        })}
+                        className="w-full"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Account
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Warning: This will permanently delete the account. This action cannot be undone.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
