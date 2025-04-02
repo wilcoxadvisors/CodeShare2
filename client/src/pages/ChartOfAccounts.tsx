@@ -2141,7 +2141,26 @@ function ChartOfAccounts() {
       </AlertDialog>
       
       {/* Import Dialog */}
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+      <Dialog 
+        open={showImportDialog} 
+        onOpenChange={(open) => {
+          setShowImportDialog(open);
+          if (!open) {
+            // Reset all import-related state when closing the dialog
+            setImportData([]);
+            setImportErrors([]);
+            setChangesPreview({
+              additions: [],
+              modifications: [],
+              removals: [],
+              unchanged: 0
+            });
+            setSelectedNewAccounts([]);
+            setSelectedModifiedAccounts([]);
+            setSelectedMissingAccounts([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center">
@@ -2176,6 +2195,13 @@ function ChartOfAccounts() {
                   onClick={() => {
                     setShowImportDialog(false);
                     setImportErrors([]);
+                    setImportData([]); // Clear import data
+                    setChangesPreview({
+                      additions: [],
+                      modifications: [],
+                      removals: [],
+                      unchanged: 0
+                    }); // Reset preview
                   }}
                 >
                   Cancel
@@ -2243,6 +2269,12 @@ function ChartOfAccounts() {
                   onClick={() => {
                     setShowImportDialog(false);
                     setImportData([]);
+                    setChangesPreview({
+                      additions: [],
+                      modifications: [],
+                      removals: [],
+                      unchanged: 0
+                    }); // Reset preview
                   }}
                 >
                   Cancel
@@ -2301,7 +2333,25 @@ function ChartOfAccounts() {
       </Dialog>
       
       {/* Changes Preview Dialog */}
-      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+      <Dialog 
+        open={showPreviewDialog} 
+        onOpenChange={(open) => {
+          setShowPreviewDialog(open);
+          if (!open) {
+            // Reset all preview-related state when closing the dialog
+            setChangesPreview({
+              additions: [],
+              modifications: [],
+              removals: [],
+              unchanged: 0
+            });
+            setSelectedNewAccounts([]);
+            setSelectedModifiedAccounts([]);
+            setSelectedMissingAccounts([]);
+            setImportData([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center">
@@ -2773,7 +2823,14 @@ function ChartOfAccounts() {
                 variant="outline" 
                 onClick={() => {
                   setShowPreviewDialog(false);
-                  setShowImportDialog(true); // Go back to import dialog
+                  setShowImportDialog(false); // Close import completely
+                  setImportData([]); // Clear import data
+                  setChangesPreview({
+                    additions: [],
+                    modifications: [],
+                    removals: [],
+                    unchanged: 0
+                  }); // Reset preview
                 }}
               >
                 Cancel
