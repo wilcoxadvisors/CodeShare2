@@ -1396,9 +1396,10 @@ function ChartOfAccounts() {
     
     // Find accounts in the database that are not in the import (missing/removals)
     // These are accounts that exist in flatAccounts but their accountCode is not in importAccountCodes
-    const importAccountCodes = new Set(importData.map(row => row.accountCode));
+    // Convert to lowercase for case-insensitive comparison
+    const importAccountCodes = new Set(importData.map(row => (row.accountCode || row.code || '').toLowerCase()));
     const removals = flatAccounts.filter(account => {
-      const accountCode = account.accountCode || account.code;
+      const accountCode = (account.accountCode || account.code || '').toLowerCase();
       return accountCode && !importAccountCodes.has(accountCode);
     });
     
@@ -2495,9 +2496,10 @@ function ChartOfAccounts() {
                   <div className="flex items-center">
                     <Checkbox 
                       id="select-all-removals"
-                      checked={changesPreview.removals.every(account => 
-                        selectedMissingAccounts.includes(account.accountCode || account.code)
-                      )}
+                      checked={changesPreview.removals.every(account => {
+                        const accountCode = (account.accountCode || account.code || '').toLowerCase();
+                        return accountCode && selectedMissingAccounts.some(code => code.toLowerCase() === accountCode);
+                      })}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           // Add all removal account codes that aren't already in the selection
@@ -2541,13 +2543,21 @@ function ChartOfAccounts() {
                           <td className="px-3 py-2 text-sm text-center">
                             <Checkbox 
                               id={`remove-${account.accountCode || account.code}`}
-                              checked={selectedMissingAccounts.includes(account.accountCode || account.code)}
+                              checked={selectedMissingAccounts.some(code => 
+                                code.toLowerCase() === (account.accountCode || account.code || '').toLowerCase()
+                              )}
                               onCheckedChange={(checked) => {
-                                const accountId = account.accountCode || account.code;
+                                const accountId = account.accountCode || account.code || '';
                                 if (checked) {
-                                  setSelectedMissingAccounts(prev => [...prev, accountId]);
+                                  // Only add if not already in list (case-insensitive check)
+                                  if (!selectedMissingAccounts.some(code => code.toLowerCase() === accountId.toLowerCase())) {
+                                    setSelectedMissingAccounts(prev => [...prev, accountId]);
+                                  }
                                 } else {
-                                  setSelectedMissingAccounts(prev => prev.filter(code => code !== accountId));
+                                  // Filter out case-insensitively
+                                  setSelectedMissingAccounts(prev => prev.filter(code => 
+                                    code.toLowerCase() !== accountId.toLowerCase())
+                                  );
                                 }
                               }}
                             />
@@ -2721,15 +2731,21 @@ function ChartOfAccounts() {
                         size="sm"
                         onClick={() => {
                           // Select all new accounts
-                          const newCodes = changesPreview.additions.map(a => a.accountCode || a.code);
+                          const newCodes = changesPreview.additions
+                            .map(a => a.accountCode || a.code || '')
+                            .filter(Boolean);
                           setSelectedNewAccounts(newCodes);
                           
                           // Select all modified accounts
-                          const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
+                          const modCodes = changesPreview.modifications
+                            .map(m => m.original.accountCode || m.original.code || '')
+                            .filter(Boolean);
                           setSelectedModifiedAccounts(modCodes);
                           
                           // Select all missing accounts
-                          const missCodes = changesPreview.removals.map(a => a.accountCode || a.code);
+                          const missCodes = changesPreview.removals
+                            .map(a => a.accountCode || a.code || '')
+                            .filter(Boolean);
                           setSelectedMissingAccounts(missCodes);
                         }}
                       >
