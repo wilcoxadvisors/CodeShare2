@@ -23,6 +23,15 @@ interface DataTableProps {
 }
 
 function DataTable({ columns, data, isLoading = false }: DataTableProps) {
+  // VERIFICATION STEP 3: Log DataTable component data
+  console.log("VERIFICATION STEP 3: DataTable Component", {
+    columnsCount: columns.length,
+    columnsInfo: columns.map(col => ({ header: col.header, accessor: col.accessor })),
+    dataCount: data.length,
+    dataSample: data.slice(0, 3),
+    timestamp: new Date().toISOString()
+  });
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   

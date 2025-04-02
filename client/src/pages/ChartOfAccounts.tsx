@@ -150,7 +150,29 @@ function ChartOfAccounts() {
     extractedData: accountTreeData,
     count: accountTreeData.length,
     sample: accountTreeData.length > 0 ? accountTreeData[0] : null,
-    clientId: clientIdToUse
+    clientId: clientIdToUse,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Extra verification logging for Step 3 display testing
+  console.log("VERIFICATION STEP 3: Account Tree Structure", {
+    totalNodes: accountTreeData.length,
+    rootNodes: accountTreeData.filter(node => !node.parentId).length,
+    activeAccounts: accountTreeData.filter(node => node.active).length,
+    accountTypeBreakdown: accountTreeData.reduce((acc, node) => {
+      acc[node.type] = (acc[node.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+    hierarchyDepth: accountTreeData.reduce((maxDepth, node) => {
+      // Simple function to check max depth in a tree node
+      const getNodeDepth = (node: AccountTreeNode): number => {
+        if (!node.children || node.children.length === 0) return 0;
+        return 1 + Math.max(...node.children.map(getNodeDepth));
+      };
+      const nodeDepth = getNodeDepth(node);
+      return Math.max(maxDepth, nodeDepth);
+    }, 0),
+    timestamp: new Date().toISOString()
   });
   
   // State for tracking expanded nodes
@@ -1825,6 +1847,18 @@ function ChartOfAccounts() {
             New Account
           </Button>
         </div>
+        {/* VERIFICATION STEP 3: Log data table props */}
+        {/* Using a self-executing function to avoid React node issues */}
+        {(() => {
+          console.log("VERIFICATION STEP 3: DataTable Props", {
+            columnsCount: columns.length,
+            dataCount: flattenedAccounts?.length || 0,
+            isLoading,
+            sample: flattenedAccounts?.slice(0, 2) || [],
+            timestamp: new Date().toISOString()
+          });
+          return null; // Return null to avoid rendering issues
+        })()}
         <DataTable 
           columns={columns} 
           data={flattenedAccounts || []} 
