@@ -598,7 +598,7 @@ function ChartOfAccounts() {
               <SelectValue placeholder="All Account Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Account Types</SelectItem>
+              <SelectItem value="all">All Account Types</SelectItem>
               <SelectItem value="Assets">Assets</SelectItem>
               <SelectItem value="Liabilities">Liabilities</SelectItem>
               <SelectItem value="Equity">Equity</SelectItem>

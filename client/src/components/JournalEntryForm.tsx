@@ -499,7 +499,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
                       <SelectValue placeholder="Select Account" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select Account</SelectItem>
+                      <SelectItem value="select-account">Select Account</SelectItem>
                       {accounts.map(account => (
                         <SelectItem key={account.id} value={account.id.toString()}>
                           {account.code} - {account.name}
@@ -561,7 +561,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
                       <SelectValue placeholder="Select Location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select Location</SelectItem>
+                      <SelectItem value="select-location">Select Location</SelectItem>
                       {locations.map(location => (
                         <SelectItem key={location.id} value={location.id.toString()}>
                           {location.code ? `${location.code} - ` : ''}{location.name}

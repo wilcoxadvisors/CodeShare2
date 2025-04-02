@@ -170,7 +170,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {!required && <SelectItem value="">None</SelectItem>}
+          {!required && <SelectItem value="none">None</SelectItem>}
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

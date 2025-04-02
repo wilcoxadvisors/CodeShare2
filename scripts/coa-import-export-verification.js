@@ -48,6 +48,40 @@ function getCookieHeader() {
 }
 
 /**
+ * Login to get auth cookie
+ */
+async function login() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: 'admin'
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+    }
+    
+    const setCookieHeader = response.headers.get('set-cookie');
+    if (setCookieHeader) {
+      fs.writeFileSync(COOKIE_FILE, setCookieHeader);
+      console.log(chalk.green('✓ Successfully logged in and updated cookie'));
+      return setCookieHeader;
+    } else {
+      throw new Error('No cookie received from login');
+    }
+  } catch (error) {
+    console.error(chalk.red('Login error:'), error.message);
+    process.exit(1);
+  }
+}
+
+/**
  * Ensure temporary directory exists
  */
 function ensureTempDir() {
@@ -381,7 +415,8 @@ async function runVerification() {
   ensureTempDir();
   fs.writeFileSync(LOG_FILE, `Chart of Accounts Import/Export Verification - ${new Date().toISOString()}\n\n`);
   
-  const cookie = getCookieHeader();
+  // Login to refresh cookie
+  const cookie = await login();
   let testClientId = null;
   
   try {
