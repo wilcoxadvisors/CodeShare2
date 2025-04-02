@@ -4610,29 +4610,21 @@ export class DatabaseStorage implements IStorage {
               return rowData;
             });
           } else {
-            // Process CSV file
-            const csvParser = await import('csv-parser');
-            const { Readable } = await import('stream');
-            
-            // Create in-memory stream from buffer
-            const bufferStream = new Readable();
-            bufferStream.push(fileBuffer);
-            bufferStream.push(null);
-            
-            // Parse CSV
-            const results: any[] = [];
-            
-            await new Promise<void>((resolve, reject) => {
-              bufferStream
-                .pipe(csvParser({
-                  mapHeaders: ({ header }: { header: string }) => this.normalizeHeaderField(header)
-                }))
-                .on('data', (data: any) => results.push(data))
-                .on('end', () => resolve())
-                .on('error', (error: Error) => reject(error));
+            // Process CSV file with PapaParse as used in importCoaForClient
+            // Parse CSV from buffer
+            const csvContent = fileBuffer.toString('utf-8');
+            const Papa = await import('papaparse');
+            const parseResult = Papa.default.parse(csvContent, {
+              header: true,
+              skipEmptyLines: true,
+              transformHeader: (header: string) => this.normalizeHeaderField(header)
             });
+          
+            if (parseResult.errors && parseResult.errors.length > 0) {
+              throw new Error(`CSV parsing error: ${parseResult.errors[0].message}`);
+            }
             
-            rows = results;
+            rows = parseResult.data as any[];
           }
         } catch (error: any) {
           console.error('Error parsing import file', error);

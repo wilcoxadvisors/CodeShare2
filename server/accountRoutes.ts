@@ -285,10 +285,12 @@ export function registerAccountRoutes(app: Express) {
   }));
   // Get hierarchical account tree for a client (must come before /:id route)
   app.get("/api/clients/:clientId/accounts/tree", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log(`VERIFICATION TEST: GET /api/clients/:clientId/accounts/tree API endpoint called for clientId=${req.params.clientId}`);
     const clientId = parseInt(req.params.clientId);
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
+      console.log(`VERIFICATION TEST: Invalid client ID: ${clientId}`);
       throwBadRequest("Invalid client ID");
     }
     
@@ -297,15 +299,20 @@ export function registerAccountRoutes(app: Express) {
     const client = await storage.getClient(clientId);
     
     if (!client) {
+      console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
       throwNotFound("Client");
     }
     
     if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      console.log(`VERIFICATION TEST: Access forbidden - user ${userId} does not have access to client ${clientId}`);
       throwForbidden("You don't have access to this client");
     }
     
+    console.log(`VERIFICATION TEST: Authorization passed, fetching account tree for client ${clientId}`);
+    
     // Get hierarchical account tree for client
     const accountTree = await storage.getAccountsTree(clientId);
+    console.log(`VERIFICATION TEST: Account tree fetched with ${accountTree.length} root nodes`);
     
     // Return account tree with success status
     res.json({
@@ -316,10 +323,12 @@ export function registerAccountRoutes(app: Express) {
   
   // Get all accounts for a client
   app.get("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log(`VERIFICATION TEST: GET /api/clients/:clientId/accounts API endpoint called for clientId=${req.params.clientId}`);
     const clientId = parseInt(req.params.clientId);
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
+      console.log(`VERIFICATION TEST: Invalid client ID: ${clientId}`);
       throwBadRequest("Invalid client ID");
     }
     
@@ -328,15 +337,20 @@ export function registerAccountRoutes(app: Express) {
     const client = await storage.getClient(clientId);
     
     if (!client) {
+      console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
       throwNotFound("Client");
     }
     
     if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      console.log(`VERIFICATION TEST: Access forbidden - user ${userId} does not have access to client ${clientId}`);
       throwForbidden("You don't have access to this client");
     }
     
+    console.log(`VERIFICATION TEST: Authorization passed, fetching accounts for client ${clientId}`);
+    
     // Get accounts from storage (now using clientId)
     const accounts = await storage.getAccounts(clientId);
+    console.log(`VERIFICATION TEST: Fetched ${accounts.length} accounts for client ${clientId}`);
     
     // Return accounts
     res.json(accounts);

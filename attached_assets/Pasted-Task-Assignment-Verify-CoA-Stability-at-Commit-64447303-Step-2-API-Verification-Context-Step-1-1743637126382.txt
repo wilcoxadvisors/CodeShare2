@@ -1,0 +1,50 @@
+Task Assignment: Verify CoA Stability at Commit 64447303 (Step 2: API Verification)
+
+Context:
+Step 1 (Template & Seeding Verification) for commit 64447303 appears successful based on code review and previous tests. We now need to verify that the backend API endpoints responsible for fetching Chart of Accounts data are functioning correctly in this code state.
+
+Goal:
+Verify that the API endpoints GET /api/clients/:clientId/accounts (list) and GET /api/clients/:clientId/accounts/tree (hierarchy) return the correct account data in the expected JSON format for a client with a seeded CoA.
+
+Instructions (Step 2 of Verification Plan):
+
+Action: Add Backend Logging (Optional but Recommended):
+
+Consider adding temporary console.log statements in server/accountRoutes.ts (within the handlers for the GET routes) and server/storage.ts (within getAccountsByClientId and getAccountsTree) to log key parameters and fetched data. This aids debugging if issues arise.
+Action: Authenticate:
+
+Run node scripts/login.js to ensure you have fresh authentication cookies saved to cookies.txt.
+Action: Test Flat List Endpoint (/accounts):
+
+Execute a curl command to fetch the flat list of accounts for a client known to have a seeded CoA (e.g., Client ID 1 or Client ID 128). Use the cookies from the previous step and ensure the Accept: application/json header is set.
+Bash
+
+# Example for client 128:
+CLIENT_ID=128 # Use an appropriate client ID
+curl -s -b cookies.txt -H "Accept: application/json" "http://localhost:5000/api/clients/$CLIENT_ID/accounts" > /tmp/client_${CLIENT_ID}_accounts.json
+Verify Response: Briefly inspect /tmp/client_${CLIENT_ID}_accounts.json. Is it valid JSON? Does it contain an array of account objects? Do the first few accounts seem correct (containing accountCode, name, etc.)? Check the count using jq 'length' /tmp/client_${CLIENT_ID}_accounts.json. Does it match the expected seeded count (likely 74)?
+Action: Test Tree Endpoint (/accounts/tree):
+
+Execute a curl command similar to Step 3, but for the /tree endpoint:
+Bash
+
+# Example for client 128:
+CLIENT_ID=128 # Use an appropriate client ID
+curl -s -b cookies.txt -H "Accept: application/json" "http://localhost:5000/api/clients/$CLIENT_ID/accounts/tree" > /tmp/client_${CLIENT_ID}_accounts_tree.json
+Verify Response: Briefly inspect /tmp/client_${CLIENT_ID}_accounts_tree.json. Is it valid JSON? Does it represent a nested structure (e.g., array of nodes with children arrays)? Do the nodes contain expected account data (accountCode, name, etc.)? Check the number of root nodes using jq '. | length' or similar.
+Action: Check Backend Logs:
+
+Review the backend server logs generated during the execution of the curl commands for any errors.
+Verification:
+
+Both /accounts and /accounts/tree API endpoints return a 200 OK status with valid JSON payloads.
+The returned JSON data contains the expected account information, including the accountCode field.
+The /accounts/tree response reflects the correct hierarchical structure.
+No relevant errors appear in the backend logs during these requests.
+Reporting:
+
+Report PASS/FAIL for the API verification (Step 2).
+Confirm the status codes received from the API calls.
+Provide snippets of the JSON responses from both endpoints (e.g., jq '. | length' and jq '.[0:2]' for the flat list, jq '.[0].children[0:1]' or jq '. | length' for the tree).
+Confirm whether backend logs showed any errors.
+Await confirmation before proceeding to Step 3 (Display Verification).
