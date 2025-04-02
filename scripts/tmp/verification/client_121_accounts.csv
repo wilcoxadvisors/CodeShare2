@@ -1,0 +1,75 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentId,ParentCode,ParentName
+1,Assets,asset,,No,,Yes,Resources owned by the business that have economic value,,,
+1100,Current Assets,asset,,No,,Yes,Assets expected to be converted to cash or used within one year,3829,1,Assets
+1110,Cash,asset,Bank,No,,Yes,Money in bank accounts and cash on hand,3830,1100,Current Assets
+1120,Accounts Receivable,asset,Receivable,Yes,accounts_receivable,Yes,Money owed to the business by customers,3830,1100,Current Assets
+1130,Inventory,asset,Inventory,No,,Yes,Goods available for sale or materials used in production,3830,1100,Current Assets
+1140,Prepaid Expenses,asset,Other Current Asset,No,,Yes,Expenses paid in advance such as insurance or rent,3830,1100,Current Assets
+1150,Short-term Investments,asset,Investment,No,,Yes,Investments expected to be converted to cash within one year,3830,1100,Current Assets
+1400,Fixed Assets,asset,,No,,Yes,Long-term assets used in business operations,3829,1,Assets
+1410,Equipment,asset,Fixed Asset,No,,Yes,Machinery and equipment used in operations,3836,1400,Fixed Assets
+1420,Furniture and Fixtures,asset,Fixed Asset,No,,Yes,Office furniture and permanent fixtures,3836,1400,Fixed Assets
+1430,Buildings,asset,Fixed Asset,No,,Yes,Structures owned by the business,3836,1400,Fixed Assets
+1440,Land,asset,Fixed Asset,No,,Yes,Real estate owned by the business,3836,1400,Fixed Assets
+1450,Vehicles,asset,Fixed Asset,No,,Yes,"Cars, trucks, and other transportation equipment",3836,1400,Fixed Assets
+1490,Accumulated Depreciation,asset,Contra Asset,No,,Yes,Total depreciation taken against fixed assets,3836,1400,Fixed Assets
+1800,Other Assets,asset,,No,,Yes,Assets not classified as current or fixed,3829,1,Assets
+1810,Intangible Assets,asset,Other Asset,No,,Yes,"Non-physical assets like patents, trademarks, and goodwill",3843,1800,Other Assets
+1820,Long-term Investments,asset,Investment,No,,Yes,Investments held for more than one year,3843,1800,Other Assets
+2,Liabilities,liability,,No,,Yes,Obligations and debts owed by the business,,,
+2100,Current Liabilities,liability,,No,,Yes,Debts due within one year,3846,2,Liabilities
+2110,Accounts Payable,liability,Payable,Yes,accounts_payable,Yes,Money owed to suppliers for goods or services purchased on credit,3847,2100,Current Liabilities
+2120,Accrued Expenses,liability,Other Current Liability,No,,Yes,Expenses incurred but not yet paid,3847,2100,Current Liabilities
+2130,Payroll Liabilities,liability,Payroll,No,,Yes,Amounts owed to employees and tax authorities for payroll,3847,2100,Current Liabilities
+2140,Short-term Loans,liability,Loan,No,,Yes,Loans due within one year,3847,2100,Current Liabilities
+2150,Current Portion of Long-term Debt,liability,Loan,No,,Yes,Principal due within one year on long-term debt,3847,2100,Current Liabilities
+2160,Unearned Revenue,liability,Other Current Liability,No,,Yes,Payments received from customers before goods or services are delivered,3847,2100,Current Liabilities
+2170,Sales Tax Payable,liability,Tax,No,,Yes,Sales tax collected from customers but not yet paid to the government,3847,2100,Current Liabilities
+2400,Long-term Liabilities,liability,,No,,Yes,Debts due beyond one year,3846,2,Liabilities
+2410,Mortgage Payable,liability,Loan,No,,Yes,Long-term loans secured by real estate,3855,2400,Long-term Liabilities
+2420,Notes Payable,liability,Loan,No,,Yes,Formal written promises to pay specified amounts,3855,2400,Long-term Liabilities
+2430,Bonds Payable,liability,Loan,No,,Yes,Long-term debt securities issued by the business,3855,2400,Long-term Liabilities
+3,Equity,equity,,No,,Yes,Ownership interest in the business,,,
+3100,Owner's Equity,equity,,No,,Yes,Owner's investment in the business,3859,3,Equity
+3110,Capital,equity,Capital,No,,Yes,Owner's contributions to the business,3860,3100,Owner's Equity
+3120,Owner Draws,equity,Draw,No,,Yes,Withdrawals of business assets for personal use,3860,3100,Owner's Equity
+3200,Retained Earnings,equity,,No,,Yes,Accumulated profits reinvested in the business,3859,3,Equity
+3300,Common Stock,equity,,No,,Yes,Shares of ownership issued to stockholders,3859,3,Equity
+3400,Additional Paid-in Capital,equity,,No,,Yes,Amount paid by shareholders for stock in excess of par value,3859,3,Equity
+4,Revenue,revenue,,No,,Yes,Income earned from business activities,,,
+4100,Operating Revenue,revenue,,No,,Yes,Income from primary business activities,3866,4,Revenue
+4110,Service Revenue,revenue,Service,No,,Yes,Income from services provided to customers,3867,4100,Operating Revenue
+4120,Product Sales,revenue,Sales,No,,Yes,Income from selling goods to customers,3867,4100,Operating Revenue
+4200,Other Revenue,revenue,,No,,Yes,Income from secondary business activities,3866,4,Revenue
+4210,Interest Income,revenue,Other Revenue,No,,Yes,Income earned from investments or bank accounts,3870,4200,Other Revenue
+4220,Rental Income,revenue,Other Revenue,No,,Yes,Income from renting property to others,3870,4200,Other Revenue
+4230,Gain on Sale of Assets,revenue,Other Revenue,No,,Yes,Profits from selling business assets,3870,4200,Other Revenue
+5,Expenses,expense,,No,,Yes,Costs incurred in business operations,,,
+5100,Cost of Goods Sold,expense,,No,,Yes,Direct costs of producing goods or services sold,3874,5,Expenses
+5110,Purchases,expense,COGS,No,,Yes,Cost of inventory bought for resale,3875,5100,Cost of Goods Sold
+5120,Direct Labor,expense,COGS,No,,Yes,Wages paid to employees directly involved in production,3875,5100,Cost of Goods Sold
+5130,Manufacturing Overhead,expense,COGS,No,,Yes,Indirect costs of production not easily traceable to specific products,3875,5100,Cost of Goods Sold
+6000,Operating Expenses,expense,,No,,Yes,Costs of running the business not directly tied to production,3874,5,Expenses
+6100,Office Expenses,expense,,No,,Yes,Costs related to office operations,3879,6000,Operating Expenses
+6110,Office Supplies,expense,Office,No,,Yes,Consumable items used in the office,3880,6100,Office Expenses
+6120,Office Equipment,expense,Office,No,,Yes,Small equipment items not capitalized,3880,6100,Office Expenses
+6200,Payroll Expenses,expense,,No,,Yes,All costs related to employee compensation,3879,6000,Operating Expenses
+6210,Salaries and Wages,expense,Payroll,No,,Yes,Regular pay to employees,3883,6200,Payroll Expenses
+6220,Payroll Taxes,expense,Payroll,No,,Yes,Employer portion of taxes on employee wages,3883,6200,Payroll Expenses
+6230,Employee Benefits,expense,Payroll,No,,Yes,"Health insurance, retirement plans, and other benefits",3883,6200,Payroll Expenses
+6300,Rent and Utilities,expense,,No,,Yes,Costs for business facilities,3879,6000,Operating Expenses
+6310,Rent,expense,Facilities,No,,Yes,Payments for leased property,3887,6300,Rent and Utilities
+6320,Utilities,expense,Facilities,No,,Yes,"Electricity, water, gas, internet, and phone services",3887,6300,Rent and Utilities
+6400,Professional Services,expense,,No,,Yes,Fees paid to outside service providers,3879,6000,Operating Expenses
+6410,Legal Fees,expense,Professional Services,No,,Yes,Costs for legal counsel and services,3890,6400,Professional Services
+6420,Accounting Fees,expense,Professional Services,No,,Yes,Costs for accounting and bookkeeping services,3890,6400,Professional Services
+6430,Consulting Fees,expense,Professional Services,No,,Yes,Payments to consultants and advisors,3890,6400,Professional Services
+6500,Insurance,expense,,No,,Yes,Business insurance premiums,3879,6000,Operating Expenses
+6600,Marketing and Advertising,expense,,No,,Yes,Costs to promote the business,3879,6000,Operating Expenses
+6700,Travel and Entertainment,expense,,No,,Yes,"Business travel, meals, and entertainment expenses",3879,6000,Operating Expenses
+6800,Depreciation Expense,expense,Depreciation,No,,Yes,Allocation of asset costs over their useful lives,3879,6000,Operating Expenses
+7000,Other Expenses,expense,,No,,Yes,Expenses not classified elsewhere,3874,5,Expenses
+7100,Interest Expense,expense,Other Expense,No,,Yes,Interest paid on loans and credit,3898,7000,Other Expenses
+7200,Bank Fees,expense,Other Expense,No,,Yes,Charges for banking services,3898,7000,Other Expenses
+7300,Loss on Sale of Assets,expense,Other Expense,No,,Yes,Losses from selling business assets,3898,7000,Other Expenses
+9000,Income Taxes,expense,,No,,Yes,Taxes paid on business profits,3874,5,Expenses

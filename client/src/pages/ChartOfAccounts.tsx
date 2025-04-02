@@ -131,14 +131,14 @@ function ChartOfAccounts() {
   
   // Fetch accounts
   const { data: accounts, isLoading, refetch } = useQuery({
-    queryKey: ['/api/accounts', currentEntity?.id],
+    queryKey: [`/api/clients/${currentEntity?.id}/accounts`],
     enabled: !!currentEntity?.id,
   });
   
   // Import accounts mutation
   const importAccounts = useMutation({
     mutationFn: async (formData: FormData) => {
-      return apiRequest(`/api/accounts/${currentEntity?.id}/import`, {
+      return apiRequest(`/api/clients/${currentEntity?.id}/accounts/import`, {
         method: 'POST',
         body: formData,
       });
@@ -168,7 +168,7 @@ function ChartOfAccounts() {
   // Export accounts mutation
   const exportAccounts = useMutation({
     mutationFn: async (format: 'csv' | 'excel') => {
-      const response = await apiRequest(`/api/accounts/${currentEntity?.id}/export?format=${format}`, {
+      const response = await apiRequest(`/api/clients/${currentEntity?.id}/accounts/export?format=${format}`, {
         method: 'GET',
         responseType: 'blob',
       });
@@ -375,7 +375,7 @@ function ChartOfAccounts() {
       formData.append('file', importFile);
       formData.append('format', importFormat);
       
-      const response = await apiRequest(`/api/accounts/${currentEntity.id}/import/preview`, {
+      const response = await apiRequest(`/api/clients/${currentEntity.id}/accounts/import/preview`, {
         method: 'POST',
         body: formData,
       });
