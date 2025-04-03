@@ -5,6 +5,7 @@ import { IStorage } from './storage';
 import { asyncHandler, throwBadRequest, throwUnauthorized } from './errorHandling';
 import { batchUploadSchema } from '../shared/validation';
 import { z } from 'zod';
+import { journalEntryStorage } from './storage/journalEntryStorage';
 
 type BatchUploadRequest = z.infer<typeof batchUploadSchema>;
 
@@ -144,8 +145,8 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
     });
     
     try {
-      // Use the new batch creation method
-      const result = await storage.createBatchJournalEntries(
+      // Use journalEntryStorage for batch creation
+      const result = await journalEntryStorage.createBatchJournalEntries(
         clientId,
         userId,
         journalEntries
@@ -219,8 +220,8 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
         }
       });
       
-      // Call the batch creation function with processed entries
-      const result = await storage.createBatchJournalEntries(
+      // Call the batch creation function with processed entries using journalEntryStorage
+      const result = await journalEntryStorage.createBatchJournalEntries(
         parseInt(clientId),
         userId,
         processedEntries

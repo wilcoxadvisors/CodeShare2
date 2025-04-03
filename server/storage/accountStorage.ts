@@ -596,3 +596,6 @@ export class AccountStorage implements IAccountStorage {
         }
     }
 }
+
+// Create and export an instance of the storage class
+export const accountStorage = new AccountStorage();

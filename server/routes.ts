@@ -37,6 +37,7 @@ import {
   throwUnauthorized,
   HttpStatus 
 } from "./errorHandling";
+import { journalEntryStorage } from "./storage/journalEntryStorage";
 import { generateUsageReport } from "../shared/deprecation-monitor";
 
 interface AuthUser {
@@ -1281,7 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRoutes(app, storage);
   
   // Register the Journal Entry routes
-  registerJournalEntryRoutes(app, storage);
+  registerJournalEntryRoutes(app);
   
   // Register the Location routes
   registerLocationRoutes(app, storage);
@@ -1354,9 +1355,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enhanced error handling
       try {
-        // Create journal entry with lines
-        const journalEntry = await storage.createJournalEntry(journalEntryData, lines);
-        res.status(201).json(journalEntry);
+        // Create journal entry with lines using journalEntryStorage
+        const journalEntry = await journalEntryStorage.createJournalEntry(
+          journalEntryData.clientId,
+          journalEntryData.createdBy,
+          journalEntryData
+        );
+        
+        // Add lines to the journal entry
+        if (lines && lines.length > 0) {
+          for (const line of lines) {
+            await journalEntryStorage.createJournalEntryLine({
+              ...line,
+              journalEntryId: journalEntry.id
+            });
+          }
+        }
+        
+        // Get the complete journal entry with lines
+        const completeJournalEntry = await journalEntryStorage.getJournalEntry(journalEntry.id);
+        res.status(201).json(completeJournalEntry);
       } catch (storageError) {
         console.error('Storage error:', storageError);
         

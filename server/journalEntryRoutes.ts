@@ -1,5 +1,4 @@
 import { Express, Request, Response } from 'express';
-import { IStorage } from './storage';
 import { asyncHandler, throwNotFound, throwBadRequest } from './errorHandling';
 import { 
   insertJournalEntrySchema, 
@@ -15,6 +14,7 @@ import {
   ListJournalEntriesFilters 
 } from '../shared/validation';
 import { parse, isValid } from 'date-fns';
+import { journalEntryStorage } from './storage/journalEntryStorage';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -30,7 +30,7 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 /**
  * Register journal entry routes
  */
-export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
+export function registerJournalEntryRoutes(app: Express) {
   /**
    * Create a journal entry with lines
    */
@@ -91,15 +91,24 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       }
       
       // Create journal entry with lines
-      console.log('Calling storage.createJournalEntry with clientId:', journalEntryData.clientId);
-      console.log('Calling storage.createJournalEntry with createdById:', journalEntryData.createdBy);
+      console.log('Calling journalEntryStorage.createJournalEntry with clientId:', journalEntryData.clientId);
+      console.log('Calling journalEntryStorage.createJournalEntry with createdById:', journalEntryData.createdBy);
       
-      const journalEntry = await storage.createJournalEntry(
+      const journalEntry = await journalEntryStorage.createJournalEntry(
         journalEntryData.clientId,
         journalEntryData.createdBy,
-        journalEntryData, 
-        lines || [] // Ensure we always pass an array, even if empty
+        journalEntryData
       );
+      
+      // Add lines to the journal entry
+      if (lines && lines.length > 0) {
+        for (const line of lines) {
+          await journalEntryStorage.createJournalEntryLine({
+            ...line,
+            journalEntryId: journalEntry.id
+          });
+        }
+      }
       
       console.log('Journal entry created successfully:', JSON.stringify(journalEntry));
       res.status(201).json(journalEntry);
@@ -188,8 +197,8 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       // Log the filters object *before* calling storage
       console.log(`Filters passed to storage:`, JSON.stringify(filters));
       
-      // Call storage with the manually built filters
-      const entries = await storage.listJournalEntries(filters);
+      // Call journalEntryStorage with the manually built filters
+      const entries = await journalEntryStorage.listJournalEntries(filters);
       
       res.status(200).json(entries);
     } catch (error) {
@@ -208,7 +217,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       throwBadRequest('Invalid journal entry ID provided');
     }
     
-    const journalEntry = await storage.getJournalEntry(id);
+    const journalEntry = await journalEntryStorage.getJournalEntry(id);
     
     if (!journalEntry) {
       throwNotFound('Journal Entry');
@@ -229,7 +238,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(id);
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -251,7 +260,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       const { lines, ...entryData } = validatedData;
       
       // Update the journal entry
-      const updatedEntry = await storage.updateJournalEntry(id, entryData, lines);
+      const updatedEntry = await journalEntryStorage.updateJournalEntry(id, entryData, lines);
       
       res.json(updatedEntry);
     } catch (error) {
@@ -274,7 +283,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(id);
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -282,7 +291,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     
     // If entry is posted, change status to void instead of actually deleting
     if (existingEntry.status === 'posted') {
-      const voidedEntry = await storage.updateJournalEntry(id, { 
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(id, { 
         status: 'void' as any,  // TODO: Fix type casting here once schema is updated
         rejectedBy: user.id,
         rejectedAt: new Date(),
@@ -296,7 +305,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // If draft, perform actual deletion
-    await storage.deleteJournalEntry(id);
+    await journalEntryStorage.deleteJournalEntry(id);
     
     res.json({ message: 'Journal entry deleted successfully' });
   }));
@@ -313,7 +322,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(id);
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -325,7 +334,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Update the status to posted
-    const postedEntry = await storage.updateJournalEntry(id, {
+    const postedEntry = await journalEntryStorage.updateJournalEntry(id, {
       status: 'posted' as any, // TODO: Fix type casting here once schema is updated
       postedBy: user.id,
       postedAt: new Date()
@@ -348,7 +357,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(journalEntryId);
+    const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -394,10 +403,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       };
       
       // Add the new line
-      const newLine = await storage.createJournalEntryLine(lineData);
+      const newLine = await journalEntryStorage.createJournalEntryLine(lineData);
       
       // Check if the journal entry is still balanced
-      const updatedEntry = await storage.getJournalEntry(journalEntryId);
+      const updatedEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
       
       if (!updatedEntry) {
         throw new Error('Failed to retrieve updated journal entry');
@@ -443,7 +452,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(entryId);
+    const existingEntry = await journalEntryStorage.getJournalEntry(entryId);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -483,14 +492,14 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       };
       
       // Update the line
-      const updatedLine = await storage.updateJournalEntryLine(lineId, lineData);
+      const updatedLine = await journalEntryStorage.updateJournalEntryLine(lineId, lineData);
       
       if (!updatedLine) {
         throwNotFound('Journal Entry Line');
       }
       
       // Check if the journal entry is still balanced
-      const updatedEntry = await storage.getJournalEntry(entryId);
+      const updatedEntry = await journalEntryStorage.getJournalEntry(entryId);
       
       if (!updatedEntry) {
         throw new Error('Failed to retrieve updated journal entry');
@@ -536,7 +545,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check its status
-    const existingEntry = await storage.getJournalEntry(entryId);
+    const existingEntry = await journalEntryStorage.getJournalEntry(entryId);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -553,10 +562,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Delete the line
-    await storage.deleteJournalEntryLine(lineId);
+    await journalEntryStorage.deleteJournalEntryLine(lineId);
     
     // Check if the journal entry is still balanced
-    const updatedEntry = await storage.getJournalEntry(entryId);
+    const updatedEntry = await journalEntryStorage.getJournalEntry(entryId);
     
     let totalDebits = 0;
     let totalCredits = 0;
@@ -593,7 +602,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     // Get the existing entry to check if it exists and has the correct status
-    const existingEntry = await storage.getJournalEntry(id);
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
     
     if (!existingEntry) {
       throwNotFound('Journal Entry');
@@ -624,7 +633,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       };
       
       // Create the reversal entry
-      const reversalEntry = await storage.reverseJournalEntry(id, reversalOptions);
+      const reversalEntry = await journalEntryStorage.reverseJournalEntry(id, reversalOptions);
       
       if (!reversalEntry) {
         throw new Error('Failed to create reversal entry');
