@@ -29,6 +29,7 @@ import { accountStorage } from "./storage/accountStorage";
 import { journalEntryStorage } from "./storage/journalEntryStorage";
 import { clientStorage } from "./storage/clientStorage";
 import { entityStorage } from "./storage/entityStorage";
+import { consolidationStorage } from "./storage/consolidationStorage";
 
 // Define interface for hierarchical account structure
 export interface AccountTreeNode extends Account {
@@ -276,16 +277,7 @@ export interface IStorage {
   deleteForecast(id: number): Promise<void>;
   generateForecast(entityId: number, config: any): Promise<any>;
   
-  // Consolidation Group methods
-  getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined>;
-  getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]>;
-  getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]>;
-  createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup>;
-  updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined>;
-  deleteConsolidationGroup(id: number): Promise<void>;
-  addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup>;
-  removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup>;
-  generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any>;
+  // Note: Consolidation Group methods have been moved to server/storage/consolidationStorage.ts
 }
 
 export interface GLOptions {
@@ -2891,43 +2883,25 @@ export class MemStorage implements IStorage {
     return forecastData;
   }
 
-  // Consolidation Group methods
+  // Consolidation Group methods - delegated to consolidationStorage
   async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
-    return this.consolidationGroups.get(id);
+    // Delegate to the consolidationStorage singleton
+    return consolidationStorage.getConsolidationGroup(id);
   }
 
   async getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]> {
-    return Array.from(this.consolidationGroups.values())
-      .filter(group => group.createdBy === userId);
+    // Delegate to the consolidationStorage singleton
+    return consolidationStorage.getConsolidationGroups(userId);
   }
 
   async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // In a real database implementation, this would use a join with the junction table
-    // For MemStorage, we retrieve all consolidation groups and check if the entity
-    // is associated with each group through our getConsolidationGroupEntities method
-    
-    const activeGroups = Array.from(this.consolidationGroups.values())
-      .filter(group => group.isActive);
-    
-    // Check each active group to see if it contains this entity
-    const result: ConsolidationGroup[] = [];
-    
-    for (const group of activeGroups) {
-      const entities = await this.getConsolidationGroupEntities(group.id);
-      if (entities.includes(entityId)) {
-        result.push(group);
-      }
-    }
-    
-    return result;
+    // Delegate to the consolidationStorage singleton
+    return consolidationStorage.getConsolidationGroupsByEntity(entityId);
   }
   
   async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
-    // For MemStorage implementation, use the junction table map
-    if (this.consolidationGroupEntitiesMap.has(groupId)) {
-      return Array.from(this.consolidationGroupEntitiesMap.get(groupId) || []);
-    }
-    return [];
+    // Delegate to the consolidationStorage singleton
+    return consolidationStorage.getConsolidationGroupEntities(groupId);
   }
 
   async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
