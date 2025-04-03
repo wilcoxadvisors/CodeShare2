@@ -124,28 +124,26 @@ async function adminLogin() {
 
 // Batch upload test function
 async function testBatchUpload() {
-  // Define test data for batch upload - properly formatted for the API
+  // Define test data for batch upload - properly formatted for both endpoints
   const batchData = {
+    // Primary endpoint format needs entries with debit/credit fields
     entries: [
       {
         date: '2025-04-01',
         reference: 'BATCH-TEST-001',
         description: 'Batch Test Journal Entry 1',
-        journalType: 'JE',
-        status: 'draft',
-        entityId: 130, // Using entity ID 130 which has clientId 2
         lines: [
           {
             accountId: 4516, // Asset account
             description: 'Debit line',
-            type: 'debit',
-            amount: '1000.00'
+            debit: '1000.00',
+            credit: '0.00'
           },
           {
             accountId: 4517, // Liability account
             description: 'Credit line',
-            type: 'credit',
-            amount: '1000.00'
+            debit: '0.00',
+            credit: '1000.00'
           }
         ]
       },
@@ -153,27 +151,24 @@ async function testBatchUpload() {
         date: '2025-04-02',
         reference: 'BATCH-TEST-002',
         description: 'Batch Test Journal Entry 2',
-        journalType: 'JE',
-        status: 'draft',
-        entityId: 130, // Using entity ID 130 which has clientId 2
         lines: [
           {
             accountId: 175, // Revenue account
             description: 'Credit line',
-            type: 'credit',
-            amount: '500.00'
+            debit: '0.00',
+            credit: '500.00'
           },
           {
             accountId: 176, // Expense account
             description: 'Debit line 1',
-            type: 'debit',
-            amount: '300.00'
+            debit: '300.00',
+            credit: '0.00'
           },
           {
             accountId: 4516, // Asset account
             description: 'Debit line 2',
-            type: 'debit',
-            amount: '200.00'
+            debit: '200.00',
+            credit: '0.00'
           }
         ]
       }
@@ -255,20 +250,11 @@ async function testBatchUpload() {
   }
 }
 
-// Grant admin user access to test entity
+// Admin users should have implicit access to all entities
+// This function is kept for backward compatibility but does nothing
 async function grantEntityAccess() {
-  try {
-    console.log('Attempting to grant admin user access to test entity 130...');
-    const response = await axiosInstance.post('/api/users/1/entity-access', {
-      entityId: 130,
-      accessLevel: 'full'
-    });
-    console.log('Access grant response:', response.status);
-    return true;
-  } catch (error) {
-    console.warn('Unable to grant entity access:', error.response?.status, error.response?.data || error.message);
-    return false;
-  }
+  console.log('Admin users have implicit access to all entities, no need to grant explicit access');
+  return true;
 }
 
 // Run test

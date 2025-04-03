@@ -63,10 +63,16 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
       throwBadRequest(`Client with ID ${clientId} not found`);
     }
     
-    // Verify user has access to this entity
-    const accessLevel = await storage.getUserEntityAccess(userId, entityId);
-    if (!accessLevel) {
-      throwUnauthorized("You don't have access to this entity");
+    // Get user role to check for admin access
+    const userRole = (req.user as AuthUser).role;
+    
+    // Admin users have implicit access to all entities, skip access check
+    if (userRole !== 'admin') {
+      // For non-admin users, verify entity access
+      const accessLevel = await storage.getUserEntityAccess(userId, entityId);
+      if (!accessLevel) {
+        throwUnauthorized("You don't have access to this entity");
+      }
     }
     
     // Validate request body
