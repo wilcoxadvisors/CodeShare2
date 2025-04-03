@@ -7,6 +7,7 @@ import { Express, Request, Response } from "express";
 import { asyncHandler, throwUnauthorized, throwBadRequest, throwNotFound } from "./errorHandling";
 import { IStorage } from "./storage";
 import { consolidationStorage } from "./storage/consolidationStorage";
+import { userStorage } from "./storage/userStorage";
 import { UserRole, insertEntitySchema, entities as entitiesTable } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
@@ -297,7 +298,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       const clients = await storage.getClients();
       
       // Get all users for admin dashboard
-      const users = await storage.getUsers();
+      const users = await userStorage.getUsers();
       
       // Get all consolidation groups for the admin user
       const adminUser = req.user as any;
@@ -586,8 +587,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
    */
   app.get("/api/admin/users", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
-      // Use the new getUsers method implemented in the storage
-      const users = await storage.getUsers();
+      // Use the new getUsers method implemented in the userStorage module
+      const users = await userStorage.getUsers();
       
       // Filter out sensitive info
       const safeUsers = users.map((user: any) => ({
@@ -628,13 +629,13 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       }
       
       // Verify user exists
-      const user = await storage.getUser(userId);
+      const user = await userStorage.getUser(userId);
       if (!user) {
         throwNotFound("User not found");
       }
       
       // Grant access
-      await storage.grantUserEntityAccess(userId, entityId, accessLevel);
+      await userStorage.grantUserEntityAccess(userId, entityId, accessLevel);
       
       return res.json({
         status: "success",
