@@ -419,7 +419,7 @@ function Router() {
         </AppLayout>
       </Route>
       
-      <Route path="/journal-entry-test">
+      <Route path="/manual-journal-entry-test">
         <AppLayout>
           <ProtectedRoute component={ManualJournalEntryTest} />
         </AppLayout>
