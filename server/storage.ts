@@ -4,9 +4,6 @@ import {
   entities, Entity, InsertEntity,
   accounts, Account, InsertAccount, AccountType,
   journals, Journal, InsertJournal, JournalType,
-  journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
-  journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
-  journalEntryFiles,
   fixedAssets, FixedAsset, InsertFixedAsset,
   savedReports, SavedReport, ReportType,
   userEntityAccess,
@@ -25,8 +22,13 @@ import {
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
   consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
   consolidationGroupEntities, InsertConsolidationGroupEntity,
-  locations, Location, InsertLocation
+  locations, Location, InsertLocation,
+  journalEntries, JournalEntry, JournalEntryStatus
 } from "@shared/schema";
+
+// Import the storage modules
+import { accountStorage } from "./storage/accountStorage";
+import { journalEntryStorage } from "./storage/journalEntryStorage";
 
 // Define interface for hierarchical account structure
 export interface AccountTreeNode extends Account {
@@ -131,6 +133,7 @@ export interface IStorage {
   
   // User Entity Access methods
   getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
+  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
   
   // Location methods
   createLocation(location: InsertLocation): Promise<Location>;
@@ -138,29 +141,6 @@ export interface IStorage {
   listLocationsByClient(clientId: number): Promise<Location[]>;
   updateLocation(id: number, location: Partial<Location>): Promise<Location | undefined>;
   setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean>;
-  
-  // Journal Entry methods
-  createJournalEntry(clientId: number, createdById: number, entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
-  getJournalEntry(id: number): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
-  updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
-  deleteJournalEntry(id: number): Promise<void>;
-  listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
-  createBatchJournalEntries(
-    clientId: number,
-    createdById: number,
-    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
-  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }>;
-  reverseJournalEntry(journalEntryId: number, options: {
-    date?: Date;
-    description?: string;
-    createdBy: number;
-    referenceNumber?: string;
-  }): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
-  
-  // Journal Entry Line methods
-  updateJournalEntryLine(id: number, line: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined>;
-  deleteJournalEntryLine(id: number): Promise<void>;
-  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
   
   // Account methods
   getAccount(id: number): Promise<Account | undefined>;
@@ -180,27 +160,6 @@ export interface IStorage {
   createJournal(journal: InsertJournal): Promise<Journal>;
   updateJournal(id: number, journal: Partial<Journal>): Promise<Journal | undefined>;
   deleteJournal(id: number): Promise<void>;
-  
-  // Journal Entry methods
-  getJournalEntry(id: number): Promise<JournalEntry | undefined>;
-  getJournalEntries(entityId: number): Promise<JournalEntry[]>;
-  getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]>;
-  createJournalEntry(clientId: number, createdById: number, entry: InsertJournalEntry): Promise<JournalEntry>;
-  updateJournalEntry(id: number, entry: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
-  createBatchJournalEntries(
-    clientId: number, 
-    createdById: number, 
-    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
-  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }>;
-  
-  // Journal Entry Line methods
-  getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
-  createJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
-  addJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>; // Alias for createJournalEntryLine
-  
-  // Journal Entry File methods
-  getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
-  createJournalEntryFile(journalEntryId: number, file: any): Promise<any>;
   
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
@@ -356,9 +315,7 @@ export class MemStorage implements IStorage {
   private entities: Map<number, Entity>;
   private accounts: Map<number, Account>;
   private journals: Map<number, Journal>;
-  private journalEntries: Map<number, JournalEntry>;
-  private journalEntryLines: Map<number, JournalEntryLine>;
-  private journalEntryFiles: Map<number, any>; // Map for file attachments
+  // Journal Entry related maps removed and moved to journalEntryStorage module
   private fixedAssets: Map<number, FixedAsset>;
   private savedReports: Map<number, SavedReport>;
   private userEntityAccess: Map<string, string>; // key: userId-entityId, value: accessLevel
@@ -382,9 +339,7 @@ export class MemStorage implements IStorage {
   private currentEntityId: number = 1;
   private currentAccountId: number = 1;
   private currentJournalId: number = 1;
-  private currentJournalEntryId: number = 1;
-  private currentJournalEntryLineId: number = 1;
-  private currentJournalEntryFileId: number = 1;
+  // Journal Entry related counters moved to journalEntryStorage module
   private currentFixedAssetId: number = 1;
   private currentSavedReportId: number = 1;
   private currentUserActivityLogId: number = 1;
@@ -471,9 +426,7 @@ export class MemStorage implements IStorage {
     this.entities = new Map();
     this.accounts = new Map();
     this.journals = new Map();
-    this.journalEntries = new Map();
-    this.journalEntryLines = new Map();
-    this.journalEntryFiles = new Map();
+    // Journal Entry related maps removed (moved to journalEntryStorage module)
     this.fixedAssets = new Map();
     this.savedReports = new Map();
     this.userEntityAccess = new Map();
@@ -699,107 +652,149 @@ export class MemStorage implements IStorage {
     // Default to general journal if others aren't found
     const defaultJournalId = generalJournal ? generalJournal.id : 1;
     
-    const entries = [
-      {
-        reference: 'JE-2023-0045',
-        date: new Date('2023-03-15'),
-        description: 'Client payment - ABC Corp',
-        status: JournalEntryStatus.POSTED,
-        createdBy: adminUser.id,
-        journalId: cashJournal ? cashJournal.id : defaultJournalId,
-        lines: [
-          { accountCode: '1000', debit: 5000, credit: 0, description: 'Client payment - ABC Corp' },
-          { accountCode: '1200', debit: 0, credit: 5000, description: 'Client payment - ABC Corp' }
-        ]
-      },
-      {
-        reference: 'JE-2023-0044',
-        date: new Date('2023-03-10'),
-        description: 'Office supplies - Vendor XYZ',
-        status: JournalEntryStatus.POSTED,
-        createdBy: adminUser.id,
-        journalId: purchaseJournal ? purchaseJournal.id : defaultJournalId,
-        lines: [
-          { accountCode: '2000', debit: 750, credit: 0, description: 'Office supplies - Vendor XYZ' },
-          { accountCode: '6150', debit: 0, credit: 750, description: 'Office supplies - Vendor XYZ' }
-        ]
-      },
-      {
-        reference: 'JE-2023-0043',
-        date: new Date('2023-03-05'),
-        description: 'New computer purchase',
-        status: JournalEntryStatus.DRAFT,
-        createdBy: adminUser.id,
-        journalId: generalJournal ? generalJournal.id : defaultJournalId,
-        lines: [
-          { accountCode: '1500', debit: 2200, credit: 0, description: 'New computer purchase' },
-          { accountCode: '1000', debit: 0, credit: 2200, description: 'New computer purchase' }
-        ]
-      }
-    ];
+    // Create sample journal entries using journalEntryStorage
+    const cashJournalEntry = {
+      referenceNumber: 'JE-2023-0045',
+      date: new Date('2023-03-15'),
+      description: 'Client payment - ABC Corp',
+      status: JournalEntryStatus.POSTED,
+      createdById: adminUser.id,
+      entityId: defaultEntity.id,
+      journalId: cashJournal ? cashJournal.id : defaultJournalId,
+      clientId: defaultClient.id,
+    };
     
-    entries.forEach(entry => {
-      const journalEntry: JournalEntry = {
-        id: this.currentJournalEntryId++,
-        entityId: defaultEntity.id,
-        journalId: entry.journalId,
-        reference: entry.reference,
-        date: entry.date,
-        description: entry.description,
-        status: entry.status,
-        needsReview: false,
-        isRecurring: false,
-        recurringFrequency: null,
-        recurringEndDate: null,
-        createdBy: entry.createdBy,
-        requestedBy: null,
-        requestedAt: null,
-        approvedBy: null,
-        approvedAt: null,
-        rejectedBy: null,
-        rejectedAt: null,
-        rejectionReason: null,
-        postedBy: null,
-        postedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+    journalEntryStorage.createJournalEntry(cashJournalEntry).then(async (entry) => {
+      // Add the journal entry lines for the cash journal entry
+      const cashAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '1000');
       
-      if (entry.status === JournalEntryStatus.POSTED) {
-        journalEntry.postedBy = adminUser.id;
-        journalEntry.postedAt = new Date();
+      const arAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '1200');
+      
+      if (cashAccount && arAccount) {
+        // Debit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "debit",
+          accountId: cashAccount.id,
+          amount: "5000",
+          description: 'Client payment - ABC Corp',
+          entityId: defaultEntity.id
+        });
+        
+        // Credit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "credit",
+          accountId: arAccount.id,
+          amount: "5000",
+          description: 'Client payment - ABC Corp',
+          entityId: defaultEntity.id
+        });
       }
       
-      this.journalEntries.set(journalEntry.id, journalEntry);
-      
-      // Add journal entry lines
-      entry.lines.forEach(line => {
-        const accountEntry = Array.from(this.accounts.values())
-          .find(a => a.clientId === defaultClient.id && a.accountCode === line.accountCode);
-        
-        if (accountEntry) {
-          const journalEntryLine: JournalEntryLine = {
-            id: this.currentJournalEntryLineId++,
-            journalEntryId: journalEntry.id,
-            accountId: accountEntry.id,
-            description: line.description,
-            debit: line.debit.toString(),
-            credit: line.credit.toString(),
-            entityId: defaultEntity.id,
-            date: null,
-            lineNo: null,
-            reference: null,
-            taxId: null,
-            taxAmount: null,
-            reconciled: false,
-            reconciledAt: null,
-            reconciledBy: null,
-            reconciledWith: null,
-            createdAt: new Date()
-          };
-          this.journalEntryLines.set(journalEntryLine.id, journalEntryLine);
-        }
+      // Post the entry
+      await journalEntryStorage.updateJournalEntry(entry.id, {
+        status: JournalEntryStatus.POSTED,
+        postedBy: adminUser.id,
+        postedAt: new Date()
       });
+    });
+    
+    // Create office supplies entry
+    const officeSuppliesEntry = {
+      referenceNumber: 'JE-2023-0044',
+      date: new Date('2023-03-10'),
+      description: 'Office supplies - Vendor XYZ',
+      status: JournalEntryStatus.DRAFT,
+      createdById: adminUser.id,
+      entityId: defaultEntity.id,
+      journalId: purchaseJournal ? purchaseJournal.id : defaultJournalId,
+      clientId: defaultClient.id,
+    };
+    
+    journalEntryStorage.createJournalEntry(officeSuppliesEntry).then(async (entry) => {
+      // Add the journal entry lines
+      const apAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '2000');
+      
+      const expenseAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '6150');
+      
+      if (apAccount && expenseAccount) {
+        // Debit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "debit",
+          accountId: apAccount.id,
+          amount: "750",
+          description: 'Office supplies - Vendor XYZ',
+          entityId: defaultEntity.id
+        });
+        
+        // Credit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "credit",
+          accountId: expenseAccount.id,
+          amount: "750",
+          description: 'Office supplies - Vendor XYZ',
+          entityId: defaultEntity.id
+        });
+      }
+      
+      // Post the entry
+      await journalEntryStorage.updateJournalEntry(entry.id, {
+        status: JournalEntryStatus.POSTED,
+        postedBy: adminUser.id,
+        postedAt: new Date()
+      });
+    });
+    
+    // Create computer purchase entry
+    const computerPurchaseEntry = {
+      referenceNumber: 'JE-2023-0043',
+      date: new Date('2023-03-05'),
+      description: 'New computer purchase',
+      status: JournalEntryStatus.DRAFT,
+      createdById: adminUser.id,
+      entityId: defaultEntity.id,
+      journalId: generalJournal ? generalJournal.id : defaultJournalId,
+      clientId: defaultClient.id,
+    };
+    
+    journalEntryStorage.createJournalEntry(computerPurchaseEntry).then(async (entry) => {
+      // Add the journal entry lines
+      const assetsAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '1500');
+      
+      const cashAccount = Array.from(this.accounts.values())
+        .find(a => a.clientId === defaultClient.id && a.accountCode === '1000');
+      
+      if (assetsAccount && cashAccount) {
+        // Debit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "debit",
+          accountId: assetsAccount.id,
+          amount: "2200",
+          description: 'New computer purchase',
+          entityId: defaultEntity.id
+        });
+        
+        // Credit line
+        await journalEntryStorage.createJournalEntryLine({
+          journalEntryId: entry.id,
+          type: "credit",
+          accountId: cashAccount.id,
+          amount: "2200",
+          description: 'New computer purchase',
+          entityId: defaultEntity.id
+        });
+      }
+      
+      // Leave this one as a draft
     });
   }
 
