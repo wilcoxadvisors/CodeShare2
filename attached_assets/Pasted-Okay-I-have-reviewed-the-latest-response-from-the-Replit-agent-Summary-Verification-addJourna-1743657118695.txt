@@ -1,0 +1,84 @@
+Okay, I have reviewed the latest response from the Replit agent.
+
+Summary & Verification:
+
+addJournalEntryLine Fix: The agent successfully standardized the function name to createJournalEntryLine, removing the addJournalEntryLine alias from the IStorage interface and both storage implementations (DatabaseStorage, MemStorage), and updated the route handler in server/journalEntryRoutes.ts accordingly. Instruction 1 Complete.
+List Endpoint Fix: The agent successfully simplified the parameter handling in the GET /api/journal-entries route handler by removing Zod query validation and implementing manual parsing/validation logic. Instruction 2 Complete.
+API Test Script: The agent executed node test/api-journal-entries.js and reported that all tests passed. Instruction 3 & Verification Complete.
+Excellent! It appears the backend API and storage logic for Journal Entries (including creation with createdBy, listing with filters, updates, deletion, and reversal) are now implemented correctly and verified by the automated test script. Task B.2, Step 2 (Backend API & Storage Logic) is complete.
+
+Next Task:
+
+According to the roadmap in CodeShare/Instructions.md, the next step under Task B.2 is to build the frontend component for manual Journal Entry creation.
+
+Here are the instructions for the Replit agent:
+
+Task Assignment: Build Frontend UI for Manual Journal Entry Creation (Task B.2, Step 3)
+
+Context: The backend API for creating, listing, updating, and deleting Journal Entries (/api/journal-entries and related endpoints) is now implemented and verified. We need a user interface component to allow users to manually create new journal entries.
+
+Goal: Create a new React component (ManualJournalEntry.tsx) that provides a form for users to input journal entry details (date, description, lines with account, debit/credit, description) and submit them to the backend API.
+
+Instructions:
+
+Action: Create Component File:
+
+Create a new file: CodeShare/client/src/components/forms/ManualJournalEntry.tsx. (If a forms subdirectory doesn't exist within components, create it).
+Action: Implement Component Structure (ManualJournalEntry.tsx):
+
+Use React functional component structure with TypeScript.
+Import necessary components from Shadcn UI (e.g., Card, CardHeader, CardTitle, CardContent, CardFooter, Input, Textarea, Button, DatePicker (or equivalent date input), Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Select (or equivalent for account selection), Label).
+Import necessary hooks (e.g., useState, useEffect) and potentially TanStack Query (useMutation, useQueryClient, useQuery for fetching accounts).
+Define state variables to manage form inputs:
+date (Date object)
+description (string)
+lines (an array of objects, each representing a line: { accountId: number | string, type: 'debit' | 'credit', amount: string, description?: string }) - Initialize with at least two empty lines.
+Potentially state for entityId, locationId if applicable/selectable on the form.
+Action: Implement Form Layout:
+
+Use Shadcn components to structure the form within a Card.
+Include input fields for:
+Date: Use a DatePicker or suitable date input component.
+Description: Use a Textarea.
+(Optional) Entity/Location: If these should be set manually, use Select components populated with data fetched via TanStack Query (may require new query hooks/API calls if not already available).
+Implement Lines Table:
+Use a Table component to display the journal entry lines.
+Each row should represent a line and contain inputs for:
+Account: An account selector component (this might need to be a new reusable component). It should allow searching/selecting from the Chart of Accounts for the active client. Fetch accounts using TanStack Query (e.g., call the /api/clients/:clientId/accounts endpoint - adjust endpoint if needed). The value stored should be the account ID.
+Debit Amount: An Input field (type="number", step="0.01"). Only allow input if the 'Credit Amount' field for the same line is empty/zero.
+Credit Amount: An Input field (type="number", step="0.01"). Only allow input if the 'Debit Amount' field for the same line is empty/zero.
+Line Description: An optional Input field.
+Include buttons within the table or nearby to "Add Line" and "Remove Line" (for specific rows).
+Action: Implement Form Logic:
+
+Line Input Handling: When a user enters a debit amount, clear the credit amount for that line, and vice-versa. Convert input values to the structure needed for the lines state array (e.g., combine debit/credit inputs into amount and type properties).
+Add/Remove Lines: Implement functions to add a new empty line row to the table/state and remove a specific line row.
+Balance Calculation: Calculate and display the current total debits, total credits, and the difference (out-of-balance amount) below the lines table. Update these totals dynamically as line amounts change.
+Account Fetching: Use useQuery (TanStack Query) to fetch the Chart of Accounts for the currently selected client context. Provide this list to the account selector components in the lines table. Handle loading and error states.
+Submission Logic:
+Implement a handleSubmit function.
+Perform basic frontend validation (e.g., date and description required, at least two lines exist, entry must balance - total debits === total credits). Display errors using toasts or inline messages.
+If valid, structure the data according to the createJournalEntrySchema (from shared/validation.ts). Ensure amounts are numbers (or strings formatted correctly if the API expects strings).
+Use useMutation (TanStack Query) to send a POST request to the appropriate backend endpoint (likely /api/journal-entries or /api/clients/:clientId/journal-entries - verify correct endpoint). Pass the validated entry data.
+Handle mutation states (loading, success, error). On success, clear the form and potentially show a success toast. On error, show an error toast.
+Action: Integrate Component (Placeholder):
+
+For now, you don't need to integrate this component into the main navigation. We will do that later. Ensure the component is exportable.
+Verification:
+
+The ManualJournalEntry.tsx component is created.
+The form renders correctly with fields for date, description, and a table for lines.
+The lines table allows adding/removing lines.
+Each line has inputs for Account (selector fetching accounts), Debit, Credit, and Description.
+Debit/Credit input logic prevents simultaneous entry in both fields for a single line.
+Total Debits, Credits, and Balance are displayed and update dynamically.
+Form submission is blocked if the entry is unbalanced or required fields are missing.
+On successful submission, a POST request is sent to the backend with correctly formatted data.
+Loading/Error/Success states for submission are handled (e.g., button disabled during loading, toasts shown).
+Reporting:
+
+Confirm the creation and implementation of the ManualJournalEntry.tsx component.
+Report that the component renders the required form elements and line management features.
+Confirm that balance calculation and display are implemented.
+Confirm that form submission logic (validation, API call via useMutation) is implemented.
+State that the component is ready for integration and further testing in a later step. Provide a screenshot of the rendered form component if possible (agent capability).

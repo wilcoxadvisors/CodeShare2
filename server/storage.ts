@@ -1348,6 +1348,11 @@ export class MemStorage implements IStorage {
     this.journalEntryLines.set(id, journalEntryLine);
     return journalEntryLine;
   }
+
+  // Alias for createJournalEntryLine to maintain API compatibility with IStorage interface
+  async addJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
+    return this.createJournalEntryLine(insertLine);
+  }
   
   
   // Journal Entry File methods

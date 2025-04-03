@@ -14,6 +14,7 @@ import {
   listJournalEntriesFiltersSchema,
   ListJournalEntriesFilters 
 } from '../shared/validation';
+import { parse, isValid } from 'date-fns';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -117,18 +118,82 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    */
   app.get('/api/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     try {
-      // Simply pass the raw query parameters to the Zod schema
-      // The schema itself will handle the string-to-number conversions
-      const validatedParams = listJournalEntriesFiltersSchema.parse(req.query);
+      console.log('Raw Query Params:', req.query); // Log raw query params
       
-      // Pass the validated parameters to the storage function
-      const entries = await storage.listJournalEntries(validatedParams);
+      const { startDate: startDateStr, endDate: endDateStr, accountId: accountIdStr, entityId: entityIdStr, locationId: locationIdStr, descriptionText, minAmount: minAmountStr, maxAmount: maxAmountStr } = req.query;
       
-      res.json(entries);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ errors: formatZodError(error) });
+      const filters: ListJournalEntriesFilters = {};
+      const errors: string[] = [];
+      
+      // Parse/Validate Dates (Using date-fns)
+      if (startDateStr && typeof startDateStr === 'string') {
+          const parsedDate = parse(startDateStr, 'yyyy-MM-dd', new Date());
+          if (isValid(parsedDate)) {
+               filters.startDate = parsedDate;
+          } else {
+               errors.push(`Invalid start date format: ${startDateStr}. Use YYYY-MM-DD.`);
+          }
       }
+      if (endDateStr && typeof endDateStr === 'string') {
+          const parsedDate = parse(endDateStr, 'yyyy-MM-dd', new Date());
+           if (isValid(parsedDate)) {
+               filters.endDate = parsedDate;
+           } else {
+               errors.push(`Invalid end date format: ${endDateStr}. Use YYYY-MM-DD.`);
+           }
+      }
+      
+      // Parse/Validate Integers
+      if (accountIdStr && typeof accountIdStr === 'string') {
+          const parsedId = parseInt(accountIdStr, 10);
+          if (!isNaN(parsedId) && parsedId > 0) filters.accountId = parsedId;
+          else errors.push(`Invalid account ID format: ${accountIdStr}. Must be a positive integer.`);
+      }
+      // Repeat similar parsing/validation for entityIdStr and locationIdStr...
+       if (entityIdStr && typeof entityIdStr === 'string') {
+          const parsedId = parseInt(entityIdStr, 10);
+          if (!isNaN(parsedId) && parsedId > 0) filters.entityId = parsedId;
+          else errors.push(`Invalid entity ID format: ${entityIdStr}. Must be a positive integer.`);
+      }
+      if (locationIdStr && typeof locationIdStr === 'string') {
+          const parsedId = parseInt(locationIdStr, 10);
+          if (!isNaN(parsedId) && parsedId > 0) filters.locationId = parsedId;
+          else errors.push(`Invalid location ID format: ${locationIdStr}. Must be a positive integer.`);
+      }
+      
+      
+      // Use string filter directly (add length validation if needed)
+      if (descriptionText && typeof descriptionText === 'string') {
+          filters.descriptionText = descriptionText;
+      }
+      
+      // Parse/Validate Floats
+      if (minAmountStr && typeof minAmountStr === 'string') {
+          const parsedAmount = parseFloat(minAmountStr);
+          if (!isNaN(parsedAmount)) filters.minAmount = parsedAmount;
+          else errors.push(`Invalid minimum amount format: ${minAmountStr}. Must be a number.`);
+      }
+      if (maxAmountStr && typeof maxAmountStr === 'string') {
+          const parsedAmount = parseFloat(maxAmountStr);
+           if (!isNaN(parsedAmount)) filters.maxAmount = parsedAmount;
+          else errors.push(`Invalid maximum amount format: ${maxAmountStr}. Must be a number.`);
+      }
+      
+      // If any parsing errors occurred, return 400
+      if (errors.length > 0) {
+          console.warn(`List JE validation failed:`, errors);
+          return res.status(400).json({ message: 'Invalid filter parameters', errors });
+      }
+      
+      // Log the filters object *before* calling storage
+      console.log(`Filters passed to storage:`, JSON.stringify(filters));
+      
+      // Call storage with the manually built filters
+      const entries = await storage.listJournalEntries(filters);
+      
+      res.status(200).json(entries);
+    } catch (error) {
+      console.error('Error in list journal entries:', error);
       throw error;
     }
   }));
