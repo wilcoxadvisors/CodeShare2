@@ -691,14 +691,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/entities/:entityId/journal-entries", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.entityId);
+      
+      // Validate that we have a user object and a valid user ID
+      if (!req.user || typeof (req.user as any).id !== 'number') {
+        console.error('User ID not found in request object for entity journal entry creation');
+        return res.status(500).json({ message: 'Authentication error: User ID not found.' });
+      }
+      
       const userId = (req.user as AuthUser).id;
       
-      // Validate journal entry data
+      // Validate journal entry data, explicitly including the createdBy field
       const entryData = insertJournalEntrySchema.parse({
         ...req.body,
         entityId,
-        createdBy: userId
+        createdBy: userId  // Explicitly set createdBy to the authenticated user's ID
       });
+      
+      // Double check that createdBy is set
+      if (!entryData.createdBy) {
+        return res.status(400).json({ message: "Creator ID is required" });
+      }
       
       // Validate lines
       const linesData = z.array(insertJournalEntryLineSchema.omit({ journalEntryId: true })).parse(req.body.lines);
@@ -713,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create journal entry
+      // Create journal entry - pass the entire entry data which includes createdBy
       const journalEntry = await storage.createJournalEntry(entryData);
       
       // Create lines
@@ -1272,6 +1284,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register the Location routes
   registerLocationRoutes(app, storage);
+  
+  // Endpoint to check if any accounts exist for testing
+  app.get('/api/test/accounts', async (req, res) => {
+    try {
+      console.log('Fetching accounts...');
+      const accounts = await storage.listAccounts();
+      console.log(`Found ${accounts ? accounts.length : 0} accounts`);
+      if (accounts && accounts.length > 0) {
+        console.log('First account:', JSON.stringify(accounts[0], null, 2));
+      }
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ count: accounts.length, accounts: accounts.slice(0, 5) });
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ message: "Error fetching accounts", error: error.message });
+    }
+  });
+  
+  // Directly parse JSON in the test endpoint
+  app.post('/api/test/journal-entries', express.json(), async (req, res) => {
+    try {
+      // Set a default user ID for testing
+      const testUserId = 1;
+      
+      console.log('Received request body:', JSON.stringify(req.body, null, 2));
+      
+      // Added extra logging to debug content-type issues
+      console.log('Content-Type:', req.headers['content-type']);
+      console.log('Request body type:', typeof req.body);
+      
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ message: "Invalid request body, expected JSON object" });
+      }
+      
+      // Extract entry data and lines separately
+      const { lines, ...entryData } = req.body;
+      
+      console.log('Lines extracted:', JSON.stringify(lines, null, 2));
+      console.log('Lines type:', typeof lines);
+      console.log('Is array?', Array.isArray(lines));
+      
+      if (!lines || !Array.isArray(lines)) {
+        return res.status(400).json({ message: "Lines data missing or not an array" });
+      }
+      
+      if (lines.length === 0) {
+        return res.status(400).json({ message: "Journal entry must have at least one line" });
+      }
+      
+      // Prepare the journal entry data with createdBy field explicitly set
+      const journalEntryData = {
+        ...entryData,
+        createdBy: testUserId || 1, // Make sure createdBy is always set
+        // Set any missing required fields with defaults
+        status: entryData.status || 'draft',
+        journalType: entryData.journalType || 'JE',
+        referenceNumber: entryData.referenceNumber || `TEST-${Date.now()}`,
+        description: entryData.description || 'Test journal entry'
+      };
+      
+      console.log('Creating journal entry with data:', JSON.stringify(journalEntryData, null, 2));
+      console.log('Lines data:', JSON.stringify(lines, null, 2));
+      
+      // Enhanced error handling
+      try {
+        // Create journal entry with lines
+        const journalEntry = await storage.createJournalEntry(journalEntryData, lines);
+        res.status(201).json(journalEntry);
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+        
+        // Check if the error is about missing accounts
+        if (storageError.code === 'fk' || 
+            (storageError.message && storageError.message.includes('foreign key'))) {
+          return res.status(400).json({ 
+            message: "Foreign key constraint violation - verify account IDs exist", 
+            error: storageError.message 
+          });
+        }
+        
+        // If it's a validation error about lines, return a 400
+        if (storageError.message && storageError.message.includes('line')) {
+          return res.status(400).json({ message: storageError.message });
+        }
+        
+        throw storageError; // Re-throw to be caught by outer catch
+      }
+    } catch (error) {
+      console.error('Error in test endpoint:', error);
+      res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

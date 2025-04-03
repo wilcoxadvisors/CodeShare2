@@ -34,14 +34,26 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    * Create a journal entry with lines
    */
   app.post('/api/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Validate that we have a user object and a valid user ID
+    if (!req.user || typeof (req.user as any).id !== 'number') {
+      console.error('User ID not found in request object for journal entry creation');
+      return res.status(500).json({ message: 'Authentication error: User ID not found.' });
+    }
+    
     const user = req.user as { id: number };
     
     try {
       // Use createJournalEntrySchema to validate the entire payload with cross-field validation
+      // Explicitly include createdBy field to ensure it's set
       const validatedData = createJournalEntrySchema.parse({
         ...req.body,
         createdBy: user.id
       });
+      
+      // Double check that createdBy is set
+      if (!validatedData.createdBy) {
+        return res.status(400).json({ message: "Creator ID is required" });
+      }
       
       // Extract main entry data and lines
       const { lines, ...journalEntryData } = validatedData;

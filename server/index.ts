@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
+import { registerDebugRoutes } from "./debugRoutes";
 import { DatabaseStorage, MemStorage, IStorage } from "./storage";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
@@ -99,6 +100,9 @@ app.use((req, res, next) => {
     
     // Register batch upload routes for optimized CSV imports
     registerBatchUploadRoutes(app, storage);
+    
+    // Register debug routes for development
+    registerDebugRoutes(app, storage);
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
