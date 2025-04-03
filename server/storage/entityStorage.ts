@@ -1,0 +1,253 @@
+/**
+ * Entity Storage Module
+ * 
+ * This module contains the storage interface and implementation for entity operations.
+ */
+import { db } from "../db";
+import { entities, Entity, InsertEntity, userEntityAccess } from "@shared/schema";
+import { eq, and, asc, inArray } from "drizzle-orm";
+import { ApiError } from "../errorHandling";
+
+// Helper function to handle database errors consistently
+function handleDbError(error: unknown, operation: string): Error {
+  console.error(`Database error during ${operation}:`, error);
+  if (error instanceof ApiError) {
+    return error;
+  }
+  return new Error(`An error occurred during ${operation}: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+/**
+ * Interface for entity storage operations
+ */
+export interface IEntityStorage {
+  getEntity(id: number): Promise<Entity | undefined>;
+  getEntities(): Promise<Entity[]>;
+  getEntitiesByUser(userId: number): Promise<Entity[]>;
+  getEntitiesByClient(clientId: number): Promise<Entity[]>;
+  createEntity(entity: InsertEntity): Promise<Entity>;
+  updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
+  
+  // User Entity Access methods
+  getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
+  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
+}
+
+/**
+ * Implementation of entity storage operations using Drizzle ORM
+ */
+export class EntityStorage implements IEntityStorage {
+  /**
+   * Get an entity by ID
+   */
+  async getEntity(id: number): Promise<Entity | undefined> {
+    try {
+      // Validate ID
+      if (isNaN(id) || id <= 0) {
+        console.error(`EntityStorage.getEntity: Invalid entity ID: ${id}`);
+        return undefined;
+      }
+      
+      const [entity] = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.id, id))
+        .limit(1);
+      
+      return entity || undefined;
+    } catch (error) {
+      handleDbError(error, "Error retrieving entity");
+      return undefined;
+    }
+  }
+
+  /**
+   * Get all entities
+   */
+  async getEntities(): Promise<Entity[]> {
+    try {
+      return await db.select().from(entities);
+    } catch (error) {
+      handleDbError(error, "Error retrieving entities");
+      return [];
+    }
+  }
+
+  /**
+   * Get entities by user ID
+   * This includes entities owned by the user and entities the user has access to
+   */
+  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+    try {
+      // First, get all entities owned by the user
+      const ownedEntities = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.ownerId, userId));
+      
+      // Next, get all entity IDs the user has access to through userEntityAccess
+      const accessResults = await db
+        .select({ entityId: userEntityAccess.entityId })
+        .from(userEntityAccess)
+        .where(eq(userEntityAccess.userId, userId));
+      
+      const accessEntityIds = accessResults.map(r => r.entityId);
+      
+      // If there are no access entries, just return owned entities
+      if (accessEntityIds.length === 0) {
+        return ownedEntities;
+      }
+      
+      // Get the entities the user has access to
+      const accessEntities = await db
+        .select()
+        .from(entities)
+        .where(inArray(entities.id, accessEntityIds));
+      
+      // Combine and deduplicate
+      const combinedEntities = [...ownedEntities];
+      
+      // Add access entities only if they're not already in the owned list
+      for (const accessEntity of accessEntities) {
+        if (!combinedEntities.some(e => e.id === accessEntity.id)) {
+          combinedEntities.push(accessEntity);
+        }
+      }
+      
+      return combinedEntities;
+    } catch (error) {
+      handleDbError(error, "Error retrieving entities by user");
+      return [];
+    }
+  }
+
+  /**
+   * Get entities by client ID
+   */
+  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+    try {
+      return await db
+        .select()
+        .from(entities)
+        .where(eq(entities.clientId, clientId))
+        .orderBy(asc(entities.name));
+    } catch (error) {
+      handleDbError(error, "Error retrieving entities by client");
+      return [];
+    }
+  }
+
+  /**
+   * Create a new entity
+   */
+  async createEntity(insertEntity: InsertEntity): Promise<Entity> {
+    try {
+      console.log("DEBUG EntityStorage.createEntity: Creating new entity with data:", JSON.stringify(insertEntity));
+      
+      // Process industry data for consistency
+      let industryValue = insertEntity.industry;
+      
+      // Convert numeric industry values to string to maintain consistency
+      if (industryValue !== undefined && industryValue !== null) {
+        // Convert to string for consistency
+        industryValue = String(industryValue);
+      } else if (industryValue === '' || industryValue === null) {
+        // Default empty value to "other" for consistency with update logic
+        industryValue = "other";
+      }
+      
+      // Insert with processed industry value
+      const entityToInsert = {
+        ...insertEntity,
+        industry: industryValue
+      };
+      
+      const [newEntity] = await db.insert(entities).values(entityToInsert).returning();
+      return newEntity;
+    } catch (error) {
+      handleDbError(error, "Error creating entity");
+      throw error;
+    }
+  }
+
+  /**
+   * Update an entity
+   */
+  async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
+    try {
+      console.log(`DEBUG EntityStorage.updateEntity: Updating entity with ID ${id}`);
+      console.log("DEBUG EntityStorage.updateEntity: Received entity data:", JSON.stringify(entityData));
+      
+      // Validate ID
+      if (isNaN(id) || id <= 0) {
+        console.error(`DEBUG EntityStorage.updateEntity: Invalid entity ID: ${id}`);
+        return undefined;
+      }
+      
+      // Process industry data for consistency (similar to create logic)
+      let entityToUpdate: Partial<Entity> = { ...entityData };
+      
+      if (entityData.industry !== undefined) {
+        if (entityData.industry === '' || entityData.industry === null) {
+          entityToUpdate.industry = 'other';
+        } else {
+          entityToUpdate.industry = String(entityData.industry);
+        }
+      }
+      
+      // Add updated timestamp
+      entityToUpdate.updatedAt = new Date();
+      
+      const [updatedEntity] = await db
+        .update(entities)
+        .set(entityToUpdate)
+        .where(eq(entities.id, id))
+        .returning();
+      
+      return updatedEntity;
+    } catch (error) {
+      handleDbError(error, "Error updating entity");
+      return undefined;
+    }
+  }
+
+  /**
+   * Get a user's access level for an entity
+   */
+  async getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined> {
+    try {
+      const [access] = await db
+        .select()
+        .from(userEntityAccess)
+        .where(and(
+          eq(userEntityAccess.userId, userId),
+          eq(userEntityAccess.entityId, entityId)
+        ));
+      return access?.accessLevel;
+    } catch (error) {
+      handleDbError(error, "Error retrieving user entity access");
+      return undefined;
+    }
+  }
+
+  /**
+   * Grant access to an entity for a user
+   */
+  async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void> {
+    try {
+      await db
+        .insert(userEntityAccess)
+        .values({ userId, entityId, accessLevel })
+        .onConflictDoUpdate({
+          target: [userEntityAccess.userId, userEntityAccess.entityId],
+          set: { accessLevel }
+        });
+    } catch (error) {
+      handleDbError(error, "Error granting user entity access");
+      throw error;
+    }
+  }
+}
+
+// Export a singleton instance
+export const entityStorage = new EntityStorage();
