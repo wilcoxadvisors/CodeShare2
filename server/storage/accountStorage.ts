@@ -408,7 +408,8 @@ export class AccountStorage implements IAccountStorage {
                  .limit(1);
              return account;
          } catch (e) {
-             throw handleDbError(e, `getting account by ID ${accountId}`);
+             console.error(`Error getting account by ID ${accountId}:`, e);
+             return undefined;
          }
      }
 

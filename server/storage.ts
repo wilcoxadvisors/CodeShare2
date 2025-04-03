@@ -3570,8 +3570,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
-    // Delegated to accountStorage.ts
-    return accountStorage.updateAccount(id, accountData);
+    // Get clientId from accountData or from account
+    let clientId: number;
+    if (accountData.clientId) {
+      clientId = accountData.clientId;
+    } else {
+      const account = await this.getAccount(id);
+      if (!account) {
+        return undefined;
+      }
+      clientId = account.clientId;
+    }
+    
+    // Delegated to accountStorage.ts with the necessary clientId
+    try {
+      return await accountStorage.updateAccount(id, clientId, accountData) || undefined;
+    } catch (e) {
+      console.error(`Error updating account ${id}:`, e);
+      return undefined;
+    }
   }
 
   async deleteAccount(id: number, clientId?: number): Promise<void> {
