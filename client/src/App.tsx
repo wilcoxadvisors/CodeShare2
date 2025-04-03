@@ -425,6 +425,12 @@ function Router() {
         </AppLayout>
       </Route>
       
+      <Route path="/journal-entries/create">
+        <AppLayout>
+          <ProtectedRoute component={ManualJournalEntryTest} />
+        </AppLayout>
+      </Route>
+      
       <Route>
         <NotFound />
       </Route>
