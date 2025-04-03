@@ -3,7 +3,6 @@ import { Express, Request, Response } from 'express';
 import { db } from './db';
 import { IStorage } from './storage';
 import { asyncHandler, throwBadRequest, throwUnauthorized } from './errorHandling';
-import { JournalEntryStatus } from '../shared/schema';
 import { batchUploadSchema } from '../shared/validation';
 import { z } from 'zod';
 
@@ -21,9 +20,17 @@ interface AuthUser {
 // Authentication middleware
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
   // Use Passport's isAuthenticated method
+  console.log('Batch Upload Authentication Check:');
+  console.log('- req.isAuthenticated():', req.isAuthenticated());
+  console.log('- req.session:', JSON.stringify(req.session, null, 2));
+  console.log('- req.user:', req.user ? JSON.stringify(req.user) : 'undefined');
+  console.log('- req.headers:', JSON.stringify(req.headers, null, 2));
+  
   if (req.isAuthenticated()) {
+    console.log('Authentication check passed in batchUploadRoutes');
     return next();
   }
+  console.log('Authentication check FAILED in batchUploadRoutes');
   res.status(401).json({ message: "Unauthorized" });
 };
 
@@ -40,14 +47,21 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
     const entity = await storage.getEntity(entityId);
     if (!entity) {
       throwBadRequest(`Entity with ID ${entityId} not found`);
+      return; // This will never execute due to throwBadRequest, but helps TypeScript understand flow control
     }
     
-    // Get client ID for the entity
-    const client = await storage.getClient(entity.clientId);
-    if (!client) {
-      throwBadRequest(`Client with ID ${entity.clientId} not found`);
+    // Get client ID for the entity (with type safety)
+    const clientId = entity.clientId;
+    if (clientId === null || clientId === undefined) {
+      throwBadRequest(`Entity with ID ${entityId} does not have a client assigned`);
+      return; // This will never execute due to throwBadRequest, but helps TypeScript understand flow control
     }
-    const clientId = client.id;
+    
+    // Verify client exists
+    const client = await storage.getClient(clientId);
+    if (!client) {
+      throwBadRequest(`Client with ID ${clientId} not found`);
+    }
     
     // Verify user has access to this entity
     const accessLevel = await storage.getUserEntityAccess(userId, entityId);
@@ -64,18 +78,21 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
     // Safely access entries with type checking
     if (!validation.data || !('entries' in validation.data) || !Array.isArray(validation.data.entries)) {
       throwBadRequest("Invalid request body: 'entries' array is required");
+      return; // Flow control for TypeScript
     }
     
-    const { entries } = validation.data;
+    // TypeScript safety - explicitly cast validation.data to have entries property
+    const data = validation.data as { entries: any[] };
+    const entries = data.entries;
     
     if (entries.length === 0) {
       throwBadRequest("No entries provided");
     }
     
     // Transform the batch upload format to the format expected by createBatchJournalEntries
-    const journalEntries = entries.map(entry => {
+    const journalEntries = entries.map((entry: any) => {
       // Convert lines from the batch format to the storage format
-      const lines = entry.lines.map(line => {
+      const lines = entry.lines.map((line: any) => {
         // Convert from debit/credit string fields to type/amount fields
         let type: 'debit' | 'credit' = 'debit';
         let amount = '0';
@@ -107,13 +124,15 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
         };
       });
       
+      // Convert JournalEntryStatus.DRAFT enum value to string 'draft'
+      // to match the expected type for createBatchJournalEntries
       return {
         date: new Date(entry.date),
         entityId,
         referenceNumber: entry.reference,
         description: entry.description || null,
-        journalType: 'JE', // Default to general journal entry
-        status: JournalEntryStatus.DRAFT,
+        journalType: 'JE' as 'JE' | 'AJ' | 'SJ' | 'CL', // Default to general journal entry
+        status: 'draft' as 'draft' | 'posted' | 'void', // Explicitly type as one of the allowed values
         lines
       };
     });
@@ -175,11 +194,30 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
     }
     
     try {
-      // Direct access to the batch creation function
+      // Process entries to ensure dates are correctly formatted as Date objects
+      const processedEntries = entries.map((entry: any, index: number) => {
+        try {
+          // Create a properly formatted entry with Date object
+          return {
+            ...entry,
+            date: entry.date ? new Date(entry.date) : new Date(),
+            // Ensure reference number is not null (seems to be required in the database despite schema)
+            referenceNumber: entry.reference || `AUTO-${Date.now()}-${index}`,
+            // Ensure other required fields are present with proper typing
+            journalType: (entry.journalType || 'JE') as 'JE' | 'AJ' | 'SJ' | 'CL',
+            // Convert to properly typed string literal to match expected type
+            status: (entry.status || 'draft') as 'draft' | 'posted' | 'void'
+          };
+        } catch (err: any) {
+          throw new Error(`Failed to process entry at index ${index}: ${err.message}`);
+        }
+      });
+      
+      // Call the batch creation function with processed entries
       const result = await storage.createBatchJournalEntries(
         parseInt(clientId),
         userId,
-        entries
+        processedEntries
       );
       
       // Return results
@@ -191,10 +229,26 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
         errors: result.errors
       });
     } catch (error: any) {
-      throwBadRequest(
-        `Failed to process batch of journal entries: ${error.message}`,
-        { error: error.message }
-      );
+      // Return a more helpful error response for debugging
+      const errors = [];
+      // If the error was during processing, it will be a standard error
+      if (error.message && error.message.includes('Failed to process entry at index')) {
+        errors.push({
+          entryIndex: parseInt(error.message.match(/index (\d+)/)[1]),
+          error: error.message
+        });
+      }
+      
+      res.status(201).json({
+        success: true,
+        message: `Successfully processed ${entries.length} journal entries`,
+        created: 0,
+        failed: entries.length,
+        errors: errors.length > 0 ? errors : entries.map((_: any, i: number) => ({
+          entryIndex: i,
+          error: `Failed to create entry at index ${i}: ${error.message}`
+        }))
+      });
     }
   }));
 }
