@@ -45,6 +45,10 @@ export interface IJournalEntryStorage {
   updateJournalEntryLine(id: number, line: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined>;
   deleteJournalEntryLine(id: number): Promise<boolean>;
   
+  // Journal Entry File operations
+  getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
+  createJournalEntryFile(journalEntryId: number, file: any): Promise<any>;
+  
   // Batch operation
   createBatchJournalEntries(
     clientId: number,
@@ -63,6 +67,14 @@ export interface IJournalEntryStorage {
   // Validation and helper methods
   validateJournalEntryBalance(id: number): Promise<boolean>;
   validateAccountIds(accountIds: number[], clientId: number): Promise<boolean>;
+  
+  // Legacy Journal methods (aliases for JournalEntry methods)
+  getJournal(id: number): Promise<JournalEntry | undefined>;
+  getJournals(entityId: number): Promise<JournalEntry[]>;
+  getJournalsByType(entityId: number, type: any): Promise<JournalEntry[]>;
+  createJournal(journal: any): Promise<JournalEntry>;
+  updateJournal(id: number, journal: Partial<any>): Promise<JournalEntry | undefined>;
+  deleteJournal(id: number): Promise<boolean>;
 }
 
 // Implementation class for Journal Entry Storage
@@ -583,6 +595,60 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
   }
   
+  // Journal Entry File methods
+  async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
+    console.log(`Getting files for journal entry ${journalEntryId}`);
+    try {
+      // This is a placeholder implementation
+      // In a real implementation, you would query the database for files related to the journalEntryId
+      // For example:
+      // return await db.select()
+      //   .from(journalEntryFiles)
+      //   .where(eq(journalEntryFiles.journalEntryId, journalEntryId));
+      
+      // Since there's no journalEntryFiles table defined in schema.ts yet,
+      // we return an empty array for now
+      return [];
+    } catch (e) {
+      throw handleDbError(e, `getting files for journal entry ${journalEntryId}`);
+    }
+  }
+  
+  async createJournalEntryFile(journalEntryId: number, file: any): Promise<any> {
+    console.log(`Creating file for journal entry ${journalEntryId}`);
+    try {
+      // This is a placeholder implementation
+      // In a real implementation, you would insert the file into the database
+      // For example:
+      // const [journalEntryFile] = await db.insert(journalEntryFiles)
+      //   .values({
+      //     journalEntryId,
+      //     filename: file.filename || `file-${Date.now()}`,
+      //     contentType: file.contentType || 'application/octet-stream',
+      //     size: file.size || 0,
+      //     data: file.data || null,
+      //     uploadedBy: file.uploadedBy || null
+      //   })
+      //   .returning();
+      // return journalEntryFile;
+      
+      // Since there's no journalEntryFiles table defined in schema.ts yet,
+      // we return a mock file object
+      return {
+        id: Date.now(),
+        journalEntryId,
+        filename: file.filename || `file-${Date.now()}`,
+        contentType: file.contentType || 'application/octet-stream',
+        size: file.size || 0,
+        data: file.data || null,
+        createdAt: new Date(),
+        uploadedBy: file.uploadedBy || null
+      };
+    } catch (e) {
+      throw handleDbError(e, `creating file for journal entry ${journalEntryId}`);
+    }
+  }
+  
   async createBatchJournalEntries(
     clientId: number,
     createdById: number,
@@ -658,6 +724,42 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     } catch (e) {
       throw handleDbError(e, `creating batch journal entries for client ${clientId}`);
     }
+  }
+  
+  // Legacy Journal methods (aliases for JournalEntry methods)
+  async getJournal(id: number): Promise<JournalEntry | undefined> {
+    return this.getJournalEntry(id);
+  }
+  
+  async getJournals(entityId: number): Promise<JournalEntry[]> {
+    return this.getJournalEntries(entityId);
+  }
+  
+  async getJournalsByType(entityId: number, type: any): Promise<JournalEntry[]> {
+    // Filter journal entries by journal type
+    try {
+      return await db.select()
+        .from(journalEntries)
+        .where(and(
+          eq(journalEntries.entityId, entityId),
+          eq(journalEntries.journalType, type)
+        ))
+        .orderBy(desc(journalEntries.date));
+    } catch (e) {
+      throw handleDbError(e, `getting journal entries with type ${type} for entity ${entityId}`);
+    }
+  }
+  
+  async createJournal(journal: any): Promise<JournalEntry> {
+    return this.createJournalEntry(journal.clientId, journal.createdBy, journal);
+  }
+  
+  async updateJournal(id: number, journal: Partial<any>): Promise<JournalEntry | undefined> {
+    return this.updateJournalEntry(id, journal);
+  }
+  
+  async deleteJournal(id: number): Promise<boolean> {
+    return this.deleteJournalEntry(id);
   }
 }
 
