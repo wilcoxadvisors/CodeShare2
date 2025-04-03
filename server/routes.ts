@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     new LocalStrategy(async (username, password, done) => {
       try {
         console.log(`Login attempt for username: ${username}`);
-        const user = await storage.getUserByUsername(username);
+        const user = await userStorage.getUserByUsername(username);
         
         if (!user) {
           console.log(`Login failed: User '${username}' not found`);
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`User '${username}' has a plain text password, should be hashed!`);
           // This user has a plain text password, we should update it with a proper bcrypt hash
           const hashedPassword = await bcrypt.hash("password123", 10);
-          await storage.updateUser(user.id, { password: hashedPassword });
+          await userStorage.updateUser(user.id, { password: hashedPassword });
           console.log(`Updated plain text password for user '${username}' with bcrypt hash`);
           // Let's allow login with password123 in this case
           if (password === "password123") {
@@ -165,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deserialize user from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const user = await storage.getUser(id);
+      const user = await userStorage.getUser(id);
       if (!user) {
         return done(null, false);
       }
@@ -278,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const users = await Promise.all(
-        (await storage.getUsers()).map(async (user) => {
+        (await userStorage.getUsers()).map(async (user) => {
           // Exclude password
           const { password, ...userWithoutPassword } = user;
           return userWithoutPassword;
@@ -307,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get the entity access list
-      const accessList = await storage.getUserEntityAccessList(requestedUserId);
+      const accessList = await userStorage.getUserEntityAccessList(requestedUserId);
       
       res.json({
         status: "success",
@@ -345,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has access to this entity
       const userId = (req.user as AuthUser).id;
       if (entity.ownerId !== userId) {
-        const accessLevel = await storage.getUserEntityAccess(userId, entityId);
+        const accessLevel = await userStorage.getUserEntityAccess(userId, entityId);
         if (!accessLevel) {
           return res.status(403).json({ message: "Forbidden" });
         }
@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user has access to this entity
       if (existingEntity.ownerId !== userId) {
-        const accessLevel = await storage.getUserEntityAccess(userId, entityId);
+        const accessLevel = await userStorage.getUserEntityAccess(userId, entityId);
         if (!accessLevel) {
           console.log(`DEBUG Route Update Entity: User ${userId} does not have access to entity ${entityId}`);
           return res.status(403).json({ 
