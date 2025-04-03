@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./index";
 import session from "express-session";
@@ -28,6 +28,7 @@ import { registerConsolidationRoutes } from "./consolidationRoutes";
 import { registerAdminRoutes } from "./adminRoutes";
 import { registerJournalEntryRoutes } from "./journalEntryRoutes";
 import { registerLocationRoutes } from "./locationRoutes";
+import { registerDebugRoutes } from "./debugRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -1285,6 +1286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register the Location routes
   registerLocationRoutes(app, storage);
   
+  // Register Debug routes for development and testing
+  registerDebugRoutes(app, storage);
+  
   // Endpoint to check if any accounts exist for testing
   app.get('/api/test/accounts', async (req, res) => {
     try {
@@ -1304,7 +1308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Directly parse JSON in the test endpoint
-  app.post('/api/test/journal-entries', express.json(), async (req, res) => {
+  app.post('/api/test/journal-entries', async (req, res) => {
     try {
       // Set a default user ID for testing
       const testUserId = 1;

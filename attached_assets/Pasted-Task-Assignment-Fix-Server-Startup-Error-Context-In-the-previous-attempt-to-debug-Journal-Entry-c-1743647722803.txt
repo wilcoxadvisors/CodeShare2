@@ -1,0 +1,36 @@
+Task Assignment: Fix Server Startup Error
+
+Context: In the previous attempt to debug Journal Entry creation, debug routes were added (server/debugRoutes.ts) and likely registered in server/index.ts. Following these changes, the application server fails to restart within the time limit.
+
+Goal: Identify the cause of the server startup failure and revert or fix the problematic code changes so the server starts successfully.
+
+Instructions:
+
+Action: Investigate Startup Error:
+
+Examine the server startup logs closely for any specific error messages that indicate why it's failing to start (e.g., syntax errors, import errors, port conflicts, issues in server/index.ts or the recently added server/debugRoutes.ts).
+Review the recent changes made to server/index.ts related to importing and registering debugRoutes.
+Review the content of server/debugRoutes.ts for potential errors.
+Action: Revert or Fix Problematic Code:
+
+Primary Recommendation: Revert the changes related to adding and registering the debug routes. Specifically:
+Remove the import for debugRoutes from server/index.ts.
+Remove the line registering the debugRoutes router (e.g., app.use(debugRouter);) in server/index.ts.
+(Optional) Delete the server/debugRoutes.ts file if it's no longer needed.
+Alternative (If cause is obvious): If a clear syntax or import error is found in the debug routes or their registration, fix that specific error instead of fully reverting. However, reverting is likely safer to get back to a known state.
+Action: Verify Server Startup:
+
+Attempt to restart the application server (npm run dev).
+Confirm that the server starts successfully without errors within the time limit.
+Verification:
+
+The specific cause of the startup error is identified (or changes are reverted).
+The server starts successfully after the fix/reversion.
+Reporting:
+
+Report the findings of the investigation (what caused the startup error).
+Confirm the actions taken (reverted debug routes or specific fix applied).
+Report PASS/FAIL for the server startup verification (Step 3). State clearly if the server is now running successfully.
+
+Sources and related content
+Accounting
