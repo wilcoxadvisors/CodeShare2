@@ -140,7 +140,7 @@ export interface IStorage {
   setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean>;
   
   // Journal Entry methods
-  createJournalEntry(entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
+  createJournalEntry(clientId: number, createdById: number, entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
   getJournalEntry(id: number): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
   deleteJournalEntry(id: number): Promise<void>;
@@ -181,7 +181,7 @@ export interface IStorage {
   getJournalEntry(id: number): Promise<JournalEntry | undefined>;
   getJournalEntries(entityId: number): Promise<JournalEntry[]>;
   getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]>;
-  createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
+  createJournalEntry(clientId: number, createdById: number, entry: InsertJournalEntry): Promise<JournalEntry>;
   updateJournalEntry(id: number, entry: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
   
   // Journal Entry Line methods
@@ -1259,7 +1259,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date descending
   }
   
-  async createJournalEntry(insertEntry: InsertJournalEntry): Promise<JournalEntry> {
+  async createJournalEntry(clientId: number, createdById: number, insertEntry: InsertJournalEntry): Promise<JournalEntry> {
     const id = this.currentJournalEntryId++;
     const now = new Date();
     
@@ -1276,7 +1276,7 @@ export class MemStorage implements IStorage {
       isRecurring: insertEntry.isRecurring || false,
       recurringFrequency: insertEntry.recurringFrequency || null,
       recurringEndDate: insertEntry.recurringEndDate || null,
-      createdBy: insertEntry.createdBy,
+      createdBy: createdById,
       requestedBy: insertEntry.requestedBy || null,
       requestedAt: null as Date | null,
       approvedBy: insertEntry.approvedBy || null,
@@ -6040,7 +6040,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(journalEntries.date));
   }
 
-  async createJournalEntry(entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }> {
+  async createJournalEntry(clientId: number, createdById: number, entryData: InsertJournalEntry, linesData: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }> {
     // Check if there's at least one line
     if (!linesData || linesData.length === 0) {
       throw new Error("Journal entry must have at least one line");
@@ -6100,7 +6100,7 @@ export class DatabaseStorage implements IStorage {
           rejectionReason: entryData.rejectionReason,
           postedBy: entryData.postedBy,
           postedAt: entryData.postedAt,
-          createdBy: entryData.createdBy
+          createdBy: createdById
         })
         .returning();
       
@@ -6281,6 +6281,11 @@ export class DatabaseStorage implements IStorage {
       .values(insertLine)
       .returning();
     return line;
+  }
+  
+  // Alias for createJournalEntryLine to maintain API compatibility with IStorage interface
+  async addJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
+    return this.createJournalEntryLine(insertLine);
   }
   
   async updateJournalEntryLine(id: number, lineData: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined> {

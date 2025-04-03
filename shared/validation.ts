@@ -198,8 +198,14 @@ export function formatZodError(error: z.ZodError) {
  * Schema for listing journal entries with filters
  */
 export const listJournalEntriesFiltersSchema = z.object({
-  clientId: z.number().int().positive().optional(),
-  entityId: z.number().int().positive().optional(),
+  clientId: z.union([
+    z.string().transform(val => parseInt(val, 10)),
+    z.number().int().positive()
+  ]).optional(),
+  entityId: z.union([
+    z.string().transform(val => parseInt(val, 10)),
+    z.number().int().positive()
+  ]).optional(),
   startDate: z.preprocess((arg) => {
     if (typeof arg === "string" || arg instanceof Date) {
       const date = new Date(arg);
@@ -217,8 +223,14 @@ export const listJournalEntriesFiltersSchema = z.object({
   status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   referenceNumber: optionalString.nullable(),
-  limit: z.number().int().min(1).max(100).optional().default(25),
-  offset: z.number().int().min(0).optional().default(0),
+  limit: z.union([
+    z.string().transform(val => parseInt(val, 10)),
+    z.number().int().min(1).max(100)
+  ]).optional().default(25),
+  offset: z.union([
+    z.string().transform(val => parseInt(val, 10)),
+    z.number().int().min(0)
+  ]).optional().default(0),
   sortBy: z.enum(['date', 'referenceNumber', 'description', 'amount']).optional().default('date'),
   sortDirection: z.enum(['asc', 'desc']).optional().default('desc')
 });

@@ -19,9 +19,21 @@ let authCookie = '';
 
 // Helper function to read auth cookie
 function getCookieHeader() {
+  // If we have an authCookie in memory, use that first
+  if (authCookie) {
+    return authCookie;
+  }
+  
   try {
     const cookieContent = fs.readFileSync(path.join(__dirname, '../cookies.txt'), 'utf8');
-    return cookieContent.trim();
+    // Check if cookie starts with "# Netscape HTTP Cookie File" marker
+    if (cookieContent.startsWith('# Netscape HTTP Cookie File')) {
+      console.error('Invalid cookie format detected. Login again to get a valid cookie.');
+      return '';
+    }
+    // Store in the authCookie variable for future use
+    authCookie = cookieContent.trim();
+    return authCookie;
   } catch (error) {
     console.error('Error reading cookie file:', error);
     return '';
@@ -48,14 +60,17 @@ let journalEntryId;
 async function login() {
   try {
     const response = await axios.post(`${API_URL}/api/auth/login`, {
-      username: 'testuser',
-      password: 'password'
+      username: 'admin',
+      password: 'password123'
     });
     
     const cookies = response.headers['set-cookie'];
     if (cookies && cookies.length > 0) {
-      fs.writeFileSync('cookies.txt', cookies.join('; '), 'utf8');
+      // Extract just the session cookie
+      const sessionCookie = cookies[0].split(';')[0];
+      fs.writeFileSync('cookies.txt', sessionCookie, 'utf8');
       console.log('Login successful, cookie saved');
+      authCookie = sessionCookie; // Save the cookie value to the variable
       return true;
     } else {
       console.log('Login successful but no cookies returned');
@@ -336,6 +351,7 @@ async function testUnbalancedJournalEntry() {
       description: 'Unbalanced Journal Entry',
       referenceNumber: 'UNBALANCED-001',
       journalType: 'JE',
+      createdBy: 1, // Add the required createdBy field
       lines: [
         {
           type: 'debit',

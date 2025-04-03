@@ -78,7 +78,8 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    */
   app.get('/api/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     try {
-      // Parse and validate query parameters
+      // Simply pass the raw query parameters to the Zod schema
+      // The schema itself will handle the string-to-number conversions
       const validatedParams = listJournalEntriesFiltersSchema.parse(req.query);
       
       // Pass the validated parameters to the storage function

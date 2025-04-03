@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 // Helper function to format dates to ISO string without milliseconds
 function formatDate(date) {
@@ -12,6 +12,7 @@ async function testDebugRoute() {
     date: formatDate(new Date()),
     clientId: 130, // Use a known client ID from your database
     entityId: 248, // Use a known entity ID from your database
+    createdBy: 1, // Add the required createdBy field - use a known user ID from your database
     description: "Test journal entry debug route",
     lines: [
       {
