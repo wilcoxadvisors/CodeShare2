@@ -38,6 +38,7 @@ import {
   HttpStatus 
 } from "./errorHandling";
 import { journalEntryStorage } from "./storage/journalEntryStorage";
+import { userStorage } from "./storage/userStorage";
 import { generateUsageReport } from "../shared/deprecation-monitor";
 
 interface AuthUser {
