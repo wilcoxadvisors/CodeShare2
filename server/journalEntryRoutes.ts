@@ -86,6 +86,11 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    */
   app.get('/api/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
     const journalEntry = await storage.getJournalEntry(id);
     
     if (!journalEntry) {
@@ -101,6 +106,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
   app.put('/api/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const user = req.user as { id: number };
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
     
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(id);
@@ -143,6 +152,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const id = parseInt(req.params.id);
     const user = req.user as { id: number };
     
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(id);
     
@@ -178,6 +191,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const id = parseInt(req.params.id);
     const user = req.user as { id: number };
     
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(id);
     
@@ -208,6 +225,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/journal-entries/:id/lines', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const journalEntryId = parseInt(req.params.id);
+    
+    if (isNaN(journalEntryId)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
     
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(journalEntryId);
@@ -300,6 +321,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const entryId = parseInt(req.params.entryId);
     const lineId = parseInt(req.params.lineId);
     
+    if (isNaN(entryId) || isNaN(lineId)) {
+      throwBadRequest('Invalid journal entry ID or line ID provided');
+    }
+    
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(entryId);
     
@@ -389,6 +414,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const entryId = parseInt(req.params.entryId);
     const lineId = parseInt(req.params.lineId);
     
+    if (isNaN(entryId) || isNaN(lineId)) {
+      throwBadRequest('Invalid journal entry ID or line ID provided');
+    }
+    
     // Get the existing entry to check its status
     const existingEntry = await storage.getJournalEntry(entryId);
     
@@ -441,6 +470,10 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
   app.post('/api/journal-entries/:id/reverse', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const user = req.user as { id: number };
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
     
     // Get the existing entry to check if it exists and has the correct status
     const existingEntry = await storage.getJournalEntry(id);

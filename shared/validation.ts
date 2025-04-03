@@ -97,10 +97,12 @@ export const createJournalEntrySchema = z.object({
     }
     return undefined;
   }, z.date({ required_error: "Date is required", invalid_type_error: "Invalid date format" })),
+  clientId: z.number().int().positive({ message: "Client ID is required" }),
+  entityId: z.number().int().positive({ message: "Entity ID is required" }),
+  createdBy: z.number().int().positive({ message: "Creator ID is required" }),
   referenceNumber: optionalString.nullable(),
   description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
-  entityId: z.number().int().positive().optional().nullable(),
   locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
 }).refine(data => {
@@ -135,10 +137,12 @@ export const updateJournalEntrySchema = z.object({
     }
     return undefined;
   }, z.date({ invalid_type_error: "Invalid date format" }).optional()),
+  clientId: z.number().int().positive().optional(),
+  entityId: z.number().int().positive().optional().nullable(),
+  createdBy: z.number().int().positive().optional(),
   referenceNumber: optionalString.nullable(),
   description: z.string().max(255, "Description cannot exceed 255 characters").optional().nullable(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
-  entityId: z.number().int().positive().optional().nullable(),
   locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry update must include at least one line"),
 }).refine(data => {

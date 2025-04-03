@@ -1,0 +1,65 @@
+Task Assignment: Align Database Schema & Re-run API Tests (Task B.2 Cont.)
+
+Context: The Replit agent identified a critical mismatch between the database schema and the Drizzle schema definitions in shared/schema.ts for the journal_entries and journal_entry_lines tables. This needs to be resolved before API tests can pass. The decision is to update the database to match the code.
+
+Goal: Generate and apply database migrations to align the actual database schema with shared/schema.ts, then re-run the previously created API test script to verify the journal entry endpoints.
+
+Instructions:
+
+Action: Confirm Schema Differences (Optional but Recommended):
+
+Run SQL queries to precisely list columns and types for the journal_entries and journal_entry_lines tables in the database. Example:
+SQL
+
+SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'journal_entries' ORDER BY ordinal_position;
+SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'journal_entry_lines' ORDER BY ordinal_position;
+Compare this output against the definitions in CodeShare/shared/schema.ts and report any differences found besides the already identified client_id and type/debit/credit issues. (Skip if confident about the differences).
+Action: Generate Database Migration:
+
+Execute the Drizzle Kit command to generate migration SQL based on the differences between shared/schema.ts and the current database state:
+Bash
+
+npx drizzle-kit generate:pg
+Note the name of the generated migration file (e.g., in CodeShare/migrations/).
+Action: Review Generated Migration SQL:
+
+Open the newly generated SQL migration file from the migrations directory.
+Verify that the SQL commands correctly:
+Add the client_id column to journal_entries (likely with a foreign key constraint).
+Add the type column (enum 'debit'/'credit') to journal_entry_lines.
+Remove the separate debit and credit columns from journal_entry_lines.
+Include any other necessary alterations based on Step 1.
+Action: Apply Database Migration:
+
+Execute the command to apply the migration to the database. Use the method appropriate for this project (e.g., push or migrate script):
+Option A (if using push): npx drizzle-kit push:pg
+Option B (if using migrate script): node server/migrate.js (or tsx server/migrate.ts if applicable)
+Action: Re-run API Test Script:
+
+Ensure the server is running (npm run dev - may need restart after migration).
+Navigate to the test directory: cd test
+Execute the API test script again using the corrected user (testuser/password) and client/account IDs:
+Bash
+
+node api-journal-entries.js
+Verification:
+
+Migration SQL generated correctly addresses the schema differences.
+Migration applied successfully without errors.
+API test script (test/api-journal-entries.js) execution:
+Authenticates successfully.
+POST (Valid) returns 201.
+POST (Invalid - Balance) returns 400.
+POST (Invalid - Schema) returns 400.
+GET (List) returns 200.
+GET (Specific) returns 200.
+(Optional) PUT returns 200.
+(Optional) DELETE returns 204.
+(Optional) GET (Deleted) returns 404.
+Reporting:
+
+Report the outcome of the schema difference confirmation (Step 1, if performed).
+Confirm the migration generation (Step 2) and provide the name of the generated migration file.
+Confirm the review of the migration SQL (Step 3) - highlight if any unexpected changes were generated.
+Confirm the successful application of the migration (Step 4).
+Report the full output of the API test script execution (node api-journal-entries.js) from Step 5, indicating overall PASS or FAIL based on whether all expected outcomes occurred. Provide detailed error messages only if the script fails again.

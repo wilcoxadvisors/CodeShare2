@@ -92,6 +92,7 @@ async function testCreateJournalEntry() {
       description: 'Test Journal Entry',
       referenceNumber: 'TEST-001',
       journalType: 'JE',
+      createdBy: 1, // Add createdBy value (assuming user ID 1 exists)
       lines: [
         {
           type: 'debit',
@@ -396,13 +397,21 @@ async function runAllTests() {
   }
   
   // Run the actual tests
-  await testCreateJournalEntry();
-  await testGetJournalEntry();
-  await testUpdateJournalEntry();
-  await testAddJournalEntryLine();
-  await testPostJournalEntry();
-  await testReverseJournalEntry();
-  await testListJournalEntries();
+  const createSuccess = await testCreateJournalEntry();
+  
+  // Only run the remaining tests if we successfully created an entry and have a valid ID
+  if (createSuccess && journalEntryId) {
+    await testGetJournalEntry();
+    await testUpdateJournalEntry();
+    await testAddJournalEntryLine();
+    await testPostJournalEntry();
+    await testReverseJournalEntry();
+    await testListJournalEntries();
+  } else {
+    console.error('Failed to create journal entry or get valid ID, skipping remaining tests');
+  }
+  
+  // Run the validation test regardless
   await testUnbalancedJournalEntry();
   
   console.log('\nJournal Entry API Tests completed.');
