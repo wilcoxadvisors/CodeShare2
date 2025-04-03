@@ -1,0 +1,45 @@
+Task Assignment: Fix addJournalEntryLine & List Endpoint Errors
+
+Context: The api-journal-entries.js test script is failing due to errors related to the journal entry line creation function (addJournalEntryLine vs. createJournalEntryLine) and the list journal entries endpoint returning a 400 error (likely validation/parameter parsing). Resolving these is necessary before we can fully verify the createdBy fix and JE functionality.
+
+Goal: Standardize the journal entry line creation function name and fix the list endpoint parameter handling/validation to allow the api-journal-entries.js test script to proceed further.
+
+Instructions:
+
+Action: Standardize Line Creation Function:
+
+Decision: We will standardize on using createJournalEntryLine.
+Open server/storage.ts:
+In the IStorage interface, remove the line defining addJournalEntryLine(...). Ensure createJournalEntryLine(...) is correctly defined.
+In the DatabaseStorage class, remove the alias method addJournalEntryLine. Ensure the createJournalEntryLine method is correctly implemented.
+In the MemStorage class, remove the alias method addJournalEntryLine. Ensure the createJournalEntryLine method is correctly implemented.
+Open server/journalEntryRoutes.ts:
+Find any route handler that calls storage.addJournalEntryLine and change it to call storage.createJournalEntryLine.
+Action: Fix List Endpoint Parameter Handling/Validation:
+
+Open server/journalEntryRoutes.ts.
+Locate the GET /api/clients/:clientId/journal-entries route handler.
+Review and Fix Parameter Parsing: Ensure query string parameters (like accountId, entityId, minAmount, startDate, etc.) are being correctly extracted from req.query.
+Review and Fix Validation:
+Ensure numeric values (accountId, entityId, minAmount, etc.) are explicitly converted from strings (e.g., using parseInt, parseFloat) before validation or being passed to the storage function if no Zod schema is handling coercion.
+Ensure date strings (startDate, endDate) are correctly parsed into Date objects before validation or passing to storage. Use date-fns/parse and date-fns/isValid robustly.
+Add Logging: Temporarily add console.log('Parsed Filters:', filters); just before the storage.listJournalEntries(clientId, filters) call to see exactly what is being passed after parsing/validation.
+Open shared/validation.ts:
+If a listJournalEntriesFiltersSchema is being used by the route handler, ensure it correctly defines fields as optional (.optional()) and uses appropriate Zod methods for type coercion from strings if necessary (e.g., z.coerce.number(), z.coerce.date()).
+Action: Restart and Test:
+
+Restart the application server (npm run dev).
+Execute the test script: cd test && node api-journal-entries.js.
+Verification:
+
+The addJournalEntryLine alias/duplicate definition is removed from IStorage, DatabaseStorage, and MemStorage.
+Route handlers consistently use createJournalEntryLine.
+The GET List route handler correctly parses/validates query parameters (numbers, dates).
+The test script api-journal-entries.js now proceeds past the points where addJournalEntryLine or the list endpoint validation previously caused errors. (Note: It might still fail later, potentially on the "no lines" issue, but these specific errors should be resolved).
+Reporting:
+
+Confirm the standardization of createJournalEntryLine and removal of addJournalEntryLine.
+Detail the fixes applied to the GET List route handler for parameter handling/validation.
+Report the output of the node api-journal-entries.js execution. If it still fails, provide the new error message(s). If it passes, report PASS.
+
+Sources and related content

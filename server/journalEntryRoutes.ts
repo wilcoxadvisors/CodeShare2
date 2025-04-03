@@ -329,7 +329,7 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       };
       
       // Add the new line
-      const newLine = await storage.addJournalEntryLine(lineData);
+      const newLine = await storage.createJournalEntryLine(lineData);
       
       // Check if the journal entry is still balanced
       const updatedEntry = await storage.getJournalEntry(journalEntryId);

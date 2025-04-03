@@ -153,7 +153,6 @@ export interface IStorage {
   }): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
   
   // Journal Entry Line methods
-  addJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
   updateJournalEntryLine(id: number, line: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined>;
   deleteJournalEntryLine(id: number): Promise<void>;
   grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
@@ -187,6 +186,7 @@ export interface IStorage {
   // Journal Entry Line methods
   getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
   createJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>;
+  addJournalEntryLine(line: InsertJournalEntryLine): Promise<JournalEntryLine>; // Alias for createJournalEntryLine
   
   // Journal Entry File methods
   getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
@@ -1349,10 +1349,6 @@ export class MemStorage implements IStorage {
     return journalEntryLine;
   }
   
-  // Alias for createJournalEntryLine to maintain API compatibility with IStorage interface
-  async addJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
-    return this.createJournalEntryLine(insertLine);
-  }
   
   // Journal Entry File methods
   async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
