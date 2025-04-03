@@ -1,0 +1,35 @@
+Task Assignment: Verify CoA Stability at Commit 64447303 (Step 5: UI/UX Button Verification)
+
+Context:
+We are verifying the stability of the CoA module at commit 64447303. Steps 1 (Template & Seeding), 2 (API), 3 (Display), and 4 (Add Account) have passed. We now need to verify the UI elements for row actions (Edit/Delete/Action buttons) on the Chart of Accounts page.
+
+Goal:
+Verify the appearance and configuration of the action buttons (Edit, Delete, potentially others) in the CoA table rows, ensuring they match the expected state at commit 64447303 and addressing the user's earlier concern about unexpected changes.
+
+Instructions (Step 5 of Verification Plan):
+
+Action: Review Code for Action Buttons:
+
+Examine the code in client/src/pages/ChartOfAccounts.tsx, specifically focusing on the columns definition passed to the <DataTable ... /> component.
+Identify the code section responsible for rendering the action buttons or action menu for each account row.
+Report: Based on the code at commit 64447303, which specific buttons or menu items (e.g., "Edit", "Delete", "Deactivate", an "Actions" dropdown) should be rendered per row?
+Action: Observe UI via Web Tool:
+
+Ensure the application is running (npm run dev) and you are logged in as admin (admin/password123).
+Use the web application tool to navigate to the Chart of Accounts page for an existing client (e.g., Client ID 1 or 128).
+Observe: Visually inspect the action buttons displayed for several account rows in the table.
+Action: Compare Code vs. UI:
+
+Do the buttons visible in the UI (Step 2) exactly match the buttons expected based on the code review (Step 1)?
+Is the "Edit" button present as expected, or has it been replaced by a different "Action" button/menu as the user previously reported (which might indicate the codebase isn't truly at the intended commit state or there's a misunderstanding)?
+Verification:
+
+The action buttons visible in the UI accurately reflect the implementation found in the ChartOfAccounts.tsx code at commit 64447303.
+There are no unexpected changes to these buttons compared to what the code defines.
+Reporting:
+
+Report PASS/FAIL for the UI/UX Button Verification (Step 5).
+Describe which action buttons are defined in the code for the CoA table rows.
+Describe which action buttons are actually visible in the UI via the web tool.
+Explicitly state whether the code and UI match regarding these buttons. Include a screenshot showing the buttons on the CoA table.
+Await confirmation before proceeding to Step 6 (Import/Export Verification).
