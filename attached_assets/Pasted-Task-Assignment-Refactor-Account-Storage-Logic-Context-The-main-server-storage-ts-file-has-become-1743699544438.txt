@@ -1,0 +1,678 @@
+Task Assignment: Refactor Account Storage Logic
+
+Context: The main server/storage.ts file has become very large, containing data access logic for many different domains. We are refactoring it based on best practices by splitting logic into domain-specific files. This task focuses on extracting all Chart of Accounts (CoA) related storage logic.
+
+Goal: Create a new accountStorage.ts file containing the interface and implementations for Account CRUD operations, CoA seeding, import/export, and tree generation. Update related files to use this new module.
+
+Instructions:
+
+Action: Create New Directory:
+
+If it doesn't already exist, create the directory: CodeShare/server/storage/
+Action: Create accountStorage.ts File:
+
+Create a new file named CodeShare/server/storage/accountStorage.ts.
+
+Populate it with the following content. This includes the IAccountStorage interface and AccountStorage class (implementing the interface using the Database logic moved from the original storage.ts). Note: MemStorage implementation for Accounts is omitted here for brevity but could be added similarly if needed.
+
+TypeScript
+
+// CodeShare/server/storage/accountStorage.ts
+import { db } from "../db"; // Adjust path if db connection is elsewhere
+import {
+    accounts, Account, InsertAccount, AccountType,
+    journalEntryLines // Needed for delete check
+} from "../../shared/schema"; // Adjust path to schema
+import { eq, and, desc, asc, sql, count, inArray, gt } from "drizzle-orm";
+import { standardChartOfAccounts } from "../coaTemplate"; // Adjust path
+import { ApiError, handleDbError } from "../errorHandling"; // Adjust path
+
+// Define interface for hierarchical account structure
+export interface AccountTreeNode extends Account {
+  children: AccountTreeNode[];
+}
+
+// Define interface specifically for Account storage operations
+export interface IAccountStorage {
+    seedClientCoA(clientId: number): Promise<void>;
+    getAccountsByClientId(clientId: number): Promise<Account[]>;
+    getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
+    createAccount(accountData: Omit<Account, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<Account>;
+    getAccountById(accountId: number, clientId: number): Promise<Account | undefined>;
+    updateAccount(accountId: number, clientId: number, accountData: Partial<Omit<Account, 'id' | 'clientId' | 'isActive' | 'createdAt' | 'updatedAt'>>): Promise<Account | null>;
+    deleteAccount(accountId: number, clientId: number): Promise<boolean>; // Soft delete
+    importCoaForClient(clientId: number, data: any[], fileType: 'csv' | 'excel'): Promise<{ success: boolean; message: string; results?: any }>; // Signature might need adjustment based on final implementation
+    exportCoaForClient(clientId: number): Promise<any[]>; // Return type depends on export format needs
+    accountHasTransactions(id: number): Promise<boolean>; // Helper
+}
+
+// Implementation using Database
+export class AccountStorage implements IAccountStorage {
+
+    // Helper method to normalize account types from imported data
+    private normalizeAccountType(type: string): AccountType {
+      if (!type) {
+        throw new Error("Account type is required");
+      }
+      const upperType = type.trim().toUpperCase();
+      // Add more robust mapping if needed
+      if (upperType === 'ASSET' || upperType === 'ASSETS') return AccountType.ASSET;
+      if (upperType === 'LIABILITY' || upperType === 'LIABILITIES') return AccountType.LIABILITY;
+      if (upperType === 'EQUITY') return AccountType.EQUITY;
+      if (upperType === 'REVENUE' || upperType === 'INCOME' || upperType === 'REVENUES' || upperType === 'INCOMES') return AccountType.REVENUE;
+      if (upperType === 'EXPENSE' || upperType === 'EXPENSES') return AccountType.EXPENSE;
+
+      throw new Error(`Invalid account type: ${type}`);
+    }
+
+    // Helper method to parse boolean flags from import data
+    private parseBooleanFlag(value: any, defaultValue: boolean = false): boolean {
+         if (value === undefined || value === null) return defaultValue;
+         if (typeof value === 'boolean') return value;
+         const normalizedValue = String(value).toLowerCase().trim();
+         return ['true', '1', 'yes', 'y'].includes(normalizedValue);
+    }
+
+     // Helper method to get value case-insensitively from import row
+     private getCaseInsensitiveValue(row: any, fieldName: string): any {
+         if (!row) return null;
+         const lowerFieldName = fieldName.toLowerCase();
+         for (const key in row) {
+             if (key.toLowerCase() === lowerFieldName) {
+                 return row[key];
+             }
+         }
+         // Add variations if needed (e.g., account_code vs accountCode)
+         if(fieldName === 'accountCode') return row['account_code'] ?? row['Account Code'] ?? null;
+         if(fieldName === 'parentCode') return row['parent_code'] ?? row['Parent Code'] ?? null;
+
+         return null;
+     }
+
+     // Helper method to get parent code from row
+     private getParentCode(row: any): string | null {
+         const parentCode = this.getCaseInsensitiveValue(row, 'parentCode');
+         if (parentCode !== null && parentCode !== undefined && String(parentCode).trim() !== '') {
+           return String(parentCode).trim();
+         }
+         return null;
+     }
+
+
+    async seedClientCoA(clientId: number): Promise<void> {
+        // Implementation copied from DatabaseStorage in original storage.ts
+         console.log(`Attempting to seed CoA for client ${clientId}`);
+         try {
+            await db.transaction(async (tx) => {
+                const existingAccounts = await tx.select({ id: accounts.id })
+                                                .from(accounts)
+                                                .where(eq(accounts.clientId, clientId))
+                                                .limit(1);
+
+                if (existingAccounts.length > 0) {
+                    console.log(`CoA already seeded for client ${clientId}. Skipping.`);
+                    return;
+                }
+
+                console.log(`Seeding standard CoA for client ${clientId}...`);
+                const accountMap = new Map<string, number>(); // Maps template ID to actual DB ID
+
+                const insertedIds: { templateId?: string, dbId: number, parentTemplateId?: string }[] = [];
+                for (const acc of standardChartOfAccounts) {
+                     const accountData: Omit<Account, 'id' | 'updatedAt' | 'createdAt'> = { // Adjusted Omit type
+                        clientId: clientId,
+                        accountCode: acc.accountCode,
+                        name: acc.name,
+                        type: acc.type,
+                        parentId: null, // Insert with null parent first
+                        fsliBucket: acc.fsliBucket,
+                        internalReportingBucket: acc.internalReportingBucket,
+                        isActive: true,
+                        isFolder: acc.isFolder ?? false,
+                        description: acc.description ?? '',
+                        isSystemAccount: acc.isSystemAccount ?? false,
+                    };
+                     const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });
+                     if (inserted.length > 0 && acc.id) {
+                         const dbId = inserted[0].id;
+                         accountMap.set(acc.id, dbId); // Map template ID to DB ID
+                         insertedIds.push({ templateId: acc.id, dbId: dbId, parentTemplateId: acc.parentId });
+                    } else {
+                         console.error("Failed to insert account during seeding:", acc);
+                         throw new Error(`Failed to insert account ${acc.accountCode} for client ${clientId}`);
+                    }
+                }
+
+                const parentUpdates: Promise<any>[] = [];
+                for (const item of insertedIds) {
+                     if (item.parentTemplateId) {
+                         const parentDbId = accountMap.get(item.parentTemplateId);
+                         if (parentDbId) {
+                             parentUpdates.push(
+                                 tx.update(accounts)
+                                   .set({ parentId: parentDbId })
+                                   .where(eq(accounts.id, item.dbId))
+                             );
+                         } else {
+                             console.warn(`Could not find parent DB ID for template parent ID ${item.parentTemplateId} when seeding for client ${clientId}`);
+                         }
+                     }
+                 }
+                 await Promise.all(parentUpdates);
+
+
+                console.log(`Successfully seeded ${standardChartOfAccounts.length} accounts for client ${clientId}.`);
+            });
+         } catch (error) {
+             throw handleDbError(error, `seeding CoA for client ${clientId}`);
+         }
+    }
+
+    async getAccountsByClientId(clientId: number): Promise<Account[]> {
+        // Implementation copied from DatabaseStorage in original storage.ts
+         console.log(`Getting accounts for client ${clientId}`);
+         try {
+             return await db.select()
+                            .from(accounts)
+                            .where(and(eq(accounts.clientId, clientId), eq(accounts.isActive, true))) // Only active
+                            .orderBy(accounts.accountCode);
+         } catch (error) {
+             throw handleDbError(error, `Workspaceing accounts for client ${clientId}`);
+         }
+    }
+
+    async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
+        // Implementation copied from DatabaseStorage in original storage.ts
+        console.log(`Getting accounts tree for client ${clientId}`);
+        try {
+            const allAccounts = await db.select()
+                                        .from(accounts)
+                                        .where(and(eq(accounts.clientId, clientId), eq(accounts.isActive, true)))
+                                        .orderBy(accounts.accountCode);
+
+            const accountMap: { [key: number]: AccountTreeNode } = {}; // Use AccountTreeNode
+            const rootAccounts: AccountTreeNode[] = [];
+
+            allAccounts.forEach(account => {
+                accountMap[account.id] = { ...account, children: [] };
+            });
+
+            allAccounts.forEach(account => {
+                if (account.parentId && accountMap[account.parentId]) {
+                    accountMap[account.parentId].children.push(accountMap[account.id]);
+                } else {
+                    rootAccounts.push(accountMap[account.id]);
+                }
+            });
+
+            return rootAccounts;
+        } catch (error) {
+            throw handleDbError(error, `getting accounts tree for client ${clientId}`);
+        }
+    }
+
+     async getAccountById(accountId: number, clientId: number): Promise<Account | undefined> {
+         console.log(`Getting account ${accountId} for client ${clientId}`);
+         try {
+             const [account] = await db.select()
+                 .from(accounts)
+                 .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId)))
+                 .limit(1);
+             return account;
+         } catch (error) {
+             throw handleDbError(error, `getting account by ID ${accountId}`);
+         }
+     }
+
+    async createAccount(accountData: Omit<Account, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<Account> {
+        // Implementation copied from DatabaseStorage in original storage.ts
+         console.log(`Creating account '<span class="math-inline">\{accountData\.name\}' \(</span>{accountData.accountCode}) for client ${accountData.clientId}`);
+         try {
+              if (accountData.parentId) {
+                  const parent = await db.select({id: accounts.id})
+                                         .from(accounts)
+                                         .where(and(eq(accounts.id, accountData.parentId), eq(accounts.clientId, accountData.clientId), eq(accounts.isActive, true)))
+                                         .limit(1);
+                  if(parent.length === 0) {
+                     throw new ApiError(400, `Parent account ID ${accountData.parentId} not found or inactive for client ${accountData.clientId}.`);
+                  }
+              }
+
+             const dataToInsert = {
+                 ...accountData,
+                 isActive: true, // Default to active
+                 description: accountData.description ?? '',
+                 isFolder: accountData.isFolder ?? false,
+                 isSystemAccount: accountData.isSystemAccount ?? false,
+             };
+
+             const [result] = await db.insert(accounts).values(dataToInsert).returning();
+             if (!result) throw new Error("Account creation failed in DB.");
+             return result;
+           } catch (error) {
+              if (error instanceof ApiError) throw error;
+              if (error instanceof Error && error.message?.includes('duplicate key value violates unique constraint')) {
+                   throw new ApiError(409, `Account code '${accountData.accountCode}' already exists for this client.`);
+              }
+             throw handleDbError(error, "creating account");
+         }
+    }
+
+    async updateAccount(accountId: number, clientId: number, accountData: Partial<Omit<Account, 'id' | 'clientId' | 'isActive' | 'createdAt' | 'updatedAt'>>): Promise<Account | null> {
+        // Implementation copied from DatabaseStorage in original storage.ts
+        console.log(`Updating account ${accountId} for client ${clientId}`);
+         try {
+              if (accountData.parentId === accountId) {
+                  throw new ApiError(400,"Account cannot be its own parent.");
+              }
+               if (accountData.parentId !== undefined && accountData.parentId !== null) {
+                   const parent = await db.select({id: accounts.id})
+                                          .from(accounts)
+                                          .where(and(eq(accounts.id, accountData.parentId), eq(accounts.clientId, clientId), eq(accounts.isActive, true)))
+                                          .limit(1);
+                   if(parent.length === 0) {
+                      throw new ApiError(400, `New parent account ID ${accountData.parentId} not found or inactive for client ${clientId}.`);
+                   }
+               }
+
+             const updatePayload = { ...accountData, updatedAt: new Date() };
+
+             const [result] = await db.update(accounts)
+                                    .set(updatePayload)
+                                    .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId), eq(accounts.isActive, true))) // Can only update active accounts
+                                    .returning();
+             return result ?? null;
+           } catch (error) {
+             if (error instanceof ApiError) throw error;
+              if (error instanceof Error && error.message?.includes('duplicate key value violates unique constraint')) {
+                   throw new ApiError(409, `Account code '${accountData.accountCode}' already exists for this client.`);
+              }
+            throw handleDbError(error, `updating account ${accountId}`);
+         }
+    }
+
+    async accountHasTransactions(id: number): Promise<boolean> {
+         const [journalLines] = await db
+           .select({ count: count() })
+           .from(journalEntryLines)
+           .where(eq(journalEntryLines.accountId, id));
+
+         return (journalLines?.count ?? 0) > 0;
+    }
+
+
+    async deleteAccount(accountId: number, clientId: number): Promise<boolean> {
+        // Soft delete by setting isActive = false
+        // Implementation copied from DatabaseStorage in original storage.ts
+        console.warn(`Soft deleting account ${accountId} for client ${clientId}`);
+        try {
+            return await db.transaction(async (tx) => {
+                const account = await tx.select({ id: accounts.id, isFolder: accounts.isFolder })
+                                        .from(accounts)
+                                        .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId), eq(accounts.isActive, true)))
+                                        .limit(1);
+
+                if (account.length === 0) return false;
+
+                const activeChildren = await tx.select({ id: accounts.id })
+                                                .from(accounts)
+                                                .where(and(eq(accounts.parentId, accountId), eq(accounts.isActive, true)))
+                                                .limit(1);
+                if (activeChildren.length > 0) {
+                    throw new ApiError(400, "Cannot deactivate an account with active child accounts. Deactivate children first.");
+                }
+
+                const hasTransactions = await this.accountHasTransactions(accountId);
+                if (hasTransactions) {
+                    throw new ApiError(400, "Cannot deactivate an account that has associated journal entries.");
+                }
+
+                const result = await tx.update(accounts)
+                                      .set({ isActive: false, updatedAt: new Date() })
+                                      .where(eq(accounts.id, accountId))
+                                      .returning({ id: accounts.id });
+
+                return result.length > 0;
+            });
+        } catch (error) {
+             if (error instanceof ApiError) throw error;
+            throw handleDbError(error, `deleting account ${accountId} (soft)`);
+        }
+    }
+
+    // --- CoA Import/Export ---
+     async importCoaForClient(clientId: number, data: any[], fileType: 'csv' | 'excel'): Promise<{ success: boolean; message: string; results?: any }> {
+        // Implementation copied and adapted from DatabaseStorage in original storage.ts
+        // NOTE: This is a complex function. Ensure 'papaparse' and 'xlsx' are installed.
+        console.log(`Starting CoA import for client ${clientId}`);
+         const result: { success: boolean; message: string; results?: any; errors: string[]; warnings: string[] } = {
+            success: false, message: "", results: { inserted: 0, updated: 0, unchanged: 0, deactivated: 0, skipped: 0, deleted: 0 }, errors: [], warnings: []
+         };
+
+         try {
+            // ==================== STEP 1: Parse File ====================
+             let rows: any[] = [];
+             if (fileType === 'excel') {
+                 const XLSX = await import('xlsx');
+                 const workbook = XLSX.read(Buffer.from(data), { type: 'buffer' }); // Assuming data is buffer
+                 const sheetName = workbook.SheetNames[0];
+                 const worksheet = workbook.Sheets[sheetName];
+                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                  if (jsonData.length < 2) throw new Error('Excel file is empty or missing header row');
+                 const headers = (jsonData[0] as string[]).map(h => this.getCaseInsensitiveValue({header: h}, 'header'));
+                 rows = jsonData.slice(1).map(row => {
+                     const rowData: any = {};
+                     (row as any[]).forEach((cell, index) => { if (headers[index]) rowData[headers[index]] = cell; });
+                     return rowData;
+                 });
+             } else { // Assume CSV
+                 const Papa = await import('papaparse');
+                 const csvContent = Buffer.from(data).toString('utf-8');
+                 const parseResult = Papa.default.parse(csvContent, { header: true, skipEmptyLines: true, transformHeader: (h: string) => this.getCaseInsensitiveValue({header: h}, 'header')});
+                 if (parseResult.errors.length > 0) throw new Error(`CSV parsing error: ${parseResult.errors[0].message}`);
+                 rows = parseResult.data as any[];
+             }
+              if (rows.length === 0) throw new Error("No data rows found in file.");
+
+
+              return await db.transaction(async (tx) => {
+                 // ==================== STEP 2: Prepare Data & Fetch Existing ====================
+                 const existingAccounts = await tx.select().from(accounts).where(eq(accounts.clientId, clientId));
+                 const existingCodeMap = new Map(existingAccounts.map(acc => [acc.accountCode.toLowerCase(), acc]));
+                 const existingIdMap = new Map(existingAccounts.map(acc => [acc.id, acc]));
+                 const codeToIdMap = new Map(existingAccounts.map(acc => [acc.accountCode.toLowerCase(), acc.id]));
+
+                 const accountsWithTransactions = new Set<number>(); // Populate this similarly to preview function if needed for delete checks
+                  if (existingAccounts.length > 0) {
+                     const accountIds = existingAccounts.map(a => a.id);
+                     const chunkSize = 500;
+                     for (let i = 0; i < accountIds.length; i += chunkSize) {
+                         const chunk = accountIds.slice(i, i + chunkSize);
+                         const transactionCounts = await tx.select({ accountId: journalEntryLines.accountId, count: count() }).from(journalEntryLines)
+                             .where(inArray(journalEntryLines.accountId, chunk)).groupBy(journalEntryLines.accountId).having(gt(count(), 0));
+                         transactionCounts.forEach(item => accountsWithTransactions.add(item.accountId));
+                     }
+                 }
+
+                 const accountsToInsert: InsertAccount[] = [];
+                 const accountsToUpdate: { id: number, data: Partial<Account> }[] = [];
+                 const importedCodes = new Set<string>();
+                 const parentLinkUpdates: { accountId: number, parentCode: string }[] = [];
+
+                 // ==================== STEP 3: Process Rows for Insert/Update ====================
+                 for (const row of rows) {
+                    const code = this.getCaseInsensitiveValue(row, 'accountCode');
+                    const name = this.getCaseInsensitiveValue(row, 'name');
+                    const typeRaw = this.getCaseInsensitiveValue(row, 'type');
+
+                    if (!code || !name || !typeRaw) { result.skipped++; result.errors.push(`Row skipped: Missing required fields (code, name, type) for code '${code || 'N/A'}'.`); continue; }
+
+                    const lowerCode = code.toLowerCase();
+                    if (importedCodes.has(lowerCode)) { result.skipped++; result.warnings.push(`Duplicate account code in import: ${code}. Skipping subsequent entries.`); continue; }
+                    importedCodes.add(lowerCode);
+
+                    let type: AccountType;
+                    try { type = this.normalizeAccountType(typeRaw); } catch (e) { result.skipped++; result.errors.push(`Row skipped: Invalid type '<span class="math-inline">\{typeRaw\}' for code '</span>{code}'.`); continue; }
+
+                    const existing = existingCodeMap.get(lowerCode);
+                    const parentCode = this.getParentCode(row);
+                    const isActive = this.parseBooleanFlag(this.getCaseInsensitiveValue(row, 'active'), true);
+
+                    const accountData: Partial<Account> = {
+                        name: name,
+                        type: type,
+                        subtype: this.getCaseInsensitiveValue(row, 'subtype'),
+                        isSubledger: this.parseBooleanFlag(this.getCaseInsensitiveValue(row, 'isSubledger')),
+                        subledgerType: this.getCaseInsensitiveValue(row, 'subledgerType'),
+                        description: this.getCaseInsensitiveValue(row, 'description'),
+                        isActive: isActive,
+                        // parentId resolved later
+                    };
+                     // Remove undefined values to avoid overwriting with null
+                     Object.keys(accountData).forEach(key => accountData[key] === undefined && delete accountData[key]);
+
+
+                    if (existing) { // Update logic
+                        if (!isActive && existing.isActive) { // Deactivation attempt
+                             if (accountsWithTransactions.has(existing.id)) {
+                                 result.warnings.push(`Cannot deactivate account ${code} as it has transactions. Keeping active.`);
+                                 result.skipped++; // Effectively skipped the deactivation
+                                 continue;
+                             }
+                              const activeChildren = await tx.select({ id: accounts.id }).from(accounts)
+                                 .where(and(eq(accounts.parentId, existing.id), eq(accounts.isActive, true))).limit(1);
+                             if (activeChildren.length > 0) {
+                                 result.warnings.push(`Cannot deactivate account ${code} as it has active children. Keeping active.`);
+                                 result.skipped++;
+                                 continue;
+                             }
+                             // Queue update for deactivation only
+                              accountsToUpdate.push({ id: existing.id, data: { isActive: false } });
+                              result.updated++; // Counted as update because status changed
+                              if(parentCode) parentLinkUpdates.push({ accountId: existing.id, parentCode }); // Still need to check parent link
+
+                         } else if (isActive && !existing.isActive) { // Reactivation
+                              accountsToUpdate.push({ id: existing.id, data: { ...accountData, isActive: true } }); // Update other fields too
+                              result.updated++;
+                              if(parentCode) parentLinkUpdates.push({ accountId: existing.id, parentCode });
+                         } else if (isActive) { // Standard update (only if active)
+                               // Check if anything actually changed
+                               const hasChanges = Object.keys(accountData).some(key => accountData[key] !== existing[key] && !(accountData[key] === null && existing[key] === null));
+                               if (hasChanges) {
+                                    accountsToUpdate.push({ id: existing.id, data: accountData });
+                                    result.updated++;
+                               } else {
+                                   result.unchanged++;
+                               }
+                               if (parentCode) parentLinkUpdates.push({ accountId: existing.id, parentCode }); // Always check parent link if provided
+                         } else {
+                            result.unchanged++; // Already inactive and import says inactive
+                         }
+
+                    } else { // Insert logic
+                        const insertData: InsertAccount = {
+                            clientId: clientId,
+                            accountCode: code,
+                            parentId: null, // Set later
+                            ...accountData
+                        };
+                        accountsToInsert.push(insertData);
+                        result.added++;
+                        if (parentCode) parentLinkUpdates.push({ accountId: -1, parentCode: parentCode }); // Use placeholder ID, update later
+                    }
+                     result.results.processed = (result.results.processed || 0) + 1;
+                 }
+
+                 // ==================== STEP 4: Batch Insert ====================
+                 let insertedMap = new Map<string, number>(); // code -> new db id
+                 if (accountsToInsert.length > 0) {
+                     console.log(`Inserting ${accountsToInsert.length} new accounts...`);
+                     const inserted = await tx.insert(accounts).values(accountsToInsert).returning({ id: accounts.id, accountCode: accounts.accountCode });
+                     inserted.forEach(acc => {
+                         codeToIdMap.set(acc.accountCode.toLowerCase(), acc.id);
+                         insertedMap.set(acc.accountCode.toLowerCase(), acc.id);
+                         // Update placeholder ID in parentLinkUpdates
+                         parentLinkUpdates.forEach(link => { if (link.accountId === -1 && link.parentCode === acc.accountCode) link.accountId = acc.id; });
+                     });
+                     result.results.inserted = inserted.length;
+                 }
+
+                 // ==================== STEP 5: Batch Update ====================
+                  if (accountsToUpdate.length > 0) {
+                     console.log(`Updating ${accountsToUpdate.length} existing accounts...`);
+                     let updatedCount = 0;
+                     for (const update of accountsToUpdate) {
+                         try {
+                              const updateRes = await tx.update(accounts).set({...update.data, updatedAt: new Date()}).where(eq(accounts.id, update.id)).returning({id: accounts.id});
+                              if(updateRes.length > 0) updatedCount++;
+                         } catch (e) {
+                             result.errors.push(`Failed to update account ID ${update.id}: ${(e as Error).message}`);
+                         }
+                     }
+                     result.results.updated = updatedCount;
+                 }
+
+                 // ==================== STEP 6: Update Parent Links ====================
+                 if (parentLinkUpdates.length > 0) {
+                     console.log(`Updating ${parentLinkUpdates.length} parent links...`);
+                     let parentLinkSuccess = 0;
+                     for (const link of parentLinkUpdates) {
+                          if (link.accountId === -1) { // Should have been updated if insert worked
+                             result.warnings.push(`Could not update parent link for a new account (parent code ${link.parentCode}) as its ID was not found after insert.`);
+                             continue;
+                         }
+                         const parentId = codeToIdMap.get(link.parentCode.toLowerCase());
+                         if (parentId) {
+                             if (link.accountId === parentId) {
+                                 result.warnings.push(`Account ${link.parentCode} cannot be its own parent. Skipping parent link update.`);
+                                 continue;
+                             }
+                             try {
+                                 await tx.update(accounts).set({ parentId: parentId, updatedAt: new Date() }).where(eq(accounts.id, link.accountId));
+                                 parentLinkSuccess++;
+                             } catch(e) {
+                                 result.errors.push(`Failed parent link update for account ID ${link.accountId} -> parent ${link.parentCode}: ${(e as Error).message}`);
+                             }
+                         } else {
+                             result.warnings.push(`Parent account code '${link.parentCode}' not found for account ID ${link.accountId}.`);
+                         }
+                     }
+                      console.log(`Successfully updated ${parentLinkSuccess} parent links.`);
+                 }
+
+                 // ==================== STEP 7: Handle Deactivation/Deletion of Missing Accounts ====================
+                 const accountsToDeactivate = existingAccounts.filter(acc => acc.isActive && !importedCodes.has(acc.accountCode.toLowerCase()));
+                 if(accountsToDeactivate.length > 0) {
+                     console.log(`Processing ${accountsToDeactivate.length} accounts not in import file...`);
+                     let deactivatedCount = 0;
+                     for (const acc of accountsToDeactivate) {
+                         if (accountsWithTransactions.has(acc.id)) {
+                              result.warnings.push(`Account ${acc.accountCode} has transactions and was not in import; keeping active.`);
+                              continue;
+                          }
+                           const activeChildren = await tx.select({ id: accounts.id }).from(accounts)
+                             .where(and(eq(accounts.parentId, acc.id), eq(accounts.isActive, true))).limit(1);
+                         if (activeChildren.length > 0) {
+                              result.warnings.push(`Account ${acc.accountCode} has active children and was not in import; keeping active.`);
+                              continue;
+                          }
+                          // Mark inactive
+                           try {
+                               await tx.update(accounts).set({ isActive: false, updatedAt: new Date() }).where(eq(accounts.id, acc.id));
+                               deactivatedCount++;
+                           } catch (e) {
+                                result.errors.push(`Failed to deactivate account ${acc.accountCode}: ${(e as Error).message}`);
+                           }
+                     }
+                     result.results.deactivated = deactivatedCount;
+                     console.log(`Deactivated ${deactivatedCount} accounts.`);
+                 }
+
+                 // ==================== STEP 8: Finalize ====================
+                  result.success = result.errors.length === 0;
+                  result.message = `Import finished. Added: ${result.results.inserted}, Updated: ${result.results.updated}, Unchanged: ${result.results.unchanged}, Deactivated: ${result.results.deactivated}, Skipped: ${result.skipped}. Errors: ${result.errors.length}, Warnings: ${result.warnings.length}.`;
+                  console.log(result.message);
+                  if(result.errors.length > 0) console.error("Import Errors:", result.errors);
+                  if(result.warnings.length > 0) console.warn("Import Warnings:", result.warnings);
+
+                  if (result.errors.length > 0) {
+                     // Optionally throw error here to force rollback if any errors occurred
+                     // throw new Error(`Import failed with ${result.errors.length} errors.`);
+                  }
+                 return result;
+             });
+        } catch (error: any) {
+            console.error(`Error importing CoA for client ${clientId}:`, error);
+            result.success = false;
+            result.message = `Import failed: ${error.message}`;
+            result.errors.push(error.message);
+            // Ensure transaction is rolled back by re-throwing if not already handled
+             if (!(error instanceof ApiError) && !error.message?.includes('Import failed with errors')) {
+                 throw handleDbError(error, `importing CoA for client ${clientId}`);
+             }
+            return result; // Return result even if transaction was rolled back by thrown error
+        }
+    }
+
+    async exportCoaForClient(clientId: number): Promise<any[]> {
+        // Implementation copied and adapted from DatabaseStorage in original storage.ts
+        console.log(`Exporting CoA for client ${clientId}`);
+         try {
+             const accountsToExport = await db.select({
+                 accountCode: accounts.accountCode,
+                 name: accounts.name,
+                 type: accounts.type,
+                 subtype: accounts.subtype,
+                 parentId: accounts.parentId,
+                 fsliBucket: accounts.fsliBucket,
+                 internalReportingBucket: accounts.internalReportingBucket,
+                 isFolder: accounts.isFolder,
+                 description: accounts.description,
+                 isSystemAccount: accounts.isSystemAccount,
+                 isActive: accounts.isActive, // Include status
+                 isSubledger: accounts.isSubledger,
+                 subledgerType: accounts.subledgerType,
+                 id: accounts.id
+             })
+             .from(accounts)
+             .where(eq(accounts.clientId, clientId))
+             //.where(and(eq(accounts.clientId, clientId), eq(accounts.isActive, true))) // Optionally filter only active
+             .orderBy(accounts.accountCode);
+
+             const accountMap = new Map(accountsToExport.map(acc => [acc.id, acc.accountCode]));
+             return accountsToExport.map(acc => {
+                 const { id, parentId, ...rest } = acc;
+                 return {
+                     ...rest,
+                     parentCode: parentId ? accountMap.get(parentId) : '' // Map to parentCode
+                 };
+             });
+           } catch (error) {
+            throw handleDbError(error, `exporting CoA for client ${clientId}`);
+        }
+    }
+}
+
+// Export an instance or the class
+export const accountStorage = new AccountStorage();
+Action: Modify server/storage.ts:
+
+Open CodeShare/server/storage.ts.
+Remove the following method definitions from the IStorage interface:
+seedClientCoA(...)
+getAccountsByClientId(...)
+getAccountsTree(...)
+createAccount(...)
+getAccountById(...) (or equivalent method for getting single account)
+updateAccount(...)
+deleteAccount(...)
+importCoaForClient(...)
+exportCoaForClient(...)
+accountHasTransactions(...)
+Remove the corresponding implementations of all the above methods from both the DatabaseStorage class and the MemStorage class.
+Action: Modify server/accountRoutes.ts:
+
+Open CodeShare/server/accountRoutes.ts.
+Remove the import of the monolithic storage instance (e.g., import { storage } from './storage';).
+Add an import for the new accountStorage instance:
+TypeScript
+
+import { accountStorage } from './storage/accountStorage'; // Adjust path if needed
+Replace all instances where storage. was used to call an Account-related method with accountStorage.. For example, change storage.getAccountsTree(...) to accountStorage.getAccountsTree(...).
+Action: Verify Application Startup:
+
+Restart the application server (npm run dev).
+Confirm the server starts without errors related to missing functions or incorrect imports in storage.ts or accountRoutes.ts.
+Verification:
+
+New file server/storage/accountStorage.ts exists with the correct interface and class implementation for Account storage.
+The original server/storage.ts no longer contains Account-related method definitions in IStorage or implementations in DatabaseStorage/MemStorage.
+server/accountRoutes.ts now imports from and uses accountStorage instead of the monolithic storage.
+The application server starts successfully.
+Reporting:
+
+Confirm the creation of server/storage/accountStorage.ts.
+Confirm the removal of Account logic from server/storage.ts.
+Confirm the update of imports and function calls in server/accountRoutes.ts.
+Report PASS/FAIL for the server startup verification (Step 5).
+State readiness to refactor the next domain (e.g., Journal Entries).
