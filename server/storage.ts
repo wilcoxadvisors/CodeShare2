@@ -37,10 +37,11 @@ export interface AccountTreeNode extends Account {
   internalReportingBucket?: string | null;
   item?: string | null;
 }
-import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt, like } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
+import { ListJournalEntriesFilters } from "../shared/validation";
 
 // Interface for import results
 export interface ImportResult {
@@ -143,7 +144,7 @@ export interface IStorage {
   getJournalEntry(id: number): Promise<(JournalEntry & { lines: JournalEntryLine[] }) | undefined>;
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
   deleteJournalEntry(id: number): Promise<void>;
-  listJournalEntries(options?: { clientId?: number, entityId?: number, startDate?: Date, endDate?: Date, status?: string, limit?: number, offset?: number }): Promise<JournalEntry[]>;
+  listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
   reverseJournalEntry(journalEntryId: number, options: {
     date?: Date;
     description?: string;
@@ -5948,31 +5949,39 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(journalEntries.date));
   }
   
-  async listJournalEntries(options?: { clientId?: number, entityId?: number, startDate?: Date, endDate?: Date, status?: string, limit?: number, offset?: number }): Promise<JournalEntry[]> {
+  async listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]> {
     let query = db.select().from(journalEntries);
     
     // Apply filters based on options
-    if (options) {
+    if (filters) {
       const conditions = [];
       
-      if (options.clientId) {
-        conditions.push(eq(journalEntries.clientId, options.clientId));
+      if (filters.clientId) {
+        conditions.push(eq(journalEntries.clientId, filters.clientId));
       }
       
-      if (options.entityId) {
-        conditions.push(eq(journalEntries.entityId, options.entityId));
+      if (filters.entityId) {
+        conditions.push(eq(journalEntries.entityId, filters.entityId));
       }
       
-      if (options.startDate) {
-        conditions.push(gte(journalEntries.date, options.startDate));
+      if (filters.startDate) {
+        conditions.push(gte(journalEntries.date, filters.startDate));
       }
       
-      if (options.endDate) {
-        conditions.push(lte(journalEntries.date, options.endDate));
+      if (filters.endDate) {
+        conditions.push(lte(journalEntries.date, filters.endDate));
       }
       
-      if (options.status) {
-        conditions.push(eq(journalEntries.status, options.status));
+      if (filters.status) {
+        conditions.push(eq(journalEntries.status, filters.status));
+      }
+      
+      if (filters.journalType) {
+        conditions.push(eq(journalEntries.journalType, filters.journalType));
+      }
+      
+      if (filters.referenceNumber) {
+        conditions.push(like(journalEntries.referenceNumber, `%${filters.referenceNumber}%`));
       }
       
       // Apply all conditions if there are any
@@ -5980,18 +5989,42 @@ export class DatabaseStorage implements IStorage {
         query = query.where(and(...conditions));
       }
       
-      // Apply pagination
-      if (options.limit) {
-        query = query.limit(options.limit);
+      // Apply sorting
+      let sortColumn;
+      switch (filters.sortBy) {
+        case 'date':
+          sortColumn = journalEntries.date;
+          break;
+        case 'referenceNumber':
+          sortColumn = journalEntries.referenceNumber;
+          break;
+        case 'description':
+          sortColumn = journalEntries.description;
+          break;
+        default:
+          sortColumn = journalEntries.date;
       }
       
-      if (options.offset) {
-        query = query.offset(options.offset);
+      // Apply sort direction
+      if (filters.sortDirection === 'asc') {
+        query = query.orderBy(asc(sortColumn), journalEntries.id);
+      } else {
+        query = query.orderBy(desc(sortColumn), journalEntries.id);
       }
+      
+      // Apply pagination
+      if (filters.limit) {
+        query = query.limit(filters.limit);
+      }
+      
+      if (filters.offset) {
+        query = query.offset(filters.offset);
+      }
+    } else {
+      // Default order by date (most recent first) and then by ID if no filters specified
+      query = query.orderBy(desc(journalEntries.date), journalEntries.id)
+        .limit(25); // Default limit
     }
-    
-    // Order by date (most recent first) and then by ID
-    query = query.orderBy(desc(journalEntries.date), journalEntries.id);
     
     return await query;
   }

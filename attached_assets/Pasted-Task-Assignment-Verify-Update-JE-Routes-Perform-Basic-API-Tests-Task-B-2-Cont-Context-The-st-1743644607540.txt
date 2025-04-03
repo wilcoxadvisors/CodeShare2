@@ -1,0 +1,51 @@
+Task Assignment: Verify/Update JE Routes & Perform Basic API Tests (Task B.2 Cont.)
+
+Context: The storage functions (listJournalEntries) and validation schemas (shared/validation.ts) for Journal Entries have been implemented/updated. We now need to ensure the API routes use these updates correctly and perform basic verification.
+
+Goal: Verify the API routes in server/journalEntryRoutes.ts are correctly implemented using the latest storage functions and validation schemas, confirm route registration, and perform initial manual API tests.
+
+Instructions:
+
+Action: Verify/Update API Route Implementation (server/journalEntryRoutes.ts):
+
+Open CodeShare/server/journalEntryRoutes.ts.
+Check POST Route: Confirm the POST /api/clients/:clientId/journal-entries route imports createJournalEntrySchema from shared/validation.ts and uses it (createJournalEntrySchema.parse(req.body)) for request body validation.
+Check PUT Route: Confirm the PUT /api/clients/:clientId/journal-entries/:id route imports updateJournalEntrySchema from shared/validation.ts and uses it (updateJournalEntrySchema.parse(req.body)) for request body validation.
+Check GET (List) Route: Confirm the GET /api/clients/:clientId/journal-entries route correctly parses filter query parameters (like startDate, endDate, accountId, etc.) and passes them to the storage.listJournalEntries(clientId, filters) function.
+Apply Fixes: If any of the above checks fail, update the route handlers in server/journalEntryRoutes.ts accordingly. Ensure proper error handling for Zod validation errors is present in POST and PUT routes.
+Action: Verify Route Registration (server/routes.ts):
+
+Open CodeShare/server/routes.ts.
+Verify that journalEntryRouter is imported from ./journalEntryRoutes.
+Verify that router.use(journalEntryRouter); exists to register the routes. Report if missing.
+Action: Basic API Endpoint Testing (Manual/curl):
+
+Ensure the server is running (npm run dev).
+Authenticate using the login script: node scripts/login.js admin password123 (or similar admin credentials). Make sure cookies.txt is generated/updated.
+Test POST (Valid): Execute a curl command to POST a valid, balanced journal entry (2+ lines, debits == credits) to /api/clients/1/journal-entries (use client ID 1, or another valid test client ID). Use the -b cookies.txt flag.
+Test POST (Invalid - Balance): Execute a curl command to POST an invalid, unbalanced journal entry (debits != credits) to /api/clients/1/journal-entries.
+Test POST (Invalid - Schema): Execute a curl command to POST a journal entry with missing required fields (e.g., missing date or description, or an empty lines array) to /api/clients/1/journal-entries.
+Test GET (List - No Filter): Execute curl to GET /api/clients/1/journal-entries.
+Test GET (Specific): Use the ID returned from the successful POST (Valid) test. Execute curl to GET /api/clients/1/journal-entries/<id>.
+(Optional) Test PUT: Use the ID from the successful POST. Execute curl to PUT updated (but still valid and balanced) data to /api/clients/1/journal-entries/<id>.
+(Optional) Test DELETE: Use the ID from the successful POST. Execute curl to DELETE /api/clients/1/journal-entries/<id>.
+(Optional) Test GET (Deleted): Execute curl to GET /api/clients/1/journal-entries/<id> again (expect 404).
+Verification:
+
+API routes in server/journalEntryRoutes.ts correctly use Zod schemas for POST/PUT validation.
+GET (List) route in server/journalEntryRoutes.ts correctly calls storage.listJournalEntries and ideally handles filters.
+Route registration in server/routes.ts is confirmed.
+Manual API Tests:
+POST (Valid) returns 201 Created with the created JE object.
+POST (Invalid - Balance) returns 400 Bad Request with a "Debits must equal credits" (or similar) error message.
+POST (Invalid - Schema) returns 400 Bad Request with Zod validation errors.
+GET (List) returns 200 OK with an array (potentially including the created JE).
+GET (Specific) returns 200 OK with the correct JE details.
+(Optional) PUT returns 200 OK.
+(Optional) DELETE returns 204 No Content.
+(Optional) GET (Deleted) returns 404 Not Found.
+Reporting:
+
+Confirm status of checks/updates for server/journalEntryRoutes.ts (Step 1).
+Confirm status of check for server/routes.ts (Step 2).
+Report PASS/FAIL for each specific API test performed in Step 3, including the HTTP status code received and brief confirmation of the response body/error message where applicable. Provide the exact curl commands used and their full output only if a test fails unexpectedly.

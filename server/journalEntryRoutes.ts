@@ -6,8 +6,14 @@ import {
   insertJournalEntryLineSchema,
   JournalEntryStatus
 } from '../shared/schema';
-import { ZodError } from 'zod';
-import { formatZodError } from '../shared/validation';
+import { ZodError, z } from 'zod';
+import { 
+  formatZodError, 
+  createJournalEntrySchema, 
+  updateJournalEntrySchema,
+  listJournalEntriesFiltersSchema,
+  ListJournalEntriesFilters 
+} from '../shared/validation';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -31,45 +37,20 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const user = req.user as { id: number };
     
     try {
-      // Parse main entry data
-      const journalEntryData = insertJournalEntrySchema.parse({
-        ...req.body.entry,
+      // Use createJournalEntrySchema to validate the entire payload with cross-field validation
+      const validatedData = createJournalEntrySchema.parse({
+        ...req.body,
         createdBy: user.id
       });
       
-      // Parse lines data
-      const linesData = req.body.lines || [];
-      
-      // Validate that we have at least one line
-      if (!linesData.length) {
-        throwBadRequest('Journal entry must have at least one line');
-      }
-      
-      // Parse each line
-      const parsedLines = linesData.map((line: any) => {
-        return insertJournalEntryLineSchema.parse(line);
-      });
-      
-      // Check if debits equal credits
-      let totalDebits = 0;
-      let totalCredits = 0;
-      
-      parsedLines.forEach((line: any) => {
-        if (line.type === 'debit') {
-          totalDebits += parseFloat(line.amount);
-        } else {
-          totalCredits += parseFloat(line.amount);
-        }
-      });
-      
-      // Verify that debits = credits (within a small epsilon for floating point comparisons)
-      const epsilon = 0.001;
-      if (Math.abs(totalDebits - totalCredits) > epsilon) {
-        throwBadRequest('Journal entry must balance: total debits must equal total credits');
-      }
+      // Extract main entry data and lines
+      const { lines, ...journalEntryData } = validatedData;
       
       // Create journal entry with lines
-      const journalEntry = await storage.createJournalEntry(journalEntryData, parsedLines);
+      const journalEntry = await storage.createJournalEntry(
+        journalEntryData, 
+        lines
+      );
       
       res.status(201).json(journalEntry);
     } catch (error) {
@@ -84,27 +65,20 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
    * Get all journal entries with filtering
    */
   app.get('/api/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const { 
-      clientId, 
-      entityId, 
-      status, 
-      startDate, 
-      endDate, 
-      limit = 100, 
-      offset = 0 
-    } = req.query;
-    
-    const entries = await storage.listJournalEntries({
-      clientId: clientId ? parseInt(clientId as string) : undefined,
-      entityId: entityId ? parseInt(entityId as string) : undefined,
-      status: status as string | undefined,
-      startDate: startDate ? new Date(startDate as string) : undefined,
-      endDate: endDate ? new Date(endDate as string) : undefined,
-      limit: limit ? parseInt(limit as string) : 100,
-      offset: offset ? parseInt(offset as string) : 0
-    });
-    
-    res.json(entries);
+    try {
+      // Parse and validate query parameters
+      const validatedParams = listJournalEntriesFiltersSchema.parse(req.query);
+      
+      // Pass the validated parameters to the storage function
+      const entries = await storage.listJournalEntries(validatedParams);
+      
+      res.json(entries);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: formatZodError(error) });
+      }
+      throw error;
+    }
   }));
   
   /**
@@ -141,44 +115,17 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     try {
-      // Partial update for the main entry
-      const entryData = {
-        ...req.body.entry
-      };
-      
-      // Parse lines data
-      const linesData = req.body.lines || [];
-      
-      // Validate that we have at least one line
-      if (!linesData.length) {
-        throwBadRequest('Journal entry must have at least one line');
-      }
-      
-      // Check if debits equal credits for the updated lines
-      let totalDebits = 0;
-      let totalCredits = 0;
-      
-      linesData.forEach((line: any) => {
-        // Type may come from existing line or new one
-        const lineType = line.type || (existingEntry.lines.find(l => l.id === line.id)?.type);
-        // Amount may come from existing line or new one
-        const lineAmount = line.amount || (existingEntry.lines.find(l => l.id === line.id)?.amount);
-        
-        if (lineType === 'debit') {
-          totalDebits += parseFloat(lineAmount);
-        } else {
-          totalCredits += parseFloat(lineAmount);
-        }
+      // Validate update data with schema including balance check
+      const validatedData = updateJournalEntrySchema.parse({
+        ...req.body,
+        updatedBy: user.id
       });
       
-      // Verify that debits = credits (within a small epsilon for floating point comparisons)
-      const epsilon = 0.001;
-      if (Math.abs(totalDebits - totalCredits) > epsilon) {
-        throwBadRequest('Journal entry must balance: total debits must equal total credits');
-      }
+      // Extract lines from validated data
+      const { lines, ...entryData } = validatedData;
       
       // Update the journal entry
-      const updatedEntry = await storage.updateJournalEntry(id, entryData, linesData);
+      const updatedEntry = await storage.updateJournalEntry(id, entryData, lines);
       
       res.json(updatedEntry);
     } catch (error) {
@@ -275,11 +222,38 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     try {
-      // Parse and validate line data
-      const lineData = insertJournalEntryLineSchema.parse({
-        ...req.body,
-        journalEntryId
+      // Define the validation schema for a new line
+      const addLineSchema = z.object({
+        accountId: z.number({
+          required_error: "Account ID is required"
+        }),
+        type: z.enum(['debit', 'credit'], {
+          required_error: "Line type must be either 'debit' or 'credit'"
+        }),
+        amount: z.string({
+          required_error: "Amount is required"
+        }).refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+          message: "Amount must be a positive number"
+        }),
+        description: z.string().nullable().optional(),
+        locationId: z.number().nullable().optional(),
+        fsliBucket: z.string().nullable().optional(),
+        internalReportingBucket: z.string().nullable().optional(),
+        itemId: z.number().nullable().optional(),
+        projectId: z.number().nullable().optional(),
+        departmentId: z.number().nullable().optional(),
+        reconciled: z.boolean().nullable().optional(),
+        reconciledBy: z.number().nullable().optional(),
       });
+      
+      // Parse and validate line data
+      const validatedLineData = addLineSchema.parse(req.body);
+      
+      // Add journalEntryId to the validated data
+      const lineData = {
+        ...validatedLineData,
+        journalEntryId
+      };
       
       // Add the new line
       const newLine = await storage.addJournalEntryLine(lineData);
@@ -287,10 +261,14 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       // Check if the journal entry is still balanced
       const updatedEntry = await storage.getJournalEntry(journalEntryId);
       
+      if (!updatedEntry) {
+        throw new Error('Failed to retrieve updated journal entry');
+      }
+      
       let totalDebits = 0;
       let totalCredits = 0;
       
-      updatedEntry?.lines.forEach(line => {
+      updatedEntry.lines.forEach(line => {
         if (line.type === 'debit') {
           totalDebits += parseFloat(line.amount);
         } else {
@@ -335,8 +313,35 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     try {
+      // Define validation schema for updating a line
+      const updateLineSchema = z.object({
+        accountId: z.number().int().positive().optional(),
+        type: z.enum(['debit', 'credit']).optional(),
+        amount: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+          message: "Amount must be a positive number"
+        }).optional(),
+        description: z.string().nullable().optional(),
+        locationId: z.number().nullable().optional(),
+        fsliBucket: z.string().nullable().optional(),
+        internalReportingBucket: z.string().nullable().optional(),
+        itemId: z.number().nullable().optional(),
+        projectId: z.number().nullable().optional(),
+        departmentId: z.number().nullable().optional(),
+        reconciled: z.boolean().nullable().optional(),
+        reconciledBy: z.number().nullable().optional(),
+      });
+      
+      // Parse and validate line data
+      const validatedData = updateLineSchema.parse(req.body);
+      
+      // Add journalEntryId to validated data
+      const lineData = {
+        ...validatedData,
+        journalEntryId: entryId
+      };
+      
       // Update the line
-      const updatedLine = await storage.updateJournalEntryLine(lineId, req.body);
+      const updatedLine = await storage.updateJournalEntryLine(lineId, lineData);
       
       if (!updatedLine) {
         throwNotFound('Journal Entry Line');
@@ -345,10 +350,14 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
       // Check if the journal entry is still balanced
       const updatedEntry = await storage.getJournalEntry(entryId);
       
+      if (!updatedEntry) {
+        throw new Error('Failed to retrieve updated journal entry');
+      }
+      
       let totalDebits = 0;
       let totalCredits = 0;
       
-      updatedEntry?.lines.forEach(line => {
+      updatedEntry.lines.forEach(line => {
         if (line.type === 'debit') {
           totalDebits += parseFloat(line.amount);
         } else {
@@ -446,16 +455,26 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     }
     
     try {
-      // Extract the reversal options
-      const { date, description, referenceNumber } = req.body;
+      // Define schema for reversal options
+      const reversalOptionsSchema = z.object({
+        date: z.string().optional().transform(val => val ? new Date(val) : undefined),
+        description: z.string().optional(),
+        referenceNumber: z.string().optional(),
+      });
+      
+      // Validate reversal options
+      const validatedOptions = reversalOptionsSchema.parse(req.body);
+      
+      // Create default values if not provided
+      const reversalOptions = {
+        date: validatedOptions.date,
+        description: validatedOptions.description || `Reversal of ${existingEntry.referenceNumber || id}`,
+        createdBy: user.id,
+        referenceNumber: validatedOptions.referenceNumber || `REV-${existingEntry.referenceNumber || id}`
+      };
       
       // Create the reversal entry
-      const reversalEntry = await storage.reverseJournalEntry(id, {
-        date: date ? new Date(date) : undefined,
-        description: description || `Reversal of ${existingEntry.referenceNumber || id}`,
-        createdBy: user.id,
-        referenceNumber: referenceNumber || `REV-${existingEntry.referenceNumber || id}`
-      });
+      const reversalEntry = await storage.reverseJournalEntry(id, reversalOptions);
       
       if (!reversalEntry) {
         throw new Error('Failed to create reversal entry');

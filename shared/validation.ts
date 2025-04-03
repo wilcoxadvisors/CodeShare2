@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import * as schema from './schema';
 
+// Helper schemas for string validations
+const optionalString = z.string().optional();
+const requiredString = z.string().min(1, "This field is required");
+
 /**
  * Enhanced schema for validating user input
  */
@@ -64,6 +68,101 @@ export const batchUploadSchema = z.object({
 });
 
 /**
+ * Schema for individual Journal Entry Lines
+ */
+export const journalEntryLineSchema = z.object({
+  accountId: z.number().int().positive({ message: "Valid Account ID required" }),
+  amount: z.preprocess(
+    (val) => (typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : typeof val === 'number' ? val : undefined),
+    z.number({ invalid_type_error: "Amount must be a number" }).positive({ message: "Amount must be positive" })
+  ),
+  type: z.enum(['debit', 'credit'], { required_error: "Line type ('debit' or 'credit') is required" }),
+  description: optionalString.nullable(),
+  // Include fields moved from Account schema
+  fsliBucket: optionalString.nullable(),
+  internalReportingBucket: optionalString.nullable(),
+  item: optionalString.nullable(),
+  // Optional fields
+  locationId: z.number().int().positive().optional().nullable(),
+});
+
+/**
+ * Schema for Creating a Journal Entry
+ */
+export const createJournalEntrySchema = z.object({
+  date: z.preprocess((arg) => {
+    if (typeof arg === "string" || arg instanceof Date) {
+      const date = new Date(arg);
+      return isNaN(date.getTime()) ? undefined : date; // Handle invalid date strings
+    }
+    return undefined;
+  }, z.date({ required_error: "Date is required", invalid_type_error: "Invalid date format" })),
+  referenceNumber: optionalString.nullable(),
+  description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
+  journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
+  entityId: z.number().int().positive().optional().nullable(),
+  locationId: z.number().int().positive().optional().nullable(),
+  lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
+}).refine(data => {
+  // Additional cross-field validation for balance
+  let totalDebits = 0;
+  let totalCredits = 0;
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  lines.forEach((line: any) => {
+    const amount = line?.amount || 0;
+    if (line?.type === 'debit') totalDebits += amount;
+    if (line?.type === 'credit') totalCredits += amount;
+  });
+  
+  const tolerance = 0.0001; // Adjust as needed
+  return Math.abs(totalDebits - totalCredits) < tolerance;
+}, {
+  message: "Debits must equal credits",
+  path: ["lines"],
+});
+
+/**
+ * Schema for Updating a Journal Entry
+ */
+export const updateJournalEntrySchema = z.object({
+  date: z.preprocess((arg) => {
+    if (typeof arg === "string" || arg instanceof Date) {
+      const date = new Date(arg);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+    return undefined;
+  }, z.date({ invalid_type_error: "Invalid date format" }).optional()),
+  referenceNumber: optionalString.nullable(),
+  description: z.string().max(255, "Description cannot exceed 255 characters").optional().nullable(),
+  journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
+  entityId: z.number().int().positive().optional().nullable(),
+  locationId: z.number().int().positive().optional().nullable(),
+  lines: z.array(journalEntryLineSchema).min(1, "Journal Entry update must include at least one line"),
+}).refine(data => {
+  // Also validate balance for updates
+  let totalDebits = 0;
+  let totalCredits = 0;
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  lines.forEach((line: any) => {
+    const amount = line?.amount || 0;
+    if (line?.type === 'debit') totalDebits += amount;
+    if (line?.type === 'credit') totalCredits += amount;
+  });
+  
+  const tolerance = 0.0001;
+  return Math.abs(totalDebits - totalCredits) < tolerance;
+}, {
+  message: "Debits must equal credits in update",
+  path: ["lines"],
+});
+
+/**
  * Schema for journal entry with lines
  */
 export const journalEntryWithLinesSchema = enhancedJournalEntrySchema.extend({
@@ -90,6 +189,38 @@ export function formatZodError(error: z.ZodError) {
     return acc;
   }, {} as Record<string, string>);
 }
+
+/**
+ * Schema for listing journal entries with filters
+ */
+export const listJournalEntriesFiltersSchema = z.object({
+  clientId: z.number().int().positive().optional(),
+  entityId: z.number().int().positive().optional(),
+  startDate: z.preprocess((arg) => {
+    if (typeof arg === "string" || arg instanceof Date) {
+      const date = new Date(arg);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+    return undefined;
+  }, z.date().optional()),
+  endDate: z.preprocess((arg) => {
+    if (typeof arg === "string" || arg instanceof Date) {
+      const date = new Date(arg);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+    return undefined;
+  }, z.date().optional()),
+  status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
+  journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
+  referenceNumber: optionalString.nullable(),
+  limit: z.number().int().min(1).max(100).optional().default(25),
+  offset: z.number().int().min(0).optional().default(0),
+  sortBy: z.enum(['date', 'referenceNumber', 'description', 'amount']).optional().default('date'),
+  sortDirection: z.enum(['asc', 'desc']).optional().default('desc')
+});
+
+// Type for the filters
+export type ListJournalEntriesFilters = z.infer<typeof listJournalEntriesFiltersSchema>;
 
 /**
  * Validate request data against a schema
