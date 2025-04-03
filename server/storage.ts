@@ -35,7 +35,7 @@ import {
 } from "@shared/schema";
 
 // Import specialized storage module classes and instances
-import { AccountStorage, accountStorage } from './storage/accountStorage';
+import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult } from './storage/accountStorage';
 import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
 import { ClientStorage, clientStorage } from './storage/clientStorage';
 import { EntityStorage, entityStorage } from './storage/entityStorage';
@@ -43,73 +43,14 @@ import { UserStorage, userStorage } from './storage/userStorage';
 import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
 
 // Define interface for hierarchical account structure
-export interface AccountTreeNode extends Account {
-  children: AccountTreeNode[];
-  // These fields have been moved to journal entry lines but we need them in the interface
-  // for backward compatibility during the transition
-  fsliBucket?: string | null;
-  internalReportingBucket?: string | null;
-  item?: string | null;
-}
+// AccountTreeNode has been moved to accountStorage.ts
 import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt, like } from "drizzle-orm";
 import { db } from "./db";
 import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
 import { ListJournalEntriesFilters } from "../shared/validation";
 
-// Interface for import results
-export interface ImportResult {
-  count: number;       // Total accounts successfully processed
-  added: number;       // New accounts added
-  updated: number;     // Existing accounts updated
-  unchanged: number;   // Existing accounts that were left unchanged
-  skipped: number;     // Accounts that weren't processed (e.g., due to validation failures)
-  inactive: number;    // Accounts marked as inactive 
-  deleted: number;     // Accounts that were deleted
-  errors: string[];    // Error messages
-  warnings: string[];  // Warning messages (less severe than errors)
-}
-
-// Storage interface for data access
-// Types for the import preview and selections
-export interface ImportAccountChange {
-  id?: number;
-  code: string;  
-  existingName?: string;
-  newName?: string;
-  existingType?: string;
-  newType?: string;
-  existingSubtype?: string | null;
-  newSubtype?: string | null;
-  existingDescription?: string | null;
-  newDescription?: string | null;
-  existingIsSubledger?: boolean;
-  newIsSubledger?: boolean;
-  existingSubledgerType?: string | null;
-  newSubledgerType?: string | null;
-  existingParentCode?: string | null;
-  newParentCode?: string | null;
-  changeType: 'add' | 'update' | 'remove' | 'unchanged';
-  hasTransactions?: boolean;
-}
-
-export interface ImportPreview {
-  changes: ImportAccountChange[];
-  totalChanges: number;
-  totalAdds: number;
-  totalUpdates: number;
-  totalRemoves: number;
-  totalUnchanged: number;
-  accountsWithTransactions: number;
-}
-
-export interface ImportSelections {
-  updateStrategy: 'all' | 'selected' | 'none';
-  includedCodes?: string[];
-  excludedCodes?: string[];
-  removeStrategy?: 'inactive' | 'delete' | 'none';
-  missingAccountActions?: Record<string, 'inactive' | 'delete'>;
-}
+// Import interface declarations have been moved to accountStorage.ts
 
 /**
  * IStorage defines the main interface for data storage in the application.
@@ -385,56 +326,7 @@ export class MemStorage implements IStorage {
   private currentBlogSubscriberId: number = 1;
   private currentLocationId: number = 1;
 
-  async seedClientCoA(clientId: number): Promise<void> {
-    console.log(`MemStorage: Seeding Chart of Accounts for client ID: ${clientId}`);
-    
-    // Import the standard template
-    const { standardCoaTemplate } = await import('./coaTemplate');
-    
-    // Check if accounts already exist for this client
-    const existingAccounts = Array.from(this.accounts.values())
-      .filter(account => account.clientId === clientId);
-    
-    if (existingAccounts.length > 0) {
-      console.log(`MemStorage: Client ${clientId} already has ${existingAccounts.length} accounts. Skipping seed.`);
-      return;
-    }
-    
-    // Map to store account codes to their generated IDs for parentId resolution
-    const codeToIdMap = new Map<string, number>();
-    
-    // Process each template account
-    for (const templateAccount of standardCoaTemplate) {
-      // Determine parentId by looking up the parent code in our map
-      let parentId: number | null = null;
-      
-      if (templateAccount.parentCode) {
-        parentId = codeToIdMap.get(templateAccount.parentCode) || null;
-        if (!parentId && templateAccount.parentCode) {
-          console.warn(`MemStorage: Parent account with code ${templateAccount.parentCode} not found for ${templateAccount.accountCode} (${templateAccount.name})`);
-        }
-      }
-      
-      // Create the account
-      const account = await this.createAccount({
-        clientId,
-        accountCode: templateAccount.accountCode,
-        name: templateAccount.name,
-        type: templateAccount.type,
-        subtype: templateAccount.subtype,
-        isSubledger: templateAccount.isSubledger || false,
-        subledgerType: templateAccount.subledgerType,
-        parentId,
-        description: templateAccount.description,
-        active: true
-      });
-      
-      // Store the generated ID mapped to the account code
-      codeToIdMap.set(templateAccount.accountCode, account.id);
-    }
-    
-    console.log(`MemStorage: Successfully seeded ${standardCoaTemplate.length} accounts for client ID: ${clientId}`);
-  }
+  // Method moved to accountStorage.ts
 
   constructor() {
     this.users = new Map();
@@ -1084,90 +976,40 @@ export class MemStorage implements IStorage {
   }
   
   // Account methods
+  // Account methods have been moved to accountStorage.ts
   async getAccount(id: number): Promise<Account | undefined> {
-    return this.accounts.get(id);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccount(id);
   }
   
   async getAccounts(clientId: number): Promise<Account[]> {
-    return Array.from(this.accounts.values())
-      .filter(account => account.clientId === clientId);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccounts(clientId);
   }
   
   async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
-    return Array.from(this.accounts.values())
-      .filter(account => account.clientId === clientId && account.type === type);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccountsByType(clientId, type);
   }
   
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
-    const id = this.currentAccountId++;
-    const account: Account = { 
-      id,
-      clientId: insertAccount.clientId,
-      name: insertAccount.name,
-      accountCode: insertAccount.accountCode,
-      type: insertAccount.type as AccountType,
-      subtype: insertAccount.subtype || null,
-      isSubledger: insertAccount.isSubledger || false,
-      subledgerType: insertAccount.subledgerType || null,
-      parentId: insertAccount.parentId || null,
-      description: insertAccount.description || null,
-      active: insertAccount.active !== undefined ? insertAccount.active : true,
-      createdAt: new Date()
-    };
-    this.accounts.set(id, account);
-    return account;
+    // Delegated to accountStorage.ts
+    return accountStorage.createAccount(insertAccount);
   }
   
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
-    const account = this.accounts.get(id);
-    if (!account) return undefined;
-    
-    const updatedAccount = { ...account, ...accountData };
-    this.accounts.set(id, updatedAccount);
-    return updatedAccount;
+    // Delegated to accountStorage.ts
+    return accountStorage.updateAccount(id, accountData);
   }
   
   async deleteAccount(id: number): Promise<void> {
-    if (this.accounts.has(id)) {
-      this.accounts.delete(id);
-    }
+    // Delegated to accountStorage.ts
+    return accountStorage.deleteAccount(id);
   }
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
-    // Get all accounts for the given client
-    const clientAccounts = Array.from(this.accounts.values())
-      .filter(account => account.clientId === clientId)
-      .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
-    
-    if (clientAccounts.length === 0) {
-      return [];
-    }
-
-    // Create a map of accounts by ID with empty children arrays
-    const accountsMap: Record<number, AccountTreeNode> = {};
-    
-    // First pass: Add all accounts to the map with empty children arrays
-    for (const account of clientAccounts) {
-      accountsMap[account.id] = {
-        ...account,
-        children: []
-      };
-    }
-    
-    // Second pass: Populate children arrays based on parentId relationships
-    const rootAccounts: AccountTreeNode[] = [];
-    
-    for (const account of clientAccounts) {
-      if (account.parentId === null || account.parentId === undefined || !accountsMap[account.parentId]) {
-        // This is a root account (no parent or parent doesn't exist in this client)
-        rootAccounts.push(accountsMap[account.id]);
-      } else {
-        // This account has a parent, add it to the parent's children array
-        accountsMap[account.parentId].children.push(accountsMap[account.id]);
-      }
-    }
-    
-    return rootAccounts;
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccountsTree(clientId);
   }
   
   // Journal methods
@@ -2417,123 +2259,30 @@ export class DatabaseStorage implements IStorage {
     return userStorage.getUserEntityAccessList(userId);
   }
 
+  // Account methods have been moved to accountStorage.ts
   async getAccount(id: number): Promise<Account | undefined> {
-    const [account] = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.id, id));
-    return account || undefined;
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccount(id);
   }
 
   async getAccounts(clientId: number): Promise<Account[]> {
-    return await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.clientId, clientId))
-      .orderBy(accounts.accountCode);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccounts(clientId);
   }
 
   async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
-    return await db
-      .select()
-      .from(accounts)
-      .where(and(
-        eq(accounts.clientId, clientId),
-        eq(accounts.type, type)
-      ))
-      .orderBy(accounts.accountCode);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccountsByType(clientId, type);
   }
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
-    // Get all accounts for the given client
-    console.log(`DEBUG: getAccountsTree - Fetching accounts for clientId: ${clientId}`);
-    
-    let clientAccounts: any[] = [];
-    
-    try {
-      // First get all accounts, then sort them in memory for complex sorting logic
-      clientAccounts = await db
-        .select()
-        .from(accounts)
-        .where(eq(accounts.clientId, clientId));
-
-      // Sort accounts - first by active status (active first), then by accountCode
-      clientAccounts.sort((a, b) => {
-        // First sort by active status (active first)
-        if (a.active !== b.active) {
-          return a.active ? -1 : 1;
-        }
-        // Then sort by accountCode
-        return a.accountCode.localeCompare(b.accountCode);
-      });
-
-      console.log(`DEBUG: getAccountsTree - Found ${clientAccounts.length} accounts`);
-      
-      if (clientAccounts.length === 0) {
-        return [];
-      }
-    } catch (error) {
-      console.error("DEBUG: getAccountsTree - Error fetching accounts:", error);
-      throw error;
-    }
-
-    // Create a map of accounts by ID with empty children arrays
-    const accountsMap: Record<number, AccountTreeNode> = {};
-    
-    // First pass: Add all accounts to the map with empty children arrays
-    for (const account of clientAccounts) {
-      accountsMap[account.id] = {
-        ...account,
-        children: []
-      };
-    }
-    
-    // Second pass: Populate children arrays based on parentId relationships
-    const rootAccounts: AccountTreeNode[] = [];
-    
-    for (const account of clientAccounts) {
-      if (account.parentId === null || account.parentId === undefined || !accountsMap[account.parentId]) {
-        // This is a root account (no parent or parent doesn't exist in this client)
-        rootAccounts.push(accountsMap[account.id]);
-      } else {
-        // This account has a parent, add it to the parent's children array
-        accountsMap[account.parentId].children.push(accountsMap[account.id]);
-      }
-    }
-    
-    // Third pass: Recursively sort children arrays in each node by active status and then by accountCode
-    const sortAccountNodes = (nodes: AccountTreeNode[]) => {
-      // Sort the nodes array - active accounts first, then by accountCode
-      nodes.sort((a, b) => {
-        // First sort by active status (active first)
-        if (a.active !== b.active) {
-          return a.active ? -1 : 1;
-        }
-        // Then sort by accountCode
-        return a.accountCode.localeCompare(b.accountCode);
-      });
-      
-      // Recursively sort children
-      for (const node of nodes) {
-        if (node.children && node.children.length > 0) {
-          sortAccountNodes(node.children);
-        }
-      }
-    };
-    
-    // Sort children at all levels
-    for (const root of rootAccounts) {
-      if (root.children && root.children.length > 0) {
-        sortAccountNodes(root.children);
-      }
-    }
-    
-    return rootAccounts;
-  }  
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccountsTree(clientId);
+  }
   // Implementation for Chart of Accounts export
   async getAccountsForClient(clientId: number): Promise<Account[]> {
-    // We can reuse the getAccounts method as it already fetches accounts by clientId
-    return this.getAccounts(clientId);
+    // Delegated to accountStorage.ts
+    return accountStorage.getAccountsForClient(clientId);
   }
   
   // Implementation for Chart of Accounts import
@@ -3816,69 +3565,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
-    console.log(`VERIFICATION TEST: storage.createAccount called with:`, JSON.stringify(insertAccount, null, 2));
-
-    try {
-      const [account] = await db
-        .insert(accounts)
-        .values({
-          name: insertAccount.name,
-          accountCode: insertAccount.accountCode,
-          type: insertAccount.type,
-          clientId: insertAccount.clientId,
-          active: insertAccount.active ?? true,
-          subtype: insertAccount.subtype,
-          isSubledger: insertAccount.isSubledger ?? false,
-          subledgerType: insertAccount.subledgerType,
-          parentId: insertAccount.parentId,
-          description: insertAccount.description
-        })
-        .returning();
-      
-      console.log(`VERIFICATION TEST: Account inserted successfully:`, JSON.stringify(account, null, 2));
-      return account;
-    } catch (error) {
-      console.error(`VERIFICATION TEST: Error in createAccount:`, error);
-      throw error;
-    }
+    // Delegated to accountStorage.ts
+    return accountStorage.createAccount(insertAccount);
   }
 
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
-    const [account] = await db
-      .update(accounts)
-      .set(accountData)
-      .where(eq(accounts.id, id))
-      .returning();
-    return account || undefined;
+    // Delegated to accountStorage.ts
+    return accountStorage.updateAccount(id, accountData);
   }
 
   async deleteAccount(id: number): Promise<void> {
-    // First check if this account has any transactions associated with it
-    const journalLines = await db
-      .select({ count: count() })
-      .from(journalEntryLines)
-      .where(eq(journalEntryLines.accountId, id));
-    
-    // If there are transactions, don't allow deletion
-    if (journalLines[0]?.count > 0) {
-      throw new Error('Cannot delete account with existing transactions. Mark it as inactive instead.');
-    }
-    
-    // Check if this account has any child accounts
-    const childAccounts = await db
-      .select({ count: count() })
-      .from(accounts)
-      .where(eq(accounts.parentId, id));
-    
-    // If there are child accounts, don't allow deletion
-    if (childAccounts[0]?.count > 0) {
-      throw new Error('Cannot delete account with child accounts. Remove child accounts first or mark this account as inactive.');
-    }
-    
-    // If no transactions and no child accounts exist, proceed with deletion
-    await db
-      .delete(accounts)
-      .where(eq(accounts.id, id));
+    // Delegated to accountStorage.ts
+    return accountStorage.deleteAccount(id);
   }
   
   /**
@@ -3886,19 +3584,15 @@ export class DatabaseStorage implements IStorage {
    * This is used when an account has transactions and cannot be deleted
    */
   async markAccountInactive(id: number): Promise<Account | undefined> {
-    return this.updateAccount(id, { active: false });
+    // Delegated to accountStorage.ts
+    return accountStorage.markAccountInactive(id);
   }
   
   /**
    * Checks if an account has any transactions
    */
   async accountHasTransactions(id: number): Promise<boolean> {
-    const journalLines = await db
-      .select({ count: count() })
-      .from(journalEntryLines)
-      .where(eq(journalEntryLines.accountId, id));
-    
-    return journalLines[0]?.count > 0;
+    return accountStorage.accountHasTransactions(id);
   }
 
   // Journal Entry methods have been moved to server/storage/journalEntryStorage.ts
