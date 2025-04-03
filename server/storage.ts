@@ -1,13 +1,16 @@
+/**
+ * Storage Module
+ * 
+ * Main storage interface and implementation that delegates to specialized 
+ * storage modules for different parts of the application.
+ */
 import { 
-  accounts, Account, InsertAccount, AccountType,
-  journals, Journal, InsertJournal, JournalType,
+  // Direct database schema imports for remaining modules
   fixedAssets, FixedAsset, InsertFixedAsset,
-  savedReports, SavedReport, ReportType,
+  savedReports, SavedReport, ReportType, 
   checklistFiles, ChecklistFile, InsertChecklistFile,
-  userActivityLogs, UserActivityLog, InsertUserActivityLog,
   featureUsage, FeatureUsage, InsertFeatureUsage,
   industryBenchmarks, IndustryBenchmark, InsertIndustryBenchmark,
-  dataConsent, DataConsent, InsertDataConsent,
   contactSubmissions, ContactSubmission, InsertContactSubmission,
   checklistSubmissions, ChecklistSubmission, InsertChecklistSubmission,
   consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission,
@@ -16,19 +19,28 @@ import {
   budgetDocuments, BudgetDocument, InsertBudgetDocument,
   forecasts, Forecast, InsertForecast,
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
-  // consolidation-related imports removed,
   locations, Location, InsertLocation,
-  journalEntries, JournalEntry, JournalEntryStatus,
-  Client, Entity
+  
+  // Schema imports for delegated modules
+  accounts, Account, InsertAccount, AccountType,
+  journals, Journal, InsertJournal, JournalType,
+  journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
+  journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
+  journalEntryFiles,
+  users, User, InsertUser, UserRole, UserActivityLog, InsertUserActivityLog,
+  dataConsent, DataConsent, InsertDataConsent,
+  clients, InsertClient,
+  entities, InsertEntity,
+  Client, Entity, userEntityAccess
 } from "@shared/schema";
 
-// Import the storage modules
-import { accountStorage } from "./storage/accountStorage";
-import { journalEntryStorage } from "./storage/journalEntryStorage";
-import { clientStorage } from "./storage/clientStorage";
-import { entityStorage } from "./storage/entityStorage";
-import { consolidationStorage } from "./storage/consolidationStorage";
-import { userStorage } from "./storage/userStorage";
+// Import specialized storage module classes and instances
+import { AccountStorage, accountStorage } from './storage/accountStorage';
+import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
+import { ClientStorage, clientStorage } from './storage/clientStorage';
+import { EntityStorage, entityStorage } from './storage/entityStorage';
+import { UserStorage, userStorage } from './storage/userStorage';
+import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
 
 // Define interface for hierarchical account structure
 export interface AccountTreeNode extends Account {
@@ -99,58 +111,22 @@ export interface ImportSelections {
   missingAccountActions?: Record<string, 'inactive' | 'delete'>;
 }
 
+/**
+ * IStorage defines the main interface for data storage in the application.
+ * 
+ * This interface includes the following categories of methods:
+ * 1. Methods that haven't been moved to specialized storage modules yet
+ * 2. Methods that delegate to specialized storage modules
+ * 
+ * Note: Many methods have been moved to specialized storage modules:
+ * - User methods → userStorage.ts
+ * - Account methods → accountStorage.ts
+ * - Client methods → clientStorage.ts
+ * - Entity methods → entityStorage.ts
+ * - Journal Entry methods → journalEntryStorage.ts
+ * - Consolidation Group methods → consolidationStorage.ts
+ */
 export interface IStorage {
-  // Chart of Accounts Seeding
-  seedClientCoA(clientId: number): Promise<void>;
-  
-  // Chart of Accounts Import/Export
-  getAccountsForClient(clientId: number): Promise<Account[]>;
-  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
-  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
-  
-  // Client methods
-  getClient(id: number): Promise<Client | undefined>;
-  getClients(): Promise<Client[]>;
-  getClientsByUserId(userId: number): Promise<Client[]>;
-  createClient(client: InsertClient): Promise<Client>;
-  updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
-  
-  // Entity methods
-  getEntity(id: number): Promise<Entity | undefined>;
-  getEntities(): Promise<Entity[]>;
-  getEntitiesByUser(userId: number): Promise<Entity[]>;
-  getEntitiesByClient(clientId: number): Promise<Entity[]>;
-  createEntity(entity: InsertEntity): Promise<Entity>;
-  updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
-  
-  // Note: User methods and User Entity Access methods have been moved to server/storage/userStorage.ts
-  
-  // Location methods
-  createLocation(location: InsertLocation): Promise<Location>;
-  getLocation(id: number): Promise<Location | undefined>;
-  listLocationsByClient(clientId: number): Promise<Location[]>;
-  updateLocation(id: number, location: Partial<Location>): Promise<Location | undefined>;
-  setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean>;
-  
-  // Account methods
-  getAccount(id: number): Promise<Account | undefined>;
-  getAccounts(clientId: number): Promise<Account[]>;
-  getAccountsByType(clientId: number, type: AccountType): Promise<Account[]>;
-  createAccount(account: InsertAccount): Promise<Account>;
-  updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
-  deleteAccount(id: number): Promise<void>;
-  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
-  getAccountsForClient(clientId: number): Promise<Account[]>; // For CoA export
-  importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string): Promise<ImportResult>;
-  
-  // Journal methods
-  getJournal(id: number): Promise<Journal | undefined>;
-  getJournals(entityId: number): Promise<Journal[]>;
-  getJournalsByType(entityId: number, type: JournalType): Promise<Journal[]>;
-  createJournal(journal: InsertJournal): Promise<Journal>;
-  updateJournal(id: number, journal: Partial<Journal>): Promise<Journal | undefined>;
-  deleteJournal(id: number): Promise<void>;
-  
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
   getFixedAssets(entityId: number): Promise<FixedAsset[]>;
@@ -166,11 +142,6 @@ export interface IStorage {
   // GL reporting
   getGeneralLedger(entityId: number, options?: GLOptions): Promise<GLEntry[]>;
 
-  // User Activity Tracking methods
-  logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog>;
-  getUserActivitiesByEntity(entityId: number, limit?: number): Promise<UserActivityLog[]>;
-  getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]>;
-  
   // Feature Usage Analytics methods
   recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage>;
   updateFeatureUsage(id: number, data: Partial<FeatureUsage>): Promise<FeatureUsage | undefined>;
@@ -259,7 +230,80 @@ export interface IStorage {
   deleteForecast(id: number): Promise<void>;
   generateForecast(entityId: number, config: any): Promise<any>;
   
-  // Note: Consolidation Group methods have been moved to server/storage/consolidationStorage.ts
+  // -------------------------------------------------------------------------
+  // Delegated methods - these methods call their corresponding specialized storage modules
+  // -------------------------------------------------------------------------
+  
+  // Journal Entry Related Methods - delegated to journalEntryStorage
+  getJournalEntry(id: number): Promise<any>;
+  getJournalEntries(entityId: number, options?: any): Promise<any[]>;
+  listJournalEntries(entityId: number, filters?: any): Promise<any[]>;
+  getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<any[]>;
+  createJournalEntry(journalEntry: any): Promise<any>;
+  updateJournalEntry(id: number, updates: any): Promise<any>;
+  createBatchJournalEntries(entries: any[]): Promise<any[]>;
+  getJournalEntryLines(journalEntryId: number): Promise<any[]>;
+  createJournalEntryLine(line: any): Promise<any>;
+  addJournalEntryLine(journalEntryId: number, line: any): Promise<any>;
+  updateJournalEntryLine(id: number, updates: any): Promise<any>;
+  deleteJournalEntryLine(id: number): Promise<void>;
+  reverseJournalEntry(id: number, reversalDate: Date, description?: string): Promise<any>;
+  deleteJournalEntry(id: number): Promise<void>;
+  getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
+  createJournalEntryFile(file: any): Promise<any>;
+  
+  // Account Methods - delegated to accountStorage
+  seedClientCoA(clientId: number): Promise<void>;
+  getAccount(id: number): Promise<Account | undefined>;
+  getAccounts(clientId: number): Promise<Account[]>;
+  getAccountsByType(clientId: number, type: any): Promise<Account[]>;
+  createAccount(account: any): Promise<Account>;
+  updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
+  deleteAccount(id: number): Promise<void>;
+  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
+  getAccountsForClient(clientId: number): Promise<Account[]>;
+  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
+  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
+  
+  // Client Methods - delegated to clientStorage
+  getClient(id: number): Promise<Client | undefined>;
+  getClients(): Promise<Client[]>;
+  getClientsByUserId(userId: number): Promise<Client[]>;
+  createClient(client: any): Promise<Client>;
+  updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
+  
+  // Entity Methods - delegated to entityStorage
+  getEntity(id: number): Promise<Entity | undefined>;
+  getEntities(): Promise<Entity[]>;
+  getEntitiesByUser(userId: number): Promise<Entity[]>;
+  getEntitiesByClient(clientId: number): Promise<Entity[]>;
+  createEntity(entity: any): Promise<Entity>;
+  updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
+  
+  // User Methods - delegated to userStorage
+  getUser(id: number): Promise<any>;
+  getUserByUsername(username: string): Promise<any>;
+  getUsers(): Promise<any[]>;
+  createUser(user: any): Promise<any>;
+  updateUser(id: number, updates: any): Promise<any>;
+  
+  // User Entity Access Methods - delegated to userStorage
+  getUserEntityAccess(userId: number, entityId: number): Promise<any>;
+  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<any>;
+  getUserEntityAccessList(userId: number): Promise<any[]>;
+  
+  // User Activity Tracking methods - delegated to userStorage
+  logUserActivity(activity: any): Promise<any>;
+  getUserActivitiesByEntity(entityId: number, limit?: number): Promise<any[]>;
+  getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<any[]>;
+  
+  // Journal methods - delegated to journalEntryStorage
+  getJournal(id: number): Promise<any | undefined>;
+  getJournals(entityId: number): Promise<any[]>;
+  getJournalsByType(entityId: number, type: any): Promise<any[]>;
+  createJournal(journal: any): Promise<any>;
+  updateJournal(id: number, journal: Partial<any>): Promise<any | undefined>;
+  deleteJournal(id: number): Promise<void>;
 }
 
 export interface GLOptions {
@@ -1190,10 +1234,8 @@ export class MemStorage implements IStorage {
     }
   }
   
-  // Journal Entry methods
-  async getJournalEntry(id: number): Promise<JournalEntry | undefined> {
-    return this.journalEntries.get(id);
-  }
+  // Journal Entry methods - delegated to journalEntryStorage
+  // All Journal Entry methods have been moved to journalEntryStorage.ts
   
   async getJournalEntries(entityId: number): Promise<JournalEntry[]> {
     return Array.from(this.journalEntries.values())
@@ -6966,8 +7008,223 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistFiles.id, id));
   }
 
-  // Consolidation Group methods have been removed - all methods are now implemented in consolidationStorage.ts
-
+  // -------------------------------------------------------------------------
+  // Delegated methods - these methods call their corresponding specialized storage modules
+  // -------------------------------------------------------------------------
+  
+  // Account methods delegation
+  async getAccount(id: number): Promise<Account | undefined> {
+    return accountStorage.getAccount(id);
+  }
+  
+  async getAccounts(clientId: number): Promise<Account[]> {
+    return accountStorage.getAccounts(clientId);
+  }
+  
+  async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
+    return accountStorage.getAccountsByType(clientId, type);
+  }
+  
+  async createAccount(account: InsertAccount): Promise<Account> {
+    return accountStorage.createAccount(account);
+  }
+  
+  async updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined> {
+    return accountStorage.updateAccount(id, account);
+  }
+  
+  async deleteAccount(id: number): Promise<void> {
+    return accountStorage.deleteAccount(id);
+  }
+  
+  async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
+    return accountStorage.getAccountsTree(clientId);
+  }
+  
+  // Journal Entry methods delegation
+  async getJournalEntry(id: number): Promise<any> {
+    return journalEntryStorage.getJournalEntry(id);
+  }
+  
+  async getJournalEntries(entityId: number, options?: any): Promise<any[]> {
+    return journalEntryStorage.getJournalEntries(entityId, options);
+  }
+  
+  async listJournalEntries(entityId: number, filters?: any): Promise<any[]> {
+    return journalEntryStorage.listJournalEntries(entityId, filters);
+  }
+  
+  async getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<any[]> {
+    return journalEntryStorage.getJournalEntriesByStatus(entityId, status);
+  }
+  
+  async createJournalEntry(journalEntry: any): Promise<any> {
+    return journalEntryStorage.createJournalEntry(journalEntry);
+  }
+  
+  async updateJournalEntry(id: number, updates: any): Promise<any> {
+    return journalEntryStorage.updateJournalEntry(id, updates);
+  }
+  
+  async createBatchJournalEntries(entries: any[]): Promise<any[]> {
+    return journalEntryStorage.createBatchJournalEntries(entries);
+  }
+  
+  async getJournalEntryLines(journalEntryId: number): Promise<any[]> {
+    return journalEntryStorage.getJournalEntryLines(journalEntryId);
+  }
+  
+  async createJournalEntryLine(line: any): Promise<any> {
+    return journalEntryStorage.createJournalEntryLine(line);
+  }
+  
+  async addJournalEntryLine(journalEntryId: number, line: any): Promise<any> {
+    return journalEntryStorage.addJournalEntryLine(journalEntryId, line);
+  }
+  
+  async updateJournalEntryLine(id: number, updates: any): Promise<any> {
+    return journalEntryStorage.updateJournalEntryLine(id, updates);
+  }
+  
+  async deleteJournalEntryLine(id: number): Promise<void> {
+    return journalEntryStorage.deleteJournalEntryLine(id);
+  }
+  
+  async reverseJournalEntry(id: number, reversalDate: Date, description?: string): Promise<any> {
+    return journalEntryStorage.reverseJournalEntry(id, reversalDate, description);
+  }
+  
+  async deleteJournalEntry(id: number): Promise<void> {
+    return journalEntryStorage.deleteJournalEntry(id);
+  }
+  
+  async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
+    return journalEntryStorage.getJournalEntryFiles(journalEntryId);
+  }
+  
+  async createJournalEntryFile(file: any): Promise<any> {
+    return journalEntryStorage.createJournalEntryFile(file);
+  }
+  
+  // Client methods delegation
+  async getClient(id: number): Promise<Client | undefined> {
+    return clientStorage.getClient(id);
+  }
+  
+  async getClients(): Promise<Client[]> {
+    return clientStorage.getClients();
+  }
+  
+  async getClientsByUserId(userId: number): Promise<Client[]> {
+    return clientStorage.getClientsByUserId(userId);
+  }
+  
+  async createClient(client: any): Promise<Client> {
+    return clientStorage.createClient(client);
+  }
+  
+  async updateClient(id: number, client: Partial<Client>): Promise<Client | undefined> {
+    return clientStorage.updateClient(id, client);
+  }
+  
+  // Entity methods delegation
+  async getEntity(id: number): Promise<Entity | undefined> {
+    return entityStorage.getEntity(id);
+  }
+  
+  async getEntities(): Promise<Entity[]> {
+    return entityStorage.getEntities();
+  }
+  
+  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+    return entityStorage.getEntitiesByUser(userId);
+  }
+  
+  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+    return entityStorage.getEntitiesByClient(clientId);
+  }
+  
+  async createEntity(entity: any): Promise<Entity> {
+    return entityStorage.createEntity(entity);
+  }
+  
+  async updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined> {
+    return entityStorage.updateEntity(id, entity);
+  }
+  
+  // User methods delegation
+  async getUser(id: number): Promise<any> {
+    return userStorage.getUser(id);
+  }
+  
+  async getUserByUsername(username: string): Promise<any> {
+    return userStorage.getUserByUsername(username);
+  }
+  
+  async getUsers(): Promise<any[]> {
+    return userStorage.getUsers();
+  }
+  
+  async createUser(user: any): Promise<any> {
+    return userStorage.createUser(user);
+  }
+  
+  async updateUser(id: number, updates: any): Promise<any> {
+    return userStorage.updateUser(id, updates);
+  }
+  
+  // User Entity Access methods delegation
+  async getUserEntityAccess(userId: number, entityId: number): Promise<any> {
+    return userStorage.getUserEntityAccess(userId, entityId);
+  }
+  
+  async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<any> {
+    return userStorage.grantUserEntityAccess(userId, entityId, accessLevel);
+  }
+  
+  async getUserEntityAccessList(userId: number): Promise<any[]> {
+    return userStorage.getUserEntityAccessList(userId);
+  }
+  
+  // User Activity Tracking methods delegation
+  async logUserActivity(activity: any): Promise<any> {
+    return userStorage.logUserActivity(activity);
+  }
+  
+  async getUserActivitiesByEntity(entityId: number, limit?: number): Promise<any[]> {
+    return userStorage.getUserActivitiesByEntity(entityId, limit);
+  }
+  
+  async getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<any[]> {
+    return userStorage.getUserActivitiesByResourceType(resourceType, limit);
+  }
+  
+  // Journal methods delegation
+  async getJournal(id: number): Promise<any | undefined> {
+    return journalEntryStorage.getJournal(id);
+  }
+  
+  async getJournals(entityId: number): Promise<any[]> {
+    return journalEntryStorage.getJournals(entityId);
+  }
+  
+  async getJournalsByType(entityId: number, type: any): Promise<any[]> {
+    return journalEntryStorage.getJournalsByType(entityId, type);
+  }
+  
+  async createJournal(journal: any): Promise<any> {
+    return journalEntryStorage.createJournal(journal);
+  }
+  
+  async updateJournal(id: number, journal: Partial<any>): Promise<any | undefined> {
+    return journalEntryStorage.updateJournal(id, journal);
+  }
+  
+  async deleteJournal(id: number): Promise<void> {
+    return journalEntryStorage.deleteJournal(id);
+  }
+  
+  // Consolidation Group methods delegation
   // All consolidation-related methods have been moved to the consolidationStorage module
 }
 

@@ -1,0 +1,37 @@
+Agent Task: Remove Refactored Code from Original storage.ts
+
+Objective:
+Clean the server/storage/storage.ts file by removing the code segments that have been successfully refactored and moved into the new, specific storage modules (accountStorage.ts, clientStorage.ts, etc.) today, April 3, 2025.
+
+Target File for Cleanup:
+
+server/storage/storage.ts
+Reference Files (Containing Moved Code):
+
+server/storage/accountStorage.ts
+server/storage/clientStorage.ts
+server/storage/consolidationStorage.ts
+server/storage/entityStorage.ts
+server/storage/journalEntryStorage.ts
+server/storage/userStorage.ts
+Instructions:
+
+Identify Moved Entities: Programmatically determine the primary functions, classes, constants, and types that are exported from each of the new reference files (e.g., identify everything exported from accountStorage.ts, then clientStorage.ts, etc.).
+Locate Originals in storage.ts: For each entity identified in Step 1, locate its original definition (the corresponding function, class, constant declaration, associated interfaces/types) within the target file server/storage/storage.ts.
+Identify Code Blocks for Removal: Mark the entire code block for each identified original entity within server/storage/storage.ts for removal. This includes:
+The full function/class definition.
+Related helper functions or variables if they are only used by the code being removed and not by any code remaining in storage.ts. (Use caution here).
+Associated type/interface definitions if they are no longer needed by any remaining code in storage.ts.
+Identify and Remove Unused Imports: After identifying the code blocks for removal, determine which import statements at the top of server/storage/storage.ts are now unused (i.e., they only supplied dependencies for the code being removed). Mark these imports for removal.
+Execute Removal (High Caution Required):
+Delete the identified code blocks (Step 3) from server/storage/storage.ts.
+Delete the identified unused import statements (Step 4) from server/storage/storage.ts.
+CRITICAL: Ensure the removal process does not leave syntactically invalid code or dangling references in the remaining parts of storage.ts.
+Verification (Mandatory):
+Run linting tools on the modified server/storage/storage.ts. Fix any errors.
+Execute the full project build/compilation process. Confirm it succeeds without errors related to storage.ts or files that might import from it.
+Run all automated test suites (unit, integration, E2E). Verify that all tests pass, paying special attention to any tests that might have previously interacted directly with the now-removed parts of storage.ts.
+Report:
+Detail precisely which functions, classes, types, and imports were removed from server/storage/storage.ts.
+Confirm successful linting, build, and test execution.
+Flag any ambiguities encountered or removals that might have uncertain side effects. Recommend specific areas for human review if confidence is not 100%.
