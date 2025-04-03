@@ -100,6 +100,7 @@ async function getTestClientAndEntity() {
 async function testCreateJournalEntry() {
   try {
     const cookie = getCookieHeader();
+    // Create journal entry data with the exact format expected by the API validation schema (journalEntryLineSchema)
     const journalEntry = {
       date: new Date().toISOString().split('T')[0],
       clientId,
@@ -110,9 +111,9 @@ async function testCreateJournalEntry() {
       createdBy: 1, // Add createdBy value (assuming user ID 1 exists)
       lines: [
         {
-          type: 'debit',
+          type: 'debit', // Must be 'debit' or 'credit'
           accountId: accountId1,
-          amount: '100.00',
+          amount: '100.00', // Amount as a string that can be parsed to a number
           description: 'Test Debit'
         },
         {
@@ -124,16 +125,43 @@ async function testCreateJournalEntry() {
       ]
     };
     
-    const response = await axios.post(`${API_URL}/api/journal-entries`, journalEntry, {
-      headers: { Cookie: cookie }
-    });
+    console.log('Sending journal entry data:', JSON.stringify(journalEntry));
+    console.log('Lines array type:', Array.isArray(journalEntry.lines));
+    console.log('Lines array length:', journalEntry.lines.length);
+    console.log('First line item:', JSON.stringify(journalEntry.lines[0]));
     
-    if (response.status === 201 && response.data) {
-      journalEntryId = response.data.id;
-      logResult('Create Journal Entry', true, `Created journal entry with ID: ${journalEntryId}`);
-      return true;
-    } else {
-      logResult('Create Journal Entry', false, 'Failed to create journal entry');
+    try {
+      // Add additional debug data to request
+      const debugHeaders = { 
+        Cookie: cookie,
+        'X-Debug-Test': 'true'
+      };
+      
+      const response = await axios.post(`${API_URL}/api/journal-entries`, journalEntry, {
+        headers: debugHeaders
+      });
+      
+      console.log('Response:', response.status, response.data);
+      
+      if (response.status === 201 && response.data) {
+        journalEntryId = response.data.id;
+        logResult('Create Journal Entry', true, `Created journal entry with ID: ${journalEntryId}`);
+        return true;
+      } else {
+        logResult('Create Journal Entry', false, 'Failed to create journal entry');
+        return false;
+      }
+    } catch (error) {
+      console.error('POST error details:', error.response?.status, error.response?.data);
+      console.error('Request data:', error.config?.data);
+      
+      // Log more details about the request
+      if (error.config) {
+        console.error('Request headers:', JSON.stringify(error.config.headers));
+        console.error('Request parameters:', error.config.params);
+      }
+      
+      logResult('Create Journal Entry', false, `Error: ${error.response?.data?.message || error.message}`);
       return false;
     }
   } catch (error) {

@@ -198,15 +198,16 @@ export function formatZodError(error: z.ZodError) {
  * Schema for listing journal entries with filters
  */
 export const listJournalEntriesFiltersSchema = z.object({
-  clientId: z.union([
-    z.string().transform(val => parseInt(val, 10)),
-    z.number().int().positive()
-  ]).optional(),
-  entityId: z.union([
-    z.string().transform(val => parseInt(val, 10)),
-    z.number().int().positive()
-  ]).optional(),
+  clientId: z.preprocess(
+    (val) => val === undefined ? undefined : (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().positive().optional()
+  ),
+  entityId: z.preprocess(
+    (val) => val === undefined ? undefined : (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().positive().optional()
+  ),
   startDate: z.preprocess((arg) => {
+    if (arg === undefined) return undefined;
     if (typeof arg === "string" || arg instanceof Date) {
       const date = new Date(arg);
       return isNaN(date.getTime()) ? undefined : date;
@@ -214,6 +215,7 @@ export const listJournalEntriesFiltersSchema = z.object({
     return undefined;
   }, z.date().optional()),
   endDate: z.preprocess((arg) => {
+    if (arg === undefined) return undefined;
     if (typeof arg === "string" || arg instanceof Date) {
       const date = new Date(arg);
       return isNaN(date.getTime()) ? undefined : date;
@@ -223,14 +225,14 @@ export const listJournalEntriesFiltersSchema = z.object({
   status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   referenceNumber: optionalString.nullable(),
-  limit: z.union([
-    z.string().transform(val => parseInt(val, 10)),
-    z.number().int().min(1).max(100)
-  ]).optional().default(25),
-  offset: z.union([
-    z.string().transform(val => parseInt(val, 10)),
-    z.number().int().min(0)
-  ]).optional().default(0),
+  limit: z.preprocess(
+    (val) => val === undefined ? 25 : (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().min(1).max(100).optional().default(25)
+  ),
+  offset: z.preprocess(
+    (val) => val === undefined ? 0 : (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().min(0).optional().default(0)
+  ),
   sortBy: z.enum(['date', 'referenceNumber', 'description', 'amount']).optional().default('date'),
   sortDirection: z.enum(['asc', 'desc']).optional().default('desc')
 });

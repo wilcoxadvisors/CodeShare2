@@ -43,30 +43,69 @@ export function registerJournalEntryRoutes(app: Express, storage: IStorage) {
     const user = req.user as { id: number };
     
     try {
+      console.log('DETAILED DEBUGGING - CREATE JOURNAL ENTRY');
+      console.log('Request body: ', JSON.stringify(req.body));
+      console.log('Request headers: ', JSON.stringify(req.headers));
+      console.log('User ID from session: ', user.id);
+      
+      if (req.body.lines) {
+        console.log('Input lines before validation: ', JSON.stringify(req.body.lines));
+        console.log('Lines is Array?', Array.isArray(req.body.lines));
+        console.log('Lines count:', req.body.lines.length);
+        if (req.body.lines.length > 0) {
+          console.log('First line structure:', JSON.stringify(req.body.lines[0]));
+        }
+      } else {
+        console.log('Warning: No lines in request body');
+      }
+      
       // Use createJournalEntrySchema to validate the entire payload with cross-field validation
       // Explicitly include createdBy field to ensure it's set
-      const validatedData = createJournalEntrySchema.parse({
+      const validationInput = {
         ...req.body,
         createdBy: user.id
-      });
+      };
+      console.log('Validation input:', JSON.stringify(validationInput));
+      
+      const validatedData = createJournalEntrySchema.parse(validationInput);
+      console.log('Validation successful. Validated data: ', JSON.stringify(validatedData));
       
       // Double check that createdBy is set
       if (!validatedData.createdBy) {
+        console.log('Error: createdBy missing after validation');
         return res.status(400).json({ message: "Creator ID is required" });
       }
       
       // Extract main entry data and lines
       const { lines, ...journalEntryData } = validatedData;
       
+      console.log('Journal entry data: ', JSON.stringify(journalEntryData));
+      console.log('Lines data after extraction: ', JSON.stringify(lines));
+      console.log('Lines array type:', Array.isArray(lines));
+      console.log('Lines array length:', Array.isArray(lines) ? lines.length : 'Not array');
+      
+      if (!lines || lines.length === 0) {
+        console.log('ERROR: Lines array is empty or null after validation');
+        return res.status(400).json({ message: "Journal entry must have at least one line" });
+      }
+      
       // Create journal entry with lines
+      console.log('Calling storage.createJournalEntry with clientId:', journalEntryData.clientId);
+      console.log('Calling storage.createJournalEntry with createdById:', journalEntryData.createdBy);
+      
       const journalEntry = await storage.createJournalEntry(
+        journalEntryData.clientId,
+        journalEntryData.createdBy,
         journalEntryData, 
-        lines
+        lines || [] // Ensure we always pass an array, even if empty
       );
       
+      console.log('Journal entry created successfully:', JSON.stringify(journalEntry));
       res.status(201).json(journalEntry);
     } catch (error) {
+      console.error('ERROR in journal entry creation:', error);
       if (error instanceof ZodError) {
+        console.error('Validation error details:', JSON.stringify(error.errors));
         return res.status(400).json({ errors: formatZodError(error) });
       }
       throw error;
