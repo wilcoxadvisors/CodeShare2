@@ -1,0 +1,65 @@
+Task Assignment: Refactor User & User Entity Access Storage Logic
+
+Context: We are continuing the refactoring of server/storage.ts. Account, Journal Entry, Client, Entity, and Consolidation Group logic has already been moved to dedicated modules. This task focuses on extracting User CRUD operations and User Entity Access logic.
+
+Goal: Create a new userStorage.ts file containing the interface and implementations for User and User Entity Access storage operations. Remove this logic from the original storage.ts and update consuming files.
+
+Instructions:
+
+Action: Create userStorage.ts File:
+
+Create the file: CodeShare/server/storage/userStorage.ts.
+Add necessary imports (e.g., db, schema types users, User, InsertUser, UserRole, userEntityAccess, entities, etc., drizzle-orm functions, error handling). Ensure relative paths are correct.
+Define an IUserStorage interface within this file, copying only the User and User Entity Access related method signatures from IStorage in storage.ts. Example signatures:
+TypeScript
+
+export interface IUserStorage {
+    getUser(id: number): Promise<User | undefined>;
+    getUserByUsername(username: string): Promise<User | undefined>;
+    createUser(user: InsertUser): Promise<User>;
+    updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
+    getUsers(): Promise<User[]>;
+    findUserByRole(role: UserRole): Promise<User | undefined>;
+    // User Entity Access methods
+    getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>; // Or return UserEntityAccess type
+    grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
+    getUserEntityAccessList(userId: number): Promise<any[]>; // Add if getUserEntitiesByUser logic is moved here
+}
+Create and export an implementation class (e.g., UserStorage implements IUserStorage).
+Move the complete implementation code for all User and User Entity Access methods from DatabaseStorage and MemStorage in CodeShare/server/storage.ts into this new UserStorage class. (Note: getEntitiesByUser might also need to move here or be refactored depending on dependencies).
+Export an instance: export const userStorage = new UserStorage();.
+Action: Modify Original server/storage.ts:
+
+Open CodeShare/server/storage.ts.
+Remove all User and User Entity Access related method signatures from the IStorage interface definition.
+Remove the complete implementations of all those methods from both the DatabaseStorage class and the MemStorage class.
+Remove any related properties from MemStorage (e.g., private users: Map<...>;, private userEntityAccess: Map<...>;, currentUserId) and their initialization in the constructor.
+Remove any imports now unused after removing User logic (e.g., User, users, UserRole, userEntityAccess).
+Action: Update Consuming Files:
+
+Identify which files call User or User Entity Access storage methods (e.g., check server/auth.ts or server/passportConfig.ts if they exist, server/routes.ts, server/adminRoutes.ts, potentially entityStorage.ts if getEntitiesByUser wasn't moved).
+In those files:
+Add the import: import { userStorage } from './storage/userStorage'; (adjust path).
+Replace calls like storage.getUserByUsername(...) with userStorage.getUserByUsername(...), storage.grantUserEntityAccess(...) with userStorage.grantUserEntityAccess(...), etc.
+Remove the import for the old storage object if no longer needed.
+Action: Verify Application Startup & Tests:
+
+Restart the application server (npm run dev). Confirm it starts without errors.
+Run Key Tests: Execute tests that rely on user authentication, user management, or entity access. This will likely include most existing tests:
+cd test && node api-journal-entries.js
+cd test && node batch-upload-test.js
+cd test/consolidation && npx tsx test-consolidation-groups.ts (or equivalent)
+Run any specific tests related to login, user roles, or admin functions if they exist.
+Verification:
+
+New file server/storage/userStorage.ts exists with User/User Entity Access storage logic/interface.
+The original server/storage.ts no longer contains User/User Entity Access logic/interface methods or MemStorage properties.
+Consuming files correctly import and use userStorage.
+The application server starts successfully.
+All relevant automated tests pass successfully.
+Reporting:
+
+Confirm creation/modification of the specified files.
+Report PASS/FAIL for server startup verification.
+Report PASS/FAIL status for each test script execution performed.
+State readiness to refactor the next domain.
