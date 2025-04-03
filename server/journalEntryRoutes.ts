@@ -223,7 +223,14 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('Journal Entry');
     }
     
-    res.json(journalEntry);
+    // Get lines and attach them to the journal entry
+    const lines = await journalEntryStorage.getJournalEntryLines(id);
+    
+    // Return the journal entry with lines
+    res.json({
+      ...journalEntry,
+      lines
+    });
   }));
   
   /**
@@ -350,21 +357,29 @@ export function registerJournalEntryRoutes(app: Express) {
    * Add a line to a journal entry
    */
   app.post('/api/journal-entries/:id/lines', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log('ADD JOURNAL ENTRY LINE - Request body:', req.body);
+    console.log('ADD JOURNAL ENTRY LINE - Request params:', req.params);
+    
     const journalEntryId = parseInt(req.params.id);
+    console.log('ADD JOURNAL ENTRY LINE - Parsed journal entry ID:', journalEntryId);
     
     if (isNaN(journalEntryId)) {
+      console.log('ADD JOURNAL ENTRY LINE - Invalid journal entry ID');
       throwBadRequest('Invalid journal entry ID provided');
     }
     
     // Get the existing entry to check its status
     const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    console.log('ADD JOURNAL ENTRY LINE - Existing entry found:', existingEntry ? 'yes' : 'no');
     
     if (!existingEntry) {
+      console.log('ADD JOURNAL ENTRY LINE - Journal entry not found');
       throwNotFound('Journal Entry');
     }
     
     // Prevent modifications to posted or void entries
     if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+      console.log(`ADD JOURNAL ENTRY LINE - Cannot modify entry with status: ${existingEntry.status}`);
       throwBadRequest(`Cannot modify a journal entry with status '${existingEntry.status}'`);
     }
     
@@ -393,45 +408,69 @@ export function registerJournalEntryRoutes(app: Express) {
         reconciledBy: z.number().nullable().optional(),
       });
       
+      console.log('ADD JOURNAL ENTRY LINE - Validating line data');
+      
       // Parse and validate line data
       const validatedLineData = addLineSchema.parse(req.body);
+      console.log('ADD JOURNAL ENTRY LINE - Validated line data:', validatedLineData);
       
+      // Make sure amount is a string
+      const amount = typeof validatedLineData.amount === 'number' 
+        ? validatedLineData.amount.toString() 
+        : validatedLineData.amount;
+      
+      console.log('ADD JOURNAL ENTRY LINE - Amount formatted as:', amount);
+    
       // Add journalEntryId to the validated data
       const lineData = {
         ...validatedLineData,
+        amount,
         journalEntryId
       };
       
+      console.log('ADD JOURNAL ENTRY LINE - Final line data to insert:', lineData);
+      
       // Add the new line
       const newLine = await journalEntryStorage.createJournalEntryLine(lineData);
+      console.log('ADD JOURNAL ENTRY LINE - New line created:', newLine);
       
-      // Check if the journal entry is still balanced
-      const updatedEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
-      
-      if (!updatedEntry) {
-        throw new Error('Failed to retrieve updated journal entry');
-      }
-      
+      // Check if the journal entry is still balanced but get lines directly
+      // instead of relying on the lines property of the entry
       let totalDebits = 0;
       let totalCredits = 0;
       
-      updatedEntry.lines.forEach(line => {
-        if (line.type === 'debit') {
-          totalDebits += parseFloat(line.amount);
-        } else {
-          totalCredits += parseFloat(line.amount);
-        }
-      });
+      // Get all journal entry lines directly
+      const lines = await journalEntryStorage.getJournalEntryLines(journalEntryId);
+      console.log('ADD JOURNAL ENTRY LINE - Retrieved lines count:', lines.length);
+      
+      // Process lines to calculate totals
+      if (lines && Array.isArray(lines)) {
+        lines.forEach(line => {
+          if (line.type === 'debit') {
+            totalDebits += parseFloat(line.amount);
+          } else {
+            totalCredits += parseFloat(line.amount);
+          }
+        });
+      }
+      
+      console.log('ADD JOURNAL ENTRY LINE - Total debits:', totalDebits);
+      console.log('ADD JOURNAL ENTRY LINE - Total credits:', totalCredits);
       
       const epsilon = 0.001;
       const balanced = Math.abs(totalDebits - totalCredits) <= epsilon;
+      console.log('ADD JOURNAL ENTRY LINE - Entry balanced:', balanced);
       
-      res.status(201).json({
+      // Return the response with detailed information
+      const responseData = {
         line: newLine,
         balanced,
         totalDebits,
         totalCredits
-      });
+      };
+      
+      console.log('ADD JOURNAL ENTRY LINE - Response data:', responseData);
+      res.status(201).json(responseData);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ errors: formatZodError(error) });
@@ -508,13 +547,19 @@ export function registerJournalEntryRoutes(app: Express) {
       let totalDebits = 0;
       let totalCredits = 0;
       
-      updatedEntry.lines.forEach(line => {
-        if (line.type === 'debit') {
-          totalDebits += parseFloat(line.amount);
-        } else {
-          totalCredits += parseFloat(line.amount);
-        }
-      });
+      // Get all journal entry lines directly (don't rely on lines property)
+      const lines = await journalEntryStorage.getJournalEntryLines(entryId);
+      
+      // Process lines to calculate totals
+      if (lines && Array.isArray(lines)) {
+        lines.forEach(line => {
+          if (line.type === 'debit') {
+            totalDebits += parseFloat(line.amount);
+          } else {
+            totalCredits += parseFloat(line.amount);
+          }
+        });
+      }
       
       const epsilon = 0.001;
       const balanced = Math.abs(totalDebits - totalCredits) <= epsilon;
@@ -556,8 +601,11 @@ export function registerJournalEntryRoutes(app: Express) {
       throwBadRequest(`Cannot modify a journal entry with status '${existingEntry.status}'`);
     }
     
+    // Get all lines to check if this is the last line
+    const entryLines = await journalEntryStorage.getJournalEntryLines(entryId);
+    
     // Check if this is the last line (can't delete all lines)
-    if (existingEntry.lines.length <= 1) {
+    if (entryLines.length <= 1) {
       throwBadRequest('Cannot delete the last line in a journal entry');
     }
     
@@ -570,13 +618,19 @@ export function registerJournalEntryRoutes(app: Express) {
     let totalDebits = 0;
     let totalCredits = 0;
     
-    updatedEntry?.lines.forEach(line => {
-      if (line.type === 'debit') {
-        totalDebits += parseFloat(line.amount);
-      } else {
-        totalCredits += parseFloat(line.amount);
-      }
-    });
+    // Get all journal entry lines directly
+    const lines = await journalEntryStorage.getJournalEntryLines(entryId);
+    
+    // Process lines to calculate totals
+    if (lines && Array.isArray(lines)) {
+      lines.forEach(line => {
+        if (line.type === 'debit') {
+          totalDebits += parseFloat(line.amount);
+        } else {
+          totalCredits += parseFloat(line.amount);
+        }
+      });
+    }
     
     const epsilon = 0.001;
     const balanced = Math.abs(totalDebits - totalCredits) <= epsilon;

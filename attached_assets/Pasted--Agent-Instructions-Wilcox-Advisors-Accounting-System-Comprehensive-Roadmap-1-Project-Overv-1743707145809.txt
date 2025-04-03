@@ -140,3 +140,29 @@
 * **Recommended Approach:**
     * **Incremental Cleanup:** Apply cleanup practices alongside feature development and refactoring.
     * **Continue Refactoring `storage.ts`:** Systematically move logic out of the monolithic `storage.ts` into domain-specific modules (e.g., `clientStorage.ts`, `entityStorage.ts`, `vendorStorage.ts` etc.) after the current task.
+
+Now, here are the instructions for the Replit agent to update the file:
+
+Task Assignment: Update Instructions.md with Cleanup Strategy and Latest Status
+
+Context: The main Instructions.md file needs to be updated to reflect the completion of Task B.2, remove outdated citations, and include a new section outlining the code cleanup strategy.
+
+Goal: Replace the content of CodeShare/Instructions.md with the updated version provided.
+
+Instructions:
+
+Action: Replace File Content:
+Open the file CodeShare/Instructions.md.
+Delete all existing content in the file.
+Paste the entire updated markdown content (provided above, starting from # Agent Instructions: Wilcox Advisors... down to the end of section 6. Code Quality & Cleanup Strategy) into the file.
+Save the file.
+Verification:
+
+The file CodeShare/Instructions.md contains the exact updated content provided above.
+Invalid [cite: uploaded:...] tags have been removed.
+The status of Task B.2 is marked as COMPLETE.
+The next task is correctly identified as Task B.3.
+The new "Code Quality & Cleanup Strategy" section (Section 6) is present at the end.
+Reporting:
+
+Confirm that CodeShare/Instructions.md has been updated with the new content.

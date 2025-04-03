@@ -242,17 +242,24 @@ async function testAddJournalEntryLine() {
     
     const existingEntry = getResponse.data;
     
+    console.log("Entry data structure:", Object.keys(existingEntry));
+    console.log("Lines exist:", existingEntry.lines !== undefined);
+    console.log("Lines is array:", existingEntry.lines ? Array.isArray(existingEntry.lines) : false);
+    
     // Calculate existing totals
     let totalDebits = 0;
     let totalCredits = 0;
     
-    existingEntry.lines.forEach(line => {
-      if (line.type === 'debit') {
-        totalDebits += parseFloat(line.amount);
-      } else {
-        totalCredits += parseFloat(line.amount);
-      }
-    });
+    // Check if lines exists before using forEach
+    if (existingEntry.lines && Array.isArray(existingEntry.lines)) {
+      existingEntry.lines.forEach(line => {
+        if (line.type === 'debit') {
+          totalDebits += parseFloat(line.amount);
+        } else {
+          totalCredits += parseFloat(line.amount);
+        }
+      });
+    }
     
     // Add a new line to balance
     const newLine = {
@@ -262,9 +269,13 @@ async function testAddJournalEntryLine() {
       description: 'Additional Debit'
     };
     
+    console.log("Sending newLine:", newLine);
+    
     const addResponse = await axios.post(`${API_URL}/api/journal-entries/${journalEntryId}/lines`, newLine, {
       headers: { Cookie: cookie }
     });
+    
+    console.log("Add line response data:", addResponse.data);
     
     // Also add a matching credit line to maintain balance
     const balancingLine = {
@@ -277,6 +288,8 @@ async function testAddJournalEntryLine() {
     const balanceResponse = await axios.post(`${API_URL}/api/journal-entries/${journalEntryId}/lines`, balancingLine, {
       headers: { Cookie: cookie }
     });
+    
+    console.log("Balance line response data:", balanceResponse.data);
     
     if (addResponse.status === 201 && balanceResponse.status === 201) {
       logResult('Add Journal Entry Line', true, 'Successfully added lines to journal entry');
@@ -294,6 +307,7 @@ async function testAddJournalEntryLine() {
       return false;
     }
   } catch (error) {
+    console.error("Error in testAddJournalEntryLine:", error);
     logResult('Add Journal Entry Line', false, `Error: ${error.response?.data?.message || error.message}`);
     return false;
   }
@@ -324,17 +338,27 @@ async function testPostJournalEntry() {
 async function testReverseJournalEntry() {
   try {
     const cookie = getCookieHeader();
+    
+    // Use a unique reference number for the reversal to avoid conflicts
+    const uniqueRefNumber = `REV-TEST-${Date.now().toString().substring(8)}`;
+    
     const reverseOptions = {
       date: new Date().toISOString().split('T')[0],
       description: 'Reversal of Test Entry',
-      referenceNumber: 'REV-TEST-001'
+      referenceNumber: uniqueRefNumber
     };
+    
+    console.log("Sending reverse options:", reverseOptions);
     
     const response = await axios.post(`${API_URL}/api/journal-entries/${journalEntryId}/reverse`, reverseOptions, {
       headers: { Cookie: cookie }
     });
     
+    console.log("Reverse response status:", response.status);
+    console.log("Reverse response data keys:", Object.keys(response.data));
+    
     if (response.status === 201 && response.data.reversalEntry) {
+      console.log("Created reversal entry with ID:", response.data.reversalEntry.id);
       logResult('Reverse Journal Entry', true, `Created reversal entry with ID: ${response.data.reversalEntry.id}`);
       return true;
     } else {
@@ -342,6 +366,11 @@ async function testReverseJournalEntry() {
       return false;
     }
   } catch (error) {
+    console.error("Error in testReverseJournalEntry:", error);
+    if (error.response) {
+      console.error("  Response status:", error.response.status);
+      console.error("  Response data:", error.response.data);
+    }
     logResult('Reverse Journal Entry', false, `Error: ${error.response?.data?.message || error.message}`);
     return false;
   }
@@ -447,8 +476,11 @@ async function runAllTests() {
   if (createSuccess && journalEntryId) {
     await testGetJournalEntry();
     await testUpdateJournalEntry();
+    // Add journal entry lines before posting
     await testAddJournalEntryLine();
+    // Post the journal entry after adding lines
     await testPostJournalEntry();
+    // Reverse the posted journal entry
     await testReverseJournalEntry();
     await testListJournalEntries();
   } else {

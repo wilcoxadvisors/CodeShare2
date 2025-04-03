@@ -127,7 +127,17 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .where(eq(journalEntries.id, id))
         .limit(1);
       
-      return entry;
+      if (entry) {
+        // Fetch lines and return them separately
+        const lines = await this.getJournalEntryLines(id);
+        
+        // Return entry with lines as a non-database property (to avoid type issues)
+        const result = { ...entry } as JournalEntry & { lines: JournalEntryLine[] };
+        result.lines = lines || [];
+        return result;
+      }
+      
+      return undefined;
     } catch (e) {
       throw handleDbError(e, `getting journal entry ${id}`);
     }
@@ -446,7 +456,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     createdBy: number;
     referenceNumber?: string;
   }): Promise<JournalEntry | undefined> {
-    console.log(`Reversing journal entry ${journalEntryId}`);
+    console.log(`Reversing journal entry ${journalEntryId} with options:`, options);
     try {
       // Get the original journal entry
       const originalEntry = await this.getJournalEntry(journalEntryId);
@@ -454,9 +464,16 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(404, `Journal entry with ID ${journalEntryId} not found`);
       }
       
+      console.log(`Original entry found:`, JSON.stringify(originalEntry));
+      
       // Verify the entry is in posted status
       if (originalEntry.status !== 'posted') {
         throw new ApiError(400, `Can only reverse journal entries with status 'posted', but entry has status '${originalEntry.status}'`);
+      }
+      
+      // Check if this entry has already been reversed
+      if (originalEntry.reversedByEntryId) {
+        throw new ApiError(400, `Journal entry ${journalEntryId} has already been reversed by entry ${originalEntry.reversedByEntryId}`);
       }
       
       // Get the original lines
@@ -465,58 +482,102 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(400, `Journal entry with ID ${journalEntryId} has no lines to reverse`);
       }
       
+      console.log(`Found ${originalLines.length} lines to reverse`);
+      
       // Create a new journal entry for the reversal
-      const reversalDate = options.date || new Date();
-      const originalDateStr = format(new Date(originalEntry.date), 'yyyy-MM-dd');
-      
-      const reversalDescription = options.description || `Reversal of journal entry ${originalEntry.referenceNumber} from ${originalDateStr}`;
-      const reversalReference = options.referenceNumber || `REV-${originalEntry.referenceNumber}`;
-      
-      // Create reversal entry with the same data as original but reversed type and linked
-      const reversalEntry = await this.createJournalEntry(
-        originalEntry.clientId,
-        options.createdBy,
-        {
-          ...originalEntry,
-          date: reversalDate,
-          description: reversalDescription,
-          referenceNumber: reversalReference,
-          status: 'draft',
-          createdBy: options.createdBy,
-          // Link to the original entry
-          reversedEntryId: originalEntry.id
-        }
-      );
-      
-      // Create reversed lines (opposite debit/credit types)
-      for (const line of originalLines) {
-        const reversedType = line.type === 'debit' ? 'credit' : 'debit';
-        await this.createJournalEntryLine({
-          journalEntryId: reversalEntry.id,
-          accountId: line.accountId,
-          type: reversedType,
-          amount: line.amount,
-          description: line.description || null,
-          // Copy other fields as needed
-          locationId: line.locationId,
-          reconciled: false, // New reversal line is not reconciled
-        });
+      let reversalDate: Date;
+      if (options.date) {
+        reversalDate = typeof options.date === 'string' ? new Date(options.date) : options.date;
+      } else {
+        reversalDate = new Date();
       }
       
-      // Update the original entry to link to the reversal
-      await this.updateJournalEntry(originalEntry.id, {
-        reversedByEntryId: reversalEntry.id
+      const originalDateStr = format(new Date(originalEntry.date), 'yyyy-MM-dd');
+      
+      // Add timestamp to make reference number unique and avoid collisions
+      const timestamp = Date.now().toString().substring(8); // Last few digits of timestamp
+      
+      const reversalDescription = options.description || `Reversal of journal entry ${originalEntry.referenceNumber} from ${originalDateStr}`;
+      const reversalReference = options.referenceNumber || `REV-${originalEntry.referenceNumber}-${timestamp}`;
+      
+      // Create a new entry data object for the reversal, explicitly selecting only the fields we need
+      // This avoids potential issues with unknown fields or primary key conflicts
+      const reversalEntryData = {
+        date: reversalDate,
+        clientId: originalEntry.clientId,
+        entityId: originalEntry.entityId,
+        referenceNumber: reversalReference,
+        description: reversalDescription,
+        journalType: originalEntry.journalType,
+        isSystemGenerated: false,
+        status: 'draft' as const,  // Use const assertion to ensure correct type
+        createdBy: options.createdBy,
+        isReversal: true,
+        reversedEntryId: originalEntry.id
+      };
+      
+      console.log(`Creating reversal entry with data:`, JSON.stringify(reversalEntryData));
+      
+      // Execute the insert as a transaction to ensure atomicity
+      let reversalEntry;
+      await db.transaction(async (tx) => {
+        // Insert the new journal entry
+        const [newReversalEntry] = await tx.insert(journalEntries)
+          .values(reversalEntryData)
+          .returning();
+          
+        reversalEntry = newReversalEntry;
+        console.log(`Created new reversal entry with ID: ${reversalEntry.id}`);
+        
+        // Create reversed lines (opposite debit/credit types)
+        for (const line of originalLines) {
+          const reversedType = line.type === 'debit' ? 'credit' : 'debit';
+          const lineData = {
+            journalEntryId: reversalEntry.id,
+            accountId: line.accountId,
+            type: reversedType,
+            amount: line.amount,
+            description: line.description || null,
+            locationId: line.locationId,
+            reconciled: false // New reversal line is not reconciled
+          };
+          
+          await tx.insert(journalEntryLines)
+            .values(lineData);
+            
+          console.log(`Added reversed line for account ${line.accountId}: ${reversedType} ${line.amount}`);
+        }
+        
+        // Update the original entry to link to the reversal
+        await tx.update(journalEntries)
+          .set({ 
+            reversedByEntryId: reversalEntry.id,
+            isReversed: true 
+          })
+          .where(eq(journalEntries.id, originalEntry.id));
+        
+        console.log(`Updated original entry ${originalEntry.id} to link to reversal ${reversalEntry.id}`);
+        
+        // Auto-post the reversal entry
+        await tx.update(journalEntries)
+          .set({
+            status: 'posted' as const,  // Use const assertion to ensure correct type
+            postedBy: options.createdBy,
+            postedAt: new Date()
+          })
+          .where(eq(journalEntries.id, reversalEntry.id));
+          
+        console.log(`Auto-posted reversal entry ${reversalEntry.id}`);
       });
       
-      // Auto-post the reversal entry
-      await this.updateJournalEntry(reversalEntry.id, {
-        status: 'posted',
-        postedBy: options.createdBy,
-        postedAt: new Date()
-      });
+      // Return the completed reversal entry with lines
+      if (!reversalEntry) {
+        throw new ApiError(500, `Failed to create reversal entry for journal entry ${journalEntryId}`);
+      }
       
-      // Return the completed reversal entry
-      return this.getJournalEntry(reversalEntry.id);
+      const entry = await this.getJournalEntry(reversalEntry.id);
+      console.log(`Returning reversal entry:`, JSON.stringify(entry));
+      return entry;
     } catch (e) {
       throw handleDbError(e, `reversing journal entry ${journalEntryId}`);
     }
