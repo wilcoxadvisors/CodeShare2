@@ -1,0 +1,46 @@
+Task Assignment: Finalize Cleanup of Consolidation Logic in storage.ts
+
+Context: The Consolidation Group logic was moved to server/storage/consolidationStorage.ts, but the original implementations (method bodies, helper methods, MemStorage properties, imports) were likely left behind in server/storage.ts, merely being updated to delegate calls. We need to fully remove this redundant code.
+
+Goal: Remove all remaining Consolidation Group related implementations, helper methods, properties, and unused imports from server/storage.ts.
+
+Instructions:
+
+Action: Open server/storage.ts:
+
+Ensure you are working with the file CodeShare/server/storage.ts.
+Action: Clean Up DatabaseStorage Class:
+
+Locate the DatabaseStorage class implementation.
+DELETE the entire method bodies for all Consolidation Group methods (e.g., getConsolidationGroup, listConsolidationGroups - which might appear as getConsolidationGroupsByUser, createConsolidationGroup, updateConsolidationGroup, deleteConsolidationGroup, addEntityToConsolidationGroup, removeEntityFromConsolidationGroup, generateConsolidatedReport). These methods should no longer exist in this class as they are not part of the updated IStorage interface.
+DELETE any private helper methods related only to consolidation (e.g., consolidateBalanceSheets, consolidateIncomeStatements, consolidateCashFlows, consolidateTrialBalances).
+Action: Clean Up MemStorage Class:
+
+Locate the MemStorage class implementation.
+DELETE the entire method bodies for all Consolidation Group methods (corresponding to the list in Step 2). These should no longer exist in this class.
+DELETE any class member properties used only for storing Consolidation Group data in memory (e.g., private consolidationGroups: Map<...>;, private consolidationGroupEntitiesMap: Map<...>;).
+REMOVE the initialization of these properties from the MemStorage constructor (e.g., this.consolidationGroups = new Map();).
+Action: Clean Up Imports:
+
+Review the import statements at the top of server/storage.ts.
+REMOVE any imported types or functions related only to Consolidation Groups (e.g., ConsolidationGroup, consolidationGroups, consolidationGroupEntities schema types, ReportType if only used for consolidation) that are no longer referenced anywhere in the storage.ts file after the removals in the previous steps.
+Action: Verify Application Startup & Run Tests:
+
+Restart the application server (npm run dev). Confirm it starts without errors (pay attention to potential errors caused by removed methods/imports).
+Run the verification tests again to ensure the cleanup didn't break anything and that the delegation is working correctly from the consuming routes:
+cd test && node api-journal-entries.js
+cd test && node batch-upload-test.js
+cd test/consolidation && npx tsx test-consolidation-groups.ts (or equivalent consolidation test command)
+Verification:
+
+The DatabaseStorage and MemStorage classes in storage.ts no longer contain implementations or helper methods for Consolidation Groups.
+MemStorage no longer contains properties or constructor initializations for Consolidation Groups.
+Unused Consolidation Group related imports are removed from storage.ts.
+Server starts successfully.
+All specified test scripts pass successfully.
+Reporting:
+
+Confirm that all Consolidation Group logic (implementations, helpers, properties, imports) has been removed from server/storage.ts.
+Report PASS/FAIL for server startup.
+Report PASS/FAIL status for each test script execution performed. Provide errors if any tests fail.
+State readiness to refactor the next domain.

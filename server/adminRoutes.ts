@@ -6,6 +6,7 @@
 import { Express, Request, Response } from "express";
 import { asyncHandler, throwUnauthorized, throwBadRequest, throwNotFound } from "./errorHandling";
 import { IStorage } from "./storage";
+import { consolidationStorage } from "./storage/consolidationStorage";
 import { UserRole, insertEntitySchema, entities as entitiesTable } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
@@ -300,7 +301,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       
       // Get all consolidation groups for the admin user
       const adminUser = req.user as any;
-      const consolidationGroups = await storage.getConsolidationGroups(adminUser.id);
+      const consolidationGroups = await consolidationStorage.getConsolidationGroupsByUser(adminUser.id);
       
       // Return structured data for admin dashboard with the expected format
       return res.json({

@@ -17,8 +17,7 @@ import {
   budgetDocuments, BudgetDocument, InsertBudgetDocument,
   forecasts, Forecast, InsertForecast,
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
-  consolidationGroups, ConsolidationGroup, InsertConsolidationGroup,
-  consolidationGroupEntities, InsertConsolidationGroupEntity,
+  // consolidation-related imports removed,
   locations, Location, InsertLocation,
   journalEntries, JournalEntry, JournalEntryStatus,
   Client, Entity
@@ -344,14 +343,12 @@ export class MemStorage implements IStorage {
   private budgetItems: Map<number, BudgetItem>;
   private budgetDocuments: Map<number, BudgetDocument>;
   private forecasts: Map<number, Forecast>;
-  private consolidationGroups: Map<number, ConsolidationGroup>;
-  private consolidationGroupEntitiesMap: Map<number, Set<number>>; // Map storing group-entity relationships
-  // No longer needed: private consolidationGroupEntities: Map<string, boolean>;
+  // Consolidation-related maps have been removed and moved to consolidationStorage module
   private currentBudgetId: number = 1;
   private currentBudgetItemId: number = 1;
   private currentBudgetDocumentId: number = 1;
   private currentForecastId: number = 1;
-  private currentConsolidationGroupId: number = 1;
+  // Consolidation-related counters have been removed and moved to consolidationStorage module
   
   // Form submission IDs
   private currentContactSubmissionId: number = 1;
@@ -442,9 +439,7 @@ export class MemStorage implements IStorage {
     this.budgetItems = new Map();
     this.budgetDocuments = new Map();
     this.forecasts = new Map();
-    this.consolidationGroups = new Map();
-    this.consolidationGroupEntitiesMap = new Map();
-    // No longer needed: this.consolidationGroupEntities = new Map();
+    // Consolidation-related maps have been removed and moved to consolidationStorage module
     
     // Create default admin user
     const adminUser: User = {
@@ -2883,56 +2878,7 @@ export class MemStorage implements IStorage {
     return forecastData;
   }
 
-  // Consolidation Group methods - delegated to consolidationStorage
-  async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroup(id);
-  }
-
-  async getConsolidationGroups(userId?: number): Promise<ConsolidationGroup[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroups(userId);
-  }
-
-  async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroupsByEntity(entityId);
-  }
-  
-  async getConsolidationGroupEntities(groupId: number): Promise<number[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroupEntities(groupId);
-  }
-
-  async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.createConsolidationGroup(group);
-  }
-
-  async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.updateConsolidationGroup(id, group);
-  }
-
-  async deleteConsolidationGroup(id: number): Promise<void> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.deleteConsolidationGroup(id);
-  }
-
-  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.addEntityToConsolidationGroup(groupId, entityId);
-  }
-
-  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.removeEntityFromConsolidationGroup(groupId, entityId);
-  }
-
-  async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.generateConsolidatedReport(groupId, reportType, startDate, endDate);
-  }
+  // Consolidation Group methods have been removed and refactored to consolidationStorage.ts
   
   // Helper methods for consolidation have been moved to consolidationStorage.ts
 
@@ -7121,56 +7067,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistFiles.id, id));
   }
 
-  // Consolidation Group methods
-  async getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroup(id);
-  }
-
-  async getConsolidationGroups(userId?: number): Promise<ConsolidationGroup[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroups(userId);
-  }
-
-  async getConsolidationGroupsByUser(userId: number): Promise<ConsolidationGroup[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroupsByUser(userId);
-  }
-
-  async getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.getConsolidationGroupsByEntity(entityId);
-  }
-
-  async createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.createConsolidationGroup(group);
-  }
-
-  async updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.updateConsolidationGroup(id, group);
-  }
-
-  async deleteConsolidationGroup(id: number): Promise<void> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.deleteConsolidationGroup(id);
-  }
-
-  async addEntityToConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.addEntityToConsolidationGroup(groupId, entityId);
-  }
-
-  async removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.removeEntityFromConsolidationGroup(groupId, entityId);
-  }
-
-  async generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any> {
-    // Delegate to the consolidationStorage singleton
-    return consolidationStorage.generateConsolidatedReport(groupId, reportType, startDate, endDate);
-  }
+  // Consolidation Group methods have been removed - all methods are now implemented in consolidationStorage.ts
 
   // All consolidation-related methods have been moved to the consolidationStorage module
 }

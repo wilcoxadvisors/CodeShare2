@@ -40,12 +40,98 @@ export interface IConsolidationStorage {
   removeEntityFromConsolidationGroup(groupId: number, entityId: number): Promise<ConsolidationGroup>;
   generateConsolidatedReport(groupId: number, reportType: ReportType, startDate?: Date, endDate?: Date): Promise<any>;
   getConsolidationGroupEntities(groupId: number): Promise<number[]>;
+  cleanupEmptyConsolidationGroups(ownerId?: number): Promise<number>;
 }
 
 /**
  * Implementation of consolidation group storage operations using Drizzle ORM
+ * Implemented as a singleton to maintain a single instance throughout the application
  */
 export class ConsolidationStorage implements IConsolidationStorage {
+  // Singleton instance
+  private static instance: ConsolidationStorage;
+  
+  /**
+   * Gets the singleton instance of the ConsolidationStorage class
+   * @returns The singleton instance
+   */
+  public static getInstance(): ConsolidationStorage {
+    if (!ConsolidationStorage.instance) {
+      ConsolidationStorage.instance = new ConsolidationStorage();
+    }
+    return ConsolidationStorage.instance;
+  }
+  
+  /**
+   * Private constructor to prevent direct instantiation
+   * Use getInstance() to get the singleton instance
+   */
+  private constructor() {}
+  /**
+   * Clean up empty consolidation groups (soft delete)
+   * @param ownerId Optional owner ID to filter groups by owner
+   * @returns The number of groups cleaned up
+   */
+  async cleanupEmptyConsolidationGroups(ownerId?: number): Promise<number> {
+    try {
+      return await db.transaction(async (tx) => {
+        // Find all active consolidation groups
+        let query = tx
+          .select({
+            id: consolidationGroups.id
+          })
+          .from(consolidationGroups)
+          .where(eq(consolidationGroups.isActive, true));
+          
+        // Add owner filter if provided
+        if (ownerId !== undefined) {
+          query = tx
+            .select({
+              id: consolidationGroups.id
+            })
+            .from(consolidationGroups)
+            .where(
+              and(
+                eq(consolidationGroups.isActive, true),
+                eq(consolidationGroups.ownerId, ownerId)
+              )
+            );
+        }
+        
+        const activeGroups = await query;
+        const groupsToCleanup: number[] = [];
+        
+        // Check each group for entities
+        for (const group of activeGroups) {
+          const entities = await tx
+            .select()
+            .from(consolidationGroupEntities)
+            .where(eq(consolidationGroupEntities.groupId, group.id));
+            
+          if (entities.length === 0) {
+            groupsToCleanup.push(group.id);
+          }
+        }
+        
+        // Soft delete empty groups
+        if (groupsToCleanup.length > 0) {
+          await tx
+            .update(consolidationGroups)
+            .set({ 
+              isActive: false,
+              updatedAt: new Date()
+            })
+            .where(inArray(consolidationGroups.id, groupsToCleanup));
+        }
+        
+        console.log(`Cleaned up ${groupsToCleanup.length} empty consolidation groups`);
+        return groupsToCleanup.length;
+      });
+    } catch (error) {
+      console.error('Error cleaning up empty consolidation groups:', error);
+      throw handleDbError(error, 'cleanupEmptyConsolidationGroups');
+    }
+  }
   /**
    * Get a consolidation group by ID
    */
@@ -810,5 +896,5 @@ export class ConsolidationStorage implements IConsolidationStorage {
   }
 }
 
-// Export a singleton instance
-export const consolidationStorage = new ConsolidationStorage();
+// Export a singleton instance using the getInstance method
+export const consolidationStorage = ConsolidationStorage.getInstance();

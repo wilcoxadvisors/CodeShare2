@@ -1,12 +1,12 @@
 import { Express, Request, Response } from 'express';
 import { ReportType } from '../shared/schema';
 import { IStorage } from './storage';
+import { consolidationStorage } from './storage/consolidationStorage';
 import {
   throwNotFound,
   throwUnauthorized,
   asyncHandler
 } from './errorHandling';
-import { cleanupEmptyConsolidationGroups } from './consolidation-group-methods';
 
 interface AuthUser {
   id: number;
@@ -32,7 +32,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
    */
   app.get('/api/consolidation-groups', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const user = req.user as AuthUser;
-    const groups = await storage.getConsolidationGroups(user.id);
+    const groups = await consolidationStorage.getConsolidationGroupsByUser(user.id);
     
     res.json({
       status: "success",
@@ -45,7 +45,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
    */
   app.get('/api/consolidation-groups/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const groupId = parseInt(req.params.id);
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     
     if (!group) {
       throwNotFound('Consolidation Group');
@@ -78,7 +78,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       createdBy: user.id
     };
     
-    const newGroup = await storage.createConsolidationGroup(groupData);
+    const newGroup = await consolidationStorage.createConsolidationGroup(groupData);
     res.status(201).json({
       status: "success",
       data: newGroup
@@ -90,7 +90,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
    */
   app.put('/api/consolidation-groups/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const groupId = parseInt(req.params.id);
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     
     if (!group) {
       throwNotFound('Consolidation Group');
@@ -107,7 +107,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwUnauthorized('You do not have permission to update this consolidation group');
     }
 
-    const updatedGroup = await storage.updateConsolidationGroup(groupId, req.body);
+    const updatedGroup = await consolidationStorage.updateConsolidationGroup(groupId, req.body);
     res.json({
       status: "success",
       data: updatedGroup
@@ -119,7 +119,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
    */
   app.delete('/api/consolidation-groups/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const groupId = parseInt(req.params.id);
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     
     if (!group) {
       throwNotFound('Consolidation Group');
@@ -136,7 +136,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwUnauthorized('You do not have permission to delete this consolidation group');
     }
 
-    await storage.deleteConsolidationGroup(groupId);
+    await consolidationStorage.deleteConsolidationGroup(groupId);
     res.status(204).send();
   }));
 
@@ -147,7 +147,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     const groupId = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
     
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     if (!group) {
       throwNotFound('Consolidation Group');
     }
@@ -170,7 +170,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
 
     // Add entity and get updated group in one operation
-    const updatedGroup = await storage.addEntityToConsolidationGroup(groupId, entityId);
+    const updatedGroup = await consolidationStorage.addEntityToConsolidationGroup(groupId, entityId);
     res.json({
       status: "success",
       data: updatedGroup
@@ -184,7 +184,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     const groupId = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
     
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     if (!group) {
       throwNotFound('Consolidation Group');
     }
@@ -201,7 +201,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
 
     // Remove entity and get updated group in one operation
-    const updatedGroup = await storage.removeEntityFromConsolidationGroup(groupId, entityId);
+    const updatedGroup = await consolidationStorage.removeEntityFromConsolidationGroup(groupId, entityId);
     res.json({
       status: "success",
       data: updatedGroup
@@ -215,7 +215,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     const groupId = parseInt(req.params.id);
     const reportType = req.params.reportType as ReportType;
     
-    const group = await storage.getConsolidationGroup(groupId);
+    const group = await consolidationStorage.getConsolidationGroup(groupId);
     if (!group) {
       throwNotFound('Consolidation Group');
     }
@@ -243,7 +243,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       endDate = new Date(req.query.endDate as string);
     }
 
-    const report = await storage.generateConsolidatedReport(groupId, reportType, startDate, endDate);
+    const report = await consolidationStorage.generateConsolidatedReport(groupId, reportType, startDate, endDate);
     res.json({
       status: "success",
       data: report
@@ -270,7 +270,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
       throwUnauthorized('You do not have access to this entity');
     }
     
-    const groups = await storage.getConsolidationGroupsByEntity(entityId);
+    const groups = await consolidationStorage.getConsolidationGroupsByEntity(entityId);
     res.json({
       status: "success",
       data: groups
@@ -295,7 +295,7 @@ export function registerConsolidationRoutes(app: Express, storage: IStorage) {
     }
     
     const ownerId = onlyMine ? user.id : undefined;
-    const cleanedCount = await cleanupEmptyConsolidationGroups(ownerId);
+    const cleanedCount = await consolidationStorage.cleanupEmptyConsolidationGroups(ownerId);
     
     res.json({ 
       status: 'success', 
