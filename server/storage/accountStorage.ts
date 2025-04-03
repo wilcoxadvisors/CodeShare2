@@ -535,6 +535,31 @@ export class AccountStorage implements IAccountStorage {
              throw handleDbError(e, `checking if account ${id} has transactions`);
          }
     }
+    
+    async markAccountInactive(id: number, clientId: number): Promise<Account | undefined> {
+        console.log(`Marking account ${id} as inactive for client ${clientId}`);
+        try {
+            // Check if account exists and is not already inactive
+            const existingAccount = await this.getAccountById(id, clientId);
+            if (!existingAccount) {
+                throw new ApiError(404, `Account with ID ${id} not found for client ${clientId}.`);
+            }
+            
+            if (!existingAccount.active) {
+                return existingAccount; // Already inactive, just return it
+            }
+            
+            // Set the account to inactive
+            const [updatedAccount] = await db.update(accounts)
+                .set({ active: false })
+                .where(and(eq(accounts.id, id), eq(accounts.clientId, clientId)))
+                .returning();
+            
+            return updatedAccount;
+        } catch (e) {
+            throw handleDbError(e, `marking account ${id} inactive for client ${clientId}`);
+        }
+    }
 
     async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult> {
         try {

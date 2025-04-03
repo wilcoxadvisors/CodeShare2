@@ -3574,18 +3574,36 @@ export class DatabaseStorage implements IStorage {
     return accountStorage.updateAccount(id, accountData);
   }
 
-  async deleteAccount(id: number): Promise<void> {
+  async deleteAccount(id: number, clientId?: number): Promise<void> {
+    // Get clientId from account if not provided
+    if (!clientId) {
+      const account = await this.getAccount(id);
+      if (!account) {
+        throw new ApiError(404, `Account with ID ${id} not found.`);
+      }
+      clientId = account.clientId;
+    }
+    
     // Delegated to accountStorage.ts
-    return accountStorage.deleteAccount(id);
+    return accountStorage.deleteAccount(id, clientId);
   }
   
   /**
    * Marks an account as inactive instead of deleting it
    * This is used when an account has transactions and cannot be deleted
    */
-  async markAccountInactive(id: number): Promise<Account | undefined> {
+  async markAccountInactive(id: number, clientId?: number): Promise<Account | undefined> {
+    // Get clientId from account if not provided
+    if (!clientId) {
+      const account = await this.getAccount(id);
+      if (!account) {
+        throw new ApiError(404, `Account with ID ${id} not found.`);
+      }
+      clientId = account.clientId;
+    }
+    
     // Delegated to accountStorage.ts
-    return accountStorage.markAccountInactive(id);
+    return accountStorage.markAccountInactive(id, clientId);
   }
   
   /**
