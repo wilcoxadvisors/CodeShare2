@@ -11,6 +11,38 @@ import { ApiError } from "../errorHandling"; // Adjust path
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
+// Interface definitions for account import functionality
+export interface ImportPreview {
+    totalRows: number;
+    sampleRows: Record<string, any>[];
+    detectedColumns: string[];
+    warnings: string[];
+    errors: string[];
+}
+
+export interface ImportSelections {
+    columnMappings: Record<string, string>;
+    skipRows?: number[];
+    updateExisting?: boolean;
+}
+
+export interface ImportResult {
+    success: boolean;
+    message: string;
+    results?: any;
+    errors: string[];
+    warnings: string[];
+    count?: number;
+    added?: number;
+    updated?: number;
+    unchanged?: number;
+    skipped?: number;
+    failed?: number;
+    accountIds?: number[];
+    inactive?: number;
+    deleted?: number;
+}
+
 // Helper function to handle database errors consistently
 function handleDbError(error: unknown, operation: string): Error {
     console.error(`Database error during ${operation}:`, error);
@@ -35,19 +67,152 @@ export interface AccountTreeNode extends Account {
 // Define interface specifically for Account storage operations
 export interface IAccountStorage {
     seedClientCoA(clientId: number): Promise<void>;
+    getAccount(id: number): Promise<Account | undefined>;
+    getAccounts(clientId: number): Promise<Account[]>;
+    getAccountsByType(clientId: number, type: AccountType): Promise<Account[]>;
     getAccountsByClientId(clientId: number): Promise<Account[]>;
     getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
     createAccount(accountData: Omit<Account, 'id' | 'active' | 'createdAt' | 'updatedAt'>): Promise<Account>;
     getAccountById(accountId: number, clientId: number): Promise<Account | undefined>;
     updateAccount(accountId: number, clientId: number, accountData: Partial<Omit<Account, 'id' | 'clientId' | 'active' | 'createdAt' | 'updatedAt'>>): Promise<Account | null>;
     deleteAccount(accountId: number, clientId: number): Promise<boolean>; // Soft delete
-    importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: any | null): Promise<{ success: boolean; message: string; results?: any; errors: string[]; warnings: string[] }>; // Refined return type
+    generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview>; // Import preview
+    importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult>; // Refined return type
     exportCoaForClient(clientId: number): Promise<any[]>; // Return type depends on export format needs
     accountHasTransactions(id: number): Promise<boolean>; // Helper
 }
 
 // Implementation using Database
 export class AccountStorage implements IAccountStorage {
+    // Methods that match the IStorage interface for delegation
+    async getAccount(id: number): Promise<Account | undefined> {
+        console.log(`Getting account by ID ${id}`);
+        try {
+            const [account] = await db.select()
+                .from(accounts)
+                .where(eq(accounts.id, id))
+                .limit(1);
+            return account;
+        } catch (e) {
+            throw handleDbError(e, `getting account by ID ${id}`);
+        }
+    }
+    
+    async getAccounts(clientId: number): Promise<Account[]> {
+        // This delegates to our existing getAccountsByClientId method
+        return this.getAccountsByClientId(clientId);
+    }
+    
+    async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
+        console.log(`Getting accounts of type ${type} for client ${clientId}`);
+        try {
+            return await db.select()
+                .from(accounts)
+                .where(and(
+                    eq(accounts.clientId, clientId),
+                    eq(accounts.type, type),
+                    eq(accounts.active, true)
+                ))
+                .orderBy(accounts.accountCode);
+        } catch (e) {
+            throw handleDbError(e, `getting accounts by type ${type} for client ${clientId}`);
+        }
+    }
+    
+    // Define interface for import preview result
+    async generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview> {
+        console.log(`Generating CoA import preview for client ${clientId}, file: ${fileName}`);
+        try {
+            const fileExt = fileName.split('.').pop()?.toLowerCase();
+            const isExcel = fileExt === 'xlsx' || fileExt === 'xls';
+            
+            // Data structure to store preview results
+            const preview: ImportPreview = {
+                totalRows: 0,
+                sampleRows: [],
+                detectedColumns: [],
+                warnings: [],
+                errors: []
+            };
+            
+            if (isExcel) {
+                // Process Excel file
+                const XLSX = require('xlsx');
+                const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (data.length < 2) {
+                    preview.errors.push('File contains no data rows. Please ensure the file has header and data rows.');
+                    return preview;
+                }
+                
+                // Extract headers (first row)
+                const headers = data[0] as string[];
+                preview.detectedColumns = headers.map(h => String(h).trim());
+                
+                // Check for required columns
+                this.validateRequiredColumns(preview);
+                
+                // Sample rows (up to 5)
+                const dataRows = data.slice(1) as any[];
+                preview.totalRows = dataRows.length;
+                preview.sampleRows = dataRows.slice(0, 5).map((row) => {
+                    const rowObj: Record<string, any> = {};
+                    headers.forEach((header, index) => {
+                        rowObj[header] = row[index];
+                    });
+                    return rowObj;
+                });
+            } else {
+                // Process CSV file with PapaParse
+                const Papa = require('papaparse');
+                const parseResult = Papa.parse(fileBuffer.toString(), {
+                    header: true,
+                    skipEmptyLines: true
+                });
+                
+                if (parseResult.errors && parseResult.errors.length > 0) {
+                    preview.errors = parseResult.errors.map((err: any) => `CSV parsing error: ${err.message} at row ${err.row}`);
+                }
+                
+                if (parseResult.data.length === 0) {
+                    preview.errors.push('File contains no data rows. Please ensure the file has header and data rows.');
+                    return preview;
+                }
+                
+                // Extract headers from the first row
+                preview.detectedColumns = Object.keys(parseResult.data[0] as object).map(h => h.trim());
+                
+                // Check for required columns
+                this.validateRequiredColumns(preview);
+                
+                // Sample rows (up to 5)
+                preview.totalRows = parseResult.data.length;
+                preview.sampleRows = parseResult.data.slice(0, 5) as Record<string, any>[];
+            }
+            
+            return preview;
+        } catch (e) {
+            throw handleDbError(e, `generating CoA import preview for client ${clientId}`);
+        }
+    }
+    
+    // Helper method to validate required columns
+    private validateRequiredColumns(preview: ImportPreview): void {
+        const requiredColumns = ['name', 'accountCode', 'type'];
+        const missingColumns = requiredColumns.filter(col => 
+            !preview.detectedColumns.some((header: string) => 
+                header.toLowerCase() === col.toLowerCase() ||
+                header.toLowerCase() === col.replace(/([A-Z])/g, '_$1').toLowerCase()
+            )
+        );
+        
+        if (missingColumns.length > 0) {
+            preview.warnings.push(`Missing required columns: ${missingColumns.join(', ')}. These columns are required for account creation.`);
+        }
+    }
 
     // Helper method to normalize account types from imported data
     private normalizeAccountType(type: string): AccountType {
@@ -371,7 +536,7 @@ export class AccountStorage implements IAccountStorage {
          }
     }
 
-    async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: any | null): Promise<{ success: boolean; message: string; results?: any; errors: string[]; warnings: string[] }> {
+    async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult> {
         try {
             // Determine file type based on file extension
             const fileType = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
@@ -558,7 +723,14 @@ export class AccountStorage implements IAccountStorage {
                     : `Import completed with ${results.errors.length} errors`,
                 results,
                 errors: results.errors,
-                warnings: results.warnings
+                warnings: results.warnings,
+                count: results.totalProcessed,
+                added: results.created,
+                updated: results.updated,
+                unchanged: 0, // Not tracked in this implementation
+                skipped: results.skipped,
+                failed: results.errors.length,
+                accountIds: [] // Not tracked in this implementation
             };
         } catch (e) {
             throw handleDbError(e, `importing Chart of Accounts for client ${clientId}`);
