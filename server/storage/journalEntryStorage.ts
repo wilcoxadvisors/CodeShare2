@@ -38,6 +38,14 @@ export interface IJournalEntryStorage {
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
   deleteJournalEntry(id: number): Promise<boolean>;
   
+  // Legacy Journal methods (aliases for JournalEntry methods)
+  getJournal(id: number): Promise<JournalEntry | undefined>;
+  getJournals(entityId: number): Promise<JournalEntry[]>;
+  getJournalsByType(entityId: number, type: any): Promise<JournalEntry[]>;
+  createJournal(journal: any): Promise<JournalEntry>;
+  updateJournal(id: number, journal: Partial<any>): Promise<JournalEntry | undefined>;
+  deleteJournal(id: number): Promise<boolean>;
+  
   // Journal Entry Line operations
   getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
   createJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine>;
@@ -67,14 +75,6 @@ export interface IJournalEntryStorage {
   // Validation and helper methods
   validateJournalEntryBalance(id: number): Promise<boolean>;
   validateAccountIds(accountIds: number[], clientId: number): Promise<boolean>;
-  
-  // Legacy Journal methods (aliases for JournalEntry methods)
-  getJournal(id: number): Promise<JournalEntry | undefined>;
-  getJournals(entityId: number): Promise<JournalEntry[]>;
-  getJournalsByType(entityId: number, type: any): Promise<JournalEntry[]>;
-  createJournal(journal: any): Promise<JournalEntry>;
-  updateJournal(id: number, journal: Partial<any>): Promise<JournalEntry | undefined>;
-  deleteJournal(id: number): Promise<boolean>;
 }
 
 // Implementation class for Journal Entry Storage
@@ -689,9 +689,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             .values(insertData)
             .returning();
           
-          // Process lines
-          if (entryData.lines && Array.isArray(entryData.lines)) {
-            for (const lineData of entryData.lines) {
+          // Process lines if present in the entry data
+          // Note: 'lines' is not in the InsertJournalEntry type, but we handle it for backward compatibility
+          const entryWithLines = entryData as any;
+          if (entryWithLines.lines && Array.isArray(entryWithLines.lines)) {
+            for (const lineData of entryWithLines.lines) {
               await this.createJournalEntryLine({
                 ...lineData,
                 journalEntryId: journalEntry.id
