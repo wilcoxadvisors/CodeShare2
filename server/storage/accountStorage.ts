@@ -76,6 +76,7 @@ export interface IAccountStorage {
     getAccountById(accountId: number, clientId: number): Promise<Account | undefined>;
     updateAccount(accountId: number, clientId: number, accountData: Partial<Omit<Account, 'id' | 'clientId' | 'active' | 'createdAt' | 'updatedAt'>>): Promise<Account | null>;
     deleteAccount(accountId: number, clientId: number): Promise<boolean>; // Soft delete
+    markAccountInactive(id: number, clientId: number): Promise<Account | undefined>; // Mark account as inactive instead of deleting
     generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview>; // Import preview
     importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult>; // Refined return type
     exportCoaForClient(clientId: number): Promise<any[]>; // Return type depends on export format needs
