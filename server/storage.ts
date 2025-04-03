@@ -5838,22 +5838,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
-    const [account] = await db
-      .insert(accounts)
-      .values({
-        name: insertAccount.name,
-        accountCode: insertAccount.accountCode,
-        type: insertAccount.type,
-        clientId: insertAccount.clientId,
-        active: insertAccount.active ?? true,
-        subtype: insertAccount.subtype,
-        isSubledger: insertAccount.isSubledger ?? false,
-        subledgerType: insertAccount.subledgerType,
-        parentId: insertAccount.parentId,
-        description: insertAccount.description
-      })
-      .returning();
-    return account;
+    console.log(`VERIFICATION TEST: storage.createAccount called with:`, JSON.stringify(insertAccount, null, 2));
+
+    try {
+      const [account] = await db
+        .insert(accounts)
+        .values({
+          name: insertAccount.name,
+          accountCode: insertAccount.accountCode,
+          type: insertAccount.type,
+          clientId: insertAccount.clientId,
+          active: insertAccount.active ?? true,
+          subtype: insertAccount.subtype,
+          isSubledger: insertAccount.isSubledger ?? false,
+          subledgerType: insertAccount.subledgerType,
+          parentId: insertAccount.parentId,
+          description: insertAccount.description
+        })
+        .returning();
+      
+      console.log(`VERIFICATION TEST: Account inserted successfully:`, JSON.stringify(account, null, 2));
+      return account;
+    } catch (error) {
+      console.error(`VERIFICATION TEST: Error in createAccount:`, error);
+      throw error;
+    }
   }
 
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {

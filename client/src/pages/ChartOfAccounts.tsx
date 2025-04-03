@@ -306,48 +306,50 @@ function ChartOfAccounts() {
   const useAddAccount = () => {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number }) => {
-        console.log("DEBUG: useAddAccount - Mutate called with:", data);
+        console.log("VERIFICATION TEST: useAddAccount - Mutate called with:", JSON.stringify(data, null, 2));
         
         // Enhanced validation for clientId
         if (!data.clientId || typeof data.clientId !== 'number' || isNaN(data.clientId) || data.clientId <= 0) {
-          console.error("DEBUG: useAddAccount - Invalid clientId:", data.clientId, "type:", typeof data.clientId);
+          console.error("VERIFICATION TEST: useAddAccount - Invalid clientId:", data.clientId, "type:", typeof data.clientId);
           throw new Error(`Invalid client ID: ${data.clientId}. Please select a valid client before creating an account.`);
         }
         
         const url = `/api/clients/${data.clientId}/accounts`;
-        console.log("DEBUG: useAddAccount - API URL:", url, "Data:", JSON.stringify(data));
+        console.log("VERIFICATION TEST: useAddAccount - API URL:", url);
+        console.log("VERIFICATION TEST: useAddAccount - Prepared data:", JSON.stringify(data, null, 2));
         
         try {
           // Additional logging for the API call
-          console.log(`DEBUG: useAddAccount - Making POST request to ${url} with data:`, JSON.stringify(data, null, 2));
+          console.log(`VERIFICATION TEST: useAddAccount - Making POST request to ${url}`);
           
           const result = await apiRequest(url, {
             method: 'POST',
             data
           });
-          console.log("DEBUG: useAddAccount - API response:", result);
+          console.log("VERIFICATION TEST: useAddAccount - API response status: OK");
+          console.log("VERIFICATION TEST: useAddAccount - API response data:", JSON.stringify(result, null, 2));
           return result;
         } catch (error: any) { // Explicitly type error as any to handle different properties safely
-          console.error("DEBUG: useAddAccount - API error:", error);
-          console.error("DEBUG: useAddAccount - Error message:", error.message);
-          console.error("DEBUG: useAddAccount - Error name:", error.name);
+          console.error("VERIFICATION TEST: useAddAccount - API error:", error);
+          console.error("VERIFICATION TEST: useAddAccount - Error message:", error.message);
+          console.error("VERIFICATION TEST: useAddAccount - Error name:", error.name);
           
           if (error.response) {
-            console.error("DEBUG: useAddAccount - API error status:", error.response.status);
-            console.error("DEBUG: useAddAccount - API error data:", error.response.data);
-            console.error("DEBUG: useAddAccount - API error headers:", error.response.headers);
+            console.error("VERIFICATION TEST: useAddAccount - API error status:", error.response.status);
+            console.error("VERIFICATION TEST: useAddAccount - API error data:", JSON.stringify(error.response.data, null, 2));
+            console.error("VERIFICATION TEST: useAddAccount - API error headers:", JSON.stringify(error.response.headers, null, 2));
           }
           
           if (error.request) {
-            console.error("DEBUG: useAddAccount - Request was made but no response received");
-            console.error("DEBUG: useAddAccount - Request:", error.request);
+            console.error("VERIFICATION TEST: useAddAccount - Request was made but no response received");
+            console.error("VERIFICATION TEST: useAddAccount - Request:", error.request);
           }
           
           throw error;
         }
       },
       onSuccess: (data) => {
-        console.log("DEBUG: useAddAccount - onSuccess triggered", data);
+        console.log("VERIFICATION TEST: useAddAccount - onSuccess triggered - account created successfully:", JSON.stringify(data, null, 2));
         toast({
           title: "Account created",
           description: "The account has been created successfully.",
@@ -360,8 +362,8 @@ function ChartOfAccounts() {
           queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
         }
       },
-      onError: (error: Error) => {
-        console.log("DEBUG: useAddAccount - onError triggered:", error);
+      onError: (error: any) => {
+        console.log("VERIFICATION TEST: useAddAccount - onError triggered:", error);
         toast({
           title: "Error",
           description: `Failed to create account: ${error.message}`,
@@ -617,7 +619,7 @@ function ChartOfAccounts() {
     e.preventDefault();
     
     // Enhanced validation that a client is selected with detailed logging
-    console.log("DEBUG - handleSubmit - Client validation:", { 
+    console.log("VERIFICATION TEST - handleSubmit - Client validation:", { 
       currentEntity, 
       selectedClientId,
       clientIdToUse,
@@ -625,7 +627,7 @@ function ChartOfAccounts() {
     });
     
     if (!clientIdToUse) {
-      console.error("DEBUG - handleSubmit - No client ID available");
+      console.error("VERIFICATION TEST - handleSubmit - No client ID available");
       toast({
         title: "Client required",
         description: "Please select a client from the header dropdown first.",
@@ -635,7 +637,7 @@ function ChartOfAccounts() {
     }
     
     if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
-      console.error("DEBUG - handleSubmit - Invalid client ID:", clientIdToUse);
+      console.error("VERIFICATION TEST - handleSubmit - Invalid client ID:", clientIdToUse);
       toast({
         title: "Invalid client",
         description: "The selected client appears to be invalid. Please try selecting a different client.",
@@ -646,7 +648,7 @@ function ChartOfAccounts() {
     
     // Validate required fields
     if (!accountData.name || !accountData.accountCode || !accountData.type) {
-      console.error("DEBUG - handleSubmit - Missing required fields:", { 
+      console.error("VERIFICATION TEST - handleSubmit - Missing required fields:", { 
         name: accountData.name, 
         accountCode: accountData.accountCode,
         type: accountData.type
@@ -658,6 +660,8 @@ function ChartOfAccounts() {
       });
       return;
     }
+    
+    console.log("VERIFICATION TEST - handleSubmit - All form validations passed, preparing to submit account");
     
     // Create a copy of the data to submit
     // Create a copy of the data to submit with proper TypeScript type narrowing
@@ -697,6 +701,11 @@ function ChartOfAccounts() {
         updateAccount.mutate(updateData);
       } else {
         // For create mode
+        console.log("VERIFICATION TEST - handleSubmit - Creating new account with data:", JSON.stringify({
+          ...submitData,
+          clientId: clientIdToUse
+        }, null, 2));
+        
         createAccount.mutate({
           ...submitData,
           clientId: clientIdToUse

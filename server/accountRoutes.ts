@@ -399,13 +399,13 @@ export function registerAccountRoutes(app: Express) {
   
   // Create a new account
   app.post("/api/clients/:clientId/accounts", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    console.log("DEBUG: POST /api/clients/:clientId/accounts route hit");
+    console.log("VERIFICATION TEST: POST /api/clients/:clientId/accounts route hit");
     const clientId = parseInt(req.params.clientId);
-    console.log(`DEBUG: Create account request for clientId=${clientId}`, req.body);
+    console.log(`VERIFICATION TEST: Create account request for clientId=${clientId}`, JSON.stringify(req.body, null, 2));
     
     // Validate client ID
     if (isNaN(clientId) || clientId <= 0) {
-      console.log(`DEBUG: Invalid client ID: ${clientId}`);
+      console.log(`VERIFICATION TEST: Invalid client ID: ${clientId}`);
       throwBadRequest("Invalid client ID");
     }
     
@@ -414,12 +414,16 @@ export function registerAccountRoutes(app: Express) {
     const client = await storage.getClient(clientId);
     
     if (!client) {
+      console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
       throwNotFound("Client");
     }
     
     if (client.userId !== userId && (req.user as AuthUser).role !== 'admin') {
+      console.log(`VERIFICATION TEST: Access forbidden - user ${userId} does not have access to client ${clientId}`);
       throwForbidden("You don't have access to this client");
     }
+    
+    console.log(`VERIFICATION TEST: User ${userId} has access to client ${clientId}`);
     
     // Validate request data
     const validationResult = validateRequest(
@@ -428,23 +432,29 @@ export function registerAccountRoutes(app: Express) {
     );
     
     if (!validationResult.success) {
+      console.log(`VERIFICATION TEST: Validation failed:`, validationResult.error);
       return res.status(HttpStatus.BAD_REQUEST).json(validationResult.error);
     }
     
     const accountData = validationResult.data;
+    console.log(`VERIFICATION TEST: Validated account data:`, JSON.stringify(accountData, null, 2));
     
     // Check for duplicate account code
     const existingAccounts = await storage.getAccounts(clientId);
+    console.log(`VERIFICATION TEST: Found ${existingAccounts.length} existing accounts for client ${clientId}`);
     const isDuplicateCode = existingAccounts.some(
       acc => acc.accountCode === accountData.accountCode
     );
     
     if (isDuplicateCode) {
+      console.log(`VERIFICATION TEST: Duplicate account code detected: ${accountData.accountCode}`);
       throwBadRequest("Account code already exists. Please use a unique code.");
     }
     
     // Create account
+    console.log(`VERIFICATION TEST: Calling storage.createAccount with:`, JSON.stringify(accountData, null, 2));
     const account = await storage.createAccount(accountData);
+    console.log(`VERIFICATION TEST: Account created successfully:`, JSON.stringify(account, null, 2));
     
     // Return created account
     res.status(HttpStatus.CREATED).json(account);

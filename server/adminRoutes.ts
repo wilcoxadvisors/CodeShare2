@@ -208,6 +208,74 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       throw error;
     }
   }));
+  
+  /**
+   * Delete a client and all its related data
+   */
+  app.delete("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log('DELETE /api/admin/clients/:id - Start of handler');
+      const clientId = parseInt(req.params.id);
+      console.log('Client ID to delete:', clientId);
+      
+      // Verify client exists
+      const existingClient = await storage.getClient(clientId);
+      if (!existingClient) {
+        throwNotFound("Client not found");
+      }
+      
+      // Prevent deletion of protected clients
+      const protectedClients = ['Admin Client', 'OK', 'ONE1', 'Pepper'];
+      if (existingClient && protectedClients.includes(existingClient.name)) {
+        return res.status(403).json({
+          status: 'error',
+          message: `Cannot delete protected client: ${existingClient.name}`
+        });
+      }
+      
+      console.log(`Deleting client ${clientId}: ${existingClient ? existingClient.name : 'Unknown'}`);
+      
+      // Use direct database operations to ensure proper cleanup
+      // This implementation bypasses any issues with the storage interface
+      
+      // Step 1: Delete all entities for this client
+      const { db } = await import('../server/db');
+      const { entities, accounts, clients } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      try {
+        // Delete entities
+        const entitiesDeleted = await db.delete(entities)
+          .where(eq(entities.clientId, clientId));
+        console.log(`Deleted entities for client ${clientId}:`, 'unknown count');
+        
+        // Delete accounts
+        const accountsDeleted = await db.delete(accounts)
+          .where(eq(accounts.clientId, clientId));
+        console.log(`Deleted accounts for client ${clientId}:`, 'unknown count');
+        
+        // Delete the client itself
+        const clientDeleted = await db.delete(clients)
+          .where(eq(clients.id, clientId));
+        console.log(`Deleted client ${clientId}:`, 'unknown count');
+        
+        return res.json({
+          status: "success",
+          message: `Successfully deleted client ${existingClient ? existingClient.name : 'Unknown'} (ID: ${clientId})`
+        });
+      } catch (dbError: any) {
+        console.error(`Database error deleting client ${clientId}:`, dbError.message || dbError);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Database error while deleting client',
+          error: dbError.message || String(dbError)
+        });
+      }
+    } catch (error: any) {
+      console.error("Error deleting client:", error.message || error);
+      throw error;
+    }
+  }));
   /**
    * Get admin dashboard data
    * Returns clients, entities and consolidation groups for admin dashboard
