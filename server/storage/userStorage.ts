@@ -368,12 +368,12 @@ export class UserStorage implements IUserStorage {
   async updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined> {
     try {
       const [consent] = await db
-        .update(dataConsents)
+        .update(dataConsent)
         .set({
           granted,
           timestamp: new Date() // Update the timestamp to reflect the change
         })
-        .where(eq(dataConsents.id, id))
+        .where(eq(dataConsent.id, id))
         .returning();
       
       return consent;
