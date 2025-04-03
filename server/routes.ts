@@ -290,6 +290,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // User entity access route
+  app.get("/api/users/:userId/entity-access", isAuthenticated, async (req, res) => {
+    try {
+      const requestedUserId = parseInt(req.params.userId);
+      const currentUserId = (req.user as AuthUser).id;
+      const userRole = (req.user as AuthUser).role;
+      
+      // Only allow users to access their own entity access list unless they're an admin
+      if (requestedUserId !== currentUserId && userRole !== 'admin') {
+        return res.status(403).json({ 
+          status: "error",
+          message: "You do not have permission to view this user's entity access list" 
+        });
+      }
+      
+      // Get the entity access list
+      const accessList = await storage.getUserEntityAccessList(requestedUserId);
+      
+      res.json({
+        status: "success",
+        data: accessList
+      });
+    } catch (error) {
+      console.error("Error fetching user entity access list:", error);
+      res.status(500).json({ 
+        status: "error", 
+        message: "Internal server error" 
+      });
+    }
+  });
+  
   // Entity routes
   app.get("/api/entities", isAuthenticated, async (req, res) => {
     try {

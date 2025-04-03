@@ -28,9 +28,7 @@ export interface IEntityStorage {
   createEntity(entity: InsertEntity): Promise<Entity>;
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
   
-  // User Entity Access methods
-  getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
-  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
+  // Note: User Entity Access methods have been moved to userStorage.ts
 }
 
 /**
@@ -211,42 +209,7 @@ export class EntityStorage implements IEntityStorage {
     }
   }
 
-  /**
-   * Get a user's access level for an entity
-   */
-  async getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined> {
-    try {
-      const [access] = await db
-        .select()
-        .from(userEntityAccess)
-        .where(and(
-          eq(userEntityAccess.userId, userId),
-          eq(userEntityAccess.entityId, entityId)
-        ));
-      return access?.accessLevel;
-    } catch (error) {
-      handleDbError(error, "Error retrieving user entity access");
-      return undefined;
-    }
-  }
-
-  /**
-   * Grant access to an entity for a user
-   */
-  async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void> {
-    try {
-      await db
-        .insert(userEntityAccess)
-        .values({ userId, entityId, accessLevel })
-        .onConflictDoUpdate({
-          target: [userEntityAccess.userId, userEntityAccess.entityId],
-          set: { accessLevel }
-        });
-    } catch (error) {
-      handleDbError(error, "Error granting user entity access");
-      throw error;
-    }
-  }
+  // Note: getUserEntityAccess and grantUserEntityAccess methods have been moved to userStorage.ts
 }
 
 // Export a singleton instance

@@ -1,5 +1,4 @@
 import { 
-  users, User, InsertUser, UserRole,
   accounts, Account, InsertAccount, AccountType,
   journals, Journal, InsertJournal, JournalType,
   fixedAssets, FixedAsset, InsertFixedAsset,
@@ -29,6 +28,7 @@ import { journalEntryStorage } from "./storage/journalEntryStorage";
 import { clientStorage } from "./storage/clientStorage";
 import { entityStorage } from "./storage/entityStorage";
 import { consolidationStorage } from "./storage/consolidationStorage";
+import { userStorage } from "./storage/userStorage";
 
 // Define interface for hierarchical account structure
 export interface AccountTreeNode extends Account {
@@ -108,14 +108,6 @@ export interface IStorage {
   generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
   importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
   
-  // User methods
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
-  getUsers(): Promise<User[]>;
-  findUserByRole(role: UserRole): Promise<User | undefined>;
-  
   // Client methods
   getClient(id: number): Promise<Client | undefined>;
   getClients(): Promise<Client[]>;
@@ -131,9 +123,7 @@ export interface IStorage {
   createEntity(entity: InsertEntity): Promise<Entity>;
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
   
-  // User Entity Access methods
-  getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined>;
-  grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void>;
+  // Note: User methods and User Entity Access methods have been moved to server/storage/userStorage.ts
   
   // Location methods
   createLocation(location: InsertLocation): Promise<Location>;
@@ -178,7 +168,6 @@ export interface IStorage {
 
   // User Activity Tracking methods
   logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog>;
-  getUserActivities(userId: number, limit?: number): Promise<UserActivityLog[]>;
   getUserActivitiesByEntity(entityId: number, limit?: number): Promise<UserActivityLog[]>;
   getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]>;
   
@@ -197,12 +186,6 @@ export interface IStorage {
   getIndustryBenchmarks(industry: string, year: number): Promise<IndustryBenchmark[]>;
   getBenchmarksByMetric(metricName: string): Promise<IndustryBenchmark[]>;
   getIndustryComparison(entityId: number, metricNames: string[]): Promise<any>;
-  
-  // Data Consent methods
-  recordDataConsent(consent: InsertDataConsent): Promise<DataConsent>;
-  getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined>;
-  updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined>;
-  hasUserConsented(userId: number, consentType: string): Promise<boolean>;
   
   // Form Submission methods
   // Contact Form
@@ -787,58 +770,27 @@ export class MemStorage implements IStorage {
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    return userStorage.getUser(id);
   }
   
   async getUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return userStorage.getUsers();
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return userStorage.getUserByUsername(username);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { 
-      id, 
-      username: insertUser.username, 
-      password: insertUser.password,
-      email: insertUser.email,
-      name: insertUser.name,
-      role: (insertUser.role as UserRole) || UserRole.CLIENT,
-      active: insertUser.active !== undefined ? insertUser.active : true,
-      lastLogin: null,
-      loginCount: 0,
-      industry: insertUser.industry || null,
-      companySize: insertUser.companySize || null,
-      jobTitle: insertUser.jobTitle || null,
-      location: insertUser.location || null,
-      preferredLanguage: insertUser.preferredLanguage || 'en',
-      deviceInfo: insertUser.deviceInfo || null,
-      lastSession: insertUser.lastSession || null,
-      sessionCount: 0,
-      referralSource: insertUser.referralSource || null,
-      createdAt: new Date(),
-      updatedAt: null
-    };
-    this.users.set(id, user);
-    return user;
+    return userStorage.createUser(insertUser);
   }
   
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...userData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    return userStorage.updateUser(id, userData);
   }
   
   async findUserByRole(role: UserRole): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.role === role);
+    return userStorage.findUserByRole(role);
   }
 
   // Client methods
@@ -1076,11 +1028,15 @@ export class MemStorage implements IStorage {
   
   // User Entity Access methods
   async getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined> {
-    return this.userEntityAccess.get(`${userId}-${entityId}`);
+    return userStorage.getUserEntityAccess(userId, entityId);
   }
   
   async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void> {
-    this.userEntityAccess.set(`${userId}-${entityId}`, accessLevel);
+    return userStorage.grantUserEntityAccess(userId, entityId, accessLevel);
+  }
+  
+  async getUserEntityAccessList(userId: number): Promise<{ entityId: number, accessLevel: string }[]> {
+    return userStorage.getUserEntityAccessList(userId);
   }
   
   // Account methods
@@ -1986,43 +1942,19 @@ export class MemStorage implements IStorage {
   
   // User Activity Tracking methods
   async logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog> {
-    const id = this.currentUserActivityLogId++;
-    const newActivity: UserActivityLog = {
-      id,
-      userId: activity.userId,
-      entityId: activity.entityId,
-      action: activity.action,
-      resourceType: activity.resourceType,
-      resourceId: activity.resourceId,
-      details: activity.details,
-      ipAddress: activity.ipAddress,
-      userAgent: activity.userAgent,
-      timestamp: new Date()
-    };
-    
-    this.userActivities.set(id, newActivity);
-    return newActivity;
+    return userStorage.logUserActivity(activity);
   }
   
   async getUserActivities(userId: number, limit: number = 100): Promise<UserActivityLog[]> {
-    return Array.from(this.userActivities.values())
-      .filter(activity => activity.userId === userId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit);
+    return userStorage.getUserActivities(userId, limit);
   }
   
   async getUserActivitiesByEntity(entityId: number, limit: number = 100): Promise<UserActivityLog[]> {
-    return Array.from(this.userActivities.values())
-      .filter(activity => activity.entityId === entityId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit);
+    return userStorage.getUserActivitiesByEntity(entityId, limit);
   }
   
   async getUserActivitiesByResourceType(resourceType: string, limit: number = 100): Promise<UserActivityLog[]> {
-    return Array.from(this.userActivities.values())
-      .filter(activity => activity.resourceType === resourceType)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit);
+    return userStorage.getUserActivitiesByResourceType(resourceType, limit);
   }
   
   // Feature Usage Analytics methods
@@ -2205,56 +2137,19 @@ export class MemStorage implements IStorage {
   
   // Data Consent methods
   async recordDataConsent(consent: InsertDataConsent): Promise<DataConsent> {
-    const id = this.currentDataConsentId++;
-    const now = new Date();
-    
-    const newConsent: DataConsent = {
-      id,
-      userId: consent.userId,
-      entityId: consent.entityId,
-      consentType: consent.consentType,
-      granted: consent.granted || false,
-      grantedAt: consent.granted ? now : null,
-      revokedAt: !consent.granted ? now : null,
-      consentVersion: consent.consentVersion,
-      ipAddress: consent.ipAddress,
-      lastUpdated: now
-    };
-    
-    this.dataConsents.set(id, newConsent);
-    return newConsent;
+    return userStorage.recordDataConsent(consent);
   }
   
   async getUserConsent(userId: number, consentType: string): Promise<DataConsent | undefined> {
-    // Get all consents for this user and type, sorted by last updated
-    const userConsents = Array.from(this.dataConsents.values())
-      .filter(consent => consent.userId === userId && consent.consentType === consentType)
-      .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
-    
-    // Return the most recent consent record if any
-    return userConsents.length > 0 ? userConsents[0] : undefined;
+    return userStorage.getUserConsent(userId, consentType);
   }
   
   async updateUserConsent(id: number, granted: boolean): Promise<DataConsent | undefined> {
-    const consent = this.dataConsents.get(id);
-    if (!consent) return undefined;
-    
-    const now = new Date();
-    const updatedConsent: DataConsent = {
-      ...consent,
-      granted,
-      lastUpdated: now,
-      grantedAt: granted ? now : consent.grantedAt,
-      revokedAt: !granted ? now : consent.revokedAt
-    };
-    
-    this.dataConsents.set(id, updatedConsent);
-    return updatedConsent;
+    return userStorage.updateUserConsent(id, granted);
   }
   
   async hasUserConsented(userId: number, consentType: string): Promise<boolean> {
-    const consent = await this.getUserConsent(userId, consentType);
-    return !!consent && !!consent.granted;
+    return userStorage.hasUserConsented(userId, consentType);
   }
   
   // Contact Form submission methods
@@ -3735,11 +3630,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserEntityAccess(userId: number, entityId: number): Promise<string | undefined> {
-    return entityStorage.getUserEntityAccess(userId, entityId);
+    return userStorage.getUserEntityAccess(userId, entityId);
   }
 
   async grantUserEntityAccess(userId: number, entityId: number, accessLevel: string): Promise<void> {
-    return entityStorage.grantUserEntityAccess(userId, entityId, accessLevel);
+    return userStorage.grantUserEntityAccess(userId, entityId, accessLevel);
+  }
+  
+  async getUserEntityAccessList(userId: number): Promise<{ entityId: number, accessLevel: string }[]> {
+    return userStorage.getUserEntityAccessList(userId);
   }
 
   async getAccount(id: number): Promise<Account | undefined> {
