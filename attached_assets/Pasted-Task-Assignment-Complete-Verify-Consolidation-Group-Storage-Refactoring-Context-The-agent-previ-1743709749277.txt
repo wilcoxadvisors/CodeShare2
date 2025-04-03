@@ -1,0 +1,53 @@
+Task Assignment: Complete & Verify Consolidation Group Storage Refactoring
+
+Context: The agent previously started refactoring Consolidation Group logic into server/storage/consolidationStorage.ts but did not fully complete the process, particularly removing the old code from storage.ts and verifying the changes.
+
+Goal: Finalize the refactoring by removing Consolidation Group logic from storage.ts, ensuring all consumers use the new module, and verifying the changes with tests.
+
+Instructions:
+
+Action: Finalize consolidationStorage.ts Implementation:
+
+Open CodeShare/server/storage/consolidationStorage.ts.
+Ensure all Consolidation Group related methods (including helpers like consolidateBalanceSheets, etc.) originally from DatabaseStorage and MemStorage are present and correctly implemented within this file's ConsolidationStorage class. Ensure imports and dependencies (like entityStorage or db) are correct relative to the new file location.
+Action: Remove Logic from server/storage.ts:
+
+Open CodeShare/server/storage.ts.
+Remove all Consolidation Group method signatures (e.g., createConsolidationGroup, listConsolidationGroups, generateConsolidatedReport, etc.) from the IStorage interface.
+Remove the complete implementations of all these Consolidation Group methods (and their private helper methods like consolidateBalanceSheets) from both the DatabaseStorage class and the MemStorage class.
+Remove any imports in storage.ts that became unused after removing the Consolidation Group logic.
+Action: Verify/Update Consuming Files:
+
+Use grep or similar to find all files that call the old Consolidation Group methods via the monolithic storage object (e.g., storage.createConsolidationGroup). Likely candidates are adminRoutes.ts or routes.ts.
+Bash
+
+grep -r "storage\.getConsolidationGroup" server/
+grep -r "storage\.listConsolidationGroups" server/
+# ... repeat for other consolidation methods ...
+For each identified file:
+Add the import: import { consolidationStorage } from './storage/consolidationStorage'; (adjust path).
+Replace calls like storage.createConsolidationGroup(...) with consolidationStorage.createConsolidationGroup(...).
+Remove the import for the old storage object if it's no longer needed in that file.
+Action: Verify Application Startup & Tests:
+
+Restart the application server (npm run dev). Confirm it starts without errors.
+Run the primary verification tests:
+cd test && node api-journal-entries.js
+cd test && node batch-upload-test.js
+Run Consolidation Group specific tests if they exist (check test/consolidation/):
+cd test/consolidation && npx tsx test-consolidation-groups.ts (or similar command)
+Verification:
+
+consolidationStorage.ts contains the complete logic.
+storage.ts has Consolidation Group logic fully removed (interface and implementations).
+Consuming files (adminRoutes.ts, etc.) use consolidationStorage.
+Server starts successfully.
+All relevant tests (api-journal-entries.js, batch-upload-test.js, specific consolidation tests) pass.
+Reporting:
+
+Confirm completion of implementation in consolidationStorage.ts.
+Confirm removal of logic from storage.ts.
+Confirm updates to consuming files.
+Report PASS/FAIL for server startup.
+Report PASS/FAIL for all test script executions performed.
+State readiness to refactor the next domain or move to Task B.3.

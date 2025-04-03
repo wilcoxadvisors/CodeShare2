@@ -30,8 +30,9 @@ function handleDbError(error: unknown, operation: string): Error {
 export interface IConsolidationStorage {
   // Consolidation Group methods
   getConsolidationGroup(id: number): Promise<ConsolidationGroup | undefined>;
-  getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]>;
+  getConsolidationGroups(userId?: number): Promise<ConsolidationGroup[]>;
   getConsolidationGroupsByEntity(entityId: number): Promise<ConsolidationGroup[]>;
+  getConsolidationGroupsByUser(userId: number): Promise<ConsolidationGroup[]>;
   createConsolidationGroup(group: InsertConsolidationGroup): Promise<ConsolidationGroup>;
   updateConsolidationGroup(id: number, group: Partial<ConsolidationGroup>): Promise<ConsolidationGroup | undefined>;
   deleteConsolidationGroup(id: number): Promise<void>;
@@ -80,15 +81,20 @@ export class ConsolidationStorage implements IConsolidationStorage {
   }
 
   /**
-   * Get consolidation groups by user ID
+   * Get all consolidation groups (when no userId is provided)
+   * or get consolidation groups by user ID (when userId is provided)
    */
-  async getConsolidationGroups(userId: number): Promise<ConsolidationGroup[]> {
+  async getConsolidationGroups(userId?: number): Promise<ConsolidationGroup[]> {
     try {
-      // Get all active consolidation groups
-      const groups = await db
-        .select()
-        .from(consolidationGroups)
-        .where(eq(consolidationGroups.createdBy, userId));
+      // Get all active consolidation groups, filtered by userId if provided
+      const groups = userId !== undefined
+        ? await db
+            .select()
+            .from(consolidationGroups)
+            .where(eq(consolidationGroups.createdBy, userId))
+        : await db
+            .select()
+            .from(consolidationGroups);
       
       // Get entity relationships for all groups
       const entityRelations = await db
@@ -112,6 +118,14 @@ export class ConsolidationStorage implements IConsolidationStorage {
     } catch (error) {
       throw handleDbError(error, 'getConsolidationGroups');
     }
+  }
+  
+  /**
+   * Get consolidation groups by user ID
+   * This is an alias for getConsolidationGroups(userId)
+   */
+  async getConsolidationGroupsByUser(userId: number): Promise<ConsolidationGroup[]> {
+    return this.getConsolidationGroups(userId);
   }
 
   /**
