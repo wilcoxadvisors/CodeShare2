@@ -1,0 +1,51 @@
+Task Assignment: Implement Journal Entry Backend API & Storage Logic (Task B.2 Step 2)
+
+Context: Task B.1 (Chart of Accounts) is complete, including schema refactoring which defined the necessary journalEntries and journalEntryLines tables in shared/schema.ts. The next step according to the roadmap in Instructions.md is to build the backend functionality to manage these journal entries.
+
+Goal: Implement the backend storage functions (CRUD operations) and corresponding API endpoints for creating and managing Journal Entries and their lines, ensuring validation (like debits equaling credits) is performed.
+
+Instructions:
+
+Action: Implement Storage Functions (server/storage.ts):
+Define and implement asynchronous functions for createJournalEntry, listJournalEntries, getJournalEntryById, updateJournalEntry, and deleteJournalEntry within server/storage.ts.
+Use database transactions for operations involving multiple tables (entry + lines).
+Crucially, validate within createJournalEntry and updateJournalEntry that the total debits equal the total credits for the lines provided. Throw an error if they do not match.
+Ensure functions interact correctly with the journalEntries and journalEntryLines tables using the Drizzle ORM instance (db) and schemas from shared/schema.ts.
+Fetch and return journal entries with their associated lines where appropriate.
+Action: Define Validation Schemas (shared/validation.ts):
+Create or update Zod schemas to validate the input data for journal entry creation and updates.
+Ensure the schemas validate the main entry fields (date, description, etc.) and the lines array (checking for required line fields like accountId, amount, type). Define a minimum number of lines required (e.g., at least 1).
+Action: Implement API Routes (server/journalEntryRoutes.ts):
+Create a new file server/journalEntryRoutes.ts.
+Set up an Express router.
+Define POST, GET (list and specific), PUT, and DELETE routes corresponding to the storage functions.
+Apply appropriate middleware (e.g., requireAuth) for authentication and authorization (ensure user can access the specified clientId).
+Use the Zod validation schemas to validate request bodies.
+Call the corresponding storage functions.
+Handle errors gracefully, including validation errors (like unbalanced debits/credits) and database errors, returning appropriate HTTP status codes (e.g., 201, 200, 400, 404, 500).
+Export the router.
+Action: Register Routes (server/routes.ts):
+Import the journalEntryRouter in server/routes.ts.
+Register the router with the main Express application router.
+Action: Basic API Endpoint Testing (Manual/curl):
+(To be performed after code implementation) Restart the server.
+Use curl or a similar tool (with authentication cookies) to test the endpoints:
+POST a valid, balanced JE.
+POST an invalid, unbalanced JE.
+GET the list of JEs.
+GET the specific JE created.
+PUT to update the JE (optional but recommended).
+DELETE the JE.
+GET the deleted JE again (expect 404).
+Verification:
+
+Storage functions are correctly implemented in server/storage.ts with transactions and debit/credit validation.
+Validation schemas are defined in shared/validation.ts.
+API routes are defined in server/journalEntryRoutes.ts using validation and storage functions.
+Router is registered in server/routes.ts.
+(Post-Implementation) Manual API tests confirm basic CRUD operations and validation work as expected.
+Reporting:
+
+Report successful implementation of the code changes in the specified files.
+Provide key code snippets demonstrating the implementation (e.g., transaction logic, a route definition).
+Report the results (PASS/FAIL) of the manual API tests (from Instruction Step 5) once performed.
