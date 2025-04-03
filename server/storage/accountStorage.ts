@@ -5,8 +5,11 @@ import {
     journalEntryLines, clients // Needed for client verification and delete check
 } from "../../shared/schema"; // Adjust path to schema
 import { eq, and, desc, asc, sql, count, inArray, gt } from "drizzle-orm";
-import { standardCoaTemplate, CoATemplateEntry } from "../coaTemplate"; // Adjust path
+import { standardCoaTemplate } from "../coaTemplate"; // Adjust path
 import { ApiError } from "../errorHandling"; // Adjust path
+// For file processing in importCoaForClient
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 // Helper function to handle database errors consistently
 function handleDbError(error: unknown, operation: string): Error {
@@ -38,7 +41,7 @@ export interface IAccountStorage {
     getAccountById(accountId: number, clientId: number): Promise<Account | undefined>;
     updateAccount(accountId: number, clientId: number, accountData: Partial<Omit<Account, 'id' | 'clientId' | 'active' | 'createdAt' | 'updatedAt'>>): Promise<Account | null>;
     deleteAccount(accountId: number, clientId: number): Promise<boolean>; // Soft delete
-    importCoaForClient(clientId: number, data: any[], fileType: 'csv' | 'excel'): Promise<{ success: boolean; message: string; results?: any }>; // Signature might need adjustment based on final implementation
+    importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: any | null): Promise<{ success: boolean; message: string; results?: any; errors: string[]; warnings: string[] }>; // Refined return type
     exportCoaForClient(clientId: number): Promise<any[]>; // Return type depends on export format needs
     accountHasTransactions(id: number): Promise<boolean>; // Helper
 }
@@ -80,20 +83,43 @@ export class AccountStorage implements IAccountStorage {
              }
          }
          // Add variations if needed (e.g., account_code vs accountCode)
-         if(fieldName === 'accountCode') return row['account_code'] ?? row['Account Code'] ?? null;
-         if(fieldName === 'parentCode') return row['parent_code'] ?? row['Parent Code'] ?? null;
+         if(fieldName === 'accountCode') return row['account_code'] ?? row['Account Code'] ?? row['code'] ?? null; // Added legacy 'code'
+         if(fieldName === 'parentCode') return row['parent_code'] ?? row['Parent Code'] ?? row['parent'] ?? null; // Added legacy 'parent'
 
          return null;
      }
 
      // Helper method to get parent code from row
      private getParentCode(row: any): string | null {
-         const parentCode = this.getCaseInsensitiveValue(row, 'parentCode');
-         if (parentCode !== null && parentCode !== undefined && String(parentCode).trim() !== '') {
-           return String(parentCode).trim();
+         const parentCodeValue = this.getCaseInsensitiveValue(row, 'parentCode');
+         if (parentCodeValue !== null && parentCodeValue !== undefined && String(parentCodeValue).trim() !== '') {
+           const trimmed = String(parentCodeValue).trim();
+           if (trimmed) {
+             return trimmed;
+           }
          }
          return null;
      }
+
+    private parseIsSubledger(row: any, existingAccount?: Account): boolean {
+        const isSubledgerField = this.getCaseInsensitiveValue(row, 'isSubledger') ?? this.getCaseInsensitiveValue(row, 'is_subledger');
+        if (isSubledgerField === undefined && existingAccount) {
+          return existingAccount.isSubledger ?? false; // Default to false if null/undefined in existing
+        }
+        return this.parseBooleanFlag(isSubledgerField, false); // Default to false if not provided/invalid
+    }
+
+     private getSubledgerType(row: any, existingAccount?: Account): string | null {
+        const subledgerType = this.getCaseInsensitiveValue(row, 'subledgerType') ?? this.getCaseInsensitiveValue(row, 'subledger_type');
+        if (subledgerType) {
+            const trimmed = String(subledgerType).trim();
+            return trimmed !== '' ? trimmed : null;
+        }
+        if (existingAccount) {
+          return existingAccount.subledgerType;
+        }
+        return null;
+    }
 
 
     async seedClientCoA(clientId: number): Promise<void> {
@@ -345,10 +371,28 @@ export class AccountStorage implements IAccountStorage {
          }
     }
 
-    async importCoaForClient(clientId: number, data: any[], fileType: 'csv' | 'excel'): Promise<{ success: boolean; message: string; results?: any }> {
-        // Implementation copied from DatabaseStorage in original storage.ts
-        console.log(`Importing Chart of Accounts for client ${clientId} from ${fileType} file`);
+    async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: any | null): Promise<{ success: boolean; message: string; results?: any; errors: string[]; warnings: string[] }> {
         try {
+            // Determine file type based on file extension
+            const fileType = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
+            console.log(`Importing Chart of Accounts for client ${clientId} from ${fileType} file: ${fileName}`);
+            
+            // Parse the file based on type
+            let importData: any[] = [];
+            
+            if (fileType === 'csv') {
+                // Parse CSV using PapaParse
+                const csvString = fileBuffer.toString('utf8');
+                const parseResult = Papa.parse(csvString, { header: true, skipEmptyLines: true });
+                importData = parseResult.data;
+            } else {
+                // Parse Excel using XLSX
+                const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                importData = XLSX.utils.sheet_to_json(worksheet);
+            }
+
             // Verify client exists
             const clientExists = await db.query.clients.findFirst({
                 where: eq(clients.id, clientId)
@@ -371,15 +415,16 @@ export class AccountStorage implements IAccountStorage {
             const results = {
                 success: true,
                 message: 'Import successful',
-                totalProcessed: data.length,
+                totalProcessed: importData.length,
                 created: 0,
                 updated: 0,
                 skipped: 0,
-                errors: [] as string[]
+                errors: [] as string[],
+                warnings: [] as string[]
             };
 
             // First pass: Process all accounts except parent relationships
-            for (const row of data) {
+            for (const row of importData) {
                 try {
                     const accountCode = this.getCaseInsensitiveValue(row, 'accountCode');
                     if (!accountCode) {
@@ -477,7 +522,7 @@ export class AccountStorage implements IAccountStorage {
                 }
 
                 // Second pass: Update parent relationships
-                for (const row of data) {
+                for (const row of importData) {
                     const accountCode = this.getCaseInsensitiveValue(row, 'accountCode');
                     if (!accountCode) continue;
 
@@ -511,7 +556,9 @@ export class AccountStorage implements IAccountStorage {
                 message: results.errors.length === 0 
                     ? `Successfully imported: ${results.created} created, ${results.updated} updated` 
                     : `Import completed with ${results.errors.length} errors`,
-                results
+                results,
+                errors: results.errors,
+                warnings: results.warnings
             };
         } catch (e) {
             throw handleDbError(e, `importing Chart of Accounts for client ${clientId}`);
