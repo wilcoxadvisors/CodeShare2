@@ -184,6 +184,46 @@ export const enhancedFixedAssetSchema = schema.insertFixedAssetSchema.extend({
 });
 
 /**
+ * Schema for batch journal entry uploads
+ */
+export const batchJournalEntrySchema = z.array(
+  z.object({
+    date: z.preprocess((arg) => {
+      if (typeof arg === "string" || arg instanceof Date) {
+        const date = new Date(arg);
+        return isNaN(date.getTime()) ? undefined : date;
+      }
+      return undefined;
+    }, z.date({ required_error: "Date is required", invalid_type_error: "Invalid date format" })),
+    description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
+    referenceNumber: optionalString.nullable(),
+    journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
+    entityId: z.number().int().positive({ message: "Entity ID is required" }),
+    locationId: z.number().int().positive().optional().nullable(),
+    lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
+  }).refine(data => {
+    // Additional cross-field validation for balance
+    let totalDebits = 0;
+    let totalCredits = 0;
+    
+    // Ensure lines is treated as an array
+    const lines = Array.isArray(data.lines) ? data.lines : [];
+    
+    lines.forEach((line: any) => {
+      const amount = line?.amount || 0;
+      if (line?.type === 'debit') totalDebits += amount;
+      if (line?.type === 'credit') totalCredits += amount;
+    });
+    
+    const tolerance = 0.0001; // Adjust as needed
+    return Math.abs(totalDebits - totalCredits) < tolerance;
+  }, {
+    message: "Debits must equal credits",
+    path: ["lines"],
+  })
+).min(1, "At least one journal entry is required");
+
+/**
  * Format Zod error into a user-friendly format
  */
 export function formatZodError(error: z.ZodError) {

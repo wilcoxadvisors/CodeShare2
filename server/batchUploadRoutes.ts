@@ -20,12 +20,11 @@ interface AuthUser {
 
 // Authentication middleware
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  // TypeScript complains about req.session.user, but we know it exists
-  // because we set it during login in routes.ts
-  if (!req.session || !(req.session as any).user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  // Use Passport's isAuthenticated method
+  if (req.isAuthenticated()) {
+    return next();
   }
-  next();
+  res.status(401).json({ message: "Unauthorized" });
 };
 
 export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
@@ -35,13 +34,20 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
    */
   app.post('/api/entities/:entityId/journal-entries/batch', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
-    const userId = ((req.session as any).user as AuthUser).id;
+    const userId = (req.user as AuthUser).id;
     
     // Get entity to validate existence and user access
     const entity = await storage.getEntity(entityId);
     if (!entity) {
       throwBadRequest(`Entity with ID ${entityId} not found`);
     }
+    
+    // Get client ID for the entity
+    const client = await storage.getClient(entity.clientId);
+    if (!client) {
+      throwBadRequest(`Client with ID ${entity.clientId} not found`);
+    }
+    const clientId = client.id;
     
     // Verify user has access to this entity
     const accessLevel = await storage.getUserEntityAccess(userId, entityId);
@@ -66,78 +72,129 @@ export function registerBatchUploadRoutes(app: Express, storage: IStorage) {
       throwBadRequest("No entries provided");
     }
     
-    // For tracking created entries
-    const createdEntries: any[] = [];
-    const errors: any[] = [];
-    
-    // Use a transaction for all entries to ensure data consistency
-    await db.transaction(async (tx) => {
-      // Process each entry in the batch
-      for (const entry of entries) {
-        try {
-          // Prepare journal entry data
-          const journalEntryData = {
-            entityId,
-            journalId: 1, // Default to general journal ID 1, can be configured if needed
-            reference: entry.reference,
-            date: new Date(entry.date),
-            description: entry.description || null,
-            status: JournalEntryStatus.DRAFT,
-            createdBy: userId,
-            createdAt: new Date(),
-          };
-          
-          // Create the journal entry
-          const createdEntry = await storage.createJournalEntry(journalEntryData);
-          
-          // Process each line
-          for (const line of entry.lines) {
-            // Create journal entry line
-            await storage.createJournalEntryLine({
-              journalEntryId: createdEntry.id,
-              accountId: line.accountId,
-              description: line.description || null,
-              debit: line.debit,
-              credit: line.credit,
-              entityId: entityId
-            });
-          }
-          
-          // Add to successful entries
-          createdEntries.push({
-            id: createdEntry.id,
-            reference: createdEntry.reference
-          });
-        } catch (error: any) {
-          // Collect errors but continue processing other entries
-          errors.push({
-            reference: entry.reference,
-            error: error.message
-          });
+    // Transform the batch upload format to the format expected by createBatchJournalEntries
+    const journalEntries = entries.map(entry => {
+      // Convert lines from the batch format to the storage format
+      const lines = entry.lines.map(line => {
+        // Convert from debit/credit string fields to type/amount fields
+        let type: 'debit' | 'credit' = 'debit';
+        let amount = '0';
+        
+        // Parse the debit and credit values, defaulting to 0 if empty or invalid
+        const debitValue = parseFloat(line.debit || '0') || 0;
+        const creditValue = parseFloat(line.credit || '0') || 0;
+        
+        // Determine type and amount based on which is greater (debit or credit)
+        if (debitValue > 0 && creditValue === 0) {
+          type = 'debit';
+          amount = line.debit;
+        } else if (creditValue > 0 && debitValue === 0) {
+          type = 'credit';
+          amount = line.credit;
+        } else if (debitValue > creditValue) {
+          type = 'debit';
+          amount = line.debit;
+        } else {
+          type = 'credit';
+          amount = line.credit;
         }
-      }
+        
+        return {
+          accountId: line.accountId,
+          description: line.description || null,
+          type,
+          amount
+        };
+      });
+      
+      return {
+        date: new Date(entry.date),
+        entityId,
+        referenceNumber: entry.reference,
+        description: entry.description || null,
+        journalType: 'JE', // Default to general journal entry
+        status: JournalEntryStatus.DRAFT,
+        lines
+      };
     });
     
-    // Log activity
-    if (createdEntries.length > 0) {
-      await storage.logUserActivity({
+    try {
+      // Use the new batch creation method
+      const result = await storage.createBatchJournalEntries(
+        clientId,
         userId,
-        entityId,
-        action: 'batch_create',
-        resourceType: 'journal_entry',
-        resourceId: null,
-        details: `Batch created ${createdEntries.length} journal entries`
+        journalEntries
+      );
+      
+      // Log activity
+      if (result.successCount > 0) {
+        await storage.logUserActivity({
+          userId,
+          entityId,
+          action: 'batch_create',
+          resourceType: 'journal_entry',
+          resourceId: null,
+          details: `Batch created ${result.successCount} journal entries`
+        });
+      }
+      
+      // Return results
+      res.status(201).json({
+        success: true,
+        message: `Successfully processed ${entries.length} journal entries`,
+        created: result.successCount,
+        failed: result.errors.length,
+        errors: result.errors.map(error => ({
+          entryIndex: error.entryIndex,
+          message: error.error
+        }))
       });
+    } catch (error: any) {
+      throwBadRequest(
+        `Failed to process batch of journal entries: ${error.message}`,
+        { error: error.message }
+      );
+    }
+  }));
+  
+  /**
+   * Add an alternative API endpoint for flexibility
+   */
+  app.post('/api/journal-entries/batch', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req.user as AuthUser).id;
+    
+    // Extract the client ID from the request body
+    const { clientId, entries } = req.body;
+    
+    if (!clientId || !Number.isInteger(parseInt(clientId))) {
+      throwBadRequest("clientId is required and must be an integer");
     }
     
-    // Return results
-    res.status(201).json({
-      success: true,
-      message: `Successfully processed ${entries.length} entries`,
-      created: createdEntries.length,
-      failed: errors.length,
-      entries: createdEntries,
-      errors
-    });
+    if (!entries || !Array.isArray(entries) || entries.length === 0) {
+      throwBadRequest("entries array is required and must not be empty");
+    }
+    
+    try {
+      // Direct access to the batch creation function
+      const result = await storage.createBatchJournalEntries(
+        parseInt(clientId),
+        userId,
+        entries
+      );
+      
+      // Return results
+      res.status(201).json({
+        success: true,
+        message: `Successfully processed ${entries.length} journal entries`,
+        created: result.successCount,
+        failed: result.errors.length,
+        errors: result.errors
+      });
+    } catch (error: any) {
+      throwBadRequest(
+        `Failed to process batch of journal entries: ${error.message}`,
+        { error: error.message }
+      );
+    }
   }));
 }

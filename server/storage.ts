@@ -145,6 +145,11 @@ export interface IStorage {
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>, linesData: (Partial<JournalEntryLine> & { id?: number })[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
   deleteJournalEntry(id: number): Promise<void>;
   listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
+  createBatchJournalEntries(
+    clientId: number,
+    createdById: number,
+    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
+  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }>;
   reverseJournalEntry(journalEntryId: number, options: {
     date?: Date;
     description?: string;
@@ -182,6 +187,11 @@ export interface IStorage {
   getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]>;
   createJournalEntry(clientId: number, createdById: number, entry: InsertJournalEntry): Promise<JournalEntry>;
   updateJournalEntry(id: number, entry: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
+  createBatchJournalEntries(
+    clientId: number, 
+    createdById: number, 
+    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
+  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }>;
   
   // Journal Entry Line methods
   getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
@@ -1466,6 +1476,101 @@ export class MemStorage implements IStorage {
       ...reversalEntry,
       lines: reversalLines
     };
+  }
+  
+  /**
+   * Create multiple journal entries in batch mode
+   * @param clientId The client ID
+   * @param createdById The creator's user ID
+   * @param entriesData Array of journal entry data objects
+   * @returns Object with success count and array of errors
+   */
+  async createBatchJournalEntries(
+    clientId: number,
+    createdById: number,
+    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
+  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }> {
+    const result = {
+      successCount: 0,
+      errors: [] as { entryIndex: number; error: string }[]
+    };
+    
+    // Process each entry
+    for (let i = 0; i < entriesData.length; i++) {
+      try {
+        const entryData = entriesData[i];
+        
+        // Validate balance
+        const lines = Array.isArray(entryData.lines) ? entryData.lines : [];
+        let totalDebits = 0;
+        let totalCredits = 0;
+        
+        for (const line of lines) {
+          if (line.type === 'debit') {
+            totalDebits += parseFloat(line.amount);
+          } else if (line.type === 'credit') {
+            totalCredits += parseFloat(line.amount);
+          }
+        }
+        
+        const tolerance = 0.0001;
+        if (Math.abs(totalDebits - totalCredits) >= tolerance) {
+          result.errors.push({
+            entryIndex: i,
+            error: `Entry at index ${i} is not balanced. Debits: ${totalDebits}, Credits: ${totalCredits}`
+          });
+          continue;
+        }
+        
+        // Validate accounts
+        const accountIds = lines.map(line => line.accountId);
+        const existingAccounts = Array.from(this.accounts.values())
+          .filter(account => 
+            account.clientId === clientId && 
+            accountIds.includes(account.id)
+          );
+        
+        if (existingAccounts.length !== accountIds.length) {
+          const missingAccountIds = accountIds.filter(
+            id => !existingAccounts.some(account => account.id === id)
+          );
+          
+          result.errors.push({
+            entryIndex: i,
+            error: `Entry at index ${i} has invalid account IDs: ${missingAccountIds.join(', ')}`
+          });
+          continue;
+        }
+        
+        // Create the journal entry with its lines
+        const entry = await this.createJournalEntry(
+          clientId,
+          createdById,
+          {
+            ...entryData,
+            clientId,
+            createdBy: createdById
+          } as InsertJournalEntry
+        );
+        
+        // Create each line
+        for (const line of lines) {
+          await this.createJournalEntryLine({
+            ...line,
+            journalEntryId: entry.id
+          });
+        }
+        
+        result.successCount++;
+      } catch (error) {
+        result.errors.push({
+          entryIndex: i,
+          error: `Failed to create entry at index ${i}: ${error instanceof Error ? error.message : String(error)}`
+        });
+      }
+    }
+    
+    return result;
   }
   
   // Fixed Asset methods
@@ -6271,6 +6376,92 @@ export class DatabaseStorage implements IStorage {
         lines
       };
     });
+  }
+
+  /**
+   * Create multiple journal entries in a batch operation
+   * @param clientId The client ID
+   * @param createdById The user ID of the creator
+   * @param entriesData Array of journal entry data objects
+   * @returns Object with success count and array of errors
+   */
+  async createBatchJournalEntries(
+    clientId: number,
+    createdById: number,
+    entriesData: Omit<InsertJournalEntry, 'clientId' | 'createdBy'>[]
+  ): Promise<{ successCount: number; errors: { entryIndex: number; error: string }[] }> {
+    const result = {
+      successCount: 0,
+      errors: [] as { entryIndex: number; error: string }[]
+    };
+    
+    // Process each entry
+    for (let i = 0; i < entriesData.length; i++) {
+      try {
+        const entryData = entriesData[i];
+        
+        // Validate balance
+        const lines = Array.isArray(entryData.lines) ? entryData.lines : [];
+        let totalDebits = 0;
+        let totalCredits = 0;
+        
+        for (const line of lines) {
+          if (line.type === 'debit') {
+            totalDebits += parseFloat(line.amount);
+          } else if (line.type === 'credit') {
+            totalCredits += parseFloat(line.amount);
+          }
+        }
+        
+        const tolerance = 0.0001;
+        if (Math.abs(totalDebits - totalCredits) >= tolerance) {
+          result.errors.push({
+            entryIndex: i,
+            error: `Entry at index ${i} is not balanced. Debits: ${totalDebits}, Credits: ${totalCredits}`
+          });
+          continue;
+        }
+        
+        // Check if there's at least one line
+        if (lines.length === 0) {
+          result.errors.push({
+            entryIndex: i,
+            error: `Entry at index ${i} must have at least one line`
+          });
+          continue;
+        }
+        
+        // Verify the total is not zero
+        if (totalDebits < tolerance) {
+          result.errors.push({
+            entryIndex: i,
+            error: `Entry at index ${i} total amount cannot be zero`
+          });
+          continue;
+        }
+        
+        // Create the journal entry with its lines
+        const insertedEntry = await this.createJournalEntry(
+          clientId,
+          createdById,
+          {
+            ...entryData,
+            clientId,
+            createdBy: createdById
+          } as InsertJournalEntry,
+          lines
+        );
+        
+        result.successCount++;
+      } catch (error) {
+        result.errors.push({
+          entryIndex: i,
+          error: `Failed to create entry at index ${i}: ${error instanceof Error ? error.message : String(error)}`
+        });
+      }
+    }
+    
+    return result;
   }
 
   async getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]> {
