@@ -2281,6 +2281,251 @@ export class DatabaseStorage implements IStorage {
    * - generateCoaImportPreview
    * These methods are properly delegated in the MemStorage class
    */
+            try {
+              const createdBatch = await tx
+                .insert(accounts)
+                .values(batch)
+                .returning();
+              
+              newAccounts.push(...createdBatch);
+            } catch (batchError: any) {
+              console.error(`Error creating batch of accounts:`, batchError);
+              result.errors.push(`Failed to create some accounts: ${batchError.message}`);
+              // Continue with other batches even if one fails
+            }
+          }
+          
+          // Add newly created accounts to our lookup maps
+          for (const newAccount of newAccounts) {
+            codeToIdMap.set(newAccount.accountCode, newAccount.id);
+            codeToIdMap.set(newAccount.accountCode.toLowerCase(), newAccount.id); // Add lowercase version too
+            existingCodeMap.set(newAccount.accountCode.toLowerCase(), newAccount);
+            existingIdMap.set(newAccount.id, newAccount);
+          }
+          
+          console.log(`Successfully created ${newAccounts.length} new accounts`);
+        }
+        
+        // ==================== STEP 7: Execute batch updates ====================
+        console.log(`Preparing to update ${accountsToUpdate.length} existing accounts`);
+        
+        if (accountsToUpdate.length > 0) {
+          const batchSize = 100;
+          const updatedAccounts: Account[] = [];
+          
+          for (let i = 0; i < accountsToUpdate.length; i += batchSize) {
+            const batch = accountsToUpdate.slice(i, i + batchSize);
+            
+            // Execute updates individually within the transaction
+            for (const update of batch) {
+              try {
+                console.log(`Updating account ID ${update.id} with data:`, update.data);
+                
+                // Execute update and return the updated record
+                const [updatedAccount] = await tx
+                  .update(accounts)
+                  .set(update.data)
+                  .where(eq(accounts.id, update.id))
+                  .returning();
+                
+                if (updatedAccount) {
+                  updatedAccounts.push(updatedAccount);
+                  console.log(`Successfully updated account: ${updatedAccount.accountCode} (${updatedAccount.name})`);
+                } else {
+                  console.warn(`No rows updated for account ID ${update.id}`);
+                }
+              } catch (updateError: any) {
+                console.error(`Error updating account ${update.id}:`, updateError);
+                result.errors.push(`Failed to update account with ID ${update.id}: ${updateError.message}`);
+              }
+            }
+          }
+          
+          console.log(`Successfully updated ${updatedAccounts.length} accounts out of ${accountsToUpdate.length} attempted`);
+        }
+        
+        // ==================== STEP 8: Handle missing accounts ====================
+        console.log(`Processing accounts present in database but missing from import file`);
+        console.log(`DEBUG: Selections update strategy: ${selections?.updateStrategy || 'all (default)'}`);
+        console.log(`DEBUG: Selections remove strategy: ${selections?.removeStrategy || 'inactive (default)'}`);
+        
+        if (selections?.includedCodes) {
+          console.log(`DEBUG: Selected accounts count: ${selections.includedCodes.length}`);
+          console.log(`DEBUG: First 5 selected accounts: ${selections.includedCodes.slice(0, 5).join(', ')}`);
+        }
+        
+        // Track account codes in the import file (using a Set for faster lookups)
+        const importedAccountCodes = new Set<string>();
+        for (const row of validRows) {
+          const accountCode = row.accountCode.toLowerCase();
+          importedAccountCodes.add(accountCode);
+        }
+        console.log(`DEBUG: Found ${importedAccountCodes.size} account codes in import file`);
+        
+        // Find accounts in the database that were not in the import file
+        const missingAccounts: number[] = [];
+        
+        // Determine how to handle accounts not in the import
+        // Options:
+        // - 'inactive': Mark accounts as inactive (default)
+        // - 'delete': Delete accounts (if they don't have transactions)
+        // - 'none': Leave accounts unchanged
+        const removeStrategy = selections?.removeStrategy || 'inactive'; // Default to 'inactive' if not specified
+        
+        // If selections specify not to make any updates or removeStrategy is 'none', skip marking accounts
+        if ((selections && selections.updateStrategy === 'none') || removeStrategy === 'none') {
+          console.log(`Skipping processing of missing accounts due to ${selections?.updateStrategy === 'none' ? 'updateStrategy = none' : 'removeStrategy = none'}`);
+        } else {
+          console.log(`DEBUG: Starting check for missing accounts from ${existingAccounts.length} existing accounts`);
+          let skipInactiveCount = 0;
+          let skipImportedCount = 0;
+          let skipTransactionsCount = 0;
+          let skipNotSelectedCount = 0;
+          
+          for (const account of existingAccounts) {
+            // Skip accounts that are already inactive
+            if (!account.active) {
+              skipInactiveCount++;
+              continue;
+            }
+            
+            const lowerAccountCode = account.accountCode.toLowerCase();
+            // Skip if the account was in the import
+            if (importedAccountCodes.has(lowerAccountCode)) {
+              skipImportedCount++;
+              continue;
+            }
+            
+            // Skip accounts with transactions (we don't want to deactivate these)
+            if (accountsWithTransactions.has(account.id)) {
+              console.log(`Account ${account.accountCode} (${account.name}) has transactions and is missing from import - keeping active`);
+              result.warnings.push(`Account ${account.accountCode} (${account.name}) has transactions and is missing from import - keeping active`);
+              skipTransactionsCount++;
+              continue;
+            }
+            
+            // If selections specify to only update selected accounts and this is not included, skip
+            if (selections && 
+                selections.updateStrategy === 'selected' &&
+                selections.includedCodes) {
+              // For missing accounts, we'll skip if this account is not explicitly selected for update
+              if (!selections.includedCodes.includes(account.accountCode)) {
+                console.log(`Account ${account.accountCode} (${account.name}) is missing from import but not selected for update - keeping active`);
+                skipNotSelectedCount++;
+                continue;
+              }
+            }
+            
+            console.log(`Account ${account.accountCode} (${account.name}) is missing from import file - will mark inactive`);
+            missingAccounts.push(account.id);
+          }
+          
+          console.log(`DEBUG: Skipped marking inactive - Already inactive: ${skipInactiveCount}, Present in import: ${skipImportedCount}, Has transactions: ${skipTransactionsCount}, Not selected: ${skipNotSelectedCount}`);
+        }
+        
+        // Process accounts to mark as inactive or delete (accounts that exist in DB but aren't in import)
+        console.log(`Found ${missingAccounts.length} accounts missing from import to process with strategy: ${removeStrategy}`);
+        
+        if (missingAccounts.length > 0) {
+          // Skip if removeStrategy is 'none'
+          if (removeStrategy === 'none') {
+            console.log(`Skipping processing of missing accounts due to removeStrategy = none`);
+          } else {
+            // Process each missing account based on the action specified in missingAccountActions
+            for (const accountId of missingAccounts) {
+              // Get the original account data for the log message
+              const account = existingIdMap.get(accountId);
+              if (!account) {
+                console.error(`Missing account ID ${accountId} not found in existingIdMap`);
+                continue;
+              }
+              
+              // Determine action for this account (default to removeStrategy if no specific action)
+              let action = removeStrategy;
+              
+              // Check if we have a specific action for this account in missingAccountActions
+              if (selections?.missingAccountActions && 
+                  account.accountCode in selections.missingAccountActions) {
+                action = selections.missingAccountActions[account.accountCode];
+                console.log(`Using specified action '${action}' for account ${account.accountCode}`);
+              } else {
+                console.log(`Using default action '${action}' for account ${account.accountCode}`);
+              }
+              
+              try {
+                if (action === 'inactive') {
+                  // Mark the account as inactive
+                  await tx
+                    .update(accounts)
+                    .set({ active: false })
+                    .where(eq(accounts.id, accountId));
+                  
+                  console.log(`Marked account ${account.accountCode} (${account.name}) as inactive`);
+                  result.inactive++;
+                  result.count++;
+                } else if (action === 'delete') {
+                  // Check if the account has transactions - don't delete if it does
+                  if (accountsWithTransactions.has(accountId)) {
+                    console.log(`Cannot delete account ${account.accountCode} (${account.name}) as it has transactions - marking inactive instead`);
+                    result.warnings.push(`Account ${account.accountCode} (${account.name}) has transactions and cannot be deleted - marked inactive instead`);
+                    
+                    // Mark as inactive instead
+                    await tx
+                      .update(accounts)
+                      .set({ active: false })
+                      .where(eq(accounts.id, accountId));
+                      
+                    result.inactive++;
+                  } else {
+                    // Check if this account has any child accounts
+                    const childAccounts = await tx
+                      .select({ count: count() })
+                      .from(accounts)
+                      .where(eq(accounts.parentId, accountId));
+                    
+                    // If there are child accounts, don't allow deletion
+                    if (childAccounts[0]?.count > 0) {
+                      console.log(`Cannot delete account ${account.accountCode} (${account.name}) as it has child accounts - marking inactive instead`);
+                      result.warnings.push(`Account ${account.accountCode} (${account.name}) has child accounts and cannot be deleted - marked inactive instead`);
+                      
+                      // Mark as inactive instead
+                      await tx
+                        .update(accounts)
+                        .set({ active: false })
+                        .where(eq(accounts.id, accountId));
+                        
+                      result.inactive++;
+                    } else {
+                      // Delete the account - it has no transactions and no child accounts
+                      await tx
+                        .delete(accounts)
+                        .where(eq(accounts.id, accountId));
+                      
+                      console.log(`Deleted account ${account.accountCode} (${account.name})`);
+                      result.deleted++; // Track accounts that were actually deleted
+                    }
+                  }
+                  result.count++;
+                }
+              } catch (processError) {
+                console.error(`Error processing missing account ${account.accountCode}:`, processError);
+                result.errors.push(`Failed to process missing account ${account.accountCode}: ${(processError as Error).message || 'Unknown error'}`);
+              }
+            }
+          }
+        }
+        
+        // ==================== STEP 9: Second pass - parent-child relationships ====================
+        console.log(`Processing parent-child relationships`);
+        
+        // Skip parent relationship processing if selections specify not to make updates
+        if (selections && selections.updateStrategy === 'none') {
+          console.log('Skipping parent relationship processing due to updateStrategy = none');
+          return result;
+        }
+        
+        // First gather all parent relationships to resolve
+        const parentUpdates: { accountId: number, parentId: number, accountCode: string, parentCode: string }[] = [];
         
         // Process existing accounts that may need parent updates
         for (const row of validRows) {

@@ -525,7 +525,8 @@ export class AccountStorage implements IAccountStorage {
 
     async accountHasTransactions(id: number): Promise<boolean> {
         // Implementation copied from DatabaseStorage in original storage.ts
-         try {
+        console.log(`DEBUG: AccountStorage.accountHasTransactions for account ${id}`);
+        try {
              // Check if account is used in any journal entry lines
              const usageCount = await db.select({ count: sql<number>`count(*)` })
                  .from(journalEntryLines)
@@ -540,6 +541,8 @@ export class AccountStorage implements IAccountStorage {
     
     async markAccountInactive(id: number, clientId: number): Promise<Account | undefined> {
         console.log(`Marking account ${id} as inactive for client ${clientId}`);
+        // Add additional debugging log
+        console.log(`DEBUG: AccountStorage.markAccountInactive for account ${id}, client ${clientId}`);
         try {
             // Check if account exists and is not already inactive
             const existingAccount = await this.getAccountById(id, clientId);
