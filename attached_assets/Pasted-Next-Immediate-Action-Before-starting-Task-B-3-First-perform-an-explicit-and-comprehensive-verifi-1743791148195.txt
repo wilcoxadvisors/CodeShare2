@@ -1,0 +1,105 @@
+Next Immediate Action (Before starting Task B.3)
+First, perform an explicit and comprehensive verification of all previously completed tasks. We will methodically confirm each feature is working correctly to your standards, with particular focus on Phase 2 and Phase 3 (Tasks B.1 & B.2). Follow these steps explicitly:
+
+📝 Explicit Verification Steps
+Phase 2: Client & Entity Setup Flow
+Client Onboarding Flow (SetupStepper.tsx):
+
+Verify step-by-step client creation is intuitive and stable.
+
+Ensure client data saves explicitly to PostgreSQL correctly.
+
+Explicitly confirm navigation (forward/back) maintains state correctly.
+
+Entity Management:
+
+Explicitly confirm CRUD operations (Create, Read, Update, Delete) function accurately.
+
+Ensure entities link explicitly and correctly to the client.
+
+Explicitly confirm UI clearly displays entity hierarchy.
+
+Consolidation Groups (if applicable):
+
+Confirm explicit database linkage for consolidation groups.
+
+Verify the UI accurately displays consolidated entities.
+
+Phase 3 (B.1): Chart of Accounts (CoA)
+Hierarchical CoA Management:
+
+Explicitly verify CRUD (Create/Update/Delete) operations on accounts.
+
+Confirm the UI explicitly matches data stored in PostgreSQL.
+
+Import/Export Functionality (CSV/Excel):
+
+Explicitly confirm import/export operations work accurately, with validation checks clearly implemented.
+
+Verify imported accounts explicitly reflect changes correctly.
+
+Schema Verification:
+
+Confirm fields explicitly moved (fsliBucket, internalReportingBucket, item) from accounts → journalEntryLines.
+
+Explicitly verify database schema and storage module reflect this accurately.
+
+Phase 3 (B.2): General Ledger & Journal Entries
+(This step will require the most explicit verification.)
+
+Manual Journal Entry Creation (UI/UX):
+
+Explicitly test creating, updating, deleting manual journal entries through the UI (ManualJournalEntry.tsx).
+
+Confirm journal entries explicitly reflect accurately in the database.
+
+Journal Entry Validation (debits = credits):
+
+Verify the explicit validation rule is enforced clearly.
+
+Batch Upload Journal Entries:
+
+Explicitly test CSV/Excel uploads with multiple journal entries.
+
+Confirm explicit validation, error handling, and success messaging.
+
+Ensure data explicitly reflects accurately in the database post-upload.
+
+General Ledger UI & Reporting:
+
+Explicitly confirm the general ledger UI retrieves correct journal entries.
+
+Ensure filtering, sorting, and reporting explicitly match data correctly.
+
+✅ Explicit Outcome Expected (Response Format)
+markdown
+Copy
+Edit
+## ✅ Comprehensive Verification Report
+
+### Phase 2: Client & Entity Setup
+- ✅ Client onboarding explicitly tested; fully operational.
+- ✅ Entity management explicitly verified; fully operational.
+- ✅ Consolidation groups explicitly confirmed operational.
+
+OR (explicitly detail issues clearly)
+
+### Phase 3 (B.1): Chart of Accounts
+- ✅ CoA CRUD explicitly confirmed operational.
+- ✅ Import/Export explicitly confirmed operational.
+- ✅ Schema explicitly verified correct.
+
+OR (explicitly detail issues clearly)
+
+### Phase 3 (B.2): General Ledger & Journal Entries
+- ✅ Manual journal entries explicitly confirmed operational.
+- ✅ Journal entry validation explicitly confirmed enforced.
+- ✅ Batch upload explicitly tested & confirmed operational.
+- ✅ General ledger UI explicitly confirmed operational.
+
+OR (explicitly detail issues clearly)
+
+### ✅ Final Verification Status:
+- ✅ All previously completed phases explicitly verified and functioning according to standards.
+
+OR (explicitly list remaining issues clearly and explicitly.)
