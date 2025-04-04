@@ -20,8 +20,8 @@
  *   - Database connection from server/db.ts
  */
 import { db } from "../db";
-import { entities, Entity, InsertEntity, userEntityAccess } from "@shared/schema";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { entities, Entity, InsertEntity, userEntityAccess, clients } from "@shared/schema";
+import { eq, and, asc, inArray, like } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -31,6 +31,56 @@ function handleDbError(error: unknown, operation: string): Error {
     return error;
   }
   return new Error(`An error occurred during ${operation}: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+/**
+ * Generate a unique hierarchical entity code based on the client's code
+ * Format: {ClientCode}-{SequentialNumber}
+ * Example: "ABC123XYZ-001"
+ */
+async function generateUniqueEntityCode(clientId: number): Promise<string> {
+  try {
+    // Fetch the client to get its code
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, clientId))
+      .limit(1);
+    
+    if (!client) {
+      throw new Error(`Client with ID ${clientId} not found`);
+    }
+    
+    const clientCode = client.clientCode;
+    
+    // Find existing entity codes for this client and determine the next sequential number
+    const existingEntities = await db
+      .select({ entityCode: entities.entityCode })
+      .from(entities)
+      .where(like(entities.entityCode, `${clientCode}-%`))
+      .orderBy(asc(entities.entityCode));
+    
+    // Extract the sequence numbers from existing entity codes
+    const existingNumbers = existingEntities
+      .map(e => {
+        if (!e.entityCode) return 0;
+        const parts = e.entityCode.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(num => !isNaN(num));
+    
+    // Determine the next sequential number
+    const nextNumber = existingNumbers.length > 0 
+      ? Math.max(...existingNumbers) + 1 
+      : 1;
+    
+    // Format: CLIENT-CODE-001 (padded to ensure consistent sorting)
+    return `${clientCode}-${String(nextNumber).padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating unique entity code:", error);
+    // Fallback to timestamp-based code if an error occurs
+    return `ERR-${Date.now().toString(36).toUpperCase()}`;
+  }
 }
 
 /**
@@ -163,17 +213,32 @@ export class EntityStorage implements IEntityStorage {
       
       // Convert numeric industry values to string to maintain consistency
       if (industryValue !== undefined && industryValue !== null) {
-        // Convert to string for consistency
-        industryValue = String(industryValue);
-      } else if (industryValue === '' || industryValue === null) {
-        // Default empty value to "other" for consistency with update logic
+        if (industryValue === '') {
+          // Default empty string to "other" for consistency with update logic
+          industryValue = "other";
+        } else {
+          // Convert any non-empty value to string for consistency
+          industryValue = String(industryValue);
+        }
+      } else {
+        // Default null or undefined to "other" for consistency with update logic
         industryValue = "other";
       }
       
-      // Insert with processed industry value
+      // Generate a unique hierarchical entity code if client ID is provided
+      let entityCode = null;
+      if (insertEntity.clientId) {
+        entityCode = await generateUniqueEntityCode(insertEntity.clientId);
+        console.log(`DEBUG EntityStorage.createEntity: Generated unique entity code: ${entityCode}`);
+      } else {
+        console.log("DEBUG EntityStorage.createEntity: No client ID provided, skipping entity code generation");
+      }
+      
+      // Insert with processed values
       const entityToInsert = {
         ...insertEntity,
-        industry: industryValue
+        industry: industryValue,
+        entityCode // Include the generated entity code
       };
       
       const [newEntity] = await db.insert(entities).values(entityToInsert).returning();
@@ -288,6 +353,58 @@ export class MemEntityStorage implements IEntityStorage {
   }
 
   /**
+   * Generate a unique entity code for in-memory storage
+   * This is a simplified version of the DB-based function
+   */
+  private async generateEntityCode(clientId: number): Promise<string> {
+    try {
+      // For in-memory storage, we'll use a simpler approach
+      // Each entity for a client will get a sequential code: CLIENT-001, CLIENT-002, etc.
+      
+      // First, determine what client codes we have in our entities
+      const clientEntities = Array.from(this.entities.values())
+        .filter(e => e.clientId === clientId);
+      
+      // Default client code if we can't find a better one
+      let clientCode = `C${clientId}`;
+      
+      // Try to find an entity with a client code we can extract
+      const entitiesWithCodes = clientEntities.filter(e => e.entityCode && e.entityCode.includes('-'));
+      if (entitiesWithCodes.length > 0) {
+        // Extract client code from existing entity codes
+        const parts = entitiesWithCodes[0].entityCode?.split('-') || [];
+        if (parts.length > 0) {
+          clientCode = parts[0];
+        }
+      }
+      
+      // Find existing entity codes for this client
+      const existingCodes = clientEntities
+        .map(e => e.entityCode)
+        .filter(code => code && code.startsWith(`${clientCode}-`));
+      
+      // Extract sequence numbers from entity codes
+      const sequenceNumbers = existingCodes
+        .map(code => {
+          if (!code) return 0;
+          const parts = code.split('-');
+          return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        })
+        .filter(num => !isNaN(num));
+      
+      // Determine next sequence number
+      const nextNumber = sequenceNumbers.length > 0 
+        ? Math.max(...sequenceNumbers) + 1 
+        : 1;
+      
+      return `${clientCode}-${String(nextNumber).padStart(3, '0')}`;
+    } catch (error) {
+      console.error("Error generating entity code in MemEntityStorage:", error);
+      return `MEM-${Date.now().toString(36).toUpperCase()}`;
+    }
+  }
+
+  /**
    * Create a new entity
    */
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
@@ -308,10 +425,18 @@ export class MemEntityStorage implements IEntityStorage {
       }
     }
     
+    // Generate entity code if client ID is provided
+    let entityCode = null;
+    if (insertEntity.clientId) {
+      entityCode = await this.generateEntityCode(insertEntity.clientId);
+      console.log(`DEBUG MemEntityStorage.createEntity: Generated entity code: ${entityCode}`);
+    }
+    
     const entity: Entity = { 
       id, 
       name: insertEntity.name,
       code: insertEntity.code,
+      entityCode, // Include the generated entity code
       ownerId: insertEntity.ownerId,
       clientId: insertEntity.clientId,
       active: insertEntity.active !== undefined ? insertEntity.active : true,

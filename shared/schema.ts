@@ -64,6 +64,7 @@ export const entities = pgTable("entities", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   code: text("code").notNull(),
+  entityCode: text("entity_code"), // New hierarchical entity code
   ownerId: integer("owner_id").references(() => users.id).notNull(),
   clientId: integer("client_id").references(() => clients.id), // Link to client
   active: boolean("active").notNull().default(true),
@@ -549,7 +550,8 @@ export const insertClientSchema = createInsertSchema(clients).omit({
 // Schema for Entity insertion
 export const insertEntitySchema = createInsertSchema(entities).omit({
   id: true,
-  createdAt: true
+  createdAt: true,
+  entityCode: true // Omitting entityCode since it will be auto-generated
 });
 
 // Schema for Journal insertion

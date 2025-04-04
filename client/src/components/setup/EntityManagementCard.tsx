@@ -1515,6 +1515,7 @@ export default function EntityManagementCard({
                   <TableRow key="header-row">
                     <TableHead key="header-name">Name</TableHead>
                     <TableHead key="header-type">Type</TableHead>
+                    <TableHead key="header-code">Entity Code</TableHead>
                     <TableHead key="header-industry">Industry</TableHead>
                     <TableHead key="header-status">Status</TableHead>
                     <TableHead key="header-actions" className="text-right">Actions</TableHead>
@@ -1534,6 +1535,17 @@ export default function EntityManagementCard({
                           )}
                         </TableCell>
                         <TableCell key={`type-${entityKey}`}>{entity.entityType || "LLC"}</TableCell>
+                        <TableCell key={`code-${entityKey}`} className="font-mono text-xs">
+                          {entity.entityCode ? (
+                            <Badge variant="outline" className="px-2">
+                              {entity.entityCode}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic">
+                              Auto-generated on save
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell key={`industry-${entityKey}`}>
                           {/* Display industry as human-readable label, not code */}
                           {(() => {
