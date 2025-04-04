@@ -38,7 +38,7 @@ import {
 // Import specialized storage module classes and instances
 import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult, IAccountStorage } from './storage/accountStorage';
 import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
-import { ClientStorage, clientStorage, IClientStorage } from './storage/clientStorage';
+import { ClientStorage, clientStorage, memClientStorage, IClientStorage } from './storage/clientStorage';
 import { EntityStorage, entityStorage } from './storage/entityStorage';
 import { UserStorage, userStorage } from './storage/userStorage';
 import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
@@ -267,7 +267,6 @@ export class MemStorage implements IStorage {
   public clients: IClientStorage; // Property for IClientStorage as required by the IStorage interface
   
   private users: Map<number, User>;
-  private _clientsMap: Map<number, Client>; // Renamed to avoid conflicts
   private entities: Map<number, Entity>;
   private journals: Map<number, Journal>;
   // Journal Entry related maps removed and moved to journalEntryStorage module
@@ -290,7 +289,7 @@ export class MemStorage implements IStorage {
   private locations: Map<number, Location> = new Map();
   
   private currentUserId: number = 1;
-  private currentClientId: number = 1;
+  // currentClientId now managed by memClientStorage
   private currentEntityId: number = 1;
   private currentJournalId: number = 1;
   // Journal Entry related counters moved to journalEntryStorage module
@@ -325,10 +324,9 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.accounts = accountStorage; // Assign the imported accountStorage instance
-    this.clients = clientStorage; // Assign the imported clientStorage instance
+    this.clients = memClientStorage; // Assign the memory-based clientStorage instance
     
     this.users = new Map();
-    this._clientsMap = new Map(); // Initialize the internal clients map
     this.entities = new Map();
     this.journals = new Map();
     // Journal Entry related maps removed (moved to journalEntryStorage module)
@@ -422,8 +420,8 @@ export class MemStorage implements IStorage {
       referralSource: null
     };
     
-    // Initialize the client in the internal map
-    this._clientsMap.set(defaultClientId, defaultClient);
+    // Initialize the client using the memClientStorage's addClientDirectly method
+    (this.clients as any).addClientDirectly(defaultClient);
     
     // Create default entity
     const defaultEntity: Entity = {

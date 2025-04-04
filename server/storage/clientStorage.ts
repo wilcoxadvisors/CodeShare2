@@ -27,6 +27,9 @@ export interface IClientStorage {
   getClientByUserId(userId: number): Promise<Client | null>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
+  
+  // For MemClientStorage only - allows direct client creation for constructor use
+  addClientDirectly?(client: Client): void;
 }
 
 /**
@@ -105,7 +108,13 @@ export class ClientStorage implements IClientStorage {
    */
   async createClient(client: InsertClient): Promise<Client> {
     try {
-      const [newClient] = await db.insert(clients).values(client).returning();
+      // Ensure active is always a boolean
+      const clientData = {
+        ...client,
+        active: client.active !== undefined ? client.active : true
+      };
+      
+      const [newClient] = await db.insert(clients).values(clientData).returning();
       return newClient;
     } catch (error) {
       handleDbError(error, "Error creating client");
@@ -138,5 +147,116 @@ export class ClientStorage implements IClientStorage {
   }
 }
 
-// Export a singleton instance
+/**
+ * Memory-based implementation of client storage operations
+ * Primarily used by MemStorage for testing and development
+ */
+export class MemClientStorage implements IClientStorage {
+  private clients: Map<number, Client>;
+  private currentClientId: number;
+  
+  constructor() {
+    this.clients = new Map();
+    this.currentClientId = 1; // Start IDs at 1
+  }
+  
+  /**
+   * Add a client directly to the map
+   * This is used by MemStorage constructor to add the default client
+   * without using async methods
+   */
+  addClientDirectly(client: Client): void {
+    this.clients.set(client.id, client);
+    // Update the ID counter if this ID is higher
+    if (client.id >= this.currentClientId) {
+      this.currentClientId = client.id + 1;
+    }
+  }
+  
+  /**
+   * Get a client by ID
+   */
+  async getClient(id: number): Promise<Client | undefined> {
+    return this.clients.get(id);
+  }
+  
+  /**
+   * Get all clients
+   */
+  async getClients(): Promise<Client[]> {
+    return Array.from(this.clients.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  /**
+   * Get clients by user ID
+   */
+  async getClientsByUserId(userId: number): Promise<Client[]> {
+    return Array.from(this.clients.values())
+      .filter(client => client.userId === userId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  /**
+   * Get a client by user ID (returns first match)
+   */
+  async getClientByUserId(userId: number): Promise<Client | null> {
+    const clients = await this.getClientsByUserId(userId);
+    return clients.length > 0 ? clients[0] : null;
+  }
+  
+  /**
+   * Create a new client
+   */
+  async createClient(client: InsertClient): Promise<Client> {
+    const id = this.currentClientId++;
+    
+    // Ensure all required fields have proper defaults
+    const newClient: Client = {
+      id,
+      name: client.name,
+      userId: client.userId,
+      active: client.active !== undefined ? client.active : true,
+      industry: client.industry !== undefined ? client.industry : null,
+      referralSource: client.referralSource !== undefined ? client.referralSource : null,
+      contactName: client.contactName !== undefined ? client.contactName : null,
+      contactEmail: client.contactEmail !== undefined ? client.contactEmail : null,
+      contactPhone: client.contactPhone !== undefined ? client.contactPhone : null,
+      address: client.address !== undefined ? client.address : null,
+      city: client.city !== undefined ? client.city : null,
+      state: client.state !== undefined ? client.state : null,
+      country: client.country !== undefined ? client.country : null,
+      postalCode: client.postalCode !== undefined ? client.postalCode : null,
+      website: client.website !== undefined ? client.website : null,
+      notes: client.notes !== undefined ? client.notes : null,
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.clients.set(id, newClient);
+    return newClient;
+  }
+  
+  /**
+   * Update a client
+   */
+  async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
+    const client = this.clients.get(id);
+    if (!client) {
+      return undefined;
+    }
+    
+    const updatedClient = {
+      ...client,
+      ...clientData,
+      updatedAt: new Date()
+    };
+    
+    this.clients.set(id, updatedClient);
+    return updatedClient;
+  }
+}
+
+// Export singleton instances
 export const clientStorage = new ClientStorage();
+export const memClientStorage = new MemClientStorage();
