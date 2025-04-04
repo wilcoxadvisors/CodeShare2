@@ -24,7 +24,7 @@ import { AssetStorage, assetStorage, IAssetStorage } from './storage/assetStorag
 import { BudgetStorage, budgetStorage, IBudgetStorage } from './storage/budgetStorage';
 import { FormStorage, formStorage, IFormStorage } from './storage/formStorage';
 import { ReportStorage, reportStorage, IReportStorage } from './storage/reportStorage';
-import { UserActivityStorage, userActivityStorage, IUserActivityStorage, MemUserActivityStorage } from './storage/userActivityStorage';
+import { UserActivityStorage, userActivityStorage, IUserActivityStorage } from './storage/userActivityStorage';
 
 import { eq } from "drizzle-orm";
 import { db } from "./db";
