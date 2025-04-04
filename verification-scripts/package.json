@@ -1,0 +1,13 @@
+{
+  "name": "verification-scripts",
+  "version": "1.0.0",
+  "description": "Verification scripts for the financial management platform",
+  "main": "comprehensive-verification-p2-p3.js",
+  "scripts": {
+    "verify": "node comprehensive-verification-p2-p3.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2"
+  }
+}

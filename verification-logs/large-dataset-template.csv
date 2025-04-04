@@ -1,0 +1,3 @@
+date,reference_number,description,journal_type,entity_code,account_code,type,amount,line_description,fsli_bucket,internal_reporting_bucket,item
+2023-01-01,JE-230101-001,Sample Journal Entry,JE,ENTITY1,1000,debit,1000.00,Sample debit line,Cash and Cash Equivalents,Operating Cash,Primary Cash Account
+2023-01-01,JE-230101-001,Sample Journal Entry,JE,ENTITY1,5000,credit,1000.00,Sample credit line,Operating Expenses,Administrative,Office Supplies

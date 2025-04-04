@@ -318,7 +318,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getClient(id: number): Promise<Client | undefined> {
-    return this.clients.getClientById(id);
+    return this.clients.getClient(id);
   }
   
   async getClients(): Promise<Client[]> {
@@ -375,7 +375,7 @@ export class MemStorage implements IStorage {
     this.budgets = budgetStorage;
     this.forms = formStorage;
     this.reports = reportStorage;
-    this.userActivity = new MemUserActivityStorage();
+    this.userActivity = userActivityStorage;
     this.users = userStorage;
     this.entity = memEntityStorage;
     this.journalEntry = journalEntryStorage;
@@ -462,7 +462,7 @@ export class MemStorage implements IStorage {
   }
   
   async getClient(id: number): Promise<Client | undefined> {
-    return this.clients.getClientById(id);
+    return this.clients.getClient(id);
   }
   
   async getClients(): Promise<Client[]> {

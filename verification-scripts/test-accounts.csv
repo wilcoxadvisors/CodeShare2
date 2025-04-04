@@ -1,0 +1,9 @@
+accountCode,name,type,subtype,isSubledger,subledgerType,description,fsliBucket,internalReportingBucket,item
+1100,Cash,asset,current_asset,false,,Primary cash account,Cash and Cash Equivalents,Operating Cash,Primary Cash Account
+1200,Accounts Receivable,asset,current_asset,true,accounts_receivable,Accounts receivable control account,Accounts Receivable,Trade Receivables,Control Account
+1300,Inventory,asset,current_asset,false,,Inventory of goods for sale,Inventory,Finished Goods,Main Inventory
+2100,Accounts Payable,liability,current_liability,true,accounts_payable,Accounts payable control account,Accounts Payable,Trade Payables,Control Account
+3100,Common Stock,equity,equity,false,,Common stock,Equity,Contributed Capital,Common Stock
+4100,Sales Revenue,revenue,revenue,false,,Revenue from sales,Revenue,Product Sales,Gross Sales
+5100,Cost of Goods Sold,expense,cost_of_goods_sold,false,,Cost of goods sold,Cost of Goods Sold,Product COGS,Direct Costs
+6100,Salaries Expense,expense,operating_expense,false,,Salaries and wages,Operating Expenses,Personnel,Salaries

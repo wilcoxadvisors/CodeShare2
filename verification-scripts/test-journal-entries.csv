@@ -1,0 +1,7 @@
+date,reference_number,description,journal_type,entity_code,account_code,type,amount,line_description,fsli_bucket,internal_reporting_bucket,item
+2023-01-01,JE-230101-001,Test Journal Entry 1,JE,TEST1,1000,debit,1000.00,Test debit line,Cash and Cash Equivalents,Operating Cash,Primary Cash Account
+2023-01-01,JE-230101-001,Test Journal Entry 1,JE,TEST1,5000,credit,1000.00,Test credit line,Operating Expenses,Administrative,Office Supplies
+2023-01-02,JE-230102-001,Test Journal Entry 2,JE,TEST1,1000,debit,500.00,Second test debit,Cash and Cash Equivalents,Operating Cash,Primary Cash Account
+2023-01-02,JE-230102-001,Test Journal Entry 2,JE,TEST1,5000,credit,500.00,Second test credit,Operating Expenses,Administrative,Office Supplies
+2023-01-03,JE-230103-001,Test Journal Entry 3,AJ,TEST1,1000,credit,750.00,Adjustment credit,Cash and Cash Equivalents,Operating Cash,Primary Cash Account
+2023-01-03,JE-230103-001,Test Journal Entry 3,AJ,TEST1,5000,debit,750.00,Adjustment debit,Operating Expenses,Administrative,Office Supplies
