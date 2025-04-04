@@ -2240,15 +2240,16 @@ export class DatabaseStorage implements IStorage {
   }
   // Implementation for Chart of Accounts export
   async getAccountsForClient(clientId: number): Promise<Account[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccountsForClient(clientId);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating getAccountsForClient for client ${clientId} to this.accounts.getAccountsByClientId`);
+    return this.accounts.getAccountsByClientId(clientId);
   }
   
   // Implementation for Chart of Accounts import
   async generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview> {
-    console.log(`Generating Chart of Accounts import preview. Client ID: ${clientId}`);
-    
-    const preview: ImportPreview = {
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating generateCoaImportPreview for client ${clientId} to this.accounts`);
+    return this.accounts.generateCoaImportPreview(clientId, fileBuffer, fileName);
       changes: [],
       totalChanges: 0,
       totalAdds: 0,
@@ -2524,34 +2525,19 @@ export class DatabaseStorage implements IStorage {
   }
   
   async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName?: string, selections?: ImportSelections | null): Promise<ImportResult> {
-    const result: ImportResult = {
-      count: 0,     // Total accounts processed
-      added: 0,     // New accounts added
-      updated: 0,   // Existing accounts updated
-      unchanged: 0, // Existing accounts unchanged
-      skipped: 0,   // Accounts skipped (validation failure)
-      inactive: 0,  // Accounts marked inactive
-      deleted: 0,   // Accounts that were deleted
-      errors: [],   // Error messages
-      warnings: []  // Warning messages
-    };
-    
-    return await db.transaction(async (tx) => {
-      try {
-        // ==================== STEP 1: Parse the file ====================
-        let rows: any[] = [];
-        console.log(`Parsing file for Chart of Accounts import. Client ID: ${clientId}`);
-        
-        try {
-          // Determine if this is an Excel file or CSV based on file extension
-          const isExcel = fileName && (fileName.endsWith('.xlsx') || fileName.endsWith('.xls'));
-          
-          if (isExcel) {
-            // Process Excel file
-            const XLSX = await import('xlsx');
-            const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating importCoaForClient for client ${clientId} to this.accounts`);
+    return this.accounts.importCoaForClient(clientId, fileBuffer, fileName, selections);
+  }
+  
+  /* Original importCoaForClient implementation has been completely removed and delegated to accountStorage */
+
+  /* Removed duplicate implementations of:
+   * - createAccount
+   * - markAccountInactive
+   * - accountHasTransactions 
+   * These methods are properly delegated in the MemStorage class (line ~275)
+   */
             
             // Convert to JSON with header option
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -4872,19 +4858,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedClientCoA(clientId: number): Promise<void> {
-    return accountStorage.seedClientCoA(clientId);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: DatabaseStorage delegating seedClientCoA for client ${clientId} to this.accounts`);
+    return this.accounts.seedClientCoA(clientId);
   }
 
   async getAccountsForClient(clientId: number): Promise<Account[]> {
-    return accountStorage.getAccountsByClientId(clientId);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: DatabaseStorage delegating getAccountsForClient for client ${clientId} to this.accounts.getAccountsByClientId`);
+    return this.accounts.getAccountsByClientId(clientId);
   }
 
   async generateCoaImportPreview(clientId: number, fileBuffer: Buffer, fileName: string): Promise<ImportPreview> {
-    return accountStorage.generateCoaImportPreview(clientId, fileBuffer, fileName);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: DatabaseStorage delegating generateCoaImportPreview for client ${clientId} to this.accounts`);
+    return this.accounts.generateCoaImportPreview(clientId, fileBuffer, fileName);
   }
 
   async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult> {
-    return accountStorage.importCoaForClient(clientId, fileBuffer, fileName, selections);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: DatabaseStorage delegating importCoaForClient for client ${clientId} to this.accounts`);
+    return this.accounts.importCoaForClient(clientId, fileBuffer, fileName, selections);
   }
   
   // Journal Entry methods delegation
