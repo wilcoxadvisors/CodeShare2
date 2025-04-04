@@ -17,29 +17,41 @@ function handleDbError(error: unknown, operation: string): Error {
   return new Error(`An error occurred during ${operation}: ${error instanceof Error ? error.message : String(error)}`);
 }
 
+import { customAlphabet } from 'nanoid';
+
 /**
  * Generate a unique client code
- * Format: Simple numeric code (1001, 1002, etc.)
+ * Format: Alphanumeric code (0-9, A-Z) with at least 10 characters
  */
 async function generateUniqueClientCode(): Promise<string> {
+  // Alphanumeric code (0-9, A-Z)
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const generateCode = customAlphabet(alphabet, 10);
+  
   try {
-    // Find the last client to determine the next ID
-    const lastClient = await db
-      .select()
-      .from(clients)
-      .orderBy(desc(clients.id))
-      .limit(1);
+    let unique = false;
+    let clientCode = '';
     
-    // Determine the next sequential ID and add 1000 to start from 1001
-    const nextId = (lastClient[0]?.id || 0) + 1000;
+    while (!unique) {
+      clientCode = generateCode();
+      
+      // Check if this code already exists
+      const existing = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.clientCode, clientCode))
+        .limit(1);
+      
+      unique = existing.length === 0;
+    }
     
-    // Return the client code as a simple number string
-    return nextId.toString();
+    return clientCode;
   } catch (error) {
     console.error("Error generating unique client code:", error);
     // Fallback to timestamp-based code if error occurs
-    const timestamp = Date.now().toString().substring(6); // Use last 7 digits of timestamp
-    return timestamp;
+    const timestamp = Date.now().toString(36).toUpperCase() + 
+                     Math.random().toString(36).substring(2, 6).toUpperCase();
+    return timestamp.padEnd(10, '0').substring(0, 10);
   }
 }
 
@@ -248,15 +260,19 @@ export class MemClientStorage implements IClientStorage {
   async createClient(client: InsertClient): Promise<Client> {
     const id = this.currentClientId++;
     
-    // Generate a simple numeric client code for memory storage
-    const clientCode = (id + 1000).toString();
+    // Generate an alphanumeric client code using nanoid like the main storage implementation
+    const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const generateCode = customAlphabet(alphabet, 10);
+    
+    // Generate unique code for memory storage
+    const clientCode = generateCode();
     
     // Ensure all required fields have proper defaults
     const newClient: Client = {
       id,
       name: client.name,
       userId: client.userId,
-      clientCode, // Add client code
+      clientCode, // Add alphanumeric client code
       legalName: client.legalName !== undefined ? client.legalName : null,
       active: client.active !== undefined ? client.active : true,
       industry: client.industry !== undefined ? client.industry : null,
