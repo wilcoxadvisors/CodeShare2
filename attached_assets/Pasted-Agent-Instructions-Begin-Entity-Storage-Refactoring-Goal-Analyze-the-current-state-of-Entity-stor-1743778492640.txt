@@ -1,0 +1,31 @@
+Agent Instructions: Begin Entity Storage Refactoring
+
+Goal: Analyze the current state of Entity storage logic and begin refactoring it out of server/storage.ts into a dedicated server/storage/entityStorage.ts module.
+
+Relevant Files:
+
+server/storage.ts (Main storage file) [cite: uploaded:CodeShare/server/storage.ts]
+server/storage/entityStorage.ts (Target module file - check existence/content) [cite: uploaded:CodeShare/server/storage/entityStorage.ts]
+shared/schema.ts (Entity type definitions) [cite: uploaded:CodeShare/shared/schema.ts]
+server/adminRoutes.ts, server/routes.ts (Potential users of entity storage methods) [cite: uploaded:CodeShare/server/adminRoutes.ts, uploaded:CodeShare/server/routes.ts]
+Implementation Steps:
+
+Part 1: Analyze Current State
+
+Check entityStorage.ts:
+Action: Check if the file server/storage/entityStorage.ts exists in the current environment.
+Action: If it exists, open and examine its content. Does it define an IEntityStorage interface? Does it contain an EntityStorage class (or similar) with implementations for entity methods (like getEntity, getEntities, createEntity, updateEntity, getEntitiesByClient, getEntitiesByUser)? Does it export an instance (entityStorage)? Report findings.
+Action: If it doesn't exist, report that the file needs to be created.
+Check storage.ts:
+Action: Open server/storage.ts.
+Action: Examine the IStorage interface. Does it list individual entity methods, or does it have a property like entities: IEntityStorage;? Check the comments regarding delegation for entity methods.
+Action: Examine the DatabaseStorage class. Does it have a property public entities: IEntityStorage; initialized with an entityStorage instance? Does it delegate entity methods (like getEntity, createEntity) to this.entities, or does it still contain direct implementations?
+Action: Examine the MemStorage class similarly. Does it have the public entities property and delegate methods, or does it contain direct implementations and potentially a private entities map?
+Action: Report the findings regarding the current state of entity logic within IStorage, DatabaseStorage, and MemStorage in storage.ts.
+Part 2: Report and Plan Next Steps
+
+Summarize Status: Based on the analysis in Part 1, summarize the current refactoring status for the Entity module.
+Propose Actions: Based on the status, propose the specific next actions needed. Examples:
+"Need to create entityStorage.ts, define interface/class, move methods from storage.ts, implement delegation."
+"entityStorage.ts exists, but delegation in MemStorage needs to be implemented."
+"Refactoring seems complete, just need final cleanup in storage.ts."

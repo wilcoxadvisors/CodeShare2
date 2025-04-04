@@ -212,5 +212,163 @@ export class EntityStorage implements IEntityStorage {
   // Note: getUserEntityAccess and grantUserEntityAccess methods have been moved to userStorage.ts
 }
 
-// Export a singleton instance
+/**
+ * Memory-based implementation of entity storage operations
+ * Used for testing and development environments
+ */
+export class MemEntityStorage implements IEntityStorage {
+  private entities: Map<number, Entity>;
+  private currentEntityId: number;
+  
+  constructor() {
+    this.entities = new Map();
+    this.currentEntityId = 1; // Start IDs at 1
+  }
+  
+  /**
+   * Add an entity directly to the map
+   * Used for initialization in MemStorage
+   */
+  addEntityDirectly(entity: Entity): void {
+    this.entities.set(entity.id, entity);
+    // Update the currentEntityId if needed
+    if (entity.id >= this.currentEntityId) {
+      this.currentEntityId = entity.id + 1;
+    }
+  }
+
+  /**
+   * Get an entity by ID
+   */
+  async getEntity(id: number): Promise<Entity | undefined> {
+    return this.entities.get(id);
+  }
+
+  /**
+   * Get all entities
+   */
+  async getEntities(): Promise<Entity[]> {
+    return Array.from(this.entities.values());
+  }
+
+  /**
+   * Get entities by user ID
+   * This includes entities owned by the user and entities the user has access to
+   */
+  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+    // In memory implementation, we'll just return entities owned by the user
+    // Access control is handled separately in UserEntityStorage
+    return Array.from(this.entities.values())
+      .filter(entity => entity.ownerId === userId);
+  }
+
+  /**
+   * Get entities by client ID
+   */
+  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+    return Array.from(this.entities.values())
+      .filter(entity => entity.clientId === clientId)
+      .sort((a, b) => a.name.localeCompare(b.name)); // Sort by name
+  }
+
+  /**
+   * Create a new entity
+   */
+  async createEntity(insertEntity: InsertEntity): Promise<Entity> {
+    console.log("DEBUG MemEntityStorage.createEntity: Creating new entity with data:", JSON.stringify(insertEntity));
+    
+    const id = this.currentEntityId++;
+    
+    // Process industry data for consistency
+    let industryValue = null;
+    if (insertEntity.industry !== undefined && insertEntity.industry !== null) {
+      if (insertEntity.industry === '') {
+        console.log("DEBUG MemEntityStorage.createEntity: Empty industry provided, defaulting to 'other'");
+        industryValue = 'other';
+      } else {
+        // Convert any industry value to string for consistent storage
+        console.log(`DEBUG MemEntityStorage.createEntity: Converting industry value "${insertEntity.industry}" (${typeof insertEntity.industry}) to string`);
+        industryValue = String(insertEntity.industry);
+      }
+    }
+    
+    const entity: Entity = { 
+      id, 
+      name: insertEntity.name,
+      code: insertEntity.code,
+      ownerId: insertEntity.ownerId,
+      clientId: insertEntity.clientId,
+      active: insertEntity.active !== undefined ? insertEntity.active : true,
+      fiscalYearStart: insertEntity.fiscalYearStart || '01-01',
+      fiscalYearEnd: insertEntity.fiscalYearEnd || '12-31',
+      currency: insertEntity.currency || 'USD',
+      email: insertEntity.email || null,
+      taxId: insertEntity.taxId || null,
+      address: insertEntity.address || null,
+      phone: insertEntity.phone || null,
+      website: insertEntity.website || null,
+      createdAt: new Date(),
+      updatedAt: null,
+      city: insertEntity.city || null,
+      state: insertEntity.state || null,
+      country: insertEntity.country || null,
+      postalCode: insertEntity.postalCode || null,
+      industry: industryValue, // Use our processed industry value
+      subIndustry: insertEntity.subIndustry || null,
+      employeeCount: insertEntity.employeeCount || null,
+      foundedYear: insertEntity.foundedYear || null,
+      annualRevenue: insertEntity.annualRevenue || null,
+      businessType: insertEntity.businessType || null,
+      publiclyTraded: insertEntity.publiclyTraded || false,
+      stockSymbol: insertEntity.stockSymbol || null,
+      timezone: insertEntity.timezone || 'UTC',
+      dataCollectionConsent: insertEntity.dataCollectionConsent || false,
+      lastAuditDate: insertEntity.lastAuditDate || null
+    };
+    this.entities.set(id, entity);
+    return entity;
+  }
+
+  /**
+   * Update an entity
+   */
+  async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
+    console.log(`DEBUG MemEntityStorage.updateEntity: Updating entity with ID ${id}`);
+    console.log("DEBUG MemEntityStorage.updateEntity: Received entity data:", JSON.stringify(entityData));
+    
+    // Validate ID
+    if (isNaN(id) || id <= 0) {
+      console.error(`DEBUG MemEntityStorage.updateEntity: Invalid entity ID: ${id}`);
+      return undefined;
+    }
+    
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.error(`DEBUG MemEntityStorage.updateEntity: Entity with ID ${id} not found`);
+      return undefined;
+    }
+    
+    // Process industry field similarly to createEntity
+    if (entityData.industry !== undefined) {
+      if (entityData.industry === null || entityData.industry === '') {
+        entityData.industry = 'other';
+      } else {
+        entityData.industry = String(entityData.industry);
+      }
+    }
+    
+    // Update the entity with new data
+    const updatedEntity: Entity = {
+      ...entity,
+      ...entityData,
+      updatedAt: new Date()
+    };
+    
+    this.entities.set(id, updatedEntity);
+    return updatedEntity;
+  }
+}
+
+// Export singleton instances
 export const entityStorage = new EntityStorage();
+export const memEntityStorage = new MemEntityStorage();

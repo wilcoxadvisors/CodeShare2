@@ -39,7 +39,7 @@ import {
 import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult, IAccountStorage } from './storage/accountStorage';
 import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
 import { ClientStorage, clientStorage, memClientStorage, IClientStorage } from './storage/clientStorage';
-import { EntityStorage, entityStorage } from './storage/entityStorage';
+import { EntityStorage, entityStorage, memEntityStorage, IEntityStorage } from './storage/entityStorage';
 import { UserStorage, userStorage } from './storage/userStorage';
 import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
 
@@ -74,6 +74,9 @@ export interface IStorage {
   
   // Client methods are now accessed via this property
   clients: IClientStorage;
+  
+  // Entity methods are now accessed via this property
+  entities: IEntityStorage;
   
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
@@ -265,9 +268,10 @@ export interface GLEntry {
 export class MemStorage implements IStorage {
   public accounts: IAccountStorage; // Property for IAccountStorage as required by the IStorage interface
   public clients: IClientStorage; // Property for IClientStorage as required by the IStorage interface
+  public entities: IEntityStorage; // Property for IEntityStorage as required by the IStorage interface
   
   private users: Map<number, User>;
-  private entities: Map<number, Entity>;
+  private entitiesMap: Map<number, Entity>; // Renamed to avoid name conflict with IEntityStorage property
   private journals: Map<number, Journal>;
   // Journal Entry related maps removed and moved to journalEntryStorage module
   private fixedAssets: Map<number, FixedAsset>;
@@ -325,9 +329,10 @@ export class MemStorage implements IStorage {
   constructor() {
     this.accounts = accountStorage; // Assign the imported accountStorage instance
     this.clients = memClientStorage; // Assign the memory-based clientStorage instance
+    this.entities = memEntityStorage; // Assign the memory-based entityStorage instance
     
     this.users = new Map();
-    this.entities = new Map();
+    this.entitiesMap = new Map();
     this.journals = new Map();
     // Journal Entry related maps removed (moved to journalEntryStorage module)
     this.fixedAssets = new Map();
@@ -457,7 +462,7 @@ export class MemStorage implements IStorage {
       dataCollectionConsent: false,
       lastAuditDate: null
     };
-    this.entities.set(defaultEntity.id, defaultEntity);
+    this.entitiesMap.set(defaultEntity.id, defaultEntity);
     
     // Grant admin access
     this.userEntityAccess.set(`${adminUser.id}-${defaultEntity.id}`, 'admin');
@@ -749,176 +754,31 @@ export class MemStorage implements IStorage {
     return this.clients.updateClient(id, clientData);
   }
   
-  // Entity methods
+  // Entity methods - delegated to the entityStorage module
   async getEntity(id: number): Promise<Entity | undefined> {
-    return this.entities.get(id);
+    return this.entities.getEntity(id);
   }
   
   async getEntities(): Promise<Entity[]> {
-    return Array.from(this.entities.values());
+    return this.entities.getEntities();
   }
   
   async getEntitiesByUser(userId: number): Promise<Entity[]> {
-    const userAccessEntries = Array.from(this.userEntityAccess.entries())
-      .filter(([key]) => key.startsWith(`${userId}-`))
-      .map(([key]) => {
-        const entityId = parseInt(key.split('-')[1]);
-        return entityId;
-      });
-    
-    return Array.from(this.entities.values())
-      .filter(entity => 
-        entity.ownerId === userId || userAccessEntries.includes(entity.id)
-      );
+    return this.entities.getEntitiesByUser(userId);
   }
   
   async getEntitiesByClient(clientId: number): Promise<Entity[]> {
-    return Array.from(this.entities.values())
-      .filter(entity => entity.clientId === clientId);
+    return this.entities.getEntitiesByClient(clientId);
   }
   
   async createEntity(insertEntity: InsertEntity): Promise<Entity> {
-    console.log("DEBUG Storage CreateEntity: Creating new entity with data:", JSON.stringify(insertEntity));
-    
-    const id = this.currentEntityId++;
-    
-    // Process industry data for consistency
-    let industryValue = null;
-    if (insertEntity.industry !== undefined && insertEntity.industry !== null) {
-      if (insertEntity.industry === '') {
-        console.log("DEBUG Storage CreateEntity: Empty industry provided, defaulting to 'other'");
-        industryValue = 'other';
-      } else {
-        // Convert any industry value to string for consistent storage
-        console.log(`DEBUG Storage CreateEntity: Converting industry value "${insertEntity.industry}" (${typeof insertEntity.industry}) to string`);
-        industryValue = String(insertEntity.industry);
-      }
-    }
-    
-    const entity: Entity = { 
-      id, 
-      name: insertEntity.name,
-      code: insertEntity.code,
-      ownerId: insertEntity.ownerId,
-      clientId: insertEntity.clientId,
-      active: insertEntity.active !== undefined ? insertEntity.active : true,
-      fiscalYearStart: insertEntity.fiscalYearStart || '01-01',
-      fiscalYearEnd: insertEntity.fiscalYearEnd || '12-31',
-      currency: insertEntity.currency || 'USD',
-      email: insertEntity.email || null,
-      taxId: insertEntity.taxId || null,
-      address: insertEntity.address || null,
-      phone: insertEntity.phone || null,
-      website: insertEntity.website || null,
-      createdAt: new Date(),
-      updatedAt: null,
-      city: insertEntity.city || null,
-      state: insertEntity.state || null,
-      country: insertEntity.country || null,
-      postalCode: insertEntity.postalCode || null,
-      industry: industryValue, // Use our processed industry value
-      subIndustry: insertEntity.subIndustry || null,
-      employeeCount: insertEntity.employeeCount || null,
-      foundedYear: insertEntity.foundedYear || null,
-      annualRevenue: insertEntity.annualRevenue || null,
-      businessType: insertEntity.businessType || null,
-      publiclyTraded: insertEntity.publiclyTraded || false,
-      stockSymbol: insertEntity.stockSymbol || null,
-      timezone: insertEntity.timezone || 'UTC',
-      dataCollectionConsent: insertEntity.dataCollectionConsent || false,
-      lastAuditDate: insertEntity.lastAuditDate || null
-    };
-    this.entities.set(id, entity);
-    return entity;
+    // Delegate to the entityStorage module
+    return this.entities.createEntity(insertEntity);
   }
   
   async updateEntity(id: number, entityData: Partial<Entity>): Promise<Entity | undefined> {
-    console.log(`DEBUG Storage UpdateEntity: Updating entity with ID ${id}`);
-    console.log("DEBUG Storage UpdateEntity: Received entity data:", JSON.stringify(entityData));
-    
-    // Validate ID
-    if (isNaN(id) || id <= 0) {
-      console.error(`DEBUG Storage UpdateEntity: Invalid entity ID: ${id}`);
-      return undefined;
-    }
-    
-    const entity = this.entities.get(id);
-    if (!entity) {
-      console.error(`DEBUG Storage UpdateEntity: Entity with ID ${id} not found in database`);
-      return undefined;
-    }
-    
-    console.log("DEBUG Storage UpdateEntity: Found existing entity:", JSON.stringify(entity));
-    
-    // Input validation for critical fields
-    if (entityData.name !== undefined) {
-      if (!entityData.name || entityData.name.trim() === '') {
-        console.error("DEBUG Storage UpdateEntity: Name cannot be empty, keeping original name");
-        entityData.name = entity.name; // Keep original name if new one is empty
-      } else {
-        console.log(`DEBUG Storage UpdateEntity: Name update - Original: "${entity.name}", New: "${entityData.name}"`);
-      }
-    }
-    
-    // Industry field validation - ensure we never store null/empty values and always store as string
-    if (entityData.industry !== undefined) {
-      // Handle null/empty values
-      if (entityData.industry === null || entityData.industry === '') {
-        console.log("DEBUG Storage UpdateEntity: Empty industry provided, defaulting to 'other'");
-        entityData.industry = 'other';
-      } else {
-        // Ensure industry is stored as string regardless of input type (number, etc.)
-        console.log(`DEBUG Storage UpdateEntity: Converting industry value "${entityData.industry}" (${typeof entityData.industry}) to string for storage consistency`);
-        entityData.industry = String(entityData.industry);
-      }
-    }
-    
-    // Detailed logging for all fields being updated
-    console.log("DEBUG Storage UpdateEntity: Field changes for entity ID " + id + ":");
-    for (const [key, value] of Object.entries(entityData)) {
-      if (entity[key] !== value) {
-        console.log(`  - ${key}: "${entity[key]}" -> "${value}"`);
-      }
-    }
-    
-    // Type consistency check for clientId
-    if (entityData.clientId !== undefined) {
-      // Ensure clientId is a number
-      if (typeof entityData.clientId !== 'number') {
-        console.warn(`DEBUG Storage UpdateEntity: Converting clientId from ${typeof entityData.clientId} to number`);
-        entityData.clientId = parseInt(String(entityData.clientId), 10);
-        
-        if (isNaN(entityData.clientId)) {
-          console.error("DEBUG Storage UpdateEntity: Invalid clientId, cannot convert to number");
-          entityData.clientId = entity.clientId; // Keep original if invalid
-        }
-      }
-      
-      // Log client relationship change
-      if (entity.clientId !== entityData.clientId) {
-        console.log(`DEBUG Storage UpdateEntity: Client relationship changing from ${entity.clientId} to ${entityData.clientId}`);
-      }
-    }
-    
-    // Create updated entity with all merged properties
-    const updatedEntity = { 
-      ...entity, 
-      ...entityData, 
-      updatedAt: new Date() 
-    };
-    
-    // Final log before saving
-    console.log("DEBUG Storage UpdateEntity: Final updated entity data:", JSON.stringify(updatedEntity));
-    
-    // Verify the entity still has required fields after update
-    if (!updatedEntity.name || updatedEntity.name.trim() === '') {
-      console.error("DEBUG Storage UpdateEntity: CRITICAL ERROR - Entity would have no name after update");
-      return undefined;
-    }
-    
-    this.entities.set(id, updatedEntity);
-    console.log(`DEBUG Storage UpdateEntity: Entity ID ${id} successfully updated`);
-    return updatedEntity;
+    // Delegate to the entityStorage module
+    return this.entities.updateEntity(id, entityData);
   }
   
   // User Entity Access methods
@@ -1229,8 +1089,8 @@ export class MemStorage implements IStorage {
     };
     
     // Get accounts to forecast
-    const client = Array.from(this.entities.values())
-      .find(entity => entity.id === entityId)?.clientId;
+    const entity = await this.entities.getEntity(entityId);
+    const client = entity?.clientId;
       
     if (!client) {
       return null; // Entity not found or no client associated
@@ -1403,10 +1263,12 @@ export class MemStorage implements IStorage {
 export class DatabaseStorage implements IStorage {
   public accounts: IAccountStorage;
   public clients: IClientStorage;
+  public entities: IEntityStorage;
   
   constructor() {
     this.accounts = accountStorage;
     this.clients = clientStorage;
+    this.entities = entityStorage;
   }
   // Account methods delegation
   async getAccount(id: number): Promise<Account | undefined> {
@@ -3688,6 +3550,10 @@ export class DatabaseStorage implements IStorage {
   
   async getClientsByUserId(userId: number): Promise<Client[]> {
     return this.clients.getClientsByUserId(userId);
+  }
+  
+  async getClientByUserId(userId: number): Promise<Client | null> {
+    return this.clients.getClientByUserId(userId);
   }
   
   async createClient(client: any): Promise<Client> {
