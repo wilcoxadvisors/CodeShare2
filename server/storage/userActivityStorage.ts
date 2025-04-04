@@ -31,6 +31,7 @@ export interface IUserActivityStorage {
   logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog>;
   getUserActivities(userId: number, limit?: number): Promise<UserActivityLog[]>;
   getUserActivitiesByEntity(entityId: number, limit?: number): Promise<UserActivityLog[]>;
+  getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]>;
   
   // Feature Usage operations
   recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage>;
@@ -111,6 +112,27 @@ export class UserActivityStorage implements IUserActivityStorage {
       return await query;
     } catch (error) {
       throw handleDbError(error, `getting user activities for entity ${entityId}`);
+    }
+  }
+  
+  /**
+   * Get activities by resource type
+   */
+  async getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]> {
+    try {
+      let query = db
+        .select()
+        .from(userActivityLogs)
+        .where(eq(userActivityLogs.resourceType, resourceType))
+        .orderBy(desc(userActivityLogs.timestamp));
+      
+      if (limit) {
+        query = query.limit(limit);
+      }
+      
+      return await query;
+    } catch (error) {
+      throw handleDbError(error, `getting user activities for resource type ${resourceType}`);
     }
   }
   
@@ -453,6 +475,340 @@ export class UserActivityStorage implements IUserActivityStorage {
     } catch (error) {
       throw handleDbError(error, `updating data consent for user ${userId}`);
     }
+  }
+}
+
+/**
+ * In-memory implementation of user activity storage for testing
+ */
+export class MemUserActivityStorage implements IUserActivityStorage {
+  private userActivities: UserActivityLog[] = [];
+  private featureUsages: FeatureUsage[] = [];
+  private industryBenchmarks: IndustryBenchmark[] = [];
+  private dataConsents: DataConsent[] = [];
+  private currentActivityId = 1;
+  private currentFeatureUsageId = 1;
+  private currentBenchmarkId = 1;
+  private currentDataConsentId = 1;
+  
+  /**
+   * Log a user activity event
+   */
+  async logUserActivity(activity: InsertUserActivityLog): Promise<UserActivityLog> {
+    const id = this.currentActivityId++;
+    const logEntry: UserActivityLog = {
+      id,
+      userId: activity.userId,
+      entityId: activity.entityId,
+      action: activity.action,
+      resourceType: activity.resourceType,
+      resourceId: activity.resourceId,
+      details: activity.details,
+      ipAddress: activity.ipAddress || null,
+      userAgent: activity.userAgent || null,
+      timestamp: activity.timestamp || new Date(),
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.userActivities.push(logEntry);
+    return logEntry;
+  }
+  
+  /**
+   * Get activities for a user
+   */
+  async getUserActivities(userId: number, limit?: number): Promise<UserActivityLog[]> {
+    const activities = this.userActivities
+      .filter(a => a.userId === userId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    return limit ? activities.slice(0, limit) : activities;
+  }
+  
+  /**
+   * Get activities for an entity
+   */
+  async getUserActivitiesByEntity(entityId: number, limit?: number): Promise<UserActivityLog[]> {
+    const activities = this.userActivities
+      .filter(a => a.entityId === entityId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    return limit ? activities.slice(0, limit) : activities;
+  }
+  
+  /**
+   * Get activities by resource type
+   */
+  async getUserActivitiesByResourceType(resourceType: string, limit?: number): Promise<UserActivityLog[]> {
+    const activities = this.userActivities
+      .filter(a => a.resourceType === resourceType)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    
+    return limit ? activities.slice(0, limit) : activities;
+  }
+  
+  /**
+   * Record feature usage
+   */
+  async recordFeatureUsage(usage: InsertFeatureUsage): Promise<FeatureUsage> {
+    // Check if this feature was used by this user in the current session
+    const existingUsage = this.featureUsages.find(
+      u => u.userId === usage.userId &&
+          u.featureName === usage.featureName &&
+          u.sessionId === (usage.sessionId || '')
+    );
+    
+    // If the feature was already used in this session, update the count
+    if (existingUsage) {
+      existingUsage.usageCount = (existingUsage.usageCount || 0) + 1;
+      existingUsage.updatedAt = new Date();
+      return existingUsage;
+    }
+    
+    // Otherwise, create a new record
+    const id = this.currentFeatureUsageId++;
+    const newUsage: FeatureUsage = {
+      id,
+      userId: usage.userId,
+      featureName: usage.featureName,
+      entityId: usage.entityId || null,
+      sessionId: usage.sessionId || null,
+      usageCount: 1,
+      useTime: usage.useTime || null,
+      successful: usage.successful || null,
+      timestamp: new Date(),
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.featureUsages.push(newUsage);
+    return newUsage;
+  }
+  
+  /**
+   * Get feature usage for a user
+   */
+  async getFeatureUsageByUser(userId: number): Promise<FeatureUsage[]> {
+    return this.featureUsages
+      .filter(u => u.userId === userId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+  
+  /**
+   * Get feature usage statistics
+   */
+  async getFeatureUsageStats(): Promise<{ featureName: string, usageCount: number }[]> {
+    const stats: Record<string, number> = {};
+    
+    this.featureUsages.forEach(usage => {
+      if (!stats[usage.featureName]) {
+        stats[usage.featureName] = 0;
+      }
+      stats[usage.featureName] += (usage.usageCount || 1);
+    });
+    
+    return Object.entries(stats).map(([featureName, usageCount]) => ({
+      featureName,
+      usageCount
+    })).sort((a, b) => b.usageCount - a.usageCount);
+  }
+  
+  /**
+   * Get feature usage by time
+   */
+  async getFeatureUsageByTime(startDate: Date, endDate: Date): Promise<{ date: Date, usageCount: number }[]> {
+    const dateMap: Record<string, number> = {};
+    
+    this.featureUsages.forEach(usage => {
+      if (usage.timestamp >= startDate && usage.timestamp <= endDate) {
+        const dateKey = usage.timestamp.toISOString().split('T')[0];
+        if (!dateMap[dateKey]) {
+          dateMap[dateKey] = 0;
+        }
+        dateMap[dateKey] += (usage.usageCount || 1);
+      }
+    });
+    
+    return Object.entries(dateMap).map(([dateStr, usageCount]) => ({
+      date: new Date(dateStr),
+      usageCount
+    })).sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+  
+  /**
+   * Add an industry benchmark record
+   */
+  async addIndustryBenchmark(benchmark: InsertIndustryBenchmark): Promise<IndustryBenchmark> {
+    const id = this.currentBenchmarkId++;
+    const newBenchmark: IndustryBenchmark = {
+      id,
+      industry: benchmark.industry,
+      subIndustry: benchmark.subIndustry || null,
+      metricName: benchmark.metricName,
+      metricValue: benchmark.metricValue,
+      value: benchmark.value,
+      unit: benchmark.unit || null,
+      entitySizeRange: benchmark.entitySizeRange || null,
+      year: benchmark.year,
+      quarter: benchmark.quarter || null,
+      dataSource: benchmark.dataSource || null,
+      confidenceLevel: benchmark.confidenceLevel || null,
+      sampleSize: benchmark.sampleSize || null,
+      isActive: benchmark.isActive ?? true,
+      effectiveDate: benchmark.effectiveDate || new Date(),
+      expirationDate: benchmark.expirationDate || null,
+      createdAt: new Date(),
+      updatedAt: null
+    };
+    
+    this.industryBenchmarks.push(newBenchmark);
+    return newBenchmark;
+  }
+  
+  /**
+   * Get industry benchmarks by industry
+   */
+  async getIndustryBenchmarks(industry: string): Promise<IndustryBenchmark[]> {
+    return this.industryBenchmarks
+      .filter(b => b.industry === industry && b.isActive)
+      .sort((a, b) => {
+        // Sort by effectiveDate (desc) then by createdAt (desc)
+        if (a.effectiveDate.getTime() !== b.effectiveDate.getTime()) {
+          return b.effectiveDate.getTime() - a.effectiveDate.getTime();
+        }
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+  }
+  
+  /**
+   * Get industry comparison data for an entity
+   */
+  async getIndustryComparison(entityId: number, metricNames: string[]): Promise<any> {
+    // This would be a mock implementation
+    // In a real app, you would have to get the entity's industry first
+    const mockEntity = {
+      id: entityId,
+      name: `Entity ${entityId}`,
+      industry: 'Technology',
+      size: 'Medium',
+      annualRevenue: 5000000
+    };
+    
+    // Mock benchmarks
+    const benchmarks = this.industryBenchmarks
+      .filter(b => b.industry === mockEntity.industry && 
+                  metricNames.includes(b.metricName) &&
+                  b.isActive);
+    
+    // Mock entity metrics (just example values)
+    const entityMetrics = metricNames.map(name => ({
+      metric_name: name,
+      actual_value: Math.random() * 100 // Random value for demo
+    }));
+    
+    // Build comparison result
+    const comparisonData = metricNames.map(metricName => {
+      const benchmark = benchmarks.find(b => b.metricName === metricName);
+      const entityMetric = entityMetrics.find(m => m.metric_name === metricName);
+      
+      return {
+        metricName,
+        industryAverage: benchmark?.value || null,
+        entityValue: entityMetric?.actual_value || null,
+        variance: entityMetric && benchmark ? 
+          (entityMetric.actual_value - benchmark.value) : null,
+        percentVariance: benchmark?.value && entityMetric ? 
+          ((entityMetric.actual_value / benchmark.value) * 100) - 100 : null
+      };
+    });
+    
+    return {
+      entityId,
+      entityName: mockEntity.name,
+      industry: mockEntity.industry,
+      comparisonDate: new Date(),
+      metrics: comparisonData
+    };
+  }
+  
+  /**
+   * Record data consent
+   */
+  async recordDataConsent(consent: InsertDataConsent): Promise<DataConsent> {
+    // Check if consent already exists for this user
+    const existingConsentIndex = this.dataConsents.findIndex(
+      c => c.userId === consent.userId && c.consentType === consent.consentType
+    );
+    
+    // If consent exists, update it
+    if (existingConsentIndex >= 0) {
+      const existingConsent = this.dataConsents[existingConsentIndex];
+      const updatedConsent: DataConsent = {
+        ...existingConsent,
+        ...consent,
+        updatedAt: new Date(),
+        lastUpdated: new Date()
+      };
+      
+      this.dataConsents[existingConsentIndex] = updatedConsent;
+      return updatedConsent;
+    }
+    
+    // Otherwise, create a new record
+    const id = this.currentDataConsentId++;
+    const newConsent: DataConsent = {
+      id,
+      userId: consent.userId,
+      consentType: consent.consentType,
+      consentVersion: consent.consentVersion,
+      consentGiven: consent.consentGiven,
+      consentText: consent.consentText || null,
+      expirationDate: consent.expirationDate || null,
+      dataCategories: consent.dataCategories || null,
+      isActive: consent.isActive ?? true,
+      revokedAt: consent.revokedAt || null,
+      createdAt: new Date(),
+      updatedAt: null,
+      lastUpdated: new Date(),
+    };
+    
+    this.dataConsents.push(newConsent);
+    return newConsent;
+  }
+  
+  /**
+   * Get data consent for a user
+   */
+  async getDataConsent(userId: number): Promise<DataConsent | undefined> {
+    return this.dataConsents
+      .filter(c => c.userId === userId && c.isActive)
+      .sort((a, b) => {
+        return b.updatedAt ? b.updatedAt.getTime() : b.createdAt.getTime() - 
+               (a.updatedAt ? a.updatedAt.getTime() : a.createdAt.getTime());
+      })[0];
+  }
+  
+  /**
+   * Update data consent for a user
+   */
+  async updateDataConsent(userId: number, consentUpdate: Partial<DataConsent>): Promise<DataConsent | undefined> {
+    const consentIndex = this.dataConsents.findIndex(c => c.userId === userId);
+    
+    if (consentIndex === -1) {
+      return undefined;
+    }
+    
+    const consent = this.dataConsents[consentIndex];
+    const updatedConsent: DataConsent = {
+      ...consent,
+      ...consentUpdate,
+      updatedAt: new Date(),
+      lastUpdated: new Date()
+    };
+    
+    this.dataConsents[consentIndex] = updatedConsent;
+    return updatedConsent;
   }
 }
 

@@ -1,0 +1,65 @@
+EXT TASK: Complete Refactoring of Remaining Direct Database Logic in storage.ts.
+
+Explicit Steps:
+
+Identify all remaining direct database operations in storage.ts by running:
+
+grep -n -E "await db|await.*find|await.*create|await.*update|await.*delete" server/storage.ts | grep -v "await this." | grep -v "await.*Storage."
+
+Document clearly each identified method, including exact line numbers and associated domain/module (e.g., User methods → userStorage.ts, Fixed Asset methods → assetStorage.ts, Form methods → formStorage.ts, etc.).
+
+Explicitly move each documented method from storage.ts into its corresponding specialized storage module.
+
+Explicitly update storage.ts to delegate each method clearly and correctly to the specialized storage modules using the established delegation pattern:
+
+async methodName(args) { return this.specializedModule.methodName(args); }
+
+Explicitly verify that no direct database logic remains in storage.ts by re-running:
+
+grep -E "await db|await.*find|await.*create|await.*update|await.*delete" server/storage.ts | grep -v "await this." | grep -v "await.*Storage."
+
+Run comprehensive verification by explicitly executing:
+
+node verify-storage-modules.js
+
+Ensure explicitly that all modules integrate correctly.
+
+Update comprehensive tests explicitly to confirm that all new implementations function correctly and efficiently.
+
+Explicitly confirm that the server still starts and responds appropriately post-refactoring by running:
+
+curl -s http://localhost:5000/api/health
+
+Agent’s Expected Response Format (Explicit):
+
+Residual Logic Refactoring (storage.ts):
+
+Identified Residual Logic:
+
+[List clearly each identified method, including line numbers and intended specialized storage module destination.]
+
+Refactoring Action Taken:
+
+[List explicitly each method and its new specialized storage module.]
+
+Delegation Updated in storage.ts:
+
+[Explicitly confirm delegation pattern established for each method.]
+
+Verification Results:
+
+Confirmed explicitly no direct database logic remains in storage.ts.
+
+Explicitly ran node verify-storage-modules.js; confirm all modules integrated correctly.
+
+Explicitly verified server functionality post-refactor.
+
+Testing & Documentation:
+
+Tests explicitly updated and passed successfully.
+
+Documentation explicitly updated and complete.
+
+Final Status:
+
+Refactoring of all residual logic explicitly verified and successfully completed.
