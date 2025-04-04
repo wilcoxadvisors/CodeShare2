@@ -33,6 +33,7 @@ export interface IBudgetStorage {
   // Budget Item operations
   getBudgetItem(id: number): Promise<BudgetItem | undefined>;
   getBudgetItems(budgetId: number): Promise<BudgetItem[]>;
+  getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]>;
   createBudgetItem(budgetItem: InsertBudgetItem): Promise<BudgetItem>;
   updateBudgetItem(id: number, budgetItem: Partial<BudgetItem>): Promise<BudgetItem | undefined>;
   deleteBudgetItem(id: number): Promise<void>;
@@ -229,6 +230,24 @@ export class BudgetStorage implements IBudgetStorage {
       await db.delete(budgetItems).where(eq(budgetItems.id, id));
     } catch (error) {
       throw handleDbError(error, `deleting budget item ${id}`);
+    }
+  }
+  
+  /**
+   * Get budget items by account ID for a specific budget
+   */
+  async getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]> {
+    try {
+      return await db
+        .select()
+        .from(budgetItems)
+        .where(and(
+          eq(budgetItems.budgetId, budgetId),
+          eq(budgetItems.accountId, accountId)
+        ))
+        .orderBy(asc(budgetItems.id));
+    } catch (error) {
+      throw handleDbError(error, `getting budget items for budget ${budgetId} and account ${accountId}`);
     }
   }
   

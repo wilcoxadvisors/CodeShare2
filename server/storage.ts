@@ -1422,372 +1422,151 @@ export class DatabaseStorage implements IStorage {
   
   // User methods
   async findUserByRole(role: UserRole): Promise<User | undefined> {
-    const result = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, role))
-      .limit(1);
-      
-    return result[0];
+    return this.users.findUserByRole(role);
   }
   // Budget methods
   async getBudget(id: number): Promise<Budget | undefined> {
-    const result = await db
-      .select()
-      .from(budgets)
-      .where(eq(budgets.id, id))
-      .limit(1);
-      
-    return result[0];
+    return this.budgets.getBudget(id);
   }
   
   async getBudgets(entityId: number): Promise<Budget[]> {
-    return await db
-      .select()
-      .from(budgets)
-      .where(eq(budgets.entityId, entityId))
-      .orderBy(desc(budgets.createdAt));
+    return this.budgets.getBudgets(entityId);
   }
   
   async getBudgetsByStatus(entityId: number, status: BudgetStatus): Promise<Budget[]> {
-    return await db
-      .select()
-      .from(budgets)
-      .where(and(
-        eq(budgets.entityId, entityId),
-        eq(budgets.status, status)
-      ))
-      .orderBy(desc(budgets.createdAt));
+    return this.budgets.getBudgetsByStatus(entityId, status);
   }
   
   async createBudget(budget: InsertBudget): Promise<Budget> {
-    const [result] = await db
-      .insert(budgets)
-      .values({
-        name: budget.name,
-        entityId: budget.entityId,
-        createdBy: budget.createdBy,
-        fiscalYear: budget.fiscalYear,
-        startDate: budget.startDate,
-        endDate: budget.endDate,
-        description: budget.description || null,
-        status: budget.status as BudgetStatus || BudgetStatus.DRAFT,
-        periodType: budget.periodType as BudgetPeriodType || BudgetPeriodType.MONTHLY,
-        approvedBy: budget.approvedBy || null,
-        approvedAt: budget.approvedAt || null,
-        notes: budget.notes || null,
-        totalAmount: budget.totalAmount || "0", 
-        metadata: budget.metadata || null
-      })
-      .returning();
-    return result;
+    return this.budgets.createBudget(budget);
   }
   
   async updateBudget(id: number, budget: Partial<Budget>): Promise<Budget | undefined> {
-    const [result] = await db
-      .update(budgets)
-      .set({
-        ...budget,
-        updatedAt: new Date()
-      })
-      .where(eq(budgets.id, id))
-      .returning();
-    return result;
+    return this.budgets.updateBudget(id, budget);
   }
   
   async deleteBudget(id: number): Promise<void> {
-    // First delete all budget items associated with this budget
-    await db
-      .delete(budgetItems)
-      .where(eq(budgetItems.budgetId, id));
-      
-    // Then delete all budget documents associated with this budget
-    await db
-      .delete(budgetDocuments)
-      .where(eq(budgetDocuments.budgetId, id));
-      
-    // Finally delete the budget
-    await db
-      .delete(budgets)
-      .where(eq(budgets.id, id));
+    return this.budgets.deleteBudget(id);
   }
   
   // Budget Item methods
   async getBudgetItem(id: number): Promise<BudgetItem | undefined> {
-    const result = await db
-      .select()
-      .from(budgetItems)
-      .where(eq(budgetItems.id, id))
-      .limit(1);
-      
-    return result[0];
+    return this.budgets.getBudgetItem(id);
   }
   
   async getBudgetItems(budgetId: number): Promise<BudgetItem[]> {
-    return await db
-      .select()
-      .from(budgetItems)
-      .where(eq(budgetItems.budgetId, budgetId))
-      .orderBy(asc(budgetItems.periodStart));
+    return this.budgets.getBudgetItems(budgetId);
   }
   
   async getBudgetItemsByAccount(budgetId: number, accountId: number): Promise<BudgetItem[]> {
-    return await db
-      .select()
-      .from(budgetItems)
-      .where(and(
-        eq(budgetItems.budgetId, budgetId),
-        eq(budgetItems.accountId, accountId)
-      ))
-      .orderBy(asc(budgetItems.periodStart));
+    return this.budgets.getBudgetItemsByAccount(budgetId, accountId);
   }
   
   async createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem> {
-    const [result] = await db
-      .insert(budgetItems)
-      .values({
-        createdBy: item.createdBy,
-        accountId: item.accountId,
-        budgetId: item.budgetId,
-        periodStart: item.periodStart,
-        periodEnd: item.periodEnd,
-        description: item.description || null,
-        tags: item.tags || null,
-        notes: item.notes || null,
-        amount: item.amount || "0",
-        category: item.category || null
-      })
-      .returning();
-    return result;
+    return this.budgets.createBudgetItem(item);
   }
   
   async updateBudgetItem(id: number, item: Partial<BudgetItem>): Promise<BudgetItem | undefined> {
-    const [result] = await db
-      .update(budgetItems)
-      .set({
-        ...item,
-        updatedAt: new Date()
-      })
-      .where(eq(budgetItems.id, id))
-      .returning();
-    return result;
+    return this.budgets.updateBudgetItem(id, item);
   }
   
   async deleteBudgetItem(id: number): Promise<void> {
-    await db
-      .delete(budgetItems)
-      .where(eq(budgetItems.id, id));
+    return this.budgets.deleteBudgetItem(id);
   }
   
   // Budget Document methods
   async getBudgetDocument(id: number): Promise<BudgetDocument | undefined> {
-    const result = await db
-      .select()
-      .from(budgetDocuments)
-      .where(eq(budgetDocuments.id, id))
-      .limit(1);
-      
-    return result[0];
+    return this.budgets.getBudgetDocument(id);
   }
   
   async getBudgetDocuments(budgetId: number): Promise<BudgetDocument[]> {
-    return await db
-      .select()
-      .from(budgetDocuments)
-      .where(eq(budgetDocuments.budgetId, budgetId))
-      .orderBy(desc(budgetDocuments.uploadedAt));
+    return this.budgets.getBudgetDocuments(budgetId);
   }
   
   async createBudgetDocument(document: InsertBudgetDocument): Promise<BudgetDocument> {
-    const [result] = await db
-      .insert(budgetDocuments)
-      .values({
-        filename: document.filename,
-        path: document.path,
-        mimeType: document.mimeType,
-        size: document.size,
-        uploadedBy: document.uploadedBy,
-        budgetId: document.budgetId,
-        originalFilename: document.originalFilename,
-        fileType: document.fileType,
-        extractedData: document.extractedData || null,
-        processingStatus: document.processingStatus || "pending"
-      })
-      .returning();
-    return result;
+    return this.budgets.createBudgetDocument(document);
   }
   
   async updateBudgetDocument(id: number, processingStatus: string, extractedData?: any): Promise<BudgetDocument | undefined> {
-    const [result] = await db
-      .update(budgetDocuments)
-      .set({
-        processingStatus,
-        extractedData: extractedData || null,
-        updatedAt: new Date()
-      })
-      .where(eq(budgetDocuments.id, id))
-      .returning();
-    return result;
+    // The signature in budgetStorage.ts is different (takes a Partial<BudgetDocument>)
+    // So we need to create a document object with the required fields
+    const documentUpdate = {
+      processingStatus,
+      extractedData: extractedData || null,
+      updatedAt: new Date()
+    };
+    return this.budgets.updateBudgetDocument(id, documentUpdate);
   }
   
   async deleteBudgetDocument(id: number): Promise<void> {
-    await db
-      .delete(budgetDocuments)
-      .where(eq(budgetDocuments.id, id));
+    return this.budgets.deleteBudgetDocument(id);
   }
   
   // Forecast methods
   async getForecast(id: number): Promise<Forecast | undefined> {
-    const result = await db
-      .select()
-      .from(forecasts)
-      .where(eq(forecasts.id, id))
-      .limit(1);
-      
-    return result[0];
+    return this.budgets.getForecast(id);
   }
   
   async getForecasts(entityId: number): Promise<Forecast[]> {
-    return await db
-      .select()
-      .from(forecasts)
-      .where(eq(forecasts.entityId, entityId))
-      .orderBy(desc(forecasts.createdAt));
+    return this.budgets.getForecasts(entityId);
   }
   
   async createForecast(forecast: InsertForecast): Promise<Forecast> {
-    const [result] = await db
-      .insert(forecasts)
-      .values({
-        name: forecast.name,
-        entityId: forecast.entityId,
-        createdBy: forecast.createdBy,
-        startDate: forecast.startDate,
-        endDate: forecast.endDate,
-        description: forecast.description || null,
-        periodType: forecast.periodType || BudgetPeriodType.MONTHLY,
-        baseScenario: forecast.baseScenario || false,
-        modelConfig: forecast.modelConfig || null,
-        forecastData: forecast.forecastData || null,
-        aiInsights: forecast.aiInsights || null,
-        confidenceInterval: forecast.confidenceInterval || null
-      })
-      .returning();
-    return result;
+    return this.budgets.createForecast(forecast);
   }
   
   async updateForecast(id: number, forecast: Partial<Forecast>): Promise<Forecast | undefined> {
-    const [result] = await db
-      .update(forecasts)
-      .set({
-        ...forecast,
-        updatedAt: new Date()
-      })
-      .where(eq(forecasts.id, id))
-      .returning();
-    return result;
+    return this.budgets.updateForecast(id, forecast);
   }
   
   async deleteForecast(id: number): Promise<void> {
-    await db
-      .delete(forecasts)
-      .where(eq(forecasts.id, id));
+    return this.budgets.deleteForecast(id);
   }
   
   async generateForecast(entityId: number, config: any): Promise<any> {
-    // This method would typically call the ML service
-    // For now, return sample data that would come from the ML service
-    return {
-      forecastData: [],
-      modelConfig: config,
-      message: "Forecast generated successfully"
-    };
+    return this.budgets.generateForecast(entityId, config);
   }
   
   // Contact Form submission methods
   async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
-    const [result] = await db
-      .insert(contactSubmissions)
-      .values({
-        name: submission.name,
-        email: submission.email,
-        phone: submission.phone || null,
-        message: submission.message,
-        ipAddress: submission.ipAddress || null,
-        userAgent: submission.userAgent || null,
-        status: submission.status || 'unread'
-      })
-      .returning();
-    return result;
+    return this.forms.createContactSubmission(submission);
   }
   
   async getContactSubmissions(limit: number = 100, offset: number = 0): Promise<ContactSubmission[]> {
-    return await db
-      .select()
-      .from(contactSubmissions)
-      .orderBy(desc(contactSubmissions.createdAt))
-      .limit(limit)
-      .offset(offset);
+    // Note: The formStorage interface doesn't support limit/offset, so we get all submissions
+    // and handle pagination in memory. A better approach would be to update the formStorage
+    // interface to support pagination.
+    const allSubmissions = await this.forms.getContactSubmissions();
+    return allSubmissions.slice(offset, offset + limit);
   }
   
   async getContactSubmissionById(id: number): Promise<ContactSubmission | undefined> {
-    const [submission] = await db
-      .select()
-      .from(contactSubmissions)
-      .where(eq(contactSubmissions.id, id));
-    return submission || undefined;
+    return this.forms.getContactSubmission(id);
   }
   
   async updateContactSubmission(id: number, status: string): Promise<ContactSubmission | undefined> {
-    const [submission] = await db
-      .update(contactSubmissions)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(contactSubmissions.id, id))
-      .returning();
-    return submission || undefined;
+    return this.forms.updateContactSubmission(id, { status, updatedAt: new Date() });
   }
   
   // Checklist Form submission methods
   async createChecklistSubmission(submission: InsertChecklistSubmission): Promise<ChecklistSubmission> {
-    const [result] = await db
-      .insert(checklistSubmissions)
-      .values({
-        name: submission.name,
-        email: submission.email,
-        company: submission.company,
-        revenueRange: submission.revenueRange,
-        ipAddress: submission.ipAddress || null,
-        userAgent: submission.userAgent || null,
-        status: submission.status || 'unread'
-      })
-      .returning();
-    return result;
+    return this.forms.createChecklistSubmission(submission);
   }
   
   async getChecklistSubmissions(limit: number = 100, offset: number = 0): Promise<ChecklistSubmission[]> {
-    return await db
-      .select()
-      .from(checklistSubmissions)
-      .orderBy(desc(checklistSubmissions.createdAt))
-      .limit(limit)
-      .offset(offset);
+    // Note: The formStorage interface doesn't support limit/offset, so we get all submissions
+    // and handle pagination in memory. A better approach would be to update the formStorage
+    // interface to support pagination.
+    const allSubmissions = await this.forms.getChecklistSubmissions();
+    return allSubmissions.slice(offset, offset + limit);
   }
   
   async getChecklistSubmissionById(id: number): Promise<ChecklistSubmission | undefined> {
-    const [submission] = await db
-      .select()
-      .from(checklistSubmissions)
-      .where(eq(checklistSubmissions.id, id));
-    return submission || undefined;
+    return this.forms.getChecklistSubmission(id);
   }
   
   async updateChecklistSubmission(id: number, status: string): Promise<ChecklistSubmission | undefined> {
-    const [submission] = await db
-      .update(checklistSubmissions)
-      .set({ status })
-      .where(eq(checklistSubmissions.id, id))
-      .returning();
-    return submission || undefined;
+    return this.forms.updateChecklistSubmission(id, { status });
   }
   
   // Checklist Files methods
@@ -1971,52 +1750,23 @@ export class DatabaseStorage implements IStorage {
   
   // Consultation Form submission methods
   async createConsultationSubmission(submission: InsertConsultationSubmission): Promise<ConsultationSubmission> {
-    const [result] = await db
-      .insert(consultationSubmissions)
-      .values({
-        companyName: submission.companyName,
-        industry: submission.industry,
-        companySize: submission.companySize,
-        annualRevenue: submission.annualRevenue,
-        services: submission.services,
-        firstName: submission.firstName,
-        lastName: submission.lastName,
-        email: submission.email,
-        phone: submission.phone || null,
-        preferredContact: submission.preferredContact,
-        message: submission.message || null,
-        ipAddress: submission.ipAddress || null,
-        userAgent: submission.userAgent || null,
-        status: submission.status || 'unread'
-      })
-      .returning();
-    return result;
+    return this.forms.createConsultationSubmission(submission);
   }
   
   async getConsultationSubmissions(limit: number = 100, offset: number = 0): Promise<ConsultationSubmission[]> {
-    return await db
-      .select()
-      .from(consultationSubmissions)
-      .orderBy(desc(consultationSubmissions.createdAt))
-      .limit(limit)
-      .offset(offset);
+    // Note: The formStorage interface doesn't support limit/offset, so we get all submissions
+    // and handle pagination in memory. A better approach would be to update the formStorage
+    // interface to support pagination.
+    const allSubmissions = await this.forms.getConsultationSubmissions();
+    return allSubmissions.slice(offset, offset + limit);
   }
   
   async getConsultationSubmissionById(id: number): Promise<ConsultationSubmission | undefined> {
-    const [submission] = await db
-      .select()
-      .from(consultationSubmissions)
-      .where(eq(consultationSubmissions.id, id));
-    return submission || undefined;
+    return this.forms.getConsultationSubmission(id);
   }
   
   async updateConsultationSubmission(id: number, status: string): Promise<ConsultationSubmission | undefined> {
-    const [submission] = await db
-      .update(consultationSubmissions)
-      .set({ status })
-      .where(eq(consultationSubmissions.id, id))
-      .returning();
-    return submission || undefined;
+    return this.forms.updateConsultationSubmission(id, { status });
   }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -3250,224 +3000,85 @@ export class DatabaseStorage implements IStorage {
 
   // Blog subscriber methods
   async createBlogSubscriber(subscriber: InsertBlogSubscriber): Promise<BlogSubscriber> {
-    const [result] = await db
-      .insert(blogSubscribers)
-      .values({
-        email: subscriber.email,
-        name: subscriber.name || null,
-        ipAddress: subscriber.ipAddress || null,
-        userAgent: subscriber.userAgent || null,
-        active: true
-      })
-      .returning();
-    
-    return result;
+    return this.forms.createBlogSubscriber(subscriber);
   }
 
   async getBlogSubscribers(includeInactive: boolean = false): Promise<BlogSubscriber[]> {
-    const query = includeInactive 
-      ? db.select().from(blogSubscribers)
-      : db.select().from(blogSubscribers).where(eq(blogSubscribers.active, true));
-    
-    return await query;
+    // The formStorage doesn't support filtering by active status, so we'll get all subscribers
+    // and filter in memory. A better approach would be to update the formStorage interface
+    // to support filtering by active status.
+    const allSubscribers = await this.forms.getBlogSubscribers();
+    return includeInactive ? allSubscribers : allSubscribers.filter(subscriber => subscriber.active);
   }
 
   async getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined> {
-    const [result] = await db
-      .select()
-      .from(blogSubscribers)
-      .where(eq(blogSubscribers.email, email));
-    
-    return result;
+    return this.forms.getBlogSubscriberByEmail(email);
   }
 
   async updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined> {
-    const [updatedSubscriber] = await db
-      .update(blogSubscribers)
-      .set(data)
-      .where(eq(blogSubscribers.id, id))
-      .returning();
-    
-    return updatedSubscriber;
+    return this.forms.updateBlogSubscriber(id, data);
   }
 
   async deleteBlogSubscriber(id: number): Promise<void> {
-    await db
-      .delete(blogSubscribers)
-      .where(eq(blogSubscribers.id, id));
+    // Since formStorage doesn't support deletion, we'll mark the subscriber as inactive
+    // This is a soft delete approach which maintains data integrity
+    await this.forms.updateBlogSubscriber(id, { active: false });
   }
   
-  // Location methods
+  async unsubscribeBlogSubscriber(email: string): Promise<boolean> {
+    return this.forms.unsubscribeBlogSubscriber(email);
+  }
+  
+  // Location methods - delegated to formStorage
   async createLocation(location: InsertLocation): Promise<Location> {
-    const [result] = await db
-      .insert(locations)
-      .values({
-        clientId: location.clientId,
-        name: location.name,
-        code: location.code || null,
-        description: location.description || null,
-        isActive: location.isActive !== undefined ? location.isActive : true
-      })
-      .returning();
-    
-    return result;
+    return this.forms.createLocation(location);
   }
 
   async getLocation(id: number): Promise<Location | undefined> {
-    const [result] = await db
-      .select()
-      .from(locations)
-      .where(eq(locations.id, id));
-    
-    return result;
+    return this.forms.getLocation(id);
   }
 
   async listLocationsByClient(clientId: number): Promise<Location[]> {
-    return await db
-      .select()
-      .from(locations)
-      .where(and(
-        eq(locations.clientId, clientId),
-        eq(locations.isActive, true)
-      ));
+    return this.forms.listLocationsByClient(clientId);
   }
 
   async updateLocation(id: number, data: Partial<Location>): Promise<Location | undefined> {
-    const [updatedLocation] = await db
-      .update(locations)
-      .set({
-        ...data,
-        updatedAt: new Date()
-      })
-      .where(eq(locations.id, id))
-      .returning();
-    
-    return updatedLocation;
+    return this.forms.updateLocation(id, data);
   }
 
   async setLocationActiveStatus(id: number, isActive: boolean): Promise<boolean> {
-    const [result] = await db
-      .update(locations)
-      .set({
-        isActive: isActive,
-        updatedAt: new Date()
-      })
-      .where(eq(locations.id, id))
-      .returning();
-    
+    // Use updateLocation with just the isActive property to implement this functionality
+    const result = await this.forms.updateLocation(id, { isActive, updatedAt: new Date() });
     return !!result;
   }
+  
+  async deleteLocation(id: number): Promise<void> {
+    return this.forms.deleteLocation(id);
+  }
 
-  // Checklist Files methods
+  // Checklist Files methods - delegated to formStorage
   async createChecklistFile(fileData: any): Promise<any> {
-    const buffer = fileData.fileData;
-    delete fileData.fileData;
-
-    const [result] = await db.insert(checklistFiles)
-      .values({
-        filename: fileData.filename,
-        originalFilename: fileData.originalFilename, // This maps to original_filename in the database
-        mimeType: fileData.mimeType,
-        size: fileData.size,
-        path: fileData.path,
-        isActive: fileData.isActive ?? false,
-        uploadedBy: fileData.uploadedBy
-      })
-      .returning();
-
-    if (result) {
-      // Execute a raw SQL query to update the BYTEA column 'file_data'
-      await db.execute(
-        sql`UPDATE checklist_files SET file_data = ${buffer} WHERE id = ${result.id}`
-      );
-
-      // Retrieve the file again with the binary data
-      const fileRow = await db.execute(
-        sql`SELECT id, filename, original_filename as "originalFilename", mime_type as "mimeType", size, path, is_active as "isActive", uploaded_by as "uploadedBy", 
-            created_at as "createdAt", file_data as "fileData" 
-            FROM checklist_files WHERE id = ${result.id}`
-      );
-
-      if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
-        return fileRow.rows[0];
-      }
-    }
-    
-    return result;
+    return this.forms.createChecklistFile(fileData);
   }
 
   async getChecklistFiles(): Promise<any[]> {
-    // Don't fetch the binary data in the listing
-    const results = await db.select({
-      id: checklistFiles.id,
-      filename: checklistFiles.filename,
-      originalFilename: checklistFiles.originalFilename,
-      mimeType: checklistFiles.mimeType,
-      size: checklistFiles.size,
-      path: checklistFiles.path,
-      isActive: checklistFiles.isActive,
-      uploadedBy: checklistFiles.uploadedBy,
-      createdAt: checklistFiles.createdAt,
-      updatedAt: checklistFiles.updatedAt
-    })
-    .from(checklistFiles)
-    .orderBy(desc(checklistFiles.createdAt));
-    
-    return results;
+    return this.forms.getChecklistFiles();
   }
 
   async getActiveChecklistFile(): Promise<any | undefined> {
-    // Include binary data for the active file
-    const fileRow = await db.execute(
-      sql`SELECT id, filename, original_filename as "originalFilename", mime_type as "mimeType", size, path, is_active as "isActive", uploaded_by as "uploadedBy", 
-          created_at as "createdAt", file_data as "fileData" 
-          FROM checklist_files WHERE is_active = true LIMIT 1`
-    );
-    
-    if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
-      return fileRow.rows[0];
-    }
-    
-    return undefined;
+    return this.forms.getActiveChecklistFile();
   }
 
   async getChecklistFileById(id: number): Promise<any | undefined> {
-    // Include binary data for specific file
-    const fileRow = await db.execute(
-      sql`SELECT id, filename, original_filename as "originalFilename", mime_type as "mimeType", size, path, is_active as "isActive", uploaded_by as "uploadedBy", 
-          created_at as "createdAt", file_data as "fileData" 
-          FROM checklist_files WHERE id = ${id} LIMIT 1`
-    );
-    
-    if (fileRow && fileRow.rows && fileRow.rows.length > 0) {
-      return fileRow.rows[0];
-    }
-    
-    return undefined;
+    return this.forms.getChecklistFile(id);
   }
 
   async updateChecklistFile(id: number, isActive: boolean): Promise<any | undefined> {
-    // If marking as active, deactivate all other files
-    if (isActive) {
-      await db.update(checklistFiles)
-        .set({ isActive: false })
-        .where(ne(checklistFiles.id, id));
-    }
-    
-    const [result] = await db.update(checklistFiles)
-      .set({
-        isActive: isActive,
-        updatedAt: new Date()
-      })
-      .where(eq(checklistFiles.id, id))
-      .returning();
-    
-    return result;
+    return this.forms.updateChecklistFile(id, isActive);
   }
 
   async deleteChecklistFile(id: number): Promise<void> {
-    await db.delete(checklistFiles)
-      .where(eq(checklistFiles.id, id));
+    return this.forms.deleteChecklistFile(id);
   }
 
   // -------------------------------------------------------------------------
