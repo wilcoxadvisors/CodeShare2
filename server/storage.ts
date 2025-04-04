@@ -6,50 +6,29 @@
  */
 import { ApiError } from "./errorHandling";
 import { 
-  // Direct database schema imports for remaining modules
-  fixedAssets, FixedAsset, InsertFixedAsset,
-  savedReports, SavedReport, ReportType, 
-  checklistFiles, ChecklistFile, InsertChecklistFile,
-  featureUsage, FeatureUsage, InsertFeatureUsage,
-  industryBenchmarks, IndustryBenchmark, InsertIndustryBenchmark,
-  contactSubmissions, ContactSubmission, InsertContactSubmission,
-  checklistSubmissions, ChecklistSubmission, InsertChecklistSubmission,
-  consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission,
-  budgets, Budget, InsertBudget, BudgetStatus, BudgetPeriodType,
-  budgetItems, BudgetItem, InsertBudgetItem,
-  budgetDocuments, BudgetDocument, InsertBudgetDocument,
-  forecasts, Forecast, InsertForecast,
-  blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
-  locations, Location, InsertLocation,
-  
-  // Schema imports for delegated modules
-  accounts, Account, InsertAccount, AccountType,
-  journals, Journal, InsertJournal, JournalType,
-  journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
-  journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
-  journalEntryFiles,
-  users, User, InsertUser, UserRole, UserActivityLog, InsertUserActivityLog,
-  dataConsent, DataConsent, InsertDataConsent,
-  clients, InsertClient,
-  entities, InsertEntity,
-  Client, Entity, userEntityAccess
+  // Schema imports for type definitions
+  journalEntries, JournalEntryStatus,
+  User, UserRole, Client, Entity, userEntityAccess,
+  accounts, AccountType,
+  GLOptions, GLEntry
 } from "@shared/schema";
 
-// Import specialized storage module classes and instances
+// Import all specialized storage module classes and instances
 import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult, IAccountStorage } from './storage/accountStorage';
-import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
+import { JournalEntryStorage, journalEntryStorage, IJournalEntryStorage } from './storage/journalEntryStorage';
 import { ClientStorage, clientStorage, memClientStorage, IClientStorage } from './storage/clientStorage';
 import { EntityStorage, entityStorage, memEntityStorage, IEntityStorage } from './storage/entityStorage';
-import { UserStorage, userStorage } from './storage/userStorage';
-import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
+import { UserStorage, userStorage, IUserStorage } from './storage/userStorage';
+import { ConsolidationStorage, consolidationStorage, IConsolidationStorage } from './storage/consolidationStorage';
+import { AssetStorage, assetStorage, IAssetStorage } from './storage/assetStorage';
+import { BudgetStorage, budgetStorage, IBudgetStorage } from './storage/budgetStorage';
+import { FormStorage, formStorage, IFormStorage } from './storage/formStorage';
+import { ReportStorage, reportStorage, IReportStorage } from './storage/reportStorage';
+import { UserActivityStorage, userActivityStorage, IUserActivityStorage } from './storage/userActivityStorage';
 
-// Define interface for hierarchical account structure
-// AccountTreeNode has been moved to accountStorage.ts
-import { eq, and, desc, asc, gte, lte, sql, count, sum, isNull, not, ne, inArray, gt, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { json } from "drizzle-orm/pg-core";
 import { logEntityIdsFallback, logEntityIdsUpdate, logEntityIdsDeprecation } from "../shared/deprecation-logger";
-import { ListJournalEntriesFilters } from "../shared/validation";
 
 // Import interface declarations have been moved to accountStorage.ts
 
@@ -69,14 +48,18 @@ import { ListJournalEntriesFilters } from "../shared/validation";
  * - Consolidation Group methods → consolidationStorage.ts
  */
 export interface IStorage {
-  // Account methods are now accessed via this property
+  // Specialized storage modules as properties
   accounts: IAccountStorage;
-  
-  // Client methods are now accessed via this property
   clients: IClientStorage;
-  
-  // Entity methods are now accessed via this property
   entities: IEntityStorage;
+  users: IUserStorage;
+  journalEntries: IJournalEntryStorage;
+  consolidation: IConsolidationStorage;
+  assets: IAssetStorage;
+  budgets: IBudgetStorage;
+  forms: IFormStorage;
+  reports: IReportStorage;
+  userActivity: IUserActivityStorage;
   
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
@@ -327,14 +310,22 @@ export class MemStorage implements IStorage {
   // Method moved to accountStorage.ts
 
   constructor() {
-    this.accounts = accountStorage; // Assign the imported accountStorage instance
-    this.clients = memClientStorage; // Assign the memory-based clientStorage instance
-    this.entities = memEntityStorage; // Assign the memory-based entityStorage instance
-    
-    this.users = new Map();
+    // Assign specialized storage modules
+    this.accounts = accountStorage;
+    this.clients = memClientStorage;
+    this.entities = memEntityStorage;
+    this.journalEntries = journalEntryStorage;
+    this.consolidation = consolidationStorage;
+    this.assets = assetStorage;
+    this.budgets = budgetStorage;
+    this.forms = formStorage;
+    this.reports = reportStorage;
+    this.userActivity = userActivityStorage;
+    this.users = userStorage;
+
+    // Legacy in-memory maps
     this.entitiesMap = new Map();
     this.journals = new Map();
-    // Journal Entry related maps removed (moved to journalEntryStorage module)
     this.fixedAssets = new Map();
     this.savedReports = new Map();
     this.userEntityAccess = new Map();
@@ -1264,11 +1255,28 @@ export class DatabaseStorage implements IStorage {
   public accounts: IAccountStorage;
   public clients: IClientStorage;
   public entities: IEntityStorage;
+  public journalEntries: IJournalEntryStorage;
+  public consolidation: IConsolidationStorage;
+  public assets: IAssetStorage;
+  public budgets: IBudgetStorage;
+  public forms: IFormStorage;
+  public reports: IReportStorage;
+  public userActivity: IUserActivityStorage;
+  public users: IUserStorage;
   
   constructor() {
+    // Assign specialized storage modules
     this.accounts = accountStorage;
     this.clients = clientStorage;
     this.entities = entityStorage;
+    this.journalEntries = journalEntryStorage;
+    this.consolidation = consolidationStorage;
+    this.assets = assetStorage;
+    this.budgets = budgetStorage;
+    this.forms = formStorage;
+    this.reports = reportStorage;
+    this.userActivity = userActivityStorage;
+    this.users = userStorage;
   }
   // Account methods delegation
   async getAccount(id: number): Promise<Account | undefined> {
