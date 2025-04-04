@@ -236,20 +236,6 @@ export interface IStorage {
   createJournal(journal: any): Promise<any>;
   updateJournal(id: number, journal: Partial<any>): Promise<any | undefined>;
   deleteJournal(id: number): Promise<void>;
-  
-  // Keep account methods for backwards compatibility (deprecated)
-  // These will delegate to the accounts property
-  seedClientCoA(clientId: number): Promise<void>;
-  getAccount(id: number): Promise<Account | undefined>;
-  getAccounts(clientId: number): Promise<Account[]>;
-  getAccountsByType(clientId: number, type: any): Promise<Account[]>;
-  createAccount(account: any): Promise<Account>;
-  updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
-  deleteAccount(id: number): Promise<void>;
-  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
-  getAccountsForClient(clientId: number): Promise<Account[]>;
-  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
-  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
 }
 
 export interface GLOptions {
@@ -460,37 +446,15 @@ export class MemStorage implements IStorage {
     // Grant admin access
     this.userEntityAccess.set(`${adminUser.id}-${defaultEntity.id}`, 'admin');
     
-    // Create basic chart of accounts for default entity
-    const accounts = [
-      { accountCode: '1000', name: 'Cash', type: AccountType.ASSET, subtype: 'current_asset' },
-      { accountCode: '1200', name: 'Accounts Receivable', type: AccountType.ASSET, subtype: 'current_asset', isSubledger: true, subledgerType: 'accounts_receivable' },
-      { accountCode: '1500', name: 'Fixed Assets: Equipment', type: AccountType.ASSET, subtype: 'fixed_asset' },
-      { accountCode: '1600', name: 'Accumulated Depreciation', type: AccountType.ASSET, subtype: 'fixed_asset' },
-      { accountCode: '2000', name: 'Accounts Payable', type: AccountType.LIABILITY, subtype: 'current_liability', isSubledger: true, subledgerType: 'accounts_payable' },
-      { accountCode: '3000', name: 'Owner\'s Equity', type: AccountType.EQUITY, subtype: 'equity' },
-      { accountCode: '4000', name: 'Revenue', type: AccountType.REVENUE, subtype: 'revenue' },
-      { accountCode: '5000', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, subtype: 'cost_of_sales' },
-      { accountCode: '6000', name: 'Operating Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
-      { accountCode: '6150', name: 'Office Expenses', type: AccountType.EXPENSE, subtype: 'operating_expense' },
-    ];
-    
-    accounts.forEach(account => {
-      const newAccount: Account = {
-        id: this.currentAccountId++,
-        clientId: defaultClient.id,
-        accountCode: account.accountCode,
-        name: account.name,
-        type: account.type,
-        subtype: account.subtype || null,
-        isSubledger: account.isSubledger || false,
-        subledgerType: account.subledgerType || null,
-        parentId: null,
-        description: null,
-        active: true,
-        createdAt: new Date()
-      };
-      this.accounts.set(newAccount.id, newAccount);
-    });
+    // Create basic chart of accounts for default entity by calling the seedClientCoA method
+    try {
+      // Seed the client CoA using the accountStorage module
+      this.accounts.seedClientCoA(defaultClient.id).catch(error => {
+        console.error(`Failed to seed Chart of Accounts for default client: ${error}`);
+      });
+    } catch (error) {
+      console.error(`Error initiating CoA seeding for default client: ${error}`);
+    }
     
     // Create default journals
     const defaultJournals = [
@@ -2366,6 +2330,13 @@ export class DatabaseStorage implements IStorage {
     if (!result) {
       throw new ApiError(500, `Failed to delete account with ID ${id}.`);
     }
+  }
+  
+  // Chart of Accounts Seeding
+  async seedClientCoA(clientId: number): Promise<void> {
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating seedClientCoA for client ${clientId} to this.accounts`);
+    return this.accounts.seedClientCoA(clientId);
   }
   
   /**
