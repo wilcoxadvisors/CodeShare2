@@ -1,0 +1,109 @@
+🛠️ Explicit Instructions for Issue 3
+Step 1: Identify the Problematic Code
+Open the EntityManagementCard.tsx component.
+
+Navigate to the existing deletion function. It should look similar to this:
+
+typescript
+Copy
+Edit
+const handleDeleteEntity = (id: number | string) => {
+  if (typeof id === 'number') {
+    deleteEntityMutation.mutate(id);
+  } else {
+    onEntityDeleted(id);
+  }
+};
+The issue: The state (setupEntities) isn't explicitly updated after calling onEntityDeleted(id).
+
+Step 2: Explicitly Fix State Management Logic
+Modify handleDeleteEntity to explicitly update setupEntities state by removing the entity based on both the id and localId.
+
+Correct Implementation:
+
+typescript
+Copy
+Edit
+const handleDeleteEntity = (id: number | string) => {
+  if (typeof id === 'number') {
+    deleteEntityMutation.mutate(id);
+  } else {
+    setSetupEntities((prevEntities) =>
+      prevEntities.filter(entity => entity.localId !== id && entity.id !== id)
+    );
+    onEntityDeleted(id);
+  }
+};
+Step 3: Explicit Testing & Verification
+After implementing the above code explicitly:
+
+Test Case A (Unsaved Entity):
+
+Add two unsaved entities.
+
+Delete one entity.
+
+Expected: Only the selected entity is deleted; the form does NOT reset.
+
+Test Case B (Mixed Entities):
+
+Add one saved entity and two unsaved entities.
+
+Delete an unsaved entity.
+
+Expected: Form remains stable. Only the deleted entity is removed.
+
+Step 4: Explicit Documentation
+Clearly document your fix for clarity and future reference:
+
+File: docs/reports/issue-3-form-reset-on-deletion.md
+
+Content:
+
+markdown
+Copy
+Edit
+# Issue 3: Form Reset When Deleting Unsaved Entities - Fix Report
+
+## Problem
+Deleting unsaved entities caused the form to reset unintentionally.
+
+## Root Cause
+Local React state (`setupEntities`) not explicitly updated after deleting temporary entities (`localId` only).
+
+## Solution Implemented
+Explicitly update local state after entity deletion:
+- Directly filter out deleted entity based on `localId` or `id`.
+
+```typescript
+const handleDeleteEntity = (id: number | string) => {
+  if (typeof id === 'number') {
+    deleteEntityMutation.mutate(id);
+  } else {
+    setSetupEntities((prevEntities) =>
+      prevEntities.filter(entity => entity.localId !== id && entity.id !== id)
+    );
+    onEntityDeleted(id);
+  }
+};
+Testing
+✅ Verified deletion does not reset form state.
+✅ Verified state integrity maintained after deletion.
+
+Result
+Improved UX with stable entity editing flow.
+
+Explicit state updates for clear data handling.
+
+yaml
+Copy
+Edit
+
+---
+
+## ✅ **Explicit Next Step**
+- Implement this fix explicitly.
+- Verify explicitly as instructed.
+- Document clearly.
+
+Would you like me to proceed now?
