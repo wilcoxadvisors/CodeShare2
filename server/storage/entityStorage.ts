@@ -1,7 +1,23 @@
 /**
- * Entity Storage Module
- * 
- * This module contains the storage interface and implementation for entity operations.
+ * entityStorage.ts
+ *
+ * Purpose:
+ *   Centralizes all CRUD operations related to Entities in the Wilcox Advisors system.
+ *   This module provides consistent entity management across the application with
+ *   implementations for both database and in-memory storage.
+ *
+ * Methods Included:
+ *   - getEntity(id) - Retrieve a single entity by ID
+ *   - getEntities() - Retrieve all entities
+ *   - getEntitiesByUser(userId) - Get entities owned by or accessible to a user
+ *   - getEntitiesByClient(clientId) - Get entities belonging to a specific client
+ *   - createEntity(entityData) - Create a new entity
+ *   - updateEntity(id, entityData) - Update an existing entity
+ *
+ * Dependencies:
+ *   - Drizzle ORM for database interactions
+ *   - Entity schemas from shared/schema.ts
+ *   - Database connection from server/db.ts
  */
 import { db } from "../db";
 import { entities, Entity, InsertEntity, userEntityAccess } from "@shared/schema";

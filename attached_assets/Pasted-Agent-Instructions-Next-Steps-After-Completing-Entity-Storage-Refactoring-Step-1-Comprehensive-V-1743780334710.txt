@@ -1,0 +1,77 @@
+Agent Instructions: Next Steps After Completing Entity Storage Refactoring
+✅ Step 1: Comprehensive Verification and Cleanup
+Re-Verify All Entity Methods
+
+Run existing automated tests to confirm all entity methods (e.g., getEntity, createEntity, updateEntity, getEntitiesByClient, etc.) function correctly after refactoring.
+
+If any tests fail or are missing, immediately create/update tests to ensure complete coverage.
+
+Final Code Cleanup
+
+Ensure no residual direct entity management logic remains in server/storage.ts. All calls must delegate cleanly to entityStorage.ts.
+
+Review and remove any commented-out or redundant code related to entity methods in storage.ts.
+
+✅ Step 2: Document Entity Storage Module
+Update the top-level documentation/comments in entityStorage.ts clearly indicating:
+
+Purpose of the module
+
+Methods available
+
+Dependencies (e.g., Drizzle ORM, schema definitions from shared/schema.ts)
+
+Example documentation template at the top of entityStorage.ts:
+
+typescript
+Copy
+Edit
+/**
+ * entityStorage.ts
+ *
+ * Purpose:
+ *   Centralizes all CRUD operations related to Entities.
+ *
+ * Methods Included:
+ *   - getEntity(id)
+ *   - createEntity(entityData)
+ *   - updateEntity(id, entityData)
+ *   - getEntitiesByClient(clientId)
+ *   - getEntitiesByUser(userId)
+ *
+ * Dependencies:
+ *   - Drizzle ORM for database interactions
+ *   - Entity schemas from shared/schema.ts
+ */
+✅ Step 3: Begin Refactoring Vendor Logic
+Now that the entity refactor is confirmed stable, begin similar refactoring for vendor-related logic:
+
+Create a new module: server/storage/vendorStorage.ts.
+
+Define a clear interface/class (IVendorStorage) for vendor-specific methods.
+
+Move existing vendor methods from storage.ts into this new vendorStorage.ts module.
+
+Update delegation patterns in storage.ts similarly to how entity delegation was done.
+
+✅ Step 4: Maintain Consistency & Test Immediately
+After moving vendor methods, update the IStorage interface to include:
+
+typescript
+Copy
+Edit
+vendors: IVendorStorage;
+Update DatabaseStorage and MemStorage implementations accordingly.
+
+Implement delegation in storage.ts to vendorStorage.ts.
+
+Immediately write/run tests verifying vendor methods function correctly.
+
+🗒️ Summary of Immediate Action Items:
+Verify and finalize entity storage refactoring.
+
+Document entity storage clearly.
+
+Start vendorStorage refactor, maintaining patterns from successful entityStorage implementation.
+
+🎯 Next Action: Start with comprehensive verification and documentation of entityStorage. After successful completion, proceed to initiate the vendorStorage refactoring.
