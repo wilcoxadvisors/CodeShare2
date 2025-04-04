@@ -21,7 +21,10 @@ const clientEditSchema = z.object({
   contactPhone: z.string().optional(),
   address: z.string().optional(),
   taxId: z.string().optional(),
-  website: z.string().url({ message: "Enter a valid URL" }).optional().or(z.string().length(0)),
+  website: z.string().optional().refine(
+    (val) => !val || val === "" || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("www."),
+    { message: "Website should start with http://, https://, or www." }
+  ),
   notes: z.string().optional(),
   active: z.boolean().default(true)
 });

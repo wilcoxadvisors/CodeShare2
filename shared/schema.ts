@@ -51,6 +51,7 @@ export const clients = pgTable("clients", {
   postalCode: text("postal_code"),
   website: text("website"),
   notes: text("notes"),
+  taxId: text("tax_id"), // Added tax ID field
   active: boolean("active").notNull().default(true),
   referralSource: text("referral_source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

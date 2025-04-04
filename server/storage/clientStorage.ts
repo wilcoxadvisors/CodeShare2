@@ -237,6 +237,7 @@ export class MemClientStorage implements IClientStorage {
       postalCode: client.postalCode !== undefined ? client.postalCode : null,
       website: client.website !== undefined ? client.website : null,
       notes: client.notes !== undefined ? client.notes : null,
+      taxId: client.taxId !== undefined ? client.taxId : null, // Added taxId
       createdAt: new Date(),
       updatedAt: null
     };
