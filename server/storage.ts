@@ -2300,134 +2300,16 @@ export class DatabaseStorage implements IStorage {
     return this.accounts.importCoaForClient(clientId, fileBuffer, fileName, selections);
   }
   
-  /* Original importCoaForClient implementation has been completely removed and delegated to accountStorage */
-
-  /* Removed duplicate implementations of:
+  /* Original importCoaForClient implementation has been completely removed and delegated to accountStorage.
+   * The following methods have been moved to accountStorage.ts:
    * - createAccount
    * - markAccountInactive
    * - accountHasTransactions
    * - importCoaForClient
    * - generateCoaImportPreview
-   * These methods are properly delegated in the MemStorage class
+   * These methods are properly delegated through the this.accounts property.
    */
-        
-        // Process existing accounts that may need parent updates
-        for (const row of validRows) {
-          try {
-            const accountCode = row.accountCode;
-            const lowerAccountCode = accountCode.toLowerCase();
-            
-            // If selections specify to only update selected accounts and this is not included, skip
-            if (selections && 
-                selections.updateStrategy === 'selected' && 
-                selections.includedCodes && 
-                !selections.includedCodes.includes(accountCode)) {
-              continue;
-            }
-            
-            // If this is a new account or an existing one that doesn't have transactions
-            const accountId = codeToIdMap.get(lowerAccountCode);
-            if (!accountId) continue; // Skip if account wasn't successfully created/found
-            
-            // Skip accounts with transactions since we don't update parent relationships for those
-            if (accountsWithTransactions.has(accountId)) continue;
-            
-            // Extract parent code with comprehensive case-insensitive handling
-            const parentCode = this.getParentCode(row);
-            if (!parentCode) continue; // No parent specified
-            
-            const lowerParentCode = parentCode.toLowerCase();
-            
-            // Get the parent ID, trying different case variations
-            const parentId = codeToIdMap.get(parentCode) || codeToIdMap.get(lowerParentCode);
-            
-            if (!parentId) {
-              result.warnings.push(`Cannot establish parent relationship: Parent account ${parentCode} not found for ${accountCode}`);
-              continue;
-            }
-            
-            // Don't allow self-referencing parent
-            if (accountId === parentId) {
-              result.warnings.push(`Account ${accountCode} cannot be its own parent`);
-              continue;
-            }
-            
-            // Check for circular references
-            let potentialParentId = parentId;
-            let isCircular = false;
-            const visited = new Set<number>();
-            
-            while (potentialParentId) {
-              if (visited.has(potentialParentId)) {
-                isCircular = true;
-                break;
-              }
-              
-              visited.add(potentialParentId);
-              
-              const parent = existingIdMap.get(potentialParentId);
-              potentialParentId = parent?.parentId || null;
-              
-              // Would this create a circular reference?
-              if (potentialParentId === accountId) {
-                isCircular = true;
-                break;
-              }
-            }
-            
-            if (isCircular) {
-              result.warnings.push(`Cannot set parent for ${accountCode}: Would create a circular reference`);
-              continue;
-            }
-            
-            // Queue up the parent relationship update
-            parentUpdates.push({
-              accountId,
-              parentId,
-              accountCode,
-              parentCode
-            });
-            
-          } catch (error: any) {
-            const accountCode = row.accountCode || 'unknown';
-            console.error(`Error resolving parent for ${accountCode}:`, error);
-            result.warnings.push(`Error resolving parent for account ${accountCode}: ${error.message || 'Unknown error'}`);
-          }
-        }
-        
-        // ==================== STEP 9: Execute parent relationship updates ====================
-        console.log(`Applying ${parentUpdates.length} parent relationship updates`);
-        
-        if (parentUpdates.length > 0) {
-          for (const update of parentUpdates) {
-            try {
-              await tx
-                .update(accounts)
-                .set({ parentId: update.parentId })
-                .where(eq(accounts.id, update.accountId));
-                
-              console.log(`Updated parent relationship: ${update.accountCode} -> ${update.parentCode}`);
-            } catch (updateError: any) {
-              console.error(`Error updating parent relationship for account ${update.accountCode}:`, updateError);
-              result.warnings.push(`Failed to update parent for account ${update.accountCode}: ${updateError.message}`);
-            }
-          }
-        }
-        
-        console.log(`Chart of Accounts import completed successfully for client ${clientId}`);
-        return result;
-      } catch (error: any) {
-        console.error(`Chart of Accounts import failed:`, error);
-        result.errors.push(`Import failed: ${error.message || 'Unknown error'}`);
-        throw error; // This will trigger a rollback of the transaction
-      }
-    });
-  }
-  
 
-  
-
-  
 
   
   // getParentCode has been moved to accountStorage.ts
