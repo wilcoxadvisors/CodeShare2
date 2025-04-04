@@ -3,6 +3,7 @@ export default {
   testEnvironment: 'node',
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { useESM: true }],
+    '^.+\\.jsx?$': ['ts-jest', { useESM: true }],
   },
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
@@ -10,6 +11,7 @@ export default {
   },
   testMatch: [
     '<rootDir>/test/**/*.test.ts',
+    '<rootDir>/test/**/*.test.js',
     '<rootDir>/server/**/*.test.ts'
   ],
   collectCoverage: true,

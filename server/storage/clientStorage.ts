@@ -114,7 +114,14 @@ export class ClientStorage implements IClientStorage {
         active: client.active !== undefined ? client.active : true
       };
       
+      // Log client data before insertion to help debug
+      console.log("Creating client with data (in storage):", JSON.stringify(clientData, null, 2));
+      
       const [newClient] = await db.insert(clients).values(clientData).returning();
+      
+      // Log what was actually saved
+      console.log("Client created with data (from DB):", JSON.stringify(newClient, null, 2));
+      
       return newClient;
     } catch (error) {
       handleDbError(error, "Error creating client");
@@ -216,6 +223,7 @@ export class MemClientStorage implements IClientStorage {
       id,
       name: client.name,
       userId: client.userId,
+      legalName: client.legalName !== undefined ? client.legalName : null, // Added legalName
       active: client.active !== undefined ? client.active : true,
       industry: client.industry !== undefined ? client.industry : null,
       referralSource: client.referralSource !== undefined ? client.referralSource : null,

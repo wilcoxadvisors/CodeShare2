@@ -97,8 +97,9 @@ export default function EntityManagementCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentEntityId, setCurrentEntityId] = useState<number | null>(null);
-  // Use entities from props for local state (for backward compatibility)
-  const [setupEntities, setSetupEntities] = useState<any[]>(entities || []);
+  // FIXED: Always initialize with empty array to prevent persisting unsaved entities
+  // Don't use entities prop directly in initial state to avoid persisting unsaved data
+  const [setupEntities, setSetupEntities] = useState<any[]>([]);
   
   // Check if user is admin
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -1082,19 +1083,23 @@ export default function EntityManagementCard({
   
   // CRITICAL FIX 10.0: More aggressive loading of entities when component mounts or client data changes
   useEffect(() => {
-    // Reset only the form when clientData changes, not the entities list
+    // Reset the form whenever clientData changes
     form.reset(getDefaultFormValues());
     
-    // CRITICAL FIX 10.0: If we have client data and no entities, proactively fetch them
+    // FIXED: Reset entities state when setting up a new client (no ID)
+    if (!clientData || !clientData.id) {
+      console.log("CLIENT RESET: New client setup detected, clearing all entity state");
+      setSetupEntities([]);
+      return; // No need to try to fetch entities for a new client
+    }
+    
+    // For existing clients with IDs, load their entities
     const loadEntitiesForClient = async () => {
       if (clientData?.id) {
         console.log("CRITICAL FIX 10.0: Component mounted with clientId:", clientData.id);
         
-        // Check if we already have entities (from props or local state)
-        if (setupEntities && setupEntities.length > 0) {
-          console.log("CRITICAL FIX 10.0: Already have entities in component state:", setupEntities.length);
-          return;
-        }
+        // FIXED: Don't check setupEntities to avoid using stale data
+        // Always start fresh when the clientId changes
         
         // Check if we have entities in entityData prop
         if (entityData && entityData.length > 0) {
@@ -1103,8 +1108,8 @@ export default function EntityManagementCard({
           return;
         }
         
-        // No entities found in state, try to fetch them directly
-        console.log("CRITICAL FIX 10.0: No entities found in state, fetching from API...");
+        // No entities found in props, try to fetch them directly
+        console.log("CRITICAL FIX 10.0: No entities found in props, fetching from API...");
         try {
           const fetchedEntities = await fetchEntitiesDirectly(clientData.id);
           if (fetchedEntities && Array.isArray(fetchedEntities) && fetchedEntities.length > 0) {
@@ -1120,12 +1125,17 @@ export default function EntityManagementCard({
             }
           } else {
             console.log("CRITICAL FIX 10.0: No entities found for client in API, starting with empty list");
+            // Explicitly set empty array to clear any previous entities
+            setSetupEntities([]);
           }
         } catch (error) {
           console.error("CRITICAL FIX 10.0: Error fetching entities directly:", error);
+          // On error, still reset to empty array to avoid showing stale data
+          setSetupEntities([]);
         }
       } else {
-        console.log("CRITICAL FIX 10.0: No client ID available, cannot fetch entities");
+        console.log("CRITICAL FIX 10.0: No client ID available, clearing entity state");
+        setSetupEntities([]);
       }
     };
     
