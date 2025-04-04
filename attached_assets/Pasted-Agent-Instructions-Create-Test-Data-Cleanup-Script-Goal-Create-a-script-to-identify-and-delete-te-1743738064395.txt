@@ -1,0 +1,66 @@
+Agent Instructions: Create Test Data Cleanup Script
+
+Goal: Create a script to identify and delete test clients and entities (and their associated data), while preserving specific essential client IDs (1, 2, 7).
+
+Relevant Files:
+
+Create: scripts/cleanup-test-data.ts
+Create: scripts/cleanup-test-data.sh
+Modify: scripts/README.md [cite: uploaded:CodeShare/scripts/README.md]
+Reference: shared/schema.ts (For table relationships) [cite: uploaded:CodeShare/shared/schema.ts]
+Reference: server/db.ts (For DB connection) [cite: uploaded:CodeShare/server/db.ts]
+Implementation Steps:
+
+1. Create Script File (cleanup-test-data.ts):
+
+Action: Create the file scripts/cleanup-test-data.ts.
+Action: Implement Script Logic:
+Imports: Import Drizzle ORM functions (db, eq, inArray, not, like, sql, and, or), relevant schema objects (clients, entities, accounts, journalEntryLines, journalEntries, userEntityAccess, etc.), and optionally chalk.
+Define Clients to Keep: Define const CLIENT_IDS_TO_KEEP = [1, 2, 7];. Log these at the start.
+Find Clients to Delete: Query clients table. Find IDs matching test criteria (e.g., like(clients.name, '%Test%'), like(clients.name, '%COA_%')) AND NOT in CLIENT_IDS_TO_KEEP. Store in clientIdsToDelete. Log count/IDs. If none, exit.
+Find Entities to Delete: Query entities table where clientId is in clientIdsToDelete. Store IDs in entityIdsToDelete. Log count/IDs.
+Implement Deletion Logic within Transaction: Use await db.transaction(async (tx) => { ... });.
+Inside Transaction (DELETE DEPENDENCIES FIRST):
+Delete userEntityAccess linked to entityIdsToDelete. Log count.
+Delete journalEntryLines linked to entityIdsToDelete. Log count.
+Delete journalEntries linked to entityIdsToDelete. Log count.
+Delete accounts linked to clientIdsToDelete. Log count.
+(Add deletes for ANY other tables referencing entities or clients being deleted)
+Delete entities where id is in entityIdsToDelete. Log count.
+Delete clients where id is in clientIdsToDelete. Log count.
+Main Script Flow: Implement async function main() { ... }. Include warnings. Find IDs. Execute transaction in try/catch. Log summary. Use process.exit. Call main().
+2. Create Run Script (cleanup-test-data.sh):
+
+Action: Create scripts/cleanup-test-data.sh.
+Action: Add content with warnings and confirmation prompt:
+Bash
+
+#!/bin/bash
+# Runs the script to DELETE test clients/entities.
+
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+echo "!!! WARNING: THIS SCRIPT WILL PERMANENTLY DELETE TEST DATA !!!"
+echo "!!!          (Excluding Client IDs defined in cleanup-test-data.ts, likely 1, 2, 7)          !!!"
+echo "!!!          Backup your database before running!          !!!"
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+read -p "Are you sure you want to continue? (y/N) " -n 1 -r
+echo # Move to a new line
+
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+    echo "Executing test data cleanup script..."
+    npx tsx ./scripts/cleanup-test-data.ts "$@"
+    echo "Cleanup script execution finished."
+else
+    echo "Cleanup cancelled."
+fi
+Action: Make executable: chmod +x scripts/cleanup-test-data.sh.
+3. Update Documentation (scripts/README.md):
+
+Action: Update scripts/README.md [cite: uploaded:CodeShare/scripts/README.md].
+Action: Add a section for cleanup-test-data.ts. Explain purpose, criteria (keeping specific IDs), run command, and strong warnings about manual execution, backups, and verifying CLIENT_IDS_TO_KEEP in the script first.
+4. Verification Plan (Report Only):
+
+Action: Report creation of the .ts script, .sh runner, and updated README.md.
+Action: State clearly: "This script is intended for manual execution only after careful review and database backup. It should not be run automatically now."

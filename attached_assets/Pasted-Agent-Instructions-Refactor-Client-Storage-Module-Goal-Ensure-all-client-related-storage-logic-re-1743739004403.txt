@@ -1,0 +1,67 @@
+Agent Instructions: Refactor Client Storage Module
+
+Goal: Ensure all client-related storage logic resides in server/storage/clientStorage.ts and that the main storage.ts correctly delegates calls, following the established modular pattern.
+
+Relevant Files:
+
+server/storage.ts (Main storage file)
+server/storage/clientStorage.ts (Target module file)
+shared/schema.ts (Client type definitions)
+Implementation Steps:
+
+Part 1: Ensure clientStorage.ts is Correct
+
+Verify/Create File: Ensure the file server/storage/clientStorage.ts exists.
+Define Interface (IClientStorage): Verify or add the IClientStorage interface within clientStorage.ts. It should include signatures for all client operations:
+TypeScript
+
+export interface IClientStorage {
+  getClient(id: number): Promise<Client | undefined>;
+  getClients(): Promise<Client[]>;
+  getClientsByUserId(userId: number): Promise<Client[]>;
+  getClientByUserId(userId: number): Promise<Client | null>; // Or undefined
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
+}
+Implement Class (ClientStorage): Verify or implement the ClientStorage implements IClientStorage class. Ensure it contains the database logic (using db and Drizzle) for each method defined in IClientStorage. (Based on my fetch, this class likely already exists and is correctly implemented).
+Export Instance: Ensure the file exports a singleton instance: export const clientStorage = new ClientStorage();.
+Part 2: Update storage.ts - Interface (IStorage)
+
+Open File: Open server/storage.ts.
+Locate Interface: Find the export interface IStorage { ... } definition.
+Import: Ensure IClientStorage is imported from ./storage/clientStorage.
+Remove Signatures: If they still exist, delete the individual method signatures for getClient, getClients, getClientsByUserId, createClient, updateClient from within the IStorage interface.
+Add Property: Ensure the IStorage interface includes the property: clients: IClientStorage;.
+Part 3: Update storage.ts - DatabaseStorage Delegation
+
+Locate Class: Find the class DatabaseStorage implements IStorage { ... } definition.
+Add Property: Ensure the class includes the public property public clients: IClientStorage; and that it's initialized in the constructor: this.clients = clientStorage;.
+Verify Delegation: Verify that all client methods within DatabaseStorage ( getClient, getClients, getClientsByUserId, createClient, updateClient) are simple delegations to this.clients. Example:
+TypeScript
+
+async getClient(id: number): Promise<Client | undefined> {
+    // Delegate to clientStorage module via the clients property
+    return this.clients.getClient(id);
+}
+Remove Old Code: Ensure no direct implementation logic for client methods remains within DatabaseStorage.
+Part 4: Update storage.ts - MemStorage Delegation
+
+Locate Class: Find the class MemStorage implements IStorage { ... } definition.
+Add Property: Ensure the class includes the public property public clients: IClientStorage; and that it's initialized in the constructor: this.clients = clientStorage;.
+Remove Internal State: Delete the private clients: Map<number, Client>; property and the private currentClientId: number; counter if they exist. Remove this.clients = new Map(); from the constructor.
+Implement Delegation: Verify or implement that all client methods within MemStorage delegate to this.clients. Example:
+TypeScript
+
+async getClient(id: number): Promise<Client | undefined> {
+    // Delegate to clientStorage module via the clients property
+    return this.clients.getClient(id);
+}
+Remove Old Code: Ensure no direct implementation logic for client methods remains within MemStorage.
+Part 5: Clean Up storage.ts
+
+Review File: Scan server/storage.ts.
+Remove Unused Code: Delete any helper functions or types that were used only by the old client method implementations within storage.ts.
+Part 6: Verification
+
+Restart: Restart the application.
+Report: Report build success/failure. Explicitly confirm the status of Parts 1 through 5. Describe how to manually test client operations (e.g., view client list on dashboard, view details, edit client) to ensure they still function correctly through the delegation.

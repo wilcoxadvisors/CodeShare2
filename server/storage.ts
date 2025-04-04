@@ -38,7 +38,7 @@ import {
 // Import specialized storage module classes and instances
 import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult, IAccountStorage } from './storage/accountStorage';
 import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
-import { ClientStorage, clientStorage } from './storage/clientStorage';
+import { ClientStorage, clientStorage, IClientStorage } from './storage/clientStorage';
 import { EntityStorage, entityStorage } from './storage/entityStorage';
 import { UserStorage, userStorage } from './storage/userStorage';
 import { ConsolidationStorage, consolidationStorage } from './storage/consolidationStorage';
@@ -71,6 +71,9 @@ import { ListJournalEntriesFilters } from "../shared/validation";
 export interface IStorage {
   // Account methods are now accessed via this property
   accounts: IAccountStorage;
+  
+  // Client methods are now accessed via this property
+  clients: IClientStorage;
   
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
@@ -261,9 +264,10 @@ export interface GLEntry {
 
 export class MemStorage implements IStorage {
   public accounts: IAccountStorage; // Property for IAccountStorage as required by the IStorage interface
+  public clients: IClientStorage; // Property for IClientStorage as required by the IStorage interface
   
   private users: Map<number, User>;
-  private clients: Map<number, Client>;
+  private _clientsMap: Map<number, Client>; // Renamed to avoid conflicts
   private entities: Map<number, Entity>;
   private journals: Map<number, Journal>;
   // Journal Entry related maps removed and moved to journalEntryStorage module
@@ -321,9 +325,10 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.accounts = accountStorage; // Assign the imported accountStorage instance
+    this.clients = clientStorage; // Assign the imported clientStorage instance
     
     this.users = new Map();
-    this.clients = new Map();
+    this._clientsMap = new Map(); // Initialize the internal clients map
     this.entities = new Map();
     this.journals = new Map();
     // Journal Entry related maps removed (moved to journalEntryStorage module)
@@ -378,34 +383,47 @@ export class MemStorage implements IStorage {
     this.users.set(adminUser.id, adminUser);
     
     // Create default client for admin
-    const defaultClient: Client = {
-      id: this.currentClientId++,
+    // Create default client via this.clients
+    const defaultClientData = {
       name: 'Wilcox Advisors',
-      email: 'contact@wilcoxadvisors.com',
-      ownerId: adminUser.id,
+      userId: adminUser.id, // Changed from ownerId to userId to match InsertClient interface
       active: true,
       phone: '+1-555-123-4567',
       industry: 'Accounting',
       contactName: 'Admin User',
       contactEmail: 'admin@example.com',
-      contactPhone: null,
-      billingAddress: '123 Business Ave',
-      billingCity: 'San Francisco',
-      billingState: 'CA',
-      billingZip: '94105',
-      billingCountry: 'US',
-      taxId: null,
       website: 'https://wilcoxadvisors.com',
       notes: 'Our organization',
+      tags: ['internal'],
+    };
+    
+    // Create client directly with Map operations instead of using async methods
+    // We're in a constructor so we can't use await
+    const defaultClientId = 1; // Default ID for the first client
+    const defaultClient: Client = {
+      id: defaultClientId,
+      name: defaultClientData.name,
+      userId: defaultClientData.userId, // This field is correctly named now
+      active: defaultClientData.active,
+      industry: defaultClientData.industry,
+      contactName: defaultClientData.contactName,
+      contactEmail: defaultClientData.contactEmail,
+      website: defaultClientData.website,
+      notes: defaultClientData.notes,
       createdAt: new Date(),
       updatedAt: null,
-      lastContactDate: null,
-      clientSince: new Date(),
-      logo: null,
-      accountManager: adminUser.id,
-      tags: ['internal']
+      // Add properties based on the clients table schema
+      address: null,
+      city: null,
+      state: null,
+      country: null,
+      postalCode: null,
+      contactPhone: defaultClientData.phone,
+      referralSource: null
     };
-    this.clients.set(defaultClient.id, defaultClient);
+    
+    // Initialize the client in the internal map
+    this._clientsMap.set(defaultClientId, defaultClient);
     
     // Create default entity
     const defaultEntity: Entity = {
@@ -413,7 +431,7 @@ export class MemStorage implements IStorage {
       name: 'Acme Corporation',
       code: 'ACME',
       ownerId: adminUser.id,
-      clientId: defaultClient.id, // Link to default client
+      clientId: defaultClientId, // Link to default client ID
       active: true,
       fiscalYearStart: '01-01',
       fiscalYearEnd: '12-31',
@@ -699,51 +717,29 @@ export class MemStorage implements IStorage {
     return userStorage.findUserByRole(role);
   }
 
-  // Client methods
+  // Client methods - delegated to clientStorage
   async getClient(id: number): Promise<Client | undefined> {
-    return this.clients.get(id);
+    return this.clients.getClient(id);
   }
   
   async getClients(): Promise<Client[]> {
-    return Array.from(this.clients.values());
+    return this.clients.getClients();
   }
   
   async getClientsByUserId(userId: number): Promise<Client[]> {
-    return Array.from(this.clients.values())
-      .filter(client => client.userId === userId);
+    return this.clients.getClientsByUserId(userId);
   }
   
   async createClient(client: InsertClient): Promise<Client> {
-    const id = this.currentClientId++;
-    const newClient: Client = {
-      id,
-      userId: client.userId,
-      name: client.name,
-      active: client.active !== undefined ? client.active : true,
-      industry: client.industry || null,
-      contactName: client.contactName || null,
-      contactEmail: client.contactEmail || null,
-      contactPhone: client.contactPhone || null,
-      address: client.address || null,
-      city: client.city || null,
-      state: client.state || null,
-      country: client.country || null,
-      postalCode: client.postalCode || null,
-      website: client.website || null,
-      notes: client.notes || null,
-      referralSource: client.referralSource || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    this.clients.set(id, newClient);
+    // Create the client via the delegated this.clients
+    const newClient = await this.clients.createClient(client);
     
     // Seed the standard Chart of Accounts for the new client
     try {
-      await this.seedClientCoA(id);
-      console.log(`Automatically seeded standard Chart of Accounts for new client ${id}`);
+      await this.accounts.seedClientCoA(newClient.id);
+      console.log(`Automatically seeded standard Chart of Accounts for new client ${newClient.id}`);
     } catch (error) {
-      console.error(`Failed to seed Chart of Accounts for new client ${id}:`, error);
+      console.error(`Failed to seed Chart of Accounts for new client ${newClient.id}:`, error);
       // We don't want to fail the client creation if seeding fails
       // Just log the error and continue
     }
@@ -752,12 +748,7 @@ export class MemStorage implements IStorage {
   }
   
   async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
-    const client = this.clients.get(id);
-    if (!client) return undefined;
-    
-    const updatedClient = { ...client, ...clientData, updatedAt: new Date() };
-    this.clients.set(id, updatedClient);
-    return updatedClient;
+    return this.clients.updateClient(id, clientData);
   }
   
   // Entity methods
@@ -1413,9 +1404,11 @@ export class MemStorage implements IStorage {
 // Database implementation
 export class DatabaseStorage implements IStorage {
   public accounts: IAccountStorage;
+  public clients: IClientStorage;
   
   constructor() {
     this.accounts = accountStorage;
+    this.clients = clientStorage;
   }
   // Account methods delegation
   async getAccount(id: number): Promise<Account | undefined> {
@@ -1501,36 +1494,32 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Chart of Accounts Seeding
-  async seedClientCoA(clientId: number): Promise<void> {
-    // Delegate to the accounts storage module via the accounts property
-    console.log(`DEBUG: DatabaseStorage delegating seedClientCoA for client ${clientId} to this.accounts`);
-    return this.accounts.seedClientCoA(clientId);
-  }
+  // seedClientCoA has been removed from DatabaseStorage and is now accessed via this.accounts.seedClientCoA
   // Client methods
   async getClient(id: number): Promise<Client | undefined> {
-    return clientStorage.getClient(id);
+    return this.clients.getClient(id);
   }
   
   async getClients(): Promise<Client[]> {
-    return clientStorage.getClients();
+    return this.clients.getClients();
   }
   
   async getClientsByUserId(userId: number): Promise<Client[]> {
-    return clientStorage.getClientsByUserId(userId);
+    return this.clients.getClientsByUserId(userId);
   }
   
   async getClientByUserId(userId: number): Promise<Client | null> {
-    return clientStorage.getClientByUserId(userId);
+    return this.clients.getClientByUserId(userId);
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    // Create the client using the clientStorage module
-    const result = await clientStorage.createClient(client);
+    // Create the client using the clients property
+    const result = await this.clients.createClient(client);
     
     // Seed the standard Chart of Accounts for the new client
     try {
       console.log(`VERIFICATION TEST: Starting automatic CoA seeding for new client ${result.id} at ${new Date().toISOString()}`);
-      await this.seedClientCoA(result.id);
+      await this.accounts.seedClientCoA(result.id);
       console.log(`VERIFICATION TEST: Successfully seeded standard Chart of Accounts for new client ${result.id}`);
     } catch (error) {
       console.error(`VERIFICATION TEST: Failed to seed Chart of Accounts for new client ${result.id}:`, error);
@@ -1542,7 +1531,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
-    return clientStorage.updateClient(id, clientData);
+    return this.clients.updateClient(id, clientData);
   }
   
   // User methods
@@ -2333,11 +2322,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Chart of Accounts Seeding
-  async seedClientCoA(clientId: number): Promise<void> {
-    // Delegate to the accounts storage module via the accounts property
-    console.log(`DEBUG: MemStorage delegating seedClientCoA for client ${clientId} to this.accounts`);
-    return this.accounts.seedClientCoA(clientId);
-  }
+  // seedClientCoA has been removed from MemStorage and is now accessed via this.accounts.seedClientCoA
   
   /**
    * Marks an account as inactive instead of deleting it
@@ -3696,23 +3681,23 @@ export class DatabaseStorage implements IStorage {
   
   // Client methods delegation
   async getClient(id: number): Promise<Client | undefined> {
-    return clientStorage.getClient(id);
+    return this.clients.getClient(id);
   }
   
   async getClients(): Promise<Client[]> {
-    return clientStorage.getClients();
+    return this.clients.getClients();
   }
   
   async getClientsByUserId(userId: number): Promise<Client[]> {
-    return clientStorage.getClientsByUserId(userId);
+    return this.clients.getClientsByUserId(userId);
   }
   
   async createClient(client: any): Promise<Client> {
-    return clientStorage.createClient(client);
+    return this.clients.createClient(client);
   }
   
   async updateClient(id: number, client: Partial<Client>): Promise<Client | undefined> {
-    return clientStorage.updateClient(id, client);
+    return this.clients.updateClient(id, client);
   }
   
   // Entity methods delegation
