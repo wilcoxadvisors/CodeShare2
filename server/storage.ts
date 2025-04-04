@@ -4,6 +4,7 @@
  * Main storage interface and implementation that delegates to specialized 
  * storage modules for different parts of the application.
  */
+import { ApiError } from "./errorHandling";
 import { 
   // Direct database schema imports for remaining modules
   fixedAssets, FixedAsset, InsertFixedAsset,
@@ -1470,11 +1471,35 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
-    return this.accounts.updateAccount(id, accountData);
+    // Need to get the clientId from accountData or the existing account
+    let clientId: number;
+    if (accountData.clientId) {
+      clientId = accountData.clientId;
+    } else {
+      const account = await this.getAccount(id);
+      if (!account) {
+        return undefined;
+      }
+      clientId = account.clientId;
+    }
+    
+    return this.accounts.updateAccount(id, clientId, accountData);
   }
   
   async deleteAccount(id: number): Promise<void> {
-    return this.accounts.deleteAccount(id);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: DatabaseStorage delegating deleteAccount for account ${id} to this.accounts`);
+    
+    // Need to get the clientId from the existing account
+    const account = await this.getAccount(id);
+    if (!account) {
+      throw new ApiError(404, `Account with ID ${id} not found.`);
+    }
+    
+    const result = await this.accounts.deleteAccount(id, account.clientId);
+    if (!result) {
+      throw new ApiError(500, `Failed to delete account with ID ${id}.`);
+    }
   }
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
@@ -2231,23 +2256,27 @@ export class DatabaseStorage implements IStorage {
 
   // Account methods have been moved to accountStorage.ts
   async getAccount(id: number): Promise<Account | undefined> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccount(id);
+    // Delegated to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating getAccount for account ${id} to this.accounts`);
+    return this.accounts.getAccount(id);
   }
 
   async getAccounts(clientId: number): Promise<Account[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccounts(clientId);
+    // Delegated to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating getAccounts for client ${clientId} to this.accounts`);
+    return this.accounts.getAccounts(clientId);
   }
 
   async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccountsByType(clientId, type);
+    // Delegated to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating getAccountsByType for client ${clientId}, type ${type} to this.accounts`);
+    return this.accounts.getAccountsByType(clientId, type);
   }
   
   async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccountsTree(clientId);
+    // Delegated to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating getAccountsTree for client ${clientId} to this.accounts`);
+    return this.accounts.getAccountsTree(clientId);
   }
   // Implementation for Chart of Accounts export
   async getAccountsForClient(clientId: number): Promise<Account[]> {
@@ -2417,11 +2446,15 @@ export class DatabaseStorage implements IStorage {
   // This method is no longer needed in DatabaseStorage
 
   async createAccount(insertAccount: InsertAccount): Promise<Account> {
-    // Delegated to accountStorage.ts
-    return accountStorage.createAccount(insertAccount);
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating createAccount to this.accounts`);
+    return this.accounts.createAccount(insertAccount);
   }
 
   async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating updateAccount for account ${id} to this.accounts`);
+    
     // Get clientId from accountData or from account
     let clientId: number;
     if (accountData.clientId) {
@@ -2434,27 +2467,23 @@ export class DatabaseStorage implements IStorage {
       clientId = account.clientId;
     }
     
-    // Delegated to accountStorage.ts with the necessary clientId
-    try {
-      return await accountStorage.updateAccount(id, clientId, accountData) || undefined;
-    } catch (e) {
-      console.error(`Error updating account ${id}:`, e);
-      return undefined;
-    }
+    return this.accounts.updateAccount(id, clientId, accountData);
   }
 
-  async deleteAccount(id: number, clientId?: number): Promise<void> {
-    // Get clientId from account if not provided
-    if (!clientId) {
-      const account = await this.getAccount(id);
-      if (!account) {
-        throw new ApiError(404, `Account with ID ${id} not found.`);
-      }
-      clientId = account.clientId;
+  async deleteAccount(id: number): Promise<void> {
+    // Delegate to the accounts storage module via the accounts property
+    console.log(`DEBUG: MemStorage delegating deleteAccount for account ${id} to this.accounts`);
+    
+    // Need to get the clientId from the existing account
+    const account = await this.getAccount(id);
+    if (!account) {
+      throw new ApiError(404, `Account with ID ${id} not found.`);
     }
     
-    // Delegated to accountStorage.ts
-    return accountStorage.deleteAccount(id, clientId);
+    const result = await this.accounts.deleteAccount(id, account.clientId);
+    if (!result) {
+      throw new ApiError(500, `Failed to delete account with ID ${id}.`);
+    }
   }
   
   /**
