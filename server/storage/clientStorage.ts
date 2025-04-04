@@ -19,7 +19,7 @@ function handleDbError(error: unknown, operation: string): Error {
 
 /**
  * Generate a unique client code
- * Format: CLIENT0001, CLIENT0002, etc.
+ * Format: Simple numeric code (1001, 1002, etc.)
  */
 async function generateUniqueClientCode(): Promise<string> {
   try {
@@ -30,16 +30,16 @@ async function generateUniqueClientCode(): Promise<string> {
       .orderBy(desc(clients.id))
       .limit(1);
     
-    // Determine the next sequential ID
-    const nextId = (lastClient[0]?.id || 0) + 1;
+    // Determine the next sequential ID and add 1000 to start from 1001
+    const nextId = (lastClient[0]?.id || 0) + 1000;
     
-    // Format the client code with leading zeros (CLIENT0001)
-    return `CLIENT${nextId.toString().padStart(4, '0')}`;
+    // Return the client code as a simple number string
+    return nextId.toString();
   } catch (error) {
     console.error("Error generating unique client code:", error);
     // Fallback to timestamp-based code if error occurs
     const timestamp = Date.now().toString().substring(6); // Use last 7 digits of timestamp
-    return `CLIENT${timestamp}`;
+    return timestamp;
   }
 }
 
@@ -248,8 +248,8 @@ export class MemClientStorage implements IClientStorage {
   async createClient(client: InsertClient): Promise<Client> {
     const id = this.currentClientId++;
     
-    // Generate a simple client code for memory storage
-    const clientCode = `CLIENT${id.toString().padStart(4, '0')}`;
+    // Generate a simple numeric client code for memory storage
+    const clientCode = (id + 1000).toString();
     
     // Ensure all required fields have proper defaults
     const newClient: Client = {
