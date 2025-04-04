@@ -334,7 +334,7 @@ export class MemStorage implements IStorage {
     this.reports = reportStorage;
     this.userActivity = userActivityStorage;
     this.users = userStorage;
-    this.entity = entityStorage;
+    this.entity = memEntityStorage;
     this.journalEntry = journalEntryStorage;
 
     // Legacy in-memory maps
