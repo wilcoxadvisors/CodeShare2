@@ -33,9 +33,9 @@ For datasets with 100,000+ lines:
 ## Example Usage with curl
 ```bash
 curl -X POST "http://localhost:5000/api/journal-entries/batch-upload" \
-  -H "Cookie: connect.sid=s%3AU4xbRfb3Jg3k-wDxfeS3dBNFZARuZ9Te.nPq8CT9xBmpEUMM3NXmXIqzxcq3q6FKl9A%2F31WN5nX0" \
+  -H "Cookie: connect.sid=s%3AKkBMfEMWs2Yg-QY9iMbg670tM409dQBl.T%2Bfjo%2B2595ocXZfFWHmFPjBxtUAk7I0p9J9UKbhiZRI" \
   -F "file=@path/to/your/file.csv" \
-  -F "clientId=132" \
+  -F "clientId=134" \
   -F "batchSize=5000"
 ```
 
