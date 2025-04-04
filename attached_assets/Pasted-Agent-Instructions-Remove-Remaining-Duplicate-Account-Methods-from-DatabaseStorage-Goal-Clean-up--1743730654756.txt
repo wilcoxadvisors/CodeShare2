@@ -1,0 +1,22 @@
+Agent Instructions: Remove Remaining Duplicate Account Methods from DatabaseStorage
+
+Goal: Clean up server/storage.ts by removing any remaining duplicate implementations of account-related methods within the DatabaseStorage class, ensuring only the delegation logic remains.
+
+Relevant Files:
+
+server/storage.ts (Primary file to modify)
+Implementation Steps:
+
+Open File: Open server/storage.ts.
+Locate Class: Find the class DatabaseStorage implements IStorage { ... } definition.
+Identify Duplicates: Carefully search within the DatabaseStorage class definition for any direct implementations of account-related methods that should already be delegated via this.accounts.methodName(). Focus specifically on methods identified by the agent in the previous turn, such as:
+async accountHasTransactions(...)
+async getAccount(...) (Ensure only the version that directly implements the logic is removed, not a potential helper if one existed).
+(Review for any other stray account methods)
+Remove Implementations: Delete the entire method implementation block (from async methodName(...) { down to the closing }) for each identified duplicate method within DatabaseStorage. Do not remove the delegation calls if they exist elsewhere or the public accounts property. The goal is only to remove the old, direct implementation code.
+Verify: Double-check that the DatabaseStorage class still correctly implements the IStorage interface (primarily through the public accounts: IAccountStorage; property and other non-account methods) and that all necessary account operations are now handled only through delegation to this.accounts.
+Save Changes: Save the updated server/storage.ts file.
+Verification:
+
+Restart: Restart the application (npm run dev or equivalent).
+Report: Report if the application builds and restarts successfully. Confirm that the duplicate methods (accountHasTransactions, getAccount, etc.) were removed from the DatabaseStorage implementation block. State that the account refactoring cleanup should now be complete.
