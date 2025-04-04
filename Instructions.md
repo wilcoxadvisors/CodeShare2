@@ -26,6 +26,30 @@
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
     * **Current Update:** Task B.1 (Chart of Accounts) is now COMPLETE. This includes implementation of client-specific hierarchical CoA, backend/frontend management, `code` -> `accountCode` refactoring, import/export functionality (CSV/Excel) with fixes for update logic and UI improvements, resolution of display bugs, and successful verification. Schema refactoring was performed to move reporting fields (`fsliBucket`, `internalReportingBucket`, `item`) from `accounts` to `journalEntryLines`.
     * **Current Update:** Task B.2 (General Ledger / Journal Entries) backend logic and API are COMPLETE and verified via automated tests. Frontend UI (`ManualJournalEntry.tsx`) created and passed initial verification. Batch Upload backend logic is implemented and verified via tests. **Task B.2 is COMPLETE.**
+    * **Storage Layer Refactoring:** Significant progress has been made in refactoring the monolithic storage system:
+        * **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
+        * **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
+            * ✅ Verified no entity logic remains directly in `storage.ts`.
+            * ✅ Implemented interfaces (`IEntityStorage`) with clear CRUD methods.
+            * ✅ Updated `DatabaseStorage` and `MemStorage` to delegate correctly.
+            * ✅ Completed comprehensive automated testing with passing results.
+            * ✅ Documented `entityStorage.ts` thoroughly.
+        * **Account Storage:** ✅ Refactored all account-related logic to `server/storage/accountStorage.ts`.
+        * **Journal Entry Storage:** ✅ Refactored all journal entry logic to `server/storage/journalEntryStorage.ts`.
+
+### Verification Checklist (Immediate Next Steps):
+- [ ] Verify `clientStorage.ts` delegation and documentation.
+- [ ] Verify `entityStorage.ts` delegation and documentation.
+- [ ] Verify `journalEntryStorage.ts` delegation and documentation.
+- [ ] Verify additional specialized modules (`fileStorage`, `userActivityStorage`) if applicable.
+- [ ] Confirm no direct domain logic remains in `storage.ts`.
+- [ ] Confirm interfaces (`IStorage`) accurately reflect the modular structure.
+- [ ] Run and pass comprehensive test suite (`npm run test`).
+- [ ] Confirm all modules and methods have clear, updated documentation.
+
+#### Next Immediate Task:
+- 🔄 Perform comprehensive verification of all `server/storage` modules (clientStorage, entityStorage, journalEntryStorage, etc.).
+- Ensure complete delegation, thorough testing, clear documentation, and no residual logic in `storage.ts`.
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -139,4 +163,4 @@
     * **Agent Action:** Write missing tests for critical modules. Run relevant test suites after changes.
 * **Recommended Approach:**
     * **Incremental Cleanup:** Apply cleanup practices alongside feature development and refactoring.
-    * **Continue Refactoring `storage.ts`:** Systematically move logic out of the monolithic `storage.ts` into domain-specific modules (e.g., `clientStorage.ts`, `entityStorage.ts`, `vendorStorage.ts` etc.) after the current task.
+    * **Continue Refactoring `storage.ts`:** Systematically move logic out of the monolithic `storage.ts` into domain-specific modules (e.g., `clientStorage.ts`, `entityStorage.ts`, `accountStorage.ts` etc.) after the current task.
