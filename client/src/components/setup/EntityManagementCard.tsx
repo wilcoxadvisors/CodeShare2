@@ -1197,9 +1197,16 @@ export default function EntityManagementCard({
   
   // CRITICAL FIX: Sync with entities prop when it changes
   useEffect(() => {
-    console.log("ENTITY SYNC: entities prop changed, updating local setupEntities", entities?.length);
-    setSetupEntities(entities || []);
-  }, [entities]);
+    // Only sync with entities prop if client exists (for editing existing clients)
+    // For new clients, we want to start with an empty array
+    if (clientData?.id && clientData.id > 0) {
+      console.log("ENTITY SYNC: entities prop changed for existing client, updating local setupEntities", entities?.length);
+      setSetupEntities(entities || []);
+    } else {
+      console.log("ENTITY SYNC: Ignoring entities prop for new client setup");
+      // Do not update setupEntities for new clients - keep empty array
+    }
+  }, [entities, clientData]);
 
   // Component mount handler for cleanup purposes
   useEffect(() => {

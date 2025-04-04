@@ -1293,6 +1293,17 @@ interface AdminDashboardData {
                                 if (!open) {
                                   // Clear any client data that might have been collected
                                   console.log("Dialog closed - resetting client setup state");
+                                  
+                                  // CRITICAL FIX: Explicitly clear localStorage for setup items
+                                  // This prevents stale entity data from persisting across different client setups
+                                  try {
+                                    localStorage.removeItem('setupActiveStep');
+                                    localStorage.removeItem('setupClientData');
+                                    localStorage.removeItem('setupEntities');
+                                    console.log("Client Dialog: Cleared all setup data from localStorage on dialog close");
+                                  } catch (e) {
+                                    console.warn("Error clearing localStorage:", e);
+                                  }
                                 }
                                 setIsAddClientDialogOpen(open);
                               }}

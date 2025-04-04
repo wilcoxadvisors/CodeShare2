@@ -193,28 +193,13 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const [setupEntities, setSetupEntities] = useState<Entity[]>(() => {
     console.log("DEBUG SetupStepper: Initializing setupEntities state...");
     
-    // CRITICAL FIX: Check localStorage instead of always clearing it
-    try {
-      const savedEntities = localStorage.getItem('setupEntities');
-      if (savedEntities) {
-        try {
-          const parsedEntities = JSON.parse(savedEntities);
-          if (Array.isArray(parsedEntities) && parsedEntities.length > 0) {
-            console.log(`DEBUG SetupStepper: Using saved entities from localStorage: ${parsedEntities.length} entities found`);
-            return parsedEntities;
-          } else {
-            console.log("DEBUG SetupStepper: Found saved entities but data was empty or invalid");
-          }
-        } catch (parseError) {
-          console.warn("DEBUG SetupStepper: Error parsing saved entities:", parseError);
-        }
-      }
-    } catch (e) {
-      console.warn("DEBUG SetupStepper: Error accessing localStorage for setupEntities", e);
-    }
-    
-    console.log("DEBUG SetupStepper: No valid saved entities found, using default empty array");
+    // CRITICAL FIX: ALWAYS START WITH EMPTY ARRAY FOR NEW CLIENTS
+    // This prevents stale entity data from persisting across different clients
+    console.log("DEBUG SetupStepper: Using empty array for initial entity state");
     return [];
+    
+    // NOTE: Intentionally removing localStorage persistence for entities
+    // to prevent entity data from persisting between client setup sessions
   });
   
   // Create stable callback functions using useCallback
