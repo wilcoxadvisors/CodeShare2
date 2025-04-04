@@ -1,0 +1,61 @@
+✅ Explicit Steps for Agent to Fix Issue 3:
+Step 1: Identify the Problematic Code
+Open EntityManagementCard.tsx.
+
+Locate the function handling the deletion of unsaved entities (likely something similar to handleDeleteEntity or removeEntity).
+
+Step 2: Fix Deletion Logic
+Update the entity deletion handler to ensure that only the selected entity is removed from the state, without affecting other entities or form data.
+
+Specifically:
+
+typescript
+Copy
+Edit
+// Incorrect logic (causing form reset)
+setSetupEntities([]);
+
+// Correct logic (explicitly removing only selected entity)
+setSetupEntities((prevEntities) => prevEntities.filter(entity => entity.localId !== entityIdToRemove));
+Explicitly ensure the component state updates correctly.
+
+Step 3: Preserve Form Data Explicitly
+Verify that deleting an entity does not trigger a full reset of the entire form (form.reset() or similar should not be called).
+
+Ensure no side effects inadvertently reset other form states.
+
+Step 4: Testing & Validation
+Explicitly verify the following scenarios:
+
+✅ Delete a single unsaved entity entry: only that entry should disappear.
+
+✅ Confirm other entity entries remain unaffected.
+
+✅ Ensure the rest of the form (client details, etc.) remain populated.
+
+✅ Confirm no unintended resets occur on deleting entities.
+
+Step 5: Document Changes
+Explicitly document the changes and include a summary report (issue-3-form-reset-deletion-fix-report.md):
+
+markdown
+Copy
+Edit
+# Issue 3: Form Reset When Deleting Unsaved Entities (Fix Report)
+
+## Issue
+Deleting an unsaved entity resets the entire form unexpectedly.
+
+## Root Cause
+Incorrect state handling during entity deletion. The entire entity state was reset instead of selectively removing the deleted entity.
+
+## Resolution
+- Updated entity deletion handler to remove only the selected entity.
+- Ensured form state preservation explicitly.
+
+## Testing Performed
+- Explicitly tested single and multiple entity deletions.
+- Verified form data persistence after deletion.
+
+## Results
+✅ Issue resolved. Form no longer resets when entities are deleted.

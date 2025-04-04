@@ -1060,6 +1060,12 @@ export default function EntityManagementCard({
         console.log("DEBUG EntityManagementCard: Entity had temporary ID, not calling API:", id);
       }
       
+      // Update local state to remove the entity
+      console.log("DEBUG EntityManagementCard: Updating setupEntities to remove entity with ID:", id);
+      setSetupEntities((prevEntities) => prevEntities.filter(entity => 
+        (entity.localId !== id && entity.id !== id)
+      ));
+      
       // Notify parent component of the deletion
       console.log("DEBUG EntityManagementCard: Calling onEntityDeleted with ID:", id);
       onEntityDeleted(id);
