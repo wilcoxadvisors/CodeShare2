@@ -5,7 +5,7 @@
  */
 import { db } from "../db";
 import { clients, Client, InsertClient } from "@shared/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -15,6 +15,32 @@ function handleDbError(error: unknown, operation: string): Error {
     return error;
   }
   return new Error(`An error occurred during ${operation}: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+/**
+ * Generate a unique client code
+ * Format: CLIENT0001, CLIENT0002, etc.
+ */
+async function generateUniqueClientCode(): Promise<string> {
+  try {
+    // Find the last client to determine the next ID
+    const lastClient = await db
+      .select()
+      .from(clients)
+      .orderBy(desc(clients.id))
+      .limit(1);
+    
+    // Determine the next sequential ID
+    const nextId = (lastClient[0]?.id || 0) + 1;
+    
+    // Format the client code with leading zeros (CLIENT0001)
+    return `CLIENT${nextId.toString().padStart(4, '0')}`;
+  } catch (error) {
+    console.error("Error generating unique client code:", error);
+    // Fallback to timestamp-based code if error occurs
+    const timestamp = Date.now().toString().substring(6); // Use last 7 digits of timestamp
+    return `CLIENT${timestamp}`;
+  }
 }
 
 /**
@@ -108,9 +134,13 @@ export class ClientStorage implements IClientStorage {
    */
   async createClient(client: InsertClient): Promise<Client> {
     try {
-      // Ensure active is always a boolean
+      // Generate a unique client code
+      const clientCode = await generateUniqueClientCode();
+      
+      // Ensure active is always a boolean and add the client code
       const clientData = {
         ...client,
+        clientCode,
         active: client.active !== undefined ? client.active : true
       };
       
@@ -218,12 +248,16 @@ export class MemClientStorage implements IClientStorage {
   async createClient(client: InsertClient): Promise<Client> {
     const id = this.currentClientId++;
     
+    // Generate a simple client code for memory storage
+    const clientCode = `CLIENT${id.toString().padStart(4, '0')}`;
+    
     // Ensure all required fields have proper defaults
     const newClient: Client = {
       id,
       name: client.name,
       userId: client.userId,
-      legalName: client.legalName !== undefined ? client.legalName : null, // Added legalName
+      clientCode, // Add client code
+      legalName: client.legalName !== undefined ? client.legalName : null,
       active: client.active !== undefined ? client.active : true,
       industry: client.industry !== undefined ? client.industry : null,
       referralSource: client.referralSource !== undefined ? client.referralSource : null,
@@ -237,10 +271,10 @@ export class MemClientStorage implements IClientStorage {
       postalCode: client.postalCode !== undefined ? client.postalCode : null,
       website: client.website !== undefined ? client.website : null,
       notes: client.notes !== undefined ? client.notes : null,
-      taxId: client.taxId !== undefined ? client.taxId : null, // Added taxId
+      taxId: client.taxId !== undefined ? client.taxId : null,
       createdAt: new Date(),
       updatedAt: null
-    };
+    } as Client; // Use type assertion to fix TypeScript error
     
     this.clients.set(id, newClient);
     return newClient;

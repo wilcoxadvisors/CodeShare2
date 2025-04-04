@@ -1442,6 +1442,7 @@ interface AdminDashboardData {
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Client Name</TableHead>
+                                  <TableHead>Client Code</TableHead>
                                   <TableHead>Status</TableHead>
                                   <TableHead>Progress</TableHead>
                                   <TableHead>Last Update</TableHead>
@@ -1474,6 +1475,9 @@ interface AdminDashboardData {
                                           <Pen className="h-4 w-4 text-gray-500" />
                                         </Button>
                                       </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {client.clientCode || <span className="text-gray-400 text-sm italic">Pending</span>}
                                     </TableCell>
                                     <TableCell>
                                       <Badge className={getStatusColor(getClientActiveStatus(client) ? 'Active' : 'Inactive')}>

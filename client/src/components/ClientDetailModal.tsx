@@ -65,6 +65,11 @@ export function ClientDetailModal({ clientId, isOpen, onOpenChange }: ClientDeta
                 </div>
                 
                 <div>
+                  <p className="text-sm font-medium text-muted-foreground">Client Code</p>
+                  <p className="font-mono">{clientData.clientCode || 'N/A'}</p>
+                </div>
+                
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Legal Name</p>
                   <p>{clientData.legalName || 'N/A'}</p>
                 </div>

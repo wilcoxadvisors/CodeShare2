@@ -39,6 +39,7 @@ export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(), // Removed unique constraint to allow users to have multiple clients
   name: text("name").notNull(),
+  clientCode: text("client_code").unique(), // Added unique client code field
   legalName: text("legal_name"), // Added legal name field
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),
