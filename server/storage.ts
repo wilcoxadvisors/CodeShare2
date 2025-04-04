@@ -35,7 +35,7 @@ import {
 } from "@shared/schema";
 
 // Import specialized storage module classes and instances
-import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult } from './storage/accountStorage';
+import { AccountStorage, accountStorage, AccountTreeNode, ImportPreview, ImportSelections, ImportResult, IAccountStorage } from './storage/accountStorage';
 import { JournalEntryStorage, journalEntryStorage } from './storage/journalEntryStorage';
 import { ClientStorage, clientStorage } from './storage/clientStorage';
 import { EntityStorage, entityStorage } from './storage/entityStorage';
@@ -57,7 +57,7 @@ import { ListJournalEntriesFilters } from "../shared/validation";
  * 
  * This interface includes the following categories of methods:
  * 1. Methods that haven't been moved to specialized storage modules yet
- * 2. Methods that delegate to specialized storage modules
+ * 2. Properties that reference specialized storage modules
  * 
  * Note: Many methods have been moved to specialized storage modules:
  * - User methods → userStorage.ts
@@ -68,6 +68,9 @@ import { ListJournalEntriesFilters } from "../shared/validation";
  * - Consolidation Group methods → consolidationStorage.ts
  */
 export interface IStorage {
+  // Account methods are now accessed via this property
+  accounts: IAccountStorage;
+  
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
   getFixedAssets(entityId: number): Promise<FixedAsset[]>;
@@ -193,19 +196,6 @@ export interface IStorage {
   getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
   createJournalEntryFile(journalEntryId: number, file: any): Promise<any>;
   
-  // Account Methods - delegated to accountStorage
-  seedClientCoA(clientId: number): Promise<void>;
-  getAccount(id: number): Promise<Account | undefined>;
-  getAccounts(clientId: number): Promise<Account[]>;
-  getAccountsByType(clientId: number, type: any): Promise<Account[]>;
-  createAccount(account: any): Promise<Account>;
-  updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
-  deleteAccount(id: number): Promise<void>;
-  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
-  getAccountsForClient(clientId: number): Promise<Account[]>;
-  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
-  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
-  
   // Client Methods - delegated to clientStorage
   getClient(id: number): Promise<Client | undefined>;
   getClients(): Promise<Client[]>;
@@ -245,6 +235,20 @@ export interface IStorage {
   createJournal(journal: any): Promise<any>;
   updateJournal(id: number, journal: Partial<any>): Promise<any | undefined>;
   deleteJournal(id: number): Promise<void>;
+  
+  // Keep account methods for backwards compatibility (deprecated)
+  // These will delegate to the accounts property
+  seedClientCoA(clientId: number): Promise<void>;
+  getAccount(id: number): Promise<Account | undefined>;
+  getAccounts(clientId: number): Promise<Account[]>;
+  getAccountsByType(clientId: number, type: any): Promise<Account[]>;
+  createAccount(account: any): Promise<Account>;
+  updateAccount(id: number, account: Partial<Account>): Promise<Account | undefined>;
+  deleteAccount(id: number): Promise<void>;
+  getAccountsTree(clientId: number): Promise<AccountTreeNode[]>;
+  getAccountsForClient(clientId: number): Promise<Account[]>;
+  generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview>;
+  importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult>;
 }
 
 export interface GLOptions {
@@ -269,10 +273,11 @@ export interface GLEntry {
 }
 
 export class MemStorage implements IStorage {
+  public accounts: IAccountStorage; // Property for IAccountStorage as required by the IStorage interface
+  
   private users: Map<number, User>;
   private clients: Map<number, Client>;
   private entities: Map<number, Entity>;
-  private accounts: Map<number, Account>;
   private journals: Map<number, Journal>;
   // Journal Entry related maps removed and moved to journalEntryStorage module
   private fixedAssets: Map<number, FixedAsset>;
@@ -296,7 +301,6 @@ export class MemStorage implements IStorage {
   private currentUserId: number = 1;
   private currentClientId: number = 1;
   private currentEntityId: number = 1;
-  private currentAccountId: number = 1;
   private currentJournalId: number = 1;
   // Journal Entry related counters moved to journalEntryStorage module
   private currentFixedAssetId: number = 1;
@@ -329,10 +333,11 @@ export class MemStorage implements IStorage {
   // Method moved to accountStorage.ts
 
   constructor() {
+    this.accounts = accountStorage; // Assign the imported accountStorage instance
+    
     this.users = new Map();
     this.clients = new Map();
     this.entities = new Map();
-    this.accounts = new Map();
     this.journals = new Map();
     // Journal Entry related maps removed (moved to journalEntryStorage module)
     this.fixedAssets = new Map();
@@ -975,47 +980,15 @@ export class MemStorage implements IStorage {
     return userStorage.getUserEntityAccessList(userId);
   }
   
-  // Account methods
-  // Account methods have been moved to accountStorage.ts
-  async getAccount(id: number): Promise<Account | undefined> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccount(id);
-  }
-  
-  async getAccounts(clientId: number): Promise<Account[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccounts(clientId);
-  }
-  
-  async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccountsByType(clientId, type);
-  }
-  
-  async createAccount(insertAccount: InsertAccount): Promise<Account> {
-    // Delegated to accountStorage.ts
-    return accountStorage.createAccount(insertAccount);
-  }
-  
-  async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
-    // Delegated to accountStorage.ts
-    return accountStorage.updateAccount(id, accountData);
-  }
-  
-  async deleteAccount(id: number): Promise<void> {
-    // Delegated to accountStorage.ts
-    return accountStorage.deleteAccount(id);
-  }
-  
-  async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
-    // Delegated to accountStorage.ts
-    return accountStorage.getAccountsTree(clientId);
-  }
+  // Account methods have been moved to accountStorage.ts and are now accessed via the "accounts" property
   
   // Journal methods
   // Journal and Journal Entry methods are delegated to journalEntryStorage
   // These have been removed from MemStorage implementation and moved to journalEntryStorage.ts
   
+  // Account methods have been moved to the accounts property 
+  // All account-related functionality is now handled by the accounts property via delegation
+
   // Journal Entry methods - delegated to journalEntryStorage
   // All Journal Entry methods have been moved to journalEntryStorage.ts
   async getBudget(id: number): Promise<Budget | undefined> {
@@ -1474,78 +1447,64 @@ export class MemStorage implements IStorage {
 
 // Database implementation
 export class DatabaseStorage implements IStorage {
+  public accounts: IAccountStorage;
+  
+  constructor() {
+    this.accounts = accountStorage;
+  }
+  // Account methods delegation
+  async getAccount(id: number): Promise<Account | undefined> {
+    return this.accounts.getAccount(id);
+  }
+  
+  async getAccounts(clientId: number): Promise<Account[]> {
+    return this.accounts.getAccounts(clientId);
+  }
+  
+  async getAccountsByType(clientId: number, type: AccountType): Promise<Account[]> {
+    return this.accounts.getAccountsByType(clientId, type);
+  }
+  
+  async createAccount(insertAccount: InsertAccount): Promise<Account> {
+    return this.accounts.createAccount(insertAccount);
+  }
+  
+  async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
+    return this.accounts.updateAccount(id, accountData);
+  }
+  
+  async deleteAccount(id: number): Promise<void> {
+    return this.accounts.deleteAccount(id);
+  }
+  
+  async getAccountsTree(clientId: number): Promise<AccountTreeNode[]> {
+    return this.accounts.getAccountsTree(clientId);
+  }
+  
+  async getAccountsForClient(clientId: number): Promise<Account[]> {
+    return this.accounts.getAccountsByClientId(clientId);
+  }
+  
+  async generateCoaImportPreview(clientId: number, fileBuffer: Buffer, filename: string): Promise<ImportPreview> {
+    return this.accounts.generateCoaImportPreview(clientId, fileBuffer, filename);
+  }
+  
+  async importCoaForClient(clientId: number, fileBuffer: Buffer, filename: string, selections?: ImportSelections | null): Promise<ImportResult> {
+    return this.accounts.importCoaForClient(clientId, fileBuffer, filename, selections);
+  }
+  
+  async markAccountInactive(id: number, clientId: number): Promise<Account | undefined> {
+    return this.accounts.markAccountInactive(id, clientId);
+  }
+  
+  async accountHasTransactions(id: number): Promise<boolean> {
+    return this.accounts.accountHasTransactions(id);
+  }
+  
   // Chart of Accounts Seeding
   async seedClientCoA(clientId: number): Promise<void> {
-    try {
-      console.log(`SEEDING: Starting Chart of Accounts seed for client ID ${clientId}`);
-      console.log(`SEEDING: VERIFICATION TEST - CoA seeding triggered at ${new Date().toISOString()}`);
-      
-      // Import the standard template
-      const { standardCoaTemplate } = await import('./coaTemplate');
-      console.log(`SEEDING: VERIFICATION TEST - Loaded template with ${standardCoaTemplate.length} accounts`);
-      
-      // Check if accounts already exist for this client
-      const existingAccounts = await db
-        .select()
-        .from(accounts)
-        .where(eq(accounts.clientId, clientId))
-        .limit(1);
-      
-      if (existingAccounts.length > 0) {
-        console.log(`SEEDING: Client ${clientId} already has accounts configured. Skipping seed.`);
-        return;
-      }
-      
-      // Map to store account codes to their generated IDs for parentId resolution
-      const codeToIdMap = new Map<string, number>();
-      
-      // Use a transaction to ensure data consistency
-      await db.transaction(async (tx) => {
-        console.log(`SEEDING: Processing ${standardCoaTemplate.length} account records in transaction`);
-        
-        // Process each template account
-        for (const templateAccount of standardCoaTemplate) {
-          // Determine parentId by looking up the parent code in our map
-          let parentId: number | null = null;
-          
-          if (templateAccount.parentCode) {
-            parentId = codeToIdMap.get(templateAccount.parentCode) || null;
-            if (!parentId && templateAccount.parentCode) {
-              console.warn(`SEEDING WARNING: Parent account with accountCode ${templateAccount.parentCode} not found for ${templateAccount.accountCode} (${templateAccount.name})`);
-            }
-          }
-          
-          // Insert the account
-          const [newAccount] = await tx
-            .insert(accounts)
-            .values({
-              clientId,
-              accountCode: templateAccount.accountCode,
-              name: templateAccount.name,
-              type: templateAccount.type,
-              subtype: templateAccount.subtype,
-              isSubledger: templateAccount.isSubledger || false,
-              subledgerType: templateAccount.subledgerType,
-              parentId,
-              description: templateAccount.description,
-              active: true
-            })
-            .returning({ id: accounts.id });
-          
-          // Store the generated ID mapped to the account code
-          if (newAccount && newAccount.id) {
-            codeToIdMap.set(templateAccount.accountCode, newAccount.id);
-          } else {
-            console.error(`SEEDING ERROR: Failed to insert account ${templateAccount.accountCode}`);
-          }
-        }
-      });
-      
-      console.log(`SEEDING: Successfully seeded ${standardCoaTemplate.length} accounts for client ID: ${clientId}`);
-    } catch (error) {
-      console.error(`SEEDING ERROR: Failed to seed Chart of Accounts for client ${clientId}:`, error);
-      throw error;
-    }
+    // Delegate to accountStorage
+    return this.accounts.seedClientCoA(clientId);
   }
   // Client methods
   async getClient(id: number): Promise<Client | undefined> {
