@@ -52,7 +52,6 @@ export interface IStorage {
   accounts: IAccountStorage;
   clients: IClientStorage;
   entities: IEntityStorage;
-  users: IUserStorage;
   journalEntries: IJournalEntryStorage;
   consolidation: IConsolidationStorage;
   assets: IAssetStorage;
@@ -60,6 +59,9 @@ export interface IStorage {
   forms: IFormStorage;
   reports: IReportStorage;
   userActivity: IUserActivityStorage;
+  users: IUserStorage;
+  entity: IEntityStorage;
+  journalEntry: IJournalEntryStorage;
   
   // Fixed Asset methods
   getFixedAsset(id: number): Promise<FixedAsset | undefined>;
@@ -252,8 +254,18 @@ export class MemStorage implements IStorage {
   public accounts: IAccountStorage; // Property for IAccountStorage as required by the IStorage interface
   public clients: IClientStorage; // Property for IClientStorage as required by the IStorage interface
   public entities: IEntityStorage; // Property for IEntityStorage as required by the IStorage interface
+  public journalEntries: IJournalEntryStorage; // Property for IJournalEntryStorage as required by the IStorage interface
+  public consolidation: IConsolidationStorage;
+  public assets: IAssetStorage;
+  public budgets: IBudgetStorage;
+  public forms: IFormStorage;
+  public reports: IReportStorage;
+  public userActivity: IUserActivityStorage;
+  public users: IUserStorage;
+  public entity: IEntityStorage;
+  public journalEntry: IJournalEntryStorage;
   
-  private users: Map<number, User>;
+  private usersMap: Map<number, User>;  // Renamed to avoid conflict with IUserStorage property
   private entitiesMap: Map<number, Entity>; // Renamed to avoid name conflict with IEntityStorage property
   private journals: Map<number, Journal>;
   // Journal Entry related maps removed and moved to journalEntryStorage module
@@ -322,6 +334,8 @@ export class MemStorage implements IStorage {
     this.reports = reportStorage;
     this.userActivity = userActivityStorage;
     this.users = userStorage;
+    this.entity = entityStorage;
+    this.journalEntry = journalEntryStorage;
 
     // Legacy in-memory maps
     this.entitiesMap = new Map();
@@ -1263,6 +1277,8 @@ export class DatabaseStorage implements IStorage {
   public reports: IReportStorage;
   public userActivity: IUserActivityStorage;
   public users: IUserStorage;
+  public entity: IEntityStorage;
+  public journalEntry: IJournalEntryStorage;
   
   constructor() {
     // Assign specialized storage modules
@@ -1277,6 +1293,8 @@ export class DatabaseStorage implements IStorage {
     this.reports = reportStorage;
     this.userActivity = userActivityStorage;
     this.users = userStorage;
+    this.entity = entityStorage;
+    this.journalEntry = journalEntryStorage;
   }
   // Account methods delegation
   async getAccount(id: number): Promise<Account | undefined> {
