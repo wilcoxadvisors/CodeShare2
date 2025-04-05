@@ -2,6 +2,7 @@ import { db as drizzleDb } from './db';
 import * as schema from '@shared/schema';
 import { updateJunctionTableSchema } from './migrations/update-junction-table-schema';
 import { addClientEntityRelationship } from './migrations/add-client-entity-relationship';
+import { addSoftDeletionAndAuditLogs } from './migrations/add-soft-deletion-and-audit-logs';
 
 // Database schema migration utility
 
@@ -902,6 +903,9 @@ export async function migrateTables() {
     
     // Apply client-entity relationship migration
     await addClientEntityRelationship();
+    
+    // Apply soft deletion and audit logs migration
+    await addSoftDeletionAndAuditLogs();
     
     console.log("Database migration completed successfully!");
     return true;

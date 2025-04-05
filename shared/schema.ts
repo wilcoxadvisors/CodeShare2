@@ -56,7 +56,8 @@ export const clients = pgTable("clients", {
   active: boolean("active").notNull().default(true),
   referralSource: text("referral_source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow()
+  updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at") // Added for soft deletion
 });
 
 // Entity (company) table
@@ -92,7 +93,8 @@ export const entities = pgTable("entities", {
   dataCollectionConsent: boolean("data_collection_consent").default(false),
   lastAuditDate: timestamp("last_audit_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow()
+  updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at") // Added for soft deletion
 });
 
 // User Entity Access (for multi-entity support)
@@ -920,6 +922,27 @@ export type ChecklistFile = typeof checklistFiles.$inferSelect;
 export type InsertChecklistFile = z.infer<typeof insertChecklistFileSchema>;
 
 // Blog Subscribers table
+
+// Audit Logs for tracking admin actions
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  action: text("action").notNull(),
+  performedBy: integer("performed_by").references(() => users.id).notNull(),
+  details: text("details").notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Insert schema for audit logs
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true
+});
+
+// Insert type for audit logs
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+// Select type for audit logs
+export type AuditLog = typeof auditLogs.$inferSelect;
+
 export const blogSubscribers = pgTable("blog_subscribers", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),

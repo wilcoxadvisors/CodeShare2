@@ -93,6 +93,7 @@ export interface IEntityStorage {
   getEntitiesByClient(clientId: number): Promise<Entity[]>;
   createEntity(entity: InsertEntity): Promise<Entity>;
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
+  deleteEntity(id: number, adminId: number): Promise<boolean>;
   
   // Note: User Entity Access methods have been moved to userStorage.ts
 }
@@ -287,6 +288,69 @@ export class EntityStorage implements IEntityStorage {
     } catch (error) {
       handleDbError(error, "Error updating entity");
       return undefined;
+    }
+  }
+
+  /**
+   * Soft delete an entity by setting deletedAt timestamp
+   * 
+   * @param id - The ID of the entity to delete
+   * @param adminId - ID of the admin user performing the deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async deleteEntity(id: number, adminId: number): Promise<boolean> {
+    try {
+      console.log(`DEBUG EntityStorage.deleteEntity: Soft deleting entity with ID ${id} by admin ID ${adminId}`);
+      
+      // First, get the entity to verify it exists and to capture its details for audit
+      const entity = await this.getEntity(id);
+      if (!entity) {
+        console.error(`DEBUG EntityStorage.deleteEntity: Entity with ID ${id} not found`);
+        return false;
+      }
+      
+      // Update entity to set deletedAt and set active to false
+      const now = new Date();
+      const [deletedEntity] = await db
+        .update(entities)
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+          active: false
+        })
+        .where(eq(entities.id, id))
+        .returning();
+      
+      if (!deletedEntity) {
+        console.error(`DEBUG EntityStorage.deleteEntity: Failed to delete entity with ID ${id}`);
+        return false;
+      }
+      
+      console.log(`DEBUG EntityStorage.deleteEntity: Successfully soft deleted entity with ID ${id}`);
+      
+      // Log the action to audit_logs
+      try {
+        const { auditLogStorage } = await import('./auditLogStorage');
+        await auditLogStorage.createAuditLog({
+          action: 'entity_delete',
+          performedBy: adminId,
+          details: JSON.stringify({
+            entityId: entity.id,
+            entityName: entity.name,
+            entityCode: entity.entityCode,
+            clientId: entity.clientId
+          })
+        });
+        console.log(`DEBUG EntityStorage.deleteEntity: Created audit log for entity deletion`);
+      } catch (auditError) {
+        // Log the error but don't fail the delete operation
+        console.error("Error creating audit log for entity deletion:", auditError);
+      }
+      
+      return true;
+    } catch (error) {
+      handleDbError(error, "Error deleting entity");
+      return false;
     }
   }
 
@@ -507,6 +571,59 @@ export class MemEntityStorage implements IEntityStorage {
     
     this.entities.set(id, updatedEntity);
     return updatedEntity;
+  }
+  
+  /**
+   * Soft delete an entity by setting deletedAt timestamp and marking as inactive
+   * 
+   * @param id - The ID of the entity to delete
+   * @param adminId - ID of the admin user performing the deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async deleteEntity(id: number, adminId: number): Promise<boolean> {
+    console.log(`DEBUG MemEntityStorage.deleteEntity: Soft deleting entity with ID ${id} by admin ID ${adminId}`);
+    
+    // First, get the entity to verify it exists
+    const entity = await this.getEntity(id);
+    if (!entity) {
+      console.error(`DEBUG MemEntityStorage.deleteEntity: Entity with ID ${id} not found`);
+      return false;
+    }
+    
+    // Update entity to set deletedAt and active to false
+    const now = new Date();
+    const updatedEntity: Entity = {
+      ...entity,
+      deletedAt: now,
+      updatedAt: now,
+      active: false
+    };
+    
+    this.entities.set(id, updatedEntity);
+    
+    console.log(`DEBUG MemEntityStorage.deleteEntity: Successfully soft deleted entity with ID ${id}`);
+    
+    // Log the action to audit_logs if in a context with audit logging
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      await auditLogStorage.createAuditLog({
+        action: 'entity_delete',
+        performedBy: adminId,
+        details: JSON.stringify({
+          entityId: entity.id,
+          entityName: entity.name,
+          entityCode: entity.entityCode,
+          clientId: entity.clientId
+        })
+      });
+      console.log(`DEBUG MemEntityStorage.deleteEntity: Created audit log for entity deletion`);
+    } catch (auditError) {
+      // Log the error but don't fail the delete operation
+      console.error("Error creating audit log for entity deletion:", auditError);
+    }
+    
+    return true;
   }
 }
 

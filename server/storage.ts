@@ -25,6 +25,7 @@ import { BudgetStorage, budgetStorage, IBudgetStorage } from './storage/budgetSt
 import { FormStorage, formStorage, IFormStorage } from './storage/formStorage';
 import { ReportStorage, reportStorage, IReportStorage } from './storage/reportStorage';
 import { UserActivityStorage, userActivityStorage, IUserActivityStorage } from './storage/userActivityStorage';
+import { AuditLogStorage, auditLogStorage, memAuditLogStorage, IAuditLogStorage } from './storage/auditLogStorage';
 
 import { eq } from "drizzle-orm";
 import { db } from "./db";
@@ -49,6 +50,7 @@ export interface IStorage {
   users: IUserStorage;
   entity: IEntityStorage;
   journalEntry: IJournalEntryStorage;
+  auditLogs: IAuditLogStorage;
   
   // User-related shortcuts
   getUserById(id: number): Promise<User | undefined>;
@@ -82,6 +84,7 @@ export class DatabaseStorage implements IStorage {
   public users: IUserStorage;
   public entity: IEntityStorage;
   public journalEntry: IJournalEntryStorage;
+  public auditLogs: IAuditLogStorage;
   
   constructor() {
     // Assign specialized storage modules
@@ -98,6 +101,7 @@ export class DatabaseStorage implements IStorage {
     this.users = userStorage;
     this.entity = entityStorage;
     this.journalEntry = journalEntryStorage;
+    this.auditLogs = auditLogStorage;
   }
 
   // Shortcut helper methods
@@ -157,6 +161,7 @@ export class MemStorage implements IStorage {
   public users: IUserStorage;
   public entity: IEntityStorage;
   public journalEntry: IJournalEntryStorage;
+  public auditLogs: IAuditLogStorage;
   
   constructor() {
     // Assign specialized storage modules
@@ -173,6 +178,7 @@ export class MemStorage implements IStorage {
     this.users = userStorage;
     this.entity = memEntityStorage;
     this.journalEntry = journalEntryStorage;
+    this.auditLogs = memAuditLogStorage;
   }
 
   // Helper methods to get various storage types

@@ -27,6 +27,7 @@ function handleDbError(error: unknown, operation: string): Error {
  */
 export interface IUserStorage {
   getUser(id: number): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>; // Alias for getUser for compatibility
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
@@ -69,6 +70,13 @@ export class UserStorage implements IUserStorage {
       handleDbError(error, "Error retrieving user");
       return undefined;
     }
+  }
+  
+  /**
+   * Get a user by ID (alias for getUser for compatibility)
+   */
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.getUser(id);
   }
 
   /**
@@ -416,6 +424,13 @@ export class MemUserStorage implements IUserStorage {
 
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
+  }
+  
+  /**
+   * Get a user by ID (alias for getUser for compatibility)
+   */
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.getUser(id);
   }
   
   async getUsers(): Promise<User[]> {

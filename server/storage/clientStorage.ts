@@ -5,7 +5,7 @@
  */
 import { db } from "../db";
 import { clients, Client, InsertClient } from "@shared/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and, isNull } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -65,6 +65,7 @@ export interface IClientStorage {
   getClientByUserId(userId: number): Promise<Client | null>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
+  deleteClient(id: number, adminId: number): Promise<boolean>;
   
   // For MemClientStorage only - allows direct client creation for constructor use
   addClientDirectly?(client: Client): void;
@@ -100,6 +101,7 @@ export class ClientStorage implements IClientStorage {
       return await db
         .select()
         .from(clients)
+        .where(isNull(clients.deletedAt)) // Only return non-deleted clients
         .orderBy(asc(clients.name));
     } catch (error) {
       handleDbError(error, "Error retrieving clients");
@@ -115,7 +117,12 @@ export class ClientStorage implements IClientStorage {
       return await db
         .select()
         .from(clients)
-        .where(eq(clients.userId, userId))
+        .where(
+          and(
+            eq(clients.userId, userId),
+            isNull(clients.deletedAt) // Only return non-deleted clients
+          )
+        )
         .orderBy(asc(clients.name));
     } catch (error) {
       handleDbError(error, "Error retrieving clients by user ID");
@@ -131,7 +138,12 @@ export class ClientStorage implements IClientStorage {
       const results = await db
         .select()
         .from(clients)
-        .where(eq(clients.userId, userId))
+        .where(
+          and(
+            eq(clients.userId, userId),
+            isNull(clients.deletedAt) // Only return non-deleted clients
+          )
+        )
         .limit(1);
       
       return results.length > 0 ? results[0] : null;
@@ -192,6 +204,53 @@ export class ClientStorage implements IClientStorage {
     } catch (error) {
       handleDbError(error, "Error updating client");
       return undefined;
+    }
+  }
+  
+  /**
+   * Soft delete a client by setting deletedAt timestamp
+   * 
+   * @param id - The ID of the client to delete
+   * @param adminId - ID of the admin user performing the deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async deleteClient(id: number, adminId: number): Promise<boolean> {
+    try {
+      // Get client details before deletion for audit logging
+      const client = await this.getClient(id);
+      if (!client) {
+        throw new Error(`Client with ID ${id} not found`);
+      }
+      
+      // Perform soft deletion by setting deletedAt timestamp
+      const [deletedClient] = await db
+        .update(clients)
+        .set({
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+          active: false // Also mark as inactive
+        })
+        .where(eq(clients.id, id))
+        .returning();
+      
+      // Import the audit log storage module directly to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      
+      // Log this action in the audit log
+      await auditLogStorage.createAuditLog({
+        action: 'client_delete',
+        performedBy: adminId,
+        details: JSON.stringify({
+          clientId: id,
+          clientName: client.name,
+          clientCode: client.clientCode
+        })
+      });
+      
+      return !!deletedClient;
+    } catch (error) {
+      handleDbError(error, `Error deleting client ${id}`);
+      return false;
     }
   }
 }
@@ -313,6 +372,46 @@ export class MemClientStorage implements IClientStorage {
     
     this.clients.set(id, updatedClient);
     return updatedClient;
+  }
+  
+  /**
+   * Soft delete a client by setting deletedAt timestamp
+   * 
+   * @param id - The ID of the client to delete
+   * @param adminId - ID of the admin user performing the deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async deleteClient(id: number, adminId: number): Promise<boolean> {
+    const client = this.clients.get(id);
+    if (!client) {
+      return false;
+    }
+    
+    // Perform soft deletion by setting deletedAt timestamp
+    const deletedClient = {
+      ...client,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+      active: false // Also mark as inactive
+    };
+    
+    this.clients.set(id, deletedClient);
+    
+    // Import the audit log storage module directly to avoid circular dependencies
+    const { memAuditLogStorage } = await import('./auditLogStorage');
+    
+    // Log this action in the audit log
+    await memAuditLogStorage.createAuditLog({
+      action: 'client_delete',
+      performedBy: adminId,
+      details: JSON.stringify({
+        clientId: id,
+        clientName: client.name,
+        clientCode: client.clientCode
+      })
+    });
+    
+    return true;
   }
 }
 
