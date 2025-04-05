@@ -55,8 +55,10 @@ export default function MobileContextSelector({ clients, entities, onSelect }: M
   // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
-        // Only show active clients and always include the currently selected client
-        .filter(client => client.active !== false || client.id === selectedClientId)
+        // Only show active clients (not inactive or deleted) and always include the currently selected client
+        .filter(client => 
+          (client.active === true && client.deletedAt === null) || 
+          client.id === selectedClientId)
         .filter(filterBySearchQuery)
         .sort((a, b) => {
           // Always put the selected client at the top
@@ -116,9 +118,12 @@ export default function MobileContextSelector({ clients, entities, onSelect }: M
         <CommandEmpty>No matches found.</CommandEmpty>
 
         {filteredClients.map((client) => {
-          // Get entities for this client
+          // Get entities for this client - only show active and non-deleted entities (plus the current entity)
           const filteredByClient = Array.isArray(entities) 
-            ? entities.filter(e => e.clientId === client.id)
+            ? entities.filter(e => 
+                e.clientId === client.id && 
+                ((e.active === true && e.deletedAt === null) || 
+                 (currentEntity && e.id === currentEntity.id)))
             : [];
             
           // Then apply search filter and put selected entity at the top

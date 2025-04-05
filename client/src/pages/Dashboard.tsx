@@ -1570,19 +1570,6 @@ interface AdminDashboardData {
                                 <SelectItem value="Deleted">Deleted</SelectItem>
                               </SelectContent>
                             </Select>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="show-deleted-entities"
-                                checked={showDeletedEntities}
-                                onCheckedChange={(checked) => setShowDeletedEntities(checked as boolean)}
-                              />
-                              <label
-                                htmlFor="show-deleted-entities"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                Show deleted entities
-                              </label>
-                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>
@@ -1715,10 +1702,7 @@ interface AdminDashboardData {
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
-                                  data={[
-                                    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
-                                    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length },
-                                  ]}
+                                  data={clientStatusData}
                                   cx="50%"
                                   cy="50%"
                                   labelLine={false}
@@ -1727,10 +1711,7 @@ interface AdminDashboardData {
                                   fill="#8884d8"
                                   dataKey="value"
                                 >
-                                  {[
-                                    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
-                                    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length },
-                                  ].map((entry, index) => (
+                                  {clientStatusData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
                                 </Pie>

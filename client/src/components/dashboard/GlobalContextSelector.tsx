@@ -83,8 +83,10 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
-        // Only show active clients and always include the currently selected client
-        .filter(client => client.active !== false || client.id === selectedClientId)
+        // Only show active clients (not inactive or deleted) and always include the currently selected client
+        .filter(client => 
+          (client.active === true && client.deletedAt === null) || 
+          client.id === selectedClientId)
         .filter(filterBySearchQuery)
         .sort((a, b) => {
           // Always put the selected client at the top
@@ -245,8 +247,12 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
               console.log(`DEBUG: Full entities list length: ${entities?.length}`);
               
               // First ensure entities is an array and filter based on clientId
+              // Only show active and non-deleted entities (plus the current entity)
               const filteredByClient = Array.isArray(entities) 
-                ? entities.filter(e => e.clientId === client.id)
+                ? entities.filter(e => 
+                    e.clientId === client.id && 
+                    ((e.active === true && e.deletedAt === null) || 
+                     (currentEntity && e.id === currentEntity.id)))
                 : [];
               
               console.log(`DEBUG: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, filteredByClient.map(e => e.id));
