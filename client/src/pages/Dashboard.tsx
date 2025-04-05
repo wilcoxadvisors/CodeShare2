@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX, RefreshCw } from "lucide-react";
 import { UserRole } from "@shared/schema";
@@ -1009,6 +1010,13 @@ interface AdminDashboardData {
   
   // Filtered clients based on search and status
   const filteredClients = clients.filter(client => {
+    // First, filter deleted clients based on showDeletedEntities flag
+    // If the client is deleted and showDeletedEntities is false, filter it out
+    // Unless the clientStatusFilter is specifically set to "Deleted"
+    if (isClientDeleted(client) && !showDeletedEntities && clientStatusFilter !== "Deleted") {
+      return false;
+    }
+    
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (client.contactName && client.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                          (client.contactEmail && client.contactEmail.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -1562,6 +1570,19 @@ interface AdminDashboardData {
                                 <SelectItem value="Deleted">Deleted</SelectItem>
                               </SelectContent>
                             </Select>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="show-deleted-entities"
+                                checked={showDeletedEntities}
+                                onCheckedChange={(checked) => setShowDeletedEntities(checked as boolean)}
+                              />
+                              <label
+                                htmlFor="show-deleted-entities"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                Show deleted entities
+                              </label>
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>
