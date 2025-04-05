@@ -6,6 +6,7 @@ import { db } from './db';
 import { users, UserRole } from '../shared/schema';
 import bcrypt from 'bcryptjs';
 import { userStorage } from './storage/userStorage';
+import { verificationRouter } from './routes/verificationRoutes';
 
 export function registerVerificationRoutes(app: Express) {
   const router = express.Router();
@@ -75,5 +76,9 @@ export function registerVerificationRoutes(app: Express) {
     }
   });
 
+  // Mount the verification router for direct API endpoints
+  app.use('/api', verificationRouter);
+  
+  // Mount the verification admin router
   app.use('/api/verification', router);
 }

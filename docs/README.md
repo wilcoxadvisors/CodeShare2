@@ -1,64 +1,60 @@
-# Form Fields Verification Tools
+# Form Field Verification System
 
-This directory contains documentation and tools for verifying the correct persistence of form fields and entity status management in the system.
+## Overview
 
-## Available Resources
+This directory contains verification scripts and documentation for ensuring the proper persistence of form fields in the client and entity management system.
 
-1. [Verification Status Report](./VERIFICATION_STATUS.md) - A comprehensive status report on the verification of form fields persistence and entity status management.
-2. [Form Verification Guide](./FORM_VERIFICATION_GUIDE.md) - A step-by-step guide for manually testing form fields and entity status management.
-3. [Verification README](./VERIFICATION_README.md) - An overview of the verification process and instructions for running verification scripts.
+## Contents
 
-## Verification Scripts
+- **verification-scripts/**: Contains automated scripts for testing form field persistence
+  - **setup-admin.js**: Creates a test admin user for verification
+  - **complete-form-verification.js**: Comprehensive verification of client/entity forms
+  - **logs/**: Directory containing verification logs (created when scripts run)
 
-The following scripts are available in the `verification-scripts` directory:
+- **docs/**: Documentation related to verification
+  - **FORM_VERIFICATION_GUIDE.md**: Step-by-step manual verification guide
+  - **VERIFICATION_STATUS.md**: Template for reporting verification results
 
-1. `setup-admin.js` - Creates a test admin user for verification testing.
-2. `complete-form-verification.js` - Performs comprehensive testing of form fields persistence and entity status management.
+## Running the Verification Scripts
 
-## Running the Verification
+### 1. Setup Admin User
 
-### Prerequisites
+```bash
+cd verification-scripts
+node setup-admin.js
+```
 
-- Node.js installed
-- Access to the running application
-- Required dependencies: axios, fs-extra
+### 2. Run Comprehensive Verification
 
-### Steps to Run Verification
+```bash
+cd verification-scripts
+node complete-form-verification.js
+```
 
-1. Install required dependencies:
-   ```
-   npm install axios fs-extra
-   ```
+### 3. Review Results
 
-2. Run the admin setup script:
-   ```
-   node verification-scripts/setup-admin.js
-   ```
+After running the scripts, review:
+- The console output for immediate results
+- The log files in `verification-scripts/logs/` for detailed information
+- The `docs/VERIFICATION_STATUS.md` file for a summary of test results
 
-3. Run the complete form verification script:
-   ```
-   node verification-scripts/complete-form-verification.js
-   ```
+## Manual Verification
 
-4. Check the generated logs in `verification-scripts/logs/verification_results.log`
+Follow the steps in `docs/FORM_VERIFICATION_GUIDE.md` to:
+1. Manually verify client form field persistence
+2. Manually verify entity form field persistence
+3. Test the distinction between inactive and soft-deleted entities
 
-## Verification Coverage
+## Issues & Troubleshooting
 
-The verification process covers:
+If you encounter issues during verification:
+1. Check the error logs in `verification-scripts/logs/verification_errors.log`
+2. Ensure the application server is running
+3. Verify that the admin user was correctly set up
 
-- Client form fields persistence (creation and update)
-- Entity form fields persistence (creation and update)
-- Entity status management (inactive vs. soft-deleted vs. restored)
+## Enhancement Requests
 
-## Issue Resolution
-
-If you encounter any issues during verification, please check:
-
-1. The API endpoints are accessible and properly configured
-2. The database connection is working properly
-3. The required fields match the expected schema
-4. The logs for any specific error messages
-
-## Contact
-
-For any questions or issues related to the verification process, please contact the development team.
+To request enhancements to the verification system, please include:
+1. The specific verification test that needs improvement
+2. Expected vs. actual behavior
+3. Any edge cases that should be considered
