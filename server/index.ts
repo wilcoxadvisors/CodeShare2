@@ -74,8 +74,16 @@ app.use((req, res, next) => {
     
     // Initialize database with default data
     log('Starting database initialization...');
-    await initDatabase();
-    log('✅ Database initialization complete');
+    console.log("Initializing DB...");
+    try {
+      await initDatabase();
+      console.log("DB initialization complete.");
+      log('✅ Database initialization complete');
+    } catch (error) {
+      console.error("DB initialization failed:", error);
+      log(`❌ Database initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
     
     // Initialize entity_ids usage monitoring
     log('Starting entity IDs monitoring...');

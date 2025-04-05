@@ -43,12 +43,18 @@ export async function addSoftDeletionAndAuditLogs() {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Check if this is the main module
-if (import.meta.url === `file://${__filename}`) {
+// Check if this is the main module - using a more robust check
+// When imported through another module, this condition should be false
+if (process.argv[1] === __filename) {
+  console.log("Running soft deletion migration as standalone script...");
   addSoftDeletionAndAuditLogs()
-    .then(() => process.exit(0))
+    .then(() => {
+      console.log("Standalone migration completed successfully");
+      // Only exit the process if this is being run directly as a script, not through import
+      process.exit(0);
+    })
     .catch((err) => {
-      console.error("Migration failed:", err);
+      console.error("Standalone migration failed:", err);
       process.exit(1);
     });
 }
