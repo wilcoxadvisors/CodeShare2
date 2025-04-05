@@ -38,9 +38,9 @@ async function testEntityDeletion() {
     
     // Perform soft delete with admin ID 1
     const adminId = 1; // Assume admin user with ID 1 exists
-    console.log(`\nSoft deleting entity with ID: ${newEntity.id} by admin ID: ${adminId}...`);
+    console.log(`\nSoft deleting entity with ID: ${newEntity.id}...`);
     
-    const deleteResult = await entityStorage.deleteEntity(newEntity.id, adminId);
+    const deleteResult = await entityStorage.deleteEntity(newEntity.id);
     console.log(`Deletion result: ${deleteResult ? "Success" : "Failed"}`);
     
     // Check the entity after deletion

@@ -95,7 +95,7 @@ export interface IEntityStorage {
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
   
   // Explicit management of entity states
-  setEntityActive(id: number, adminId: number): Promise<Entity | undefined>;
+  setEntityActive(id: number): Promise<Entity | undefined>;
   setEntityInactive(id: number): Promise<Entity | null>;
   
   // Soft deletion and restoration
@@ -214,10 +214,12 @@ export class EntityStorage implements IEntityStorage {
           )
           .limit(1);
         
-        console.log(`EntityStorage.getEntity: Query with includeDeleted=false:`, JSON.stringify(query));
+        console.log(`EntityStorage.getEntity: Executing query with includeDeleted=false for entity ID ${id}`);
         
-        const [entity] = await query;
-        console.log(`EntityStorage.getEntity: Found entity with includeDeleted=false: ${entity ? 'Yes' : 'No'}`);
+        const result = await query.execute();
+        const [entity] = result;
+        const foundStatus = entity ? 'Yes' : 'No';
+        console.log(`EntityStorage.getEntity: Found entity with includeDeleted=false: ${foundStatus}`);
         return entity || undefined;
       }
     } catch (error) {
@@ -490,26 +492,8 @@ export class EntityStorage implements IEntityStorage {
    * @returns The updated entity or null if not found
    */
   async setEntityInactive(id: number): Promise<Entity | null> {
-    const [entity] = await db.execute(sql`
-      UPDATE entities SET active = false, deleted_at = NULL WHERE id = ${id}
-      RETURNING *;
-    `);
-    return entity;
-  }
-  
-  /**
-   * Explicitly set an entity as active
-   * This marks an inactive entity as active again
-   * 
-   * @param id - The ID of the entity to mark as active
-   * @param adminId - ID of the admin user performing the action (for audit logging)
-   * @returns The updated entity or undefined if not found
-   */
-  async setEntityActive(id: number, adminId: number): Promise<Entity | undefined> {
     try {
-      console.log(`DEBUG EntityStorage.setEntityActive: Setting entity ${id} as active by admin ID ${adminId}`);
-      
-      // Instead of using getEntity (which has circular JSON issues), check directly
+      // First check if the entity exists
       const entityQuery = await db
         .select()
         .from(entities)
@@ -517,7 +501,61 @@ export class EntityStorage implements IEntityStorage {
         .execute();
         
       if (!entityQuery || entityQuery.length === 0) {
-        console.error(`DEBUG EntityStorage.setEntityActive: Entity with ID ${id} not found`);
+        console.error(`EntityStorage.setEntityInactive: Entity with ID ${id} not found`);
+        return null;
+      }
+      
+      // Update the entity - ensure we set deletedAt to null (not undefined)
+      const result = await db
+        .update(entities)
+        .set({ 
+          active: false, 
+          deletedAt: null,
+          updatedAt: new Date() 
+        })
+        .where(eq(entities.id, id))
+        .returning()
+        .execute();
+      
+      // Debug the result
+      console.log(`EntityStorage.setEntityInactive: Update result for entity ${id}:`, 
+        result ? `Result count: ${result.length}` : "No result");
+      
+      if (!result || result.length === 0) {
+        console.error(`EntityStorage.setEntityInactive: No entity returned after update for ${id}`);
+        return null;
+      }
+      
+      const updatedEntity = result[0];
+      console.log(`EntityStorage.setEntityInactive: Entity ${id} set inactive, active=${updatedEntity.active}, deletedAt=${updatedEntity.deletedAt}`);
+      
+      return updatedEntity;
+    } catch (error) {
+      console.error(`EntityStorage.setEntityInactive: Error setting entity ${id} as inactive:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Explicitly set an entity as active
+   * This marks an inactive entity as active again
+   * 
+   * @param id - The ID of the entity to mark as active
+   * @returns The updated entity or undefined if not found
+   */
+  async setEntityActive(id: number): Promise<Entity | undefined> {
+    try {
+      console.log(`DEBUG EntityStorage.setEntityActive: Setting entity ${id} as active`);
+      
+      // First check if the entity exists
+      const entityQuery = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.id, id))
+        .execute();
+        
+      if (!entityQuery || entityQuery.length === 0) {
+        console.error(`EntityStorage.setEntityActive: Entity with ID ${id} not found`);
         return undefined;
       }
       
@@ -525,97 +563,28 @@ export class EntityStorage implements IEntityStorage {
       const existingEntity = entityQuery[0];
       
       // Make sure this isn't a deleted entity
-      if (existingEntity.deleted_at) {
-        console.error(`DEBUG EntityStorage.setEntityActive: Entity with ID ${id} is deleted, cannot modify; use restoreEntity instead`);
+      if (existingEntity.deletedAt) {
+        console.error(`EntityStorage.setEntityActive: Entity with ID ${id} is deleted, cannot modify; use restoreEntity instead`);
         return undefined;
       }
       
-      console.log(`DEBUG EntityStorage.setEntityActive: Setting entity ${id} active, using correct field names`);
+      // Update the entity
+      const result = await db
+        .update(entities)
+        .set({ 
+          active: true, 
+          deletedAt: null,
+          updatedAt: new Date() 
+        })
+        .where(eq(entities.id, id))
+        .returning()
+        .execute();
       
-      // Update entity to set active=true and ensure deleted_at=null (note: snake_case for DB)
-      const now = new Date();
-      // Use raw SQL to avoid issues with Drizzle field naming
-      const activeEntityResult = await db.execute(sql`
-        UPDATE entities 
-        SET active = true, 
-            deleted_at = NULL, 
-            updated_at = ${now}
-        WHERE id = ${id}
-        RETURNING *
-      `);
-      
-      if (!activeEntityResult || !activeEntityResult.rows || activeEntityResult.rows.length === 0) {
-        console.error(`DEBUG EntityStorage.setEntityActive: Failed to set entity ${id} as active`);
+      if (!result || result.length === 0) {
         return undefined;
       }
       
-      // Extract the first row from the result
-      const activeEntityData = activeEntityResult.rows[0];
-      
-      if (!activeEntityData) {
-        console.error(`DEBUG EntityStorage.setEntityActive: Failed to set entity ${id} as active`);
-        return undefined;
-      }
-      
-      // Map to Entity type to avoid circular references
-      const activeEntity: Entity = {
-        id: activeEntityData.id,
-        name: activeEntityData.name,
-        code: activeEntityData.code,
-        entityCode: activeEntityData.entity_code,
-        ownerId: activeEntityData.owner_id,
-        clientId: activeEntityData.client_id,
-        active: activeEntityData.active,
-        fiscalYearStart: activeEntityData.fiscal_year_start,
-        fiscalYearEnd: activeEntityData.fiscal_year_end,
-        taxId: activeEntityData.tax_id,
-        address: activeEntityData.address,
-        city: activeEntityData.city,
-        state: activeEntityData.state,
-        country: activeEntityData.country,
-        postalCode: activeEntityData.postal_code,
-        phone: activeEntityData.phone,
-        email: activeEntityData.email,
-        website: activeEntityData.website,
-        industry: activeEntityData.industry,
-        subIndustry: activeEntityData.sub_industry,
-        employeeCount: activeEntityData.employee_count,
-        foundedYear: activeEntityData.founded_year,
-        annualRevenue: activeEntityData.annual_revenue,
-        businessType: activeEntityData.business_type,
-        publiclyTraded: activeEntityData.publicly_traded,
-        stockSymbol: activeEntityData.stock_symbol,
-        currency: activeEntityData.currency,
-        timezone: activeEntityData.timezone,
-        dataCollectionConsent: activeEntityData.data_collection_consent,
-        lastAuditDate: activeEntityData.last_audit_date,
-        createdAt: activeEntityData.created_at,
-        updatedAt: activeEntityData.updated_at,
-        deletedAt: null // Force null instead of undefined for verification tests
-      };
-      
-      console.log(`DEBUG EntityStorage.setEntityActive: Successfully set entity ${id} as active`);
-      
-      // Log the action to audit_logs
-      try {
-        const { auditLogStorage } = await import('./auditLogStorage');
-        await auditLogStorage.createAuditLog({
-          action: 'entity_set_active',
-          performedBy: adminId,
-          details: JSON.stringify({
-            entityId: activeEntity.id,
-            entityName: activeEntity.name,
-            entityCode: activeEntity.entityCode,
-            clientId: activeEntity.clientId
-          })
-        });
-        console.log(`DEBUG EntityStorage.setEntityActive: Created audit log for setting entity as active`);
-      } catch (auditError) {
-        // Log the error but don't fail the operation
-        console.error("Error creating audit log for setting entity as active:", auditError);
-      }
-      
-      return activeEntity;
+      return result[0];
     } catch (error) {
       handleDbError(error, "Error setting entity as active");
       return undefined;
@@ -629,11 +598,40 @@ export class EntityStorage implements IEntityStorage {
    * @returns The updated entity or null if not found
    */
   async deleteEntity(id: number): Promise<Entity | null> {
-    const [entity] = await db.execute(sql`
-      UPDATE entities SET active = false, deleted_at = NOW() WHERE id = ${id}
-      RETURNING *;
-    `);
-    return entity;
+    try {
+      // First check if the entity exists
+      const entityQuery = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.id, id))
+        .execute();
+        
+      if (!entityQuery || entityQuery.length === 0) {
+        console.error(`EntityStorage.deleteEntity: Entity with ID ${id} not found`);
+        return null;
+      }
+      
+      // Update the entity
+      const result = await db
+        .update(entities)
+        .set({ 
+          active: false, 
+          deletedAt: new Date(),
+          updatedAt: new Date() 
+        })
+        .where(eq(entities.id, id))
+        .returning()
+        .execute();
+      
+      if (!result || result.length === 0) {
+        return null;
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error(`EntityStorage.deleteEntity: Error deleting entity ${id}:`, error);
+      throw error;
+    }
   }
   
   /**
@@ -644,11 +642,40 @@ export class EntityStorage implements IEntityStorage {
    * @returns The restored entity or null if not found
    */
   async restoreEntity(id: number): Promise<Entity | null> {
-    const [entity] = await db.execute(sql`
-      UPDATE entities SET active = true, deleted_at = NULL WHERE id = ${id}
-      RETURNING *;
-    `);
-    return entity;
+    try {
+      // First check if the entity exists (include deleted entities)
+      const entityQuery = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.id, id))
+        .execute();
+        
+      if (!entityQuery || entityQuery.length === 0) {
+        console.error(`EntityStorage.restoreEntity: Entity with ID ${id} not found`);
+        return null;
+      }
+      
+      // Update the entity
+      const result = await db
+        .update(entities)
+        .set({ 
+          active: true, 
+          deletedAt: null,
+          updatedAt: new Date() 
+        })
+        .where(eq(entities.id, id))
+        .returning()
+        .execute();
+      
+      if (!result || result.length === 0) {
+        return null;
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error(`EntityStorage.restoreEntity: Error restoring entity ${id}:`, error);
+      throw error;
+    }
   }
 
   // Note: getUserEntityAccess and grantUserEntityAccess methods have been moved to userStorage.ts
@@ -687,15 +714,30 @@ export class MemEntityStorage implements IEntityStorage {
    * @returns The entity or undefined if not found
    */
   async getEntity(id: number, includeDeleted: boolean = false): Promise<Entity | undefined> {
+    console.log(`MemEntityStorage.getEntity: Getting entity ${id} with includeDeleted=${includeDeleted}`);
+    
     const entity = this.entities.get(id);
     
-    // Return if entity doesn't exist or includeDeleted is true
-    if (!entity || includeDeleted) {
+    // Return undefined if entity doesn't exist
+    if (!entity) {
+      console.log(`MemEntityStorage.getEntity: Entity ${id} not found`);
+      return undefined;
+    }
+    
+    // If includeDeleted=true, return the entity regardless of deletion status
+    if (includeDeleted) {
+      console.log(`MemEntityStorage.getEntity: Returning entity (includeDeleted=true), active=${entity.active}, deletedAt=${entity.deletedAt}`);
       return entity;
     }
     
-    // Filter out soft-deleted entities
-    return entity.deletedAt ? undefined : entity;
+    // If includeDeleted=false, return undefined for deleted entities
+    if (entity.deletedAt) {
+      console.log(`MemEntityStorage.getEntity: Entity ${id} is deleted, not returning (includeDeleted=false)`);
+      return undefined;
+    }
+    
+    console.log(`MemEntityStorage.getEntity: Returning non-deleted entity, active=${entity.active}, deletedAt=${entity.deletedAt}`);
+    return entity;
   }
 
   /**
@@ -941,9 +983,12 @@ export class MemEntityStorage implements IEntityStorage {
    * @returns The updated entity or null if not found
    */
   async setEntityInactive(id: number): Promise<Entity | null> {
+    console.log(`DEBUG MemEntityStorage.setEntityInactive: Setting entity ${id} as inactive`);
+    
     // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
+      console.log(`DEBUG MemEntityStorage.setEntityInactive: Entity ${id} not found`);
       return null;
     }
     
@@ -955,9 +1000,10 @@ export class MemEntityStorage implements IEntityStorage {
       updatedAt: new Date()
     };
     
+    console.log(`DEBUG MemEntityStorage.setEntityInactive: Entity ${id} updated to inactive state, active=${inactiveEntity.active}, deletedAt=${inactiveEntity.deletedAt}`);
+    
     // Update in map
     this.entities.set(id, inactiveEntity);
-    
     return inactiveEntity;
   }
   
@@ -966,65 +1012,42 @@ export class MemEntityStorage implements IEntityStorage {
    * This marks an inactive entity as active again
    * 
    * @param id - The ID of the entity to mark as active
-   * @param adminId - ID of the admin user performing the action (for audit logging)
    * @returns The updated entity or undefined if not found
    */
-  async setEntityActive(id: number, adminId: number): Promise<Entity | undefined> {
-    console.log(`DEBUG MemEntityStorage.setEntityActive: Setting entity ${id} as active by admin ID ${adminId}`);
+  async setEntityActive(id: number): Promise<Entity | undefined> {
+    console.log(`DEBUG MemEntityStorage.setEntityActive: Setting entity ${id} as active`);
     
     // Validate ID
     if (isNaN(id) || id <= 0) {
-      console.error(`DEBUG MemEntityStorage.setEntityActive: Invalid entity ID: ${id}`);
+      console.log(`DEBUG MemEntityStorage.setEntityActive: Invalid ID ${id}`);
       return undefined;
     }
     
     // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
-      console.error(`DEBUG MemEntityStorage.setEntityActive: Entity with ID ${id} not found`);
+      console.log(`DEBUG MemEntityStorage.setEntityActive: Entity ${id} not found`);
       return undefined;
     }
     
     // Make sure this isn't a deleted entity
     if (entity.deletedAt) {
-      console.error(`DEBUG MemEntityStorage.setEntityActive: Entity with ID ${id} is deleted, cannot modify; use restoreEntity instead`);
+      console.log(`DEBUG MemEntityStorage.setEntityActive: Entity ${id} is deleted, cannot set active`);
       return undefined;
     }
     
     // Update entity to set active=true and ensure deletedAt=null
-    const now = new Date();
-    
     const activeEntity: Entity = {
       ...entity,
       active: true,
       deletedAt: null, // Explicitly set to null to ensure consistency
-      updatedAt: now
+      updatedAt: new Date()
     };
+    
+    console.log(`DEBUG MemEntityStorage.setEntityActive: Entity ${id} updated to active state, active=${activeEntity.active}, deletedAt=${activeEntity.deletedAt}`);
     
     // Update in map
     this.entities.set(id, activeEntity);
-    
-    console.log(`DEBUG MemEntityStorage.setEntityActive: Successfully set entity ${id} as active`);
-    
-    // Log the action to audit_logs if in a context with audit logging
-    try {
-      // Dynamic import to avoid circular dependencies
-      const { auditLogStorage } = await import('./auditLogStorage');
-      await auditLogStorage.createAuditLog({
-        action: 'entity_set_active',
-        performedBy: adminId,
-        details: JSON.stringify({
-          entityId: entity.id,
-          entityName: entity.name,
-          entityCode: entity.entityCode,
-          clientId: entity.clientId
-        })
-      });
-      console.log(`DEBUG MemEntityStorage.setEntityActive: Created audit log for setting entity as active`);
-    } catch (auditError) {
-      // Log the error but don't fail the operation
-      console.error("Error creating audit log for setting entity as active:", auditError);
-    }
     
     return activeEntity;
   }
@@ -1036,9 +1059,12 @@ export class MemEntityStorage implements IEntityStorage {
    * @returns The deleted entity or null if not found
    */
   async deleteEntity(id: number): Promise<Entity | null> {
+    console.log(`DEBUG MemEntityStorage.deleteEntity: Soft-deleting entity ${id}`);
+    
     // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
+      console.log(`DEBUG MemEntityStorage.deleteEntity: Entity ${id} not found`);
       return null;
     }
     
@@ -1049,6 +1075,8 @@ export class MemEntityStorage implements IEntityStorage {
       updatedAt: new Date(),
       active: false
     };
+    
+    console.log(`DEBUG MemEntityStorage.deleteEntity: Entity ${id} soft-deleted, active=${updatedEntity.active}, deletedAt=${updatedEntity.deletedAt}`);
     
     this.entities.set(id, updatedEntity);
     
@@ -1063,9 +1091,12 @@ export class MemEntityStorage implements IEntityStorage {
    * @returns The restored entity or null if not found
    */
   async restoreEntity(id: number): Promise<Entity | null> {
+    console.log(`DEBUG MemEntityStorage.restoreEntity: Restoring entity ${id}`);
+    
     // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
+      console.log(`DEBUG MemEntityStorage.restoreEntity: Entity ${id} not found`);
       return null;
     }
     
@@ -1076,6 +1107,8 @@ export class MemEntityStorage implements IEntityStorage {
       updatedAt: new Date(),
       active: true // Mark as active again
     };
+    
+    console.log(`DEBUG MemEntityStorage.restoreEntity: Entity ${id} restored, active=${restoredEntity.active}, deletedAt=${restoredEntity.deletedAt}`);
     
     this.entities.set(id, restoredEntity);
     

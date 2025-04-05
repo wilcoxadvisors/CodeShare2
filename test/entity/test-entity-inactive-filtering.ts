@@ -59,7 +59,7 @@ async function testEntityInactiveFiltering() {
 
     // Set the second entity as inactive
     console.log(`Setting entity ${entity2.id} as inactive...`);
-    const inactiveEntity = await entityStorage.setEntityInactive(entity2.id, 1);
+    const inactiveEntity = await entityStorage.setEntityInactive(entity2.id);
     console.log("Entity set as inactive:", inactiveEntity);
 
     // Verify that the entity is now inactive but not deleted
@@ -141,7 +141,7 @@ async function testEntityInactiveFiltering() {
 
     // Soft-delete the third entity
     console.log(`Soft-deleting entity ${entity3.id}...`);
-    const deleted = await entityStorage.deleteEntity(entity3.id, 1);
+    const deleted = await entityStorage.deleteEntity(entity3.id);
     
     if (!deleted) {
       throw new Error("Failed to soft-delete entity");

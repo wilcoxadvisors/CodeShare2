@@ -60,7 +60,7 @@ async function testEntityDeletionFiltering() {
     
     // 4. Soft delete one of the entities
     console.log(`Soft deleting entity with ID ${entity1.id}...`);
-    const deleteResult = await entityStorage.deleteEntity(entity1.id, adminId);
+    const deleteResult = await entityStorage.deleteEntity(entity1.id);
     
     if (!deleteResult) {
       throw new Error(`Failed to delete entity with ID ${entity1.id}`);

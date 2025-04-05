@@ -38,7 +38,7 @@ async function testEntityRestore() {
     
     // 3. Soft delete the entity
     console.log("\nStep 3: Soft deleting the entity");
-    const deleteResult = await entityStorage.deleteEntity(entity.id, 1);
+    const deleteResult = await entityStorage.deleteEntity(entity.id);
     console.log(`Entity deletion result: ${deleteResult}`);
     
     // 4. Verify entity is deleted (should not be found with standard query)
@@ -55,7 +55,7 @@ async function testEntityRestore() {
     
     // 6. Restore the entity
     console.log("\nStep 6: Restoring the entity");
-    const restoredEntity = await entityStorage.restoreEntity(entity.id, 1);
+    const restoredEntity = await entityStorage.restoreEntity(entity.id);
     console.log(`Restored entity: ${!!restoredEntity}`);
     console.log(`Restored entity deletedAt: ${restoredEntity?.deletedAt}`);
     console.log(`Restored entity active: ${restoredEntity?.active}`);
