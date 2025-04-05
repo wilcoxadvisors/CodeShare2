@@ -675,6 +675,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
                 onNext={handleClientSave} 
                 setClientData={setClientData}
                 initialData={clientData || undefined}
+                open={true} // Always set to true when rendered in the stepper
               />
             )}
             

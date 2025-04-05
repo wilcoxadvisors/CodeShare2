@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,13 +50,14 @@ interface ClientSetupCardProps {
   onNext: (data: ClientSetupValues) => void;
   setClientData: (data: ClientSetupValues) => void;
   initialData?: ClientSetupValues;
+  open?: boolean; // Add open prop to track dialog state
 }
 
-export default function ClientSetupCard({ onNext, setClientData, initialData }: ClientSetupCardProps) {
+export default function ClientSetupCard({ onNext, setClientData, initialData, open }: ClientSetupCardProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  console.log("FORM INIT: ClientSetupCard rendering. Has initialData:", !!initialData);
+  console.log("FORM INIT: ClientSetupCard rendering. Has initialData:", !!initialData, "Open:", open);
   
   // Utility function to ensure industry always has a value
   const ensureIndustryValue = (industryValue: string | undefined | null): string => {
@@ -95,6 +96,14 @@ export default function ClientSetupCard({ onNext, setClientData, initialData }: 
   
   // Log the current values for debugging
   console.log("FORM DEBUG: Initial form values:", form.getValues());
+  
+  // Add effect to explicitly reset form when dialog closes
+  useEffect(() => {
+    if (open === false) {
+      console.log("FORM RESET: Dialog closed, explicitly resetting form to default values");
+      form.reset(getDefaultFormValues());
+    }
+  }, [open, form]);
 
   const onSubmit = async (data: ClientSetupValues) => {
     console.log("FORM SUBMIT: Client form submit started with data:", data);
