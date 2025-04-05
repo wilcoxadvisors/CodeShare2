@@ -22,7 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX, RefreshCw } from "lucide-react";
 import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,7 @@ import EntityManagementCard from "../components/setup/EntityManagementCard";
 import SetupSummaryCard from "../components/setup/SetupSummaryCard";
 import { ClientDetailModal } from "../components/ClientDetailModal";
 import { ClientEditModal } from "../components/dashboard/ClientEditModal";
+import RestoreConfirmationDialog from "../components/RestoreConfirmationDialog";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -214,6 +215,11 @@ const getClientActiveStatus = (client: any): boolean => {
   }
   // Default to false if neither property exists
   return false;
+};
+
+// Helper function to check if a client is deleted (has deletedAt timestamp)
+const isClientDeleted = (client: any): boolean => {
+  return !!client.deletedAt;
 };
 
 // Format date to a more readable form
@@ -402,6 +408,8 @@ function Dashboard() {
   const [currentEditClient, setCurrentEditClient] = useState<any>(null);
   const [clientEntities, setClientEntities] = useState<any[]>([]);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [itemToRestore, setItemToRestore] = useState<{id: number, name: string, type: 'client' | 'entity'} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -493,6 +501,14 @@ function Dashboard() {
     setSelectedClientIdForDetails(clientId);
     setIsClientDetailModalOpen(true);
   };
+  
+  // Handle opening the restore confirmation dialog
+  const handleOpenRestoreDialog = (item: {id: number, name: string, type: 'client' | 'entity'}) => {
+    setItemToRestore(item);
+    setIsRestoreDialogOpen(true);
+  };
+  
+
 
   // Handle edit client click from dropdown menu
   const handleEditClient = async (client: any) => {
@@ -649,6 +665,63 @@ function Dashboard() {
     // Submit the update
     updateEntityMutation.mutate(entityData);
   };
+  
+  // Handle restore client/entity mutation
+  const restoreMutation = useMutation({
+    mutationFn: async ({id, type}: {id: number, type: 'client' | 'entity'}) => {
+      const endpoint = type === 'client' 
+        ? `/api/admin/clients/${id}/restore`
+        : `/api/admin/entities/${id}/restore`;
+        
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to restore ${type}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // Show success notification
+      toast({
+        title: "Success",
+        description: `${variables.type === 'client' ? 'Client' : 'Entity'} restored successfully.`,
+      });
+      
+      // Close dialog
+      setIsRestoreDialogOpen(false);
+      setItemToRestore(null);
+    },
+    onError: (error: any) => {
+      console.error('Restore error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle restore action from dialog confirmation
+  const handleRestoreConfirm = () => {
+    if (!itemToRestore) return;
+    
+    restoreMutation.mutate({
+      id: itemToRestore.id,
+      type: itemToRestore.type
+    });
+  };
+  
+
   
   // Handle form submission
   const handleCreateEntity = () => {
@@ -886,16 +959,22 @@ interface AdminDashboardData {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (client.contactName && client.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                          (client.contactEmail && client.contactEmail.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = clientStatusFilter === "all" || 
-      (clientStatusFilter === "Active" && getClientActiveStatus(client)) ||
-      (clientStatusFilter === "Inactive" && !getClientActiveStatus(client));
+    
+    // Handle status filtering based on active status and deleted status
+    const matchesStatus = 
+      clientStatusFilter === "all" || 
+      (clientStatusFilter === "Active" && getClientActiveStatus(client) && !isClientDeleted(client)) ||
+      (clientStatusFilter === "Inactive" && !getClientActiveStatus(client) && !isClientDeleted(client)) ||
+      (clientStatusFilter === "Deleted" && isClientDeleted(client));
+      
     return matchesSearch && matchesStatus;
   });
 
   // Data for client status pie chart using real client data
   const clientStatusData = [
-    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c)).length },
-    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c)).length }
+    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c) && !isClientDeleted(c)).length },
+    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c) && !isClientDeleted(c)).length },
+    { name: 'Deleted', value: clients.filter(c => isClientDeleted(c)).length }
   ];
 
   // Data for payment status
@@ -1420,14 +1499,14 @@ interface AdminDashboardData {
                               />
                             </div>
                             <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
-                              <SelectTrigger className="w-40">
+                              <SelectTrigger className="w-48">
                                 <SelectValue placeholder="Filter by status" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
                                 <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="Onboarding">Onboarding</SelectItem>
-                                <SelectItem value="Pending Review">Pending Review</SelectItem>
+                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                <SelectItem value="Deleted">Deleted (Inactive)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1512,6 +1591,12 @@ interface AdminDashboardData {
                                             <Pen className="mr-2 h-4 w-4" />
                                             Edit Client
                                           </DropdownMenuItem>
+                                          {isClientDeleted(client) && (
+                                            <DropdownMenuItem onClick={() => handleOpenRestoreDialog({id: client.id, name: client.name, type: 'client'})}>
+                                              <RefreshCw className="mr-2 h-4 w-4" />
+                                              Restore Client
+                                            </DropdownMenuItem>
+                                          )}
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     </TableCell>
@@ -2322,6 +2407,15 @@ interface AdminDashboardData {
         clientId={currentEditClient?.id || null}
         isOpen={isEditClientDialogOpen}
         onOpenChange={setIsEditClientDialogOpen}
+      />
+      {/* Restore Confirmation Dialog */}
+      <RestoreConfirmationDialog
+        isOpen={isRestoreDialogOpen}
+        onClose={() => setIsRestoreDialogOpen(false)}
+        itemId={itemToRestore?.id || 0}
+        itemType={itemToRestore?.type || 'client'}
+        itemName={itemToRestore?.name || ''}
+        onConfirm={handleRestoreConfirm}
       />
     </>
   );

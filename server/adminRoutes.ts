@@ -27,6 +27,88 @@ const isAdmin = (req: Request, res: Response, next: Function) => {
 
 export function registerAdminRoutes(app: Express, storage: IStorage) {
   
+  /**
+   * Restore a soft-deleted client
+   * 
+   * @route PATCH /api/admin/clients/:id/restore
+   * @param {number} id - The ID of the client to restore
+   * @returns {Client} - The restored client
+   * @throws {401} - If not authenticated
+   * @throws {403} - If not an admin
+   * @throws {404} - If client not found
+   * @throws {400} - If client is not deleted
+   */
+  app.patch("/api/admin/clients/:id/restore", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.id);
+      if (isNaN(clientId)) {
+        return res.status(400).json({ message: "Invalid client ID" });
+      }
+      
+      const user = req.user as any;
+      const adminId = user.id;
+      
+      // Attempt to restore the client
+      const restoredClient = await storage.clients.restoreClient(clientId, adminId);
+      
+      if (!restoredClient) {
+        return res.status(404).json({ message: "Client not found or could not be restored" });
+      }
+      
+      return res.status(200).json({
+        message: "Client restored successfully",
+        client: restoredClient
+      });
+    } catch (error) {
+      console.error("Error restoring client:", error);
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }));
+  
+  /**
+   * Restore a soft-deleted entity
+   * 
+   * @route PATCH /api/admin/entities/:id/restore
+   * @param {number} id - The ID of the entity to restore
+   * @returns {Entity} - The restored entity
+   * @throws {401} - If not authenticated
+   * @throws {403} - If not an admin
+   * @throws {404} - If entity not found
+   * @throws {400} - If entity is not deleted
+   */
+  app.patch("/api/admin/entities/:id/restore", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const entityId = parseInt(req.params.id);
+      if (isNaN(entityId)) {
+        return res.status(400).json({ message: "Invalid entity ID" });
+      }
+      
+      const user = req.user as any;
+      const adminId = user.id;
+      
+      // Attempt to restore the entity
+      const restoredEntity = await storage.entities.restoreEntity(entityId, adminId);
+      
+      if (!restoredEntity) {
+        return res.status(404).json({ message: "Entity not found or could not be restored" });
+      }
+      
+      return res.status(200).json({
+        message: "Entity restored successfully",
+        entity: restoredEntity
+      });
+    } catch (error) {
+      console.error("Error restoring entity:", error);
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }));
+  
   // Temporary test endpoint for debugging without authentication
   app.get("/api/test/entities-by-client/:clientId", asyncHandler(async (req: Request, res: Response) => {
     try {
