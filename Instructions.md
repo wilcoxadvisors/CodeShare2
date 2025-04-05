@@ -21,7 +21,7 @@
 ## 3. Current Development Status
 
 * **Phase 1 (Stabilization & Migration):** COMPLETE. Database migration (junction table for consolidation groups) is finished. Backend logic updated. Code cleanup done.
-    * **Recent Fix:** ✅ Fixed server crash during migrations by correcting the conditional check in `add-soft-deletion-and-audit-logs.ts` that was causing premature process termination.
+    * **Recent Fix:** ✅ **Fixed server crash during migrations by correcting the conditional check in `add-soft-deletion-and-audit-logs.ts` that was causing premature process termination.**
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
@@ -150,6 +150,7 @@
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
 * **Verify Incrementally:** Test each specific feature/fix thoroughly before moving on.
+ * **Recommended verification command:** `node verify-storage-modules.js` should be run after each significant backend change.
 * **Simplify:** Avoid unnecessary complexity. Focus on clean state management.
 * **Ask for Clarification:** If unsure, ask before proceeding.
 * **Design Considerations:** Prioritize state-of-the-art, innovative, customer-focused, easy-to-use design. Aim for trust, trendiness, and fun.
