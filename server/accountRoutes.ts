@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { z } from "zod";
-import { storage } from "./index";
+import { DatabaseStorage, IStorage } from "./storage";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -22,6 +22,9 @@ import { db, pool } from "./db";
 import Papa from "papaparse";
 import multer from "multer";
 import * as XLSX from "xlsx";
+
+// Initialize storage
+const storage: IStorage = new DatabaseStorage();
 
 // Type for authenticated user in request
 interface AuthUser {

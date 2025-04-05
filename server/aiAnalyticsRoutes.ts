@@ -2,7 +2,10 @@ import { Express, Request, Response, NextFunction } from 'express';
 import { asyncHandler } from './errorHandling';
 import { db } from './db';
 import AiDataService from './aiDataService';
-import { storage } from './index';
+import { DatabaseStorage, IStorage } from './storage';
+
+// Initialize storage
+const storage: IStorage = new DatabaseStorage();
 import axios from 'axios';
 
 // Authentication middleware

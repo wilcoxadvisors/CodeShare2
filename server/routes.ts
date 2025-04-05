@@ -1,6 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./index";
+import { DatabaseStorage, IStorage } from "./storage";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -50,6 +50,8 @@ interface AuthUser {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create a database storage instance to use in routes
+  const storage: IStorage = new DatabaseStorage();
   // Public routes for checking API availability - must be defined before auth middleware
   app.post("/api/public/check-api", (req, res) => {
     try {

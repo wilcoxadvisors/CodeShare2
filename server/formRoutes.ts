@@ -1,6 +1,9 @@
 import express, { Express, Request, Response } from "express";
-import { storage } from "./index";
+import { DatabaseStorage, IStorage } from "./storage";
 import { withTransaction, db } from "./db";
+
+// Initialize storage instance
+const storage: IStorage = new DatabaseStorage();
 import { 
   insertContactSubmissionSchema, 
   insertChecklistSubmissionSchema, 

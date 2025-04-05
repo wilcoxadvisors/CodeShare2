@@ -8,13 +8,8 @@ import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
-import { DatabaseStorage, MemStorage, IStorage } from "./storage";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
-
-// Create and export storage instance that will be used by other modules
-// Always use DatabaseStorage since we're using the PostgreSQL database
-export const storage: IStorage = new DatabaseStorage();
 
 const app = express();
 app.use(express.json({
@@ -114,7 +109,12 @@ app.use((req, res, next) => {
     
     // Register batch upload routes for optimized CSV imports
     log('Registering batch upload routes...');
-    registerBatchUploadRoutes(app, storage);
+    // Create a new storage instance for batch uploads
+    const { DatabaseStorage } = await import('./storage');
+    const batchStorage = new DatabaseStorage();
+    await import('./batchUploadRoutes').then(({ registerBatchUploadRoutes }) => {
+      registerBatchUploadRoutes(app, batchStorage);
+    });
     log('✅ Batch upload routes registered');
 
     // importantly set up vite or static serving before 404 handler
