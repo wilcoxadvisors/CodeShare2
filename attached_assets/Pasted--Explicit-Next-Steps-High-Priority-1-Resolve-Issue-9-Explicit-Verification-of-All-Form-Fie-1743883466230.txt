@@ -1,0 +1,173 @@
+🎯 Explicit Next Steps (High Priority)
+🚩 1. Resolve Issue #9: Explicit Verification of All Form Fields Persisting
+Objective:
+Explicitly confirm every form field (Client & Entity forms) saves, updates, and persists correctly through save → edit → refresh cycles.
+
+Explicit Verification Steps:
+
+Client Forms:
+
+Add a new client explicitly filling out every form field available.
+
+Explicitly save and verify via UI feedback ("Successfully saved").
+
+Explicitly refresh the client detail page; verify all fields correctly persist.
+
+Explicitly edit each field, explicitly change values, save explicitly, and explicitly refresh again.
+
+Explicitly verify changes are explicitly reflected after refresh.
+
+Entity Forms:
+
+Explicitly create an entity under the previously added client.
+
+Fill in explicitly every form field.
+
+Explicitly save and verify persistence through refresh.
+
+Explicitly edit each entity field, explicitly save, and explicitly verify post-refresh.
+
+Explicitly document:
+
+Any field that fails to persist or update explicitly.
+
+UI responsiveness explicitly (including explicit feedback messages).
+
+⚠️ 2. Ensure Explicit Clarity between "Inactive" and "Soft Deletion" (Critical)
+Objective:
+Ensure that the existing "Inactive" entity toggle and the new explicit "Soft Deletion" functionality do not conflict.
+
+Explicit Verification and Actions:
+
+Explicitly update your logic in frontend/backend to clearly differentiate states:
+
+Inactive Entity (Explicitly NOT deleted):
+
+js
+Copy
+Edit
+await updateEntity(id, { active: false, deletedAt: null });
+Soft-Deleted Entity (Explicitly deleted):
+
+js
+Copy
+Edit
+await updateEntity(id, { active: false, deletedAt: new Date() });
+Explicitly verify UI/UX filtering logic matches this clear distinction:
+
+Active entities (default view):
+
+sql
+Copy
+Edit
+SELECT * FROM entities WHERE active = true AND deleted_at IS NULL;
+Inactive entities (not deleted) explicitly:
+
+sql
+Copy
+Edit
+SELECT * FROM entities WHERE active = false AND deleted_at IS NULL;
+Explicitly Soft-Deleted entities:
+
+sql
+Copy
+Edit
+SELECT * FROM entities WHERE deleted_at IS NOT NULL;
+Explicitly test:
+
+Marking entity explicitly inactive via existing "Inactive" toggle/button.
+
+Explicitly soft-deleting entity via explicit delete action.
+
+Explicitly restoring soft-deleted entities explicitly via restore button/dialog.
+
+Explicitly confirm UI explicitly shows each entity state correctly.
+
+✅ 3. Manual End-to-End Testing (Explicitly including CoA and Overall Functionality)
+Objective:
+Conduct explicit end-to-end manual verification of key functionality, explicitly emphasizing the Chart of Accounts (CoA) and integrated modules.
+
+Explicitly Recommended Test Flow:
+
+Setup & Login:
+
+Explicitly log into the app as an Admin user.
+
+Explicitly Add Client:
+
+Use explicit step-by-step guided setup (SetupStepper.tsx).
+
+Explicitly verify client creation and persistence.
+
+Explicitly Add Entity:
+
+Explicitly create new entity within the client.
+
+Explicitly verify field persistence explicitly.
+
+Explicitly Chart of Accounts (CoA):
+
+Add Account explicitly:
+
+Verify account creation, explicit accountCode uniqueness enforcement, and hierarchy creation.
+
+Edit Account explicitly:
+
+Explicitly test updates to hierarchy, names, and reporting fields.
+
+Delete Account explicitly:
+
+Explicitly test explicit deletion constraints (parent with/without child accounts).
+
+Import/Export explicitly (CSV/Excel):
+
+Explicitly verify UI & functionality explicitly (no errors, correct data).
+
+Explicitly Test General Ledger & Journal Entries:
+
+Explicitly add manual journal entry, explicitly verifying debit=credit validation explicitly.
+
+Explicitly verify batch upload explicitly via prepared CSV/JSON.
+
+Explicitly Test Soft Deletion and Inactive States:
+
+Explicitly test marking entities inactive explicitly.
+
+Explicitly test soft-deletion explicitly.
+
+Explicitly verify restore explicitly.
+
+Explicitly Verify UI/UX and Responsiveness:
+
+Explicitly confirm good UX/UI explicitly.
+
+Explicitly check mobile responsiveness explicitly (browser dev tools).
+
+Explicitly Document:
+
+All explicit steps pass/fail explicitly.
+
+Explicit screenshots of any explicit issue or unexpected behavior.
+
+Explicit console errors/logs if issues explicitly encountered.
+
+🛠️ Explicit Reporting Guidelines
+For each step explicitly performed, provide explicitly clear documentation:
+
+Step	Action	Explicit Status	Explicit Notes
+#9.1	Client form persistence	✅/❌	Explicit notes
+#9.2	Entity form persistence	✅/❌	Explicit notes
+#9.3	Inactive vs. Deleted Logic	✅/❌	Explicit notes
+#9.4	CoA functionality	✅/❌	Explicit notes
+#9.5	GL & Journal Entries	✅/❌	Explicit notes
+#9.6	Import/Export functionality	✅/❌	Explicit notes
+#9.7	UI/UX & Mobile responsiveness	✅/❌	Explicit notes
+🚧 After Explicit Verification Completion:
+Explicitly proceed to the next task (B.3 - Accounts Payable Backend).
+
+Explicitly address and resolve any found issues immediately.
+
+🎯 Explicit Next Action for Agent Team:
+Explicitly proceed with Issue #9 and subsequent manual verification steps outlined above.
+
+Let me know explicitly if you encounter any questions or roadblocks.
