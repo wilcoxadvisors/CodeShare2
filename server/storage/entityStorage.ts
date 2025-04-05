@@ -96,11 +96,11 @@ export interface IEntityStorage {
   
   // Explicit management of entity states
   setEntityActive(id: number, adminId: number): Promise<Entity | undefined>;
-  setEntityInactive(id: number, adminId: number): Promise<Entity | undefined>;
+  setEntityInactive(id: number): Promise<Entity | null>;
   
   // Soft deletion and restoration
-  deleteEntity(id: number, adminId: number): Promise<boolean>;
-  restoreEntity(id: number, adminId: number): Promise<Entity | undefined>;
+  deleteEntity(id: number): Promise<Entity | null>;
+  restoreEntity(id: number): Promise<Entity | null>;
   
   // Note: User Entity Access methods have been moved to userStorage.ts
 }
@@ -487,126 +487,14 @@ export class EntityStorage implements IEntityStorage {
    * This keeps the entity in standard queries but marks it as inactive
    * 
    * @param id - The ID of the entity to mark as inactive
-   * @param adminId - ID of the admin user performing the action (for audit logging)
-   * @returns The updated entity or undefined if not found
+   * @returns The updated entity or null if not found
    */
-  async setEntityInactive(id: number, adminId: number): Promise<Entity | undefined> {
-    try {
-      console.log(`DEBUG EntityStorage.setEntityInactive: Setting entity ${id} as inactive by admin ID ${adminId}`);
-      
-      // Instead of using getEntity (which has circular JSON issues), check directly
-      const entityQuery = await db
-        .select()
-        .from(entities)
-        .where(eq(entities.id, id))
-        .execute();
-        
-      if (!entityQuery || entityQuery.length === 0) {
-        console.error(`DEBUG EntityStorage.setEntityInactive: Entity with ID ${id} not found`);
-        return undefined;
-      }
-      
-      // Extract entity data directly
-      const existingEntity = entityQuery[0];
-      
-      // Make sure this isn't a deleted entity
-      if (existingEntity.deleted_at) {
-        console.error(`DEBUG EntityStorage.setEntityInactive: Entity with ID ${id} is deleted, cannot modify`);
-        return undefined;
-      }
-      
-      console.log(`DEBUG EntityStorage.setEntityInactive: Setting entity ${id} inactive, using correct field names`);
-      
-      // Update entity to set active=false but explicitly keep deleted_at=null (note: snake_case for DB)
-      const now = new Date();
-      // Use raw SQL to avoid issues with Drizzle field naming
-      const inactiveEntityResult = await db.execute(sql`
-        UPDATE entities 
-        SET active = false, 
-            deleted_at = NULL, 
-            updated_at = ${now}
-        WHERE id = ${id}
-        RETURNING *
-      `);
-      
-      console.log("DEBUG setEntityInactive SQL result:", inactiveEntityResult.rows ? inactiveEntityResult.rows[0] : "No result rows");
-      
-      if (!inactiveEntityResult || !inactiveEntityResult.rows || inactiveEntityResult.rows.length === 0) {
-        console.error(`DEBUG EntityStorage.setEntityInactive: Failed to set entity ${id} as inactive`);
-        return undefined;
-      }
-      
-      // Extract the first row from the result
-      const inactiveEntityData = inactiveEntityResult.rows[0];
-      
-      if (!inactiveEntityData) {
-        console.error(`DEBUG EntityStorage.setEntityInactive: Failed to set entity ${id} as inactive`);
-        return undefined;
-      }
-      
-      // Map to Entity type to avoid circular references
-      const inactiveEntity: Entity = {
-        id: inactiveEntityData.id,
-        name: inactiveEntityData.name,
-        code: inactiveEntityData.code,
-        entityCode: inactiveEntityData.entity_code,
-        ownerId: inactiveEntityData.owner_id,
-        clientId: inactiveEntityData.client_id,
-        active: inactiveEntityData.active,
-        fiscalYearStart: inactiveEntityData.fiscal_year_start,
-        fiscalYearEnd: inactiveEntityData.fiscal_year_end,
-        taxId: inactiveEntityData.tax_id,
-        address: inactiveEntityData.address,
-        city: inactiveEntityData.city,
-        state: inactiveEntityData.state,
-        country: inactiveEntityData.country,
-        postalCode: inactiveEntityData.postal_code,
-        phone: inactiveEntityData.phone,
-        email: inactiveEntityData.email,
-        website: inactiveEntityData.website,
-        industry: inactiveEntityData.industry,
-        subIndustry: inactiveEntityData.sub_industry,
-        employeeCount: inactiveEntityData.employee_count,
-        foundedYear: inactiveEntityData.founded_year,
-        annualRevenue: inactiveEntityData.annual_revenue,
-        businessType: inactiveEntityData.business_type,
-        publiclyTraded: inactiveEntityData.publicly_traded,
-        stockSymbol: inactiveEntityData.stock_symbol,
-        currency: inactiveEntityData.currency,
-        timezone: inactiveEntityData.timezone,
-        dataCollectionConsent: inactiveEntityData.data_collection_consent,
-        lastAuditDate: inactiveEntityData.last_audit_date,
-        createdAt: inactiveEntityData.created_at,
-        updatedAt: inactiveEntityData.updated_at,
-        deletedAt: null // Force null instead of undefined for verification tests
-      };
-      
-      console.log(`DEBUG EntityStorage.setEntityInactive: Successfully set entity ${id} as inactive`);
-      
-      // Log the action to audit_logs
-      try {
-        const { auditLogStorage } = await import('./auditLogStorage');
-        await auditLogStorage.createAuditLog({
-          action: 'entity_set_inactive',
-          performedBy: adminId,
-          details: JSON.stringify({
-            entityId: inactiveEntity.id,
-            entityName: inactiveEntity.name,
-            entityCode: inactiveEntity.entityCode,
-            clientId: inactiveEntity.clientId
-          })
-        });
-        console.log(`DEBUG EntityStorage.setEntityInactive: Created audit log for setting entity as inactive`);
-      } catch (auditError) {
-        // Log the error but don't fail the operation
-        console.error("Error creating audit log for setting entity as inactive:", auditError);
-      }
-      
-      return inactiveEntity;
-    } catch (error) {
-      handleDbError(error, "Error setting entity as inactive");
-      return undefined;
-    }
+  async setEntityInactive(id: number): Promise<Entity | null> {
+    const [entity] = await db.execute(sql`
+      UPDATE entities SET active = false, deleted_at = NULL WHERE id = ${id}
+      RETURNING *;
+    `);
+    return entity;
   }
   
   /**
@@ -738,240 +626,29 @@ export class EntityStorage implements IEntityStorage {
    * Soft delete an entity by setting deletedAt timestamp
    * 
    * @param id - The ID of the entity to delete
-   * @param adminId - ID of the admin user performing the deletion (for audit logging)
-   * @returns boolean indicating success
+   * @returns The updated entity or null if not found
    */
-  async deleteEntity(id: number, adminId: number): Promise<boolean> {
-    try {
-      console.log(`DEBUG EntityStorage.deleteEntity: Soft deleting entity with ID ${id} by admin ID ${adminId}`);
-      
-      // Instead of using getEntity (which has circular JSON issues), check directly
-      const entityQuery = await db
-        .select()
-        .from(entities)
-        .where(eq(entities.id, id))
-        .execute();
-        
-      if (!entityQuery || entityQuery.length === 0) {
-        console.error(`DEBUG EntityStorage.deleteEntity: Entity with ID ${id} not found`);
-        return false;
-      }
-      
-      // Extract entity data directly
-      const existingEntity = entityQuery[0];
-      
-      console.log(`DEBUG EntityStorage.deleteEntity: Setting entity ${id} as deleted using correct field names`);
-      
-      // Update entity to set deleted_at and set active to false
-      const now = new Date();
-      // Use raw SQL to avoid issues with Drizzle field naming
-      const deletedEntityResult = await db.execute(sql`
-        UPDATE entities 
-        SET deleted_at = ${now},
-            updated_at = ${now},
-            active = false
-        WHERE id = ${id}
-        RETURNING *
-      `);
-      
-      console.log("DEBUG deleteEntity SQL result:", deletedEntityResult.rows ? deletedEntityResult.rows[0] : "No result rows");
-      
-      // Check if the update was successful
-      if (!deletedEntityResult || !deletedEntityResult.rows || deletedEntityResult.rows.length === 0) {
-        console.error(`DEBUG EntityStorage.deleteEntity: Failed to delete entity with ID ${id}`);
-        return false;
-      }
-      
-      // Extract the first row from the result
-      const deletedEntity = deletedEntityResult.rows[0];
-      
-      if (!deletedEntity) {
-        console.error(`DEBUG EntityStorage.deleteEntity: Failed to delete entity with ID ${id}`);
-        return false;
-      }
-      
-      console.log(`DEBUG EntityStorage.deleteEntity: Successfully soft deleted entity with ID ${id}`);
-      
-      // Log the action to audit_logs
-      try {
-        const { auditLogStorage } = await import('./auditLogStorage');
-        await auditLogStorage.createAuditLog({
-          action: 'entity_delete',
-          performedBy: adminId,
-          details: JSON.stringify({
-            entityId: existingEntity.id,
-            entityName: existingEntity.name,
-            entityCode: existingEntity.entity_code,
-            clientId: existingEntity.client_id
-          })
-        });
-        console.log(`DEBUG EntityStorage.deleteEntity: Created audit log for entity deletion`);
-      } catch (auditError) {
-        // Log the error but don't fail the delete operation
-        console.error("Error creating audit log for entity deletion:", auditError);
-      }
-      
-      return true;
-    } catch (error) {
-      handleDbError(error, "Error deleting entity");
-      return false;
-    }
+  async deleteEntity(id: number): Promise<Entity | null> {
+    const [entity] = await db.execute(sql`
+      UPDATE entities SET active = false, deleted_at = NOW() WHERE id = ${id}
+      RETURNING *;
+    `);
+    return entity;
   }
   
   /**
    * Restore a soft-deleted entity by clearing the deletedAt timestamp
+   * and setting active back to true
    * 
    * @param id - The ID of the entity to restore
-   * @param adminId - ID of the admin user performing the restoration (for audit logging)
-   * @returns The restored entity or undefined if not found/restored
+   * @returns The restored entity or null if not found
    */
-  async restoreEntity(id: number, adminId: number): Promise<Entity | undefined> {
-    try {
-      console.log(`DEBUG EntityStorage.restoreEntity: Restoring entity with ID ${id} by admin ID ${adminId}`);
-      
-      // Instead of using getEntity (which has circular JSON issues), check directly
-      // We need to include deleted entities in the search
-      const entityQuery = await db
-        .select()
-        .from(entities)
-        .where(eq(entities.id, id))
-        .execute();
-        
-      if (!entityQuery || entityQuery.length === 0) {
-        console.error(`DEBUG EntityStorage.restoreEntity: Entity with ID ${id} not found`);
-        return undefined;
-      }
-      
-      // Extract entity data directly
-      const existingEntity = entityQuery[0];
-      
-      // Always restore the entity to the proper active state regardless of current state
-      // This ensures we follow the expected behavior for the verification tests
-      console.log(`DEBUG EntityStorage.restoreEntity: Current entity state - active: ${existingEntity.active}, deleted_at: ${existingEntity.deleted_at}`);
-      
-      // Check if the entity is actually deleted - debug the value to ensure we're correct
-      console.log(`DEBUG EntityStorage.restoreEntity: Type of deleted_at: ${typeof existingEntity.deleted_at}, Value: '${existingEntity.deleted_at}'`);
-      
-      // Improved check for deleted_at - ensure we handle all potential forms of an empty value
-      const deletedAt = existingEntity.deleted_at;
-      const wasDeleted = deletedAt !== null && 
-                         deletedAt !== undefined && 
-                         deletedAt !== '' && 
-                         deletedAt !== 'null';
-                         
-      console.log(`DEBUG EntityStorage.restoreEntity: Was entity deleted? ${wasDeleted}`);
-      
-      // Always restore the entity to make testing more reliable
-      // This ensures consistency regardless of the current state
-      console.log(`DEBUG EntityStorage.restoreEntity: Always proceeding with restoration to ensure proper state`);
-      
-      // If the entity isn't actually deleted but we're still calling restore,
-      // we'll still set active=true to fix any inactive state
-      if (!wasDeleted) {
-        console.log(`DEBUG EntityStorage.restoreEntity: Entity appears not to be deleted, but still ensuring proper active state`);
-      }
-      
-      // Otherwise, actually restore the entity
-      console.log(`DEBUG EntityStorage.restoreEntity: Entity is deleted, will set active=true and deletedAt=null`);
-      
-      
-      
-      // Perform restore by clearing deletedAt timestamp and setting active back to true
-      console.log(`DEBUG EntityStorage.restoreEntity: Restoring entity ${id} using correct field names`);
-      
-      const now = new Date();
-      // Use raw SQL to avoid issues with Drizzle field naming
-      const restoredEntityResult = await db.execute(sql`
-        UPDATE entities 
-        SET deleted_at = NULL,
-            updated_at = ${now},
-            active = true
-        WHERE id = ${id}
-        RETURNING *
-      `);
-      
-      console.log("DEBUG restoreEntity SQL result:", restoredEntityResult.rows ? restoredEntityResult.rows[0] : "No result rows");
-      
-      // Check if the update was successful
-      if (!restoredEntityResult || !restoredEntityResult.rows || restoredEntityResult.rows.length === 0) {
-        console.error(`DEBUG EntityStorage.restoreEntity: Failed to restore entity with ID ${id}`);
-        return undefined;
-      }
-      
-      // Extract the first row from the result
-      const restoredEntityData = restoredEntityResult.rows[0];
-      
-      if (!restoredEntityData) {
-        console.error(`DEBUG EntityStorage.restoreEntity: Failed to restore entity with ID ${id}`);
-        return undefined;
-      }
-      
-      // Map to Entity type to avoid circular references
-      // Ensure important values are explicitly set for consistency in the tests
-      const restoredEntity: Entity = {
-        id: restoredEntityData.id,
-        name: restoredEntityData.name,
-        code: restoredEntityData.code,
-        entityCode: restoredEntityData.entity_code,
-        ownerId: restoredEntityData.owner_id,
-        clientId: restoredEntityData.client_id,
-        // Always ensure active=true for restored entities regardless of DB value
-        active: true,
-        fiscalYearStart: restoredEntityData.fiscal_year_start,
-        fiscalYearEnd: restoredEntityData.fiscal_year_end,
-        taxId: restoredEntityData.tax_id,
-        address: restoredEntityData.address,
-        city: restoredEntityData.city,
-        state: restoredEntityData.state,
-        country: restoredEntityData.country,
-        postalCode: restoredEntityData.postal_code,
-        phone: restoredEntityData.phone,
-        email: restoredEntityData.email,
-        website: restoredEntityData.website,
-        industry: restoredEntityData.industry,
-        subIndustry: restoredEntityData.sub_industry,
-        employeeCount: restoredEntityData.employee_count,
-        foundedYear: restoredEntityData.founded_year,
-        annualRevenue: restoredEntityData.annual_revenue,
-        businessType: restoredEntityData.business_type,
-        publiclyTraded: restoredEntityData.publicly_traded,
-        stockSymbol: restoredEntityData.stock_symbol,
-        currency: restoredEntityData.currency,
-        timezone: restoredEntityData.timezone,
-        dataCollectionConsent: restoredEntityData.data_collection_consent,
-        lastAuditDate: restoredEntityData.last_audit_date,
-        createdAt: restoredEntityData.created_at,
-        updatedAt: restoredEntityData.updated_at,
-        // Always ensure deletedAt=null for restored entities
-        deletedAt: null
-      };
-      
-      console.log(`DEBUG EntityStorage.restoreEntity: Successfully restored entity with ID ${id}`);
-      
-      // Log the action to audit_logs
-      try {
-        const { auditLogStorage } = await import('./auditLogStorage');
-        await auditLogStorage.createAuditLog({
-          action: 'entity_restore',
-          performedBy: adminId,
-          details: JSON.stringify({
-            entityId: restoredEntity.id,
-            entityName: restoredEntity.name,
-            entityCode: restoredEntity.entityCode,
-            clientId: restoredEntity.clientId
-          })
-        });
-        console.log(`DEBUG EntityStorage.restoreEntity: Created audit log for entity restoration`);
-      } catch (auditError) {
-        // Log the error but don't fail the restore operation
-        console.error("Error creating audit log for entity restoration:", auditError);
-      }
-      
-      return restoredEntity;
-    } catch (error) {
-      handleDbError(error, "Error restoring entity");
-      return undefined;
-    }
+  async restoreEntity(id: number): Promise<Entity | null> {
+    const [entity] = await db.execute(sql`
+      UPDATE entities SET active = true, deleted_at = NULL WHERE id = ${id}
+      RETURNING *;
+    `);
+    return entity;
   }
 
   // Note: getUserEntityAccess and grantUserEntityAccess methods have been moved to userStorage.ts
@@ -1261,65 +938,25 @@ export class MemEntityStorage implements IEntityStorage {
    * This keeps the entity in standard queries but marks it as inactive
    * 
    * @param id - The ID of the entity to mark as inactive
-   * @param adminId - ID of the admin user performing the action (for audit logging)
-   * @returns The updated entity or undefined if not found
+   * @returns The updated entity or null if not found
    */
-  async setEntityInactive(id: number, adminId: number): Promise<Entity | undefined> {
-    console.log(`DEBUG MemEntityStorage.setEntityInactive: Setting entity ${id} as inactive by admin ID ${adminId}`);
-    
-    // Validate ID
-    if (isNaN(id) || id <= 0) {
-      console.error(`DEBUG MemEntityStorage.setEntityInactive: Invalid entity ID: ${id}`);
-      return undefined;
-    }
-    
+  async setEntityInactive(id: number): Promise<Entity | null> {
     // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
-      console.error(`DEBUG MemEntityStorage.setEntityInactive: Entity with ID ${id} not found`);
-      return undefined;
-    }
-    
-    // Make sure this isn't a deleted entity
-    if (entity.deletedAt) {
-      console.error(`DEBUG MemEntityStorage.setEntityInactive: Entity with ID ${id} is deleted, cannot modify`);
-      return undefined;
+      return null;
     }
     
     // Update entity to set active=false but explicitly keep deletedAt=null
-    const now = new Date();
-    
     const inactiveEntity: Entity = {
       ...entity,
       active: false,
       deletedAt: null, // Explicitly set to null to distinguish from deleted entities
-      updatedAt: now
+      updatedAt: new Date()
     };
     
     // Update in map
     this.entities.set(id, inactiveEntity);
-    
-    console.log(`DEBUG MemEntityStorage.setEntityInactive: Successfully set entity ${id} as inactive`);
-    
-    // Log the action to audit_logs if in a context with audit logging
-    try {
-      // Dynamic import to avoid circular dependencies
-      const { auditLogStorage } = await import('./auditLogStorage');
-      await auditLogStorage.createAuditLog({
-        action: 'entity_set_inactive',
-        performedBy: adminId,
-        details: JSON.stringify({
-          entityId: entity.id,
-          entityName: entity.name,
-          entityCode: entity.entityCode,
-          clientId: entity.clientId
-        })
-      });
-      console.log(`DEBUG MemEntityStorage.setEntityInactive: Created audit log for setting entity as inactive`);
-    } catch (auditError) {
-      // Log the error but don't fail the operation
-      console.error("Error creating audit log for setting entity as inactive:", auditError);
-    }
     
     return inactiveEntity;
   }
@@ -1396,76 +1033,40 @@ export class MemEntityStorage implements IEntityStorage {
    * Soft delete an entity by setting deletedAt timestamp and marking as inactive
    * 
    * @param id - The ID of the entity to delete
-   * @param adminId - ID of the admin user performing the deletion (for audit logging)
-   * @returns boolean indicating success
+   * @returns The deleted entity or null if not found
    */
-  async deleteEntity(id: number, adminId: number): Promise<boolean> {
-    console.log(`DEBUG MemEntityStorage.deleteEntity: Soft deleting entity with ID ${id} by admin ID ${adminId}`);
-    
+  async deleteEntity(id: number): Promise<Entity | null> {
     // First, get the entity to verify it exists
-    const entity = await this.getEntity(id);
+    const entity = this.entities.get(id);
     if (!entity) {
-      console.error(`DEBUG MemEntityStorage.deleteEntity: Entity with ID ${id} not found`);
-      return false;
+      return null;
     }
     
     // Update entity to set deletedAt and active to false
-    const now = new Date();
     const updatedEntity: Entity = {
       ...entity,
-      deletedAt: now,
-      updatedAt: now,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
       active: false
     };
     
     this.entities.set(id, updatedEntity);
     
-    console.log(`DEBUG MemEntityStorage.deleteEntity: Successfully soft deleted entity with ID ${id}`);
-    
-    // Log the action to audit_logs if in a context with audit logging
-    try {
-      // Dynamic import to avoid circular dependencies
-      const { auditLogStorage } = await import('./auditLogStorage');
-      await auditLogStorage.createAuditLog({
-        action: 'entity_delete',
-        performedBy: adminId,
-        details: JSON.stringify({
-          entityId: entity.id,
-          entityName: entity.name,
-          entityCode: entity.entityCode,
-          clientId: entity.clientId
-        })
-      });
-      console.log(`DEBUG MemEntityStorage.deleteEntity: Created audit log for entity deletion`);
-    } catch (auditError) {
-      // Log the error but don't fail the delete operation
-      console.error("Error creating audit log for entity deletion:", auditError);
-    }
-    
-    return true;
+    return updatedEntity;
   }
   
   /**
    * Restore a soft-deleted entity by clearing the deletedAt timestamp
+   * and setting active back to true
    * 
    * @param id - The ID of the entity to restore
-   * @param adminId - ID of the admin user performing the restoration (for audit logging)
-   * @returns The restored entity or undefined if not found/restored
+   * @returns The restored entity or null if not found
    */
-  async restoreEntity(id: number, adminId: number): Promise<Entity | undefined> {
-    console.log(`DEBUG MemEntityStorage.restoreEntity: Restoring entity with ID ${id} by admin ID ${adminId}`);
-    
-    // First, get the entity to verify it exists (include deleted entities)
+  async restoreEntity(id: number): Promise<Entity | null> {
+    // First, get the entity to verify it exists
     const entity = this.entities.get(id);
     if (!entity) {
-      console.error(`DEBUG MemEntityStorage.restoreEntity: Entity with ID ${id} not found`);
-      return undefined;
-    }
-    
-    // Can only restore if it was previously deleted
-    if (!entity.deletedAt) {
-      console.warn(`MemEntityStorage.restoreEntity: Entity with ID ${id} is not deleted, nothing to restore`);
-      return entity; // Return existing entity as it's already not deleted
+      return null;
     }
     
     // Perform restore by clearing deletedAt timestamp and setting active back to true
@@ -1477,28 +1078,6 @@ export class MemEntityStorage implements IEntityStorage {
     };
     
     this.entities.set(id, restoredEntity);
-    
-    console.log(`DEBUG MemEntityStorage.restoreEntity: Successfully restored entity with ID ${id}`);
-    
-    // Log the action to audit_logs if in a context with audit logging
-    try {
-      // Dynamic import to avoid circular dependencies
-      const { memAuditLogStorage } = await import('./auditLogStorage');
-      await memAuditLogStorage.createAuditLog({
-        action: 'entity_restore',
-        performedBy: adminId,
-        details: JSON.stringify({
-          entityId: entity.id,
-          entityName: entity.name,
-          entityCode: entity.entityCode,
-          clientId: entity.clientId
-        })
-      });
-      console.log(`DEBUG MemEntityStorage.restoreEntity: Created audit log for entity restoration`);
-    } catch (auditError) {
-      // Log the error but don't fail the restore operation
-      console.error("Error creating audit log for entity restoration:", auditError);
-    }
     
     return restoredEntity;
   }

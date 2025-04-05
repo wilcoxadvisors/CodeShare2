@@ -301,15 +301,9 @@ verificationRouter.post('/entities/:id/set-inactive', asyncHandler(async (req: R
   // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
-  // Find admin user
-  const adminUser = await storage.users.getUserByUsername('admin');
-  if (!adminUser) {
-    return res.status(500).json({ message: 'Admin user not found for entity operation' });
-  }
-  
   try {
     // Use the dedicated setEntityInactive method which properly handles the inactive state
-    const inactiveEntity = await storage.entities.setEntityInactive(entityId, adminUser.id);
+    const inactiveEntity = await storage.entities.setEntityInactive(entityId);
     
     if (!inactiveEntity) {
       return res.status(404).json({ message: 'Entity not found or could not be set as inactive' });
@@ -355,22 +349,14 @@ verificationRouter.delete('/entities/:id', asyncHandler(async (req: Request, res
   // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
-  // Find admin user
-  const adminUser = await storage.users.getUserByUsername('admin');
-  if (!adminUser) {
-    return res.status(500).json({ message: 'Admin user not found for entity operation' });
-  }
-  
   // Use the dedicated deleteEntity method which properly handles soft deletion
-  const success = await storage.entities.deleteEntity(entityId, adminUser.id);
+  const deletedEntity = await storage.entities.deleteEntity(entityId);
   
-  if (!success) {
+  if (!deletedEntity) {
     return res.status(404).json({ message: 'Entity not found or could not be deleted' });
   }
   
-  // Retrieve the updated entity to return it (includeDeleted=true to see soft-deleted entity)
-  const updatedEntity = await storage.entities.getEntity(entityId, true);
-  return res.json(updatedEntity);
+  return res.json(deletedEntity);
 }));
 
 /**
@@ -380,15 +366,9 @@ verificationRouter.post('/entities/:id/restore', asyncHandler(async (req: Reques
   // Use the storage instance passed to the function, not from app.locals
   const entityId = parseInt(req.params.id);
   
-  // Find admin user
-  const adminUser = await storage.users.getUserByUsername('admin');
-  if (!adminUser) {
-    return res.status(500).json({ message: 'Admin user not found for entity operation' });
-  }
-  
   try {
     // First try to restore the entity
-    const restoredEntity = await storage.entities.restoreEntity(entityId, adminUser.id);
+    const restoredEntity = await storage.entities.restoreEntity(entityId);
     
     if (!restoredEntity) {
       return res.status(404).json({ message: 'Entity not found or could not be restored' });
