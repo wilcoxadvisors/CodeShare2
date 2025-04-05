@@ -224,6 +224,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Export singleton instances
-export const storage = new DatabaseStorage();
+// Export only the memory storage instance - DB Storage is now initialized in index.ts
 export const memStorage = new MemStorage();

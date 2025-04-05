@@ -75,55 +75,80 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    log('Starting server initialization...');
+    
     // Initialize database with default data
+    log('Starting database initialization...');
     await initDatabase();
+    log('✅ Database initialization complete');
     
     // Initialize entity_ids usage monitoring
+    log('Starting entity IDs monitoring...');
     startEntityIdsMonitoring();
-    log('Entity IDs usage monitoring initialized');
+    log('✅ Entity IDs usage monitoring initialized');
     
     // Register API routes
+    log('Registering API routes...');
     const server = await registerRoutes(app);
+    log('✅ API routes registered');
     
     // Register form submission routes
+    log('Registering form routes...');
     registerFormRoutes(app);
+    log('✅ Form routes registered');
     
     // Register chat routes
+    log('Registering chat routes...');
     registerChatRoutes(app);
+    log('✅ Chat routes registered');
     
     // Register AI routes
+    log('Registering AI routes...');
     registerAIRoutes(app);
+    log('✅ AI routes registered');
     
     // Register AI analytics routes with broader data access
+    log('Registering AI analytics routes...');
     registerAIAnalyticsRoutes(app);
+    log('✅ AI analytics routes registered');
     
     // Register batch upload routes for optimized CSV imports
+    log('Registering batch upload routes...');
     registerBatchUploadRoutes(app, storage);
+    log('✅ Batch upload routes registered');
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
+    log('Setting up frontend serving...');
     if (app.get("env") === "development") {
       await setupVite(app, server);
+      log('✅ Vite development server set up');
     } else {
       serveStatic(app);
+      log('✅ Static file serving set up');
     }
     
     // Add 404 handler for unmatched routes *after* frontend routing
+    log('Adding 404 handler...');
     app.use((req, res) => notFoundHandler(req, res));
+    log('✅ 404 handler added');
 
     // Add global error handler
+    log('Adding global error handler...');
     app.use(errorHandler);
+    log('✅ Global error handler added');
 
     // ALWAYS serve the app on port 5000
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
     const port = 5000;
+    log('Starting HTTP server on port 5000...');
     server.listen({
       port,
       host: "0.0.0.0",
       reusePort: true,
     }, () => {
-      log(`serving on port ${port}`);
+      log(`✅ Server running successfully on port ${port}`);
     });
 
     // Setup graceful shutdown to properly close database connections
