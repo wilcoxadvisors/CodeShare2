@@ -1,8 +1,8 @@
 /**
  * Test script to verify client soft deletion and audit logging
  */
-import { clientStorage } from "./server/storage/clientStorage";
-import { auditLogStorage } from "./server/storage/auditLogStorage";
+import { clientStorage } from "../../server/storage/clientStorage";
+import { auditLogStorage } from "../../server/storage/auditLogStorage";
 
 async function testClientDeletion() {
   try {

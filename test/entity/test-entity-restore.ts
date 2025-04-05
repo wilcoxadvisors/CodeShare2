@@ -2,11 +2,11 @@
  * Test script to verify entity and client restoration functionality
  */
 
-import { db } from './server/db';
-import { entityStorage } from './server/storage/entityStorage';
-import { clientStorage } from './server/storage/clientStorage'; 
-import { auditLogStorage } from './server/storage/auditLogStorage';
-import { InsertEntity, InsertClient } from './shared/schema';
+import { db } from '../../server/db';
+import { entityStorage } from '../../server/storage/entityStorage';
+import { clientStorage } from '../../server/storage/clientStorage'; 
+import { auditLogStorage } from '../../server/storage/auditLogStorage';
+import { InsertEntity, InsertClient } from '../../shared/schema';
 
 async function testEntityRestore() {
   console.log("Starting entity and client restore test...");

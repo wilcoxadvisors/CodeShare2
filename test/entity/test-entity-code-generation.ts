@@ -2,10 +2,10 @@
  * Test script to verify entity code generation with 4-digit format
  */
 
-import { db } from './server/db';
-import { clients, entities, InsertEntity } from './shared/schema';
+import { db } from '../../server/db';
+import { clients, entities, InsertEntity } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
-import { entityStorage } from './server/storage/entityStorage';
+import { entityStorage } from '../../server/storage/entityStorage';
 
 async function testEntityCodeGeneration() {
   try {

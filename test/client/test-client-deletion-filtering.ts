@@ -4,9 +4,9 @@
  * but can be accessed when explicitly requesting deleted clients.
  */
 
-import { db } from './server/db';
-import { clientStorage } from './server/storage/clientStorage';
-import { InsertClient } from './shared/schema';
+import { db } from '../../server/db';
+import { clientStorage } from '../../server/storage/clientStorage';
+import { InsertClient } from '../../shared/schema';
 
 async function testClientDeletionFiltering() {
   console.log("Starting client deletion filtering test...");

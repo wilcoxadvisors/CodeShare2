@@ -1,10 +1,10 @@
 /**
  * Test script to verify entity soft deletion and audit logging
  */
-import { entityStorage } from "./server/storage/entityStorage";
-import { auditLogStorage } from "./server/storage/auditLogStorage";
-import { clientStorage } from "./server/storage/clientStorage";
-import { InsertEntity } from "./shared/schema";
+import { entityStorage } from "../../server/storage/entityStorage";
+import { auditLogStorage } from "../../server/storage/auditLogStorage";
+import { clientStorage } from "../../server/storage/clientStorage";
+import { InsertEntity } from "../../shared/schema";
 
 async function testEntityDeletion() {
   try {

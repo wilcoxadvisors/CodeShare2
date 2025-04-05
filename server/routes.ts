@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", (req, res, next) => {
     console.log("Login attempt with username:", req.body.username);
     
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: Error | null, user: any, info: { message: string }) => {
       if (err) {
         console.error("Error during authentication:", err);
         return next(err);
@@ -328,9 +328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/entities", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as AuthUser).id;
-      const entities = await storage.getEntitiesByUser(userId);
+      const entities = await storage.entities.getEntitiesByUser(userId);
       res.json(entities);
     } catch (error) {
+      console.error("Error fetching entities:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -338,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/entities/:id", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.id);
-      const entity = await storage.getEntity(entityId);
+      const entity = await storage.entities.getEntity(entityId);
       
       if (!entity) {
         return res.status(404).json({ message: "Entity not found" });
@@ -371,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true
       });
       
-      const entity = await storage.createEntity(validatedData);
+      const entity = await storage.entities.createEntity(validatedData);
       res.status(201).json({
         status: "success",
         data: entity
@@ -445,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Verify entity exists
         console.log(`DEBUG Route Update Entity: Fetching entity with ID ${entityId} from storage...`);
-        existingEntity = await storage.getEntity(entityId);
+        existingEntity = await storage.entities.getEntity(entityId);
       } catch (error) {
         // If the error is specifically about the ID being out of range, handle it gracefully
         if (error instanceof Error && error.message.includes("out of range for type integer")) {
@@ -514,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`DEBUG Route Update Entity: Calling storage.updateEntity with ID ${entityId}...`);
       
-      const updatedEntity = await storage.updateEntity(entityId, req.body);
+      const updatedEntity = await storage.entities.updateEntity(entityId, req.body);
       
       if (!updatedEntity) {
         console.error(`DEBUG Route Update Entity: Storage returned null/undefined after update for ID ${entityId}`);

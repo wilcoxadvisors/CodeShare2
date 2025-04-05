@@ -1,7 +1,7 @@
 /**
  * Test script to verify client code generation
  */
-import { clientStorage } from "./server/storage/clientStorage";
+import { clientStorage } from "../../server/storage/clientStorage";
 
 async function testClientCreation() {
   try {

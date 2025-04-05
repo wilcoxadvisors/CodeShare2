@@ -2,10 +2,10 @@
  * Test script to verify entity inactive filtering
  * This test confirms that inactive entities can be properly filtered from queries using the includeInactive parameter
  */
-import { db } from './server/db';
-import { Client, Entity, InsertClient, InsertEntity } from './shared/schema';
-import { entityStorage } from './server/storage/entityStorage';
-import { clientStorage } from './server/storage/clientStorage';
+import { db } from '../../server/db';
+import { Client, Entity, InsertClient, InsertEntity } from '../../shared/schema';
+import { entityStorage } from '../../server/storage/entityStorage';
+import { clientStorage } from '../../server/storage/clientStorage';
 import { nanoid } from 'nanoid';
 
 /**

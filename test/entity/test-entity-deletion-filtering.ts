@@ -1,10 +1,10 @@
 /**
  * Test script to verify entity soft deletion and proper filtering of deleted entities
  */
-import { entityStorage } from './server/storage/entityStorage';
-import { clientStorage } from './server/storage/clientStorage';
-import { auditLogStorage } from './server/storage/auditLogStorage';
-import { InsertEntity } from './shared/schema';
+import { entityStorage } from '../../server/storage/entityStorage';
+import { clientStorage } from '../../server/storage/clientStorage';
+import { auditLogStorage } from '../../server/storage/auditLogStorage';
+import { InsertEntity } from '../../shared/schema';
 
 /**
  * This test verifies that:
