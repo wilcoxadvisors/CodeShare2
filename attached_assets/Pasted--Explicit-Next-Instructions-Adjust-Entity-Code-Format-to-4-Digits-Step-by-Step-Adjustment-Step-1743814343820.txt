@@ -1,0 +1,127 @@
+🔍 Explicit Next Instructions: Adjust Entity Code Format to 4 Digits
+Step-by-Step Adjustment:
+✅ Step 1: Adjust Backend Code Generation
+Update your generateUniqueEntityCode function in entityStorage.ts to use a 4-digit numeric suffix:
+
+typescript
+Copy
+Edit
+async function generateUniqueEntityCode(clientCode: string): Promise<string> {
+  const existingEntities = await db
+    .select({ entityCode: entities.entityCode })
+    .from(entities)
+    .where(like(entities.entityCode, `${clientCode}-%`));
+
+  const existingNumbers = existingEntities
+    .map(e => parseInt(e.entityCode.split('-').pop() || '0', 10))
+    .filter(num => !isNaN(num));
+
+  const nextNumber = existingNumbers.length ? Math.max(...existingNumbers) + 1 : 1;
+
+  return `${clientCode}-${String(nextNumber).padStart(4, '0')}`;
+}
+Change explicitly made:
+
+padStart(3, '0') → padStart(4, '0')
+
+✅ Step 2: Update Memory Storage (Consistency)
+Update your MemEntityStorage similarly:
+
+typescript
+Copy
+Edit
+async createEntity(data) {
+  const client = this.clients.find(c => c.id === data.clientId);
+  if (!client) throw new Error("Client not found");
+
+  const entitiesForClient = this.entities.filter(e => e.clientId === data.clientId);
+  const nextNumber = entitiesForClient.length ? entitiesForClient.length + 1 : 1;
+  const entityCode = `${client.clientCode}-${String(nextNumber).padStart(4, '0')}`;
+
+  const newEntity = {
+    id: Date.now(),
+    clientId: data.clientId,
+    entityCode,
+    name: data.name,
+    type: data.type,
+    status: data.status || "active",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  this.entities.push(newEntity);
+  return newEntity;
+}
+✅ Step 3: Update Existing Entity Codes in Database
+Run a migration script (scripts/update_existing_entity_codes_4digit.ts) to update current entities:
+
+typescript
+Copy
+Edit
+// scripts/update_existing_entity_codes_4digit.ts
+
+import { db } from "../server/db";
+import { clients, entities } from "../shared/schema";
+import { eq } from "drizzle-orm";
+
+async function migrateEntityCodesTo4Digit() {
+  const allEntities = await db.select().from(entities);
+
+  const counters = new Map<number, number>();
+
+  for (const entity of allEntities) {
+    const clientId = entity.clientId;
+    const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
+    if (!client) {
+      console.error(`Client ID ${clientId} not found.`);
+      continue;
+    }
+
+    const clientCode = client.clientCode;
+    const currentCount = counters.get(clientId) || 0;
+    const newCount = currentCount + 1;
+    counters.set(clientId, newCount);
+
+    const entityCode = `${clientCode}-${String(newCount).padStart(4, '0')}`;
+
+    await db.update(entities)
+      .set({ entityCode })
+      .where(eq(entities.id, entity.id));
+
+    console.log(`Updated Entity ID ${entity.id} to code ${entityCode}`);
+  }
+
+  console.log("4-digit migration completed successfully.");
+}
+
+migrateEntityCodesTo4Digit().catch(console.error).finally(() => process.exit());
+Run explicitly via:
+
+bash
+Copy
+Edit
+npx tsx scripts/update_existing_entity_codes_4digit.ts
+✅ Step 4: Verify Entity Codes after Migration
+Explicitly verify updated format in database:
+
+sql
+Copy
+Edit
+SELECT id, name, entity_code FROM entities ORDER BY client_id, entity_code LIMIT 20;
+✅ Step 5: Explicit Documentation Update
+Update your documentation explicitly to reflect the 4-digit format:
+
+In docs/reports/auto-generated-entity-code-feature-report.md:
+
+markdown
+Copy
+Edit
+## Updated Format Example
+- Client Code: `A1B2C3D4E5`
+- Entity Codes:
+  - `A1B2C3D4E5-0001`
+  - `A1B2C3D4E5-0002`
+
+## Benefits
+- Explicit support for up to 9,999 entities per client.
+- Future-proof scalability.

@@ -74,8 +74,8 @@ async function generateUniqueEntityCode(clientId: number): Promise<string> {
       ? Math.max(...existingNumbers) + 1 
       : 1;
     
-    // Format: CLIENT-CODE-001 (padded to ensure consistent sorting)
-    return `${clientCode}-${String(nextNumber).padStart(3, '0')}`;
+    // Format: CLIENT-CODE-0001 (padded to ensure consistent sorting with 4 digits)
+    return `${clientCode}-${String(nextNumber).padStart(4, '0')}`;
   } catch (error) {
     console.error("Error generating unique entity code:", error);
     // Fallback to timestamp-based code if an error occurs
@@ -397,7 +397,7 @@ export class MemEntityStorage implements IEntityStorage {
         ? Math.max(...sequenceNumbers) + 1 
         : 1;
       
-      return `${clientCode}-${String(nextNumber).padStart(3, '0')}`;
+      return `${clientCode}-${String(nextNumber).padStart(4, '0')}`;
     } catch (error) {
       console.error("Error generating entity code in MemEntityStorage:", error);
       return `MEM-${Date.now().toString(36).toUpperCase()}`;
