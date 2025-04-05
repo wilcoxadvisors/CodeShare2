@@ -59,7 +59,7 @@ export interface IStorage {
   
   // Client-related shortcuts
   getClient(id: number): Promise<Client | undefined>;
-  getClients(): Promise<Client[]>;
+  getClients(includeDeleted?: boolean): Promise<Client[]>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
   
@@ -121,8 +121,8 @@ export class DatabaseStorage implements IStorage {
     return this.clients.getClient(id);
   }
   
-  async getClients(): Promise<Client[]> {
-    return this.clients.getClients();
+  async getClients(includeDeleted: boolean = false): Promise<Client[]> {
+    return this.clients.getClients(includeDeleted);
   }
   
   async createClient(client: InsertClient): Promise<Client> {
@@ -198,8 +198,8 @@ export class MemStorage implements IStorage {
     return this.clients.getClient(id);
   }
   
-  async getClients(): Promise<Client[]> {
-    return this.clients.getClients();
+  async getClients(includeDeleted: boolean = false): Promise<Client[]> {
+    return this.clients.getClients(includeDeleted);
   }
   
   async createClient(client: InsertClient): Promise<Client> {

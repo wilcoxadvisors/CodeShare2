@@ -60,7 +60,7 @@ async function generateUniqueClientCode(): Promise<string> {
  */
 export interface IClientStorage {
   getClient(id: number): Promise<Client | undefined>;
-  getClients(): Promise<Client[]>;
+  getClients(includeDeleted?: boolean): Promise<Client[]>;
   getClientsByUserId(userId: number): Promise<Client[]>;
   getClientByUserId(userId: number): Promise<Client | null>;
   createClient(client: InsertClient): Promise<Client>;
@@ -96,14 +96,20 @@ export class ClientStorage implements IClientStorage {
   
   /**
    * Get all clients
+   * @param includeDeleted - Whether to include soft-deleted clients
    */
-  async getClients(): Promise<Client[]> {
+  async getClients(includeDeleted: boolean = false): Promise<Client[]> {
     try {
-      return await db
+      const query = db
         .select()
-        .from(clients)
-        .where(isNull(clients.deletedAt)) // Only return non-deleted clients
-        .orderBy(asc(clients.name));
+        .from(clients);
+        
+      // Only filter out deleted clients if includeDeleted is false
+      if (!includeDeleted) {
+        query.where(isNull(clients.deletedAt)); // Only return non-deleted clients
+      }
+      
+      return await query.orderBy(asc(clients.name));
     } catch (error) {
       handleDbError(error, "Error retrieving clients");
       return [];
@@ -349,10 +355,16 @@ export class MemClientStorage implements IClientStorage {
   
   /**
    * Get all clients
+   * @param includeDeleted - Whether to include soft-deleted clients
    */
-  async getClients(): Promise<Client[]> {
-    return Array.from(this.clients.values())
-      .sort((a, b) => a.name.localeCompare(b.name));
+  async getClients(includeDeleted: boolean = false): Promise<Client[]> {
+    // Filter out deleted clients if includeDeleted is false
+    const clientsList = Array.from(this.clients.values());
+    const filteredClients = includeDeleted
+      ? clientsList 
+      : clientsList.filter(client => !client.deletedAt);
+      
+    return filteredClients.sort((a, b) => a.name.localeCompare(b.name));
   }
   
   /**

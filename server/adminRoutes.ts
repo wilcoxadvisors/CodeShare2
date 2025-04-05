@@ -485,8 +485,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       // Get all entities
       const entities = await storage.getEntities();
       
-      // Get all clients
-      const clients = await storage.getClients();
+      // Get all clients, including deleted ones for proper status display
+      const clients = await storage.getClients(true); // true = include deleted clients
       
       // Get all users for admin dashboard
       const users = await userStorage.getUsers();
