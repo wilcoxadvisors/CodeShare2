@@ -11,8 +11,10 @@ async function testEntityCodeGeneration() {
   try {
     console.log("Starting entity code generation test...");
     
-    // Find a client to use for testing
-    const testClients = await db.select().from(clients).limit(1);
+    // Find a client to use for testing 
+    const testClients = await db.query.clients.findMany({
+      limit: 1
+    });
     
     if (testClients.length === 0) {
       console.error("No clients found for testing. Please create a client first.");

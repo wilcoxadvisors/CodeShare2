@@ -66,6 +66,7 @@ export interface IClientStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
   deleteClient(id: number, adminId: number): Promise<boolean>;
+  restoreClient(id: number, adminId: number): Promise<Client | undefined>;
   
   // For MemClientStorage only - allows direct client creation for constructor use
   addClientDirectly?(client: Client): void;
@@ -253,6 +254,64 @@ export class ClientStorage implements IClientStorage {
       return false;
     }
   }
+  
+  /**
+   * Restore a soft-deleted client by clearing the deletedAt timestamp
+   * 
+   * @param id - The ID of the client to restore
+   * @param adminId - ID of the admin user performing the restoration (for audit logging)
+   * @returns The restored client or undefined if not found/restored
+   */
+  async restoreClient(id: number, adminId: number): Promise<Client | undefined> {
+    try {
+      // Get client details before restoration for verification and audit logging
+      const client = await this.getClient(id);
+      if (!client) {
+        throw new Error(`Client with ID ${id} not found`);
+      }
+      
+      // Can only restore if it was previously deleted
+      if (!client.deletedAt) {
+        console.warn(`Client with ID ${id} is not deleted, nothing to restore`);
+        return client; // Return existing client as it's already not deleted
+      }
+      
+      // Perform restore by clearing deletedAt timestamp and setting active back to true
+      const [restoredClient] = await db
+        .update(clients)
+        .set({
+          deletedAt: null,
+          updatedAt: new Date(),
+          active: true // Mark as active again
+        })
+        .where(eq(clients.id, id))
+        .returning();
+      
+      if (!restoredClient) {
+        console.error(`Failed to restore client with ID ${id}`);
+        return undefined;
+      }
+      
+      // Import the audit log storage module directly to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      
+      // Log this action in the audit log
+      await auditLogStorage.createAuditLog({
+        action: 'client_restore',
+        performedBy: adminId,
+        details: JSON.stringify({
+          clientId: id,
+          clientName: client.name,
+          clientCode: client.clientCode
+        })
+      });
+      
+      return restoredClient;
+    } catch (error) {
+      handleDbError(error, `Error restoring client ${id}`);
+      return undefined;
+    }
+  }
 }
 
 /**
@@ -412,6 +471,52 @@ export class MemClientStorage implements IClientStorage {
     });
     
     return true;
+  }
+  
+  /**
+   * Restore a soft-deleted client by clearing the deletedAt timestamp
+   * 
+   * @param id - The ID of the client to restore
+   * @param adminId - ID of the admin user performing the restoration (for audit logging)
+   * @returns The restored client or undefined if not found/restored
+   */
+  async restoreClient(id: number, adminId: number): Promise<Client | undefined> {
+    const client = this.clients.get(id);
+    if (!client) {
+      return undefined;
+    }
+    
+    // Can only restore if it was previously deleted
+    if (!client.deletedAt) {
+      console.warn(`MemClientStorage.restoreClient: Client with ID ${id} is not deleted, nothing to restore`);
+      return client; // Return existing client as it's already not deleted
+    }
+    
+    // Perform restore by clearing deletedAt timestamp and setting active back to true
+    const restoredClient = {
+      ...client,
+      deletedAt: null,
+      updatedAt: new Date(),
+      active: true // Mark as active again
+    };
+    
+    this.clients.set(id, restoredClient);
+    
+    // Import the audit log storage module directly to avoid circular dependencies
+    const { memAuditLogStorage } = await import('./auditLogStorage');
+    
+    // Log this action in the audit log
+    await memAuditLogStorage.createAuditLog({
+      action: 'client_restore',
+      performedBy: adminId,
+      details: JSON.stringify({
+        clientId: id,
+        clientName: client.name,
+        clientCode: client.clientCode
+      })
+    });
+    
+    return restoredClient;
   }
 }
 

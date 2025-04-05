@@ -28,6 +28,10 @@ export interface IAuditLogStorage {
   getAuditLogsByUser(userId: number, limit?: number): Promise<AuditLog[]>;
   getAuditLogsByAction(action: string, limit?: number): Promise<AuditLog[]>;
   getAuditLogsByDetails(searchTerm: string, limit?: number): Promise<AuditLog[]>;
+  
+  // Entity and client related audit logs
+  getAuditLogsByEntity(entityId: number, limit?: number): Promise<AuditLog[]>;
+  getAuditLogsByClient(clientId: number, limit?: number): Promise<AuditLog[]>;
 }
 
 /**
@@ -139,6 +143,56 @@ export class AuditLogStorage implements IAuditLogStorage {
       throw handleDbError(error, `searching audit logs for "${searchTerm}"`);
     }
   }
+
+  /**
+   * Get audit logs for a specific entity
+   * Searches in the details JSON field for entityId
+   */
+  async getAuditLogsByEntity(entityId: number, limit?: number): Promise<AuditLog[]> {
+    try {
+      const entityIdStr = entityId.toString();
+      // Search for entity actions in the details field
+      const query = db
+        .select()
+        .from(auditLogs)
+        .where(like(auditLogs.details, `%"entityId":${entityIdStr}%`))
+        .orderBy(desc(auditLogs.createdAt));
+      
+      // Apply limit if provided
+      const results = limit 
+        ? await query.limit(limit) 
+        : await query;
+      
+      return results;
+    } catch (error) {
+      throw handleDbError(error, `retrieving audit logs for entity ${entityId}`);
+    }
+  }
+  
+  /**
+   * Get audit logs for a specific client
+   * Searches in the details JSON field for clientId
+   */
+  async getAuditLogsByClient(clientId: number, limit?: number): Promise<AuditLog[]> {
+    try {
+      const clientIdStr = clientId.toString();
+      // Search for client actions in the details field
+      const query = db
+        .select()
+        .from(auditLogs)
+        .where(like(auditLogs.details, `%"clientId":${clientIdStr}%`))
+        .orderBy(desc(auditLogs.createdAt));
+      
+      // Apply limit if provided
+      const results = limit 
+        ? await query.limit(limit) 
+        : await query;
+      
+      return results;
+    } catch (error) {
+      throw handleDbError(error, `retrieving audit logs for client ${clientId}`);
+    }
+  }
 }
 
 /**
@@ -227,6 +281,48 @@ export class MemAuditLogStorage implements IAuditLogStorage {
   async getAuditLogsByDetails(searchTerm: string, limit?: number): Promise<AuditLog[]> {
     let logs = this.auditLogs
       .filter(log => log.details.includes(searchTerm))
+      .sort((a, b) => {
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        return bTime - aTime;
+      });
+    
+    if (limit) {
+      logs = logs.slice(0, limit);
+    }
+    
+    return logs;
+  }
+  
+  /**
+   * Get audit logs for a specific entity
+   * Searches in the details JSON field for entityId
+   */
+  async getAuditLogsByEntity(entityId: number, limit?: number): Promise<AuditLog[]> {
+    const entityIdStr = `"entityId":${entityId}`;
+    let logs = this.auditLogs
+      .filter(log => log.details.includes(entityIdStr))
+      .sort((a, b) => {
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        return bTime - aTime;
+      });
+    
+    if (limit) {
+      logs = logs.slice(0, limit);
+    }
+    
+    return logs;
+  }
+  
+  /**
+   * Get audit logs for a specific client
+   * Searches in the details JSON field for clientId
+   */
+  async getAuditLogsByClient(clientId: number, limit?: number): Promise<AuditLog[]> {
+    const clientIdStr = `"clientId":${clientId}`;
+    let logs = this.auditLogs
+      .filter(log => log.details.includes(clientIdStr))
       .sort((a, b) => {
         const bTime = b.createdAt ? b.createdAt.getTime() : 0;
         const aTime = a.createdAt ? a.createdAt.getTime() : 0;

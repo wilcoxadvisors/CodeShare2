@@ -21,7 +21,7 @@
  */
 import { db } from "../db";
 import { entities, Entity, InsertEntity, userEntityAccess, clients } from "@shared/schema";
-import { eq, and, asc, inArray, like } from "drizzle-orm";
+import { eq, and, asc, inArray, like, isNull, SQL } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -87,13 +87,20 @@ async function generateUniqueEntityCode(clientId: number): Promise<string> {
  * Interface for entity storage operations
  */
 export interface IEntityStorage {
-  getEntity(id: number): Promise<Entity | undefined>;
-  getEntities(): Promise<Entity[]>;
-  getEntitiesByUser(userId: number): Promise<Entity[]>;
-  getEntitiesByClient(clientId: number): Promise<Entity[]>;
+  getEntity(id: number, includeDeleted?: boolean): Promise<Entity | undefined>;
+  getEntities(includeDeleted?: boolean, includeInactive?: boolean): Promise<Entity[]>;
+  getEntitiesByUser(userId: number, includeDeleted?: boolean, includeInactive?: boolean): Promise<Entity[]>;
+  getEntitiesByClient(clientId: number, includeDeleted?: boolean, includeInactive?: boolean): Promise<Entity[]>;
   createEntity(entity: InsertEntity): Promise<Entity>;
   updateEntity(id: number, entity: Partial<Entity>): Promise<Entity | undefined>;
+  
+  // Explicit management of entity states
+  setEntityActive(id: number, adminId: number): Promise<Entity | undefined>;
+  setEntityInactive(id: number, adminId: number): Promise<Entity | undefined>;
+  
+  // Soft deletion and restoration
   deleteEntity(id: number, adminId: number): Promise<boolean>;
+  restoreEntity(id: number, adminId: number): Promise<Entity | undefined>;
   
   // Note: User Entity Access methods have been moved to userStorage.ts
 }
@@ -104,8 +111,12 @@ export interface IEntityStorage {
 export class EntityStorage implements IEntityStorage {
   /**
    * Get an entity by ID
+   * 
+   * @param id - The ID of the entity to retrieve
+   * @param includeDeleted - If true, return the entity even if it has been soft-deleted
+   * @returns The entity or undefined if not found
    */
-  async getEntity(id: number): Promise<Entity | undefined> {
+  async getEntity(id: number, includeDeleted: boolean = false): Promise<Entity | undefined> {
     try {
       // Validate ID
       if (isNaN(id) || id <= 0) {
@@ -113,13 +124,33 @@ export class EntityStorage implements IEntityStorage {
         return undefined;
       }
       
-      const [entity] = await db
-        .select()
-        .from(entities)
-        .where(eq(entities.id, id))
-        .limit(1);
-      
-      return entity || undefined;
+      // Create query with appropriate filters
+      if (includeDeleted) {
+        // Just filter by ID if we want to include deleted entities
+        const query = db
+          .select()
+          .from(entities)
+          .where(eq(entities.id, id))
+          .limit(1);
+        
+        const [entity] = await query;
+        return entity || undefined;
+      } else {
+        // Filter by ID and ensure the entity is not deleted
+        const query = db
+          .select()
+          .from(entities)
+          .where(
+            and(
+              eq(entities.id, id),
+              isNull(entities.deletedAt)
+            )
+          )
+          .limit(1);
+        
+        const [entity] = await query;
+        return entity || undefined;
+      }
     } catch (error) {
       handleDbError(error, "Error retrieving entity");
       return undefined;
@@ -128,10 +159,37 @@ export class EntityStorage implements IEntityStorage {
 
   /**
    * Get all entities
+   * 
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities
    */
-  async getEntities(): Promise<Entity[]> {
+  async getEntities(includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
     try {
-      return await db.select().from(entities);
+      // Start with conditions array
+      const conditions: SQL<unknown>[] = [];
+      
+      // Filter out deleted entities unless explicitly included
+      if (!includeDeleted) {
+        conditions.push(isNull(entities.deletedAt));
+      }
+      
+      // Filter out inactive entities unless explicitly included
+      if (!includeInactive) {
+        conditions.push(eq(entities.active, true));
+      }
+      
+      // Build the query based on conditions
+      let query = db.select().from(entities);
+      
+      // Apply conditions if any exist
+      if (conditions.length > 0) {
+        const whereClause = and(...conditions);
+        query = query.where(whereClause);
+      }
+      
+      // Execute the query
+      return await query;
     } catch (error) {
       handleDbError(error, "Error retrieving entities");
       return [];
@@ -141,14 +199,37 @@ export class EntityStorage implements IEntityStorage {
   /**
    * Get entities by user ID
    * This includes entities owned by the user and entities the user has access to
+   * 
+   * @param userId - The ID of the user
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities owned by or accessible to the user
    */
-  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+  async getEntitiesByUser(userId: number, includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
     try {
       // First, get all entities owned by the user
+      // Start with conditions array for owned entities
+      const ownedConditions: SQL<unknown>[] = [eq(entities.ownerId, userId)];
+      
+      // Apply filters based on parameters
+      if (!includeDeleted) {
+        // Filter out soft-deleted entities
+        ownedConditions.push(isNull(entities.deletedAt));
+      }
+      
+      if (!includeInactive) {
+        // Filter to only active entities
+        ownedConditions.push(eq(entities.active, true));
+      }
+      
+      // Build combined where clause with AND for owned entities
+      const ownedWhereClause = and(...ownedConditions);
+      
+      // Execute query for owned entities
       const ownedEntities = await db
         .select()
         .from(entities)
-        .where(eq(entities.ownerId, userId));
+        .where(ownedWhereClause);
       
       // Next, get all entity IDs the user has access to through userEntityAccess
       const accessResults = await db
@@ -164,10 +245,26 @@ export class EntityStorage implements IEntityStorage {
       }
       
       // Get the entities the user has access to
+      // Start with conditions array for access entities
+      const accessConditions: SQL<unknown>[] = [inArray(entities.id, accessEntityIds)];
+      
+      // Apply the same filters as with owned entities
+      if (!includeDeleted) {
+        accessConditions.push(isNull(entities.deletedAt));
+      }
+      
+      if (!includeInactive) {
+        accessConditions.push(eq(entities.active, true));
+      }
+      
+      // Build combined where clause with AND for access entities
+      const accessWhereClause = and(...accessConditions);
+      
+      // Execute query for access entities
       const accessEntities = await db
         .select()
         .from(entities)
-        .where(inArray(entities.id, accessEntityIds));
+        .where(accessWhereClause);
       
       // Combine and deduplicate
       const combinedEntities = [...ownedEntities];
@@ -188,14 +285,38 @@ export class EntityStorage implements IEntityStorage {
 
   /**
    * Get entities by client ID
+   * 
+   * @param clientId - The ID of the client
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities belonging to the client
    */
-  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
+  async getEntitiesByClient(clientId: number, includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
     try {
-      return await db
+      // Start with conditions array
+      const conditions: SQL<unknown>[] = [eq(entities.clientId, clientId)];
+      
+      // Apply deletion filter if needed
+      if (!includeDeleted) {
+        conditions.push(isNull(entities.deletedAt));
+      }
+      
+      // Apply inactive filter if needed
+      if (!includeInactive) {
+        conditions.push(eq(entities.active, true));
+      }
+      
+      // Build combined where clause with AND
+      const whereClause = and(...conditions);
+      
+      // Execute query with proper filtering
+      const results = await db
         .select()
         .from(entities)
-        .where(eq(entities.clientId, clientId))
+        .where(whereClause)
         .orderBy(asc(entities.name));
+      
+      return results;
     } catch (error) {
       handleDbError(error, "Error retrieving entities by client");
       return [];
@@ -292,6 +413,146 @@ export class EntityStorage implements IEntityStorage {
   }
 
   /**
+   * Explicitly set an entity as inactive WITHOUT soft-deleting it
+   * This keeps the entity in standard queries but marks it as inactive
+   * 
+   * @param id - The ID of the entity to mark as inactive
+   * @param adminId - ID of the admin user performing the action (for audit logging)
+   * @returns The updated entity or undefined if not found
+   */
+  async setEntityInactive(id: number, adminId: number): Promise<Entity | undefined> {
+    try {
+      console.log(`DEBUG EntityStorage.setEntityInactive: Setting entity ${id} as inactive by admin ID ${adminId}`);
+      
+      // First, get the entity to verify it exists and to capture its details for audit
+      const entity = await this.getEntity(id);
+      if (!entity) {
+        console.error(`DEBUG EntityStorage.setEntityInactive: Entity with ID ${id} not found`);
+        return undefined;
+      }
+      
+      // Make sure this isn't a deleted entity
+      if (entity.deletedAt) {
+        console.error(`DEBUG EntityStorage.setEntityInactive: Entity with ID ${id} is deleted, cannot modify`);
+        return undefined;
+      }
+      
+      // Update entity to set active=false but explicitly keep deletedAt=null
+      const now = new Date();
+      const [inactiveEntity] = await db
+        .update(entities)
+        .set({
+          active: false,
+          deletedAt: null, // Explicitly set to null to distinguish from deleted entities
+          updatedAt: now
+        })
+        .where(eq(entities.id, id))
+        .returning();
+      
+      if (!inactiveEntity) {
+        console.error(`DEBUG EntityStorage.setEntityInactive: Failed to set entity ${id} as inactive`);
+        return undefined;
+      }
+      
+      console.log(`DEBUG EntityStorage.setEntityInactive: Successfully set entity ${id} as inactive`);
+      
+      // Log the action to audit_logs
+      try {
+        const { auditLogStorage } = await import('./auditLogStorage');
+        await auditLogStorage.createAuditLog({
+          action: 'entity_set_inactive',
+          performedBy: adminId,
+          details: JSON.stringify({
+            entityId: entity.id,
+            entityName: entity.name,
+            entityCode: entity.entityCode,
+            clientId: entity.clientId
+          })
+        });
+        console.log(`DEBUG EntityStorage.setEntityInactive: Created audit log for setting entity as inactive`);
+      } catch (auditError) {
+        // Log the error but don't fail the operation
+        console.error("Error creating audit log for setting entity as inactive:", auditError);
+      }
+      
+      return inactiveEntity;
+    } catch (error) {
+      handleDbError(error, "Error setting entity as inactive");
+      return undefined;
+    }
+  }
+  
+  /**
+   * Explicitly set an entity as active
+   * This marks an inactive entity as active again
+   * 
+   * @param id - The ID of the entity to mark as active
+   * @param adminId - ID of the admin user performing the action (for audit logging)
+   * @returns The updated entity or undefined if not found
+   */
+  async setEntityActive(id: number, adminId: number): Promise<Entity | undefined> {
+    try {
+      console.log(`DEBUG EntityStorage.setEntityActive: Setting entity ${id} as active by admin ID ${adminId}`);
+      
+      // First, get the entity to verify it exists and to capture its details for audit
+      const entity = await this.getEntity(id);
+      if (!entity) {
+        console.error(`DEBUG EntityStorage.setEntityActive: Entity with ID ${id} not found`);
+        return undefined;
+      }
+      
+      // Make sure this isn't a deleted entity
+      if (entity.deletedAt) {
+        console.error(`DEBUG EntityStorage.setEntityActive: Entity with ID ${id} is deleted, cannot modify; use restoreEntity instead`);
+        return undefined;
+      }
+      
+      // Update entity to set active=true and ensure deletedAt=null
+      const now = new Date();
+      const [activeEntity] = await db
+        .update(entities)
+        .set({
+          active: true,
+          deletedAt: null, // Explicitly set to null to ensure consistency
+          updatedAt: now
+        })
+        .where(eq(entities.id, id))
+        .returning();
+      
+      if (!activeEntity) {
+        console.error(`DEBUG EntityStorage.setEntityActive: Failed to set entity ${id} as active`);
+        return undefined;
+      }
+      
+      console.log(`DEBUG EntityStorage.setEntityActive: Successfully set entity ${id} as active`);
+      
+      // Log the action to audit_logs
+      try {
+        const { auditLogStorage } = await import('./auditLogStorage');
+        await auditLogStorage.createAuditLog({
+          action: 'entity_set_active',
+          performedBy: adminId,
+          details: JSON.stringify({
+            entityId: entity.id,
+            entityName: entity.name,
+            entityCode: entity.entityCode,
+            clientId: entity.clientId
+          })
+        });
+        console.log(`DEBUG EntityStorage.setEntityActive: Created audit log for setting entity as active`);
+      } catch (auditError) {
+        // Log the error but don't fail the operation
+        console.error("Error creating audit log for setting entity as active:", auditError);
+      }
+      
+      return activeEntity;
+    } catch (error) {
+      handleDbError(error, "Error setting entity as active");
+      return undefined;
+    }
+  }
+
+  /**
    * Soft delete an entity by setting deletedAt timestamp
    * 
    * @param id - The ID of the entity to delete
@@ -314,9 +575,9 @@ export class EntityStorage implements IEntityStorage {
       const [deletedEntity] = await db
         .update(entities)
         .set({
-          deletedAt: now,
+          deletedAt: now, // Explicitly set deletedAt timestamp to mark as deleted
           updatedAt: now,
-          active: false
+          active: false   // Also set active to false for consistency
         })
         .where(eq(entities.id, id))
         .returning();
@@ -353,6 +614,76 @@ export class EntityStorage implements IEntityStorage {
       return false;
     }
   }
+  
+  /**
+   * Restore a soft-deleted entity by clearing the deletedAt timestamp
+   * 
+   * @param id - The ID of the entity to restore
+   * @param adminId - ID of the admin user performing the restoration (for audit logging)
+   * @returns The restored entity or undefined if not found/restored
+   */
+  async restoreEntity(id: number, adminId: number): Promise<Entity | undefined> {
+    try {
+      console.log(`DEBUG EntityStorage.restoreEntity: Restoring entity with ID ${id} by admin ID ${adminId}`);
+      
+      // First, get the entity to verify it exists and to capture its details for audit
+      // We need to include deleted entities in the search
+      const entity = await this.getEntity(id, true);
+      if (!entity) {
+        console.error(`DEBUG EntityStorage.restoreEntity: Entity with ID ${id} not found`);
+        return undefined;
+      }
+      
+      // Can only restore if it was previously deleted
+      if (!entity.deletedAt) {
+        console.warn(`EntityStorage.restoreEntity: Entity with ID ${id} is not deleted, nothing to restore`);
+        return entity; // Return existing entity as it's already not deleted
+      }
+      
+      // Perform restore by clearing deletedAt timestamp and setting active back to true
+      const now = new Date();
+      const [restoredEntity] = await db
+        .update(entities)
+        .set({
+          deletedAt: null,
+          updatedAt: now,
+          active: true // Mark as active again
+        })
+        .where(eq(entities.id, id))
+        .returning();
+      
+      if (!restoredEntity) {
+        console.error(`DEBUG EntityStorage.restoreEntity: Failed to restore entity with ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`DEBUG EntityStorage.restoreEntity: Successfully restored entity with ID ${id}`);
+      
+      // Log the action to audit_logs
+      try {
+        const { auditLogStorage } = await import('./auditLogStorage');
+        await auditLogStorage.createAuditLog({
+          action: 'entity_restore',
+          performedBy: adminId,
+          details: JSON.stringify({
+            entityId: entity.id,
+            entityName: entity.name,
+            entityCode: entity.entityCode,
+            clientId: entity.clientId
+          })
+        });
+        console.log(`DEBUG EntityStorage.restoreEntity: Created audit log for entity restoration`);
+      } catch (auditError) {
+        // Log the error but don't fail the restore operation
+        console.error("Error creating audit log for entity restoration:", auditError);
+      }
+      
+      return restoredEntity;
+    } catch (error) {
+      handleDbError(error, "Error restoring entity");
+      return undefined;
+    }
+  }
 
   // Note: getUserEntityAccess and grantUserEntityAccess methods have been moved to userStorage.ts
 }
@@ -384,36 +715,99 @@ export class MemEntityStorage implements IEntityStorage {
 
   /**
    * Get an entity by ID
+   *
+   * @param id - The ID of the entity to retrieve
+   * @param includeDeleted - If true, return the entity even if it has been soft-deleted
+   * @returns The entity or undefined if not found
    */
-  async getEntity(id: number): Promise<Entity | undefined> {
-    return this.entities.get(id);
+  async getEntity(id: number, includeDeleted: boolean = false): Promise<Entity | undefined> {
+    const entity = this.entities.get(id);
+    
+    // Return if entity doesn't exist or includeDeleted is true
+    if (!entity || includeDeleted) {
+      return entity;
+    }
+    
+    // Filter out soft-deleted entities
+    return entity.deletedAt ? undefined : entity;
   }
 
   /**
    * Get all entities
+   * 
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities
    */
-  async getEntities(): Promise<Entity[]> {
-    return Array.from(this.entities.values());
+  async getEntities(includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
+    const allEntities = Array.from(this.entities.values());
+    let result = allEntities;
+    
+    // Apply deletion filter if needed
+    if (!includeDeleted) {
+      result = result.filter(entity => !entity.deletedAt);
+    }
+    
+    // Apply inactive filter if needed
+    if (!includeInactive) {
+      result = result.filter(entity => entity.active);
+    }
+    
+    return result;
   }
 
   /**
    * Get entities by user ID
    * This includes entities owned by the user and entities the user has access to
+   * 
+   * @param userId - The ID of the user
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities owned by or accessible to the user
    */
-  async getEntitiesByUser(userId: number): Promise<Entity[]> {
+  async getEntitiesByUser(userId: number, includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
     // In memory implementation, we'll just return entities owned by the user
     // Access control is handled separately in UserEntityStorage
-    return Array.from(this.entities.values())
+    let entities = Array.from(this.entities.values())
       .filter(entity => entity.ownerId === userId);
+    
+    // Apply deletion filter
+    if (!includeDeleted) {
+      entities = entities.filter(entity => !entity.deletedAt);
+    }
+    
+    // Apply inactive filter
+    if (!includeInactive) {
+      entities = entities.filter(entity => entity.active);
+    }
+    
+    return entities;
   }
 
   /**
    * Get entities by client ID
+   * 
+   * @param clientId - The ID of the client
+   * @param includeDeleted - If true, include soft-deleted entities in results
+   * @param includeInactive - If true, include inactive (but not deleted) entities
+   * @returns Array of entities belonging to the client
    */
-  async getEntitiesByClient(clientId: number): Promise<Entity[]> {
-    return Array.from(this.entities.values())
-      .filter(entity => entity.clientId === clientId)
-      .sort((a, b) => a.name.localeCompare(b.name)); // Sort by name
+  async getEntitiesByClient(clientId: number, includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
+    let entities = Array.from(this.entities.values())
+      .filter(entity => entity.clientId === clientId);
+    
+    // Apply deletion filter
+    if (!includeDeleted) {
+      entities = entities.filter(entity => !entity.deletedAt);
+    }
+    
+    // Apply inactive filter
+    if (!includeInactive) {
+      entities = entities.filter(entity => entity.active);
+    }
+    
+    // Sort by name
+    return entities.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
@@ -574,6 +968,142 @@ export class MemEntityStorage implements IEntityStorage {
   }
   
   /**
+   * Explicitly set an entity as inactive WITHOUT soft-deleting it
+   * This keeps the entity in standard queries but marks it as inactive
+   * 
+   * @param id - The ID of the entity to mark as inactive
+   * @param adminId - ID of the admin user performing the action (for audit logging)
+   * @returns The updated entity or undefined if not found
+   */
+  async setEntityInactive(id: number, adminId: number): Promise<Entity | undefined> {
+    console.log(`DEBUG MemEntityStorage.setEntityInactive: Setting entity ${id} as inactive by admin ID ${adminId}`);
+    
+    // Validate ID
+    if (isNaN(id) || id <= 0) {
+      console.error(`DEBUG MemEntityStorage.setEntityInactive: Invalid entity ID: ${id}`);
+      return undefined;
+    }
+    
+    // First, get the entity to verify it exists
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.error(`DEBUG MemEntityStorage.setEntityInactive: Entity with ID ${id} not found`);
+      return undefined;
+    }
+    
+    // Make sure this isn't a deleted entity
+    if (entity.deletedAt) {
+      console.error(`DEBUG MemEntityStorage.setEntityInactive: Entity with ID ${id} is deleted, cannot modify`);
+      return undefined;
+    }
+    
+    // Update entity to set active=false but explicitly keep deletedAt=null
+    const now = new Date();
+    
+    const inactiveEntity: Entity = {
+      ...entity,
+      active: false,
+      deletedAt: null, // Explicitly set to null to distinguish from deleted entities
+      updatedAt: now
+    };
+    
+    // Update in map
+    this.entities.set(id, inactiveEntity);
+    
+    console.log(`DEBUG MemEntityStorage.setEntityInactive: Successfully set entity ${id} as inactive`);
+    
+    // Log the action to audit_logs if in a context with audit logging
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      await auditLogStorage.createAuditLog({
+        action: 'entity_set_inactive',
+        performedBy: adminId,
+        details: JSON.stringify({
+          entityId: entity.id,
+          entityName: entity.name,
+          entityCode: entity.entityCode,
+          clientId: entity.clientId
+        })
+      });
+      console.log(`DEBUG MemEntityStorage.setEntityInactive: Created audit log for setting entity as inactive`);
+    } catch (auditError) {
+      // Log the error but don't fail the operation
+      console.error("Error creating audit log for setting entity as inactive:", auditError);
+    }
+    
+    return inactiveEntity;
+  }
+  
+  /**
+   * Explicitly set an entity as active
+   * This marks an inactive entity as active again
+   * 
+   * @param id - The ID of the entity to mark as active
+   * @param adminId - ID of the admin user performing the action (for audit logging)
+   * @returns The updated entity or undefined if not found
+   */
+  async setEntityActive(id: number, adminId: number): Promise<Entity | undefined> {
+    console.log(`DEBUG MemEntityStorage.setEntityActive: Setting entity ${id} as active by admin ID ${adminId}`);
+    
+    // Validate ID
+    if (isNaN(id) || id <= 0) {
+      console.error(`DEBUG MemEntityStorage.setEntityActive: Invalid entity ID: ${id}`);
+      return undefined;
+    }
+    
+    // First, get the entity to verify it exists
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.error(`DEBUG MemEntityStorage.setEntityActive: Entity with ID ${id} not found`);
+      return undefined;
+    }
+    
+    // Make sure this isn't a deleted entity
+    if (entity.deletedAt) {
+      console.error(`DEBUG MemEntityStorage.setEntityActive: Entity with ID ${id} is deleted, cannot modify; use restoreEntity instead`);
+      return undefined;
+    }
+    
+    // Update entity to set active=true and ensure deletedAt=null
+    const now = new Date();
+    
+    const activeEntity: Entity = {
+      ...entity,
+      active: true,
+      deletedAt: null, // Explicitly set to null to ensure consistency
+      updatedAt: now
+    };
+    
+    // Update in map
+    this.entities.set(id, activeEntity);
+    
+    console.log(`DEBUG MemEntityStorage.setEntityActive: Successfully set entity ${id} as active`);
+    
+    // Log the action to audit_logs if in a context with audit logging
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      await auditLogStorage.createAuditLog({
+        action: 'entity_set_active',
+        performedBy: adminId,
+        details: JSON.stringify({
+          entityId: entity.id,
+          entityName: entity.name,
+          entityCode: entity.entityCode,
+          clientId: entity.clientId
+        })
+      });
+      console.log(`DEBUG MemEntityStorage.setEntityActive: Created audit log for setting entity as active`);
+    } catch (auditError) {
+      // Log the error but don't fail the operation
+      console.error("Error creating audit log for setting entity as active:", auditError);
+    }
+    
+    return activeEntity;
+  }
+  
+  /**
    * Soft delete an entity by setting deletedAt timestamp and marking as inactive
    * 
    * @param id - The ID of the entity to delete
@@ -624,6 +1154,64 @@ export class MemEntityStorage implements IEntityStorage {
     }
     
     return true;
+  }
+  
+  /**
+   * Restore a soft-deleted entity by clearing the deletedAt timestamp
+   * 
+   * @param id - The ID of the entity to restore
+   * @param adminId - ID of the admin user performing the restoration (for audit logging)
+   * @returns The restored entity or undefined if not found/restored
+   */
+  async restoreEntity(id: number, adminId: number): Promise<Entity | undefined> {
+    console.log(`DEBUG MemEntityStorage.restoreEntity: Restoring entity with ID ${id} by admin ID ${adminId}`);
+    
+    // First, get the entity to verify it exists (include deleted entities)
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.error(`DEBUG MemEntityStorage.restoreEntity: Entity with ID ${id} not found`);
+      return undefined;
+    }
+    
+    // Can only restore if it was previously deleted
+    if (!entity.deletedAt) {
+      console.warn(`MemEntityStorage.restoreEntity: Entity with ID ${id} is not deleted, nothing to restore`);
+      return entity; // Return existing entity as it's already not deleted
+    }
+    
+    // Perform restore by clearing deletedAt timestamp and setting active back to true
+    const restoredEntity: Entity = {
+      ...entity,
+      deletedAt: null,
+      updatedAt: new Date(),
+      active: true // Mark as active again
+    };
+    
+    this.entities.set(id, restoredEntity);
+    
+    console.log(`DEBUG MemEntityStorage.restoreEntity: Successfully restored entity with ID ${id}`);
+    
+    // Log the action to audit_logs if in a context with audit logging
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { memAuditLogStorage } = await import('./auditLogStorage');
+      await memAuditLogStorage.createAuditLog({
+        action: 'entity_restore',
+        performedBy: adminId,
+        details: JSON.stringify({
+          entityId: entity.id,
+          entityName: entity.name,
+          entityCode: entity.entityCode,
+          clientId: entity.clientId
+        })
+      });
+      console.log(`DEBUG MemEntityStorage.restoreEntity: Created audit log for entity restoration`);
+    } catch (auditError) {
+      // Log the error but don't fail the restore operation
+      console.error("Error creating audit log for entity restoration:", auditError);
+    }
+    
+    return restoredEntity;
   }
 }
 
