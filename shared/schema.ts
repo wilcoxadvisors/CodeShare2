@@ -10,6 +10,17 @@ export enum UserRole {
   CLIENT = "client"
 }
 
+// Journal Entry Status
+export enum JournalEntryStatus {
+  DRAFT = "draft",
+  POSTED = "posted",
+  VOID = "void",
+  PENDING_APPROVAL = "pending_approval",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+  VOIDED = "voided"
+}
+
 // User table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -178,15 +189,7 @@ export const journals = pgTable("journals", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Journal Entry Status
-export enum JournalEntryStatus {
-  DRAFT = "draft",
-  PENDING_APPROVAL = "pending_approval",
-  APPROVED = "approved",
-  POSTED = "posted",
-  REJECTED = "rejected",
-  VOIDED = "voided"
-}
+
 
 // Database enums for journal entries
 export const journalEntryStatusEnum = pgEnum('journal_entry_status', ['Draft', 'Posted', 'Reversed']);

@@ -11,8 +11,7 @@ import {
   insertEntitySchema, 
   insertAccountSchema, 
   insertJournalEntrySchema, 
-  insertJournalEntryLineSchema,
-  JournalEntryStatus
+  insertJournalEntryLineSchema
 } from "@shared/schema";
 import { registerAccountRoutes } from "./accountRoutes";
 import { 
@@ -683,7 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let entries;
       if (status && typeof status === 'string') {
-        entries = await storage.journalEntries.getJournalEntriesByStatus(entityId, status as JournalEntryStatus);
+        entries = await storage.journalEntries.getJournalEntriesByStatus(entityId, status);
       } else {
         entries = await storage.journalEntries.getJournalEntries(entityId);
       }
@@ -777,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Update journal entry if status is POSTED
-      if (entryData.status === JournalEntryStatus.POSTED) {
+      if (entryData.status === "posted") {
         await storage.journalEntry.updateJournalEntry(journalEntry.id, {
           postedBy: userId,
           postedAt: new Date()
@@ -809,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only allow updates to draft entries
-      if (existingEntry.status !== JournalEntryStatus.DRAFT) {
+      if (existingEntry.status !== "draft") {
         return res.status(400).json({ message: "Can only update draft journal entries" });
       }
       
@@ -823,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Update to POSTED status
-      if (updateData.status === JournalEntryStatus.POSTED && existingEntry.status !== JournalEntryStatus.POSTED) {
+      if (updateData.status === "posted" && existingEntry.status !== "posted") {
         await storage.journalEntry.updateJournalEntry(id, {
           postedBy: userId,
           postedAt: new Date()
@@ -926,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status === JournalEntryStatus.POSTED || entry.status === JournalEntryStatus.VOIDED) {
+      if (entry.status === "posted" || entry.status === "void") {
         return res.status(400).json({ message: "Cannot upload files to posted or voided journal entries" });
       }
       
@@ -973,13 +972,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status !== JournalEntryStatus.DRAFT) {
+      if (entry.status !== "draft") {
         return res.status(400).json({ message: "Only draft journal entries can be submitted for approval" });
       }
       
       // Update status to pending approval
       const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.PENDING_APPROVAL,
+        status: "pending_approval",
         requestedBy: userId,
         requestedAt: new Date(),
         updatedAt: new Date()
@@ -1003,13 +1002,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+      if (entry.status !== "pending_approval") {
         return res.status(400).json({ message: "Only pending approval journal entries can be approved" });
       }
       
       // Update status to approved
       const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.APPROVED,
+        status: "approved",
         approvedBy: userId,
         approvedAt: new Date(),
         updatedAt: new Date()
@@ -1033,7 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+      if (entry.status !== "pending_approval") {
         return res.status(400).json({ message: "Only pending approval journal entries can be rejected" });
       }
       
@@ -1044,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update status to rejected
       const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.REJECTED,
+        status: "rejected",
         rejectedBy: userId,
         rejectedAt: new Date(),
         rejectionReason,
@@ -1069,13 +1068,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status !== JournalEntryStatus.APPROVED) {
+      if (entry.status !== "approved") {
         return res.status(400).json({ message: "Only approved journal entries can be posted" });
       }
       
       // Update status to posted
       const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.POSTED,
+        status: "posted",
         postedBy: userId,
         postedAt: new Date(),
         updatedAt: new Date()
@@ -1099,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status !== JournalEntryStatus.POSTED) {
+      if (entry.status !== "posted") {
         return res.status(400).json({ message: "Only posted journal entries can be voided" });
       }
       
@@ -1110,7 +1109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update status to voided
       const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
-        status: JournalEntryStatus.VOIDED,
+        status: "void",
         rejectedBy: userId, // Use rejectedBy for void as well
         rejectedAt: new Date(),
         rejectionReason: voidReason, // Use rejectionReason for void reason
@@ -1135,7 +1134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      if (entry.status === JournalEntryStatus.VOIDED) {
+      if (entry.status === "voided") {
         return res.status(400).json({ message: "Voided journal entries cannot be duplicated" });
       }
       
@@ -1150,7 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: new Date(),
         reference: `COPY-${entry.reference}`,
         description: entry.description,
-        status: JournalEntryStatus.DRAFT,
+        status: "draft",
         createdAt: now,
         updatedAt: now
       };
@@ -1164,8 +1163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityId,
           accountId: line.accountId,
           description: line.description,
-          debit: line.debit,
-          credit: line.credit
+          type: line.type || (line.debit > 0 ? 'debit' : 'credit'),
+          amount: line.amount || (line.debit > 0 ? line.debit.toString() : line.credit.toString())
         });
       }
       
@@ -1254,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : undefined;
-      const status = req.query.status as JournalEntryStatus | undefined;
+      const status = req.query.status as string | undefined;
       
       // Fetch general ledger data
       const glEntries = await storage.reports.getGeneralLedger(entityId, {
