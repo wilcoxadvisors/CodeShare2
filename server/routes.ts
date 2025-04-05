@@ -28,6 +28,7 @@ import { registerAdminRoutes } from "./adminRoutes";
 import { registerJournalEntryRoutes } from "./journalEntryRoutes";
 import { registerLocationRoutes } from "./locationRoutes";
 import { registerDebugRoutes } from "./debugRoutes";
+import { registerVerificationRoutes } from "./verificationRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -1323,6 +1324,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Debug routes for development and testing
   registerDebugRoutes(app, storage);
+  
+  // Register Verification routes for testing
+  registerVerificationRoutes(app);
   
   // Endpoint to check if any accounts exist for testing
   app.get('/api/test/accounts', async (req, res) => {
