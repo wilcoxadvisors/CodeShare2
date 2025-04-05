@@ -6,21 +6,30 @@ import { db } from './db';
 import { users, UserRole } from '../shared/schema';
 import bcrypt from 'bcryptjs';
 import { userStorage } from './storage/userStorage';
-import { verificationRouter } from './routes/verificationRoutes';
+import { IStorage } from './storage';
 
-export function registerVerificationRoutes(app: Express) {
-  const router = express.Router();
+// Do NOT import verificationRouter from routes/verificationRoutes.ts to avoid circular dependencies
+
+export function registerVerificationRoutes(app: Express, storage: IStorage) {
+  // Verify storage is passed and available
+  if (!storage) {
+    console.error("ERROR: Storage not provided to registerVerificationRoutes");
+    throw new Error("Storage not provided to registerVerificationRoutes");
+  }
+  
+  // Make a new router for admin verification endpoints
+  const adminVerificationRouter = express.Router();
 
   /**
    * Register a test admin user for verification purposes
    * This route is only for development/testing and would be disabled in production
    */
-  router.post('/setup-test-admin', async (req, res) => {
+  adminVerificationRouter.post('/setup-test-admin', async (req, res) => {
     try {
       console.log('Verifying if test admin exists...');
       
-      // Check if admin already exists
-      const existingAdmin = await userStorage.getUserByUsername('admin');
+      // Check if admin already exists - use passed storage instead
+      const existingAdmin = await storage.users.getUserByUsername('admin');
       
       if (existingAdmin) {
         console.log('Test admin already exists, using existing admin');
@@ -76,9 +85,9 @@ export function registerVerificationRoutes(app: Express) {
     }
   });
 
-  // Mount the verification router for direct API endpoints
-  app.use('/api', verificationRouter);
+  // Mount the verification admin router - DON'T mount the API router here
+  // This prevents duplicate mounting of verification routes
+  app.use('/api/verification', adminVerificationRouter);
   
-  // Mount the verification admin router
-  app.use('/api/verification', router);
+  console.log('Verification admin routes registered at /api/verification');
 }

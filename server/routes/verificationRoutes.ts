@@ -5,13 +5,13 @@ import express from 'express';
 import { Request, Response } from 'express';
 import { IStorage } from '../storage';
 import bcrypt from 'bcryptjs';
-import { users, UserRole } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { UserRole } from '../../shared/schema';
 
-// Helper function for async request handlers
-const asyncHandler = (fn: Function) => (req: Request, res: Response, next: Function) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
+// Helper function for async request handlers - Fixed typing
+const asyncHandler = (fn: (req: Request, res: Response, next: Function) => Promise<any>) => 
+  (req: Request, res: Response, next: Function) => {
+    Promise.resolve(fn(req, res, next)).catch((err) => next(err));
+  };
 
 // Helper function to hash passwords
 const hashPassword = async (password: string): Promise<string> => {
@@ -19,14 +19,24 @@ const hashPassword = async (password: string): Promise<string> => {
   return bcrypt.hash(password, salt);
 };
 
-export const verificationRouter = express.Router();
+// Create a function that returns a new router with the storage object
+export const createVerificationRouter = (storage: IStorage) => {
+  // Validate storage is provided
+  if (!storage) {
+    throw new Error('Storage is required for verification routes');
+  }
+  
+  console.log('Creating verification router with storage:', !!storage);
+  
+  const verificationRouter = express.Router();
 
 /**
  * Register a test admin user for verification purposes
  * This route is only for development/testing and would be disabled in production
  */
 verificationRouter.post('/register-test-admin', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use the storage instance passed to the function, not from app.locals
+  // // Use directly passed storage instead of app.locals.storage
   
   // Check if admin already exists
   const existingAdmin = await storage.users.getUserByUsername('admin');
@@ -46,19 +56,15 @@ verificationRouter.post('/register-test-admin', asyncHandler(async (req: Request
   // Create admin user for testing
   const hashedPassword = await hashPassword('password123');
   
-  const [newAdmin] = await storage.db
-    .insert(users)
-    .values({
-      username: 'admin',
-      password: hashedPassword,
-      email: 'admin@example.com',
-      role: 'admin',
-      name: 'Admin User',
-      active: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    })
-    .returning();
+  // Use the createUser method from storage.users instead of direct DB access
+  const newAdmin = await storage.users.createUser({
+    username: 'admin',
+    password: hashedPassword,
+    email: 'admin@example.com',
+    role: 'admin',
+    name: 'Admin User',
+    active: true
+  });
   
   if (!newAdmin) {
     return res.status(500).json({ message: 'Failed to create test admin' });
@@ -79,8 +85,8 @@ verificationRouter.post('/register-test-admin', asyncHandler(async (req: Request
  * Get a list of all clients (Non-admin version for verification scripts)
  */
 verificationRouter.get('/clients', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
-  console.log("GET /api/verification/clients - storage:", storage);
+  // Use directly passed storage instead of app.locals.storage
+  console.log("GET /api/verification/clients - storage is available:", !!storage);
   // Use clients.getClients() instead of storage.getClients()
   const clients = await storage.clients.getClients();
   return res.json(clients);
@@ -90,8 +96,32 @@ verificationRouter.get('/clients', asyncHandler(async (req: Request, res: Respon
  * Create a new client (Non-admin version for verification scripts)
  */
 verificationRouter.post('/clients', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const clientData = req.body;
+  
+  // For verification routes, add the admin user ID if not provided
+  if (!clientData.userId) {
+    // Find the admin user and use their ID
+    const adminUser = await storage.users.getUserByUsername('admin');
+    
+    if (!adminUser) {
+      // Create admin user if it doesn't exist
+      const newAdmin = await storage.users.createUser({
+        username: 'admin',
+        password: 'password123',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        role: 'admin',
+        active: true
+      });
+      
+      clientData.userId = newAdmin.id;
+    } else {
+      clientData.userId = adminUser.id;
+    }
+  }
+  
+  console.log("Creating client with data (verification route):", JSON.stringify(clientData, null, 2));
   
   const newClient = await storage.clients.createClient(clientData);
   return res.status(201).json(newClient);
@@ -101,7 +131,7 @@ verificationRouter.post('/clients', asyncHandler(async (req: Request, res: Respo
  * Get a specific client by ID (Non-admin version for verification scripts)
  */
 verificationRouter.get('/clients/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const clientId = parseInt(req.params.id);
   
   const client = await storage.clients.getClient(clientId);
@@ -116,7 +146,7 @@ verificationRouter.get('/clients/:id', asyncHandler(async (req: Request, res: Re
  * Update a client (Non-admin version for verification scripts)
  */
 verificationRouter.put('/clients/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const clientId = parseInt(req.params.id);
   const clientData = req.body;
   
@@ -132,7 +162,7 @@ verificationRouter.put('/clients/:id', asyncHandler(async (req: Request, res: Re
  * Get a list of all entities (Non-admin version for verification scripts)
  */
 verificationRouter.get('/entities', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   
   // Get all entities with both active and inactive, but not deleted
   const entities = await storage.entities.getEntities(false, true);
@@ -143,7 +173,7 @@ verificationRouter.get('/entities', asyncHandler(async (req: Request, res: Respo
  * Create a new entity (Non-admin version for verification scripts)
  */
 verificationRouter.post('/entities', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const entityData = req.body;
   
   const newEntity = await storage.entities.createEntity(entityData);
@@ -154,10 +184,16 @@ verificationRouter.post('/entities', asyncHandler(async (req: Request, res: Resp
  * Get a specific entity by ID (Non-admin version for verification scripts)
  */
 verificationRouter.get('/entities/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
-  const entity = await storage.entities.getEntity(entityId);
+  // For verification routes, we need to optionally include deleted entities
+  // Get query param includeDeleted (default: false)
+  const includeDeleted = req.query.includeDeleted === 'true';
+  
+  console.log(`Getting entity ${entityId} with includeDeleted=${includeDeleted}`);
+  
+  const entity = await storage.entities.getEntity(entityId, includeDeleted);
   if (!entity) {
     return res.status(404).json({ message: 'Entity not found' });
   }
@@ -169,7 +205,7 @@ verificationRouter.get('/entities/:id', asyncHandler(async (req: Request, res: R
  * Update an entity (Non-admin version for verification scripts)
  */
 verificationRouter.put('/entities/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   const entityData = req.body;
   
@@ -185,7 +221,7 @@ verificationRouter.put('/entities/:id', asyncHandler(async (req: Request, res: R
  * Set an entity as inactive (Non-admin version for verification scripts)
  */
 verificationRouter.post('/entities/:id/set-inactive', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
   const updatedEntity = await storage.entities.updateEntity(entityId, { active: false, deletedAt: null });
@@ -200,7 +236,7 @@ verificationRouter.post('/entities/:id/set-inactive', asyncHandler(async (req: R
  * Soft delete an entity (Non-admin version for verification scripts)
  */
 verificationRouter.delete('/entities/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
   const updatedEntity = await storage.entities.updateEntity(entityId, { active: false, deletedAt: new Date() });
@@ -215,7 +251,8 @@ verificationRouter.delete('/entities/:id', asyncHandler(async (req: Request, res
  * Restore a soft-deleted entity (Non-admin version for verification scripts)
  */
 verificationRouter.post('/entities/:id/restore', asyncHandler(async (req: Request, res: Response) => {
-  const { storage } = req.app.locals;
+  // Use the storage instance passed to the function, not from app.locals
+  // // Use directly passed storage instead of app.locals.storage
   const entityId = parseInt(req.params.id);
   
   const updatedEntity = await storage.entities.updateEntity(entityId, { active: true, deletedAt: null });
@@ -225,3 +262,7 @@ verificationRouter.post('/entities/:id/restore', asyncHandler(async (req: Reques
   
   return res.json(updatedEntity);
 }));
+
+  // Return the router so it can be used in routes.ts
+  return verificationRouter;
+};

@@ -124,6 +124,8 @@ export class EntityStorage implements IEntityStorage {
         return undefined;
       }
       
+      console.log(`EntityStorage.getEntity: Getting entity ${id} with includeDeleted=${includeDeleted}`);
+      
       // Create query with appropriate filters
       if (includeDeleted) {
         // Just filter by ID if we want to include deleted entities
@@ -134,6 +136,10 @@ export class EntityStorage implements IEntityStorage {
           .limit(1);
         
         const [entity] = await query;
+        console.log(`EntityStorage.getEntity: Found entity with includeDeleted=true: ${entity ? 'Yes' : 'No'}`);
+        if (entity) {
+          console.log(`EntityStorage.getEntity: deletedAt=${entity.deletedAt}, active=${entity.active}`);
+        }
         return entity || undefined;
       } else {
         // Filter by ID and ensure the entity is not deleted
@@ -149,6 +155,7 @@ export class EntityStorage implements IEntityStorage {
           .limit(1);
         
         const [entity] = await query;
+        console.log(`EntityStorage.getEntity: Found entity with includeDeleted=false: ${entity ? 'Yes' : 'No'}`);
         return entity || undefined;
       }
     } catch (error) {

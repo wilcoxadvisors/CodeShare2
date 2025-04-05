@@ -28,7 +28,7 @@ import { registerAdminRoutes } from "./adminRoutes";
 import { registerJournalEntryRoutes } from "./journalEntryRoutes";
 import { registerLocationRoutes } from "./locationRoutes";
 import { registerDebugRoutes } from "./debugRoutes";
-import { verificationRouter } from "./routes/verificationRoutes";
+import { createVerificationRouter } from "./routes/verificationRoutes";
 import { 
   asyncHandler, 
   throwBadRequest, 
@@ -1329,12 +1329,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDebugRoutes(app, storage);
   
   // Register Verification routes for testing
+  // Create a verification router that has direct access to the storage object
+  console.log("Creating verification router with storage instance...");
+  const verificationRouterInstance = createVerificationRouter(storage);
+  
   // Mount verification routes at both /api/verification and directly at /api
-  app.use('/api/verification', verificationRouter);
+  app.use('/api/verification', verificationRouterInstance);
   
   // IMPORTANT: Also mount the verification routes directly at /api to support verification scripts
   // The test-verification-routes.js expects these routes to be available directly
-  app.use('/api', verificationRouter);
+  app.use('/api', verificationRouterInstance);
   
   // Endpoint to check if any accounts exist for testing
   app.get('/api/test/accounts', async (req, res) => {

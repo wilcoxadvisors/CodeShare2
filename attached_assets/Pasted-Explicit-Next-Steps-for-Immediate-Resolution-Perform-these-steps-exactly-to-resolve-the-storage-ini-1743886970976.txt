@@ -1,0 +1,74 @@
+Explicit Next Steps for Immediate Resolution:
+Perform these steps exactly to resolve the storage initialization issue:
+
+✅ Step-by-Step Guide:
+Verify Database Storage Initialization:
+
+Confirm in server.ts or your main entry point that storage is initialized like:
+
+typescript
+Copy
+Edit
+import { DatabaseStorage } from './storage';
+const storage = new DatabaseStorage(/* database connection params */);
+app.locals.storage = storage;
+Ensure Middleware Consistency:
+
+Check that app.locals.storage initialization occurs before any route registration in your main Express app file (server.ts or app.ts).
+
+Check Verification Route Registration:
+
+In your main routes file (routes.ts), verify:
+
+typescript
+Copy
+Edit
+import { registerVerificationRoutes } from './routes/verificationRoutes';
+
+export function registerRoutes(app: Express) {
+  // Verify storage is accessible at this point
+  if (!app.locals.storage) {
+    throw new Error("Storage not initialized before route registration");
+  }
+
+  // Pass storage explicitly if necessary
+  registerVerificationRoutes(app, app.locals.storage);
+}
+Update Verification Routes Handler:
+
+Modify the verification route handler definition to explicitly accept storage instance:
+
+typescript
+Copy
+Edit
+// verificationRoutes.ts
+import { Router, Express } from 'express';
+import { IStorage } from '../storage';
+
+export function registerVerificationRoutes(app: Express, storage: IStorage) {
+  const router = Router();
+
+  router.get('/api/clients', async (req, res) => {
+    const clients = await storage.clients.getClients();
+    res.json(clients);
+  });
+
+  router.get('/api/entities', async (req, res) => {
+    const entities = await storage.entities.getEntities();
+    res.json(entities);
+  });
+
+  // Ensure routes are correctly mounted
+  app.use(router);
+}
+Restart Server and Re-run Verification Script:
+
+bash
+Copy
+Edit
+npm run start
+cd verification-scripts
+node complete-form-verification.js
+Verify the Issue is Resolved:
+
+Check the output and ensure no 500 errors occur and that storage methods properly return client and entity data.
