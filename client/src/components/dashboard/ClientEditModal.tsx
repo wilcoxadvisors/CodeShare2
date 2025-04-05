@@ -182,6 +182,42 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
       setIsRestoreDialogOpen(false);
     }
   });
+  
+  // Create a mutation for reactivating an inactive entity
+  const reactivateEntityMutation = useMutation({
+    mutationFn: async (entityId: number) => {
+      const response = await fetch(`/api/admin/entities/${entityId}/reactivate`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reactivate entity');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the client details to update the entity list
+      queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+
+      toast({
+        title: "Success",
+        description: `Entity reactivated successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reactivate entity. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleUpdateSuccess = () => {
     console.log('Client update successful, closing modal.');
@@ -206,6 +242,11 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
   const handleRestoreEntity = (entity: Entity) => {
     setSelectedEntity(entity);
     setIsRestoreDialogOpen(true);
+  };
+  
+  const handleReactivateEntity = (entity: Entity) => {
+    // Direct call without confirmation dialog for reactivate
+    reactivateEntityMutation.mutate(entity.id);
   };
 
   // Determine entity status for display
@@ -305,7 +346,7 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                                   </Button>
                                 ) : (
                                   <>
-                                    {entity.active && (
+                                    {entity.active ? (
                                       <Button 
                                         variant="outline" 
                                         size="sm"
@@ -313,6 +354,15 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                                       >
                                         <Power className="h-4 w-4 mr-1" />
                                         <span className="hidden sm:inline">Set Inactive</span>
+                                      </Button>
+                                    ) : (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleReactivateEntity(entity)}
+                                      >
+                                        <Power className="h-4 w-4 mr-1" />
+                                        <span className="hidden sm:inline">Reactivate</span>
                                       </Button>
                                     )}
                                     <Button 

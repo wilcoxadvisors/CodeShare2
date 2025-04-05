@@ -33,6 +33,7 @@ import SetupSummaryCard from "../components/setup/SetupSummaryCard";
 import { ClientDetailModal } from "../components/ClientDetailModal";
 import { ClientEditModal } from "../components/dashboard/ClientEditModal";
 import RestoreConfirmationDialog from "../components/RestoreConfirmationDialog";
+import DeleteClientDialog from "../components/DeleteClientDialog";
 
 // Define client status types for the application
 type ClientStatus = 'Active' | 'Inactive' | 'Onboarding' | 'Pending Review';
@@ -507,6 +508,57 @@ function Dashboard() {
     setItemToRestore(item);
     setIsRestoreDialogOpen(true);
   };
+
+  // State for delete client confirmation dialog
+  const [isDeleteClientDialogOpen, setIsDeleteClientDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<{id: number, name: string} | null>(null);
+
+  // Handle opening the delete client confirmation dialog
+  const handleOpenDeleteClientDialog = (client: {id: number, name: string}) => {
+    setClientToDelete(client);
+    setIsDeleteClientDialogOpen(true);
+  };
+
+  // Client delete mutation
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: number) => {
+      const response = await fetch(`/api/admin/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete client');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // Close dialog and reset client to delete
+      setIsDeleteClientDialogOpen(false);
+      setClientToDelete(null);
+      
+      toast({
+        title: "Success",
+        description: "Client deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Client delete error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete client. Please try again.",
+        variant: "destructive",
+      });
+      setIsDeleteClientDialogOpen(false);
+    }
+  });
   
 
 
@@ -1591,10 +1643,18 @@ interface AdminDashboardData {
                                             <Pen className="mr-2 h-4 w-4" />
                                             Edit Client
                                           </DropdownMenuItem>
-                                          {isClientDeleted(client) && (
+                                          {isClientDeleted(client) ? (
                                             <DropdownMenuItem onClick={() => handleOpenRestoreDialog({id: client.id, name: client.name, type: 'client'})}>
                                               <RefreshCw className="mr-2 h-4 w-4" />
                                               Restore Client
+                                            </DropdownMenuItem>
+                                          ) : (
+                                            <DropdownMenuItem 
+                                              onClick={() => handleOpenDeleteClientDialog({id: client.id, name: client.name})}
+                                              className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                                            >
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              Delete Client
                                             </DropdownMenuItem>
                                           )}
                                         </DropdownMenuContent>
@@ -2416,6 +2476,17 @@ interface AdminDashboardData {
         itemType={itemToRestore?.type || 'client'}
         itemName={itemToRestore?.name || ''}
         onConfirm={handleRestoreConfirm}
+      />
+
+      {/* Delete Client Dialog */}
+      <DeleteClientDialog
+        isOpen={isDeleteClientDialogOpen}
+        onClose={() => setIsDeleteClientDialogOpen(false)}
+        clientId={clientToDelete?.id || null}
+        clientName={clientToDelete?.name || ''}
+        onConfirm={() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+        }}
       />
     </>
   );

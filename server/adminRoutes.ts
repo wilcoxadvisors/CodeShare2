@@ -69,6 +69,57 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   }));
   
   /**
+   * Soft delete a client 
+   * 
+   * @route DELETE /api/admin/clients/:id
+   * @param {number} id - The ID of the client to delete
+   * @returns {Object} - Success message
+   * @throws {401} - If not authenticated
+   * @throws {403} - If not an admin
+   * @throws {404} - If client not found
+   */
+  app.delete("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.id);
+      if (isNaN(clientId)) {
+        return res.status(400).json({ message: "Invalid client ID" });
+      }
+      
+      const user = req.user as any;
+      const adminId = user.id;
+      
+      // Check if client exists
+      const client = await storage.clients.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if client is already deleted
+      if (client.deletedAt) {
+        return res.status(400).json({ message: "Client is already deleted" });
+      }
+      
+      // Perform soft deletion
+      const success = await storage.clients.deleteClient(clientId, adminId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete client" });
+      }
+      
+      return res.status(200).json({
+        message: "Client deleted successfully",
+        clientId
+      });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }));
+  
+  /**
    * Restore a soft-deleted entity
    * 
    * @route PATCH /api/admin/entities/:id/restore
@@ -102,6 +153,64 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       });
     } catch (error) {
       console.error("Error restoring entity:", error);
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }));
+  
+  /**
+   * Reactivate an inactive (but not deleted) entity
+   * 
+   * @route PATCH /api/admin/entities/:id/reactivate
+   * @param {number} id - The ID of the entity to reactivate
+   * @returns {Entity} - The reactivated entity
+   * @throws {401} - If not authenticated
+   * @throws {403} - If not an admin
+   * @throws {404} - If entity not found
+   * @throws {400} - If entity is already active or is deleted
+   */
+  app.patch("/api/admin/entities/:id/reactivate", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const entityId = parseInt(req.params.id);
+      if (isNaN(entityId)) {
+        return res.status(400).json({ message: "Invalid entity ID" });
+      }
+      
+      const user = req.user as any;
+      const adminId = user.id;
+      
+      // First check if the entity exists and is inactive but not deleted
+      const entity = await storage.entities.getEntity(entityId, true); // includeDeleted=true to check the state
+      
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      if (entity.deletedAt) {
+        return res.status(400).json({ 
+          message: "Cannot reactivate a deleted entity. Use the restore endpoint first."
+        });
+      }
+      
+      if (entity.active) {
+        return res.status(400).json({ message: "Entity is already active" });
+      }
+      
+      // Attempt to reactivate the entity
+      const reactivatedEntity = await storage.entities.setEntityActive(entityId);
+      
+      if (!reactivatedEntity) {
+        return res.status(500).json({ message: "Failed to reactivate entity" });
+      }
+      
+      return res.status(200).json({
+        message: "Entity reactivated successfully",
+        entity: reactivatedEntity
+      });
+    } catch (error) {
+      console.error("Error reactivating entity:", error);
       if (error instanceof Error) {
         return res.status(400).json({ message: error.message });
       }
