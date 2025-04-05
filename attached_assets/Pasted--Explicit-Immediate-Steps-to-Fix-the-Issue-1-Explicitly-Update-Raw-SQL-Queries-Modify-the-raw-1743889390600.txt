@@ -1,0 +1,87 @@
+🎯 Explicit Immediate Steps to Fix the Issue:
+✅ 1. Explicitly Update Raw SQL Queries:
+Modify the raw SQL queries in your entityStorage.ts file explicitly like this:
+
+typescript
+Copy
+Edit
+// setEntityInactive explicitly
+async setEntityInactive(entityId: number): Promise<Entity> {
+  await this.db.execute(sql`
+    UPDATE entities SET active = false, deleted_at = NULL WHERE id = ${entityId};
+  `);
+  return this.getEntity(entityId, true);
+}
+
+// restoreEntity explicitly
+async restoreEntity(entityId: number): Promise<Entity> {
+  await this.db.execute(sql`
+    UPDATE entities SET active = true, deleted_at = NULL WHERE id = ${entityId};
+  `);
+  return this.getEntity(entityId, true);
+}
+
+// deleteEntity explicitly (soft-delete)
+async deleteEntity(entityId: number): Promise<Entity> {
+  await this.db.execute(sql`
+    UPDATE entities SET active = false, deleted_at = NOW() WHERE id = ${entityId};
+  `);
+  return this.getEntity(entityId, true);
+}
+Note explicitly: Make sure NOW() explicitly matches your database dialect (Postgres in your case).
+
+✅ 2. Ensure Correct Field Mapping (Explicitly):
+Verify your schema explicitly maps database fields correctly, e.g.:
+
+typescript
+Copy
+Edit
+export const entities = pgTable('entities', {
+  id: serial('id').primaryKey(),
+  active: boolean('active').default(true).notNull(),
+  deletedAt: timestamp('deleted_at', { mode: 'date' }),
+  // other fields...
+});
+✅ 3. Explicitly Ensure Response Handling in Routes:
+In verificationRoutes.ts, explicitly ensure responses handle undefined/null clearly:
+
+typescript
+Copy
+Edit
+router.post('/entities/:id/set-inactive', async (req, res) => {
+  const entity = await storage.entities.setEntityInactive(parseInt(req.params.id));
+  res.json({ active: entity.active, deletedAt: entity.deletedAt || null });
+});
+
+router.post('/entities/:id/restore', async (req, res) => {
+  const entity = await storage.entities.restoreEntity(parseInt(req.params.id));
+  res.json({ active: entity.active, deletedAt: entity.deletedAt || null });
+});
+✅ 4. Restart Server and Re-run Tests Explicitly:
+bash
+Copy
+Edit
+npm run start
+node verification-scripts/verify-entity-states.js
+🚧 If Issue Persists (Explicit Debugging):
+Explicitly add debugging logs immediately after SQL execution, for example:
+
+typescript
+Copy
+Edit
+const result = await this.db.execute(sql`...`);
+console.log("SQL update result:", result);
+Explicitly inspect these logs in server.log.
+
+🎯 Explicit Instruction for Agent:
+Please explicitly perform the following steps now:
+
+Explicitly update the raw SQL queries as provided.
+
+Explicitly confirm correct schema field mappings (deleted_at, active).
+
+Explicitly adjust response handling explicitly in route handlers.
+
+Explicitly rerun the verification scripts immediately afterward.
+
+Explicitly document all outcomes and report back explicitly with detailed results.
