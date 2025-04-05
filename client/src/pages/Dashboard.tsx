@@ -409,6 +409,7 @@ function Dashboard() {
   const [currentEditClient, setCurrentEditClient] = useState<any>(null);
   const [clientEntities, setClientEntities] = useState<any[]>([]);
   const [clientStatusFilter, setClientStatusFilter] = useState("all");
+  const [showDeletedEntities, setShowDeletedEntities] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [itemToRestore, setItemToRestore] = useState<{id: number, name: string, type: 'client' | 'entity'} | null>(null);
   const { toast } = useToast();
@@ -1558,7 +1559,7 @@ interface AdminDashboardData {
                                 <SelectItem value="all">All Statuses</SelectItem>
                                 <SelectItem value="Active">Active</SelectItem>
                                 <SelectItem value="Inactive">Inactive</SelectItem>
-                                <SelectItem value="Deleted">Deleted (Inactive)</SelectItem>
+                                <SelectItem value="Deleted">Deleted</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

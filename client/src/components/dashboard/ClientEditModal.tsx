@@ -9,6 +9,8 @@ import { Loader2, Pencil, Power, AlertCircle, PlusCircle, Trash2, ArchiveRestore
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClientEditModalProps {
@@ -46,6 +48,7 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
   const [isEntityEditModalOpen, setIsEntityEditModalOpen] = useState(false);
   const [isEntityAddModalOpen, setIsEntityAddModalOpen] = useState(false);
   const [selectedEntityForEdit, setSelectedEntityForEdit] = useState<Entity | null>(null);
+  const [showDeletedEntities, setShowDeletedEntities] = useState(false);
   
   // Dialog states
   const [isSetInactiveDialogOpen, setIsSetInactiveDialogOpen] = useState(false);
@@ -304,6 +307,20 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                   </Button>
                 </div>
                 
+                <div className="flex items-center mb-4">
+                  <Checkbox 
+                    id="showDeletedEntities" 
+                    checked={showDeletedEntities}
+                    onCheckedChange={(checked) => setShowDeletedEntities(checked === true)}
+                  />
+                  <Label
+                    htmlFor="showDeletedEntities"
+                    className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Show deleted entities
+                  </Label>
+                </div>
+                
                 {clientData.entities && clientData.entities.length > 0 ? (
                   <div className="overflow-auto">
                     <Table className="min-w-full">
@@ -316,7 +333,9 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {clientData.entities.map((entity: Entity) => (
+                        {clientData.entities
+                          .filter((entity: Entity) => showDeletedEntities || !entity.deletedAt)
+                          .map((entity: Entity) => (
                           <TableRow key={entity.id} className={entity.deletedAt ? "opacity-60" : ""}>
                             <TableCell className="font-medium">{entity.name}</TableCell>
                             <TableCell>
