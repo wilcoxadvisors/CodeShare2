@@ -653,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch all journal entry lines for these entries
       const hasJournalEntryLines = [];
       for (const entryId of journalEntryIds) {
-        const lines = await storage.getJournalEntryLines(entryId);
+        const lines = await storage.journalEntry.getJournalEntryLines(entryId);
         hasJournalEntryLines.push(...lines.filter(line => line.accountId === id));
         if (hasJournalEntryLines.length > 0) break; // Stop checking once we find any
       }
@@ -683,15 +683,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let entries;
       if (status && typeof status === 'string') {
-        entries = await storage.getJournalEntriesByStatus(entityId, status as JournalEntryStatus);
+        entries = await storage.journalEntries.getJournalEntriesByStatus(entityId, status as JournalEntryStatus);
       } else {
-        entries = await storage.getJournalEntries(entityId);
+        entries = await storage.journalEntries.getJournalEntries(entityId);
       }
       
       // Load lines for each entry
       const entriesWithLines = await Promise.all(
         entries.map(async (entry) => {
-          const lines = await storage.getJournalEntryLines(entry.id);
+          const lines = await storage.journalEntries.getJournalEntryLines(entry.id);
           return {
             ...entry,
             lines
@@ -708,13 +708,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/entities/:entityId/journal-entries/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const entry = await storage.getJournalEntry(id);
+      const entry = await storage.journalEntry.getJournalEntry(id);
       
       if (!entry) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      const lines = await storage.getJournalEntryLines(id);
+      const lines = await storage.journalEntry.getJournalEntryLines(id);
       
       res.json({
         ...entry,
@@ -763,12 +763,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create journal entry - pass the entire entry data which includes createdBy
-      const journalEntry = await storage.createJournalEntry(entryData);
+      const journalEntry = await storage.journalEntry.createJournalEntry(entryData);
       
       // Create lines
       const lines = await Promise.all(
         linesData.map(async (line) => 
-          storage.createJournalEntryLine({
+          storage.journalEntry.createJournalEntryLine({
             ...line,
             journalEntryId: journalEntry.id,
             entityId
@@ -778,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update journal entry if status is POSTED
       if (entryData.status === JournalEntryStatus.POSTED) {
-        await storage.updateJournalEntry(journalEntry.id, {
+        await storage.journalEntry.updateJournalEntry(journalEntry.id, {
           postedBy: userId,
           postedAt: new Date()
         });
@@ -803,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req.user as AuthUser).id;
       
       // Get existing entry
-      const existingEntry = await storage.getJournalEntry(id);
+      const existingEntry = await storage.journalEntry.getJournalEntry(id);
       if (!existingEntry) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -817,20 +817,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = insertJournalEntrySchema.partial().parse(req.body);
       
       // Update journal entry
-      const updatedEntry = await storage.updateJournalEntry(id, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(id, {
         ...updateData,
         updatedAt: new Date()
       });
       
       // Update to POSTED status
       if (updateData.status === JournalEntryStatus.POSTED && existingEntry.status !== JournalEntryStatus.POSTED) {
-        await storage.updateJournalEntry(id, {
+        await storage.journalEntry.updateJournalEntry(id, {
           postedBy: userId,
           postedAt: new Date()
         });
       }
       
-      const lines = await storage.getJournalEntryLines(id);
+      const lines = await storage.journalEntry.getJournalEntryLines(id);
       
       res.json({
         ...updatedEntry,
@@ -850,12 +850,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entityId = parseInt(req.params.entityId);
       const entryId = parseInt(req.params.id);
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      const lines = await storage.getJournalEntryLines(entryId);
+      const lines = await storage.journalEntry.getJournalEntryLines(entryId);
       
       res.json({
         ...entry,
@@ -872,12 +872,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entityId = parseInt(req.params.entityId);
       const entryId = parseInt(req.params.id);
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      const lines = await storage.getJournalEntryLines(entryId);
+      const lines = await storage.journalEntry.getJournalEntryLines(entryId);
       res.json(lines);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -890,12 +890,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entityId = parseInt(req.params.entityId);
       const entryId = parseInt(req.params.id);
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
       
-      const files = await storage.getJournalEntryFiles(entryId);
+      const files = await storage.journalEntry.getJournalEntryFiles(entryId);
       
       // Don't return the actual file data in the list response
       const filesWithoutData = files.map(file => ({
@@ -921,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -942,7 +942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedBy: userId
       };
       
-      const file = await storage.createJournalEntryFile(entryId, fileData);
+      const file = await storage.journalEntry.createJournalEntryFile(entryId, fileData);
       
       // Return the file metadata without the actual data
       const fileResponse = {
@@ -968,7 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -978,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update status to pending approval
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
         status: JournalEntryStatus.PENDING_APPROVAL,
         requestedBy: userId,
         requestedAt: new Date(),
@@ -998,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -1008,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update status to approved
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
         status: JournalEntryStatus.APPROVED,
         approvedBy: userId,
         approvedAt: new Date(),
@@ -1028,7 +1028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -1043,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update status to rejected
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
         status: JournalEntryStatus.REJECTED,
         rejectedBy: userId,
         rejectedAt: new Date(),
@@ -1064,7 +1064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -1074,7 +1074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update status to posted
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
         status: JournalEntryStatus.POSTED,
         postedBy: userId,
         postedAt: new Date(),
@@ -1094,7 +1094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -1109,7 +1109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update status to voided
-      const updatedEntry = await storage.updateJournalEntry(entryId, {
+      const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
         status: JournalEntryStatus.VOIDED,
         rejectedBy: userId, // Use rejectedBy for void as well
         rejectedAt: new Date(),
@@ -1130,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryId = parseInt(req.params.id);
       const userId = (req.user as AuthUser).id;
       
-      const entry = await storage.getJournalEntry(entryId);
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
       if (!entry || entry.entityId !== entityId) {
         return res.status(404).json({ message: "Journal entry not found" });
       }
@@ -1140,7 +1140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get lines of the original entry
-      const lines = await storage.getJournalEntryLines(entryId);
+      const lines = await storage.journalEntry.getJournalEntryLines(entryId);
       
       // Create a new journal entry as draft
       const now = new Date();
@@ -1155,11 +1155,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: now
       };
       
-      const newEntry = await storage.createJournalEntry(newEntryData);
+      const newEntry = await storage.journalEntry.createJournalEntry(newEntryData);
       
       // Duplicate all lines
       for (const line of lines) {
-        await storage.createJournalEntryLine({
+        await storage.journalEntry.createJournalEntryLine({
           journalEntryId: newEntry.id,
           entityId,
           accountId: line.accountId,
@@ -1189,7 +1189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDateObj = startDate ? new Date(startDate as string) : undefined;
       const endDateObj = endDate ? new Date(endDate as string) : undefined;
       
-      const trialBalance = await storage.generateTrialBalance(entityId, startDateObj, endDateObj);
+      const trialBalance = await storage.reports.generateTrialBalance(entityId, startDateObj, endDateObj);
       res.json(trialBalance);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1203,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const asOfDateObj = asOfDate ? new Date(asOfDate as string) : undefined;
       
-      const balanceSheet = await storage.generateBalanceSheet(entityId, asOfDateObj);
+      const balanceSheet = await storage.reports.generateBalanceSheet(entityId, asOfDateObj);
       res.json(balanceSheet);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1218,7 +1218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDateObj = startDate ? new Date(startDate as string) : undefined;
       const endDateObj = endDate ? new Date(endDate as string) : undefined;
       
-      const incomeStatement = await storage.generateIncomeStatement(entityId, startDateObj, endDateObj);
+      const incomeStatement = await storage.reports.generateIncomeStatement(entityId, startDateObj, endDateObj);
       res.json(incomeStatement);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1233,7 +1233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDateObj = startDate ? new Date(startDate as string) : undefined;
       const endDateObj = endDate ? new Date(endDate as string) : undefined;
       
-      const cashFlow = await storage.generateCashFlow(entityId, startDateObj, endDateObj);
+      const cashFlow = await storage.reports.generateCashFlow(entityId, startDateObj, endDateObj);
       res.json(cashFlow);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1257,7 +1257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const status = req.query.status as JournalEntryStatus | undefined;
       
       // Fetch general ledger data
-      const glEntries = await storage.getGeneralLedger(entityId, {
+      const glEntries = await storage.reports.getGeneralLedger(entityId, {
         startDate,
         endDate,
         accountId,
@@ -1329,7 +1329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/test/accounts', async (req, res) => {
     try {
       console.log('Fetching accounts...');
-      const accounts = await storage.listAccounts();
+      const accounts = await storage.accounts.listAccounts();
       console.log(`Found ${accounts ? accounts.length : 0} accounts`);
       if (accounts && accounts.length > 0) {
         console.log('First account:', JSON.stringify(accounts[0], null, 2));
