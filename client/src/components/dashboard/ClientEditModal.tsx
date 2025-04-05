@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClientEditForm } from "./ClientEditForm";
 import { EntityEditModal } from "./EntityEditModal";
 import { EntityAddModal } from "./EntityAddModal";
-import { Loader2, Pencil, Power, AlertCircle, PlusCircle } from "lucide-react";
+import { Loader2, Pencil, Power, AlertCircle, PlusCircle, Trash2, ArchiveRestore } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ interface Entity {
   active: boolean;
   industry?: string;
   clientId?: number;
+  deletedAt?: Date | null;
   [key: string]: any; // For other properties
 }
 
@@ -45,8 +46,12 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
   const [isEntityEditModalOpen, setIsEntityEditModalOpen] = useState(false);
   const [isEntityAddModalOpen, setIsEntityAddModalOpen] = useState(false);
   const [selectedEntityForEdit, setSelectedEntityForEdit] = useState<Entity | null>(null);
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
-  const [entityToToggle, setEntityToToggle] = useState<Entity | null>(null);
+  
+  // Dialog states
+  const [isSetInactiveDialogOpen, setIsSetInactiveDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null);
 
   const { data: clientData, isLoading, isError, error } = useQuery({
     queryKey: ["clientDetails", clientId],
@@ -55,23 +60,19 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
-  // Create a mutation for toggling entity status
-  const toggleEntityStatusMutation = useMutation({
-    mutationFn: async (entity: Entity) => {
-      const response = await fetch(`/api/admin/entities/${entity.id}`, {
-        method: 'PUT',
+  // Create a mutation for setting entity inactive
+  const setEntityInactiveMutation = useMutation({
+    mutationFn: async (entityId: number) => {
+      const response = await fetch(`/api/entities/${entityId}/set-inactive`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...entity,
-          active: !entity.active
-        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update entity status');
+        throw new Error(errorData.message || 'Failed to set entity inactive');
       }
 
       return response.json();
@@ -83,20 +84,102 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
 
       toast({
         title: "Success",
-        description: `Entity ${entityToToggle?.active ? 'deactivated' : 'activated'} successfully.`,
+        description: `Entity set to inactive successfully.`,
       });
 
       // Reset states
-      setIsStatusDialogOpen(false);
-      setEntityToToggle(null);
+      setIsSetInactiveDialogOpen(false);
+      setSelectedEntity(null);
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update entity status. Please try again.",
+        description: error.message || "Failed to set entity inactive. Please try again.",
         variant: "destructive",
       });
-      setIsStatusDialogOpen(false);
+      setIsSetInactiveDialogOpen(false);
+    }
+  });
+
+  // Create a mutation for soft-deleting entity
+  const softDeleteEntityMutation = useMutation({
+    mutationFn: async (entityId: number) => {
+      const response = await fetch(`/api/entities/${entityId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete entity');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the client details to update the entity list
+      queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+
+      toast({
+        title: "Success",
+        description: `Entity deleted successfully.`,
+      });
+
+      // Reset states
+      setIsDeleteDialogOpen(false);
+      setSelectedEntity(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete entity. Please try again.",
+        variant: "destructive",
+      });
+      setIsDeleteDialogOpen(false);
+    }
+  });
+
+  // Create a mutation for restoring entity
+  const restoreEntityMutation = useMutation({
+    mutationFn: async (entityId: number) => {
+      const response = await fetch(`/api/entities/${entityId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to restore entity');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the client details to update the entity list
+      queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+
+      toast({
+        title: "Success",
+        description: `Entity restored successfully.`,
+      });
+
+      // Reset states
+      setIsRestoreDialogOpen(false);
+      setSelectedEntity(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore entity. Please try again.",
+        variant: "destructive",
+      });
+      setIsRestoreDialogOpen(false);
     }
   });
 
@@ -110,14 +193,29 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
     setIsEntityEditModalOpen(true);
   };
 
-  const handleToggleEntityStatus = (entity: Entity) => {
-    setEntityToToggle(entity);
-    setIsStatusDialogOpen(true);
+  const handleSetEntityInactive = (entity: Entity) => {
+    setSelectedEntity(entity);
+    setIsSetInactiveDialogOpen(true);
   };
 
-  const confirmToggleStatus = () => {
-    if (entityToToggle) {
-      toggleEntityStatusMutation.mutate(entityToToggle);
+  const handleDeleteEntity = (entity: Entity) => {
+    setSelectedEntity(entity);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleRestoreEntity = (entity: Entity) => {
+    setSelectedEntity(entity);
+    setIsRestoreDialogOpen(true);
+  };
+
+  // Determine entity status for display
+  const getEntityStatusBadge = (entity: Entity) => {
+    if (entity.deletedAt) {
+      return <Badge variant="destructive">Deleted</Badge>;
+    } else if (!entity.active) {
+      return <Badge variant="outline">Inactive</Badge>;
+    } else {
+      return <Badge variant="default">Active</Badge>;
     }
   };
 
@@ -178,12 +276,10 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                       </TableHeader>
                       <TableBody>
                         {clientData.entities.map((entity: Entity) => (
-                          <TableRow key={entity.id}>
+                          <TableRow key={entity.id} className={entity.deletedAt ? "opacity-60" : ""}>
                             <TableCell className="font-medium">{entity.name}</TableCell>
                             <TableCell>
-                              <Badge variant={entity.active ? "default" : "outline"}>
-                                {entity.active ? 'Active' : 'Inactive'}
-                              </Badge>
+                              {getEntityStatusBadge(entity)}
                             </TableCell>
                             <TableCell>{entity.industry || 'N/A'}</TableCell>
                             <TableCell className="text-right">
@@ -196,14 +292,39 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
                                   <Pencil className="h-4 w-4 mr-1" />
                                   <span className="hidden sm:inline">Edit</span>
                                 </Button>
-                                <Button 
-                                  variant={entity.active ? "destructive" : "outline"} 
-                                  size="sm"
-                                  onClick={() => handleToggleEntityStatus(entity)}
-                                >
-                                  <Power className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">{entity.active ? 'Deactivate' : 'Activate'}</span>
-                                </Button>
+                                
+                                {/* Conditional action buttons based on entity state */}
+                                {entity.deletedAt ? (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleRestoreEntity(entity)}
+                                  >
+                                    <ArchiveRestore className="h-4 w-4 mr-1" />
+                                    <span className="hidden sm:inline">Restore</span>
+                                  </Button>
+                                ) : (
+                                  <>
+                                    {entity.active && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleSetEntityInactive(entity)}
+                                      >
+                                        <Power className="h-4 w-4 mr-1" />
+                                        <span className="hidden sm:inline">Set Inactive</span>
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant="destructive" 
+                                      size="sm"
+                                      onClick={() => handleDeleteEntity(entity)}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-1" />
+                                      <span className="hidden sm:inline">Delete</span>
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -248,31 +369,81 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
         />
       )}
 
-      {/* Confirmation Dialog for Status Toggle */}
-      <AlertDialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+      {/* Confirmation Dialog for Set Inactive */}
+      <AlertDialog open={isSetInactiveDialogOpen} onOpenChange={setIsSetInactiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {entityToToggle?.active ? 'Deactivate' : 'Activate'} Entity
-            </AlertDialogTitle>
+            <AlertDialogTitle>Set Entity Inactive</AlertDialogTitle>
             <AlertDialogDescription>
-              {entityToToggle?.active
-                ? `Are you sure you want to deactivate "${entityToToggle?.name}"? This will mark the entity as inactive in the system.`
-                : `Are you sure you want to activate "${entityToToggle?.name}"? This will mark the entity as active in the system.`}
+              Are you sure you want to set "{selectedEntity?.name}" to inactive? 
+              This will mark the entity as inactive in the system but it will still be available for viewing and reporting.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={confirmToggleStatus}
-              className={entityToToggle?.active ? 'bg-destructive hover:bg-destructive/90' : ''}
+              onClick={() => selectedEntity && setEntityInactiveMutation.mutate(selectedEntity.id)}
+              className="bg-amber-600 hover:bg-amber-700"
             >
-              {toggleEntityStatusMutation.isPending ? (
+              {setEntityInactiveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <AlertCircle className="h-4 w-4 mr-2" />
+                <Power className="h-4 w-4 mr-2" />
               )}
-              {entityToToggle?.active ? 'Deactivate' : 'Activate'}
+              Set Inactive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Dialog for Delete */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Entity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedEntity?.name}"? 
+              This will soft-delete the entity from the system. You can restore it later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => selectedEntity && softDeleteEntityMutation.mutate(selectedEntity.id)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {softDeleteEntityMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Dialog for Restore */}
+      <AlertDialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore Entity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to restore "{selectedEntity?.name}"? 
+              This will restore the deleted entity and make it available in the system again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => selectedEntity && restoreEntityMutation.mutate(selectedEntity.id)}
+            >
+              {restoreEntityMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <ArchiveRestore className="h-4 w-4 mr-2" />
+              )}
+              Restore
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

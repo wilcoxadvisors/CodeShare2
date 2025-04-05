@@ -1,0 +1,100 @@
+🚩 Next Immediate Task: Frontend UI Integration
+Clearly and explicitly proceed to implement the following frontend features:
+
+✅ 1. Implement Explicit Entity State Controls (UI buttons/actions)
+In the frontend React components (EntityDetails.tsx, ClientDetails.tsx):
+
+Explicitly add buttons/actions to allow the user to:
+
+Set inactive
+
+Soft-delete
+
+Restore
+
+Example explicit UI component integration (clear and concise):
+
+tsx
+Copy
+Edit
+import { Button } from '@/components/ui/button';
+import axios from 'axios';
+import { useMutation } from '@tanstack/react-query';
+
+// Example for setting an entity inactive explicitly
+const setEntityInactive = useMutation({
+  mutationFn: (entityId) => axios.post(`/api/admin/entities/${entityId}/set-inactive`),
+  onSuccess: () => {
+    // explicitly refresh entity state or show a clear message to user
+  }
+});
+
+<Button variant="warning" onClick={() => setEntityInactive.mutate(entity.id)}>
+  Set Inactive
+</Button>
+Explicitly replicate similar clear logic for Soft-delete (DELETE) and Restore (POST /restore) actions.
+
+✅ 2. Explicitly Implement Confirmation Dialogs for Safe Actions
+Explicitly and clearly prompt the user to confirm important actions explicitly.
+Use your existing Shadcn UI confirmation dialog explicitly:
+
+Example explicitly provided:
+
+tsx
+Copy
+Edit
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+const [confirmOpen, setConfirmOpen] = useState(false);
+
+<Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+  Delete Entity
+</Button>
+
+<Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Deletion</DialogTitle>
+    </DialogHeader>
+    <div>Are you sure you want to delete this entity?</div>
+    <DialogFooter>
+      <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+      <Button variant="destructive" onClick={() => {
+          deleteEntity.mutate(entity.id);
+          setConfirmOpen(false);
+        }}>
+        Confirm Delete
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+✅ 3. Explicitly Test UI and Document Results
+Explicitly perform thorough frontend testing to confirm:
+
+ ✅ Buttons explicitly trigger correct backend API endpoints.
+
+ ✅ UI clearly updates immediately after the action (real-time updates/refetch).
+
+ ✅ Confirmation dialogs explicitly appear and function as expected.
+
+Explicitly update docs/VERIFICATION_STATUS.md to clearly include UI verification results.
+
+📌 Immediate Follow-up Task After UI Completion:
+Once frontend UI controls explicitly function correctly, immediately proceed to explicitly address these homepage/blog issues explicitly listed below (in next explicit tasks):
+
+Blog Integration to Admin Dashboard
+
+AI Chat Reset Issue
+
+Financial Checklist & Consultation Form Errors
+
+✅ Agent Explicit Confirmation Required:
+Please explicitly confirm:
+
+Clear understanding of these frontend UI integration steps.
+
+Explicitly confirm immediate initiation of these tasks.
+
+Clearly notify immediately when ready for verification or if clarification is explicitly needed.
