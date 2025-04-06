@@ -1,42 +1,41 @@
 #!/usr/bin/env node
 
 /**
- * Direct Cleanup Script
+ * Direct Cleanup Script (CommonJS version)
  * 
  * This script allows direct execution of the client cleanup process
  * from the command line. It's intended for maintenance operations.
  * 
- * Usage: node scripts/direct-cleanup.js
+ * Usage: node scripts/direct-cleanup.cjs
  */
 
-// Import the db for direct database access
-import { db } from '../server/db.ts';
-import { eq, sql, lt, isNull, and, gt } from 'drizzle-orm';
-import { clients } from '../shared/schema.ts';
+const { Pool } = require('pg');
+const dotenv = require('dotenv');
 
-/**
- * Constants for the cleanup process
- */
+// Load environment variables
+dotenv.config();
+
+// Constants for the cleanup process
 const SYSTEM_USER_ID = 0;
 const DELETION_THRESHOLD_DAYS = 90;
 const PROTECTED_CLIENT_NAMES = ['Admin Client', 'OK', 'ONE1', 'Pepper'];
+
+// Create a database connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 /**
  * Get all clients that have been soft-deleted before the threshold date
  */
 async function getClientsDeletedBefore(thresholdDate) {
   try {
-    const deletedClients = await db
-      .select()
-      .from(clients)
-      .where(
-        and(
-          sql`${clients.deletedAt} IS NOT NULL`,
-          lt(clients.deletedAt, thresholdDate)
-        )
-      );
+    const result = await pool.query(
+      `SELECT * FROM clients WHERE deleted_at IS NOT NULL AND deleted_at < $1`,
+      [thresholdDate]
+    );
     
-    return deletedClients.filter(client => 
+    return result.rows.filter(client => 
       !PROTECTED_CLIENT_NAMES.includes(client.name)
     );
   } catch (error) {
@@ -49,17 +48,28 @@ async function getClientsDeletedBefore(thresholdDate) {
  * Permanently delete a client and all associated data
  */
 async function permanentlyDeleteClient(clientId) {
+  const client = await pool.connect();
+  
   try {
-    // In a real implementation, this would handle cascading deletes
-    // For this example, we'll just delete the client record
-    await db.delete(clients).where(eq(clients.id, clientId));
+    await client.query('BEGIN');
+    
+    // Delete client record
+    await client.query(
+      'DELETE FROM clients WHERE id = $1',
+      [clientId]
+    );
+    
+    await client.query('COMMIT');
     return { success: true };
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error(`Error permanently deleting client ${clientId}:`, error);
     return { 
       success: false, 
       error: error.message || 'Unknown error during client deletion' 
     };
+  } finally {
+    client.release();
   }
 }
 
@@ -145,6 +155,9 @@ async function main() {
     console.error(`An unexpected error occurred during the cleanup process: ${error.message || error}`);
     console.error(error);
     process.exit(1);
+  } finally {
+    // Close the database pool
+    await pool.end();
   }
 }
 

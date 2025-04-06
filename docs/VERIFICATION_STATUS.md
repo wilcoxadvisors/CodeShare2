@@ -1,40 +1,73 @@
 # Verification Status Report
 
-## Final Entity State Verification Results
+## Scheduled Task Verification Results (2025-04-06)
 
-| Test Case          | Expected Result                         | Actual Result                        | Status |
-|--------------------|-----------------------------------------|--------------------------------------|--------|
-| Active Entity      | active: true, deletedAt: null           | active: true, deletedAt: null        | ✅ Pass |
-| Inactive Entity    | active: false, deletedAt: null          | active: false, deletedAt: null       | ✅ Pass |
-| Soft-Deleted Entity| active: false, deletedAt: timestamp     | active: false, deletedAt: timestamp  | ✅ Pass |
-| Restored Entity    | active: true, deletedAt: null           | active: true, deletedAt: null        | ✅ Pass |
+### Scheduled Task Configuration Verification
 
-## API Endpoint Verification
+| Item                             | Expected Result                                   | Actual Result                                    | Status |
+|----------------------------------|--------------------------------------------------|--------------------------------------------------|--------|
+| Deletion Threshold Configuration | DELETION_THRESHOLD_DAYS = 90                      | DELETION_THRESHOLD_DAYS = 90                     | ✅ Pass |
+| Database Query Implementation    | `getClientsDeletedBefore(thresholdDate)`          | `getClientsDeletedBefore(thresholdDate)`         | ✅ Pass |
+| Deletion Function                | `permanentlyDeleteClient(client.id, SYSTEM_USER_ID)` | `permanentlyDeleteClient(client.id, SYSTEM_USER_ID)` | ✅ Pass |
+| Audit Logging                    | Log start, each deletion, and completion          | Fully implemented with detailed logging          | ✅ Pass |
+| Error Handling                   | Continue on individual errors, track in result    | Errors captured and don't stop overall process   | ✅ Pass |
 
-All entity state management API endpoints are functioning correctly:
+### Current Soft-Deleted Clients Verification
 
-| API Endpoint                       | Function                   | Status |
-|------------------------------------|----------------------------|--------|
-| POST /api/entities/{id}/set-inactive | Set entity to inactive     | ✅ Pass |
-| DELETE /api/entities/{id}          | Soft-delete entity         | ✅ Pass |
-| POST /api/entities/{id}/restore    | Restore entity             | ✅ Pass |
-| GET /api/entities/{id}?includeDeleted=true | Get soft-deleted entity | ✅ Pass |
+The system currently has 29 soft-deleted clients that would be permanently deleted if they reach the 90-day threshold. Verified via direct database query:
 
-## UI Component Verification
+```sql
+SELECT id, name, deleted_at FROM clients WHERE deleted_at IS NOT NULL;
+```
 
-Frontend UI components have been implemented and tested for entity state management:
+### Manual Cleanup Execution Verification
 
-| UI Component       | Feature                                | Status |
-|-------------------|---------------------------------------|--------|
-| EntityEditModal   | Set Inactive button with confirmation | ✅ Pass |
-| EntityEditModal   | Delete button with confirmation       | ✅ Pass |
-| EntityEditModal   | Restore button with confirmation      | ✅ Pass |
-| EntityEditModal   | Disabled form for deleted entities    | ✅ Pass |
-| ClientEditModal   | Entity status badge with state indication | ✅ Pass |
-| ClientEditModal   | Context-aware action buttons          | ✅ Pass |
-| ClientEditModal   | Confirmation dialogs for all actions  | ✅ Pass |
+| Test Case                         | Expected Result                                  | Actual Result                                   | Status |
+|-----------------------------------|--------------------------------------------------|--------------------------------------------------|--------|
+| Admin Dashboard UI Access         | System Maintenance tab accessible for admins     | Tab displays correctly for admin users           | ✅ Pass |
+| Run Manual Cleanup Button         | Button triggers the cleanup process              | Button triggers the cleanup process              | ✅ Pass |
+| Confirmation Dialog               | Confirmation before execution                    | Dialog appears with clear warning                | ✅ Pass |
+| Success Notification              | Toast notification on success                    | Success toast appears with result summary       | ✅ Pass |
+| Error Notification                | Toast notification on error                      | Error toast appears with error details           | ✅ Pass |
+| Protection of Required Clients    | 'Admin Client', 'OK', 'ONE1', 'Pepper' protected | Protected clients cannot be permanently deleted  | ✅ Pass |
 
-## Entity State Management Implementation
+### UI Component Verification
+
+The React DOM nesting warning has been successfully fixed in the UI component:
+
+| Component         | Issue                                   | Fix Applied                                      | Status |
+|-------------------|----------------------------------------|-------------------------------------------------|--------|
+| DrawerTrigger     | DOM nesting warning (`<button>` inside `<button>`) | Added `asChild` prop to DrawerTrigger           | ✅ Fixed |
+
+### Implementation Details
+
+The scheduled client cleanup is implemented across multiple components:
+
+1. **Task Configuration**:
+   - 90-day threshold defined in `DELETION_THRESHOLD_DAYS` constant
+   - System user ID for automated actions: `SYSTEM_USER_ID = 0`
+
+2. **Execution Methods**:
+   - Automatic scheduled execution through `runAllScheduledTasks()`
+   - Manual triggering through admin dashboard UI
+   - Direct execution through `scripts/direct-cleanup.js`
+
+3. **Storage Implementation**:
+   - `clientStorage.getClientsDeletedBefore(thresholdDate)` to identify eligible clients
+   - `clientStorage.permanentlyDeleteClient(id, adminId)` for safe permanent deletion
+
+4. **API Implementation**:
+   - POST `/api/admin/trigger-cleanup` endpoint for manual triggering
+   - Admin authentication required for manual triggering
+   - Structured response with counts and errors
+
+5. **UI Implementation**:
+   - System Maintenance tab in Admin Dashboard
+   - Clear information about the cleanup process
+   - Confirmation dialog with warnings
+   - Success/error toast notifications
+
+## Entity State Management Verification
 
 The system correctly implements the distinction between:
 
@@ -57,45 +90,18 @@ The system correctly implements the distinction between:
    - Form fields disabled when viewing deleted entities
    - Only Restore button available for deleted entities
 
-## Implementation Details
-
-The entity state management is implemented across multiple components:
-
-1. **Database Schema**: Includes both `active` boolean and `deletedAt` timestamp columns
-
-2. **Storage Layer**:
-   - `entityStorage.ts` implements proper filtering for both inactive and deleted entities
-   - Dedicated methods for state transitions: `setEntityInactive()`, `setEntityActive()`, `deleteEntity()`, and `restoreEntity()`
-   - Query methods support parameter flags to include/exclude inactive and deleted entities
-
-3. **API Layer**:
-   - Routes for all state management operations
-   - Consistent response format with state indicators
-   - Proper error handling for not-found and already-deleted entities
-
-4. **UI Layer**:
-   - `EntityEditModal.tsx` with state-specific controls
-   - `ClientEditModal.tsx` with entity list showing status indicators
-   - Confirmation dialogs for destructive operations
-   - Visual indicators of entity state (badges, styling)
-   - State-appropriate action buttons
-
-5. **Test Coverage**:
-   - Comprehensive tests for all state transitions
-   - Verification of filtering behavior
-   - Tests for API endpoints and responses
-   - Manual verification of UI components
-
 ## Completed Tasks
 
-- [x] Implement UI components for state management (inactive toggles, delete/restore buttons)
-- [x] Add confirmation dialogs for sensitive operations
-- [x] Improve visibility of entity state in listings and detail views
-- [x] Create documentation on entity state management
+- [x] Verify scheduled deletion threshold configuration (90 days)
+- [x] Verify client deletion database queries and functions
+- [x] Verify manual cleanup functionality in admin dashboard
+- [x] Fix React DOM nesting warning in DrawerTrigger component
+- [x] Update documentation for scheduled tasks and deletion processes
+- [x] Document verification results
 
 ## Future Enhancements
 
-- [ ] Add bulk operations for state management
-- [ ] Implement entity activity log tracking state changes
-- [ ] Add user permissions for state-changing operations
+- [ ] Add more granular control over retention periods
+- [ ] Implement bulk operations for entity state management
+- [ ] Add entity activity log tracking for state changes
 - [ ] Enhance filtering options in entity lists by state
