@@ -963,7 +963,7 @@ export const blogSubscribers = pgTable("blog_subscribers", {
   emailCount: integer("email_count").default(0),
   industry: text("industry"),
   source: text("source"),
-  unsubscribeToken: text("unsubscribe_token")
+  unsubscribeToken: text("unsubscribe_token").notNull().default('')
 });
 
 // Blog posts table schema

@@ -29,7 +29,7 @@ const BlogSection: React.FC<BlogSectionProps> = () => {
     }
   });
 
-  // Get blog posts from the API
+  // Get blog posts from the API, ensuring we handle the correct data structure
   const blogPosts = data?.posts || [];
   
   // Display at most 3 posts
