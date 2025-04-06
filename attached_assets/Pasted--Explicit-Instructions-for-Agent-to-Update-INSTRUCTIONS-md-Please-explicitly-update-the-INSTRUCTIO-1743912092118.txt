@@ -1,0 +1,51 @@
+🚩 Explicit Instructions for Agent to Update INSTRUCTIONS.md
+Please explicitly update the INSTRUCTIONS.md file to clearly reflect the latest state of the project. Your update should explicitly include these sections:
+
+✅ Completed Tasks (as of 2025-04-06)
+Explicitly include:
+
+ Authentication Middleware (Passport.js) explicitly verified and fixed (req.user implemented correctly).
+
+ Homepage content management schema (homepageContent) explicitly created and verified.
+
+ CRUD backend storage methods explicitly implemented for homepage content (contentStorage.ts).
+
+ Explicitly verified RESTful API endpoints (/api/content).
+
+ Admin dashboard UI component (AdminWebsiteContent.tsx) explicitly developed and initially integrated (further integration needed to preserve existing blog management).
+
+ Explicit integration and verification of blog posts CRUD with authentication (blogRoutes.ts).
+
+ Explicit creation and verification of detailed documentation for authentication and blog admin integration (BLOG_ADMIN_INTEGRATION_VERIFICATION.md).
+
+📌 Current State (Explicitly as of 2025-04-06)
+Clearly describe explicitly:
+
+Admin Dashboard integration partially complete:
+
+Issue Identified: Admin Dashboard UI (Dashboard.tsx) unintentionally replaced. Explicitly requires immediate correction to restore original UI and integrate enhanced components explicitly without disrupting existing blog management functionality.
+
+Blog Management: Explicitly verified blog authentication and CRUD backend functionality. AI-driven integration explicitly outlined but still pending explicit frontend integration.
+
+Homepage Content: Backend and API explicitly verified, Admin UI explicitly created but explicit integration with existing Admin Dashboard UI still required (currently needs fixing).
+
+🎯 Immediate Next Steps (Explicitly Ordered)
+Explicitly outline the following order clearly:
+
+Explicitly restore original Admin Dashboard UI from backup (Dashboard.tsx.bak).
+
+Explicitly integrate the dynamic homepage content component (AdminWebsiteContent.tsx) without losing existing blog management UI.
+
+Explicitly verify and document integration (homepage and blog) in ADMIN_CONTENT_INTEGRATION_VERIFICATION.md.
+
+Issue #6: Explicitly fix homepage blog previews and ensure the "View Articles" link leads to actual dynamic blog content.
+
+Issue #7: Explicitly resolve the subscription form submission error.
+
+Accounting Module: Explicitly begin the implementation of the accounting module, removing unnecessary historical data upload (HistoricalDataUpload.tsx), favoring batch journal entry uploads.
+
+Future Enhancements explicitly noted:
+
+AI-driven proactive website health monitoring and autonomous code updates.
+
+XAI integration to enhance explainability and transparency explicitly in the accounting system

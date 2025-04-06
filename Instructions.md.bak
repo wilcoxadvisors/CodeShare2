@@ -46,25 +46,14 @@
         * **Audit Log Storage:** ✅ Implemented audit log functionality to `server/storage/auditLogStorage.ts`.
         * **Content Storage:** ✅ Implemented content storage for website content management to `server/storage/contentStorage.ts`.
 
-* **Phase 4 (Website Content Management):** IN PROGRESS (As of 2025-04-06).
-    * **✅ Completed Tasks:**
-        * **Authentication Middleware:** ✅ Passport.js authentication middleware verified and fixed to correctly use req.user for authenticated user data.
-        * **Homepage Content Schema:** ✅ Created and verified homepageContent schema in `shared/schema.ts`.
-        * **Content Storage:** ✅ Implemented CRUD storage methods for homepage content in `server/storage/contentStorage.ts`.
-        * **RESTful API Endpoints:** ✅ Created and verified API endpoints for content management in `server/routes/contentRoutes.ts`.
-        * **Admin UI Component:** ✅ Developed AdminWebsiteContent.tsx component for managing website content with tabbed interface.
-        * **Blog Integration:** ✅ Verified blog posts CRUD operations with authentication in `server/routes/blogRoutes.ts`.
-        * **Admin Dashboard Integration:** ✅ Successfully integrated AdminWebsiteContent component into Dashboard.tsx while preserving existing blog management UI.
-    
-    * **📌 Current State:**
-        * Admin Dashboard integration is complete, with the AdminWebsiteContent component properly integrated into the content-management tab.
-        * Blog management functionality has been verified and integrated with authentication.
-        * Homepage content management is fully operational with backend and UI components.
-    
-    * **🎯 Immediate Next Steps:**
-        * Issue #6: Fix homepage blog previews and ensure the "View Articles" link leads to dynamic blog content.
-        * Issue #7: Resolve the subscription form submission error.
-        * Begin implementing the accounting module, focusing on batch journal entry uploads.
+* **Phase 4 (Website Content Management):** IN PROGRESS.
+    * **Authentication Middleware:** ✅ Passport.js authentication middleware explicitly verified and fixed to correctly use req.user for authenticated user data.
+    * **Homepage Content Schema:** ✅ Created and verified homepageContent schema in `shared/schema.ts` for managing website content.
+    * **Content Storage:** ✅ Implemented and verified CRUD storage methods for homepage content in `server/storage/contentStorage.ts`.
+    * **RESTful API Endpoints:** ✅ Created and verified API endpoints for content management in `server/routes/contentRoutes.ts`.
+    * **Admin UI Component:** ✅ Developed AdminWebsiteContent.tsx component for managing website content with tabbed interface.
+    * **Blog Integration:** ✅ Verified blog posts CRUD operations with proper authentication in `server/routes/blogRoutes.ts`.
+    * **Admin Dashboard Integration:** ✅ Successfully integrated AdminWebsiteContent component into Dashboard.tsx's content-management tab while preserving existing blog management UI.
 
 ### Verification Status (COMPLETED):
         * **Consolidation Storage:** ✅ Refactored consolidation group logic to `server/storage/consolidationStorage.ts`.
@@ -85,8 +74,6 @@
 - [x] Confirmed all modules and methods have clear, updated documentation.
 
 #### Next Immediate Task:
-- 📝 Fix Issue #6: Homepage blog previews and "View Articles" link must connect to dynamic blog content.
-- 📝 Fix Issue #7: Resolve subscription form submission error.
 - 📝 Move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
@@ -129,58 +116,46 @@
     * 📝 Ensure integration with CoA and GL.
     * 📝 Design/implement GAAP/IFRS financial statements with footnotes.
 
-**Phase C: Website Content Management**
+**Phase C: Reporting (Standard & Custom) & Data Collection**
 
-* **(Task C.1)** ✅ Authentication & Backend: Authentication middleware verified and fixed, with proper user access control.
-* **(Task C.2)** ✅ Content Schema & Storage: Homepage content schema and storage methods created and verified.
-* **(Task C.3)** ✅ Admin UI Component: AdminWebsiteContent component developed with tabbed interface for content management.
-* **(Task C.4)** ✅ Dashboard Integration: AdminWebsiteContent component integrated into Dashboard while preserving existing UI.
-* **(Task C.5)** Blog Management & Integration:
-    * ✅ Backend CRUD operations verified
-    * 📝 Fix homepage blog previews and "View Articles" link (Issue #6)
-    * 📝 Resolve subscription form submission error (Issue #7)
-
-**Phase D: Reporting (Standard & Custom) & Data Collection**
-
-* **(Task D.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
-* **(Task D.2)** Custom Reporting:
+* **(Task C.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
+* **(Task C.2)** Custom Reporting:
     * Define backend API capabilities for fetching data with flexible filters.
     * Build a frontend UI for custom report building.
-* **(Task D.3)** Data Collection and Analysis:
+* **(Task C.3)** Data Collection and Analysis:
     * Implement data collection mechanisms.
     * Ensure anonymization, privacy policies, and user consent.
     * Design for AI/ML and forecasting.
     * Prioritize state-of-the-art, innovative, customer-focused, easy-to-use solutions.
     * Create a great design (trustworthy, trendy, fun).
 
-**Phase E: API Integrations & Automation**
+**Phase D: API Integrations & Automation**
 
-* **(Task E.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
-* **(Task E.2)** Automate JE Creation: From fetched API data (AI assistance).
+* **(Task D.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
+* **(Task D.2)** Automate JE Creation: From fetched API data (AI assistance).
     * **(AI Assistance):** Explore Plaid, document analysis. Odoo/Sage Intacct inspiration.
 
-**Phase F: AI/ML & Predictive Forecasting**
+**Phase E: AI/ML & Predictive Forecasting**
 
-* **(Task F.1)** Verify Python Service Integration: Check DB access for `python_service/ml_service.py`.
-* **(Task F.2)** Implement AI/ML and Predictive Forecasting: Models for forecasting, auto-categorization, anomaly detection, NLP queries. Advanced analytics features. Prioritize state-of-the-art, innovative design.
-* **(Task F.3)** Implement Other AI Features: Auto-categorization, anomaly detection, NLP from plans.
+* **(Task E.1)** Verify Python Service Integration: Check DB access for `python_service/ml_service.py`.
+* **(Task E.2)** Implement AI/ML and Predictive Forecasting: Models for forecasting, auto-categorization, anomaly detection, NLP queries. Advanced analytics features. Prioritize state-of-the-art, innovative design.
+* **(Task E.3)** Implement Other AI Features: Auto-categorization, anomaly detection, NLP from plans.
 
-**Phase G: Future Enhancements**
+**Phase F: Deferred Features & Final Polish**
 
-* **(Task G.1)** ✅ Implement Client Edit/Deactivate (Done).
-* **(Task G.2)** Comprehensive Testing: Expand unit, integration, E2E tests.
-* **(Task G.3)** Documentation: Update all technical and user documentation.
-* **(Task G.4)** Deployment Prep: Finalize cloud configuration, CI/CD, monitoring.
-* **(Task G.5)** AI-driven proactive website health monitoring and autonomous code updates.
-* **(Task G.6)** XAI integration to enhance explainability and transparency in the accounting system.
+* **(Task F.1)** ✅ Implement Client Edit/Deactivate (Done).
+* **(Task F.2)** Fix "Use Client Data" Button (Bug 6).
+* **(Task F.3)** Comprehensive Testing: Expand unit, integration, E2E tests.
+* **(Task F.4)** Documentation: Update all technical and user documentation.
+* **(Task F.5)** Deployment Prep: Finalize cloud configuration, CI/CD, monitoring.
 
-**Phase H: Future-Proofing (Long Term)**
+**Phase G: Future-Proofing (Long Term)**
 
-* **(Task H.1)** Explore Blockchain & IoT integrations.
+* **(Task G.1)** Explore Blockchain & IoT integrations.
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Focus on fixing Issues #6 and #7, then move to **Task B.3: Accounts Payable Backend Foundation**.
+* **Prioritize:** Focus on **Task B.3: Accounts Payable Backend Foundation**.
 * **Maintain Structure:** Keep the client-specific accounting design consistent. Follow established patterns (e.g., modular storage).
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
