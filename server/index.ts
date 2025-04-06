@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
+import blogRoutes from "./routes/blogRoutes";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
 
@@ -124,6 +125,11 @@ app.use((req, res, next) => {
       registerBatchUploadRoutes(app, batchStorage);
     });
     log('✅ Batch upload routes registered');
+    
+    // Register blog routes
+    log('Registering blog routes...');
+    app.use('/api/blog', blogRoutes);
+    log('✅ Blog routes registered');
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled

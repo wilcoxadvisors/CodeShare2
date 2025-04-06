@@ -11,6 +11,7 @@ import {
   consultationSubmissions, ConsultationSubmission, InsertConsultationSubmission,
   checklistFiles, ChecklistFile, InsertChecklistFile,
   blogSubscribers, BlogSubscriber, InsertBlogSubscriber,
+  blogPosts, BlogPost, InsertBlogPost,
   locations, Location, InsertLocation
 } from "@shared/schema";
 import { eq, and, desc, isNull, not } from "drizzle-orm";
@@ -62,6 +63,14 @@ export interface IFormStorage {
   getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined>;
   updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined>;
   unsubscribeBlogSubscriber(email: string): Promise<boolean>;
+  
+  // Blog post operations
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  getBlogPosts(): Promise<BlogPost[]>;
+  getBlogPost(id: number): Promise<BlogPost | undefined>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  updateBlogPost(id: number, data: Partial<BlogPost>): Promise<BlogPost | undefined>;
+  deleteBlogPost(id: number): Promise<void>;
   
   // Location operations
   createLocation(location: InsertLocation): Promise<Location>;
@@ -411,13 +420,13 @@ export class FormStorage implements IFormStorage {
       const existing = await this.getBlogSubscriberByEmail(subscriber.email);
       
       if (existing) {
-        if (!existing.isActive) {
+        if (!existing.active) {
           // Reactivate if previously unsubscribed
           const [updated] = await db
             .update(blogSubscribers)
             .set({
-              isActive: true,
-              updatedAt: new Date()
+              active: true,
+              subscriptionDate: new Date()
             })
             .where(eq(blogSubscribers.id, existing.id))
             .returning();
@@ -434,9 +443,9 @@ export class FormStorage implements IFormStorage {
         .insert(blogSubscribers)
         .values({
           ...subscriber,
-          isActive: true,
+          active: true,
           unsubscribeToken: Math.random().toString(36).substring(2, 15),
-          createdAt: new Date()
+          subscriptionDate: new Date()
         })
         .returning();
       
@@ -454,8 +463,8 @@ export class FormStorage implements IFormStorage {
       return await db
         .select()
         .from(blogSubscribers)
-        .where(eq(blogSubscribers.isActive, true))
-        .orderBy(desc(blogSubscribers.createdAt));
+        .where(eq(blogSubscribers.active, true))
+        .orderBy(desc(blogSubscribers.subscriptionDate));
     } catch (error) {
       throw handleDbError(error, "getting blog subscribers");
     }
@@ -529,7 +538,7 @@ export class FormStorage implements IFormStorage {
       await db
         .update(blogSubscribers)
         .set({
-          isActive: false,
+          active: false,
           updatedAt: new Date()
         })
         .where(eq(blogSubscribers.id, subscriber.id));
@@ -537,6 +546,108 @@ export class FormStorage implements IFormStorage {
       return true;
     } catch (error) {
       throw handleDbError(error, `unsubscribing blog subscriber ${email}`);
+    }
+  }
+
+  /**
+   * Create a new blog post
+   */
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    try {
+      const [newPost] = await db
+        .insert(blogPosts)
+        .values({
+          ...post,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          status: post.status || 'draft'
+        })
+        .returning();
+      
+      return newPost;
+    } catch (error) {
+      throw handleDbError(error, "creating blog post");
+    }
+  }
+  
+  /**
+   * Get all blog posts
+   */
+  async getBlogPosts(): Promise<BlogPost[]> {
+    try {
+      return await db
+        .select()
+        .from(blogPosts)
+        .orderBy(desc(blogPosts.createdAt));
+    } catch (error) {
+      throw handleDbError(error, "getting blog posts");
+    }
+  }
+  
+  /**
+   * Get a blog post by ID
+   */
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    try {
+      const [post] = await db
+        .select()
+        .from(blogPosts)
+        .where(eq(blogPosts.id, id))
+        .limit(1);
+      
+      return post;
+    } catch (error) {
+      throw handleDbError(error, `getting blog post ${id}`);
+    }
+  }
+  
+  /**
+   * Get a blog post by slug
+   */
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    try {
+      const [post] = await db
+        .select()
+        .from(blogPosts)
+        .where(eq(blogPosts.slug, slug))
+        .limit(1);
+      
+      return post;
+    } catch (error) {
+      throw handleDbError(error, `getting blog post by slug ${slug}`);
+    }
+  }
+  
+  /**
+   * Update a blog post
+   */
+  async updateBlogPost(id: number, data: Partial<BlogPost>): Promise<BlogPost | undefined> {
+    try {
+      const [updated] = await db
+        .update(blogPosts)
+        .set({
+          ...data,
+          updatedAt: new Date()
+        })
+        .where(eq(blogPosts.id, id))
+        .returning();
+      
+      return updated;
+    } catch (error) {
+      throw handleDbError(error, `updating blog post ${id}`);
+    }
+  }
+  
+  /**
+   * Delete a blog post
+   */
+  async deleteBlogPost(id: number): Promise<void> {
+    try {
+      await db
+        .delete(blogPosts)
+        .where(eq(blogPosts.id, id));
+    } catch (error) {
+      throw handleDbError(error, `deleting blog post ${id}`);
     }
   }
   

@@ -966,6 +966,35 @@ export const blogSubscribers = pgTable("blog_subscribers", {
   unsubscribeToken: text("unsubscribe_token").notNull()
 });
 
+// Blog posts table schema
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: text("content").notNull(),
+  excerpt: text("excerpt").notNull(),
+  author: text("author").notNull(),
+  category: text("category").notNull(),
+  imageUrl: text("image_url"),
+  status: text("status").notNull().default("draft"), // draft, published, archived
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  tags: text("tags"), // Comma-separated list of tags
+  readTime: text("read_time"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" })
+});
+
+// Schema for blog post insertion
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  publishedAt: true
+});
+
 // Schema for blog subscriber insertion
 export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).omit({
   id: true,
@@ -981,6 +1010,10 @@ export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).om
 // Types for blog subscribers
 export type BlogSubscriber = typeof blogSubscribers.$inferSelect;
 export type InsertBlogSubscriber = z.infer<typeof insertBlogSubscriberSchema>;
+
+// Types for blog posts
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 
 // Locations relation to client
 export const locationsRelations = relations(locations, ({ one }) => ({
