@@ -1,0 +1,75 @@
+Explicit Agent Instructions:
+Issue 2: Free Financial Checklist Form Error
+
+Task:
+
+Explicitly verify form submission behavior and error response for the "Free Financial Checklist" form.
+
+Confirm the successful download of the checklist upon form submission.
+
+Ensure the form submission explicitly sends data correctly to the backend.
+
+Explicitly diagnose why the form is failing, correcting any API or database errors explicitly.
+
+Explicitly verify that a confirmation email is sent upon successful submission.
+
+Issue 3: Free Consultation Form Submission Error
+
+Task:
+
+Explicitly reproduce and document errors encountered during form submission.
+
+Explicitly ensure the scheduling backend (e.g., integration with calendar or email system) works correctly.
+
+Explicitly fix the backend issue causing failure, confirming successful email sends after the form submission.
+
+Explicitly verify successful end-to-end scheduling.
+
+Issue 4: Blog Connection to Admin Dashboard
+
+Task:
+
+Explicitly integrate and confirm blog CRUD operations within the existing admin dashboard.
+
+Ensure admins explicitly have clear controls for adding, editing, and deleting blog posts.
+
+Explicitly verify the integration with clear documentation of the implemented features.
+
+Issue 5: Navigation Issue Between "Blog" and "Contact"
+
+Task:
+
+Explicitly identify the reason the "Contact" navigation incorrectly scrolls to "Services."
+
+Explicitly fix the navigation anchor links and confirm proper scrolling behavior.
+
+Explicitly verify correct functionality through comprehensive testing.
+
+Issue 6: Missing Blog Previews and Incorrect Navigation
+
+Task:
+
+Explicitly implement blog previews on the homepage's "Financial Insights" section.
+
+Correctly link the "View Articles" button explicitly to actual blog content.
+
+Explicitly verify that real blog content loads correctly and displays previews accurately.
+
+Issue 7: Blog Subscription Form Error
+
+Task:
+
+Explicitly reproduce the subscription form error ("Invalid subscription data").
+
+Diagnose the issue explicitly (form validation, backend handling, etc.).
+
+Explicitly implement the necessary fix ensuring successful subscriptions and accurate user feedback.
+
+Confirm through explicit verification and document the resolution.
+
+Explicit Next Steps:
+Clearly and explicitly proceed in the order listed above, starting immediately with the Free Financial Checklist form issue (#2), followed explicitly by Free Consultation form issue (#3), Blog Dashboard integration (#4), Navigation issue (#5), Missing Blog previews (#6), and Blog Subscription form error (#7).
+
+Document explicitly each step's completion and verification status.
+
+Explicitly update relevant project documentation and verification reports after resolving each issue. ​
