@@ -166,10 +166,13 @@ const mockPayments = [
 // Calculate real-time summary stats from API data
 const getStatsSummary = (clients: any[], entities: any[], dashboardUsers: any[], consolidationGroups: any[]) => {
   const currentMonth = new Date().getMonth();
+  // Filter out deleted clients for stats
+  const activeClients = clients.filter(c => !isClientDeleted(c));
+  
   return {
-    totalClients: clients.length,
-    activeClients: clients.filter(c => getClientActiveStatus(c)).length,
-    newClientsThisMonth: clients.filter(c => new Date(c.createdAt).getMonth() === currentMonth).length,
+    totalClients: activeClients.length,
+    activeClients: activeClients.filter(c => getClientActiveStatus(c)).length,
+    newClientsThisMonth: activeClients.filter(c => new Date(c.createdAt).getMonth() === currentMonth).length,
     totalEmployees: dashboardUsers.length,
     pendingTasks: 0, // Will be implemented when we have task data
     totalRevenue: 0, // Will be implemented when we have revenue data
