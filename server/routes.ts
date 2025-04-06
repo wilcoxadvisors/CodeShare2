@@ -1494,8 +1494,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log(`DEBUG: Creating default entity with data:`, JSON.stringify(defaultEntityData, null, 2));
-      const entity = await storage.entities.createEntity(defaultEntityData);
-      console.log(`DEBUG: Default entity created with ID ${entity.id} for client ID ${newClient.id}`);
+      
+      try {
+        // Explicitly create the entity with thorough error handling
+        const entity = await storage.entities.createEntity(defaultEntityData);
+        console.log(`DEBUG: Default entity created with ID ${entity.id} for client ID ${newClient.id}`);
+        
+        // Verify entity was created by fetching it
+        const entities = await storage.entities.getEntitiesByClient(newClient.id);
+        console.log(`DEBUG: Verified client ${newClient.id} has ${entities.length} entities`);
+        
+        if (entities.length === 0) {
+          console.error(`ERROR: Entity creation failed silently for client ${newClient.id}`);
+          throw new Error(`Failed to create entity for client ${newClient.id}`);
+        }
+      } catch (entityError) {
+        console.error(`ERROR: Entity creation failed for client ${newClient.id}:`, entityError);
+        throw entityError; // Re-throw to ensure proper handling
+      }
 
       // Immediately seed the Chart of Accounts - create a dedicated function to ensure this works reliably
       const seedCoA = async (clientId: number) => {
@@ -1780,6 +1796,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error restoring entity:", error.message || error);
       throw error;
+    }
+  }));
+
+  // Manually seed Chart of Accounts for a client
+  app.post("/api/clients/:clientId/seed-coa", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log('POST /api/clients/:clientId/seed-coa - Start of handler');
+      const clientId = parseInt(req.params.clientId);
+      console.log('Client ID to seed CoA for:', clientId);
+      
+      // Verify client exists
+      const client = await storage.clients.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if entities exist for this client
+      const entities = await storage.entities.getEntitiesByClient(clientId);
+      console.log(`Found ${entities.length} entities for client ${clientId}`);
+      
+      if (entities.length === 0) {
+        console.error(`ERROR: No entities found for client ${clientId}. Creating default entity.`);
+        // Create a default entity if none exists
+        const defaultEntityData = {
+          name: `${client.name} Default Entity`,
+          code: "DEFAULT",
+          entityCode: "DEFAULT",
+          ownerId: client.userId,
+          clientId: clientId,
+          active: true,
+          fiscalYearStart: "01-01",
+          fiscalYearEnd: "12-31",
+          currency: "USD",
+          timezone: "UTC"
+        };
+        
+        console.log(`Creating default entity for client ${clientId}:`, JSON.stringify(defaultEntityData, null, 2));
+        await storage.entities.createEntity(defaultEntityData);
+        console.log(`Default entity created for client ${clientId}`);
+      }
+      
+      // Check if accounts already exist
+      const existingAccounts = await storage.accounts.getAccounts(clientId);
+      console.log(`Client ${clientId} has ${existingAccounts.length} existing accounts`);
+      
+      if (existingAccounts.length > 0) {
+        console.log(`Client ${clientId} already has ${existingAccounts.length} accounts. No need to seed.`);
+        return res.json({ 
+          success: true, 
+          message: "Chart of Accounts already exists for this client", 
+          accountCount: existingAccounts.length 
+        });
+      }
+      
+      // Seed the Chart of Accounts
+      console.log(`Seeding Chart of Accounts for client ${clientId}...`);
+      await storage.accounts.seedClientCoA(clientId);
+      
+      // Verify accounts were created
+      const accounts = await storage.accounts.getAccounts(clientId);
+      console.log(`Verified client ${clientId} now has ${accounts.length} accounts`);
+      
+      if (accounts.length === 0) {
+        return res.status(500).json({
+          success: false,
+          message: "Chart of Accounts seeding failed - no accounts were created"
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: "Chart of Accounts seeded successfully",
+        accountCount: accounts.length
+      });
+    } catch (error: any) {
+      console.error(`Error seeding Chart of Accounts for client:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Error seeding Chart of Accounts: ${error.message || String(error)}`
+      });
     }
   }));
   
