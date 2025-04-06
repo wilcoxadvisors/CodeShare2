@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX, RefreshCw, Play } from "lucide-react";
-import AdminWebsiteContent from "../components/admin/AdminWebsiteContent";
+import WebsiteContentManagement from "../components/admin/WebsiteContentManagement";
 import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -2354,7 +2354,7 @@ interface AdminDashboardData {
                   <div className="grid grid-cols-1 gap-6">
                     <Card>
                       <CardContent className="p-6">
-                        <AdminWebsiteContent />
+                        <WebsiteContentManagement />
                       </CardContent>
                     </Card>
                     
