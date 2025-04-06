@@ -207,7 +207,7 @@ export function registerFormRoutes(app: Express) {
     let result;
     try {
       console.log("Storing consultation in database...");
-      result = await storage.createConsultationSubmission(submission);
+      result = await storage.forms.createConsultationSubmission(submission);
       console.log("Database storage result:", result);
     } catch (error) {
       console.error("Database storage error:", error);
@@ -243,14 +243,14 @@ export function registerFormRoutes(app: Express) {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     
-    const submissions = await storage.getContactSubmissions(limit, offset);
+    const submissions = await storage.forms.getContactSubmissions(limit, offset);
     res.json(submissions);
   }));
   
   // Get a specific contact submission by ID (admin only)
   app.get("/api/admin/contact-submissions/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const submission = await storage.getContactSubmissionById(id);
+    const submission = await storage.forms.getContactSubmission(id);
     
     if (!submission) {
       return res.status(404).json({ message: "Contact submission not found" });
@@ -268,7 +268,7 @@ export function registerFormRoutes(app: Express) {
       return throwBadRequest("Status is required and must be a string");
     }
     
-    const updatedSubmission = await storage.updateContactSubmission(id, status);
+    const updatedSubmission = await storage.forms.updateContactSubmission(id, { status });
     
     if (!updatedSubmission) {
       return res.status(404).json({ message: "Contact submission not found" });
@@ -282,14 +282,14 @@ export function registerFormRoutes(app: Express) {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     
-    const submissions = await storage.getChecklistSubmissions(limit, offset);
+    const submissions = await storage.forms.getChecklistSubmissions(limit, offset);
     res.json(submissions);
   }));
   
   // Get a specific checklist submission by ID (admin only)
   app.get("/api/admin/checklist-submissions/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const submission = await storage.getChecklistSubmissionById(id);
+    const submission = await storage.forms.getChecklistSubmission(id);
     
     if (!submission) {
       return res.status(404).json({ message: "Checklist submission not found" });
@@ -307,7 +307,7 @@ export function registerFormRoutes(app: Express) {
       return throwBadRequest("Status is required and must be a string");
     }
     
-    const updatedSubmission = await storage.updateChecklistSubmission(id, status);
+    const updatedSubmission = await storage.forms.updateChecklistSubmission(id, { status });
     
     if (!updatedSubmission) {
       return res.status(404).json({ message: "Checklist submission not found" });
@@ -321,14 +321,14 @@ export function registerFormRoutes(app: Express) {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     
-    const submissions = await storage.getConsultationSubmissions(limit, offset);
+    const submissions = await storage.forms.getConsultationSubmissions(limit, offset);
     res.json(submissions);
   }));
   
   // Get a specific consultation submission by ID (admin only)
   app.get("/api/admin/consultation-submissions/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const submission = await storage.getConsultationSubmissionById(id);
+    const submission = await storage.forms.getConsultationSubmission(id);
     
     if (!submission) {
       return res.status(404).json({ message: "Consultation submission not found" });
@@ -346,7 +346,7 @@ export function registerFormRoutes(app: Express) {
       return throwBadRequest("Status is required and must be a string");
     }
     
-    const updatedSubmission = await storage.updateConsultationSubmission(id, status);
+    const updatedSubmission = await storage.forms.updateConsultationSubmission(id, { status });
     
     if (!updatedSubmission) {
       return res.status(404).json({ message: "Consultation submission not found" });
@@ -602,7 +602,7 @@ export function registerFormRoutes(app: Express) {
     }
     
     // Check if the email already exists
-    const existingSubscriber = await storage.getBlogSubscriberByEmail(validation.data.email);
+    const existingSubscriber = await storage.forms.getBlogSubscriberByEmail(validation.data.email);
     if (existingSubscriber) {
       // If already subscribed, confirmed and active, just return success
       if (existingSubscriber.active && existingSubscriber.confirmed) {
@@ -767,7 +767,7 @@ export function registerFormRoutes(app: Express) {
     }
     
     // Find the subscriber
-    const subscriber = await storage.getBlogSubscriberByEmail(email);
+    const subscriber = await storage.forms.getBlogSubscriberByEmail(email);
     
     if (!subscriber) {
       return res.status(404).json({
@@ -822,7 +822,7 @@ export function registerFormRoutes(app: Express) {
   // Get all blog subscribers (admin only)
   app.get("/api/admin/blog-subscribers", asyncHandler(async (req: Request, res: Response) => {
     const includeInactive = req.query.includeInactive === 'true';
-    const subscribers = await storage.getBlogSubscribers(includeInactive);
+    const subscribers = await storage.forms.getBlogSubscribers(includeInactive);
     res.json(subscribers);
   }));
 
