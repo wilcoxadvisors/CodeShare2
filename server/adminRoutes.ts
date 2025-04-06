@@ -313,6 +313,26 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       const newClient = await storage.createClient(clientData);
       console.log("Client created successfully:", newClient);
       
+      // Explicitly create default entity first (to ensure dependencies)
+      const defaultEntityData = {
+        name: `${newClient.name} Default Entity`,
+        code: "DEFAULT",
+        entityCode: "DEFAULT",
+        ownerId: userId,
+        clientId: newClient.id,
+        active: true,
+        fiscalYearStart: "01-01",
+        fiscalYearEnd: "12-31",
+        currency: "USD",
+        timezone: "UTC"
+      };
+      await storage.entities.createEntity(defaultEntityData);
+      console.log(`DEBUG: Default entity created for client ID ${newClient.id}`);
+      
+      // Explicitly seed the Chart of Accounts after entity creation
+      await storage.accounts.seedClientCoA(newClient.id);
+      console.log(`DEBUG: Chart of Accounts seeded for client ID ${newClient.id}`);
+      
       return res.status(201).json({
         status: "success",
         data: newClient

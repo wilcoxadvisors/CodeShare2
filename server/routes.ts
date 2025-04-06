@@ -1471,136 +1471,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Create a new client
   app.post("/api/clients", asyncHandler(async (req: Request, res: Response) => {
+    const clientData = req.body;
     try {
-      console.log("POST /api/clients - Received client data:", req.body);
-      console.log("User authenticated status:", req.isAuthenticated ? req.isAuthenticated() : false);
-      console.log("User data:", req.user);
-      
-      // Extract user ID from the authenticated user or from the request body
-      let userId = (req.user as any)?.id;
-      
-      // If no authenticated user, try to get the userId from the request body
-      if (!userId && req.body.userId) {
-        userId = req.body.userId;
-        console.log("Using userId from request body:", userId);
-      }
-      
-      if (!userId) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'User ID is required either in session or request body'
-        });
-      }
-      
-      // Create the client
-      const clientData = {
-        ...req.body,
-        userId: userId,
-        ownerId: userId,
-        createdBy: userId
-      };
-      
-      // Create client first, then seed Chart of Accounts
-      console.log("DEBUG: Creating client and then seeding CoA");
-      
-      // Step 1: Create the client
-      console.log("DEBUG: Creating client with data:", clientData);
+      // Explicitly create new client
       const newClient = await storage.clients.createClient(clientData);
-      console.log("DEBUG: Client created successfully with ID:", newClient.id);
-      
-      // Step 2: Seed Chart of Accounts for the client
-      console.log("DEBUG: ===== STARTING CoA SEEDING PROCESS =====");
-      
-      let accountsCreated = false;
-      let accountsCount = 0;
-      
-      // Verify storage.accounts is accessible
-      if (!storage.accounts || typeof storage.accounts.seedClientCoA !== 'function') {
-        console.error("ERROR: storage.accounts.seedClientCoA is not properly initialized");
-        throw new Error("Chart of Accounts storage interface not properly initialized");
-      }
-      
-      try {
-        // Seed the accounts
-        console.log(`DEBUG: Calling seedClientCoA for client ${newClient.id}`);
-        await storage.accounts.seedClientCoA(newClient.id);
-        
-        // Verify accounts were created
-        const accounts = await storage.accounts.getAccounts(newClient.id);
-        accountsCount = accounts.length;
-        console.log(`DEBUG: After seeding, client ${newClient.id} has ${accountsCount} accounts`);
-        
-        if (accountsCount > 0) {
-          accountsCreated = true;
-          console.log(`DEBUG: Successfully seeded ${accountsCount} accounts for client ${newClient.id}`);
-        } else {
-          console.warn(`DEBUG: No accounts were created for client ${newClient.id} in first attempt`);
-          
-          // Try direct import of accountStorage as a fallback
-          console.log("DEBUG: Trying direct accountStorage reference as fallback");
-          const { accountStorage } = await import('./storage/accountStorage');
-          await accountStorage.seedClientCoA(newClient.id);
-          
-          // Check again
-          const accountsAfterRetry = await accountStorage.getAccounts(newClient.id);
-          accountsCount = accountsAfterRetry.length;
-          
-          if (accountsCount > 0) {
-            accountsCreated = true;
-            console.log(`DEBUG: Successfully seeded ${accountsCount} accounts after retry`);
-          } else {
-            console.error("ERROR: Failed to seed Chart of Accounts after multiple attempts");
-          }
-        }
-      } catch (seedError) {
-        console.error("ERROR: Exception during CoA seeding:", seedError);
-        // Don't fail client creation if seeding fails - we'll return the status
-      }
-      
-      // Step 3: Optionally create a default entity
-      let defaultEntity = null;
-      try {
-        console.log(`DEBUG: Creating default entity for client ${newClient.id}`);
-        
-        // Use only fields that exist in the entity schema
-        const entityData = {
-          name: `${newClient.name} - Main Entity`,
-          code: `${newClient.clientCode || 'ENT'}-001`,
-          ownerId: userId,
-          clientId: newClient.id,
-          active: true,
-          // Additional standard fields
-          fiscalYearStart: "01-01",
-          fiscalYearEnd: "12-31", 
-          createdBy: userId
-        };
-        
-        defaultEntity = await storage.entities.createEntity(entityData);
-        console.log(`DEBUG: Default entity created with ID: ${defaultEntity.id}`);
-      } catch (entityError) {
-        console.error(`WARNING: Failed to create default entity:`, entityError);
-        // Don't fail the client creation if entity creation fails
-      }
-      
-      // Return response with client details and seeding info
-      const clientResponse = {
-        ...newClient,
-        chartOfAccounts: {
-          seeded: accountsCreated,
-          accountCount: accountsCount
-        },
-        defaultEntity: defaultEntity
+
+      // Explicitly create default entity first (to ensure dependencies)
+      const defaultEntityData = {
+        name: `${newClient.name} Default Entity`,
+        code: "DEFAULT",
+        entityCode: "DEFAULT",
+        ownerId: clientData.userId,
+        clientId: newClient.id,
+        active: true,
+        fiscalYearStart: "01-01",
+        fiscalYearEnd: "12-31",
+        currency: "USD",
+        timezone: "UTC"
       };
-      
-      return res.status(201).json(clientResponse);
-      
-    } catch (error: any) {
-      console.error("ERROR: Failed to create client:", error);
-      res.status(500).json({
-        status: 'error',
-        message: 'Failed to create client',
-        error: error.message || String(error)
-      });
+      await storage.entities.createEntity(defaultEntityData);
+
+      // Explicitly seed the Chart of Accounts after entity creation
+      await storage.accounts.seedClientCoA(newClient.id);
+
+      console.log(`DEBUG: Client, entity, and CoA created successfully for client ID ${newClient.id}`);
+
+      res.status(201).json(newClient);
+    } catch (error) {
+      console.error("ERROR: Client creation or CoA seeding failed:", error);
+      res.status(500).json({ error: error.message });
     }
   }));
   
