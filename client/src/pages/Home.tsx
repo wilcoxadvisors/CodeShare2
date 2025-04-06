@@ -11,31 +11,14 @@ import ContactSection from '../components/sections/ContactSection.tsx';
 import ChatWidget from '../components/common/ChatWidget.tsx';
 import { useUI } from '../contexts/UIContext.tsx';
 
-interface BlogPost {
-  id: number;
-  title: string;
-  excerpt: string;
-  date: string;
-  author: string;
-  category: string;
-  image: string;
-}
-
 const Home: React.FC = () => {
   const { isChatOpen, setIsChatOpen } = useUI();
   const [showChecklistForm, setShowChecklistForm] = useState(false);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
   // Simulating dashboard data that would normally come from an API
   const dashboardData = {
     about: "At Wilcox Advisors, we specialize in financial solutions for small businesses. From startups to growing companies, we provide the expertise you need to succeed—built to scale with you every step of the way.",
   };
-
-  // This would normally fetch from an API
-  useEffect(() => {
-    // Simulating API fetch for blog posts
-    // In a real implementation, this would make an API call to get blog posts
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,7 +27,7 @@ const Home: React.FC = () => {
         <HeroSection />
         <ChecklistSection setShowChecklistForm={setShowChecklistForm} />
         <ServicesSection />
-        <BlogSection blogPosts={blogPosts} />
+        <BlogSection />
         <TestimonialsSection />
         <AboutSection aboutText={dashboardData.about} />
         <ContactSection />

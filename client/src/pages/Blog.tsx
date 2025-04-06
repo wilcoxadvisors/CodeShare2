@@ -1,70 +1,20 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Calendar, User, Clock, Tag } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
-// Sample blog post data
-const blogPosts = [
-  {
-    id: 1,
-    title: "2025 Tax Planning Strategies for Small Businesses",
-    author: "Sarah Johnson, CPA",
-    date: "March 18, 2025",
-    category: "Tax Planning",
-    readTime: "8 min read",
-    excerpt: "Discover the latest tax planning strategies for small businesses in 2025. Learn how recent tax code changes can benefit your business and maximize deductions.",
-    imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1011&q=80",
-  },
-  {
-    id: 2,
-    title: "Cloud Accounting Solutions: A Complete Guide",
-    author: "Michael Wilson",
-    date: "March 10, 2025",
-    category: "Technology",
-    readTime: "6 min read",
-    excerpt: "Explore how cloud accounting solutions are transforming financial management for businesses of all sizes. Compare top solutions and implementation strategies.",
-    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1115&q=80",
-  },
-  {
-    id: 3,
-    title: "Financial Forecasting Best Practices for 2025",
-    author: "Jennifer Lee, MBA",
-    date: "March 5, 2025",
-    category: "Financial Planning",
-    readTime: "10 min read",
-    excerpt: "Learn how to create accurate financial forecasts that help your business navigate economic uncertainties and plan for sustainable growth in 2025 and beyond.",
-    imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-  },
-  {
-    id: 4,
-    title: "Understanding Business Entity Structures",
-    author: "David Martinez, JD",
-    date: "February 28, 2025",
-    category: "Legal",
-    readTime: "7 min read",
-    excerpt: "Compare the pros and cons of different business entity structures including LLCs, S-Corps, and C-Corps to determine which is best for your business goals.",
-    imageUrl: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80",
-  },
-  {
-    id: 5,
-    title: "The Small Business Guide to Cash Flow Management",
-    author: "Amy Rodriguez, CFP",
-    date: "February 15, 2025",
-    category: "Cash Flow",
-    readTime: "9 min read",
-    excerpt: "Master cash flow management strategies to ensure your business maintains healthy liquidity and can weather unexpected financial challenges.",
-    imageUrl: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80",
-  },
-  {
-    id: 6,
-    title: "Accounting Automation Tools Every Business Needs",
-    author: "Thomas Brown",
-    date: "February 10, 2025",
-    category: "Technology",
-    readTime: "5 min read",
-    excerpt: "Discover the essential accounting automation tools that can save your business time and money while improving accuracy and compliance.",
-    imageUrl: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-  },
-];
+interface BlogPost {
+  id: number;
+  title: string;
+  excerpt: string;
+  publishedAt: string;
+  author: string;
+  category: string;
+  imageUrl?: string;
+  slug: string;
+  readTime?: string;
+}
 
 // Categories for filter
 const categories = [
@@ -86,6 +36,31 @@ export default function Blog() {
     success: boolean;
     message: string;
   } | null>(null);
+
+  // Fetch blog posts
+  const { data, isLoading, isError } = useQuery<{ success: boolean, posts: BlogPost[] }>({
+    queryKey: ['/api/blog/posts'],
+    queryFn: async () => {
+      const res = await axios.get('/api/blog/posts');
+      return res.data;
+    }
+  });
+
+  const blogPosts = data?.posts || [];
+
+  // Derive unique categories from fetched blog posts
+  const apiCategories = React.useMemo(() => {
+    if (!blogPosts.length) return categories;
+    
+    // Get unique categories
+    const uniqueCategories = new Set<string>();
+    blogPosts.forEach(post => {
+      if (post.category) uniqueCategories.add(post.category);
+    });
+    
+    // Convert to array and add "All" at the beginning
+    return ["All", ...Array.from(uniqueCategories)];
+  }, [blogPosts]);
 
   // Filter posts based on category and search term
   const filteredPosts = blogPosts.filter((post) => {
@@ -182,7 +157,7 @@ export default function Blog() {
 
               <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
               <div className="space-y-2">
-                {categories.map((category) => (
+                {apiCategories.map((category) => (
                   <button
                     key={category}
                     onClick={() => handleCategoryChange(category)}
@@ -263,11 +238,15 @@ export default function Blog() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {post.category}
                         </span>
-                        <span className="mx-2">•</span>
-                        <span className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {post.readTime}
-                        </span>
+                        {post.readTime && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="flex items-center">
+                              <Clock className="w-4 h-4 mr-1" />
+                              {post.readTime}
+                            </span>
+                          </>
+                        )}
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 hover:text-blue-800 transition">
                         {post.title}
@@ -280,7 +259,7 @@ export default function Blog() {
                         </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="w-4 h-4 mr-1" />
-                          {post.date}
+                          {new Date(post.publishedAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
