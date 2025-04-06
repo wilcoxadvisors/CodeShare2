@@ -71,7 +71,16 @@ import {
   Pencil, 
   Plus, 
   Sparkles, 
-  Trash2 
+  Trash2,
+  FileX,
+  LayoutTemplate,
+  ListChecks,
+  Quote,
+  Info,
+  DollarSign,
+  Mail,
+  Search,
+  ArrowDownUp
 } from 'lucide-react';
 
 // Define the homepage content type based on the backend schema
@@ -291,8 +300,11 @@ const HomepageContentManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h3 className="text-lg font-medium">Homepage Sections</h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b">
+        <div>
+          <h3 className="text-xl font-semibold">Homepage Sections</h3>
+          <p className="text-sm text-muted-foreground mt-1">Manage and organize your website's homepage content</p>
+        </div>
         <div className="flex space-x-2">
           <Button onClick={previewWebsite} variant="outline" size="sm" className="mr-2">
             <Eye className="mr-2 h-4 w-4" />
@@ -305,13 +317,19 @@ const HomepageContentManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Content section table view */}
-      <div className="rounded-md border">
-        <div className="p-4 bg-muted/50">
+      {/* Content section table view with enhanced tabs */}
+      <div className="rounded-md border shadow-sm">
+        <div className="p-4 bg-muted/30 border-b">
           <Tabs value={activeSection} onValueChange={setActiveSection}>
-            <TabsList className="mb-0">
+            <TabsList className="mb-0 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
               {sections.map(section => (
-                <TabsTrigger key={section} value={section}>
+                <TabsTrigger key={section} value={section} className="flex items-center">
+                  {section === 'hero' && <LayoutTemplate className="h-4 w-4 mr-2" />}
+                  {section === 'features' && <ListChecks className="h-4 w-4 mr-2" />}
+                  {section === 'testimonials' && <Quote className="h-4 w-4 mr-2" />}
+                  {section === 'about' && <Info className="h-4 w-4 mr-2" />}
+                  {section === 'pricing' && <DollarSign className="h-4 w-4 mr-2" />}
+                  {section === 'contact' && <Mail className="h-4 w-4 mr-2" />}
                   {section.charAt(0).toUpperCase() + section.slice(1)}
                 </TabsTrigger>
               ))}
@@ -320,11 +338,18 @@ const HomepageContentManager: React.FC = () => {
         </div>
 
         {filteredContents.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="mb-4 text-muted-foreground">No content found for this section.</p>
-            <Button onClick={handleNewContentClick} variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Content
+          <div className="p-12 text-center">
+            <div className="mb-4 flex justify-center">
+              <FileX className="h-12 w-12 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No content found</h3>
+            <p className="mb-6 text-muted-foreground max-w-md mx-auto">
+              There are no content entries for the {activeSection} section yet. 
+              Create your first content block to get started.
+            </p>
+            <Button onClick={handleNewContentClick} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Content
             </Button>
           </div>
         ) : (
@@ -387,55 +412,90 @@ const HomepageContentManager: React.FC = () => {
         )}
       </div>
 
-      {/* Card Grid View (alternative view) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-        {filteredContents.map(content => (
-          <Card key={content.id} className="flex flex-col overflow-hidden transition-all duration-200 hover:shadow-md">
-            <CardHeader className="px-4 py-3 pb-2">
-              <div className="flex flex-col justify-between">
-                <div>
-                  <CardTitle className="line-clamp-2 text-base">{content.title}</CardTitle>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">
+      {/* Enhanced Card Grid View */}
+      <div>
+        <h3 className="text-md font-medium mb-4 flex items-center gap-2">
+          <LayoutTemplate className="h-4 w-4" />
+          Visual Content Layout
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredContents.map(content => (
+            <Card key={content.id} className="flex flex-col overflow-hidden transition-all duration-200 hover:shadow-md">
+              <CardHeader className="px-4 py-3 pb-2 border-b">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <Badge variant="outline" className="mb-2 text-xs capitalize">
                       {content.section}
                     </Badge>
+                    <CardTitle className="line-clamp-2 text-base">{content.title}</CardTitle>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button 
+                      onClick={() => handleEditClick(content)} 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button 
+                      onClick={() => handleDeleteClick(content)} 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
                   </div>
                 </div>
-                <div className="flex justify-end gap-1 mt-2">
-                  <Button onClick={() => handleEditClick(content)} size="sm" variant="ghost" className="h-8 w-8 p-0">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button onClick={() => handleDeleteClick(content)} size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 py-2 flex-grow">
-              {content.imageUrl && (
-                <div className="mb-2 rounded-md overflow-hidden h-24 bg-muted/50">
-                  <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
-                    <FileImage className="h-4 w-4 mr-1" /> {content.imageUrl.split('/').pop()}
+              </CardHeader>
+              <CardContent className="px-4 py-3 flex-grow">
+                {content.imageUrl && (
+                  <div className="mb-3 rounded-md overflow-hidden h-32 bg-muted/50 border">
+                    <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
+                      <FileImage className="h-4 w-4 mr-1" /> 
+                      <span className="truncate max-w-[200px]">{content.imageUrl.split('/').pop()}</span>
+                    </div>
                   </div>
+                )}
+                <div className="prose prose-sm max-w-none">
+                  <p className="line-clamp-3 text-sm text-muted-foreground">{content.content}</p>
                 </div>
-              )}
-              <div className="prose prose-sm max-w-none">
-                <p className="line-clamp-3">{content.content}</p>
-              </div>
-            </CardContent>
-            <CardFooter className="text-xs text-muted-foreground border-t pt-2 px-4 pb-3 mt-auto">
-              <div className="flex flex-col sm:flex-row justify-between w-full gap-1">
-                <span className="whitespace-nowrap">
-                  Order: {content.displayOrder}
-                </span>
-                <span className="whitespace-nowrap">
-                  <CalendarDays className="h-3 w-3 inline mr-1" />
-                  {new Date(content.updatedAt).toLocaleDateString()}
-                </span>
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
+                {(content.metaTitle || content.metaDescription) && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                      <Search className="h-3 w-3" /> SEO Metadata
+                    </h4>
+                    {content.metaTitle && (
+                      <p className="text-xs line-clamp-1 text-muted-foreground">
+                        <span className="font-medium">Title:</span> {content.metaTitle}
+                      </p>
+                    )}
+                    {content.metaDescription && (
+                      <p className="text-xs line-clamp-1 text-muted-foreground">
+                        <span className="font-medium">Description:</span> {content.metaDescription}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="text-xs text-muted-foreground border-t pt-3 px-4 pb-3 mt-auto bg-muted/10">
+                <div className="flex justify-between w-full">
+                  <span className="whitespace-nowrap flex items-center gap-1">
+                    <ArrowDownUp className="h-3 w-3" />
+                    Order: {content.displayOrder}
+                  </span>
+                  <span className="whitespace-nowrap flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    {new Date(content.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Edit/Create Content Sheet */}

@@ -69,8 +69,11 @@ import {
   ExternalLink, 
   FileImage,
   FileText, 
+  Filter,
+  LayoutTemplate,
   Pencil, 
   Plus, 
+  Search,
   Sparkles, 
   Trash2,
   UserCheck,
@@ -350,8 +353,11 @@ const BlogContentManager: React.FC = () => {
     <div className="space-y-8">
       {/* Blog Posts Manager */}
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="text-lg font-medium">Blog Posts</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b">
+          <div>
+            <h3 className="text-xl font-semibold">Blog Posts</h3>
+            <p className="text-sm text-muted-foreground mt-1">Manage and publish your blog content</p>
+          </div>
           <div className="flex space-x-2">
             <Button onClick={handleNewBlogPostClick} size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -364,24 +370,27 @@ const BlogContentManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Draft/Published tabs */}
+        {/* Enhanced Draft/Published tabs */}
         <Tabs value={tabView} onValueChange={(value) => setTabView(value as 'published' | 'drafts')} className="w-full">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <TabsList className="mb-0">
-              <TabsTrigger value="published" className="flex items-center">
-                <Eye className="h-4 w-4 mr-2 hidden sm:block" />
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 bg-muted/20 p-4 rounded-md">
+            <TabsList className="mb-0 bg-background/80">
+              <TabsTrigger value="published" className="flex items-center gap-2 data-[state=active]:bg-primary/10">
+                <Eye className="h-4 w-4" />
                 Published Posts
               </TabsTrigger>
-              <TabsTrigger value="drafts" className="flex items-center">
-                <FileText className="h-4 w-4 mr-2 hidden sm:block" />
+              <TabsTrigger value="drafts" className="flex items-center gap-2 data-[state=active]:bg-primary/10">
+                <FileText className="h-4 w-4" />
                 Draft Posts
               </TabsTrigger>
             </TabsList>
             
-            <div className="flex items-center space-x-2">
-              <span className="text-sm whitespace-nowrap">Filter by category:</span>
+            <div className="flex items-center gap-3">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" /> 
+                Filter by category:
+              </div>
               <select 
-                className="border rounded p-1 text-sm"
+                className="border rounded px-3 py-1.5 text-sm bg-background min-w-[140px] focus:ring-1 focus:ring-primary"
                 value={blogCategory}
                 onChange={(e) => setBlogCategory(e.target.value)}
               >
@@ -466,68 +475,117 @@ const BlogContentManager: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Card grid view for published posts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {tabView === 'published' && filteredBlogPosts.map(post => (
-                    <Card key={post.id} className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-                      <CardHeader className="px-4 py-3 pb-2">
-                        <div className="flex flex-col justify-between">
-                          <div>
-                            <CardTitle className="line-clamp-2 text-base">{post.title}</CardTitle>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <Badge variant="default" className="text-xs">
-                                Published
-                              </Badge>
+                {/* Enhanced Card grid view for published posts */}
+                <div>
+                  <h3 className="text-md font-medium mb-4 flex items-center gap-2">
+                    <LayoutTemplate className="h-4 w-4" />
+                    Visual Content Layout
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tabView === 'published' && filteredBlogPosts.map(post => (
+                      <Card key={post.id} className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
+                        <CardHeader className="px-4 py-3 pb-2 border-b">
+                          <div className="flex justify-between items-start">
+                            <div>
                               {post.category && (
-                                <span className="text-xs text-muted-foreground">
+                                <Badge variant="outline" className="mb-2 text-xs capitalize">
                                   {post.category}
-                                </span>
+                                </Badge>
+                              )}
+                              <CardTitle className="line-clamp-2 text-base">{post.title}</CardTitle>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <Badge variant="default" className="text-xs">
+                                  Published
+                                </Badge>
+                                {post.readTime && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" /> {post.readTime} read
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button 
+                                onClick={() => previewBlogPost(post.slug)} 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-primary/10"
+                              >
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">Preview</span>
+                              </Button>
+                              <Button 
+                                onClick={() => handleEditBlogPostClick(post)} 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              <Button 
+                                onClick={() => handleDeleteBlogPostClick(post)} 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-destructive/10 text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="px-4 py-3 flex-grow">
+                          {post.imageUrl && (
+                            <div className="mb-3 rounded-md overflow-hidden h-32 bg-muted/50 border">
+                              <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
+                                <FileImage className="h-4 w-4 mr-1" /> 
+                                <span className="truncate max-w-[200px]">{post.imageUrl.split('/').pop()}</span>
+                              </div>
+                            </div>
+                          )}
+                          {post.excerpt ? (
+                            <p className="text-sm line-clamp-3 text-muted-foreground">{post.excerpt}</p>
+                          ) : (
+                            <div className="prose prose-sm max-w-none">
+                              <p className="line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
+                            </div>
+                          )}
+                          
+                          {(post.metaTitle || post.metaDescription) && (
+                            <div className="mt-3 pt-3 border-t">
+                              <h4 className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                <Search className="h-3 w-3" /> SEO Metadata
+                              </h4>
+                              {post.metaTitle && (
+                                <p className="text-xs line-clamp-1 text-muted-foreground">
+                                  <span className="font-medium">Title:</span> {post.metaTitle}
+                                </p>
+                              )}
+                              {post.metaDescription && (
+                                <p className="text-xs line-clamp-1 text-muted-foreground">
+                                  <span className="font-medium">Description:</span> {post.metaDescription}
+                                </p>
                               )}
                             </div>
+                          )}
+                        </CardContent>
+                        <CardFooter className="text-xs text-muted-foreground border-t pt-3 px-4 pb-3 mt-auto bg-muted/10">
+                          <div className="flex justify-between w-full">
+                            <span className="flex items-center gap-1" title={post.slug}>
+                              <Code className="h-3 w-3" /> 
+                              <span className="truncate max-w-[100px]">{post.slug}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3" />
+                              {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : 
+                               new Date(post.updatedAt).toLocaleDateString()}
+                            </span>
                           </div>
-                          <div className="flex justify-end gap-1 mt-2">
-                            <Button onClick={() => previewBlogPost(post.slug)} size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleEditBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleDeleteBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="px-4 py-2 flex-grow">
-                        {post.imageUrl && (
-                          <div className="mb-2 rounded-md overflow-hidden h-24 bg-muted/50">
-                            <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
-                              <FileImage className="h-4 w-4 mr-1" /> {post.imageUrl.split('/').pop()}
-                            </div>
-                          </div>
-                        )}
-                        {post.excerpt ? (
-                          <p className="text-sm line-clamp-3">{post.excerpt}</p>
-                        ) : (
-                          <div className="prose prose-sm max-w-none">
-                            <p className="line-clamp-3">{post.content}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                      <CardFooter className="text-xs text-muted-foreground border-t pt-2 px-4 pb-3 mt-auto">
-                        <div className="flex flex-col sm:flex-row justify-between w-full gap-1">
-                          <span className="truncate max-w-[120px]" title={post.slug}>
-                            <Code className="h-3 w-3 inline mr-1" /> {post.slug}
-                          </span>
-                          <span className="whitespace-nowrap">
-                            <CalendarDays className="h-3 w-3 inline mr-1" />
-                            {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : 
-                             new Date(post.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  ))}
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -602,64 +660,107 @@ const BlogContentManager: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Card grid view for draft posts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {tabView === 'drafts' && filteredBlogPosts.map(post => (
-                    <Card key={post.id} className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md border-dashed">
-                      <CardHeader className="px-4 py-3 pb-2">
-                        <div className="flex flex-col justify-between">
-                          <div>
-                            <CardTitle className="line-clamp-2 text-base">{post.title}</CardTitle>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                Draft
-                              </Badge>
+                {/* Enhanced Card grid view for draft posts */}
+                <div>
+                  <h3 className="text-md font-medium mb-4 flex items-center gap-2">
+                    <LayoutTemplate className="h-4 w-4" />
+                    Visual Draft Layout
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tabView === 'drafts' && filteredBlogPosts.map(post => (
+                      <Card key={post.id} className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md border-dashed">
+                        <CardHeader className="px-4 py-3 pb-2 border-b">
+                          <div className="flex justify-between items-start">
+                            <div>
                               {post.category && (
-                                <span className="text-xs text-muted-foreground">
+                                <Badge variant="outline" className="mb-2 text-xs capitalize">
                                   {post.category}
-                                </span>
+                                </Badge>
+                              )}
+                              <CardTitle className="line-clamp-2 text-base">{post.title}</CardTitle>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <Badge variant="secondary" className="text-xs">
+                                  Draft
+                                </Badge>
+                                {post.readTime && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" /> {post.readTime} read
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button 
+                                onClick={() => handleEditBlogPostClick(post)} 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              <Button 
+                                onClick={() => handleDeleteBlogPostClick(post)} 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0 hover:bg-destructive/10 text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="px-4 py-3 flex-grow">
+                          {post.imageUrl && (
+                            <div className="mb-3 rounded-md overflow-hidden h-32 bg-muted/50 border">
+                              <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
+                                <FileImage className="h-4 w-4 mr-1" /> 
+                                <span className="truncate max-w-[200px]">{post.imageUrl.split('/').pop()}</span>
+                              </div>
+                            </div>
+                          )}
+                          {post.excerpt ? (
+                            <p className="text-sm line-clamp-3 text-muted-foreground">{post.excerpt}</p>
+                          ) : (
+                            <div className="prose prose-sm max-w-none">
+                              <p className="line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
+                            </div>
+                          )}
+                          
+                          {(post.metaTitle || post.metaDescription) && (
+                            <div className="mt-3 pt-3 border-t">
+                              <h4 className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                <Search className="h-3 w-3" /> SEO Metadata
+                              </h4>
+                              {post.metaTitle && (
+                                <p className="text-xs line-clamp-1 text-muted-foreground">
+                                  <span className="font-medium">Title:</span> {post.metaTitle}
+                                </p>
+                              )}
+                              {post.metaDescription && (
+                                <p className="text-xs line-clamp-1 text-muted-foreground">
+                                  <span className="font-medium">Description:</span> {post.metaDescription}
+                                </p>
                               )}
                             </div>
+                          )}
+                        </CardContent>
+                        <CardFooter className="text-xs text-muted-foreground border-t pt-3 px-4 pb-3 mt-auto bg-muted/10">
+                          <div className="flex justify-between w-full">
+                            <span className="flex items-center gap-1" title={post.slug}>
+                              <Code className="h-3 w-3" /> 
+                              <span className="truncate max-w-[100px]">{post.slug}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3" />
+                              {new Date(post.updatedAt).toLocaleDateString()}
+                            </span>
                           </div>
-                          <div className="flex justify-end gap-1 mt-2">
-                            <Button onClick={() => handleEditBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleDeleteBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="px-4 py-2 flex-grow">
-                        {post.imageUrl && (
-                          <div className="mb-2 rounded-md overflow-hidden h-24 bg-muted/50">
-                            <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
-                              <FileImage className="h-4 w-4 mr-1" /> {post.imageUrl.split('/').pop()}
-                            </div>
-                          </div>
-                        )}
-                        {post.excerpt ? (
-                          <p className="text-sm line-clamp-3">{post.excerpt}</p>
-                        ) : (
-                          <div className="prose prose-sm max-w-none">
-                            <p className="line-clamp-3">{post.content}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                      <CardFooter className="text-xs text-muted-foreground border-t pt-2 px-4 pb-3 mt-auto">
-                        <div className="flex flex-col sm:flex-row justify-between w-full gap-1">
-                          <span className="truncate max-w-[120px]" title={post.slug}>
-                            <Code className="h-3 w-3 inline mr-1" /> {post.slug}
-                          </span>
-                          <span className="whitespace-nowrap">
-                            <CalendarDays className="h-3 w-3 inline mr-1" />
-                            {new Date(post.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  ))}
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -668,13 +769,20 @@ const BlogContentManager: React.FC = () => {
       </div>
 
       {/* Blog Subscribers Section */}
-      <div className="mt-10">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Blog Subscribers</h3>
-          <div className="mt-2 sm:mt-0">
+      <div className="mt-10 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b">
+          <div>
+            <h3 className="text-xl font-semibold">Blog Subscribers</h3>
+            <p className="text-sm text-muted-foreground mt-1">Manage your blog subscriber list and engagement</p>
+          </div>
+          <div className="flex space-x-2">
             <Button variant="outline" size="sm" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
-              Export List
+              Export CSV
+            </Button>
+            <Button size="sm" variant="secondary" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Create Campaign
             </Button>
           </div>
         </div>
@@ -746,12 +854,33 @@ const BlogContentManager: React.FC = () => {
           </div>
         )}
 
-        {/* Subscriber list */}
+        {/* Enhanced Subscriber list */}
         {!isSubscribersLoading && !isSubscribersError && blogSubscribers.length > 0 && (
           <Card className="mt-4">
             <CardHeader className="pb-2">
-              <CardTitle className="text-md">Subscriber List</CardTitle>
-              <CardDescription>Manage your blog subscribers</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-md flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Subscriber List
+                  </CardTitle>
+                  <CardDescription>Manage your blog subscribers</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Search subscribers..."
+                    className="max-w-[180px] h-8 text-xs"
+                  />
+                  <select 
+                    className="border rounded px-2 py-1 text-xs bg-background h-8"
+                    defaultValue="all"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active Only</option>
+                    <option value="pending">Pending Only</option>
+                  </select>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border overflow-hidden">
@@ -764,25 +893,43 @@ const BlogContentManager: React.FC = () => {
                         <TableHead>Industry</TableHead>
                         <TableHead className="w-[100px]">Status</TableHead>
                         <TableHead className="w-[120px]">Subscribed On</TableHead>
+                        <TableHead className="w-[90px] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {blogSubscribers.slice(0, 5).map(subscriber => (
                         <TableRow key={subscriber.id}>
                           <TableCell className="font-medium">{subscriber.email}</TableCell>
-                          <TableCell>{subscriber.name || '-'}</TableCell>
-                          <TableCell>{subscriber.industry || '-'}</TableCell>
+                          <TableCell>{subscriber.name || <span className="text-muted-foreground text-xs">Not provided</span>}</TableCell>
+                          <TableCell>{subscriber.industry || <span className="text-muted-foreground text-xs">Not provided</span>}</TableCell>
                           <TableCell>
                             {subscriber.isActive ? (
-                              <Badge className="bg-green-500">Active</Badge>
+                              <Badge className="bg-green-500 flex items-center w-fit gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white/80"></span>
+                                Active
+                              </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-orange-500">Pending</Badge>
+                              <Badge variant="outline" className="text-orange-500 flex items-center w-fit gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-orange-500/80"></span>
+                                Pending
+                              </Badge>
                             )}
                           </TableCell>
                           <TableCell>
-                            <span className="text-xs">
+                            <span className="text-xs flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3" />
                               {new Date(subscriber.createdAt).toLocaleDateString()}
                             </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View</span>
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -791,10 +938,18 @@ const BlogContentManager: React.FC = () => {
                 </div>
               </div>
               {blogSubscribers.length > 5 && (
-                <div className="flex justify-center my-2">
-                  <Button variant="link" size="sm">
-                    View all {blogSubscribers.length} subscribers
-                  </Button>
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-xs text-muted-foreground">
+                    Showing 5 of {blogSubscribers.length} subscribers
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-xs">
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs">
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
