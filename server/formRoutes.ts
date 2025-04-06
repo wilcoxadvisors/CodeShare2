@@ -106,7 +106,7 @@ export function registerFormRoutes(app: Express) {
     let result;
     try {
       console.log("Storing contact form in database...");
-      result = await storage.createContactSubmission(submission);
+      result = await storage.forms.createContactSubmission(submission);
       console.log("Database storage result:", result);
     } catch (error) {
       console.error("Database storage error:", error);
@@ -148,7 +148,7 @@ export function registerFormRoutes(app: Express) {
     let result;
     try {
       console.log("Storing checklist form in database...");
-      result = await storage.createChecklistSubmission(submission);
+      result = await storage.forms.createChecklistSubmission(submission);
       console.log("Database storage result:", result);
     } catch (error) {
       console.error("Database storage error:", error);
