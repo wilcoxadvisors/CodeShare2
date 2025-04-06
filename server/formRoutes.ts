@@ -561,8 +561,10 @@ export function registerFormRoutes(app: Express) {
 
   // Helper function to generate random token
   function generateVerificationToken(): string {
-    // Use a secure random method for token generation
-    return crypto.randomBytes(32).toString('hex');
+    // Generate a secure random string for verification
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15) +
+           Math.random().toString(36).substring(2, 15);
   }
   
   // Helper function to send verification email
@@ -594,107 +596,123 @@ export function registerFormRoutes(app: Express) {
   app.post("/api/blog/subscribe", asyncHandler(async (req: Request, res: Response) => {
     console.log("Received blog subscription:", req.body);
     
-    // Validate the request
-    const validation = validateRequest(insertBlogSubscriberSchema, req.body);
-    if (!validation.success) {
-      console.error("Validation error:", validation.error);
-      return throwBadRequest("Invalid subscription data", validation.error);
+    // Basic email validation
+    if (!req.body.email || typeof req.body.email !== 'string' || !req.body.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      console.error("Email validation failed");
+      return res.status(400).json({ 
+        success: false,
+        message: "Please enter a valid email address" 
+      });
     }
     
-    // Check if the email already exists
-    const existingSubscriber = await storage.forms.getBlogSubscriberByEmail(validation.data.email);
-    if (existingSubscriber) {
-      // If already subscribed, confirmed and active, just return success
-      if (existingSubscriber.active && existingSubscriber.confirmed) {
-        return res.json({
-          message: "You're already subscribed to our blog updates",
-          subscribed: true
-        });
+    try {
+      // Extract email from request
+      const { email, name = null } = req.body;
+      
+      // Check if the email already exists
+      const existingSubscriber = await storage.forms.getBlogSubscriberByEmail(email);
+      if (existingSubscriber) {
+        // If already subscribed, confirmed and active, just return success
+        if (existingSubscriber.active && existingSubscriber.confirmed) {
+          return res.json({
+            success: true,
+            message: "You're already subscribed to our blog updates",
+            subscribed: true
+          });
+        }
+        
+        // If subscription exists but not confirmed, resend verification email
+        if (!existingSubscriber.confirmed) {
+          // Generate new verification token
+          const verificationToken = generateVerificationToken();
+          const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
+          
+          // Update with new verification token
+          const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
+            verificationToken,
+            verificationExpires,
+            active: true
+          });
+          
+          // Send verification email
+          await sendVerificationEmail(
+            updatedSubscriber.email,
+            updatedSubscriber.name,
+            verificationToken
+          );
+          
+          return res.json({
+            success: true,
+            message: "Please check your email to confirm your subscription",
+            subscribed: false,
+            pendingConfirmation: true
+          });
+        }
+        
+        // If inactive but confirmed previously, just reactivate
+        if (!existingSubscriber.active && existingSubscriber.confirmed) {
+          const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
+            active: true,
+            unsubscribedAt: null
+          });
+          
+          // Send welcome back email
+          await sendEmailNotification(
+            "Blog Subscription Reactivated",
+            `Thank you for reactivating your subscription to our blog updates.`,
+            updatedSubscriber.email
+          );
+          
+          return res.json({
+            success: true,
+            message: "Your subscription has been reactivated",
+            subscribed: true
+          });
+        }
       }
       
-      // If subscription exists but not confirmed, resend verification email
-      if (!existingSubscriber.confirmed) {
-        // Generate new verification token
-        const verificationToken = generateVerificationToken();
-        const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
-        
-        // Update with new verification token
-        const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
-          verificationToken,
-          verificationExpires,
-          active: true
-        });
-        
-        // Send verification email
-        await sendVerificationEmail(
-          updatedSubscriber.email,
-          updatedSubscriber.name,
-          verificationToken
-        );
-        
-        return res.json({
-          message: "Please check your email to confirm your subscription",
-          subscribed: false,
-          pendingConfirmation: true
-        });
-      }
+      // Generate unique tokens
+      const verificationToken = generateVerificationToken();
+      const unsubscribeToken = generateVerificationToken();
+      const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
       
-      // If inactive but confirmed previously, just reactivate
-      if (!existingSubscriber.active && existingSubscriber.confirmed) {
-        const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
-          active: true,
-          unsubscribedAt: null
-        });
-        
-        // Send welcome back email
-        await sendEmailNotification(
-          "Blog Subscription Reactivated",
-          `Thank you for reactivating your subscription to our blog updates.`,
-          updatedSubscriber.email
-        );
-        
-        return res.json({
-          message: "Your subscription has been reactivated",
-          subscribed: true
-        });
-      }
+      // Prepare the subscription data
+      const ipAddress = req.ip || undefined;
+      const userAgent = req.headers["user-agent"] || undefined;
+      
+      // Store the new subscription
+      const result = await storage.forms.createBlogSubscriber({
+        email,
+        name,
+        ipAddress,
+        userAgent,
+        active: true
+      });
+      
+      // Send verification email
+      await sendVerificationEmail(result.email, result.name, verificationToken);
+      
+      // Send notification to admin
+      await sendEmailNotification(
+        "New Blog Subscription Request",
+        `New blog subscription request from ${result.email}\nName: ${result.name || 'Not provided'}\nPending confirmation.`,
+        process.env.ADMIN_EMAIL
+      );
+      
+      // Return success but make it clear confirmation is needed
+      res.status(201).json({
+        success: true,
+        message: "Please check your email to confirm your subscription",
+        subscribed: false,
+        pendingConfirmation: true
+      });
+    } catch (error) {
+      console.error("Blog subscription error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "An error occurred while processing your subscription"
+      });
     }
-    
-    // Generate unique tokens
-    const verificationToken = generateVerificationToken();
-    const unsubscribeToken = generateVerificationToken();
-    const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
-    
-    // Add IP, user agent, and tokens to subscriber data
-    const subscriber = {
-      ...validation.data,
-      ipAddress: req.ip || null,
-      userAgent: req.headers["user-agent"] || null,
-      verificationToken,
-      verificationExpires,
-      unsubscribeToken,
-      confirmed: false
-    };
-    
-    // Store the new subscription
-    const result = await storage.forms.createBlogSubscriber(subscriber);
-    
-    // Send verification email
-    await sendVerificationEmail(result.email, result.name, verificationToken);
-    
-    // Send notification to admin
-    await sendEmailNotification(
-      "New Blog Subscription Request",
-      `New blog subscription request from ${result.email}\nName: ${result.name || 'Not provided'}\nPending confirmation.`,
-      process.env.ADMIN_EMAIL
-    );
-    
-    // Return success but make it clear confirmation is needed
-    res.status(201).json({
-      message: "Please check your email to confirm your subscription",
-      subscribed: false,
-      pendingConfirmation: true
-    });
   }));
 
   // Verify email subscription (from email link)

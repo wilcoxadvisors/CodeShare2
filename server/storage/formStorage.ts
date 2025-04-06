@@ -16,6 +16,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, isNull, not } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
+import crypto from "crypto";
 
 // Helper function to handle database errors consistently
 function handleDbError(error: unknown, operation: string): Error {
@@ -58,11 +59,12 @@ export interface IFormStorage {
   
   // Blog subscriber operations
   createBlogSubscriber(subscriber: InsertBlogSubscriber): Promise<BlogSubscriber>;
-  getBlogSubscribers(): Promise<BlogSubscriber[]>;
+  getBlogSubscribers(includeInactive?: boolean): Promise<BlogSubscriber[]>;
   getBlogSubscriber(id: number): Promise<BlogSubscriber | undefined>;
   getBlogSubscriberByEmail(email: string): Promise<BlogSubscriber | undefined>;
   updateBlogSubscriber(id: number, data: Partial<BlogSubscriber>): Promise<BlogSubscriber | undefined>;
   unsubscribeBlogSubscriber(email: string): Promise<boolean>;
+  deleteBlogSubscriber(id: number): Promise<void>;
   
   // Blog post operations
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
@@ -438,13 +440,20 @@ export class FormStorage implements IFormStorage {
         return existing;
       }
       
+      // Generate tokens
+      const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const unsubscribeToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+      
       // Create new subscriber
       const [newSubscriber] = await db
         .insert(blogSubscribers)
         .values({
           ...subscriber,
           active: true,
-          unsubscribeToken: Math.random().toString(36).substring(2, 15),
+          verificationToken,
+          verificationExpires,
+          unsubscribeToken,
           subscriptionDate: new Date()
         })
         .returning();
@@ -457,14 +466,20 @@ export class FormStorage implements IFormStorage {
   
   /**
    * Get all blog subscribers
+   * @param includeInactive Optional flag to include inactive subscribers
    */
-  async getBlogSubscribers(): Promise<BlogSubscriber[]> {
+  async getBlogSubscribers(includeInactive?: boolean): Promise<BlogSubscriber[]> {
     try {
-      return await db
+      const query = db
         .select()
-        .from(blogSubscribers)
-        .where(eq(blogSubscribers.active, true))
-        .orderBy(desc(blogSubscribers.subscriptionDate));
+        .from(blogSubscribers);
+      
+      // Filter out inactive subscribers if not explicitly including them
+      if (!includeInactive) {
+        query.where(eq(blogSubscribers.active, true));
+      }
+      
+      return await query.orderBy(desc(blogSubscribers.subscriptionDate));
     } catch (error) {
       throw handleDbError(error, "getting blog subscribers");
     }
@@ -546,6 +561,19 @@ export class FormStorage implements IFormStorage {
       return true;
     } catch (error) {
       throw handleDbError(error, `unsubscribing blog subscriber ${email}`);
+    }
+  }
+  
+  /**
+   * Delete a blog subscriber
+   */
+  async deleteBlogSubscriber(id: number): Promise<void> {
+    try {
+      await db
+        .delete(blogSubscribers)
+        .where(eq(blogSubscribers.id, id));
+    } catch (error) {
+      throw handleDbError(error, `deleting blog subscriber ${id}`);
     }
   }
 

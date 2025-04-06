@@ -1004,7 +1004,9 @@ export const insertBlogSubscriberSchema = createInsertSchema(blogSubscribers).om
   verificationExpires: true,
   unsubscribedAt: true,
   lastEmailSent: true,
-  emailCount: true
+  emailCount: true,
+  unsubscribeToken: true,
+  verificationToken: true
 });
 
 // Types for blog subscribers
