@@ -16,15 +16,8 @@ interface BlogPost {
   readTime?: string;
 }
 
-// Categories for filter
-const categories = [
-  "All",
-  "Tax Planning",
-  "Technology",
-  "Financial Planning",
-  "Legal",
-  "Cash Flow",
-];
+// Default category filter
+const ALL_CATEGORIES = "All";
 
 export default function Blog() {
   const [_, navigate] = useLocation();
@@ -50,7 +43,8 @@ export default function Blog() {
 
   // Derive unique categories from fetched blog posts
   const apiCategories = React.useMemo(() => {
-    if (!blogPosts.length) return categories;
+    // Default categories if no posts are available
+    if (!blogPosts.length) return [ALL_CATEGORIES];
     
     // Get unique categories
     const uniqueCategories = new Set<string>();
@@ -59,7 +53,7 @@ export default function Blog() {
     });
     
     // Convert to array and add "All" at the beginning
-    return ["All", ...Array.from(uniqueCategories)];
+    return [ALL_CATEGORIES, ...Array.from(uniqueCategories)];
   }, [blogPosts]);
 
   // Filter posts based on category and search term
@@ -217,7 +211,26 @@ export default function Blog() {
 
           {/* Blog posts grid */}
           <div className="lg:col-span-3">
-            {filteredPosts.length === 0 ? (
+            {isLoading ? (
+              // Loading skeleton
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {Array(4).fill(0).map((_, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="h-48 bg-gray-200 animate-pulse"></div>
+                    <div className="p-6">
+                      <div className="h-4 bg-gray-200 rounded w-1/4 mb-2 animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full mb-2 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full mb-4 animate-pulse"></div>
+                      <div className="flex justify-between">
+                        <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredPosts.length === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-xl font-medium text-gray-900 mb-2">No articles found</h3>
                 <p className="text-gray-600">Try adjusting your search or category selection.</p>
@@ -228,7 +241,7 @@ export default function Blog() {
                   <div key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
                     <div className="h-48 overflow-hidden">
                       <img
-                        src={post.imageUrl}
+                        src={post.imageUrl || 'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'}
                         alt={post.title}
                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                       />

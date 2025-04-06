@@ -29,44 +29,11 @@ const BlogSection: React.FC<BlogSectionProps> = () => {
     }
   });
 
-  const apiBlogPosts = data?.posts || [];
+  // Get blog posts from the API
+  const blogPosts = data?.posts || [];
   
-  // Default blog posts to use as fallback if no posts from API
-  const defaultBlogPosts: BlogPost[] = [
-    {
-      id: 1,
-      title: 'Strategic Tax Planning for Small Business Growth',
-      excerpt: 'Discover how proactive tax planning strategies can help small businesses maximize cash flow and fuel growth opportunities.',
-      publishedAt: '2023-03-12',
-      author: 'Sarah Johnson',
-      category: 'Tax Planning',
-      imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
-      slug: 'strategic-tax-planning'
-    },
-    {
-      id: 2,
-      title: 'Financial Reporting: Turning Numbers into Actionable Insights',
-      excerpt: 'Learn how well-designed financial reports can provide the intelligence needed for better business decision-making.',
-      publishedAt: '2023-02-28',
-      author: 'Michael Chen',
-      category: 'Financial Reporting',
-      imageUrl: 'https://images.unsplash.com/photo-1543286386-713bdd548da4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
-      slug: 'financial-reporting-insights'
-    },
-    {
-      id: 3,
-      title: 'Building a Resilient Business Through Financial Planning',
-      excerpt: 'Explore how comprehensive financial planning can help your business weather economic uncertainties and capitalize on opportunities.',
-      publishedAt: '2023-01-15',
-      author: 'Jessica Wilcox',
-      category: 'Financial Planning',
-      imageUrl: 'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
-      slug: 'resilient-business-planning'
-    }
-  ];
-
-  // Use API posts if available, otherwise fallback to defaults
-  const displayPosts = apiBlogPosts.length > 0 ? apiBlogPosts : defaultBlogPosts;
+  // Display at most 3 posts
+  const displayPosts = blogPosts.slice(0, 3);
 
   return (
     <section id="blog" className="py-20 bg-white">
