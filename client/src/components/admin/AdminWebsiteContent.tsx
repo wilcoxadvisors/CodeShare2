@@ -10,7 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
+import { Calendar, Download, Eye, ExternalLink, FileText, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -30,6 +33,37 @@ interface HomepageContent {
   createdAt: string;
 }
 
+// Define blog post type
+interface BlogPost {
+  id: number;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  slug: string;
+  status: string;
+  category: string | null;
+  tags: string | null;
+  imageUrl: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  readTime: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+// Define blog subscriber type
+interface BlogSubscriber {
+  id: number;
+  email: string;
+  name: string | null;
+  industry: string | null;
+  isActive: boolean;
+  createdAt: string;
+  source: string | null;
+  unsubscribeToken: string;
+}
+
 // Form schema for editing/creating homepage content
 const homepageContentSchema = z.object({
   section: z.string().min(1, "Section name is required"),
@@ -41,29 +75,95 @@ const homepageContentSchema = z.object({
   metaDescription: z.string().optional().nullable()
 });
 
+// Form schema for editing/creating blog posts
+const blogPostSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  slug: z.string().min(1, "Slug is required"),
+  content: z.string().min(1, "Content is required"),
+  excerpt: z.string().optional().nullable(),
+  status: z.string().default("draft"),
+  category: z.string().optional().nullable(),
+  tags: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
+  readTime: z.string().optional().nullable(),
+  publishedAt: z.string().optional().nullable()
+});
+
 type HomepageContentFormValues = z.infer<typeof homepageContentSchema>;
+type BlogPostFormValues = z.infer<typeof blogPostSchema>;
 
 const AdminWebsiteContent: React.FC = () => {
   const queryClient = useQueryClient();
+  // Content type management
+  const [contentType, setContentType] = useState<'homepage' | 'blog'>('homepage');
+  
+  // Homepage content state
   const [activeSection, setActiveSection] = useState<string>("all");
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [selectedContent, setSelectedContent] = useState<HomepageContent | null>(null);
   const [contentToDelete, setContentToDelete] = useState<HomepageContent | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Blog post state
+  const [selectedBlogPost, setSelectedBlogPost] = useState<BlogPost | null>(null);
+  const [isBlogPostEditSheetOpen, setIsBlogPostEditSheetOpen] = useState(false);
+  const [blogPostToDelete, setBlogPostToDelete] = useState<BlogPost | null>(null);
+  const [isBlogPostDeleteDialogOpen, setIsBlogPostDeleteDialogOpen] = useState(false);
+  const [blogCategory, setBlogCategory] = useState<string>("all");
 
   // Fetch all homepage content
-  const { data: homepageContents = [], isLoading, isError, error } = useQuery<HomepageContent[]>({
+  const { 
+    data: homepageContents = [], 
+    isLoading: isHomepageLoading, 
+    isError: isHomepageError, 
+    error: homepageError 
+  } = useQuery<HomepageContent[]>({
     queryKey: ['/api/content/homepage'],
     select: (data: any) => data.data || []
   });
 
-  // Create sections list for tabs 
-  const sections = ['all', ...new Set(homepageContents.map(content => content.section))];
+  // Fetch all blog posts
+  const {
+    data: blogPosts = [],
+    isLoading: isBlogLoading,
+    isError: isBlogError,
+    error: blogError
+  } = useQuery<BlogPost[]>({
+    queryKey: ['/api/blog/posts'],
+    select: (data: any) => data.data || []
+  });
 
-  // Filter contents by active section
+  // Fetch blog subscribers
+  const {
+    data: blogSubscribers = [],
+    isLoading: isSubscribersLoading,
+    isError: isSubscribersError,
+    error: subscribersError
+  } = useQuery<BlogSubscriber[]>({
+    queryKey: ['/api/blog/subscribers'],
+    select: (data: any) => data.data || [],
+    enabled: contentType === 'blog' // Only fetch when blog tab is active
+  });
+  
+  // Create homepage sections list for tabs
+  const sectionsSet = new Set(homepageContents.map(content => content.section));
+  const sections = ['all', ...Array.from(sectionsSet)];
+
+  // Filter homepage contents by active section
   const filteredContents = activeSection === 'all'
     ? homepageContents
     : homepageContents.filter(content => content.section === activeSection);
+    
+  // Create blog categories list for filtering
+  const categoriesSet = new Set(blogPosts.filter(post => post.category).map(post => post.category as string));
+  const categories = ['all', ...Array.from(categoriesSet)];
+  
+  // Filter blog posts by category
+  const filteredBlogPosts = blogCategory === 'all'
+    ? blogPosts
+    : blogPosts.filter(post => post.category === blogCategory);
 
   // Create mutation for creating new content
   const createMutation = useMutation({
@@ -195,10 +295,157 @@ const AdminWebsiteContent: React.FC = () => {
     }
   };
 
+  // Blog post form setup
+  const blogPostForm = useForm<BlogPostFormValues>({
+    resolver: zodResolver(blogPostSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      content: "",
+      excerpt: "",
+      status: "draft",
+      category: "",
+      tags: "",
+      imageUrl: "",
+      metaTitle: "",
+      metaDescription: "",
+      readTime: "",
+      publishedAt: ""
+    }
+  });
+
+  // Blog post mutations
+  const createBlogPostMutation = useMutation({
+    mutationFn: (data: BlogPostFormValues) => 
+      apiRequest('/api/blog/posts', { method: 'POST', data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blog/posts'] });
+      setIsBlogPostEditSheetOpen(false);
+      toast({
+        title: "Success",
+        description: "Blog post created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to create blog post: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateBlogPostMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: BlogPostFormValues }) => 
+      apiRequest(`/api/blog/posts/${id}`, { method: 'PUT', data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blog/posts'] });
+      setIsBlogPostEditSheetOpen(false);
+      toast({
+        title: "Success",
+        description: "Blog post updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to update blog post: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteBlogPostMutation = useMutation({
+    mutationFn: (id: number) => 
+      apiRequest(`/api/blog/posts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blog/posts'] });
+      setIsBlogPostDeleteDialogOpen(false);
+      setBlogPostToDelete(null);
+      toast({
+        title: "Success",
+        description: "Blog post deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete blog post: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle blog post actions
+  const handleNewBlogPostClick = () => {
+    setSelectedBlogPost(null);
+    blogPostForm.reset({
+      title: "",
+      slug: "",
+      content: "",
+      excerpt: "",
+      status: "draft",
+      category: "",
+      tags: "",
+      imageUrl: "",
+      metaTitle: "",
+      metaDescription: "",
+      readTime: "",
+      publishedAt: ""
+    });
+    setIsBlogPostEditSheetOpen(true);
+  };
+
+  const handleEditBlogPostClick = (post: BlogPost) => {
+    setSelectedBlogPost(post);
+    blogPostForm.reset({
+      title: post.title,
+      slug: post.slug,
+      content: post.content,
+      excerpt: post.excerpt || "",
+      status: post.status,
+      category: post.category || "",
+      tags: post.tags || "",
+      imageUrl: post.imageUrl || "",
+      metaTitle: post.metaTitle || "",
+      metaDescription: post.metaDescription || "",
+      readTime: post.readTime || "",
+      publishedAt: post.publishedAt || ""
+    });
+    setIsBlogPostEditSheetOpen(true);
+  };
+
+  const handleDeleteBlogPostClick = (post: BlogPost) => {
+    setBlogPostToDelete(post);
+    setIsBlogPostDeleteDialogOpen(true);
+  };
+
+  const handleDeleteBlogPostConfirm = () => {
+    if (blogPostToDelete) {
+      deleteBlogPostMutation.mutate(blogPostToDelete.id);
+    }
+  };
+
+  const onBlogPostSubmit = (data: BlogPostFormValues) => {
+    if (selectedBlogPost) {
+      updateBlogPostMutation.mutate({ id: selectedBlogPost.id, data });
+    } else {
+      createBlogPostMutation.mutate(data);
+    }
+  };
+
   // Preview website function
   const previewWebsite = () => {
     window.open('/', '_blank');
   };
+
+  // Handle blog post preview
+  const previewBlogPost = (slug: string) => {
+    window.open(`/blog/${slug}`, '_blank');
+  };
+
+  // Determine loading state
+  const isLoading = isHomepageLoading || (contentType === 'blog' && isBlogLoading);
 
   if (isLoading) {
     return (
@@ -208,6 +455,11 @@ const AdminWebsiteContent: React.FC = () => {
     );
   }
 
+  // Determine error state
+  const isError = (contentType === 'homepage' && isHomepageError) || 
+                 (contentType === 'blog' && isBlogError);
+  const errorMessage = contentType === 'homepage' ? homepageError : blogError;
+
   if (isError) {
     return (
       <div className="p-8">
@@ -216,8 +468,8 @@ const AdminWebsiteContent: React.FC = () => {
             <CardTitle className="text-destructive">Error Loading Content</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Failed to load homepage content. Please try again later.</p>
-            <p className="text-sm text-muted-foreground">{String(error)}</p>
+            <p>Failed to load {contentType} content. Please try again later.</p>
+            <p className="text-sm text-muted-foreground">{String(errorMessage)}</p>
           </CardContent>
         </Card>
       </div>
@@ -232,10 +484,6 @@ const AdminWebsiteContent: React.FC = () => {
           <p className="text-muted-foreground">Manage content displayed on your website</p>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={handleNewContentClick} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Content
-          </Button>
           <Button onClick={previewWebsite} variant="outline" size="sm">
             <Eye className="mr-2 h-4 w-4" />
             Preview Site
@@ -243,66 +491,209 @@ const AdminWebsiteContent: React.FC = () => {
         </div>
       </div>
 
-      <Tabs value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="mb-4">
-          {sections.map(section => (
-            <TabsTrigger key={section} value={section}>
-              {section.charAt(0).toUpperCase() + section.slice(1)}
-            </TabsTrigger>
-          ))}
+      {/* Main content type tabs */}
+      <Tabs value={contentType} onValueChange={(value) => setContentType(value as 'homepage' | 'blog')}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="homepage">Homepage Content</TabsTrigger>
+          <TabsTrigger value="blog">Blog Management</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeSection}>
-          {filteredContents.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="mb-4 text-muted-foreground">No content found for this section.</p>
-                <Button onClick={handleNewContentClick} variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Content
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredContents.map(content => (
-                <Card key={content.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{content.title}</CardTitle>
-                        <CardDescription>Section: {content.section}</CardDescription>
-                      </div>
-                      <div className="flex space-x-1">
-                        <Button onClick={() => handleEditClick(content)} size="sm" variant="ghost">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button onClick={() => handleDeleteClick(content)} size="sm" variant="ghost" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="line-clamp-3">{content.content}</p>
-                    </div>
-                    {content.imageUrl && (
-                      <div className="mt-2">
-                        <p className="text-xs text-muted-foreground">Image: {content.imageUrl}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="text-xs text-muted-foreground border-t pt-4">
-                    <div className="flex justify-between w-full">
-                      <span>Order: {content.displayOrder}</span>
-                      <span>Last updated: {new Date(content.updatedAt).toLocaleDateString()}</span>
-                    </div>
-                  </CardFooter>
-                </Card>
+        {/* Homepage Content Tab */}
+        <TabsContent value="homepage" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Homepage Sections</h3>
+            <Button onClick={handleNewContentClick} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Section
+            </Button>
+          </div>
+
+          <Tabs value={activeSection} onValueChange={setActiveSection}>
+            <TabsList className="mb-4">
+              {sections.map(section => (
+                <TabsTrigger key={section} value={section}>
+                  {section.charAt(0).toUpperCase() + section.slice(1)}
+                </TabsTrigger>
               ))}
-            </div>
-          )}
+            </TabsList>
+
+            <TabsContent value={activeSection}>
+              {filteredContents.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="mb-4 text-muted-foreground">No content found for this section.</p>
+                    <Button onClick={handleNewContentClick} variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Content
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredContents.map(content => (
+                    <Card key={content.id}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{content.title}</CardTitle>
+                            <CardDescription>Section: {content.section}</CardDescription>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button onClick={() => handleEditClick(content)} size="sm" variant="ghost">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button onClick={() => handleDeleteClick(content)} size="sm" variant="ghost" className="text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="prose prose-sm max-w-none">
+                          <p className="line-clamp-3">{content.content}</p>
+                        </div>
+                        {content.imageUrl && (
+                          <div className="mt-2">
+                            <p className="text-xs text-muted-foreground">Image: {content.imageUrl}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                      <CardFooter className="text-xs text-muted-foreground border-t pt-4">
+                        <div className="flex justify-between w-full">
+                          <span>Order: {content.displayOrder}</span>
+                          <span>Last updated: {new Date(content.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* Blog Management Tab */}
+        <TabsContent value="blog" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Blog Posts</h3>
+            <Button onClick={handleNewBlogPostClick} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Post
+            </Button>
+          </div>
+
+          <Tabs value={blogCategory} onValueChange={setBlogCategory}>
+            <TabsList className="mb-4">
+              {categories.map(category => (
+                <TabsTrigger key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value={blogCategory}>
+              {filteredBlogPosts.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="mb-4 text-muted-foreground">No blog posts found in this category.</p>
+                    <Button onClick={handleNewBlogPostClick} variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Blog Post
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredBlogPosts.map(post => (
+                    <Card key={post.id}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{post.title}</CardTitle>
+                            <CardDescription className="flex items-center gap-2">
+                              <Badge variant={post.status === 'published' ? 'default' : 'outline'}>
+                                {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+                              </Badge>
+                              {post.category && (
+                                <span className="text-xs text-muted-foreground">
+                                  Category: {post.category}
+                                </span>
+                              )}
+                            </CardDescription>
+                          </div>
+                          <div className="flex space-x-1">
+                            {post.status === 'published' && (
+                              <Button onClick={() => previewBlogPost(post.slug)} size="sm" variant="ghost">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button onClick={() => handleEditBlogPostClick(post)} size="sm" variant="ghost">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button onClick={() => handleDeleteBlogPostClick(post)} size="sm" variant="ghost" className="text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {post.excerpt ? (
+                          <p className="text-sm line-clamp-3">{post.excerpt}</p>
+                        ) : (
+                          <div className="prose prose-sm max-w-none">
+                            <p className="line-clamp-3">{post.content}</p>
+                          </div>
+                        )}
+                        {post.imageUrl && (
+                          <div className="mt-2">
+                            <p className="text-xs text-muted-foreground">Image: {post.imageUrl}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                      <CardFooter className="text-xs text-muted-foreground border-t pt-4">
+                        <div className="flex justify-between w-full">
+                          <span>Slug: {post.slug}</span>
+                          <span>
+                            {post.publishedAt ? `Published: ${new Date(post.publishedAt).toLocaleDateString()}` : 
+                             `Updated: ${new Date(post.updatedAt).toLocaleDateString()}`}
+                          </span>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          {/* Blog Subscribers Section */}
+          <div className="mt-8">
+            <h3 className="text-lg font-medium mb-4">Blog Subscribers</h3>
+            
+            {isSubscribersLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : isSubscribersError ? (
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-destructive">Failed to load subscribers: {String(subscribersError)}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm">
+                    <p className="mb-2 font-medium">Total Subscribers: {blogSubscribers.length}</p>
+                    <p className="text-muted-foreground">
+                      Active: {blogSubscribers.filter(sub => sub.isActive).length} | 
+                      Inactive: {blogSubscribers.filter(sub => !sub.isActive).length}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -456,7 +847,247 @@ const AdminWebsiteContent: React.FC = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Blog Post Edit/Create Sheet */}
+      <Sheet open={isBlogPostEditSheetOpen} onOpenChange={setIsBlogPostEditSheetOpen}>
+        <SheetContent className="sm:max-w-xl w-full">
+          <SheetHeader>
+            <SheetTitle>{selectedBlogPost ? 'Edit Blog Post' : 'Create New Blog Post'}</SheetTitle>
+            <SheetDescription>
+              {selectedBlogPost
+                ? 'Update the blog post details below.'
+                : 'Fill in the details to create a new blog post.'}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-6">
+            <Form {...blogPostForm}>
+              <form onSubmit={blogPostForm.handleSubmit(onBlogPostSubmit)} className="space-y-4">
+                <FormField
+                  control={blogPostForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title*</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Blog post title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug*</FormLabel>
+                      <FormControl>
+                        <Input placeholder="url-friendly-slug" {...field} />
+                      </FormControl>
+                      <FormDescription>URL-friendly version of the title</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Content*</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Blog content" className="min-h-[200px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="excerpt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Excerpt</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Brief summary of the post" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormDescription>Short summary for previews</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={blogPostForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select 
+                          value={field.value} 
+                          onValueChange={field.onChange}
+                          defaultValue="draft"
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={blogPostForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Finance, Tips" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags</FormLabel>
+                      <FormControl>
+                        <Input placeholder="tax,retirement,investing" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormDescription>Comma-separated list of tags</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Featured Image URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="readTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Read Time</FormLabel>
+                      <FormControl>
+                        <Input placeholder="5 min read" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={blogPostForm.control}
+                  name="publishedAt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Publish Date</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="datetime-local" 
+                          {...field} 
+                          value={field.value || ''} 
+                          disabled={blogPostForm.getValues('status') !== 'published'}
+                        />
+                      </FormControl>
+                      <FormDescription>Only applicable for published posts</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-medium">SEO Settings</h3>
+                  
+                  <FormField
+                    control={blogPostForm.control}
+                    name="metaTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meta Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="SEO title" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>SEO title for this post (optional)</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={blogPostForm.control}
+                    name="metaDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meta Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="SEO description" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>SEO description for this post (optional)</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsBlogPostEditSheetOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={createBlogPostMutation.isPending || updateBlogPostMutation.isPending}
+                  >
+                    {(createBlogPostMutation.isPending || updateBlogPostMutation.isPending) ? (
+                      <span className="flex items-center">
+                        <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-current rounded-full"></span>
+                        Saving...
+                      </span>
+                    ) : (
+                      selectedBlogPost ? 'Update Post' : 'Create Post'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Homepage Content Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -474,6 +1105,36 @@ const AdminWebsiteContent: React.FC = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? (
+                <span className="flex items-center">
+                  <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-current rounded-full"></span>
+                  Deleting...
+                </span>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Blog Post Delete Confirmation Dialog */}
+      <AlertDialog open={isBlogPostDeleteDialogOpen} onOpenChange={setIsBlogPostDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the blog post "{blogPostToDelete?.title}". 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBlogPostConfirm}
+              disabled={deleteBlogPostMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteBlogPostMutation.isPending ? (
                 <span className="flex items-center">
                   <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-current rounded-full"></span>
                   Deleting...
