@@ -269,10 +269,10 @@ function SystemMaintenanceCleanupButton() {
         .then((response) => response.json())
         .then((data) => {
           setIsLoading(false);
-          if (data.success) {
+          if (data.status === "success") {
             toast({
               title: "Cleanup Complete",
-              description: `${data.deleted} clients were permanently deleted.`,
+              description: data.message || "Cleanup task completed successfully.",
               variant: "default",
             });
           } else {
