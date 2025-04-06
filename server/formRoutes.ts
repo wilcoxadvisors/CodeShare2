@@ -382,17 +382,17 @@ export function registerFormRoutes(app: Express) {
     // Store the file in the database using a transaction for data integrity
     const result = await withTransaction(async (tx: typeof db) => {
       // Create the file entry in the database within a transaction
-      const file = await storage.createChecklistFile(fileData);
+      const file = await storage.forms.createChecklistFile(fileData);
       
       // If this is marked as active, deactivate all other files
       if (isActive) {
         // Get the current active files (excluding the one we just created)
-        const activeFiles = await storage.getChecklistFiles();
+        const activeFiles = await storage.forms.getChecklistFiles();
         
         // Deactivate all other files
         for (const activeFile of activeFiles) {
           if (activeFile.id !== file.id && activeFile.isActive) {
-            await storage.updateChecklistFile(activeFile.id, false);
+            await storage.forms.updateChecklistFile(activeFile.id, false);
           }
         }
       }
@@ -421,7 +421,7 @@ export function registerFormRoutes(app: Express) {
   
   // Get all checklist files (admin only)
   app.get("/api/admin/checklist-files", asyncHandler(async (req: Request, res: Response) => {
-    const files = await storage.getChecklistFiles();
+    const files = await storage.forms.getChecklistFiles();
     
     // Don't return the actual file data in the list
     const filesWithoutData = files.map(file => ({
@@ -440,7 +440,7 @@ export function registerFormRoutes(app: Express) {
   
   // Get the active checklist file
   app.get("/api/checklist-file", asyncHandler(async (req: Request, res: Response) => {
-    const file = await storage.getActiveChecklistFile();
+    const file = await storage.forms.getActiveChecklistFile();
     
     if (!file) {
       return res.status(404).json({ message: "No active checklist file found" });
@@ -459,7 +459,7 @@ export function registerFormRoutes(app: Express) {
   // Get a specific checklist file by ID (admin only)
   app.get("/api/admin/checklist-files/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const file = await storage.getChecklistFileById(id);
+    const file = await storage.forms.getChecklistFileById(id);
     
     if (!file) {
       return res.status(404).json({ message: "Checklist file not found" });
@@ -489,18 +489,18 @@ export function registerFormRoutes(app: Express) {
       // If setting this file as active, deactivate all other files
       if (isActive) {
         // Get the current active files 
-        const activeFiles = await storage.getChecklistFiles();
+        const activeFiles = await storage.forms.getChecklistFiles();
         
         // Deactivate all other files
         for (const activeFile of activeFiles) {
           if (activeFile.id !== id && activeFile.isActive) {
-            await storage.updateChecklistFile(activeFile.id, false);
+            await storage.forms.updateChecklistFile(activeFile.id, false);
           }
         }
       }
       
       // Update this file's status
-      const result = await storage.updateChecklistFile(id, isActive);
+      const result = await storage.forms.updateChecklistFile(id, isActive);
       return result;
     });
     
@@ -525,7 +525,7 @@ export function registerFormRoutes(app: Express) {
     const id = parseInt(req.params.id);
     
     // Check if file exists
-    const file = await storage.getChecklistFileById(id);
+    const file = await storage.forms.getChecklistFileById(id);
     if (!file) {
       return res.status(404).json({ message: "Checklist file not found" });
     }
@@ -535,17 +535,17 @@ export function registerFormRoutes(app: Express) {
       // If this is the active file, we need to be careful
       if (file.isActive) {
         // Find another file to set as active (if any)
-        const otherFiles = await storage.getChecklistFiles();
+        const otherFiles = await storage.forms.getChecklistFiles();
         const alternativeFile = otherFiles.find(f => f.id !== id);
         
         // If there's another file, make it active
         if (alternativeFile) {
-          await storage.updateChecklistFile(alternativeFile.id, true);
+          await storage.forms.updateChecklistFile(alternativeFile.id, true);
         }
       }
       
       // Now delete the file
-      await storage.deleteChecklistFile(id);
+      await storage.forms.deleteChecklistFile(id);
     });
     
     // Send email notification
@@ -619,7 +619,7 @@ export function registerFormRoutes(app: Express) {
         const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
         
         // Update with new verification token
-        const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
+        const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
           verificationToken,
           verificationExpires,
           active: true
@@ -641,7 +641,7 @@ export function registerFormRoutes(app: Express) {
       
       // If inactive but confirmed previously, just reactivate
       if (!existingSubscriber.active && existingSubscriber.confirmed) {
-        const updatedSubscriber = await storage.updateBlogSubscriber(existingSubscriber.id, {
+        const updatedSubscriber = await storage.forms.updateBlogSubscriber(existingSubscriber.id, {
           active: true,
           unsubscribedAt: null
         });
@@ -677,7 +677,7 @@ export function registerFormRoutes(app: Express) {
     };
     
     // Store the new subscription
-    const result = await storage.createBlogSubscriber(subscriber);
+    const result = await storage.forms.createBlogSubscriber(subscriber);
     
     // Send verification email
     await sendVerificationEmail(result.email, result.name, verificationToken);
@@ -724,7 +724,7 @@ export function registerFormRoutes(app: Express) {
     }
     
     // Update subscriber to confirmed
-    await storage.updateBlogSubscriber(subscriber.id, {
+    await storage.forms.updateBlogSubscriber(subscriber.id, {
       confirmed: true,
       confirmedAt: new Date(),
       verificationToken: null, // Clear the token after use
@@ -777,7 +777,7 @@ export function registerFormRoutes(app: Express) {
     }
     
     // Update to inactive
-    await storage.updateBlogSubscriber(subscriber.id, {
+    await storage.forms.updateBlogSubscriber(subscriber.id, {
       active: false,
       unsubscribedAt: new Date()
     });
@@ -810,7 +810,7 @@ export function registerFormRoutes(app: Express) {
     const subscriber = subscribers[0];
     
     // Update to inactive
-    await storage.updateBlogSubscriber(subscriber.id, {
+    await storage.forms.updateBlogSubscriber(subscriber.id, {
       active: false,
       unsubscribedAt: new Date()
     });
@@ -829,7 +829,7 @@ export function registerFormRoutes(app: Express) {
   // Delete a blog subscriber (admin only)
   app.delete("/api/admin/blog-subscribers/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    await storage.deleteBlogSubscriber(id);
+    await storage.forms.deleteBlogSubscriber(id);
     res.status(204).end();
   }));
 }
