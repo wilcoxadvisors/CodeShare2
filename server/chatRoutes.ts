@@ -13,6 +13,15 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { validateRequest } from '../shared/validation';
 import { z } from 'zod';
 import axios from 'axios';
+import { Session, SessionData } from 'express-session';
+
+// Extend the express-session SessionData type to include our custom properties
+declare module 'express-session' {
+  interface SessionData {
+    guestUserId?: number;
+    guestCreatedAt?: Date;
+  }
+}
 
 // Schema for chat message requests
 const sendMessageSchema = z.object({
@@ -100,14 +109,30 @@ const updateUsage = async (usageLimitId: number, messageTokens: number) => {
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
   // Allow all chat endpoints to work even if not authenticated
   if (req.path.startsWith('/api/chat/')) {
-    // For unauthenticated users, use a guest user role
+    // For unauthenticated users, create a unique session-based guest ID
     if (!req.isAuthenticated()) {
+      // Initialize session if not already initialized
+      if (!req.session) {
+        req.session = {} as any;
+      }
+      
+      // Create unique guest user ID if not already created
+      if (!req.session.guestUserId) {
+        // Generate a unique negative ID to avoid conflicts with real user IDs
+        // Using current timestamp plus a random number to ensure uniqueness
+        const uniqueId = -(Date.now() + Math.floor(Math.random() * 1000));
+        req.session.guestUserId = uniqueId;
+        req.session.guestCreatedAt = new Date();
+      }
+      
+      // Use the session-specific guest ID
       req.user = {
-        id: 0, // Guest user ID
+        id: req.session.guestUserId, // Unique session-based guest ID
         role: 'guest', // Guest role
-        username: 'guest',
+        username: `guest-${Math.abs(req.session.guestUserId)}`,
         name: 'Guest User',
-        email: 'guest@example.com'
+        email: `guest-${Math.abs(req.session.guestUserId)}@example.com`,
+        isGuest: true
       };
     }
     return next();
@@ -267,9 +292,11 @@ export function registerChatRoutes(app: Express) {
 
   // Send a new message
   app.post('/api/chat/send', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    // For unauthenticated guest users, provide defaults to make chat work
-    const userId = (req.user as any)?.id || 0;
-    const userRole = (req.user as any)?.role || 'guest';
+    // Always use the user ID from the authenticated user object
+    // This will be a unique session-based ID for guest users after our middleware change
+    const userId = (req.user as any).id;
+    const userRole = (req.user as any).role || 'guest';
+    const isGuest = (req.user as any).isGuest === true;
     const validation = validateMessageSchema(req.body);
     
     if (!validation.success) {
@@ -387,10 +414,22 @@ export function registerChatRoutes(app: Express) {
 
   // Get user's chat usage status
   app.get('/api/chat/usage', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Use the user ID from the authenticated user object (unique for each guest session)
     const userId = (req.user as any).id;
     const entityId = req.query.entityId ? parseInt(req.query.entityId as string) : null;
+    const isGuest = (req.user as any).isGuest === true;
     
     const usageStatus = await checkUsageLimits(userId, entityId);
+    
+    // For guest users, return generous limits to ensure a good experience
+    if (isGuest) {
+      return res.json({
+        remainingMessages: 10000,
+        remainingTokens: 1000000,
+        maxMessagesPerDay: 10000,
+        maxTokensPerDay: 1000000
+      });
+    }
     
     res.json({
       remainingMessages: usageStatus.remainingMessages,

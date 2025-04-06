@@ -1,0 +1,108 @@
+📌 Detailed Task Breakdown & Agent Instructions
+🚨 Homepage Issues
+Issue 1: AI Chat Conversation Reset
+Problem:
+The AI assistant on the homepage is not resetting conversations upon each load, which should explicitly reset per individual visitor.
+Risk: Potential exposure of conversations across different users, meaning one user might inadvertently see another user's previous interactions.
+
+Explicit Task:
+
+Investigate and confirm the isolation of conversations per visitor.
+
+Ensure explicitly that each page load initiates a fresh, independent AI chat session for every visitor.
+
+Confirm that no prior conversations are visible or accessible to other users.
+
+Issue 2: Error Submitting "Free Financial Checklist" Form
+Problem:
+When filling out and submitting the "Free Financial Checklist" form, the user explicitly receives an error message stating:
+
+"There was a problem submitting the form. Please try again."
+
+Explicit Task:
+
+Reproduce this form submission error explicitly.
+
+Diagnose and document explicitly why the form submission is failing.
+
+Correct the submission logic explicitly to ensure data is captured and successfully submitted.
+
+Explicitly confirm the form provides clear success/error feedback to the user upon submission.
+
+Issue 3: Error Accessing "Free Consultation" via "Your Schedule" Section
+Problem:
+Attempting to access the free consultation through the "Your Schedule" section explicitly results in an error or failure.
+
+Explicit Task:
+
+Explicitly reproduce and diagnose the scheduling/access error.
+
+Clearly document the root cause of the issue.
+
+Implement an explicit fix to allow users to schedule/access the consultation without errors.
+
+Explicitly verify scheduling functionality from start to finish.
+
+🚨 Blog Integration & Issues
+Issue 4: Blog Connection to Admin Dashboard
+Problem:
+Currently, the blog is not connected to the admin dashboard, preventing effective content management (create/edit/delete posts).
+
+Explicit Task:
+
+Explicitly integrate the blog module into the existing admin dashboard UI.
+
+Ensure explicit CRUD (Create, Read, Update, Delete) capabilities for blog posts.
+
+Explicitly verify admin users can seamlessly manage blog content from the dashboard.
+
+Issue 5: Navigation Issue Between "Blog" and "Contact" Sections
+Problem:
+When navigating from the homepage to the "Blog" and then attempting to return and click on "Contact" in the header, the site explicitly does not scroll correctly to the "Contact" info, instead incorrectly scrolling to the "Services" section.
+
+Explicit Task:
+
+Explicitly reproduce the navigation/scrolling issue.
+
+Explicitly correct anchor or scroll-behavior logic so clicking "Contact" takes users precisely to the Contact Information section every time.
+
+Explicitly confirm consistent correct behavior across multiple navigations (Homepage → Blog → Homepage → Contact).
+
+Issue 6: Missing "Financial Insights" Blog Previews & Incorrect Navigation
+Problem:
+On the homepage's "Financial Insights" section, blog previews are explicitly missing (no content displayed). Clicking "View Articles" explicitly takes users to a generic page with basic placeholder info rather than actual blog content.
+
+Explicit Task:
+
+Explicitly implement and verify the proper display of recent blog previews in the homepage's "Financial Insights" section.
+
+Correctly link "View Articles" explicitly to the actual blog page populated with live blog posts.
+
+Explicitly verify content rendering and navigation accuracy.
+
+Issue 7: Blog Page Subscription Form Error
+Problem:
+On the blog page, attempting to subscribe for updates explicitly results in the error:
+
+"Invalid subscription data."
+
+Explicit Task:
+
+Explicitly reproduce and diagnose the subscription form validation or data submission error.
+
+Explicitly document the specific cause of the error (invalid email validation, missing fields, incorrect API call, etc.).
+
+Explicitly implement a fix allowing users to successfully subscribe for blog updates.
+
+Explicitly verify and confirm correct subscription logic and user feedback.
+
+📌 Explicit Agent Action Required:
+You must explicitly:
+
+✅ Confirm understanding of each of the detailed issues listed above.
+
+✅ Execute tasks in the order provided, beginning immediately with the homepage issues (#1–3), followed explicitly by blog integration and fixes (#4–7).
+
+✅ Clearly document each step, explicitly confirming resolution and successful testing.
+
+✅ Update project documentation and verification status explicitly after resolving each issue.
