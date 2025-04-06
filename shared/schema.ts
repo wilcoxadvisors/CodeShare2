@@ -1015,6 +1015,31 @@ export type InsertBlogSubscriber = z.infer<typeof insertBlogSubscriberSchema>;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 
+// Homepage content table schema
+export const homepageContent = pgTable('homepage_content', {
+  id: serial('id').primaryKey(),
+  section: text('section').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  imageUrl: text('image_url'),
+  displayOrder: integer('display_order').default(0),
+  metaTitle: text('meta_title'), // SEO title
+  metaDescription: text('meta_description'), // SEO description
+  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Schema for homepage content insertion
+export const insertHomepageContentSchema = createInsertSchema(homepageContent).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Types for homepage content
+export type HomepageContent = typeof homepageContent.$inferSelect;
+export type InsertHomepageContent = z.infer<typeof insertHomepageContentSchema>;
+
 // Locations relation to client
 export const locationsRelations = relations(locations, ({ one }) => ({
   client: one(clients, {

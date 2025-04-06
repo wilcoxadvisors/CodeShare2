@@ -21,7 +21,7 @@ router.get('/posts', async (req, res, next) => {
   try {
     // If status is provided, filter by it (admin only)
     let posts;
-    if (req.query.status && req.session.user?.role === 'admin') {
+    if (req.query.status && req.isAuthenticated() && (req.user as any)?.role === 'admin') {
       const status = req.query.status as string;
       posts = await storage.forms.getBlogPosts();
       posts = posts.filter(post => post.status === status);
@@ -84,9 +84,14 @@ router.get('/posts/:slug', async (req, res, next) => {
 // ADMIN: Create a new blog post
 router.post('/posts', authenticateUser, authorizeAdmin, async (req, res, next) => {
   try {
-    // Debug user object
-    console.log('DEBUG User object:', req.user);
-    console.log('DEBUG Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : false);
+    // Explicit debugging logs to verify authentication
+    console.log('========== AUTHENTICATION DEBUG LOGS ==========');
+    console.log('Authenticated user:', req.user);
+    console.log('Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : false);
+    console.log('Session passport data:', req.session?.passport);
+    console.log('User ID from req.user:', req.user ? (req.user as any).id : 'Not available');
+    console.log('User role from req.user:', req.user ? (req.user as any).role : 'Not available');
+    console.log('===============================================');
     
     // Validate request body
     const validatedData = insertBlogPostSchema.parse(req.body);
@@ -120,9 +125,14 @@ router.post('/posts', authenticateUser, authorizeAdmin, async (req, res, next) =
 // ADMIN: Update a blog post
 router.put('/posts/:id', authenticateUser, authorizeAdmin, async (req, res, next) => {
   try {
-    // Debug user object
-    console.log('DEBUG User object in update route:', req.user);
-    console.log('DEBUG Is authenticated in update route:', req.isAuthenticated ? req.isAuthenticated() : false);
+    // Explicit debugging logs to verify authentication
+    console.log('========== AUTH DEBUG LOGS (UPDATE ROUTE) ==========');
+    console.log('Authenticated user:', req.user);
+    console.log('Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : false);
+    console.log('Session passport data:', req.session?.passport);
+    console.log('User ID from req.user:', req.user ? (req.user as any).id : 'Not available');
+    console.log('User role from req.user:', req.user ? (req.user as any).role : 'Not available');
+    console.log('==================================================');
     
     const { id } = req.params;
     const postId = parseInt(id, 10);
@@ -169,9 +179,14 @@ router.put('/posts/:id', authenticateUser, authorizeAdmin, async (req, res, next
 // ADMIN: Delete a blog post
 router.delete('/posts/:id', authenticateUser, authorizeAdmin, async (req, res, next) => {
   try {
-    // Debug user object
-    console.log('DEBUG User object in delete route:', req.user);
-    console.log('DEBUG Is authenticated in delete route:', req.isAuthenticated ? req.isAuthenticated() : false);
+    // Explicit debugging logs to verify authentication
+    console.log('========== AUTH DEBUG LOGS (DELETE ROUTE) ==========');
+    console.log('Authenticated user:', req.user);
+    console.log('Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : false);
+    console.log('Session passport data:', req.session?.passport);
+    console.log('User ID from req.user:', req.user ? (req.user as any).id : 'Not available');
+    console.log('User role from req.user:', req.user ? (req.user as any).role : 'Not available');
+    console.log('==================================================');
     
     const { id } = req.params;
     const postId = parseInt(id, 10);
@@ -263,9 +278,14 @@ router.get('/unsubscribe', async (req, res, next) => {
 // ADMIN: Get all blog subscribers
 router.get('/subscribers', authenticateUser, authorizeAdmin, async (req, res, next) => {
   try {
-    // Debug user object
-    console.log('DEBUG User object in subscribers route:', req.user);
-    console.log('DEBUG Is authenticated in subscribers route:', req.isAuthenticated ? req.isAuthenticated() : false);
+    // Explicit debugging logs to verify authentication
+    console.log('========== AUTH DEBUG LOGS (SUBSCRIBERS ROUTE) ==========');
+    console.log('Authenticated user:', req.user);
+    console.log('Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : false);
+    console.log('Session passport data:', req.session?.passport);
+    console.log('User ID from req.user:', req.user ? (req.user as any).id : 'Not available');
+    console.log('User role from req.user:', req.user ? (req.user as any).role : 'Not available');
+    console.log('========================================================');
     
     const subscribers = await storage.forms.getBlogSubscribers();
     

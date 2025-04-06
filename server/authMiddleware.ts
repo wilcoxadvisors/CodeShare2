@@ -34,6 +34,11 @@ export const authorizeAdmin = (req: Request, res: Response, next: NextFunction) 
 };
 
 /**
+ * Express middleware alias for authorizeAdmin - used for blog and content routes
+ */
+export const validateAdmin = authorizeAdmin;
+
+/**
  * Express middleware to check if an authenticated user has employee role
  */
 export const authorizeEmployee = (req: Request, res: Response, next: NextFunction) => {
