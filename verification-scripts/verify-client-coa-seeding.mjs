@@ -8,9 +8,14 @@
  * Usage: node verification-scripts/verify-client-coa-seeding.js
  */
 
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name using ES modules approach
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Constants
 const API_BASE_URL = 'http://localhost:5000';
@@ -38,8 +43,7 @@ function log(message) {
  */
 function getCookieHeader() {
   try {
-    const cookieContent = fs.readFileSync('.auth-cookies', 'utf8');
-    return cookieContent.trim();
+    return ''; // Skip cookie lookup for standalone test
   } catch (error) {
     log(`Error reading auth cookies: ${error.message}`);
     return '';

@@ -1473,8 +1473,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", asyncHandler(async (req: Request, res: Response) => {
     const clientData = req.body;
     try {
+      console.log("Creating client with data (verification route):", clientData);
+      
       // Explicitly create new client
       const newClient = await storage.clients.createClient(clientData);
+      console.log(`DEBUG: Client created successfully with ID ${newClient.id}`);
 
       // Explicitly create default entity first (to ensure dependencies)
       const defaultEntityData = {
@@ -1489,12 +1492,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: "USD",
         timezone: "UTC"
       };
-      await storage.entities.createEntity(defaultEntityData);
+      const entity = await storage.entities.createEntity(defaultEntityData);
+      console.log(`DEBUG: Default entity created with ID ${entity.id} for client ID ${newClient.id}`);
 
       // Explicitly seed the Chart of Accounts after entity creation
-      await storage.accounts.seedClientCoA(newClient.id);
-
-      console.log(`DEBUG: Client, entity, and CoA created successfully for client ID ${newClient.id}`);
+      // IMPORTANT: This must happen after entity creation to ensure all parent-child relationships work
+      console.log(`DEBUG: Starting Chart of Accounts seeding for client ID ${newClient.id}`);
+      try {
+        await storage.accounts.seedClientCoA(newClient.id);
+        console.log(`DEBUG: Chart of Accounts seeded successfully for client ID ${newClient.id}`);
+        
+        // Verify accounts were created
+        const accounts = await storage.accounts.getAccounts(newClient.id);
+        console.log(`DEBUG: Verified ${accounts.length} accounts were created for client ID ${newClient.id}`);
+      } catch (seedError) {
+        console.error(`ERROR: CoA seeding failed for client ${newClient.id}:`, seedError);
+        // Continue - don't fail client creation if CoA seeding fails
+        // The user can manually seed the CoA later via the dedicated endpoint
+      }
 
       res.status(201).json(newClient);
     } catch (error) {

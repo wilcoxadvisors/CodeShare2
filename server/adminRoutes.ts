@@ -310,8 +310,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       };
       
       console.log("Creating client with data:", clientData);
-      const newClient = await storage.createClient(clientData);
-      console.log("Client created successfully:", newClient);
+      const newClient = await storage.clients.createClient(clientData);
+      console.log(`DEBUG: Admin client created successfully with ID ${newClient.id}`);
       
       // Explicitly create default entity first (to ensure dependencies)
       const defaultEntityData = {
@@ -326,12 +326,13 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         currency: "USD",
         timezone: "UTC"
       };
-      await storage.entities.createEntity(defaultEntityData);
-      console.log(`DEBUG: Default entity created for client ID ${newClient.id}`);
+      const entity = await storage.entities.createEntity(defaultEntityData);
+      console.log(`DEBUG: Admin default entity created with ID ${entity.id} for client ID ${newClient.id}`);
       
       // Explicitly seed the Chart of Accounts after entity creation
+      console.log(`DEBUG: Starting Chart of Accounts seeding for admin client ID ${newClient.id}`);
       await storage.accounts.seedClientCoA(newClient.id);
-      console.log(`DEBUG: Chart of Accounts seeded for client ID ${newClient.id}`);
+      console.log(`DEBUG: Chart of Accounts seeded successfully for admin client ID ${newClient.id}`);
       
       return res.status(201).json({
         status: "success",

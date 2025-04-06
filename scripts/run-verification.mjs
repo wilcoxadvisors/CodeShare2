@@ -3,9 +3,14 @@
  * This script sets up and runs the verification test
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name using ES modules approach
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Create directory for verification logs if it doesn't exist
 const logDir = path.join(__dirname, '..', 'verification-logs');
@@ -17,7 +22,7 @@ console.log('Starting Client CoA Seeding verification test...');
 
 try {
   // Run the verification script
-  const output = execSync('node verification-scripts/verify-client-coa-seeding.js', { 
+  const output = execSync('node verification-scripts/verify-client-coa-seeding.mjs', { 
     stdio: 'inherit'
   });
   
