@@ -290,20 +290,26 @@ export class AccountStorage implements IAccountStorage {
 
     async seedClientCoA(clientId: number): Promise<void> {
         // Implementation copied from DatabaseStorage in original storage.ts
-         console.log(`DEBUG: Attempting to seed CoA for client ${clientId}`);
+         console.log(`DEBUG seedClientCoA called for client:`, clientId);
          console.log(`DEBUG: standardCoaTemplate length: ${standardCoaTemplate.length}`);
          try {
             await db.transaction(async (tx) => {
                 console.log(`DEBUG: Inside transaction for client ${clientId}`);
-                const existingAccounts = await tx.select({ id: accounts.id })
-                                                .from(accounts)
-                                                .where(eq(accounts.clientId, clientId))
-                                                .limit(1);
-
-                console.log(`DEBUG: Checked for existing accounts, found: ${existingAccounts.length}`);
-                if (existingAccounts.length > 0) {
-                    console.log(`DEBUG: CoA already seeded for client ${clientId}. Skipping.`);
-                    return;
+                
+                try {
+                    const existingAccounts = await tx.select({ id: accounts.id })
+                                                    .from(accounts)
+                                                    .where(eq(accounts.clientId, clientId))
+                                                    .limit(1);
+    
+                    console.log(`DEBUG: Checked for existing accounts, found: ${existingAccounts.length}`);
+                    if (existingAccounts.length > 0) {
+                        console.log(`DEBUG: CoA already seeded for client ${clientId}. Skipping.`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error("ERROR during CoA existence check:", error);
+                    throw error;
                 }
 
                 console.log(`DEBUG: Seeding standard CoA for client ${clientId}...`);
@@ -329,37 +335,50 @@ export class AccountStorage implements IAccountStorage {
                         description: acc.description ?? '',
                     };
                      console.log(`DEBUG: Inserting account data:`, accountData);
-                     const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });
-                     if (inserted.length > 0) {
-                         const dbId = inserted[0].id;
-                         console.log(`DEBUG: Account inserted with DB ID: ${dbId}`);
-                         accountMap.set(acc.accountCode, dbId); // Map account code to actual DB ID
-                         insertedIds.push({ templateCode: acc.accountCode, dbId: dbId, parentTemplateCode: acc.parentCode });
-                    } else {
-                         console.error("DEBUG: Failed to insert account during seeding:", acc);
-                         throw new Error(`Failed to insert account ${acc.accountCode} for client ${clientId}`);
-                    }
+                     try {
+                         const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });
+                         console.log("DEBUG insert accounts result:", inserted);
+                         
+                         if (inserted.length > 0) {
+                             const dbId = inserted[0].id;
+                             console.log(`DEBUG: Account inserted with DB ID: ${dbId}`);
+                             accountMap.set(acc.accountCode, dbId); // Map account code to actual DB ID
+                             insertedIds.push({ templateCode: acc.accountCode, dbId: dbId, parentTemplateCode: acc.parentCode });
+                         } else {
+                             console.error("DEBUG: Failed to insert account during seeding:", acc);
+                             throw new Error(`Failed to insert account ${acc.accountCode} for client ${clientId}`);
+                         }
+                     } catch (error) {
+                         console.error("ERROR during CoA insertion:", error);
+                         throw error;
+                     }
                 }
 
                 console.log(`DEBUG: Starting parent relationship updates for ${insertedIds.length} accounts`);
-                const parentUpdates: Promise<any>[] = [];
-                for (const item of insertedIds) {
-                     if (item.parentTemplateCode) {
-                         const parentDbId = accountMap.get(item.parentTemplateCode);
-                         console.log(`DEBUG: Setting parent ${item.parentTemplateCode} (DB ID: ${parentDbId}) for account with DB ID: ${item.dbId}`);
-                         if (parentDbId) {
-                             parentUpdates.push(
-                                 tx.update(accounts)
-                                   .set({ parentId: parentDbId })
-                                   .where(eq(accounts.id, item.dbId))
-                             );
-                         } else {
-                             console.warn(`DEBUG: Could not find parent DB ID for template parent code ${item.parentTemplateCode} when seeding for client ${clientId}`);
+                try {
+                    const parentUpdates: Promise<any>[] = [];
+                    for (const item of insertedIds) {
+                         if (item.parentTemplateCode) {
+                             const parentDbId = accountMap.get(item.parentTemplateCode);
+                             console.log(`DEBUG: Setting parent ${item.parentTemplateCode} (DB ID: ${parentDbId}) for account with DB ID: ${item.dbId}`);
+                             if (parentDbId) {
+                                 parentUpdates.push(
+                                     tx.update(accounts)
+                                       .set({ parentId: parentDbId })
+                                       .where(eq(accounts.id, item.dbId))
+                                 );
+                             } else {
+                                 console.warn(`DEBUG: Could not find parent DB ID for template parent code ${item.parentTemplateCode} when seeding for client ${clientId}`);
+                             }
                          }
                      }
-                 }
-                 console.log(`DEBUG: Executing ${parentUpdates.length} parent updates`);
-                 await Promise.all(parentUpdates);
+                     console.log(`DEBUG: Executing ${parentUpdates.length} parent updates`);
+                     const updateResults = await Promise.all(parentUpdates);
+                     console.log(`DEBUG: Completed parent updates with results:`, updateResults.length);
+                } catch (error) {
+                    console.error("ERROR during parent relationship updates:", error);
+                    throw error;
+                }
 
 
                 console.log(`DEBUG: Successfully seeded ${standardCoaTemplate.length} accounts for client ${clientId}.`);

@@ -1492,19 +1492,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: "USD",
         timezone: "UTC"
       };
+      
+      console.log(`DEBUG: Creating default entity with data:`, JSON.stringify(defaultEntityData, null, 2));
       const entity = await storage.entities.createEntity(defaultEntityData);
       console.log(`DEBUG: Default entity created with ID ${entity.id} for client ID ${newClient.id}`);
 
-      // Explicitly seed the Chart of Accounts after entity creation
-      // IMPORTANT: This must happen after entity creation to ensure all parent-child relationships work
-      console.log(`DEBUG: Starting Chart of Accounts seeding for client ID ${newClient.id}`);
-      try {
-        await storage.accounts.seedClientCoA(newClient.id);
-        console.log(`DEBUG: Chart of Accounts seeded successfully for client ID ${newClient.id}`);
+      // Immediately seed the Chart of Accounts - create a dedicated function to ensure this works reliably
+      const seedCoA = async (clientId: number) => {
+        console.log(`DEBUG: [seedCoA] Starting Chart of Accounts seeding for client ID ${clientId}`);
         
-        // Verify accounts were created
-        const accounts = await storage.accounts.getAccounts(newClient.id);
-        console.log(`DEBUG: Verified ${accounts.length} accounts were created for client ID ${newClient.id}`);
+        try {
+          // Check if accounts already exist
+          console.log(`DEBUG: [seedCoA] Checking for existing accounts for client ${clientId}`);
+          const existingAccounts = await storage.accounts.getAccounts(clientId);
+          console.log(`DEBUG: [seedCoA] Found ${existingAccounts.length} existing accounts for client ${clientId}`);
+          
+          if (existingAccounts.length > 0) {
+            console.log(`DEBUG: [seedCoA] Client ${clientId} already has ${existingAccounts.length} accounts. Skipping CoA seeding.`);
+            return true; // Already seeded
+          } else {
+            console.log(`DEBUG: [seedCoA] No existing accounts found. Proceeding with CoA seeding for client ${clientId}`);
+            await storage.accounts.seedClientCoA(clientId);
+            console.log(`DEBUG: [seedCoA] Chart of Accounts seeded successfully for client ID ${clientId}`);
+            
+            // Verify accounts were created
+            const accounts = await storage.accounts.getAccounts(clientId);
+            console.log(`DEBUG: [seedCoA] Verification complete - client ${clientId} now has ${accounts.length} accounts`);
+            
+            if (accounts.length === 0) {
+              console.error(`ERROR: [seedCoA] No accounts were created for client ${clientId} - CoA seeding may have failed silently`);
+              return false;
+            } else {
+              console.log(`DEBUG: [seedCoA] Successfully verified account creation for client ${clientId}`);
+              return true;
+            }
+          }
+        } catch (seedError) {
+          console.error(`ERROR: [seedCoA] CoA seeding failed for client ${clientId}:`, seedError);
+          console.error(`ERROR: [seedCoA] Full seedError details:`, seedError);
+          throw seedError; // Re-throw for proper handling
+        }
+      };
+
+      // Attempt to seed the Chart of Accounts with proper error handling
+      try {
+        const seedResult = await seedCoA(newClient.id);
+        if (seedResult) {
+          console.log(`DEBUG: Chart of Accounts seeding was successful for client ${newClient.id}`);
+        } else {
+          console.warn(`WARNING: Chart of Accounts seeding may have failed for client ${newClient.id}`);
+        }
       } catch (seedError) {
         console.error(`ERROR: CoA seeding failed for client ${newClient.id}:`, seedError);
         // Continue - don't fail client creation if CoA seeding fails
@@ -1514,6 +1551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newClient);
     } catch (error) {
       console.error("ERROR: Client creation or CoA seeding failed:", error);
+      console.error("ERROR: Full error details:", error);
       res.status(500).json({ error: error.message });
     }
   }));

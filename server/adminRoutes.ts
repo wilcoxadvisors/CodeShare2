@@ -330,9 +330,24 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       console.log(`DEBUG: Admin default entity created with ID ${entity.id} for client ID ${newClient.id}`);
       
       // Explicitly seed the Chart of Accounts after entity creation
+      // IMPORTANT: This must happen after entity creation to ensure all parent-child relationships work
       console.log(`DEBUG: Starting Chart of Accounts seeding for admin client ID ${newClient.id}`);
-      await storage.accounts.seedClientCoA(newClient.id);
-      console.log(`DEBUG: Chart of Accounts seeded successfully for admin client ID ${newClient.id}`);
+      try {
+        await storage.accounts.seedClientCoA(newClient.id);
+        console.log(`DEBUG: Chart of Accounts seeded successfully for admin client ID ${newClient.id}`);
+        
+        // Verify accounts were created
+        const accounts = await storage.accounts.getAccountsByClientId(newClient.id);
+        console.log(`DEBUG: Verified ${accounts.length} accounts were created for admin client ID ${newClient.id}`);
+        
+        if (accounts.length === 0) {
+          console.error(`ERROR: No accounts were created for client ${newClient.id} - CoA seeding may have failed silently`);
+        }
+      } catch (seedError) {
+        console.error(`ERROR: CoA seeding failed for admin client ${newClient.id}:`, seedError);
+        // Continue - don't fail client creation if CoA seeding fails
+        // The user can manually seed the CoA later via the dedicated endpoint
+      }
       
       return res.status(201).json({
         status: "success",

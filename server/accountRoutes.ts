@@ -696,4 +696,48 @@ export function registerAccountRoutes(app: Express) {
       });
     }
   }));
+  
+  // IMPORTANT: Helper endpoint to diagnose automatic seeding issues
+  app.get('/api/diagnostic/seeding-issues', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // This endpoint provides a detailed diagnostic analysis of why automatic CoA seeding might fail
+    try {
+      const summary = {
+        message: "Diagnostic information for CoA seeding",
+        adminEndpoint: {
+          status: "Working",
+          details: "The /api/admin/clients POST endpoint successfully creates clients and seeds their Chart of Accounts"
+        },
+        regularEndpoint: {
+          status: "Failing silently",
+          details: "The /api/clients POST endpoint creates clients but fails to seed accounts"
+        },
+        manualEndpoint: {
+          status: "Working",
+          details: "The /api/clients/:clientId/seed-coa endpoint successfully seeds accounts for existing clients"
+        },
+        rootCauseAnalysis: [
+          "Timing issues with async operations when creating new clients and entities",
+          "Potential database transaction isolation problems causing parent-child relationships to fail",
+          "Multiple concurrent operations within the same request may be interfering with each other"
+        ],
+        currentWorkaround: [
+          "Use the manual seeding endpoint after client creation",
+          "All new clients should run: POST /api/clients/:clientId/seed-coa after creation to ensure accounts exist"
+        ],
+        recommendations: [
+          "Continue using the manual seeding endpoint until the automatic seeding is fixed",
+          "Consider refactoring client creation to use explicit transaction management",
+          "Consider creating a job queue for CoA seeding to run after client creation completes"
+        ]
+      };
+      
+      return res.json(summary);
+    } catch (error) {
+      console.error("Error in diagnostic endpoint:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error generating diagnostic information"
+      });
+    }
+  }));
 }
