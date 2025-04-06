@@ -56,6 +56,40 @@ const upload = multer({
 
 // Register account routes
 export function registerAccountRoutes(app: Express) {
+  // For verification script - direct accounts endpoint
+  app.get("/api/accounts/:clientId", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log(`VERIFICATION TEST: GET /api/accounts/:clientId endpoint called for clientId=${req.params.clientId}`);
+    const clientId = parseInt(req.params.clientId);
+    
+    if (isNaN(clientId) || clientId <= 0) {
+      console.error(`VERIFICATION TEST: Invalid client ID: ${clientId}`);
+      return res.status(400).json({ message: "Invalid client ID" });
+    }
+    
+    try {
+      // Check if user has access to this client (admin has access to all)
+      const userId = (req.user as AuthUser).id;
+      const userRole = (req.user as AuthUser).role;
+      
+      if (userRole !== 'admin') {
+        const client = await storage.clients.getClient(clientId);
+        if (!client || (client.userId !== userId)) {
+          console.error(`VERIFICATION TEST: User ${userId} doesn't have access to client ${clientId}`);
+          return res.status(403).json({ message: "You don't have access to this client" });
+        }
+      }
+      
+      // Get accounts for the client
+      const accounts = await storage.accounts.getAccounts(clientId);
+      console.log(`VERIFICATION TEST: Found ${accounts.length} accounts for client ${clientId}`);
+      
+      // Return the accounts as JSON array
+      return res.json(accounts);
+    } catch (error) {
+      console.error(`VERIFICATION TEST: Error fetching accounts for client ${clientId}:`, error);
+      throw error;
+    }
+  }));
   // Export Chart of Accounts (CSV or Excel)
   app.get("/api/clients/:clientId/accounts/export", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     console.log("DEBUG: GET /api/clients/:clientId/accounts/export route hit");

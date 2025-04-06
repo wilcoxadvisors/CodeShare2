@@ -1500,232 +1500,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: userId
       };
       
-      console.log("Creating client with data:", clientData);
+      // Create client first, then seed Chart of Accounts
+      console.log("DEBUG: Creating client and then seeding CoA");
+      
+      // Step 1: Create the client
+      console.log("DEBUG: Creating client with data:", clientData);
       const newClient = await storage.clients.createClient(clientData);
-      console.log("Client created successfully:", newClient);
+      console.log("DEBUG: Client created successfully with ID:", newClient.id);
+      
+      // Step 2: Seed Chart of Accounts for the client
+      console.log("DEBUG: ===== STARTING CoA SEEDING PROCESS =====");
       
       let accountsCreated = false;
       let accountsCount = 0;
       
-      // Seed the Chart of Accounts for the new client - using a simplified approach
-      try {
-        console.log(`DEBUG: Attempting to seed Chart of Accounts for new client ${newClient.id}`);
-        
-        // First check that the accounts interface is properly initialized
-        if (!storage.accounts || typeof storage.accounts.seedClientCoA !== 'function') {
-          console.error(`ERROR: seedClientCoA method not found on storage.accounts`);
-          throw new Error("seedClientCoA method not available on storage.accounts");
-        }
-          
-          // Import to ensure the template is available
-          const { standardCoaTemplate } = await import('./coaTemplate');
-          console.log(`DEBUG: [Method 1] standardCoaTemplate loaded with ${standardCoaTemplate.length} entries`);
-          
-          await storage.accounts.seedClientCoA(newClient.id);
-          
-          // Verify accounts were actually created
-          const accounts = await storage.accounts.getAccounts(newClient.id);
-          accountsCount = accounts.length;
-          console.log(`DEBUG: [Method 1] After seeding, client ${newClient.id} has ${accountsCount} accounts`);
-          
-          if (accountsCount > 0) {
-            accountsCreated = true;
-            console.log(`DEBUG: [Method 1] Successfully seeded Chart of Accounts`);
-          } else {
-            console.log(`DEBUG: [Method 1] No accounts were created, will try next method`);
-            throw new Error("No accounts were created despite successful API call");
-          }
-        } catch (method1Error) {
-          console.error(`DEBUG: [Method 1] Error:`, method1Error instanceof Error ? method1Error.message : String(method1Error));
-        }
+      // Verify storage.accounts is accessible
+      if (!storage.accounts || typeof storage.accounts.seedClientCoA !== 'function') {
+        console.error("ERROR: storage.accounts.seedClientCoA is not properly initialized");
+        throw new Error("Chart of Accounts storage interface not properly initialized");
       }
       
-      // Second Approach: Using direct accountStorage reference
-      if (!accountsCreated) {
-        try {
-          console.log(`DEBUG: [Method 2] Attempting direct seeding for client ${newClient.id}`);
+      try {
+        // Seed the accounts
+        console.log(`DEBUG: Calling seedClientCoA for client ${newClient.id}`);
+        await storage.accounts.seedClientCoA(newClient.id);
+        
+        // Verify accounts were created
+        const accounts = await storage.accounts.getAccounts(newClient.id);
+        accountsCount = accounts.length;
+        console.log(`DEBUG: After seeding, client ${newClient.id} has ${accountsCount} accounts`);
+        
+        if (accountsCount > 0) {
+          accountsCreated = true;
+          console.log(`DEBUG: Successfully seeded ${accountsCount} accounts for client ${newClient.id}`);
+        } else {
+          console.warn(`DEBUG: No accounts were created for client ${newClient.id} in first attempt`);
           
-          // Import standardCoaTemplate and accountStorage directly
-          const { standardCoaTemplate } = await import('./coaTemplate');
+          // Try direct import of accountStorage as a fallback
+          console.log("DEBUG: Trying direct accountStorage reference as fallback");
           const { accountStorage } = await import('./storage/accountStorage');
-          
-          console.log(`DEBUG: [Method 2] Template loaded with ${standardCoaTemplate.length} entries`);
-          console.log(`DEBUG: [Method 2] Direct reference to accountStorage obtained:`, !!accountStorage);
-          
           await accountStorage.seedClientCoA(newClient.id);
           
-          // Verify accounts were created
-          const accountsAfterDirectSeeding = await accountStorage.getAccounts(newClient.id);
-          accountsCount = accountsAfterDirectSeeding.length;
-          console.log(`DEBUG: [Method 2] After seeding, client ${newClient.id} has ${accountsCount} accounts`);
+          // Check again
+          const accountsAfterRetry = await accountStorage.getAccounts(newClient.id);
+          accountsCount = accountsAfterRetry.length;
           
           if (accountsCount > 0) {
             accountsCreated = true;
-            console.log(`DEBUG: [Method 2] Successfully seeded Chart of Accounts`);
+            console.log(`DEBUG: Successfully seeded ${accountsCount} accounts after retry`);
           } else {
-            console.log(`DEBUG: [Method 2] No accounts were created, will try next method`);
-            throw new Error("No accounts were created with direct accountStorage reference");
+            console.error("ERROR: Failed to seed Chart of Accounts after multiple attempts");
           }
-        } catch (method2Error) {
-          console.error(`DEBUG: [Method 2] Error:`, method2Error instanceof Error ? method2Error.message : String(method2Error));
         }
+      } catch (seedError) {
+        console.error("ERROR: Exception during CoA seeding:", seedError);
+        // Don't fail client creation if seeding fails - we'll return the status
       }
       
-      // Third Approach: Using special API endpoint via HTTP request
-      if (!accountsCreated) {
-        try {
-          console.log(`DEBUG: [Method 3] Attempting HTTP seeding for client ${newClient.id}`);
-          
-          const portNumber = process.env.PORT || 5000;
-          const localUrl = `http://localhost:${portNumber}/api/clients/${newClient.id}/seed-coa`;
-          console.log(`DEBUG: [Method 3] Making request to: ${localUrl}`);
-          
-          const response = await fetch(localUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': req.headers.cookie || ''
-            }
-          });
-          
-          if (response.ok) {
-            const seedResult = await response.json();
-            console.log(`DEBUG: [Method 3] Seeding result:`, seedResult);
-            
-            if (seedResult.success && seedResult.accountCount > 0) {
-              accountsCreated = true;
-              accountsCount = seedResult.accountCount;
-              console.log(`DEBUG: [Method 3] Successfully seeded ${accountsCount} accounts`);
-            } else {
-              console.log(`DEBUG: [Method 3] API returned success=false or zero accounts`);
-            }
-          } else {
-            console.error(`DEBUG: [Method 3] HTTP seeding failed with status:`, response.status);
-            
-            // Try to get more details from error response
-            try {
-              const errorBody = await response.text();
-              console.error(`DEBUG: [Method 3] Error response:`, errorBody);
-            } catch (e) {
-              console.error(`DEBUG: [Method 3] Could not parse error response`);
-            }
-          }
-        } catch (method3Error) {
-          console.error(`DEBUG: [Method 3] Error:`, method3Error instanceof Error ? method3Error.message : String(method3Error));
-        }
+      // Step 3: Optionally create a default entity
+      let defaultEntity = null;
+      try {
+        console.log(`DEBUG: Creating default entity for client ${newClient.id}`);
+        
+        // Use only fields that exist in the entity schema
+        const entityData = {
+          name: `${newClient.name} - Main Entity`,
+          code: `${newClient.clientCode || 'ENT'}-001`,
+          ownerId: userId,
+          clientId: newClient.id,
+          active: true,
+          // Additional standard fields
+          fiscalYearStart: "01-01",
+          fiscalYearEnd: "12-31", 
+          createdBy: userId
+        };
+        
+        defaultEntity = await storage.entities.createEntity(entityData);
+        console.log(`DEBUG: Default entity created with ID: ${defaultEntity.id}`);
+      } catch (entityError) {
+        console.error(`WARNING: Failed to create default entity:`, entityError);
+        // Don't fail the client creation if entity creation fails
       }
       
-      // Fourth Approach: Direct database operation as last resort
-      if (!accountsCreated) {
-        try {
-          console.log(`DEBUG: [Method 4] Attempting direct DB seeding as last resort for client ${newClient.id}`);
-          
-          // Import necessary modules
-          const { standardCoaTemplate } = await import('./coaTemplate');
-          const { db } = await import('./db');
-          const { accounts } = await import('../shared/schema');
-          const { eq } = await import('drizzle-orm');
-          
-          console.log(`DEBUG: [Method 4] Template loaded with ${standardCoaTemplate.length} entries`);
-          
-          await db.transaction(async (tx) => {
-            // Check if accounts already exist
-            const existingAccounts = await tx.select({ id: accounts.id })
-              .from(accounts)
-              .where(eq(accounts.clientId, newClient.id))
-              .limit(1);
-            
-            if (existingAccounts.length > 0) {
-              console.log(`DEBUG: [Method 4] Client ${newClient.id} already has accounts. Skipping.`);
-              return;
-            }
-            
-            console.log(`DEBUG: [Method 4] Seeding accounts...`);
-            const accountMap = new Map();
-            const insertedIds = [];
-            
-            // First pass: Insert all accounts with null parentId
-            for (const acc of standardCoaTemplate) {
-              const accountData = {
-                clientId: newClient.id,
-                accountCode: acc.accountCode,
-                name: acc.name,
-                type: acc.type,
-                parentId: null,
-                subtype: acc.subtype,
-                isSubledger: acc.isSubledger ?? false,
-                subledgerType: acc.subledgerType,
-                active: true,
-                description: acc.description ?? '',
-              };
-              
-              const inserted = await tx.insert(accounts).values(accountData).returning({ id: accounts.id });
-              
-              if (inserted.length > 0) {
-                const dbId = inserted[0].id;
-                accountMap.set(acc.accountCode, dbId);
-                insertedIds.push({ 
-                  templateCode: acc.accountCode, 
-                  dbId: dbId, 
-                  parentTemplateCode: acc.parentCode 
-                });
-              }
-            }
-            
-            // Second pass: Set parent relationships
-            const parentUpdates = [];
-            for (const item of insertedIds) {
-              if (item.parentTemplateCode) {
-                const parentDbId = accountMap.get(item.parentTemplateCode);
-                if (parentDbId) {
-                  parentUpdates.push(
-                    tx.update(accounts)
-                      .set({ parentId: parentDbId })
-                      .where(eq(accounts.id, item.dbId))
-                  );
-                }
-              }
-            }
-            
-            if (parentUpdates.length > 0) {
-              await Promise.all(parentUpdates);
-            }
-            
-            console.log(`DEBUG: [Method 4] Completed account creation with ${insertedIds.length} accounts`);
-          });
-          
-          // Verify accounts were created
-          const finalAccounts = await db.select({ id: accounts.id })
-            .from(accounts)
-            .where(eq(accounts.clientId, newClient.id));
-          
-          accountsCount = finalAccounts.length;
-          console.log(`DEBUG: [Method 4] After seeding, client ${newClient.id} has ${accountsCount} accounts`);
-          
-          if (accountsCount > 0) {
-            accountsCreated = true;
-            console.log(`DEBUG: [Method 4] Successfully seeded Chart of Accounts`);
-          } else {
-            console.log(`DEBUG: [Method 4] Failed to create accounts with direct DB operation`);
-          }
-        } catch (method4Error) {
-          console.error(`DEBUG: [Method 4] Error:`, method4Error instanceof Error ? method4Error.message : String(method4Error));
-        }
-      }
-      
-      // Add summary of account seeding to response
+      // Return response with client details and seeding info
       const clientResponse = {
         ...newClient,
         chartOfAccounts: {
           seeded: accountsCreated,
           accountCount: accountsCount
-        }
+        },
+        defaultEntity: defaultEntity
       };
       
-      // Return client response
       return res.status(201).json(clientResponse);
+      
     } catch (error: any) {
-      console.error("Error creating client:", error);
+      console.error("ERROR: Failed to create client:", error);
       res.status(500).json({
         status: 'error',
         message: 'Failed to create client',
