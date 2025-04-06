@@ -5,6 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { apiRequest } from '../../lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  BarChart, 
+  Bar, 
+  ResponsiveContainer, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip 
+} from 'recharts';
+import { Label } from '@/components/ui/label';
 
 import {
   Card,
@@ -766,6 +776,254 @@ const BlogContentManager: React.FC = () => {
             )}
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* AI Content Generator Section */}
+      <div className="mt-10 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b">
+          <div>
+            <h3 className="text-xl font-semibold">AI Content Generator</h3>
+            <p className="text-sm text-muted-foreground mt-1">Generate blog content with AI assistance</p>
+          </div>
+          <div>
+            <Button size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate New Content
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Topic Generator */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-md flex items-center">
+                <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                Content Topic Ideas
+              </CardTitle>
+              <CardDescription>AI-generated topic ideas for your next blog post</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="topicIndustry">Industry Focus</Label>
+                  <Select defaultValue="finance">
+                    <SelectTrigger id="topicIndustry">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="finance">Finance & Accounting</SelectItem>
+                      <SelectItem value="tax">Tax Planning</SelectItem>
+                      <SelectItem value="business">Business Strategy</SelectItem>
+                      <SelectItem value="investing">Investing</SelectItem>
+                      <SelectItem value="retirement">Retirement Planning</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="topicStyle">Content Style</Label>
+                  <Select defaultValue="educational">
+                    <SelectTrigger id="topicStyle">
+                      <SelectValue placeholder="Select style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="educational">Educational</SelectItem>
+                      <SelectItem value="newsletter">Newsletter</SelectItem>
+                      <SelectItem value="case-study">Case Study</SelectItem>
+                      <SelectItem value="opinion">Opinion/Editorial</SelectItem>
+                      <SelectItem value="news">News Analysis</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button className="w-full">Generate Topic Ideas</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Content Outline Generator */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-md flex items-center">
+                <LayoutTemplate className="h-4 w-4 mr-2 text-primary" />
+                Content Outline Builder
+              </CardTitle>
+              <CardDescription>Create structured outlines for your blog posts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="outlineTitle">Blog Post Title</Label>
+                  <Input id="outlineTitle" placeholder="Enter your blog post title" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="outlineKeywords">Key Points (optional)</Label>
+                  <Input id="outlineKeywords" placeholder="Tax savings, retirement, 401k" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="outlineLength">Article Length</Label>
+                  <Select defaultValue="medium">
+                    <SelectTrigger id="outlineLength">
+                      <SelectValue placeholder="Select length" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short">Short (500-800 words)</SelectItem>
+                      <SelectItem value="medium">Medium (800-1500 words)</SelectItem>
+                      <SelectItem value="long">Long (1500-2500 words)</SelectItem>
+                      <SelectItem value="comprehensive">Comprehensive (2500+ words)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button className="w-full">Generate Outline</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SEO Optimizer */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-md flex items-center">
+                <Code className="h-4 w-4 mr-2 text-primary" />
+                SEO Content Optimizer
+              </CardTitle>
+              <CardDescription>Enhance your content for search engines</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="seoContent">Content to Optimize</Label>
+                  <Textarea id="seoContent" placeholder="Paste your blog content here" className="h-24" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="seoKeywords">Target Keywords</Label>
+                  <Input id="seoKeywords" placeholder="financial planning, tax strategies" />
+                </div>
+                
+                <Button className="w-full">Optimize Content</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Blog Performance Section */}
+      <div className="mt-10 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b">
+          <div>
+            <h3 className="text-xl font-semibold">Blog Performance</h3>
+            <p className="text-sm text-muted-foreground mt-1">Track engagement and subscriber growth</p>
+          </div>
+          <div>
+            <Button variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Export Report
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Page Views</CardTitle>
+              <div className="text-2xl font-bold">5,837</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xs text-muted-foreground flex items-center">
+                <span className="text-emerald-500 font-medium mr-1">↑ 12.5%</span> from last month
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Time on Page</CardTitle>
+              <div className="text-2xl font-bold">3:42</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xs text-muted-foreground flex items-center">
+                <span className="text-emerald-500 font-medium mr-1">↑ 0:18</span> from last month
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
+              <div className="text-2xl font-bold">2.8%</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xs text-muted-foreground flex items-center">
+                <span className="text-rose-500 font-medium mr-1">↓ 0.3%</span> from last month
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-md">Blog Traffic by Post</CardTitle>
+              <CardDescription>Top performing content by page views</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { name: "Tax Saving Strategies", views: 1872 },
+                      { name: "Retirement Planning", views: 1567 },
+                      { name: "Small Business Tips", views: 1123 },
+                      { name: "Investment Guide", views: 943 },
+                      { name: "Financial Checklist", views: 726 }
+                    ]}
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} tickFormatter={(value) => value.substring(0, 12) + (value.length > 12 ? '...' : '')} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                    <Bar dataKey="views" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-md">Subscriber Growth</CardTitle>
+              <CardDescription>New subscribers over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { month: "Jan", subscribers: 28 },
+                      { month: "Feb", subscribers: 34 },
+                      { month: "Mar", subscribers: 29 },
+                      { month: "Apr", subscribers: 42 },
+                      { month: "May", subscribers: 58 },
+                      { month: "Jun", subscribers: 67 }
+                    ]}
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                    <Bar dataKey="subscribers" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Blog Subscribers Section */}
