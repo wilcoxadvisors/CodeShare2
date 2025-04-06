@@ -516,11 +516,11 @@ function Dashboard() {
 
   // State for delete client confirmation dialog
   const [isDeleteClientDialogOpen, setIsDeleteClientDialogOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<{id: number, name: string} | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<{id: number, name: string, isDeleted?: boolean} | null>(null);
 
   // Handle opening the delete client confirmation dialog
-  const handleOpenDeleteClientDialog = (client: {id: number, name: string}) => {
-    setClientToDelete(client);
+  const handleOpenDeleteClientDialog = (client: {id: number, name: string}, isDeleted?: boolean) => {
+    setClientToDelete({...client, isDeleted});
     setIsDeleteClientDialogOpen(true);
   };
 
@@ -1656,10 +1656,19 @@ interface AdminDashboardData {
                                             Edit Client
                                           </DropdownMenuItem>
                                           {isClientDeleted(client) ? (
-                                            <DropdownMenuItem onClick={() => handleOpenRestoreDialog({id: client.id, name: client.name, type: 'client'})}>
-                                              <RefreshCw className="mr-2 h-4 w-4" />
-                                              Restore Client
-                                            </DropdownMenuItem>
+                                            <>
+                                              <DropdownMenuItem onClick={() => handleOpenRestoreDialog({id: client.id, name: client.name, type: 'client'})}>
+                                                <RefreshCw className="mr-2 h-4 w-4" />
+                                                Restore Client
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem 
+                                                onClick={() => handleOpenDeleteClientDialog({id: client.id, name: client.name}, true)}
+                                                className="text-red-800 hover:text-red-900 hover:bg-red-100"
+                                              >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Permanently Delete
+                                              </DropdownMenuItem>
+                                            </>
                                           ) : (
                                             <DropdownMenuItem 
                                               onClick={() => handleOpenDeleteClientDialog({id: client.id, name: client.name})}
@@ -2490,6 +2499,7 @@ interface AdminDashboardData {
         onClose={() => setIsDeleteClientDialogOpen(false)}
         clientId={clientToDelete?.id || null}
         clientName={clientToDelete?.name || ''}
+        isDeleted={clientToDelete?.isDeleted || false}
         onConfirm={() => {
           queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
         }}

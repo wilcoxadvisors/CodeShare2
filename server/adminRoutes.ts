@@ -8,6 +8,7 @@ import { asyncHandler, throwUnauthorized, throwBadRequest, throwNotFound } from 
 import { IStorage } from "./storage";
 import { consolidationStorage } from "./storage/consolidationStorage";
 import { userStorage } from "./storage/userStorage";
+import { clientStorage } from "./storage/clientStorage";
 import { UserRole, insertEntitySchema, entities as entitiesTable } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
@@ -403,13 +404,13 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   }));
   
   /**
-   * Delete a client and all its related data
+   * Soft-delete a client (sets deletedAt timestamp)
    */
   app.delete("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
-      console.log('DELETE /api/admin/clients/:id - Start of handler');
+      console.log('DELETE /api/admin/clients/:id - Start of handler (soft-delete)');
       const clientId = parseInt(req.params.id);
-      console.log('Client ID to delete:', clientId);
+      console.log('Client ID to soft-delete:', clientId);
       
       // Verify client exists
       const existingClient = await storage.getClient(clientId);
@@ -426,46 +427,106 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         });
       }
       
-      console.log(`Deleting client ${clientId}: ${existingClient ? existingClient.name : 'Unknown'}`);
+      console.log(`Soft-deleting client ${clientId}: ${existingClient.name}`);
       
-      // Use direct database operations to ensure proper cleanup
-      // This implementation bypasses any issues with the storage interface
+      // Get admin user ID from request
+      const adminUser = req.user as any;
+      const adminId = adminUser.id;
       
-      // Step 1: Delete all entities for this client
-      const { db } = await import('../server/db');
-      const { entities, accounts, clients } = await import('../shared/schema');
-      const { eq } = await import('drizzle-orm');
+      // Use the storage interface for soft-deletion
+      const deleted = await clientStorage.deleteClient(clientId, adminId);
       
-      try {
-        // Delete entities
-        const entitiesDeleted = await db.delete(entities)
-          .where(eq(entities.clientId, clientId));
-        console.log(`Deleted entities for client ${clientId}:`, 'unknown count');
-        
-        // Delete accounts
-        const accountsDeleted = await db.delete(accounts)
-          .where(eq(accounts.clientId, clientId));
-        console.log(`Deleted accounts for client ${clientId}:`, 'unknown count');
-        
-        // Delete the client itself
-        const clientDeleted = await db.delete(clients)
-          .where(eq(clients.id, clientId));
-        console.log(`Deleted client ${clientId}:`, 'unknown count');
-        
-        return res.json({
-          status: "success",
-          message: `Successfully deleted client ${existingClient ? existingClient.name : 'Unknown'} (ID: ${clientId})`
-        });
-      } catch (dbError: any) {
-        console.error(`Database error deleting client ${clientId}:`, dbError.message || dbError);
+      if (!deleted) {
         return res.status(500).json({
           status: 'error',
-          message: 'Database error while deleting client',
-          error: dbError.message || String(dbError)
+          message: `Failed to soft-delete client ${existingClient.name} (ID: ${clientId})`
         });
       }
+      
+      return res.json({
+        status: "success",
+        message: `Successfully soft-deleted client ${existingClient.name} (ID: ${clientId})`,
+        data: {
+          clientId,
+          clientName: existingClient.name,
+          deletedAt: new Date()
+        }
+      });
     } catch (error: any) {
-      console.error("Error deleting client:", error.message || error);
+      console.error("Error soft-deleting client:", error.message || error);
+      throw error;
+    }
+  }));
+  
+  /**
+   * Permanently delete a client and all its related data
+   * This can only be done for clients that are already soft-deleted
+   */
+  app.delete("/api/admin/clients/:id/permanent", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log('DELETE /api/admin/clients/:id/permanent - Start of handler');
+      const clientId = parseInt(req.params.id);
+      console.log('Client ID to permanently delete:', clientId);
+      
+      // Verify client exists
+      const existingClient = await storage.getClient(clientId);
+      if (!existingClient) {
+        throwNotFound("Client not found");
+      }
+      
+      // Prevent deletion of protected clients
+      const protectedClients = ['Admin Client', 'OK', 'ONE1', 'Pepper'];
+      if (existingClient && protectedClients.includes(existingClient.name)) {
+        return res.status(403).json({
+          status: 'error',
+          message: `Cannot delete protected client: ${existingClient.name}`
+        });
+      }
+      
+      // Ensure client is already soft-deleted
+      if (!existingClient.deletedAt) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Client ${existingClient.name} (ID: ${clientId}) must be soft-deleted first before permanent deletion`,
+          data: {
+            clientId,
+            clientName: existingClient.name,
+            isDeleted: false
+          }
+        });
+      }
+      
+      console.log(`Permanently deleting client ${clientId}: ${existingClient.name}`);
+      
+      // Get admin user ID from request
+      const adminUser = req.user as any;
+      const adminId = adminUser.id;
+      
+      // Use the storage interface for permanent deletion
+      const deleted = await clientStorage.permanentlyDeleteClient(clientId, adminId);
+      
+      if (!deleted) {
+        return res.status(500).json({
+          status: 'error',
+          message: `Failed to permanently delete client ${existingClient.name} (ID: ${clientId})`,
+          data: {
+            clientId,
+            clientName: existingClient.name
+          }
+        });
+      }
+      
+      return res.json({
+        status: "success",
+        message: `Successfully permanently deleted client ${existingClient.name} (ID: ${clientId})`,
+        data: {
+          clientId,
+          clientName: existingClient.name,
+          permanentlyDeleted: true
+        }
+      });
+    } catch (error: any) {
+      console.error("Error permanently deleting client:", error.message || error);
       throw error;
     }
   }));

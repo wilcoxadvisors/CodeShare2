@@ -5,7 +5,7 @@
  */
 import { db } from "../db";
 import { clients, Client, InsertClient } from "@shared/schema";
-import { eq, asc, desc, and, isNull } from "drizzle-orm";
+import { eq, asc, desc, and, isNull, inArray } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -67,6 +67,7 @@ export interface IClientStorage {
   updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
   deleteClient(id: number, adminId: number): Promise<boolean>;
   restoreClient(id: number, adminId: number): Promise<Client | undefined>;
+  permanentlyDeleteClient(id: number, adminId: number): Promise<boolean>;
   
   // For MemClientStorage only - allows direct client creation for constructor use
   addClientDirectly?(client: Client): void;
@@ -318,6 +319,139 @@ export class ClientStorage implements IClientStorage {
       return undefined;
     }
   }
+  
+  /**
+   * Permanently delete a client and all its associated data
+   * 
+   * This should only be called on clients that have already been soft-deleted.
+   * It removes all data associated with the client from all tables.
+   * 
+   * @param id - The ID of the client to permanently delete
+   * @param adminId - ID of the admin user performing the permanent deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async permanentlyDeleteClient(id: number, adminId: number): Promise<boolean> {
+    try {
+      // Get client details before permanent deletion for verification and audit logging
+      const client = await this.getClient(id);
+      if (!client) {
+        throw new Error(`Client with ID ${id} not found`);
+      }
+      
+      // Can only permanently delete if it was previously soft-deleted
+      if (!client.deletedAt) {
+        throw new Error(`Client with ID ${id} has not been soft-deleted. Permanent deletion is only allowed for soft-deleted clients.`);
+      }
+      
+      // Import database and schema related modules
+      const { db } = await import('../db');
+      const { 
+        entities, 
+        accounts, 
+        clients, 
+        journalEntries, 
+        journalEntryLines, 
+        locations,
+        userEntityAccess
+      } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      console.log(`Starting permanent deletion for client ${id} (${client.name})...`);
+      
+      // Transaction to ensure atomicity
+      await db.transaction(async (tx) => {
+        // Step 1: Delete journal entry lines for all journal entries associated with this client
+        console.log(`Deleting journal entry lines for client ${id}...`);
+        // First, get all journal entries for this client
+        const journalEntriesForClient = await tx
+          .select({ id: journalEntries.id })
+          .from(journalEntries)
+          .where(eq(journalEntries.clientId, id));
+          
+        const journalEntryIds = journalEntriesForClient.map(je => je.id);
+        
+        if (journalEntryIds.length > 0) {
+          // Delete all journal entry lines for these journal entries
+          await tx
+            .delete(journalEntryLines)
+            .where(
+              inArray(journalEntryLines.journalEntryId, journalEntryIds)
+            );
+        }
+        
+        // Step 2: Delete all journal entries for this client
+        console.log(`Deleting journal entries for client ${id}...`);
+        await tx
+          .delete(journalEntries)
+          .where(eq(journalEntries.clientId, id));
+        
+        // Step 3: Delete all accounts for this client
+        console.log(`Deleting accounts for client ${id}...`);
+        await tx
+          .delete(accounts)
+          .where(eq(accounts.clientId, id));
+          
+        // Step 4: Delete all locations for this client
+        console.log(`Deleting locations for client ${id}...`);
+        await tx
+          .delete(locations)
+          .where(eq(locations.clientId, id));
+        
+        // Step 5: Get all entities for this client for later use
+        console.log(`Finding entities for client ${id}...`);
+        const entitiesForClient = await tx
+          .select({ id: entities.id })
+          .from(entities)
+          .where(eq(entities.clientId, id));
+          
+        const entityIds = entitiesForClient.map(entity => entity.id);
+        
+        if (entityIds.length > 0) {
+          // Step 6: Delete all user entity access records for this client's entities
+          console.log(`Deleting user entity access records for client ${id}'s entities...`);
+          await tx
+            .delete(userEntityAccess)
+            .where(
+              inArray(userEntityAccess.entityId, entityIds)
+            );
+        }
+        
+        // Step 7: Delete all entities for this client
+        console.log(`Deleting entities for client ${id}...`);
+        await tx
+          .delete(entities)
+          .where(eq(entities.clientId, id));
+        
+        // Step 8: Finally, delete the client itself
+        console.log(`Deleting client ${id}...`);
+        await tx
+          .delete(clients)
+          .where(eq(clients.id, id));
+      });
+      
+      // Import the audit log storage module directly to avoid circular dependencies
+      const { auditLogStorage } = await import('./auditLogStorage');
+      
+      // Log this action in the audit log
+      await auditLogStorage.createAuditLog({
+        action: 'client_permanent_delete',
+        performedBy: adminId,
+        details: JSON.stringify({
+          clientId: id,
+          clientName: client.name,
+          clientCode: client.clientCode,
+          deletedAt: client.deletedAt
+        })
+      });
+      
+      console.log(`Successfully permanently deleted client ${id} (${client.name})`);
+      return true;
+    } catch (error) {
+      handleDbError(error, `Error permanently deleting client ${id}`);
+      console.error('Permanent deletion failed:', error);
+      return false;
+    }
+  }
 }
 
 /**
@@ -529,6 +663,50 @@ export class MemClientStorage implements IClientStorage {
     });
     
     return restoredClient;
+  }
+  
+  /**
+   * Permanently delete a client and all its associated data
+   * 
+   * This should only be called on clients that have already been soft-deleted.
+   * It removes the client completely from memory storage.
+   * 
+   * @param id - The ID of the client to permanently delete
+   * @param adminId - ID of the admin user performing the permanent deletion (for audit logging)
+   * @returns boolean indicating success
+   */
+  async permanentlyDeleteClient(id: number, adminId: number): Promise<boolean> {
+    const client = this.clients.get(id);
+    if (!client) {
+      return false;
+    }
+    
+    // Can only permanently delete if it was previously soft-deleted
+    if (!client.deletedAt) {
+      console.error(`MemClientStorage.permanentlyDeleteClient: Client with ID ${id} has not been soft-deleted. Permanent deletion is only allowed for soft-deleted clients.`);
+      return false;
+    }
+    
+    // Since this is memory storage, we just need to remove the client from our map
+    // In a real app with multiple tables, we would need to remove all associated data too
+    this.clients.delete(id);
+    
+    // Import the audit log storage module directly to avoid circular dependencies
+    const { memAuditLogStorage } = await import('./auditLogStorage');
+    
+    // Log this action in the audit log
+    await memAuditLogStorage.createAuditLog({
+      action: 'client_permanent_delete',
+      performedBy: adminId,
+      details: JSON.stringify({
+        clientId: id,
+        clientName: client.name,
+        clientCode: client.clientCode,
+        deletedAt: client.deletedAt
+      })
+    });
+    
+    return true;
   }
 }
 
