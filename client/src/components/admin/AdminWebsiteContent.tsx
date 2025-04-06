@@ -13,7 +13,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Download, Eye, ExternalLink, FileText, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { 
+  Calendar, 
+  CalendarDays,
+  Code,
+  Download, 
+  Eye, 
+  ExternalLink, 
+  FileImage,
+  FileText, 
+  Pencil, 
+  Plus, 
+  Sparkles, 
+  Trash2,
+  UserCheck,
+  UserCog,
+  Users
+} from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -478,13 +494,13 @@ const AdminWebsiteContent: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold">Website Content Management</h2>
-          <p className="text-muted-foreground">Manage content displayed on your website</p>
+          <h2 className="text-xl font-bold tracking-tight">Content Manager</h2>
+          <p className="text-muted-foreground text-sm">Manage and publish website content</p>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={previewWebsite} variant="outline" size="sm">
+          <Button onClick={previewWebsite} variant="outline" size="sm" className="transition-all hover:shadow-md">
             <Eye className="mr-2 h-4 w-4" />
             Preview Site
           </Button>
@@ -492,10 +508,16 @@ const AdminWebsiteContent: React.FC = () => {
       </div>
 
       {/* Main content type tabs */}
-      <Tabs value={contentType} onValueChange={(value) => setContentType(value as 'homepage' | 'blog')}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="homepage">Homepage Content</TabsTrigger>
-          <TabsTrigger value="blog">Blog Management</TabsTrigger>
+      <Tabs value={contentType} onValueChange={(value) => setContentType(value as 'homepage' | 'blog')} className="w-full">
+        <TabsList className="mb-6 w-full sm:w-auto grid grid-cols-2 sm:flex">
+          <TabsTrigger value="homepage" className="flex items-center">
+            <FileText className="h-4 w-4 mr-2 hidden sm:block" />
+            Homepage Content
+          </TabsTrigger>
+          <TabsTrigger value="blog" className="flex items-center">
+            <Pencil className="h-4 w-4 mr-2 hidden sm:block" />
+            Blog Management
+          </TabsTrigger>
         </TabsList>
 
         {/* Homepage Content Tab */}
@@ -603,40 +625,47 @@ const AdminWebsiteContent: React.FC = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredBlogPosts.map(post => (
-                    <Card key={post.id}>
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
+                    <Card key={post.id} className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
+                      <CardHeader className="px-4 py-3 pb-2">
+                        <div className="flex flex-col justify-between">
                           <div>
-                            <CardTitle>{post.title}</CardTitle>
-                            <CardDescription className="flex items-center gap-2">
-                              <Badge variant={post.status === 'published' ? 'default' : 'outline'}>
+                            <CardTitle className="line-clamp-2 text-base">{post.title}</CardTitle>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <Badge variant={post.status === 'published' ? 'default' : 'outline'} className="text-xs">
                                 {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                               </Badge>
                               {post.category && (
                                 <span className="text-xs text-muted-foreground">
-                                  Category: {post.category}
+                                  {post.category}
                                 </span>
                               )}
-                            </CardDescription>
+                            </div>
                           </div>
-                          <div className="flex space-x-1">
+                          <div className="flex justify-end gap-1 mt-2">
                             {post.status === 'published' && (
-                              <Button onClick={() => previewBlogPost(post.slug)} size="sm" variant="ghost">
+                              <Button onClick={() => previewBlogPost(post.slug)} size="sm" variant="ghost" className="h-8 w-8 p-0">
                                 <Eye className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button onClick={() => handleEditBlogPostClick(post)} size="sm" variant="ghost">
+                            <Button onClick={() => handleEditBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0">
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button onClick={() => handleDeleteBlogPostClick(post)} size="sm" variant="ghost" className="text-destructive">
+                            <Button onClick={() => handleDeleteBlogPostClick(post)} size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="px-4 py-2 flex-grow">
+                        {post.imageUrl && (
+                          <div className="mb-2 rounded-md overflow-hidden h-24 bg-muted/50">
+                            <div className="text-xs text-muted-foreground p-2 bg-muted/25 h-full flex items-center justify-center">
+                              <FileImage className="h-4 w-4 mr-1" /> {post.imageUrl.split('/').pop()}
+                            </div>
+                          </div>
+                        )}
                         {post.excerpt ? (
                           <p className="text-sm line-clamp-3">{post.excerpt}</p>
                         ) : (
@@ -644,18 +673,16 @@ const AdminWebsiteContent: React.FC = () => {
                             <p className="line-clamp-3">{post.content}</p>
                           </div>
                         )}
-                        {post.imageUrl && (
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground">Image: {post.imageUrl}</p>
-                          </div>
-                        )}
                       </CardContent>
-                      <CardFooter className="text-xs text-muted-foreground border-t pt-4">
-                        <div className="flex justify-between w-full">
-                          <span>Slug: {post.slug}</span>
-                          <span>
-                            {post.publishedAt ? `Published: ${new Date(post.publishedAt).toLocaleDateString()}` : 
-                             `Updated: ${new Date(post.updatedAt).toLocaleDateString()}`}
+                      <CardFooter className="text-xs text-muted-foreground border-t pt-2 px-4 pb-3 mt-auto">
+                        <div className="flex flex-col sm:flex-row justify-between w-full gap-1">
+                          <span className="truncate max-w-[120px]" title={post.slug}>
+                            <Code className="h-3 w-3 inline mr-1" /> {post.slug}
+                          </span>
+                          <span className="whitespace-nowrap">
+                            <CalendarDays className="h-3 w-3 inline mr-1" />
+                            {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : 
+                             new Date(post.updatedAt).toLocaleDateString()}
                           </span>
                         </div>
                       </CardFooter>
@@ -667,31 +694,82 @@ const AdminWebsiteContent: React.FC = () => {
           </Tabs>
 
           {/* Blog Subscribers Section */}
-          <div className="mt-8">
-            <h3 className="text-lg font-medium mb-4">Blog Subscribers</h3>
+          <div className="mt-10">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Blog Subscribers</h3>
+              <div className="mt-2 sm:mt-0">
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Export List
+                </Button>
+              </div>
+            </div>
             
             {isSubscribersLoading ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <div className="flex items-center justify-center h-40 bg-muted/20 rounded-md">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading subscriber data...</p>
+                </div>
               </div>
             ) : isSubscribersError ? (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-sm text-destructive">Failed to load subscribers: {String(subscribersError)}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-sm">
-                    <p className="mb-2 font-medium">Total Subscribers: {blogSubscribers.length}</p>
-                    <p className="text-muted-foreground">
-                      Active: {blogSubscribers.filter(sub => sub.isActive).length} | 
-                      Inactive: {blogSubscribers.filter(sub => !sub.isActive).length}
-                    </p>
+              <Card className="border-destructive/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 text-destructive">
+                    <div className="rounded-full bg-destructive/10 p-2">
+                      <ExternalLink className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold">Error Loading Subscribers</h4>
+                      <p className="text-xs mt-1">{String(subscribersError)}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Subscribers</p>
+                        <h3 className="text-3xl font-bold mt-1">{blogSubscribers.length}</h3>
+                      </div>
+                      <div className="rounded-full bg-primary/10 p-2">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-green-500/5 border-green-500/20">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Active Subscribers</p>
+                        <h3 className="text-3xl font-bold mt-1">{blogSubscribers.filter(sub => sub.isActive).length}</h3>
+                      </div>
+                      <div className="rounded-full bg-green-500/10 p-2">
+                        <UserCheck className="h-5 w-5 text-green-500" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-orange-500/5 border-orange-500/20">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Pending Confirmation</p>
+                        <h3 className="text-3xl font-bold mt-1">{blogSubscribers.filter(sub => !sub.isActive).length}</h3>
+                      </div>
+                      <div className="rounded-full bg-orange-500/10 p-2">
+                        <UserCog className="h-5 w-5 text-orange-500" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         </TabsContent>
