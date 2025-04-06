@@ -1034,11 +1034,11 @@ interface AdminDashboardData {
     return matchesSearch && matchesStatus;
   });
 
-  // Data for client status pie chart using real client data
+  // Data for client status pie chart using real client data - excluding deleted clients
+  const activeClients = clients.filter(c => !isClientDeleted(c));
   const clientStatusData = [
-    { name: 'Active', value: clients.filter(c => getClientActiveStatus(c) && !isClientDeleted(c)).length },
-    { name: 'Inactive', value: clients.filter(c => !getClientActiveStatus(c) && !isClientDeleted(c)).length },
-    { name: 'Deleted', value: clients.filter(c => isClientDeleted(c)).length }
+    { name: 'Active', value: activeClients.filter(c => getClientActiveStatus(c)).length },
+    { name: 'Inactive', value: activeClients.filter(c => !getClientActiveStatus(c)).length }
   ];
 
   // Data for payment status
@@ -1703,7 +1703,8 @@ interface AdminDashboardData {
                       {/* Client Status Distribution Card */}
                       <Card>
                         <CardHeader>
-                          <CardTitle>Client Status Distribution</CardTitle>
+                          <CardTitle>Active Client Status Distribution</CardTitle>
+                          <CardDescription>Showing only non-deleted clients</CardDescription>
                         </CardHeader>
                         <CardContent className="h-64">
                           {adminDataLoading ? (
