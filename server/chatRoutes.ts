@@ -116,13 +116,22 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
         req.session = {} as any;
       }
       
+      // Handle case when existing session has an invalid guest ID (outside integer range)
+      if (req.session.guestUserId && (Math.abs(req.session.guestUserId) > 2000000000)) {
+        // Reset the ID because the current one is too large for PostgreSQL integer range
+        console.log('Resetting invalid guest ID:', req.session.guestUserId);
+        req.session.guestUserId = undefined;
+      }
+      
       // Create unique guest user ID if not already created
       if (!req.session.guestUserId) {
         // Generate a unique negative ID to avoid conflicts with real user IDs
-        // Using current timestamp plus a random number to ensure uniqueness
-        const uniqueId = -(Date.now() + Math.floor(Math.random() * 1000));
+        // Use a smaller number within PostgreSQL integer range (-2,147,483,648 to 2,147,483,647)
+        // We'll use a negative number in the range -100000 to -999999 to be safe
+        const uniqueId = -(100000 + Math.floor(Math.random() * 900000));
         req.session.guestUserId = uniqueId;
         req.session.guestCreatedAt = new Date();
+        console.log('Created new guest user ID:', uniqueId);
       }
       
       // Use the session-specific guest ID
