@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Clock, Settings, Search, MoreVertical, Mail, Download, Users, CreditCard, Bell, User, PlusCircle, FileCheck, Calendar, MessageSquare, Pen, Eye, ChevronRight, Trash2, BarChart2, FileText, Loader2, FileX, RefreshCw, Play } from "lucide-react";
 import { UserRole } from "@shared/schema";
 import { exportToCSV } from "../lib/export-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -236,6 +237,85 @@ const formatDate = (dateString: string) => {
     day: 'numeric'
   });
 };
+
+// System Maintenance Cleanup Button Component
+function SystemMaintenanceCleanupButton() {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCleanup = () => {
+    // Confirm before triggering cleanup
+    const confirmCleanup = window.confirm(
+      "This will permanently delete any clients that have been soft-deleted for more than 90 days. This action cannot be undone. Continue?"
+    );
+    
+    if (confirmCleanup) {
+      setIsLoading(true);
+      
+      // Show loading toast
+      toast({
+        title: "Cleanup in progress",
+        description: "Running cleanup task...",
+        duration: 3000,
+      });
+      
+      // Call the admin endpoint to trigger cleanup
+      fetch("/api/admin/trigger-cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          setIsLoading(false);
+          if (data.success) {
+            toast({
+              title: "Cleanup Complete",
+              description: `${data.deleted} clients were permanently deleted.`,
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: "Cleanup Failed",
+              description: data.message || "An error occurred during cleanup.",
+              variant: "destructive",
+            });
+          }
+        })
+        .catch((error) => {
+          setIsLoading(false);
+          console.error("Error during cleanup:", error);
+          toast({
+            title: "Cleanup Failed",
+            description: "An error occurred during the cleanup process.",
+            variant: "destructive",
+          });
+        });
+    }
+  };
+
+  return (
+    <Button 
+      onClick={handleCleanup}
+      variant="outline"
+      size="sm"
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <Play className="mr-2 h-4 w-4" />
+          Run Manual Cleanup
+        </>
+      )}
+    </Button>
+  );
+}
 
 // Subscriber Management Component
 interface BlogSubscriber {
@@ -1418,6 +1498,7 @@ interface AdminDashboardData {
                   <TabsTrigger value="billing">Billing</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="content-management">Website Content</TabsTrigger>
+                  <TabsTrigger value="system-maintenance">System Maintenance</TabsTrigger>
                 </TabsList>
                 
                 {/* Client Management Tab */}
@@ -2461,6 +2542,94 @@ interface AdminDashboardData {
                             AI-generated posts have 35% higher engagement
                           </div>
                         </CardFooter>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {/* System Maintenance Tab */}
+                <TabsContent value="system-maintenance">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>System Maintenance</CardTitle>
+                          <CardDescription>
+                            Perform maintenance tasks and manage system data
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-6">
+                            <div>
+                              <h3 className="text-lg font-medium mb-2">Scheduled Tasks</h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Manage automated system tasks and their execution schedules
+                              </p>
+                              
+                              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                <div className="flex items-start">
+                                  <div className="mr-4 mt-1">
+                                    <Clock className="h-5 w-5 text-blue-500" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium mb-1">Deleted Client Cleanup</h4>
+                                    <p className="text-sm mb-2">
+                                      Automatically removes soft-deleted clients after 90 days. You can also trigger this process manually.
+                                    </p>
+                                    <div className="flex items-center mt-3">
+                                      <SystemMaintenanceCleanupButton />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <Separator />
+                            
+                            <div>
+                              <h3 className="text-lg font-medium mb-2">System Information</h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                View and manage system configuration and status
+                              </p>
+                              
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                  <h4 className="font-medium mb-1">Retention Policy</h4>
+                                  <p className="text-sm">Deleted clients are permanently removed after 90 days</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                  <h4 className="font-medium mb-1">Last Maintenance</h4>
+                                  <p className="text-sm">
+                                    {new Date().toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    <div>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Maintenance Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            The scheduled cleanup process helps maintain system performance by removing old data.
+                          </p>
+                          <ul className="list-disc pl-5 space-y-2 text-sm">
+                            <li>Permanently deletes clients that were soft-deleted more than 90 days ago</li>
+                            <li>Removes all associated entities and data</li>
+                            <li>Generates audit logs for tracking</li>
+                            <li>Runs automatically on a monthly schedule</li>
+                          </ul>
+                        </CardContent>
                       </Card>
                     </div>
                   </div>

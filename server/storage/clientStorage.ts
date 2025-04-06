@@ -5,7 +5,7 @@
  */
 import { db } from "../db";
 import { clients, Client, InsertClient } from "@shared/schema";
-import { eq, asc, desc, and, isNull, inArray } from "drizzle-orm";
+import { eq, asc, desc, and, isNull, inArray, ne, lt } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Helper function to handle database errors consistently
@@ -68,6 +68,7 @@ export interface IClientStorage {
   deleteClient(id: number, adminId: number): Promise<boolean>;
   restoreClient(id: number, adminId: number): Promise<Client | undefined>;
   permanentlyDeleteClient(id: number, adminId: number): Promise<boolean>;
+  getClientsDeletedBefore(date: Date): Promise<Client[]>;
   
   // For MemClientStorage only - allows direct client creation for constructor use
   addClientDirectly?(client: Client): void;
@@ -330,6 +331,35 @@ export class ClientStorage implements IClientStorage {
    * @param adminId - ID of the admin user performing the permanent deletion (for audit logging)
    * @returns boolean indicating success
    */
+  /**
+   * Get all clients that have been soft-deleted before a specified date
+   * Used primarily for automatic cleanup of old soft-deleted clients
+   * 
+   * @param date - Threshold date (clients deleted before this date will be returned)
+   * @returns Array of clients deleted before the threshold date
+   */
+  async getClientsDeletedBefore(date: Date): Promise<Client[]> {
+    try {
+      const results = await db
+        .select()
+        .from(clients)
+        .where(
+          and(
+            // Must have a deletedAt timestamp (must be soft-deleted)
+            ne(clients.deletedAt, null),
+            // And the deletedAt must be earlier than the threshold date
+            lt(clients.deletedAt, date)
+          )
+        )
+        .orderBy(asc(clients.deletedAt));
+      
+      return results;
+    } catch (error) {
+      handleDbError(error, `Error retrieving clients deleted before ${date.toISOString()}`);
+      return [];
+    }
+  }
+
   async permanentlyDeleteClient(id: number, adminId: number): Promise<boolean> {
     try {
       // Get client details before permanent deletion for verification and audit logging
@@ -663,6 +693,32 @@ export class MemClientStorage implements IClientStorage {
     });
     
     return restoredClient;
+  }
+  
+  /**
+   * Get all clients that have been soft-deleted before a specified date
+   * Used primarily for automatic cleanup of old soft-deleted clients
+   * 
+   * @param date - Threshold date (clients deleted before this date will be returned)
+   * @returns Array of clients deleted before the threshold date
+   */
+  async getClientsDeletedBefore(date: Date): Promise<Client[]> {
+    // Filter clients that:
+    // 1. Have a deletedAt timestamp (are soft-deleted)
+    // 2. Their deletedAt is earlier than the threshold date
+    return Array.from(this.clients.values())
+      .filter(client => 
+        client.deletedAt !== null && 
+        client.deletedAt !== undefined && 
+        client.deletedAt < date
+      )
+      .sort((a, b) => {
+        // Sort by deletedAt date (oldest first)
+        if (a.deletedAt && b.deletedAt) {
+          return a.deletedAt.getTime() - b.deletedAt.getTime();
+        }
+        return 0;
+      });
   }
   
   /**

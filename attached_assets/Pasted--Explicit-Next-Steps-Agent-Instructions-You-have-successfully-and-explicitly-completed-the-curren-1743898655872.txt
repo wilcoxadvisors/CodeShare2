@@ -1,0 +1,74 @@
+ Explicit Next Steps & Agent Instructions:
+You have successfully and explicitly completed the current issue regarding client and entity management.
+
+Explicitly move on immediately to the next important tasks as outlined in the broader project roadmap.
+
+Here are the explicit next tasks you should undertake, clearly prioritized:
+
+🎯 Next High-Priority Tasks:
+1. Robust Data Safety & Permanent Deletion Automation:
+
+Explicitly implement a cron job or scheduled task that:
+
+Permanently deletes clients/entities automatically after 90 days of being soft-deleted.
+
+Provide a clearly documented method for an admin user to override this and permanently delete sooner, if desired.
+
+Example for the agent explicitly:
+
+typescript
+Copy
+Edit
+// Example pseudocode (cron-based scheduled job)
+cron.schedule('0 0 * * *', async () => {
+  const clientsToDelete = await storage.getClientsDeletedBefore(90);
+  clientsToDelete.forEach(client => {
+    storage.permanentlyDeleteClient(client.id);
+  });
+});
+2. Explicit UI Improvements & Comprehensive Testing:
+
+Comprehensive manual testing explicitly documented:
+
+Verify all scenarios explicitly (client/entity creation, editing, deletion, restoration).
+
+Explicitly update documentation clearly after verifying each step.
+
+Clearly refine Dashboard UI:
+
+Add explicit admin dashboard notices or alerts for upcoming permanent deletions.
+
+Explicitly improve dashboard visibility to ensure state transparency (active, inactive, deleted).
+
+3. Explicitly Update Documentation & Organization:
+
+Ensure project-wide documentation is clear, explicit, modular:
+
+Update README explicitly with step-by-step guidance for new developers to easily onboard.
+
+Explicitly document all APIs, endpoints, and data structures clearly.
+
+Ensure the code is modular, explicitly organized, and easy to follow by future developers.
+
+4. Explicitly Prioritize Immediate Business & User Experience Tasks:
+
+Explicitly fix blog integration and homepage functionality:
+
+Blog navigation explicitly clear.
+
+Fix AI chat reset issue explicitly.
+
+Explicitly fix any homepage form submission errors.
+
+📝 Agent Confirmation Explicitly Required:
+Please explicitly confirm you understand and will immediately:
+
+Implement automated permanent deletion after 90 days explicitly.
+
+Complete explicit manual testing and document results clearly.
+
+Explicitly update all project documentation thoroughly and clearly.
+
+Move explicitly next to immediate business-critical tasks outlined above.
+
+Explicitly confirm now and proceed immediately with Task #1 (Automated Permanent Deletion).

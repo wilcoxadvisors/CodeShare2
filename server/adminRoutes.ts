@@ -13,6 +13,7 @@ import { UserRole, insertEntitySchema, entities as entitiesTable } from "../shar
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { z } from "zod";
+import { cleanupSoftDeletedClients, runAllScheduledTasks } from "./tasks/scheduledTasks";
 
 // Authentication middleware for admin-only routes
 const isAdmin = (req: Request, res: Response, next: Function) => {
@@ -896,6 +897,46 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     } catch (error: any) {
       console.error("Error granting access:", error.message || error);
       throw error;
+    }
+  }));
+
+  /**
+   * Manually trigger the scheduled cleanup task to permanently delete
+   * soft-deleted clients that have been deleted for more than 90 days
+   * 
+   * @route POST /api/admin/trigger-cleanup
+   * @returns {Object} Result of the cleanup operation
+   * @throws {401} - If not authenticated
+   * @throws {403} - If not an admin
+   */
+  app.post("/api/admin/trigger-cleanup", isAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log('[AdminAPI] Manually triggering soft-deleted client cleanup task');
+      
+      // Get admin user ID from request for audit logging
+      const adminUser = req.user as any;
+      const adminId = adminUser.id;
+      
+      // Execute the cleanup task
+      const result = await cleanupSoftDeletedClients();
+      
+      console.log(`[AdminAPI] Cleanup task completed: ${result.deleted} clients permanently deleted, ${result.errors.length} errors`);
+      
+      return res.status(200).json({
+        status: "success",
+        message: "Cleanup task completed successfully",
+        result: {
+          clientsDeleted: result.deleted,
+          errors: result.errors.length > 0 ? result.errors : undefined
+        }
+      });
+    } catch (error: any) {
+      console.error("[AdminAPI] Error executing cleanup task:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to execute cleanup task",
+        error: error.message || String(error)
+      });
     }
   }));
 }
