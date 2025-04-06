@@ -671,16 +671,12 @@ export function registerFormRoutes(app: Express) {
         }
       }
       
-      // Generate unique tokens
-      const verificationToken = generateVerificationToken();
-      const unsubscribeToken = generateVerificationToken();
-      const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours from now
-      
       // Prepare the subscription data
       const ipAddress = req.ip || undefined;
       const userAgent = req.headers["user-agent"] || undefined;
       
       // Store the new subscription
+      // Note: verificationToken and unsubscribeToken are generated inside createBlogSubscriber
       const result = await storage.forms.createBlogSubscriber({
         email,
         name,
@@ -689,8 +685,8 @@ export function registerFormRoutes(app: Express) {
         active: true
       });
       
-      // Send verification email
-      await sendVerificationEmail(result.email, result.name, verificationToken);
+      // Send verification email using the token stored in the database
+      await sendVerificationEmail(result.email, result.name, result.verificationToken);
       
       // Send notification to admin
       await sendEmailNotification(
