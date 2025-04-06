@@ -84,10 +84,10 @@ function DataTable({ columns, data, isLoading = false }: DataTableProps) {
   }
 
   return (
-    <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-8">
+      <div className="overflow-x-auto max-h-[calc(100vh-280px)]">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               {columns.map((column, index) => (
                 <th 
@@ -108,6 +108,14 @@ function DataTable({ columns, data, isLoading = false }: DataTableProps) {
                   <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getFormattedValue(row, column)}
                   </td>
+                ))}
+              </tr>
+            ))}
+            {/* Add empty rows to ensure minimal content when there's little data */}
+            {paginatedData.length < 5 && [...Array(5 - paginatedData.length)].map((_, index) => (
+              <tr key={`empty-${index}`} className="h-12">
+                {columns.map((_, colIndex) => (
+                  <td key={colIndex} className="px-6 py-4 text-sm">&nbsp;</td>
                 ))}
               </tr>
             ))}

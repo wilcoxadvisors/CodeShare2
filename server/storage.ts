@@ -91,6 +91,10 @@ export class DatabaseStorage implements IStorage {
   
   constructor() {
     // Assign specialized storage modules
+    // Add debug logging for accounts storage
+    console.log("DEBUG: DatabaseStorage constructor - initializing storage modules");
+    console.log("DEBUG: accountStorage exists:", !!accountStorage);
+    console.log("DEBUG: accountStorage has seedClientCoA:", !!(accountStorage && accountStorage.seedClientCoA));
     this.accounts = accountStorage;
     this.clients = clientStorage;
     this.entities = entityStorage;
@@ -106,6 +110,9 @@ export class DatabaseStorage implements IStorage {
     this.journalEntry = journalEntryStorage;
     this.auditLogs = auditLogStorage;
     this.content = contentStorage;
+    // Verify modules assigned correctly
+    console.log("DEBUG: this.accounts exists:", !!this.accounts);
+    console.log("DEBUG: this.accounts has seedClientCoA:", !!(this.accounts && this.accounts.seedClientCoA));
   }
 
   // Shortcut helper methods

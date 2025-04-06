@@ -178,17 +178,18 @@ export class ClientStorage implements IClientStorage {
       };
       
       // Log client data before insertion to help debug
-      console.log("Creating client with data (in storage):", JSON.stringify(clientData, null, 2));
+      console.log("DEBUG: ClientStorage.createClient called with data:", JSON.stringify(clientData, null, 2));
       
       const [newClient] = await db.insert(clients).values(clientData).returning();
       
       // Log what was actually saved
-      console.log("Client created with data (from DB):", JSON.stringify(newClient, null, 2));
+      console.log("DEBUG: Client created with DB data:", JSON.stringify(newClient, null, 2));
+      console.log("DEBUG: Chart of Accounts seeding should happen at the route level, not here.");
       
       return newClient;
     } catch (error) {
-      handleDbError(error, "Error creating client");
-      throw error;
+      console.error("DEBUG: Error in ClientStorage.createClient:", error);
+      throw handleDbError(error, "Error creating client");
     }
   }
   

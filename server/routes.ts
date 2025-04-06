@@ -1504,6 +1504,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newClient = await storage.clients.createClient(clientData);
       console.log("Client created successfully:", newClient);
       
+      // Seed the Chart of Accounts for the new client
+      try {
+        console.log(`DEBUG: Attempting to seed Chart of Accounts for new client ${newClient.id}`);
+        console.log(`DEBUG: storage object has storage.accounts:`, !!storage.accounts);
+        
+        if (!storage.accounts || !storage.accounts.seedClientCoA) {
+          console.error(`DEBUG: seedClientCoA method not found on storage.accounts`);
+          throw new Error("seedClientCoA method not available");
+        }
+        
+        console.log(`DEBUG: storage.accounts has seedClientCoA method:`, !!storage.accounts.seedClientCoA);
+        console.log(`DEBUG: Verifying standardCoaTemplate is loaded...`);
+        
+        // Import to ensure the template is available
+        const { standardCoaTemplate } = await import('./coaTemplate');
+        console.log(`DEBUG: standardCoaTemplate loaded with ${standardCoaTemplate.length} entries`);
+        
+        console.log(`DEBUG: calling storage.accounts.seedClientCoA(${newClient.id})...`);
+        
+        await storage.accounts.seedClientCoA(newClient.id);
+        
+        console.log(`DEBUG: Successfully seeded Chart of Accounts for client ${newClient.id}`);
+        
+        // Verify accounts were actually created
+        const accounts = await storage.accounts.getAccounts(newClient.id);
+        console.log(`DEBUG: After seeding, client ${newClient.id} has ${accounts.length} accounts`);
+      } catch (seedError) {
+        console.error(`DEBUG: Error seeding Chart of Accounts for client ${newClient.id}:`, seedError);
+        console.error(`DEBUG: Error details:`, seedError instanceof Error ? seedError.message : String(seedError));
+        console.error(`DEBUG: Error stack:`, seedError instanceof Error ? seedError.stack : 'No stack trace');
+        
+        // Try creating the accounts directly here as a fallback
+        console.log(`DEBUG: Attempting direct seeding as fallback for client ${newClient.id}`);
+        try {
+          const { standardCoaTemplate } = await import('./coaTemplate');
+          console.log(`DEBUG: FALLBACK - standardCoaTemplate loaded with ${standardCoaTemplate.length} entries`);
+          
+          // Directly execute the seeding operation from the account storage
+          // This avoids the network request which might fail due to auth issues
+          // Import directly from accountStorage.ts to ensure we have access
+          const { accountStorage } = await import('./storage/accountStorage');
+          console.log(`DEBUG: Direct reference to accountStorage obtained:`, !!accountStorage);
+          
+          await accountStorage.seedClientCoA(newClient.id);
+          console.log(`DEBUG: FALLBACK direct seeding completed`);
+          
+          // Verify accounts were created via direct accountStorage reference
+          const accountsAfterDirectSeeding = await accountStorage.getAccounts(newClient.id);
+          console.log(`DEBUG: FALLBACK - After direct seeding, client ${newClient.id} has ${accountsAfterDirectSeeding.length} accounts`);
+        } catch (fallbackError) {
+          console.error(`DEBUG: FALLBACK seeding also failed:`, fallbackError);
+          console.error(`DEBUG: FALLBACK error details:`, fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
+          console.error(`DEBUG: FALLBACK error stack:`, fallbackError instanceof Error ? fallbackError.stack : 'No stack trace');
+          
+          // Last resort: try via HTTP request
+          try {
+            console.log(`DEBUG: Attempting HTTP seeding as last resort for client ${newClient.id}`);
+            const response = await fetch(`http://localhost:${process.env.PORT || 5000}/api/clients/${newClient.id}/seed-coa`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Cookie': req.headers.cookie || ''
+              }
+            });
+            
+            if (response.ok) {
+              const fallbackResult = await response.json();
+              console.log(`DEBUG: HTTP FALLBACK seeding result:`, fallbackResult);
+            } else {
+              console.error(`DEBUG: HTTP FALLBACK seeding failed with status:`, response.status);
+            }
+          } catch (httpError) {
+            console.error(`DEBUG: HTTP FALLBACK seeding also failed:`, httpError);
+          }
+        }
+        
+        // Continue despite seeding error - don't fail client creation
+      }
+      
       // Return client directly without nesting in data property for verification scripts
       return res.status(201).json(newClient);
     } catch (error: any) {

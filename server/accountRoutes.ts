@@ -78,7 +78,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -90,7 +90,7 @@ export function registerAccountRoutes(app: Express) {
     
     try {
       // Get accounts for export
-      const accounts = await storage.getAccountsForClient(clientId);
+      const accounts = await storage.accounts.getAccounts(clientId);
       
       // Build a map of account IDs to account objects for efficient parent lookup
       const accountMap = new Map();
@@ -185,7 +185,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -211,7 +211,7 @@ export function registerAccountRoutes(app: Express) {
     
     try {
       // Generate preview for the import file
-      const preview = await storage.generateCoaImportPreview(clientId, req.file.buffer, fileName);
+      const preview = await storage.accounts.generateCoaImportPreview(clientId, req.file.buffer, fileName);
       
       res.json({
         status: "success",
@@ -234,7 +234,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -263,7 +263,7 @@ export function registerAccountRoutes(app: Express) {
       const selections = req.body.selections ? JSON.parse(req.body.selections) : null;
       
       // Process the imported file - pass the filename to determine type
-      const result = await storage.importCoaForClient(clientId, req.file.buffer, fileName, selections);
+      const result = await storage.accounts.importCoaForClient(clientId, req.file.buffer, fileName, selections);
       
       // Return success response with detailed import stats
       const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive, ${result.deleted} deleted.`;
@@ -299,7 +299,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
@@ -314,7 +314,7 @@ export function registerAccountRoutes(app: Express) {
     console.log(`VERIFICATION TEST: Authorization passed, fetching account tree for client ${clientId}`);
     
     // Get hierarchical account tree for client
-    const accountTree = await storage.getAccountsTree(clientId);
+    const accountTree = await storage.accounts.getAccountsTree(clientId);
     console.log(`VERIFICATION TEST: Account tree fetched with ${accountTree.length} root nodes`);
     
     // Return account tree with success status
@@ -337,7 +337,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
@@ -352,7 +352,7 @@ export function registerAccountRoutes(app: Express) {
     console.log(`VERIFICATION TEST: Authorization passed, fetching accounts for client ${clientId}`);
     
     // Get accounts from storage (now using clientId)
-    const accounts = await storage.getAccounts(clientId);
+    const accounts = await storage.accounts.getAccounts(clientId);
     console.log(`VERIFICATION TEST: Fetched ${accounts.length} accounts for client ${clientId}`);
     
     // Return accounts
@@ -375,7 +375,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -386,7 +386,7 @@ export function registerAccountRoutes(app: Express) {
     }
     
     // Get account from storage
-    const account = await storage.getAccount(accountId);
+    const account = await storage.accounts.getAccount(accountId);
     
     if (!account) {
       throwNotFound("Account");
@@ -414,7 +414,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       console.log(`VERIFICATION TEST: Client not found for ID: ${clientId}`);
@@ -443,7 +443,7 @@ export function registerAccountRoutes(app: Express) {
     console.log(`VERIFICATION TEST: Validated account data:`, JSON.stringify(accountData, null, 2));
     
     // Check for duplicate account code
-    const existingAccounts = await storage.getAccounts(clientId);
+    const existingAccounts = await storage.accounts.getAccounts(clientId);
     console.log(`VERIFICATION TEST: Found ${existingAccounts.length} existing accounts for client ${clientId}`);
     const isDuplicateCode = existingAccounts.some(
       acc => acc.accountCode === accountData.accountCode
@@ -455,8 +455,15 @@ export function registerAccountRoutes(app: Express) {
     }
     
     // Create account
-    console.log(`VERIFICATION TEST: Calling storage.createAccount with:`, JSON.stringify(accountData, null, 2));
-    const account = await storage.createAccount(accountData);
+    console.log(`VERIFICATION TEST: Calling storage.accounts.createAccount with:`, JSON.stringify(accountData, null, 2));
+    
+    // Cast the type string to AccountType enum
+    const accountDataWithCorrectType = {
+      ...accountData,
+      type: accountData.type as AccountType
+    };
+    
+    const account = await storage.accounts.createAccount(accountDataWithCorrectType);
     console.log(`VERIFICATION TEST: Account created successfully:`, JSON.stringify(account, null, 2));
     
     // Return created account
@@ -479,7 +486,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -490,7 +497,7 @@ export function registerAccountRoutes(app: Express) {
     }
     
     // Get existing account
-    const existingAccount = await storage.getAccount(accountId);
+    const existingAccount = await storage.accounts.getAccount(accountId);
     
     if (!existingAccount) {
       throwNotFound("Account");
@@ -514,7 +521,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Check for duplicate account code if accountCode is being updated
     if (updateData.accountCode && updateData.accountCode !== existingAccount.accountCode) {
-      const existingAccounts = await storage.getAccounts(clientId);
+      const existingAccounts = await storage.accounts.getAccounts(clientId);
       const isDuplicateCode = existingAccounts.some(
         acc => acc.accountCode === updateData.accountCode && acc.id !== accountId
       );
@@ -524,8 +531,14 @@ export function registerAccountRoutes(app: Express) {
       }
     }
     
+    // Cast the type property to AccountType enum if it exists
+    const updateDataWithCorrectType = {
+      ...updateData,
+      type: updateData.type ? (updateData.type as AccountType) : undefined
+    };
+    
     // Update account
-    const updatedAccount = await storage.updateAccount(accountId, updateData);
+    const updatedAccount = await storage.accounts.updateAccount(accountId, clientId, updateDataWithCorrectType);
     
     if (!updatedAccount) {
       throwNotFound("Account");
@@ -551,7 +564,7 @@ export function registerAccountRoutes(app: Express) {
     
     // Validate user has access to client
     const userId = (req.user as AuthUser).id;
-    const client = await storage.getClient(clientId);
+    const client = await storage.clients.getClient(clientId);
     
     if (!client) {
       throwNotFound("Client");
@@ -562,7 +575,7 @@ export function registerAccountRoutes(app: Express) {
     }
     
     // Get existing account
-    const existingAccount = await storage.getAccount(accountId);
+    const existingAccount = await storage.accounts.getAccount(accountId);
     
     if (!existingAccount) {
       throwNotFound("Account");
@@ -598,9 +611,55 @@ export function registerAccountRoutes(app: Express) {
     }
     
     // Delete account
-    await storage.deleteAccount(accountId);
+    await storage.accounts.deleteAccount(accountId, clientId);
     
     // Return success
     res.status(HttpStatus.NO_CONTENT).end();
+  }));
+  
+  // Special debugging route to seed Chart of Accounts for a client
+  app.post("/api/clients/:clientId/seed-coa", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log("DEBUG: Manual seed CoA route called");
+      const clientId = parseInt(req.params.clientId);
+      
+      // Verify client exists
+      const client = await storage.clients.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if accounts already exist
+      const existingAccounts = await storage.accounts.getAccounts(clientId);
+      console.log(`DEBUG: Client ${clientId} has ${existingAccounts.length} existing accounts`);
+      
+      if (existingAccounts.length > 0) {
+        return res.json({ 
+          message: `Client ${clientId} already has ${existingAccounts.length} accounts.`,
+          success: false,
+          accountCount: existingAccounts.length
+        });
+      }
+      
+      console.log(`DEBUG: Manually seeding CoA for client ${clientId}`);
+      await storage.accounts.seedClientCoA(clientId);
+      
+      // Verify accounts were created
+      const newAccounts = await storage.accounts.getAccounts(clientId);
+      console.log(`DEBUG: After seeding, client ${clientId} now has ${newAccounts.length} accounts`);
+      
+      return res.json({ 
+        message: `Successfully seeded ${newAccounts.length} accounts for client ${clientId}`,
+        success: true,
+        accountCount: newAccounts.length
+      });
+    } catch (error: any) {
+      console.error(`Error manually seeding CoA:`, error);
+      return res.status(500).json({ 
+        message: `Error seeding CoA: ${error.message}`,
+        success: false,
+        error: error.message
+      });
+    }
   }));
 }
