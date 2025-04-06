@@ -1,0 +1,147 @@
+🚀 Immediate Next Tasks for Agent
+✅ 1. Comprehensive Verification & Documentation
+Step-by-Step Verification Instructions:
+A. Verify Scheduled Permanent Deletion (Automatic Task)
+
+ Confirm scheduled task timing:
+
+Check cron configuration explicitly (server/tasks/scheduledTasks.ts).
+
+typescript
+Copy
+Edit
+cron.schedule('0 0 * * *', runAllScheduledTasks); // runs daily at midnight
+Ensure it matches expected schedule explicitly (daily midnight).
+
+ Validate deletion of 90+ days soft-deleted entities explicitly:
+
+Insert a test client/entity explicitly soft-deleted with deletedAt timestamp > 90 days ago.
+
+Run scheduled task explicitly (use manual endpoint if needed).
+
+Verify explicitly in database it was permanently deleted.
+
+sql
+Copy
+Edit
+SELECT * FROM clients WHERE id = [test_client_id];
+Confirm explicitly that no record is returned.
+
+ Explicitly Document in:
+docs/VERIFICATION_STATUS.md
+
+markdown
+Copy
+Edit
+## Scheduled Permanent Deletion Verification
+| Test | Expected Outcome | Actual Outcome | Pass? |
+|------|------------------|----------------|-------|
+| Automatic daily deletion | Entities soft-deleted >90 days permanently deleted | Verified entities deleted correctly on scheduled run | ✅ |
+B. Verify Manual System Maintenance UI Cleanup
+
+ Explicitly Test Manual Cleanup:
+
+Soft-delete a client explicitly and confirm presence.
+
+Click explicitly "Run Manual Cleanup" from Dashboard.
+
+Confirm explicitly client deletion via DB check:
+
+sql
+Copy
+Edit
+SELECT * FROM clients WHERE id = [deleted_client_id];
+Explicitly ensure no record exists after manual cleanup.
+
+ Confirmation Dialog Verification:
+
+Explicitly verify confirmation dialog prevents accidental deletions.
+
+Document explicitly the confirmation dialog behavior.
+
+ Explicitly Document UI Verification Results: docs/VERIFICATION_STATUS.md
+
+markdown
+Copy
+Edit
+## Manual System Maintenance UI Verification
+| Test | Expected Outcome | Actual Outcome | Pass? |
+|------|------------------|----------------|-------|
+| Manual cleanup trigger | Permanently deletes soft-deleted entities | Entities deleted correctly | ✅ |
+| Confirmation dialog | Prevents accidental deletions | Dialog works as intended | ✅ |
+📚 2. Update Documentation Clearly and Completely
+Explicitly document the following clearly in respective documentation files:
+
+docs/SCHEDULED_TASKS.md
+
+markdown
+Copy
+Edit
+# Scheduled Tasks Documentation
+
+## Automatic Permanent Deletion
+Runs daily at midnight:
+- Permanently deletes clients/entities soft-deleted more than 90 days ago.
+- Implemented in: `server/tasks/scheduledTasks.ts`
+
+### Manually Trigger Cleanup
+Admins can manually trigger immediate cleanup via the Dashboard UI (System Maintenance tab).
+
+### Verifying Scheduled Tasks
+- Verify via DB checks and logs (`ScheduledTasks` logs).
+- Use manual trigger if needed for testing purposes.
+docs/ADMIN_GUIDE.md
+
+markdown
+Copy
+Edit
+# Admin Guide: Managing Clients and System Maintenance
+
+## Client State Management
+- **Active:** Visible everywhere, fully operational.
+- **Inactive:** Visible but with limited interaction.
+- **Soft-Deleted:** Hidden by default, recoverable within 90 days via "Restore" option.
+
+## Manual Permanent Deletion
+- Go to Dashboard > **System Maintenance**.
+- Click **"Run Manual Cleanup"** to permanently delete soft-deleted clients/entities older than 90 days immediately.
+- Confirm via provided dialog.
+
+## Scheduled Automatic Deletion
+- System automatically removes soft-deleted clients/entities after 90 days.
+- Runs daily at midnight.
+Explicitly Document Backend Methods (README.md and storage docs):
+
+Method: getClientsDeletedBefore(date: Date)
+
+Endpoint: /api/admin/trigger-cleanup
+
+🖥️ 3. Proceed Immediately to Next Critical Business Tasks: Blog Integration and Homepage Fixes
+A. Blog Integration Tasks:
+
+ Explicitly fix blog navigation and ensure proper preview.
+
+ Verify and document clearly that blogs appear correctly and navigation is intuitive.
+
+B. AI Chat Reset Issue:
+
+ Clearly resolve AI chat reset errors.
+
+ Explicitly verify persistent state and document clearly.
+
+C. Homepage Form Submission Errors (Emails):
+
+ Explicitly fix homepage contact form submission issues.
+
+ Confirm email notifications are sent successfully and reliably.
+
+ Document testing and results explicitly.
+
+📌 Confirm & Execute (Immediate Agent Action Required):
+Confirm explicitly that you will immediately:
+
+Perform comprehensive explicit testing and documentation (scheduled deletion, manual UI cleanup).
+
+Explicitly document all verification steps clearly as described.
+
+Immediately address the next critical tasks explicitly (blog integration, AI chat fix, homepage form fixes).

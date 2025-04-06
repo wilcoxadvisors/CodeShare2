@@ -1,0 +1,116 @@
+🚨 Agent Instructions for Immediate Execution
+🟢 Task 1: Comprehensive Verification & Documentation
+Explicitly verify the scheduled deletion functionality and manually triggered deletion.
+
+Step-by-Step Actions:
+Scheduled Task Verification:
+
+Open server/tasks/scheduledTasks.ts.
+
+Confirm cron task configuration explicitly (e.g., cron.schedule('0 0 * * *', ...) for daily run at midnight).
+
+Execute the scheduled task manually to verify functionality explicitly:
+
+bash
+Copy
+Edit
+node scripts/direct-cleanup.js
+Check database explicitly for deletion results:
+
+sql
+Copy
+Edit
+SELECT id, name, deleted_at FROM clients WHERE deleted_at IS NOT NULL;
+Ensure only clients deleted over 90 days ago are removed.
+
+System Maintenance UI Verification:
+
+Explicitly open the admin dashboard in the application.
+
+Click explicitly on:
+
+mathematica
+Copy
+Edit
+System Maintenance → Run Manual Cleanup
+Confirm explicitly the confirmation dialog appears.
+
+Explicitly verify clients/entities meeting deletion criteria are permanently removed.
+
+Check explicitly the database again with:
+
+sql
+Copy
+Edit
+SELECT id, name, deleted_at FROM clients WHERE deleted_at IS NOT NULL;
+Documentation Update (Explicitly Required):
+
+Clearly update docs/VERIFICATION_STATUS.md:
+
+Explicit test results.
+
+Dates/times of explicit verification.
+
+Update explicitly docs/SCHEDULED_TASKS.md:
+
+Schedule details (cron schedule and logic).
+
+Cleanup logic and effects.
+
+Update explicitly docs/ADMIN_GUIDE.md:
+
+How admins explicitly use manual cleanup from the dashboard.
+
+Interpretation of success/error toast notifications.
+
+🟢 Task 2: Immediate UI Warning Fix (validateDOMNesting)
+Explicitly resolve React DOM nesting warning.
+
+Exact Steps to Fix DOM Nesting Issue:
+Explicitly open DrawerHeader component (src/components/ui/drawer.tsx).
+
+Before (Incorrect):
+
+tsx
+Copy
+Edit
+<DrawerTrigger>
+  <Button>Open Drawer</Button>
+</DrawerTrigger>
+After (Correct fix):
+
+tsx
+Copy
+Edit
+<DrawerTrigger asChild>
+  <Button>Open Drawer</Button>
+</DrawerTrigger>
+Explicitly run the app to confirm warning is resolved.
+
+🟢 Task 3: Explicitly Address Critical Business Tasks
+Next, explicitly address urgent issues:
+
+Blog Integration Issues (Priority):
+
+Fix explicitly the blog navigation and preview issues.
+
+Confirm explicitly that the blog integration functions seamlessly.
+
+AI Chat Reset Issue:
+
+Explicitly investigate and resolve AI chat sessions unexpectedly resetting.
+
+Homepage Form Submission Errors:
+
+Explicitly troubleshoot and correct form submission errors (ensure emails are sent properly).
+
+📌 Explicit Confirmation Required from Agent
+Explicitly confirm that you:
+
+Clearly understand all tasks outlined.
+
+Will immediately execute Tasks 1, 2, and then 3, in the given explicit priority order.
+
+Will update documentation explicitly and clearly at every step.
+
+Proceed explicitly now and respond clearly confirming these instructions.
