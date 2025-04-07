@@ -60,6 +60,7 @@ function ChartOfAccounts() {
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [formTab, setFormTab] = useState("basic");
   const [accountCodePrefix, setAccountCodePrefix] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   // Define interface for account data
   interface AccountData {
     id: number | null;
@@ -228,6 +229,36 @@ function ChartOfAccounts() {
   const flattenedAccounts = useMemo(() => {
     return flattenAccountTree(accountTreeData);
   }, [accountTreeData, expandedNodes]);
+  
+  // Filter accounts based on search term
+  const filteredAccounts = useMemo(() => {
+    if (!searchTerm) return flattenedAccounts;
+    
+    return flattenedAccounts.filter(account => 
+      account.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      account.accountCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (account.description && account.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [flattenedAccounts, searchTerm]);
+  
+  // Function to expand all nodes
+  const expandAllNodes = () => {
+    const expandAll: Record<number, boolean> = {};
+    flattenedAccounts.forEach(account => {
+      expandAll[account.id] = true;
+    });
+    setExpandedNodes(expandAll);
+  };
+  
+  // Function to collapse all nodes
+  const collapseAllNodes = () => {
+    // Only keep top-level nodes expanded
+    const collapseAll: Record<number, boolean> = {};
+    accountTreeData.forEach(account => {
+      collapseAll[account.id] = true;
+    });
+    setExpandedNodes(collapseAll);
+  };
 
   // Auto-generate account code based on type selection
   useEffect(() => {
@@ -1857,9 +1888,49 @@ function ChartOfAccounts() {
           });
           return null; // Return null to avoid rendering issues
         })()}
+        
+        <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 mb-4 mt-2">
+          <div className="relative flex-grow">
+            <Input
+              placeholder="Search accounts by name, code or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-md"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={expandAllNodes}
+              className="flex items-center"
+            >
+              <ChevronDown className="h-4 w-4 mr-1" />
+              Expand All
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={collapseAllNodes}
+              className="flex items-center"
+            >
+              <ChevronRight className="h-4 w-4 mr-1" />
+              Collapse All
+            </Button>
+          </div>
+        </div>
+        
         <DataTable 
           columns={columns} 
-          data={flattenedAccounts || []} 
+          data={filteredAccounts || []} 
           isLoading={isLoading} 
         />
       </div>

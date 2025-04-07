@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, ArchiveRestore, Trash2, Power } from "lucide-react";
+import { INDUSTRY_OPTIONS } from "@/lib/industryUtils";
 
 // Entity form schema
 const entityEditSchema = z.object({
@@ -311,15 +312,11 @@ export function EntityEditModal({ entity, isOpen, onOpenChange, onUpdateSuccess 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="technology">Technology</SelectItem>
-                          <SelectItem value="finance">Finance</SelectItem>
-                          <SelectItem value="healthcare">Healthcare</SelectItem>
-                          <SelectItem value="education">Education</SelectItem>
-                          <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                          <SelectItem value="retail">Retail</SelectItem>
-                          <SelectItem value="real-estate">Real Estate</SelectItem>
-                          <SelectItem value="professional-services">Professional Services</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          {INDUSTRY_OPTIONS.map((industry) => (
+                            <SelectItem key={industry.value} value={industry.value}>
+                              {industry.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
