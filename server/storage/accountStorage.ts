@@ -791,22 +791,41 @@ export class AccountStorage implements IAccountStorage {
                 const validationResult = this.validateImportRow(row, existingAccounts, validatedAccounts);
                 
                 // ENHANCED: Add more detailed validation logging
-                console.log(`VALIDATION DETAILS: Account ${row.AccountCode || 'unknown'} validation result:`, 
-                    JSON.stringify({
-                        valid: validationResult.valid,
-                        errors: validationResult.errors,
-                        isExisting: existingAccountsByCode.has(row.AccountCode),
-                        isSelectedForModification: selectedModifiedAccounts.includes(row.AccountCode),
-                        isSelectedForNew: selectedNewAccounts.includes(row.AccountCode),
-                        accountData: {
-                            type: row.Type,
-                            name: row.Name,
-                            isSubledger: row.IsSubledger,
-                            subledgerType: row.SubledgerType,
-                            parentCode: row.ParentCode
-                        }
-                    })
-                );
+                const selectedForModification = selectedModifiedAccounts.includes(row.AccountCode);
+                const selectedForNew = selectedNewAccounts.includes(row.AccountCode);
+                const isExisting = existingAccountsByCode.has(row.AccountCode);
+                
+                console.log(`🔍 VALIDATION OUTCOME FOR ACCOUNT: ${row.AccountCode || 'unknown'}`);
+                console.log(`- Valid: ${validationResult.valid}`);
+                console.log(`- Errors: ${validationResult.errors.length > 0 ? validationResult.errors.join(', ') : 'None'}`);
+                console.log(`- Account exists in database: ${isExisting}`);
+                console.log(`- Explicitly selected for modification: ${selectedForModification}`);
+                console.log(`- Explicitly selected as new account: ${selectedForNew}`);
+                
+                // Additional selection checks for debugging
+                if (isExisting && !selectedForModification && selectedModifiedAccounts.length > 0) {
+                    console.log(`⚠️ WARNING: Existing account ${row.AccountCode} not in modifiedAccountCodes list!`);
+                    console.log(`- modifiedAccountCodes: ${JSON.stringify(selectedModifiedAccounts)}`);
+                    
+                    // Check for case-sensitivity issues with selection
+                    const lowerCaseMatch = selectedModifiedAccounts.some(code => 
+                        code.toLowerCase() === row.AccountCode.toLowerCase());
+                    if (lowerCaseMatch) {
+                        console.log(`⚠️ CRITICAL ISSUE: Case mismatch in modified account selection!`);
+                    }
+                }
+                
+                if (!isExisting && !selectedForNew && selectedNewAccounts.length > 0) {
+                    console.log(`⚠️ WARNING: New account ${row.AccountCode} not in newAccountCodes list!`);
+                    console.log(`- newAccountCodes: ${JSON.stringify(selectedNewAccounts)}`);
+                    
+                    // Check for case-sensitivity issues with selection
+                    const lowerCaseMatch = selectedNewAccounts.some(code => 
+                        code.toLowerCase() === row.AccountCode.toLowerCase());
+                    if (lowerCaseMatch) {
+                        console.log(`⚠️ CRITICAL ISSUE: Case mismatch in new account selection!`);
+                    }
+                }
                 
                 if (!validationResult.valid) {
                     console.error(`❌ VALIDATION FAILED: Account ${row.AccountCode || 'unknown'} failed validation with errors:`, validationResult.errors);
@@ -976,9 +995,29 @@ export class AccountStorage implements IAccountStorage {
                             // If we have selectedNewAccounts and this account is not in it, skip
                             if (selectedNewAccounts.length > 0 && !selectedNewAccounts.includes(accountCode)) {
                                 console.log(`BUGFIX: Skipping creation for account ${accountCode} because it's not explicitly selected in newAccountCodes (${selectedNewAccounts.length} accounts selected)`);
+                                console.log(`ACCOUNT SELECTION DEBUG: 
+                                  - selectedNewAccounts = ${JSON.stringify(selectedNewAccounts)}
+                                  - Account code being checked: '${accountCode}' (${typeof accountCode})
+                                  - Is included check: ${selectedNewAccounts.includes(accountCode)}
+                                `);
+                                
+                                // Check for case-sensitivity issues
+                                const lowerCaseMatch = selectedNewAccounts.some(code => 
+                                    code.toLowerCase() === accountCode.toLowerCase());
+                                if (lowerCaseMatch) {
+                                    console.log(`⚠️ CASE MISMATCH DETECTED: Account ${accountCode} exists in selections but with different case!`);
+                                }
+                                
+                                // Check for whitespace/trimming issues
+                                const trimmedMatch = selectedNewAccounts.some(code => 
+                                    code.trim() === accountCode.trim());
+                                if (trimmedMatch) {
+                                    console.log(`⚠️ WHITESPACE ISSUE DETECTED: Account ${accountCode} matches after trimming!`);
+                                }
+                                
                                 continue;
                             }
-                            console.log(`Processing new account ${accountCode} because it's in the selectedNewAccounts list or no specific selections were made`);
+                            console.log(`✅ Processing new account ${accountCode} because it's in the selectedNewAccounts list or no specific selections were made`);
                         }
                     }
                     // Also check the legacy setting - If existing account and updateExisting is false, skip updating
@@ -1569,10 +1608,11 @@ export class AccountStorage implements IAccountStorage {
      * This is used before inserting or updating accounts
      */
     validateImportRow(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
-        console.log(`✓ VALIDATING ROW: ${JSON.stringify(row)}`); // DEBUG: Detailed row data
         console.log(`----------------------------------------`);
-        console.log(`🔎 ACCOUNT VALIDATION: ${row.AccountCode || 'UNKNOWN ACCOUNT'}`);
-        console.log(`ACCOUNT DATA DUMP: ${JSON.stringify(row, null, 2)}`);
+        console.log(`🧐 DETAILED VALIDATION FOR ACCOUNT: ${row.AccountCode || 'UNKNOWN ACCOUNT'}`);
+        console.log(`----------------------------------------`);
+        console.log(`FULL ACCOUNT DATA:`);
+        console.log(JSON.stringify(row, null, 2));
         console.log(`----------------------------------------`);
         console.log(`DEBUG validateImportRow - Validating row with code: ${row.AccountCode || 'UNKNOWN'}`);
         console.log(`DEBUG validateImportRow - Row data:`, JSON.stringify(row));
