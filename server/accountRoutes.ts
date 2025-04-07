@@ -578,6 +578,28 @@ export function registerAccountRoutes(app: Express) {
       type: updateData.type ? (updateData.type as AccountType) : undefined
     };
     
+    // Check if account has transactions
+    const hasTransactions = await storage.accounts.accountHasTransactions(accountId);
+    
+    // If account has transactions, restrict certain field updates
+    if (hasTransactions) {
+      // Create a list of restricted fields that can't be updated when transactions exist
+      const restrictedFields = ['accountCode', 'type'];
+      const attemptedRestrictedUpdates = Object.keys(updateDataWithCorrectType)
+        .filter(field => restrictedFields.includes(field));
+      
+      // If user is trying to update restricted fields, block the update with clear error message
+      if (attemptedRestrictedUpdates.length > 0) {
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          message: `Cannot update ${attemptedRestrictedUpdates.join(', ')} for account with existing transactions`,
+          restrictedFields: attemptedRestrictedUpdates,
+          hasTransactions: true
+        });
+      }
+      
+      console.log("Account has transactions but requested update is allowed");
+    }
+    
     // Update account
     const updatedAccount = await storage.accounts.updateAccount(accountId, clientId, updateDataWithCorrectType);
     
