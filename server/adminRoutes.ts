@@ -335,9 +335,15 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       const entities = await storage.entities.getEntitiesByClient(clientId);
       console.log(`ADMIN ROUTE: Found ${entities.length} entities for client ${clientId}`);
       
+      // DISABLE DEFAULT ENTITY CREATION
+      // We no longer automatically create entities because:
+      // 1. The setup process now requires users to create at least one entity
+      // 2. The entity creation is now handled by the client-side setup wizard
+      // 3. Having multiple auto-generated entities causes confusion
       if (entities.length === 0) {
-        console.error(`ADMIN ROUTE: No entities found for client ${clientId}. Creating default entity.`);
-        // Create a default entity if none exists
+        console.log(`ADMIN ROUTE: No entities found for client ${clientId}. Skipping default entity creation as per requirements.`);
+        // The following code was commented out to prevent automatic entity creation
+        /*
         const defaultEntityData = {
           name: `${client.name} Default Entity`,
           code: "DEFAULT",
@@ -354,6 +360,7 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         console.log(`ADMIN ROUTE: Creating default entity for client ${clientId}:`, JSON.stringify(defaultEntityData, null, 2));
         const entity = await storage.entities.createEntity(defaultEntityData);
         console.log(`ADMIN ROUTE: Default entity created with ID ${entity.id} for client ${clientId}`);
+        */
       }
       
       // Check if accounts already exist
@@ -459,25 +466,29 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       // Entities will be created explicitly during the client setup flow
       console.log(`DEBUG: Admin client created with ID ${newClient.id} - NOT creating default entity automatically`);
       
-      // Explicitly seed the Chart of Accounts after entity creation
-      // IMPORTANT: This must happen after entity creation to ensure all parent-child relationships work
-      console.log(`DEBUG: Starting Chart of Accounts seeding for admin client ID ${newClient.id}`);
-      try {
-        await storage.accounts.seedClientCoA(newClient.id);
-        console.log(`DEBUG: Chart of Accounts seeded successfully for admin client ID ${newClient.id}`);
-        
-        // Verify accounts were created
-        const accounts = await storage.accounts.getAccountsByClientId(newClient.id);
-        console.log(`DEBUG: Verified ${accounts.length} accounts were created for admin client ID ${newClient.id}`);
-        
-        if (accounts.length === 0) {
-          console.error(`ERROR: No accounts were created for client ${newClient.id} - CoA seeding may have failed silently`);
+      // PERFORMANCE OPTIMIZATION: Seed the Chart of Accounts asynchronously
+      // This runs in the background without delaying the client creation response
+      console.log(`DEBUG: Starting asynchronous Chart of Accounts seeding for client ID ${newClient.id}`);
+      
+      // Fire and forget - don't wait for completion to respond to the client
+      // This dramatically speeds up client creation API response time
+      setTimeout(async () => {
+        try {
+          await storage.accounts.seedClientCoA(newClient.id);
+          console.log(`DEBUG: Chart of Accounts seeded successfully for client ID ${newClient.id}`);
+          
+          // Verify accounts were created
+          const accounts = await storage.accounts.getAccountsByClientId(newClient.id);
+          console.log(`DEBUG: Verified ${accounts.length} accounts were created for client ID ${newClient.id}`);
+          
+          if (accounts.length === 0) {
+            console.error(`ERROR: No accounts were created for client ${newClient.id} - CoA seeding may have failed silently`);
+          }
+        } catch (seedError) {
+          console.error(`ERROR: CoA seeding failed for client ${newClient.id}:`, seedError);
+          // The user can manually seed the CoA later via the dedicated endpoint
         }
-      } catch (seedError) {
-        console.error(`ERROR: CoA seeding failed for admin client ${newClient.id}:`, seedError);
-        // Continue - don't fail client creation if CoA seeding fails
-        // The user can manually seed the CoA later via the dedicated endpoint
-      }
+      }, 0);
       
       return res.status(201).json({
         status: "success",
@@ -854,6 +865,143 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       return res.status(500).json({
         status: 'error',
         message: 'Failed to create entity',
+        error: error.message || String(error)
+      });
+    }
+  }));
+  
+  /**
+   * Create multiple entities in batch for performance improvement
+   * 
+   * This endpoint is specifically designed for the setup flow where users need to create
+   * multiple entities for a client.
+   * 
+   * @route POST /api/admin/entities/batch
+   * @param {Array} entities - An array of entity objects to create
+   * @returns {Array} - The created entities
+   * @throws {400} - If the request is invalid
+   * @throws {404} - If the client is not found
+   * @throws {500} - If there is a server error
+   */
+  app.post("/api/admin/entities/batch", asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log("POST /api/admin/entities/batch - Starting batch entity creation");
+      console.log("User authenticated status:", req.isAuthenticated ? req.isAuthenticated() : false);
+      
+      // Get the batch of entities to create
+      const { entities, clientId, ownerId } = req.body;
+      
+      if (!Array.isArray(entities) || entities.length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid request format. Expected an array of entities.'
+        });
+      }
+      
+      console.log(`Processing batch of ${entities.length} entities for client ${clientId}`);
+      
+      // Extract user ID from the authenticated user or from the request body
+      let finalOwnerId = (req.user as any)?.id;
+      
+      // If no authenticated user, try to get the ownerId from the request body
+      if (!finalOwnerId && ownerId) {
+        finalOwnerId = ownerId;
+        console.log("Using ownerId from request body:", ownerId);
+      }
+      
+      if (!finalOwnerId) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Owner ID is required either in session or request body'
+        });
+      }
+      
+      // Validate the client exists
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Client not found'
+        });
+      }
+      
+      // Process and validate each entity
+      const processedEntities = [];
+      const errors = [];
+      
+      // Validate all entities first before creation to avoid partial creation
+      const validatedEntities = [];
+      
+      for (let i = 0; i < entities.length; i++) {
+        const entityData = entities[i];
+        try {
+          // Make sure code is provided or generate a default one
+          const entityCode = entityData.code || entityData.name?.substring(0, 3).toUpperCase() || `ENT${i}`;
+          
+          // Process industry value for consistency
+          let industryValue = entityData.industry;
+          if (industryValue !== undefined && industryValue !== null) {
+            industryValue = String(industryValue);
+          } else if (industryValue === '' || industryValue === null) {
+            industryValue = "other";
+          }
+          
+          // Validate entity data
+          const validatedData = insertEntitySchema.parse({
+            ...entityData,
+            code: entityCode,
+            ownerId: finalOwnerId,
+            clientId: clientId,
+            active: true,
+            industry: industryValue
+          });
+          
+          validatedEntities.push(validatedData);
+        } catch (error) {
+          errors.push({
+            index: i,
+            entity: entityData.name || `Entity at index ${i}`,
+            error: error instanceof z.ZodError ? error.errors : String(error)
+          });
+        }
+      }
+      
+      // If any validations failed, return all errors
+      if (errors.length > 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Validation failed for one or more entities',
+          errors
+        });
+      }
+      
+      // Create all entities (now that we know they're all valid)
+      for (const validatedData of validatedEntities) {
+        try {
+          console.log(`Creating entity "${validatedData.name}" for client ${clientId}`);
+          const entity = await storage.createEntity(validatedData);
+          processedEntities.push(entity);
+        } catch (error) {
+          console.error(`Error creating entity ${validatedData.name}:`, error);
+          errors.push({
+            entity: validatedData.name,
+            error: String(error)
+          });
+        }
+      }
+      
+      // Return results, with partial success if some entities were created
+      return res.status(errors.length === 0 ? 201 : 207).json({
+        status: errors.length === 0 ? "success" : "partial",
+        message: `Created ${processedEntities.length} of ${entities.length} entities`,
+        data: processedEntities,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error: any) {
+      console.error("Error in batch entity creation:", error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to process batch entity creation',
         error: error.message || String(error)
       });
     }

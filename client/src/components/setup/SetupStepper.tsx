@@ -513,61 +513,126 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       
       console.log(`DEBUG: Processed entity data:`, JSON.stringify(entitiesDeepCopy));
       
-      // PERFORMANCE OPTIMIZATION: Process entities more efficiently
-      console.log(`DEBUG: Setting up optimized entity creation for ${entitiesDeepCopy.length} entities`);
+      // PERFORMANCE OPTIMIZATION: Use the new batch entity creation endpoint
+      console.log(`DEBUG: Setting up optimized BATCH entity creation for ${entitiesDeepCopy.length} entities`);
       
-      // Function to create a single entity with better error handling
-      const createSingleEntity = async (entityPayload: any) => {
-        try {
-          const entityApiUrl = '/api/admin/entities';
-          console.log(`DEBUG: Creating entity ${entityPayload.name} for client ${newClientId}`);
+      let entityResults = [];
+      
+      try {
+        // Use the new batch endpoint which is much more efficient than individual calls
+        const batchApiUrl = '/api/admin/entities/batch';
+        console.log(`DEBUG: Using batch entity creation endpoint for ${entitiesDeepCopy.length} entities`);
+        
+        const batchResponse = await fetch(batchApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            entities: entitiesDeepCopy,
+            clientId: newClientId,
+            ownerId: user?.id
+          }),
+          credentials: 'include'
+        });
+        
+        if (!batchResponse.ok) {
+          const errorText = await batchResponse.text();
+          console.error(`Error in batch entity creation:`, errorText);
+          throw new Error(`Batch entity creation failed: ${batchResponse.status} - ${errorText}`);
+        }
+        
+        const batchResult = await batchResponse.json();
+        console.log(`DEBUG: Batch entity creation response:`, batchResult);
+        
+        if (batchResult.status === "success") {
+          // All entities were created successfully
+          entityResults = batchResult.data.map((entity: any) => ({ 
+            success: true, 
+            data: entity, 
+            name: entity.name 
+          }));
+          console.log(`DEBUG: Successfully created ${entityResults.length} entities in batch`);
+        } else if (batchResult.status === "partial") {
+          // Some entities were created, but some failed
+          console.warn(`DEBUG: Partial success with batch entity creation: ${batchResult.message}`);
           
-          const response = await fetch(entityApiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(entityPayload),
-            credentials: 'include'
-          });
+          // Map successful entities
+          const successful = batchResult.data.map((entity: any) => ({ 
+            success: true, 
+            data: entity, 
+            name: entity.name 
+          }));
           
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Error creating entity ${entityPayload.name}:`, errorText);
+          // Map failed entities
+          const failed = (batchResult.errors || []).map((error: any) => ({
+            success: false,
+            name: error.entity,
+            error: error.error
+          }));
+          
+          entityResults = [...successful, ...failed];
+        } else {
+          // All entities failed
+          throw new Error(`Batch entity creation failed: ${batchResult.message}`);
+        }
+      } catch (err: unknown) {
+        // If the batch endpoint fails completely, fall back to the old method of individual creation
+        console.error(`Exception using batch entity creation, falling back to individual entity creation:`, err);
+        
+        // Define the fallback function for individual entity creation
+        const createSingleEntity = async (entityPayload: any) => {
+          try {
+            const entityApiUrl = '/api/admin/entities';
+            console.log(`DEBUG: Creating entity ${entityPayload.name} for client ${newClientId}`);
+            
+            const response = await fetch(entityApiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(entityPayload),
+              credentials: 'include'
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Error creating entity ${entityPayload.name}:`, errorText);
+              return { 
+                success: false, 
+                name: entityPayload.name,
+                error: `Status ${response.status}: ${errorText}`
+              };
+            }
+            
+            const data = await response.json();
+            return { success: true, data, name: entityPayload.name };
+          } catch (err: unknown) {
+            console.error(`Exception creating entity ${entityPayload.name}:`, err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
             return { 
               success: false, 
               name: entityPayload.name,
-              error: `Status ${response.status}: ${errorText}`
+              error: errorMessage
             };
           }
+        };
+        
+        // Process entities in parallel batches for better performance without overwhelming the server
+        const batchSize = 3; // Process 3 entities at once
+        entityResults = [];
+        
+        // Process entities in batches
+        for (let i = 0; i < entitiesDeepCopy.length; i += batchSize) {
+          const batch = entitiesDeepCopy.slice(i, i + batchSize);
+          const batchPromises = batch.map(entity => createSingleEntity(entity));
           
-          const data = await response.json();
-          return { success: true, data, name: entityPayload.name };
-        } catch (err: unknown) {
-          console.error(`Exception creating entity ${entityPayload.name}:`, err);
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          return { 
-            success: false, 
-            name: entityPayload.name,
-            error: errorMessage
-          };
+          // Wait for the current batch to complete before proceeding to the next
+          const batchResults = await Promise.all(batchPromises);
+          entityResults.push(...batchResults);
+          
+          console.log(`DEBUG: Completed batch ${Math.floor(i/batchSize) + 1} of entity creation with ${batchResults.length} entities`);
         }
-      };
-      
-      // Process entities in parallel batches for better performance without overwhelming the server
-      const batchSize = 3; // Process 3 entities at once
-      const entityResults = [];
-      
-      // Process entities in batches
-      for (let i = 0; i < entitiesDeepCopy.length; i += batchSize) {
-        const batch = entitiesDeepCopy.slice(i, i + batchSize);
-        const batchPromises = batch.map(entity => createSingleEntity(entity));
-        
-        // Wait for the current batch to complete before proceeding to the next
-        const batchResults = await Promise.all(batchPromises);
-        entityResults.push(...batchResults);
-        
-        console.log(`DEBUG: Completed batch ${Math.floor(i/batchSize) + 1} of entity creation with ${batchResults.length} entities`);
       }
       
       // Check for any failures

@@ -207,32 +207,46 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
                 <FormField
                   control={form.control}
                   name="industry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Industry*</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  render={({ field }) => {
+                    console.log("CLIENT FORM DEBUG: Industry field rendering with value:", field.value);
+                    // Ensure industry has a valid value
+                    const safeValue = ensureIndustryValue(field.value);
+                    if (safeValue !== field.value) {
+                      console.log("CLIENT FORM DEBUG: Industry value corrected from", field.value, "to", safeValue);
+                      field.onChange(safeValue);
+                    }
+                    
+                    return (
+                      <FormItem className="w-full">
+                        <FormLabel>Industry*</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an industry" />
-                          </SelectTrigger>
+                          <Select
+                            onValueChange={(value) => {
+                              console.log("CLIENT FORM DEBUG: Industry onChange with value:", value);
+                              field.onChange(value);
+                            }}
+                            value={safeValue}
+                            defaultValue="other"
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select an industry" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {INDUSTRY_OPTIONS.map((industry) => (
+                                <SelectItem key={industry.value} value={industry.value}>
+                                  {industry.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
-                        <SelectContent>
-                          {INDUSTRY_OPTIONS.map((industry) => (
-                            <SelectItem key={industry.value} value={industry.value}>
-                              {industry.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-xs">
-                        The primary industry your company operates in
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        <FormDescription className="text-xs">
+                          The primary industry your company operates in
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
 
