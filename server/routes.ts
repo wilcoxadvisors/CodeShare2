@@ -1473,23 +1473,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", asyncHandler(async (req: Request, res: Response) => {
     const clientData = req.body;
     try {
-      console.log("Creating client with data (verification route):", clientData);
+      const debugMode = !!clientData.DEBUG_ENTITY_CREATION;
+      if (debugMode) {
+        console.log("⭐ RUNNING IN DEBUG MODE WITH SPECIAL DIAGNOSTICS ⭐");
+      }
+      
+      // Remove debug flag from data to be stored
+      if (clientData.DEBUG_ENTITY_CREATION) {
+        delete clientData.DEBUG_ENTITY_CREATION;
+      }
+      
+      console.log("Creating client with data:", clientData);
       
       // Explicitly create new client
       const newClient = await storage.clients.createClient(clientData);
-      console.log(`DEBUG: Client created successfully with ID ${newClient.id}`);
-
-      // ⚠️ CRITICAL FIX: Import entityStorage directly 
-      // This ensures we always have a direct reference to the EntityStorage instance
-      // regardless of how storage.entities is initialized
-      const { entityStorage: directEntityStorage } = await import('./storage/entityStorage');
-      console.log("Using direct import of entityStorage for entity creation");
-
-      // Explicitly create default entity first (to ensure dependencies)
+      console.log(`Client created successfully with ID ${newClient.id}`);
+      
+      // Now create a default entity for the client
+      // CRITICAL FIX: Directly use storage.entities instead of importing storage modules
+      // This avoids issues with circular dependencies
       const defaultEntityData = {
         name: `${newClient.name} Default Entity`,
         code: "DEFAULT",
-        entityCode: "DEFAULT",
+        entityCode: "DEFAULT", 
         ownerId: clientData.userId,
         clientId: newClient.id,
         active: true,
@@ -1499,148 +1505,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timezone: "UTC"
       };
       
-      console.log(`DEBUG: Creating default entity with data:`, JSON.stringify(defaultEntityData, null, 2));
+      console.log(`Creating default entity with data:`, JSON.stringify(defaultEntityData, null, 2));
       
       try {
-        // Create entity using direct import
-        console.log("DEBUG: About to create entity using direct import of entityStorage");
-        const entity = await directEntityStorage.createEntity(defaultEntityData);
+        // Create the entity using the standard storage interface
+        console.log("Creating default entity...");
+        const entity = await storage.entities.createEntity(defaultEntityData);
         
         if (!entity || !entity.id) {
           console.error(`ERROR: Entity creation returned invalid result:`, entity);
           throw new Error(`Failed to create entity - invalid result returned`);
         }
         
-        console.log(`DEBUG: Default entity created with ID ${entity.id} for client ID ${newClient.id}`, JSON.stringify(entity, null, 2));
+        console.log(`Default entity created with ID ${entity.id}`);
         
-        // Verify entity was created by fetching it - handle both storage methods
-        console.log(`DEBUG: About to verify entity creation by fetching entities`);
-        
-        let entities = [];
-        
-        // Try to list entities using directEntityStorage
-        try {
-          if (typeof directEntityStorage.getEntitiesByClient === 'function') {
-            entities = await directEntityStorage.getEntitiesByClient(newClient.id);
-            console.log(`DEBUG: Verified client ${newClient.id} has ${entities.length} entities (via directEntityStorage.getEntitiesByClient)`);
-          } else {
-            throw new Error("directEntityStorage.getEntitiesByClient not available");
-          }
-        } catch (methodError) {
-          console.warn(`WARN: directEntityStorage.getEntitiesByClient failed, falling back to direct db access:`, 
-                       methodError.message || String(methodError));
-          
-          // Fall back to direct database access
-          const { db } = await import('./db');
-          const { entities: entitiesTable } = await import('@shared/schema');
-          const { eq, and, isNull } = await import('drizzle-orm');
-          
-          entities = await db
-            .select()
-            .from(entitiesTable)
-            .where(and(
-              eq(entitiesTable.clientId, newClient.id),
-              isNull(entitiesTable.deletedAt)
-            ));
-          
-          console.log(`DEBUG: Verified client ${newClient.id} has ${entities.length} entities (via direct DB access)`);
-        }
+        // Verify entity was created
+        const entities = await storage.entities.getEntitiesByClient(newClient.id);
+        console.log(`Verified client ${newClient.id} has ${entities.length} entities`);
         
         if (entities.length === 0) {
-          console.error(`ERROR: Entity creation failed silently for client ${newClient.id} - entity not found after creation`);
-          throw new Error(`Failed to create entity for client ${newClient.id} - entity not found after creation`);
+          console.error(`ERROR: Entity creation verification failed - no entities found`);
+          throw new Error(`Entity creation verification failed - no entities found for client ${newClient.id}`);
         }
-      } catch (entityError) {
-        console.error(`ERROR: Entity creation failed for client ${newClient.id}:`, entityError);
-        console.error(`ERROR: Entity creation stacktrace:`, entityError.stack || entityError);
-        throw entityError; // Re-throw to ensure proper handling
-      }
-
-      // Immediately seed the Chart of Accounts - create a dedicated function to ensure this works reliably
-      const seedCoA = async (clientId: number) => {
-        console.log(`DEBUG: [seedCoA] Starting Chart of Accounts seeding for client ID ${clientId}`);
         
-        try {
-          // Check if storage.accounts is properly initialized
-          if (!storage.accounts || typeof storage.accounts.getAccounts !== 'function') {
-            console.error(`ERROR: [seedCoA] storage.accounts is not properly initialized - storage: ${typeof storage}, storage.accounts: ${typeof storage.accounts}`);
+        // Seed Chart of Accounts
+        console.log(`Seeding Chart of Accounts for client ${newClient.id}...`);
+        
+        // Check if accounts already exist
+        const existingAccounts = await storage.accounts.getAccounts(newClient.id);
+        
+        if (existingAccounts.length > 0) {
+          console.log(`Client already has ${existingAccounts.length} accounts - skipping CoA seeding`);
+        } else {
+          try {
+            // Seed the Chart of Accounts
+            await storage.accounts.seedClientCoA(newClient.id);
             
-            // Import directly from the storage module as a fallback
-            const { accountStorage } = await import('./storage/accountStorage');
-            console.log(`DEBUG: [seedCoA] Imported accountStorage as fallback. Has methods: ${!!accountStorage && typeof accountStorage.getAccounts === 'function'}`);
-            
-            // Check if accounts already exist using direct import
-            const existingAccounts = await accountStorage.getAccounts(clientId);
-            console.log(`DEBUG: [seedCoA] Found ${existingAccounts.length} existing accounts for client ${clientId} (using fallback)`);
-            
-            if (existingAccounts.length > 0) {
-              console.log(`DEBUG: [seedCoA] Client ${clientId} already has ${existingAccounts.length} accounts. Skipping CoA seeding.`);
-              return true; // Already seeded
-            }
-            
-            // Seed accounts using direct import
-            console.log(`DEBUG: [seedCoA] No existing accounts found. Proceeding with CoA seeding for client ${clientId} (using fallback)`);
-            await accountStorage.seedClientCoA(clientId);
-            console.log(`DEBUG: [seedCoA] Chart of Accounts seeded successfully for client ID ${clientId} (using fallback)`);
-            
-            // Verify accounts were created using direct import
-            const accounts = await accountStorage.getAccounts(clientId);
-            console.log(`DEBUG: [seedCoA] Verification complete - client ${clientId} now has ${accounts.length} accounts (using fallback)`);
+            // Verify accounts were created
+            const accounts = await storage.accounts.getAccounts(newClient.id);
+            console.log(`Verification complete - client ${newClient.id} now has ${accounts.length} accounts`);
             
             if (accounts.length === 0) {
-              console.error(`ERROR: [seedCoA] No accounts were created for client ${clientId} - CoA seeding may have failed silently (using fallback)`);
-              return false;
-            } else {
-              console.log(`DEBUG: [seedCoA] Successfully verified account creation for client ${clientId} (using fallback)`);
-              return true;
+              console.error(`ERROR: No accounts were created - CoA seeding may have failed silently`);
             }
-          } else {
-            // Normal flow when storage.accounts is properly initialized
-            console.log(`DEBUG: [seedCoA] Checking for existing accounts for client ${clientId}`);
-            const existingAccounts = await storage.accounts.getAccounts(clientId);
-            console.log(`DEBUG: [seedCoA] Found ${existingAccounts.length} existing accounts for client ${clientId}`);
-            
-            if (existingAccounts.length > 0) {
-              console.log(`DEBUG: [seedCoA] Client ${clientId} already has ${existingAccounts.length} accounts. Skipping CoA seeding.`);
-              return true; // Already seeded
-            } else {
-              console.log(`DEBUG: [seedCoA] No existing accounts found. Proceeding with CoA seeding for client ${clientId}`);
-              await storage.accounts.seedClientCoA(clientId);
-              console.log(`DEBUG: [seedCoA] Chart of Accounts seeded successfully for client ID ${clientId}`);
-              
-              // Verify accounts were created
-              const accounts = await storage.accounts.getAccounts(clientId);
-              console.log(`DEBUG: [seedCoA] Verification complete - client ${clientId} now has ${accounts.length} accounts`);
-              
-              if (accounts.length === 0) {
-                console.error(`ERROR: [seedCoA] No accounts were created for client ${clientId} - CoA seeding may have failed silently`);
-                return false;
-              } else {
-                console.log(`DEBUG: [seedCoA] Successfully verified account creation for client ${clientId}`);
-                return true;
-              }
-            }
+          } catch (seedError) {
+            console.error(`ERROR: CoA seeding failed:`, seedError);
+            // Don't throw - we want client creation to succeed even if CoA seeding fails
           }
-        } catch (seedError) {
-          console.error(`ERROR: [seedCoA] CoA seeding failed for client ${clientId}:`, seedError);
-          console.error(`ERROR: [seedCoA] Full seedError details:`, seedError);
-          throw seedError; // Re-throw for proper handling
         }
-      };
-
-      // Attempt to seed the Chart of Accounts with proper error handling
-      try {
-        const seedResult = await seedCoA(newClient.id);
-        if (seedResult) {
-          console.log(`DEBUG: Chart of Accounts seeding was successful for client ${newClient.id}`);
-        } else {
-          console.warn(`WARNING: Chart of Accounts seeding may have failed for client ${newClient.id}`);
+      } catch (entityError) {
+        console.error(`ERROR: Entity creation or verification failed:`, entityError);
+        
+        // On entity creation failure, try direct database access as fallback
+        try {
+          console.log("Attempting fallback entity creation via direct DB access...");
+          const { entityStorage } = await import('./storage/entityStorage');
+          const fallbackEntity = await entityStorage.createEntity(defaultEntityData);
+          console.log(`Fallback entity created with ID ${fallbackEntity.id}`);
+          
+          try {
+            await storage.accounts.seedClientCoA(newClient.id);
+            console.log(`Seeded CoA for client ${newClient.id} after fallback entity creation`);
+          } catch (fallbackSeedError) {
+            console.error(`Fallback CoA seeding failed:`, fallbackSeedError);
+          }
+        } catch (fallbackError) {
+          console.error(`Fallback entity creation also failed:`, fallbackError);
+          throw entityError; // Re-throw the original error
         }
-      } catch (seedError) {
-        console.error(`ERROR: CoA seeding failed for client ${newClient.id}:`, seedError);
-        // Continue - don't fail client creation if CoA seeding fails
-        // The user can manually seed the CoA later via the dedicated endpoint
       }
+
+      // Note: Chart of Accounts seeding is now handled directly in the try-catch block above
+      // The new implementation uses direct imports of required storage modules for reliability
 
       res.status(201).json(newClient);
     } catch (error) {

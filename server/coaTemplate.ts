@@ -20,6 +20,14 @@ export interface CoATemplateEntry {
 }
 
 /**
+ * Returns the standard Chart of Accounts template data
+ * Used for manual and automatic seeding
+ */
+export function getChartOfAccounts(): CoATemplateEntry[] {
+  return standardCoaTemplate;
+}
+
+/**
  * Standard Chart of Accounts template
  * Used to seed new client accounts
  */

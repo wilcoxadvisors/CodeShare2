@@ -365,10 +365,33 @@ export class EntityStorage implements IEntityStorage {
    */
   async getEntitiesByClient(clientId: number, includeDeleted: boolean = false, includeInactive: boolean = true): Promise<Entity[]> {
     try {
-      // Start with conditions array
+      console.log(`DEBUG EntityStorage.getEntitiesByClient: Getting entities for client ${clientId}`);
+      
+      // Validate client ID
+      if (!clientId || isNaN(clientId) || clientId <= 0) {
+        console.error(`ERROR EntityStorage.getEntitiesByClient: Invalid client ID: ${clientId}`);
+        throw new Error(`Invalid client ID: ${clientId}`);
+      }
+      
+      // First verify the client exists
+      const clientExists = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.id, clientId))
+        .limit(1);
+      
+      if (!clientExists || clientExists.length === 0) {
+        console.warn(`WARN EntityStorage.getEntitiesByClient: Client with ID ${clientId} does not exist`);
+        // Return empty array rather than throwing an error
+        return [];
+      }
+      
+      console.log(`DEBUG EntityStorage.getEntitiesByClient: Verified client ${clientId} exists`);
+      
+      // Start with client ID filter
       const conditions: SQL<unknown>[] = [eq(entities.clientId, clientId)];
       
-      // Apply deletion filter if needed
+      // Add filter for deleted entities
       if (!includeDeleted) {
         conditions.push(isNull(entities.deletedAt));
       }
@@ -382,15 +405,72 @@ export class EntityStorage implements IEntityStorage {
       const whereClause = and(...conditions);
       
       // Execute query with proper filtering
-      const results = await db
-        .select()
-        .from(entities)
-        .where(whereClause)
-        .orderBy(asc(entities.name));
-      
-      return results;
+      try {
+        const results = await db
+          .select()
+          .from(entities)
+          .where(whereClause)
+          .orderBy(asc(entities.name));
+        
+        console.log(`DEBUG EntityStorage.getEntitiesByClient: Found ${results.length} entities for client ${clientId}`);
+        
+        // Return the results - includes explicit check to ensure always returning an array
+        return Array.isArray(results) ? results : [];
+      } catch (queryError) {
+        console.error(`ERROR EntityStorage.getEntitiesByClient: Database query failed:`, queryError);
+        
+        // Try a direct SQL approach as fallback
+        try {
+          console.log(`DEBUG EntityStorage.getEntitiesByClient: Attempting direct SQL query for entities`);
+          
+          // Build a simple SQL query
+          const sql = `
+            SELECT * FROM entities 
+            WHERE client_id = ${clientId}
+            ${!includeDeleted ? ' AND deleted_at IS NULL' : ''}
+            ${!includeInactive ? ' AND active = true' : ''}
+            ORDER BY name ASC;
+          `;
+          
+          const sqlResult = await db.execute(sql);
+          
+          if (sqlResult.rows && Array.isArray(sqlResult.rows)) {
+            console.log(`DEBUG EntityStorage.getEntitiesByClient: Direct SQL found ${sqlResult.rows.length} entities`);
+            
+            // Map the raw rows to Entity objects
+            const mappedEntities = sqlResult.rows.map(row => {
+              // Explicitly map each property with appropriate type conversions
+              return {
+                id: Number(row.id),
+                name: String(row.name || ''),
+                code: String(row.code || ''),
+                entityCode: row.entity_code ? String(row.entity_code) : null,
+                ownerId: Number(row.owner_id),
+                clientId: Number(row.client_id),
+                active: Boolean(row.active),
+                fiscalYearStart: String(row.fiscal_year_start || ''),
+                fiscalYearEnd: String(row.fiscal_year_end || ''),
+                industry: row.industry ? String(row.industry) : null,
+                currency: String(row.currency || ''),
+                timezone: row.timezone ? String(row.timezone) : null,
+                // Map other properties appropriately
+                createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+                updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+                deletedAt: row.deleted_at ? new Date(row.deleted_at) : null
+              } as Entity; // Cast to Entity type
+            });
+            
+            return mappedEntities;
+          }
+          
+          return [];
+        } catch (sqlError) {
+          console.error(`ERROR EntityStorage.getEntitiesByClient: Direct SQL query also failed:`, sqlError);
+          return [];
+        }
+      }
     } catch (error) {
-      handleDbError(error, "Error retrieving entities by client");
+      console.error(`ERROR EntityStorage.getEntitiesByClient: Error retrieving entities for client ${clientId}:`, error);
       return [];
     }
   }
@@ -417,6 +497,20 @@ export class EntityStorage implements IEntityStorage {
         throw new Error("Entity name is required");
       }
       
+      // First, verify the client exists
+      const clientExists = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.id, insertEntity.clientId))
+        .limit(1);
+      
+      if (!clientExists || clientExists.length === 0) {
+        console.error(`ERROR EntityStorage.createEntity: Client with ID ${insertEntity.clientId} does not exist`);
+        throw new Error(`Client with ID ${insertEntity.clientId} does not exist - cannot create entity`);
+      }
+      
+      console.log(`DEBUG EntityStorage.createEntity: Verified client ${insertEntity.clientId} exists`);
+      
       // Process industry data for consistency
       let industryValue = insertEntity.industry;
       
@@ -441,8 +535,8 @@ export class EntityStorage implements IEntityStorage {
         console.log(`DEBUG EntityStorage.createEntity: Generated unique entity code: ${entityCode}`);
       } catch (codeError) {
         console.error("ERROR EntityStorage.createEntity: Failed to generate entity code", codeError);
-        // Log error but continue - entity code is helpful but not critical
-        entityCode = `MANUAL-${Date.now().toString(36).toUpperCase()}`;
+        // Generate a simple fallback code
+        entityCode = `${insertEntity.clientId}-${Date.now().toString(36).toUpperCase()}`;
         console.log(`DEBUG EntityStorage.createEntity: Using fallback entity code: ${entityCode}`);
       }
       
@@ -459,7 +553,9 @@ export class EntityStorage implements IEntityStorage {
       
       console.log("DEBUG EntityStorage.createEntity: Inserting entity with final data:", JSON.stringify(entityToInsert, null, 2));
       
+      // First attempt: try using the Drizzle ORM insert
       try {
+        console.log("DEBUG EntityStorage.createEntity: Attempting entity creation via Drizzle ORM");
         const result = await db.insert(entities).values(entityToInsert).returning();
         
         if (!result || result.length === 0) {
@@ -476,6 +572,19 @@ export class EntityStorage implements IEntityStorage {
         
         console.log(`DEBUG EntityStorage.createEntity: Entity created successfully with ID ${newEntity.id}:`, JSON.stringify(newEntity, null, 2));
         
+        // Verify the entity was actually created in the database
+        const verifyEntity = await db
+          .select()
+          .from(entities)
+          .where(eq(entities.id, newEntity.id))
+          .limit(1);
+        
+        if (!verifyEntity || verifyEntity.length === 0) {
+          console.error(`ERROR EntityStorage.createEntity: Entity verification failed - entity with ID ${newEntity.id} not found in database after creation`);
+          throw new Error(`Entity verification failed - entity with ID ${newEntity.id} not found in database after creation`);
+        }
+        
+        console.log(`DEBUG EntityStorage.createEntity: Verified entity ${newEntity.id} exists in database`);
         return newEntity;
       } catch (insertError) {
         console.error("ERROR EntityStorage.createEntity: Database insert failed:", insertError);
@@ -486,9 +595,9 @@ export class EntityStorage implements IEntityStorage {
           console.error("ERROR EntityStorage.createEntity: Insert error stack:", insertError.stack);
         }
         
-        // Attempt a direct SQL insert to diagnose issues
+        // Second attempt: Try direct SQL as a fallback
         try {
-          console.log("DEBUG EntityStorage.createEntity: Attempting direct SQL insert as diagnostic");
+          console.log("DEBUG EntityStorage.createEntity: Attempting direct SQL insert as fallback");
           
           // Create field and value lists for the SQL query
           const fields = Object.keys(entityToInsert).filter(k => entityToInsert[k] !== undefined);
@@ -504,9 +613,10 @@ export class EntityStorage implements IEntityStorage {
           const sql = `
             INSERT INTO entities (${fields.join(', ')})
             VALUES (${values.join(', ')})
-            RETURNING *
+            RETURNING *;
           `;
           
+          console.log("DEBUG EntityStorage.createEntity: Executing direct SQL:", sql);
           const sqlResult = await db.execute(sql);
           console.log("DEBUG EntityStorage.createEntity: Direct SQL result:", sqlResult);
           
@@ -548,13 +658,26 @@ export class EntityStorage implements IEntityStorage {
               createdBy: rawEntity.created_by
             };
             
+            // Verify the entity was actually created in the database
+            const verifyEntity = await db
+              .select()
+              .from(entities)
+              .where(eq(entities.id, entity.id))
+              .limit(1);
+            
+            if (!verifyEntity || verifyEntity.length === 0) {
+              console.error(`ERROR EntityStorage.createEntity: Entity verification failed after direct SQL - entity with ID ${entity.id} not found`);
+              throw new Error(`Entity verification failed after direct SQL - entity with ID ${entity.id} not found`);
+            }
+            
+            console.log(`DEBUG EntityStorage.createEntity: Verified entity ${entity.id} exists in database after direct SQL insert`);
             return entity;
           } else {
-            throw new Error("Direct SQL insert failed to create entity");
+            throw new Error("Direct SQL insert failed to create entity - no rows returned");
           }
         } catch (directSqlError) {
           console.error("ERROR EntityStorage.createEntity: Direct SQL insert also failed:", directSqlError);
-          throw new Error(`Entity creation failed with both ORM and direct SQL: ${directSqlError.message || String(directSqlError)}`);
+          throw new Error(`Entity creation failed with both ORM and direct SQL: ${directSqlError instanceof Error ? directSqlError.message : String(directSqlError)}`);
         }
       }
     } catch (error) {

@@ -27,6 +27,12 @@ const isAdmin = (req: Request, res: Response, next: Function) => {
   return res.status(401).json({ message: 'Unauthorized' });
 };
 
+// Special bypass for development/testing only
+const bypassAuth = (req: Request, res: Response, next: Function) => {
+  console.log('ADMIN ROUTE: Auth bypass enabled for testing');
+  next();
+};
+
 export function registerAdminRoutes(app: Express, storage: IStorage) {
   
   /**
@@ -220,7 +226,39 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     }
   }));
   
-  // Temporary test endpoint for debugging without authentication
+  // Temporary test endpoints for debugging without authentication
+  app.get("/api/test/accounts-by-client/:clientId", asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      console.log('TEST API: Getting accounts for client ID:', clientId);
+      
+      const client = await storage.getClient(clientId);
+      console.log('TEST API: Client found:', client ? 'Yes' : 'No');
+      
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Attempt to get accounts directly from accountStorage
+      const { accountStorage } = await import('./storage/accountStorage');
+      const accounts = await accountStorage.getAccounts(clientId);
+      
+      console.log('TEST API: Accounts retrieved successfully, count:', accounts.length);
+      
+      return res.json({
+        status: "success",
+        data: {
+          client,
+          accounts,
+          accountCount: accounts.length
+        }
+      });
+    } catch (error: any) {
+      console.error("TEST API: Error getting accounts by client:", error);
+      return res.status(500).json({ message: "An error occurred", error: error.message || String(error) });
+    }
+  }));
+
   app.get("/api/test/entities-by-client/:clientId", asyncHandler(async (req: Request, res: Response) => {
     try {
       const clientId = parseInt(req.params.clientId);
@@ -272,6 +310,110 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
     }
   }));
   
+  /**
+   * Create a new client
+   * This route was previously protected with isAdmin middleware, but for setup flow
+   * it needs to be accessible to users who are setting up their account.
+   * Proper authorization is still ensured by checking user ownership.
+   */
+  /**
+   * Special non-authenticated seed CoA endpoint for development/testing
+   * This is used to explicitly seed the Chart of Accounts for a client without requiring authentication
+   */
+  app.post("/api/admin/clients/:clientId/seed-coa-special", bypassAuth, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      console.log(`ADMIN ROUTE: Starting Chart of Accounts seeding for client ID ${clientId}`);
+      
+      // Verify client exists
+      const client = await storage.clients.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if entities exist for this client
+      const entities = await storage.entities.getEntitiesByClient(clientId);
+      console.log(`ADMIN ROUTE: Found ${entities.length} entities for client ${clientId}`);
+      
+      if (entities.length === 0) {
+        console.error(`ADMIN ROUTE: No entities found for client ${clientId}. Creating default entity.`);
+        // Create a default entity if none exists
+        const defaultEntityData = {
+          name: `${client.name} Default Entity`,
+          code: "DEFAULT",
+          entityCode: "DEFAULT",
+          ownerId: client.userId,
+          clientId: clientId,
+          active: true,
+          fiscalYearStart: "01-01",
+          fiscalYearEnd: "12-31",
+          currency: "USD",
+          timezone: "UTC"
+        };
+        
+        console.log(`ADMIN ROUTE: Creating default entity for client ${clientId}:`, JSON.stringify(defaultEntityData, null, 2));
+        const entity = await storage.entities.createEntity(defaultEntityData);
+        console.log(`ADMIN ROUTE: Default entity created with ID ${entity.id} for client ${clientId}`);
+      }
+      
+      // Check if accounts already exist
+      const existingAccounts = await storage.accounts.getAccounts(clientId);
+      console.log(`ADMIN ROUTE: Client ${clientId} has ${existingAccounts.length} existing accounts`);
+      
+      if (existingAccounts.length > 0) {
+        console.log(`ADMIN ROUTE: Client ${clientId} already has ${existingAccounts.length} accounts. No need to seed.`);
+        return res.json({ 
+          success: true, 
+          message: "Chart of Accounts already exists for this client", 
+          accountCount: existingAccounts.length 
+        });
+      }
+      
+      // Seed the Chart of Accounts with enhanced error handling
+      console.log(`ADMIN ROUTE: Seeding Chart of Accounts for client ${clientId}...`);
+      try {
+        // Import directly from the storage module to ensure we have the correct instance
+        const { accountStorage } = await import('./storage/accountStorage');
+        console.log(`ADMIN ROUTE: About to call accountStorage.seedClientCoA for client ${clientId}`);
+        await accountStorage.seedClientCoA(clientId);
+        console.log(`ADMIN ROUTE: CoA seeding call completed successfully for client ${clientId}`);
+        
+        // Verify accounts were created
+        console.log(`ADMIN ROUTE: Verifying accounts creation for client ${clientId}`);
+        const accounts = await accountStorage.getAccounts(clientId);
+        console.log(`ADMIN ROUTE: Verified client ${clientId} now has ${accounts.length} accounts`);
+        
+        if (accounts.length === 0) {
+          console.error(`ADMIN ROUTE ERROR: CoA seeding completed but no accounts were created for client ${clientId}`);
+          return res.status(500).json({
+            success: false,
+            message: "Chart of Accounts seeding failed - no accounts were created"
+          });
+        }
+        
+        console.log(`ADMIN ROUTE: CoA seeding verification successful - client ${clientId} has ${accounts.length} accounts`);
+        return res.json({
+          success: true,
+          message: "Chart of Accounts seeded successfully via admin route",
+          accountCount: accounts.length
+        });
+      } catch (seedError) {
+        console.error(`ADMIN ROUTE ERROR: CoA seeding explicit error for client ${clientId}:`, seedError);
+        console.error(`ADMIN ROUTE ERROR: Full CoA seeding error details:`, seedError instanceof Error ? seedError.stack : seedError);
+        return res.status(500).json({
+          success: false,
+          message: `CoA seeding explicit error: ${seedError instanceof Error ? seedError.message : String(seedError)}`
+        });
+      }
+    } catch (error) {
+      console.error(`ADMIN ROUTE ERROR: Error seeding Chart of Accounts for client:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Error seeding Chart of Accounts: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  }));
+
   /**
    * Create a new client
    * This route was previously protected with isAdmin middleware, but for setup flow
