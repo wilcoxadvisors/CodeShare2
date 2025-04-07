@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, X } from "lucide-react";
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Define our validation schema for the client with enhanced validation
 const clientFormSchema = z.object({
@@ -294,15 +295,11 @@ export default function ClientOnboardingForm({ onSuccess }: ClientOnboardingForm
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="retail">Retail</SelectItem>
-                              <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                              <SelectItem value="healthcare">Healthcare</SelectItem>
-                              <SelectItem value="tech">Technology</SelectItem>
-                              <SelectItem value="finance">Finance</SelectItem>
-                              <SelectItem value="construction">Construction</SelectItem>
-                              <SelectItem value="hospitality">Hospitality</SelectItem>
-                              <SelectItem value="services">Professional Services</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
+                              {INDUSTRY_OPTIONS.map((industry) => (
+                                <SelectItem key={industry.value} value={industry.value}>
+                                  {industry.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormDescription>The client's primary industry</FormDescription>
@@ -530,15 +527,11 @@ export default function ClientOnboardingForm({ onSuccess }: ClientOnboardingForm
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="retail">Retail</SelectItem>
-                                      <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                                      <SelectItem value="healthcare">Healthcare</SelectItem>
-                                      <SelectItem value="tech">Technology</SelectItem>
-                                      <SelectItem value="finance">Finance</SelectItem>
-                                      <SelectItem value="construction">Construction</SelectItem>
-                                      <SelectItem value="hospitality">Hospitality</SelectItem>
-                                      <SelectItem value="services">Professional Services</SelectItem>
-                                      <SelectItem value="other">Other</SelectItem>
+                                      {INDUSTRY_OPTIONS.map((industry) => (
+                                        <SelectItem key={industry.value} value={industry.value}>
+                                          {industry.label}
+                                        </SelectItem>
+                                      ))}
                                     </SelectContent>
                                   </Select>
                                   <FormDescription>

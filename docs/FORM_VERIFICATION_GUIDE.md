@@ -4,10 +4,21 @@
 
 This guide provides step-by-step instructions for manually verifying that all form fields for Clients and Entities are properly persisted throughout the system.
 
-## Prerequisites
+## Industry Field Standardization
 
-1. Login to the system with admin credentials
-2. Navigate to the admin dashboard
+All industry fields in the system now use a centralized approach for consistency:
+
+1. Industry options are defined in a single source file: `client/src/lib/industryUtils.ts`
+2. All components import the standardized `INDUSTRY_OPTIONS` constant from this file
+3. Standard validation is performed using the `ensureIndustryValue` helper function
+4. This ensures consistent industry options across:
+   - ClientSetupCard
+   - EntityManagementCard
+   - EntityForm
+   - ClientOnboardingForm
+   - EntityAddModal
+
+When testing industry fields, verify that the same options appear consistently throughout the application.
 
 ## Client Form Field Verification Steps
 

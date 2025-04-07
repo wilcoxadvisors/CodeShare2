@@ -12,26 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { enhancedEntitySchema } from "@/lib/validation";
-
-// Define Industry Options
-const INDUSTRY_OPTIONS = [
-  { value: 'accounting', label: 'Accounting & Bookkeeping' },
-  { value: 'agriculture', label: 'Agriculture' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'consulting', label: 'Consulting' },
-  { value: 'education', label: 'Education' },
-  { value: 'finance', label: 'Finance & Banking' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'hospitality', label: 'Hospitality & Tourism' },
-  { value: 'legal', label: 'Legal Services' },
-  { value: 'manufacturing', label: 'Manufacturing' },
-  { value: 'nonprofit', label: 'Non-profit' },
-  { value: 'real_estate', label: 'Real Estate' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'technology', label: 'Technology & Software' },
-  { value: 'transportation', label: 'Transportation & Logistics' },
-  { value: 'other', label: 'Other' },
-];
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Entity form schema for create operation
 const entityAddSchema = z.object({
