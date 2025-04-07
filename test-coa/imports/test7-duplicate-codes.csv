@@ -1,0 +1,3 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+9800,Duplicate Code Test 1,EXPENSE,operating_expense,FALSE,,TRUE,First account with this code,
+9800,Duplicate Code Test 2,EXPENSE,operating_expense,FALSE,,TRUE,Second account with same code,

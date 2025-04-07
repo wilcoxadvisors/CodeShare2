@@ -1,0 +1,4 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,current_asset,FALSE,,TRUE,Cash accounts,
+1000,Duplicate Cash,ASSET,current_asset,FALSE,,TRUE,This has a duplicate code,
+1100,Checking Account,ASSET,current_asset,FALSE,,TRUE,Main checking account,1000

@@ -35,12 +35,19 @@ interface AuthUser {
   role: string;
 }
 
-// Authentication middleware - simple check for user in session
+// Authentication middleware - check for authentication using passport's isAuthenticated method
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  // If user exists in session, they're authenticated
-  if (req.user) {
+  // Use both req.isAuthenticated() and req.user to ensure proper authentication
+  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+    console.log("AUTH DEBUG: User authenticated in accountRoutes:", req.user);
     return next();
   }
+  
+  // Log authentication failure details
+  console.log("AUTH DEBUG: Authentication failed in accountRoutes");
+  console.log("AUTH DEBUG: req.isAuthenticated exists:", !!req.isAuthenticated);
+  console.log("AUTH DEBUG: req.isAuthenticated():", req.isAuthenticated ? req.isAuthenticated() : false);
+  console.log("AUTH DEBUG: req.user exists:", !!req.user);
   
   // No authenticated user
   return res.status(HttpStatus.UNAUTHORIZED).json({ message: "Unauthorized" });

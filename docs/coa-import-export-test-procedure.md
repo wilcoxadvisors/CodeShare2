@@ -1,162 +1,138 @@
 # Chart of Accounts Import/Export Test Procedure
 
-This document outlines the procedures for testing the Chart of Accounts (CoA) import and export functionality. The tests can be performed either manually or using the automated test scripts.
+This document outlines the procedure for testing the Chart of Accounts import and export functionality.
 
 ## Prerequisites
 
-- Ensure the application server is running on port 5000
-- Ensure you have an admin user account with credentials username=admin, password=password123
-- Both manual and automated tests require the application to be running
+- Admin user login (username: admin, password: password123)
+- Test client and entity created (Client ID: 236, Entity ID: 375)
+- Test files prepared (valid-accounts.csv, duplicate-codes.csv, invalid-parents.csv)
 
-## Manual Testing Procedure
+## Test Cases
 
-To set up for manual testing, run the `test-coa-manual.js` script:
+### 1. Valid Accounts Import
 
-```bash
-node scripts/test-coa-manual.js
-```
+**Objective**: Verify that valid account data can be imported successfully.
 
-This script will:
-1. Create a test client with the prefix `COA_MANUAL_TEST_`
-2. Seed the client with standard accounts
-3. Display the client ID for reference during testing
+**Steps**:
+1. Navigate to the Chart of Accounts page for the test client
+2. Click "Import" button
+3. Select the valid-accounts.csv file
+4. Verify that the preview shows the accounts to be imported
+5. Confirm the import
+6. Verify that all accounts are imported correctly with the proper hierarchical structure
 
-### Manual Testing Steps
+**Expected Result**: All accounts from the valid-accounts.csv file are imported successfully.
 
-Once the test client is created, follow these steps:
+### 2. Duplicate Account Codes Validation
 
-1. **Login and Navigation**
-   - Login to the application as admin
-   - Navigate to the Chart of Accounts page
-   - Select the test client from the header/context selector
+**Objective**: Verify that the system rejects imports with duplicate account codes.
 
-2. **Export Testing**
-   - Test CSV Export:
-     - Click the "Export" button
-     - Select CSV format
-     - Verify the downloaded file contains all accounts with correct relationships
-   
-   - Test Excel Export:
-     - Click the "Export" button
-     - Select Excel format
-     - Verify the downloaded file contains all accounts with correct relationships
+**Steps**:
+1. Navigate to the Chart of Accounts page for the test client
+2. Click "Import" button
+3. Select the duplicate-codes.csv file
+4. Verify that the system shows an error about duplicate account codes
 
-3. **Import Testing - Valid Data**
-   - Create a valid CSV file with new accounts or modifications to existing ones
-   - Click the "Import" button
-   - Select the CSV file
-   - Verify the preview dialog shows the changes that will be made
-   - Check the accuracy of accounts categorized as new, modified, or missing
-   - Proceed with the import and verify changes are applied correctly
-   - Repeat with an Excel file
+**Expected Result**: The system rejects the import and shows an error message indicating duplicate account codes.
 
-4. **Import Testing - Invalid Data**
-   - Create an invalid CSV file (e.g., with duplicate codes, missing required fields)
-   - Click the "Import" button
-   - Select the invalid CSV file
-   - Verify the system displays appropriate validation errors
-   - Repeat with an invalid Excel file
+### 3. Invalid Parent Codes Validation
 
-5. **Verification Testing**
-   - Export the accounts after import
-   - Compare with the original export
-   - Verify all changes were correctly applied
+**Objective**: Verify that the system validates parent-child relationships.
 
-## Automated Testing Procedure
+**Steps**:
+1. Navigate to the Chart of Accounts page for the test client
+2. Click "Import" button
+3. Select the invalid-parents.csv file
+4. Verify that the system shows an error about invalid parent codes
 
-To run the automated test suite, execute the `coa-test-suite.js` script:
+**Expected Result**: The system rejects the import and shows an error message indicating invalid parent codes.
 
-```bash
-node scripts/coa-test-suite.js
-```
+### 4. CSV Export
 
-This script will:
-1. Create a test client with the prefix `COA_TEST_`
-2. Seed the client with standard accounts
-3. Run CSV export/import tests
-4. Run Excel export/import tests
-5. Clean up by deleting temporary files and test clients
-6. Generate a summary of test results
+**Objective**: Verify that accounts can be exported to CSV with the correct field names.
 
-### Test Cases in Automated Suite
+**Steps**:
+1. Navigate to the Chart of Accounts page for the test client
+2. Click "Export CSV" button
+3. Open the downloaded CSV file
+4. Verify that the file contains the "AccountCode" field (not "code")
+5. Check that all account data is correctly exported
 
-The automated test suite covers the following test cases:
+**Expected Result**: All accounts are exported to CSV with the "AccountCode" field.
 
-1. **CSV Export Test**
-   - Exports accounts to CSV
-   - Verifies file contains expected content
+### 5. Excel Export
 
-2. **CSV Import - Valid Data**
-   - Creates a valid CSV file with new accounts
-   - Imports the file
-   - Verifies accounts are correctly added
+**Objective**: Verify that accounts can be exported to Excel with the correct field names.
 
-3. **CSV Import - Modified Data**
-   - Creates a CSV with modifications to existing accounts
-   - Imports the file
-   - Verifies changes are correctly applied
+**Steps**:
+1. Navigate to the Chart of Accounts page for the test client
+2. Click "Export Excel" button
+3. Open the downloaded Excel file
+4. Verify that the file contains the "AccountCode" field (not "code")
+5. Check that all account data is correctly exported
 
-4. **CSV Import - Invalid Data**
-   - Creates an invalid CSV file
-   - Attempts to import it
-   - Verifies appropriate errors are returned
+**Expected Result**: All accounts are exported to Excel with the "AccountCode" field.
 
-5. **Excel Export Test**
-   - Exports accounts to Excel
-   - Verifies file contains expected content
+## Field Mapping Verification
 
-6. **Excel Import - Valid Data**
-   - Creates a valid Excel file with new accounts
-   - Imports the file
-   - Verifies accounts are correctly added
+Verify that the following field mappings are correct in both import and export:
 
-7. **Excel Import - Modified Data**
-   - Creates an Excel file with modifications to existing accounts
-   - Imports the file
-   - Verifies changes are correctly applied
+| Database Field | Import/Export Field |
+|----------------|---------------------|
+| accountCode    | AccountCode         |
+| name           | Name                |
+| type           | Type                |
+| subtype        | Subtype             |
+| isSubledger    | IsSubledger         |
+| subledgerType  | SubledgerType       |
+| active         | Active              |
+| description    | Description         |
+| parentCode     | ParentCode          |
 
-8. **Excel Import - Invalid Data**
-   - Creates an invalid Excel file
-   - Attempts to import it
-   - Verifies appropriate errors are returned
+## Automated Testing
 
-## Test Data Cleanup
+### 1. Main Test Script 
 
-After testing, you may want to clean up the test data. The automated test suite will attempt to do this automatically, but you may also want to manually clean up if needed:
+The test-import-export.js script automates these test cases:
 
 ```bash
-node scripts/cleanup-test-data.js
+cd test-coa
+node test-import-export.js
 ```
 
-This script will:
-1. Delete any client with name starting with `COA_TEST_` or `COA_MANUAL_TEST_`
-2. Delete any temporary files created during testing
+### 2. Direct Test Script (Session-Based)
+
+For authentication-sensitive tests, use the direct-test.js script which handles login and maintains session:
+
+```bash
+cd test-coa
+node direct-test.js
+```
+
+This script:
+- Logs in with the admin user
+- Exports accounts to CSV and Excel formats in a single session
+- Verifies that the AccountCode field is present in the exports
+
+### 3. Test Results
+
+Review the test results summary in test-results.md to see the latest test outcomes and fixes.
 
 ## Troubleshooting
 
-1. **Authentication Issues**
-   - Ensure the cookies.txt file is being correctly created and used
-   - Verify admin credentials are correct
+If tests fail, check:
 
-2. **API Connection Issues**
-   - Ensure the application is running on port 5000
-   - Check for any CORS or network issues
+1. Authentication middleware in accountRoutes.ts - ensure it uses both req.isAuthenticated() and req.user
+2. API endpoints for correct field naming
+3. Import/export logic in accountStorage.ts
+4. Frontend code in ChartOfAccounts.tsx for field mapping
+5. Database schema in shared/schema.ts for field definitions
+6. Session handling in the Express app configuration
 
-3. **File Creation Issues**
-   - Ensure the temp directory exists and is writable
-   - Check for file permission issues
+## Next Steps After Testing
 
-4. **Import/Export Failures**
-   - Inspect network requests for error details
-   - Check server logs for backend errors
-
-## Important Notes
-
-- The test scripts use the actual API endpoints, providing end-to-end testing
-- Each test client created will have a timestamp appended to its name to ensure uniqueness
-- The automated test suite will log detailed results to the console
-- Both manual and automated tests validate the two-pass approach for handling hierarchical data
-- Tests verify that parent-child relationships are correctly preserved during import/export
-- The import UI has been simplified, removing explicit update strategy options in favor of default behaviors
-- The import process now shows a clearer preview of changes with case-insensitive account code matching
-- The "Cancel Import" button properly resets the import process
+1. Update documentation with any issues found
+2. Fix any bugs in field naming or validation
+3. Ensure consistent naming across frontend and backend
+4. Clean up any legacy code supporting old field names

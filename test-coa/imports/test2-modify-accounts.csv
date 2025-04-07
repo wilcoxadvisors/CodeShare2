@@ -1,0 +1,3 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1110,Cash (Modified),asset,Bank,No,,Yes,Modified description for cash account,1100
+1120,Accounts Receivable (Modified),asset,Receivable,Yes,accounts_receivable,Yes,Modified description for receivables,1100

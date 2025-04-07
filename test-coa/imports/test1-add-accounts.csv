@@ -1,0 +1,4 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+9100,Test Revenue Account,REVENUE,sales,FALSE,,TRUE,Account for testing revenue additions,
+9110,Test Revenue Subaccount,REVENUE,sales,FALSE,,TRUE,Subaccount for testing hierarchy,9100
+9200,Test Expense Account,EXPENSE,operating_expense,FALSE,,TRUE,Account for testing expense additions,

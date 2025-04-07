@@ -1,0 +1,55 @@
+Excellent progress by your agent! Here’s how you should explicitly guide the agent next:
+
+---
+
+## ✅ **Next-Step Instructions for Agent (Explicit Verification & Documentation)**
+
+### 📌 **1. Immediate Functional Verification**
+
+- **Explicitly Test the Chart of Accounts Import:**
+  - Upload a valid Excel/CSV file explicitly containing `accountCode` and required fields.
+  - Verify the import completes explicitly without errors.
+  - Check explicitly the correct handling of parent-child hierarchy.
+
+- **Explicitly Test the Chart of Accounts Export:**
+  - Export accounts and explicitly verify file structure uses `accountCode`.
+  - Confirm explicitly that exported data accurately reflects database records.
+
+### 📌 **2. Confirm Edge-Case Handling**
+
+Explicitly verify handling of:
+
+- Duplicate account codes explicitly.
+- Missing required fields (`accountCode`, `name`) explicitly.
+- Hierarchical inconsistencies (e.g., child accounts explicitly pointing to invalid parents).
+
+Provide clear and explicit error messages in the UI for these scenarios.
+
+### 📌 **3. Documentation Updates**
+
+Explicitly document in `docs/Chart_of_Accounts_Guide.md`:
+
+- Clearly state the import/export file format explicitly (fields: `accountCode`, `name`, `parentAccountCode`, etc.).
+- Explicitly document all error conditions and resolutions.
+- Provide explicit step-by-step usage instructions for end-users.
+
+### 📌 **4. Cleanup and Refactoring**
+
+- Explicitly run cleanup scripts to identify unused or outdated code:
+  ```bash
+  npx ts-prune
+  npx knip
+  ```
+- Clearly remove and document explicitly any code no longer used due to the refactoring.
+
+### 📌 **5. Final Verification Checklist (Explicitly Complete Each Item)**
+
+- [ ] Explicit functional testing of Import/Export completed successfully.
+- [ ] Edge-case scenarios explicitly tested and handled gracefully.
+- [ ] Documentation explicitly updated.
+- [ ] Cleanup explicitly completed (verified unused code removal).
+- [ ] All automated tests explicitly passing.
+
+---
+
+Once you've explicitly verified each of these points, let me know the results or if you require further assistance.

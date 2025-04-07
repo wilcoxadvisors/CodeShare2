@@ -1,0 +1,4 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1110,Cash (Mixed),asset,Bank,No,,Yes,Cash with mixed operations test,1100
+9300,New Mixed Operation Account,EXPENSE,operating_expense,FALSE,,TRUE,Testing mixed operations,
+9310,Child Mixed Account,EXPENSE,operating_expense,FALSE,,TRUE,Child of mixed operations,9300

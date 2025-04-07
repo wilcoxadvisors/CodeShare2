@@ -1,0 +1,4 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Assets,ASSET,,FALSE,,TRUE,Asset accounts,
+1100,,ASSET,current_asset,FALSE,,TRUE,Missing name,1000
+,No Code,ASSET,current_asset,FALSE,,TRUE,Missing code,1000

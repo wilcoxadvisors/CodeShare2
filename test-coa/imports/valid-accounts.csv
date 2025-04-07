@@ -1,0 +1,26 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,current_asset,FALSE,,TRUE,Cash accounts,
+1100,Checking Account,ASSET,current_asset,FALSE,,TRUE,Main checking account,1000
+1200,Savings Account,ASSET,current_asset,FALSE,,TRUE,Savings account for reserves,1000
+1300,Petty Cash,ASSET,current_asset,FALSE,,TRUE,Cash on hand for small expenses,1000
+2000,Accounts Receivable,ASSET,accounts_receivable,TRUE,customer,TRUE,Money owed by customers,
+3000,Inventory,ASSET,inventory,FALSE,,TRUE,Current inventory,
+4000,Fixed Assets,ASSET,fixed_asset,FALSE,,TRUE,Long-term assets,
+4100,Equipment,ASSET,fixed_asset,FALSE,,TRUE,Business equipment,4000
+4200,Accumulated Depreciation,ASSET,accumulated_depreciation,FALSE,,TRUE,Accumulated depreciation of fixed assets,4000
+5000,Accounts Payable,LIABILITY,accounts_payable,TRUE,vendor,TRUE,Money owed to vendors,
+6000,Long-term Debt,LIABILITY,long_term_liability,FALSE,,TRUE,Long-term loans and debts,
+7000,Equity,EQUITY,equity,FALSE,,TRUE,Owner's equity,
+7100,Common Stock,EQUITY,equity,FALSE,,TRUE,Issued common stock,7000
+7200,Retained Earnings,EQUITY,equity,FALSE,,TRUE,Accumulated earnings,7000
+8000,Revenue,REVENUE,revenue,FALSE,,TRUE,Income from sales,
+8100,Product Sales,REVENUE,revenue,FALSE,,TRUE,Revenue from product sales,8000
+8200,Service Revenue,REVENUE,revenue,FALSE,,TRUE,Revenue from services,8000
+9000,Cost of Goods Sold,EXPENSE,cost_of_goods_sold,FALSE,,TRUE,Direct costs of goods sold,
+9100,Material Costs,EXPENSE,cost_of_goods_sold,FALSE,,TRUE,Cost of materials,9000
+9200,Direct Labor,EXPENSE,cost_of_goods_sold,FALSE,,TRUE,Direct labor costs,9000
+10000,Operating Expenses,EXPENSE,operating_expense,FALSE,,TRUE,Day-to-day business expenses,
+10100,Rent Expense,EXPENSE,operating_expense,FALSE,,TRUE,Office or facility rent,10000
+10200,Utilities Expense,EXPENSE,operating_expense,FALSE,,TRUE,Electricity, water, etc.,10000
+10300,Office Supplies,EXPENSE,operating_expense,FALSE,,TRUE,Office supplies and materials,10000
+10400,Salaries and Wages,EXPENSE,operating_expense,FALSE,,TRUE,Employee salaries and wages,10000

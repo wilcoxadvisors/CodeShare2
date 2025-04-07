@@ -1,0 +1,3 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,current_asset,FALSE,,TRUE,Cash accounts,
+1100,Checking Account,ASSET,current_asset,FALSE,,TRUE,Main checking account,9999

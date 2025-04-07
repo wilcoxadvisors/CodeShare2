@@ -1,0 +1,2 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+9900,Invalid Parent Test,EXPENSE,operating_expense,FALSE,,TRUE,Account with invalid parent,99999

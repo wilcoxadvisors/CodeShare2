@@ -1,0 +1,3 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Assets,ASSET,,FALSE,,TRUE,Asset accounts,
+1000,Duplicate Asset,ASSET,,FALSE,,TRUE,This has a duplicate code,

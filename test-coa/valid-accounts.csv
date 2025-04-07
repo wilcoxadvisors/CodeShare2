@@ -1,0 +1,11 @@
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Assets,ASSET,,FALSE,,TRUE,Asset accounts,
+1100,Current Assets,ASSET,current_asset,FALSE,,TRUE,Current Assets,1000
+1110,Cash,ASSET,bank,FALSE,,TRUE,Cash accounts,1100
+1120,Accounts Receivable,ASSET,accounts_receivable,TRUE,customer,TRUE,Accounts Receivable,1100
+2000,Liabilities,LIABILITY,,FALSE,,TRUE,Liability accounts,
+2100,Current Liabilities,LIABILITY,current_liability,FALSE,,TRUE,Current Liabilities,2000
+2110,Accounts Payable,LIABILITY,accounts_payable,TRUE,vendor,TRUE,Accounts Payable,2100
+3000,Equity,EQUITY,,FALSE,,TRUE,Equity accounts,
+4000,Revenue,REVENUE,,FALSE,,TRUE,Revenue accounts,
+5000,Expenses,EXPENSE,,FALSE,,TRUE,Expense accounts,
