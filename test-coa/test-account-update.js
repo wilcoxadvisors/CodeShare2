@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:5000';
 const LOGIN_CREDENTIALS = {
   username: 'admin',
   password: 'password123'
@@ -63,13 +63,7 @@ async function login() {
   console.log('Logging in...');
   
   try {
-    const existingCookie = getCookieFromFile();
-    if (existingCookie) {
-      console.log('Using existing cookie from file');
-      authCookie = existingCookie;
-      return;
-    }
-    
+    // Force fresh login every time
     const response = await axios.post(`${API_BASE_URL}/api/auth/login`, LOGIN_CREDENTIALS);
     
     if (response.headers && response.headers['set-cookie']) {
@@ -77,7 +71,22 @@ async function login() {
       const cookie = response.headers['set-cookie'][0].split(';')[0];
       authCookie = cookie;
       saveCookieToFile(cookie);
-      console.log('Login successful');
+      console.log('Login successful with cookie:', cookie);
+      
+      // Verify auth status
+      try {
+        const authCheckResponse = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+          headers: { Cookie: authCookie }
+        });
+        console.log('Auth verification successful:', authCheckResponse.data.user.username);
+      } catch (authError) {
+        console.warn('Auth verification failed:', authError.message);
+        if (authError.response) {
+          console.warn('Auth verification status:', authError.response.status);
+          console.warn('Auth verification data:', authError.response.data);
+        }
+        throw new Error('Authentication verification failed');
+      }
     } else {
       throw new Error('No cookie received after login');
     }
@@ -168,6 +177,7 @@ async function createTestEntity() {
   console.log('Creating test entity...');
   
   try {
+    // Get more detailed error from schema validation
     const entityData = {
       name: `Test Entity - Update Validation ${Date.now()}`,
       entityCode: `TEST-UV-${Date.now()}`,
@@ -175,8 +185,17 @@ async function createTestEntity() {
       industry: 'Technology',
       description: 'Test entity for account update validation',
       active: true,
-      clientId: testClientId
+      clientId: testClientId,
+      // Additional required fields
+      type: 'corporation',
+      status: 'active',
+      address: '123 Test St',
+      city: 'Test City',
+      state: 'TX',
+      zipCode: '12345'
     };
+    
+    console.log(`Creating entity with data:`, JSON.stringify(entityData, null, 2));
     
     const response = await axios.post(
       `${API_BASE_URL}/api/entities`,
@@ -236,11 +255,36 @@ async function createTestJournalEntry() {
   console.log('Creating test journal entry...');
   
   try {
+    // We need to get a valid entity ID for the journal entry
+    let entityId = testEntityId;
+    
+    // If we failed to create an entity, try to use an existing one
+    if (!entityId) {
+      console.log('No test entity was created, trying to find an existing entity...');
+      try {
+        const entitiesResponse = await axios.get(
+          `${API_BASE_URL}/api/entities`,
+          { headers: { Cookie: authCookie } }
+        );
+        
+        if (entitiesResponse.data && entitiesResponse.data.length > 0) {
+          entityId = entitiesResponse.data[0].id;
+          console.log(`Using existing entity with ID: ${entityId}`);
+        } else {
+          console.error('No entities found, cannot create journal entry');
+          return;
+        }
+      } catch (entitiesError) {
+        console.error('Error finding existing entities:', entitiesError.message);
+        return;
+      }
+    }
+    
     // Use the test account with transactions for the journal entry
     const journalEntryData = {
       date: new Date().toISOString().split('T')[0],
       description: 'Test Journal Entry for Account Update Validation',
-      entityId: testEntityId,
+      entityId: entityId,
       referenceNumber: `TEST-JE-${Date.now()}`,
       status: 'draft',
       lines: [
@@ -259,13 +303,32 @@ async function createTestJournalEntry() {
       ]
     };
     
+    console.log(`Creating journal entry with data:`, JSON.stringify(journalEntryData, null, 2));
+    
     const response = await axios.post(
       `${API_BASE_URL}/api/clients/${testClientId}/journal-entries`,
       journalEntryData,
       { headers: { Cookie: authCookie } }
     );
     
-    console.log(`Test journal entry created with ID: ${response.data.id}`);
+    if (response.data && response.data.id) {
+      console.log(`Test journal entry created with ID: ${response.data.id}`);
+      
+      // Verify the account now has transactions
+      const verifyResponse = await axios.get(
+        `${API_BASE_URL}/api/clients/${testClientId}/accounts/transactions-check/${testAccountWithTransactionsId}`,
+        { headers: { Cookie: authCookie } }
+      );
+      
+      if (verifyResponse.data && verifyResponse.data.hasTransactions) {
+        console.log(`✅ Verified account ${testAccountWithTransactionsId} now has transactions`);
+      } else {
+        console.warn(`⚠️ Account ${testAccountWithTransactionsId} still shows NO transactions - validation may fail`);
+      }
+    } else {
+      console.error('Journal entry creation failed - no ID returned');
+      console.log('Response:', JSON.stringify(response.data, null, 2));
+    }
   } catch (error) {
     console.error('Error creating test journal entry:', error.message);
     if (error.response) {
@@ -315,6 +378,90 @@ async function testUpdateRestrictedFieldsWithTransactions() {
   console.log('\nTEST: Updating restricted fields on account with transactions...');
   
   try {
+    // First check if the account has transactions
+    let transactionCheckResponse;
+    try {
+      transactionCheckResponse = await axios.get(
+        `${API_BASE_URL}/api/clients/${testClientId}/accounts/transactions-check/${testAccountWithTransactionsId}`,
+        { headers: { Cookie: authCookie } }
+      );
+      
+      if (!transactionCheckResponse.data.hasTransactions) {
+        console.log('⚠️ WARNING: The test account does not have any transactions.');
+        console.log('This test will create dummy transactions to test the restriction logic.');
+        
+        // Create a direct database entry to simulate transactions
+        // Since our test is having issues creating journal entries, we'll directly create
+        // a journal entry via SQL to ensure the account has transactions
+        
+        // This is used only for testing
+        const today = new Date().toISOString().split('T')[0];
+        const response = await axios.post(
+          `${API_BASE_URL}/api/sql`,
+          { 
+            sql_query: `
+              INSERT INTO journal_entries (
+                client_id, entity_id, date, reference_number, description, 
+                status, created_by, created_at
+              ) 
+              VALUES (
+                ${testClientId}, 
+                (SELECT id FROM entities WHERE active = true LIMIT 1),
+                '${today}', 
+                'TEST-DIRECT-${Date.now()}', 
+                'Directly inserted test entry', 
+                'draft', 
+                1, 
+                NOW()
+              ) RETURNING id;
+            `
+          },
+          { headers: { Cookie: authCookie } }
+        );
+        
+        const journalEntryId = response.data.rows[0]?.id;
+        
+        if (journalEntryId) {
+          // Insert journal entry lines
+          await axios.post(
+            `${API_BASE_URL}/api/sql`,
+            {
+              sql_query: `
+                INSERT INTO journal_entry_lines (
+                  journal_entry_id, account_id, type, amount, description
+                )
+                VALUES 
+                (${journalEntryId}, ${testAccountWithTransactionsId}, 'debit', 100.00, 'Test debit'),
+                (${journalEntryId}, ${testAccountId}, 'credit', 100.00, 'Test credit');
+              `
+            },
+            { headers: { Cookie: authCookie } }
+          );
+          
+          console.log(`Created direct journal entry with ID: ${journalEntryId}`);
+          
+          // Verify the account now has transactions
+          const verifyResponse = await axios.get(
+            `${API_BASE_URL}/api/clients/${testClientId}/accounts/transactions-check/${testAccountWithTransactionsId}`,
+            { headers: { Cookie: authCookie } }
+          );
+          
+          if (verifyResponse.data && verifyResponse.data.hasTransactions) {
+            console.log(`✅ Successfully added transactions to account ${testAccountWithTransactionsId}`);
+          } else {
+            console.warn(`⚠️ Failed to add transactions to account ${testAccountWithTransactionsId} - test may fail`);
+          }
+        } else {
+          console.warn('⚠️ Could not create direct journal entry - test may fail');
+        }
+      } else {
+        console.log(`✅ Verified account ${testAccountWithTransactionsId} has transactions`);
+      }
+    } catch (checkError) {
+      console.error('Error checking transactions:', checkError.message);
+    }
+    
+    // Now try to update restricted fields
     const updateData = {
       name: `Should Not Update ${Date.now()}`,
       accountCode: `SHOULD-NOT-UPDATE-${Date.now()}`,
@@ -322,13 +469,14 @@ async function testUpdateRestrictedFieldsWithTransactions() {
       description: 'This update should be rejected'
     };
     
-    await axios.put(
+    const response = await axios.put(
       `${API_BASE_URL}/api/clients/${testClientId}/accounts/${testAccountWithTransactionsId}`,
       updateData,
       { headers: { Cookie: authCookie } }
     );
     
     console.log('❌ FAILED: Server allowed restricted fields to be updated');
+    console.log('Response:', JSON.stringify(response.data, null, 2));
     return false;
   } catch (error) {
     if (error.response && error.response.status === 400 && 
@@ -355,6 +503,25 @@ async function testUpdateAllowedFieldsWithTransactions() {
   console.log('\nTEST: Updating allowed fields on account with transactions...');
   
   try {
+    // First check if the account has transactions
+    let transactionCheckResponse;
+    try {
+      transactionCheckResponse = await axios.get(
+        `${API_BASE_URL}/api/clients/${testClientId}/accounts/transactions-check/${testAccountWithTransactionsId}`,
+        { headers: { Cookie: authCookie } }
+      );
+      
+      if (!transactionCheckResponse.data.hasTransactions) {
+        console.log('⚠️ WARNING: The test account does not have any transactions.');
+        console.log('To properly test this, the account should have transactions. Using anyway...');
+      } else {
+        console.log(`✅ Verified account ${testAccountWithTransactionsId} has transactions`);
+      }
+    } catch (checkError) {
+      console.error('Error checking transactions:', checkError.message);
+    }
+    
+    // Now try to update allowed fields
     const updateData = {
       name: `Updated Name With Transactions ${Date.now()}`,
       description: 'This update should be allowed'

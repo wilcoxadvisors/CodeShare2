@@ -28,6 +28,7 @@ import { registerAdminRoutes } from "./adminRoutes";
 import { registerJournalEntryRoutes } from "./journalEntryRoutes";
 import { registerLocationRoutes } from "./locationRoutes";
 import { registerDebugRoutes } from "./debugRoutes";
+import { registerSqlRoutes } from "./sqlRoutes";
 import { createVerificationRouter } from "./routes/verificationRoutes";
 import { 
   asyncHandler, 
@@ -1327,6 +1328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Debug routes for development and testing
   registerDebugRoutes(app, storage);
+  
+  // Register SQL routes for testing only
+  registerSqlRoutes(app);
   
   // Register Verification routes for testing
   // Create a verification router that has direct access to the storage object

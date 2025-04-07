@@ -581,15 +581,20 @@ export function registerAccountRoutes(app: Express) {
     // Check if account has transactions
     const hasTransactions = await storage.accounts.accountHasTransactions(accountId);
     
+    console.log(`DEBUG: Account ${accountId} has transactions: ${hasTransactions}`);
+    
     // If account has transactions, restrict certain field updates
     if (hasTransactions) {
       // Create a list of restricted fields that can't be updated when transactions exist
       const restrictedFields = ['accountCode', 'type'];
       const attemptedRestrictedUpdates = Object.keys(updateDataWithCorrectType)
-        .filter(field => restrictedFields.includes(field));
+        .filter(field => restrictedFields.includes(field) && updateDataWithCorrectType[field] !== undefined);
+      
+      console.log(`DEBUG: Attempted restricted updates: ${JSON.stringify(attemptedRestrictedUpdates)}`);
       
       // If user is trying to update restricted fields, block the update with clear error message
       if (attemptedRestrictedUpdates.length > 0) {
+        console.log(`DEBUG: Blocking update of restricted fields: ${attemptedRestrictedUpdates.join(', ')}`);
         return res.status(HttpStatus.BAD_REQUEST).json({
           message: `Cannot update ${attemptedRestrictedUpdates.join(', ')} for account with existing transactions`,
           restrictedFields: attemptedRestrictedUpdates,
@@ -597,7 +602,9 @@ export function registerAccountRoutes(app: Express) {
         });
       }
       
-      console.log("Account has transactions but requested update is allowed");
+      console.log("DEBUG: Account has transactions but requested update is allowed");
+    } else {
+      console.log("DEBUG: Account has no transactions, all updates permitted");
     }
     
     // Update account
@@ -768,5 +775,30 @@ export function registerAccountRoutes(app: Express) {
         message: "Error generating diagnostic information"
       });
     }
+  }));
+
+  // Add endpoint to check if an account has transactions
+  app.get('/api/clients/:clientId/accounts/transactions-check/:accountId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId);
+    const accountId = parseInt(req.params.accountId);
+    
+    // Check client exists
+    const client = await storage.clients.getClient(clientId);
+    if (!client) {
+      return res.status(HttpStatus.NOT_FOUND).json({ message: "Client not found" });
+    }
+    
+    // Skip account verification here since we'll get transaction check errors if it doesn't exist
+    
+    // Check if account has transactions
+    const hasTransactions = await storage.accounts.accountHasTransactions(accountId);
+    
+    return res.json({
+      accountId,
+      hasTransactions,
+      message: hasTransactions 
+        ? "Account has existing transactions" 
+        : "Account has no transactions"
+    });
   }));
 }
