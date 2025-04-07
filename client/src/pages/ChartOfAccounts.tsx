@@ -1705,29 +1705,22 @@ function ChartOfAccounts() {
       console.log("DEBUG: handleImportConfirm - About to import accounts with granular selections");
       
       // BUGFIX: Make sure we only process accounts that were explicitly selected in the UI
-      // by filtering the selections based on the updateStrategy and removeStrategy
+      // CRITICAL FIX: The issue is we're not always enforcing explicit selection
       
-      // If updateStrategy is 'selected', only include selected items
-      // If updateStrategy is 'all', include all items (but respect UI selection for 'selected' strategy)
-      // If updateStrategy is 'none', include no items
+      // Force 'selected' strategy to ensure ONLY checked accounts are processed
+      // Regardless of what the user selected in the strategy dropdown
+      const effectiveUpdateStrategy = 'selected';
+      const effectiveRemoveStrategy = 'selected';
       
-      // Filter lists based on strategy
-      const filteredNewAccountCodes = updateStrategy === 'none' 
-        ? [] 
-        : (updateStrategy === 'selected' ? selectedNewAccounts : changesPreview.additions.map(a => a.accountCode || a.code));
-      
-      const filteredModifiedAccountCodes = updateStrategy === 'none' 
-        ? [] 
-        : (updateStrategy === 'selected' ? selectedModifiedAccounts : changesPreview.modifications.map(m => m.original.accountCode || m.original.code));
-      
-      const filteredMissingAccountCodes = removeStrategy === 'none' 
-        ? [] 
-        : selectedMissingAccounts;
+      // These arrays ONLY contain accounts that have been explicitly checked in the UI
+      const filteredNewAccountCodes = selectedNewAccounts;
+      const filteredModifiedAccountCodes = selectedModifiedAccounts;
+      const filteredMissingAccountCodes = selectedMissingAccounts;
       
       // Create selections object to pass to backend
       const selections: ImportSelections = {
-        // Industry-standard interface properties
-        updateExisting: updateStrategy === 'all' || updateStrategy === 'selected',
+        // Industry-standard interface properties - ALWAYS enable updates but only for selected accounts
+        updateExisting: true,
         handleMissingAccounts: removeStrategy === 'inactive' ? 'deactivate' : 
                                 removeStrategy === 'delete' ? 'delete' : 'ignore',
         
@@ -1735,11 +1728,12 @@ function ChartOfAccounts() {
         deactivateMissing: removeStrategy === 'inactive',
         deleteMissing: removeStrategy === 'delete',
         
-        // Account inclusion/exclusion strategies (legacy)
-        updateStrategy: updateStrategy,
-        removeStrategy: removeStrategy,
+        // CRITICAL FIX: Force 'selected' strategy regardless of UI setting
+        // This ensures only explicitly checked accounts are processed
+        updateStrategy: effectiveUpdateStrategy, // Force 'selected' mode
+        removeStrategy: effectiveRemoveStrategy, // Force 'selected' mode
         
-        // Specific accounts to include in each category - BUGFIX: Use filtered lists that respect UI selections
+        // Specific accounts to include in each category - ONLY include explicitly selected accounts
         newAccountCodes: filteredNewAccountCodes,
         modifiedAccountCodes: filteredModifiedAccountCodes,
         missingAccountCodes: filteredMissingAccountCodes,
