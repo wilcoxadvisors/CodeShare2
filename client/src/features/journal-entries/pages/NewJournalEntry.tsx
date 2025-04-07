@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useEntity } from "../contexts/EntityContext";
-import PageHeader from "../components/PageHeader";
+import { useEntity } from "@/contexts/EntityContext";
+import PageHeader from "@/components/PageHeader";
 import JournalEntryForm from "../components/JournalEntryForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";

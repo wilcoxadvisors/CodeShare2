@@ -1,6 +1,6 @@
 // src/components/BatchJournalUpload.tsx
 import { useState } from 'react';
-import { useEntity } from '../contexts/EntityContext';
+import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useEntity } from '../../../contexts/EntityContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
-import PageHeader from '../../../components/PageHeader';
-import EntitySelect from '../../../components/EntitySelect';
+import PageHeader from '@/components/PageHeader';
+import EntitySelect from '@/components/EntitySelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

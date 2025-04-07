@@ -11,10 +11,7 @@ import NotFound from "@/pages/not-found";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import GeneralLedger from "./pages/GeneralLedger";
-import JournalEntriesPage from "./features/journal-entries/pages/JournalEntries";
-import JournalEntryDetailPage from "./features/journal-entries/pages/JournalEntryDetail";
-import BatchUploadPage from "./features/journal-entries/pages/BatchUpload";
-import NewJournalEntry from "./pages/NewJournalEntry";
+import { JournalEntries, JournalEntryDetail, NewJournalEntry, BatchUpload } from "./features/journal-entries";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import Reports from "./pages/Reports";
 import TrialBalance from "./pages/TrialBalance";
@@ -330,7 +327,7 @@ function Router() {
       
       <Route path="/journal-entries">
         <AppLayout>
-          <ProtectedRoute component={JournalEntriesPage} />
+          <ProtectedRoute component={JournalEntries} />
         </AppLayout>
       </Route>
       
@@ -342,13 +339,13 @@ function Router() {
       
       <Route path="/journal-entries/batch-upload">
         <AppLayout>
-          <ProtectedRoute component={BatchUploadPage} />
+          <ProtectedRoute component={BatchUpload} />
         </AppLayout>
       </Route>
       
       <Route path="/journal-entries/:id">
         <AppLayout>
-          <ProtectedRoute component={JournalEntryDetailPage} />
+          <ProtectedRoute component={JournalEntryDetail} />
         </AppLayout>
       </Route>
       
