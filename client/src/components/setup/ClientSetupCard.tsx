@@ -39,9 +39,10 @@ interface ClientSetupCardProps {
   setClientData: (data: ClientSetupValues) => void;
   initialData?: ClientSetupValues;
   open?: boolean; // Add open prop to track dialog state
+  isLoading?: boolean; // Add isLoading prop to show loading state during API calls
 }
 
-export default function ClientSetupCard({ onNext, setClientData, initialData, open }: ClientSetupCardProps) {
+export default function ClientSetupCard({ onNext, setClientData, initialData, open, isLoading }: ClientSetupCardProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -326,8 +327,8 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
             </div>
 
             <CardFooter className="px-0 pb-0 pt-4 flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save & Continue"}
+              <Button type="submit" disabled={isSubmitting || isLoading}>
+                {isSubmitting || isLoading ? "Saving..." : "Save & Continue"}
               </Button>
             </CardFooter>
           </form>

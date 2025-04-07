@@ -36,6 +36,7 @@ interface SetupStepperProps {
 
 // Define proper types for our data
 interface ClientData {
+  id?: number;
   name: string;
   legalName: string;
   taxId?: string;
@@ -202,8 +203,11 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // to prevent entity data from persisting between client setup sessions
   });
   
+  // Add a loading state for the client save operation
+  const [isSavingClient, setIsSavingClient] = useState(false);
+
   // Create stable callback functions using useCallback
-  const handleClientSave = useCallback((data: ClientData) => {
+  const handleClientSave = useCallback(async (data: ClientData) => {
     console.log("DEBUG SetupStepper: handleClientSave received:", data);
     
     // First save data to localStorage
@@ -217,20 +221,152 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // Then update state
     setClientData(data);
     
-    // Finally update step AFTER data is set
-    const nextStep = 1;
-    console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
-    
-    // Save the new active step to localStorage
+    // Now save client to the database immediately
+    setIsSavingClient(true);
     try {
-      localStorage.setItem('setupActiveStep', nextStep.toString());
-      console.log(`DEBUG SetupStepper: Saved active step ${nextStep} to localStorage`);
-    } catch (e) {
-      console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+      // Save the client data via API
+      const clientApiUrl = '/api/admin/clients';
+      console.log("DEBUG SetupStepper: Saving Client to database. URL:", clientApiUrl, "Payload:", JSON.stringify(data));
+      
+      // Client API call with detailed logging
+      const clientResponse = await fetch(clientApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          userId: user?.id // Ensure user ID is included
+        }),
+        credentials: 'include' // Include cookies for authentication
+      });
+      
+      let savedClient;
+      let clientResponseText;
+      
+      try {
+        clientResponseText = await clientResponse.text();
+        console.log("DEBUG SetupStepper: Save Client Response Text:", clientResponseText);
+        
+        if (clientResponseText) {
+          savedClient = JSON.parse(clientResponseText);
+          console.log("DEBUG SetupStepper: Save Client Response Body:", savedClient);
+        }
+      } catch (jsonError) {
+        console.error("DEBUG SetupStepper: Error parsing client save response JSON:", jsonError, 
+          "Response text:", clientResponseText);
+        toast({
+          title: "Error",
+          description: "Failed to create client. Please try again.",
+          variant: "destructive"
+        });
+        setIsSavingClient(false);
+        return;
+      }
+      
+      if (!clientResponse.ok) {
+        toast({
+          title: "Error",
+          description: `Client save failed: ${clientResponse.status} - ${clientResponseText || clientResponse.statusText}`,
+          variant: "destructive"
+        });
+        setIsSavingClient(false);
+        return;
+      }
+      
+      if (!savedClient?.data?.id) {
+        console.error("DEBUG SetupStepper: Invalid client response structure:", savedClient);
+        toast({
+          title: "Error", 
+          description: "Client ID missing from response. Please try again.",
+          variant: "destructive"
+        });
+        setIsSavingClient(false);
+        return;
+      }
+      
+      // Extract client ID from the response structure
+      const newClientId = savedClient.data.id;
+      console.log("DEBUG SetupStepper: Successfully saved client with ID:", newClientId);
+      
+      // Update the stored client data with the ID from the server
+      const updatedClientData = {
+        ...data,
+        id: newClientId
+      };
+      setClientData(updatedClientData);
+      localStorage.setItem('setupClientData', JSON.stringify(updatedClientData));
+      
+      // Now fetch the default entity that was created automatically
+      console.log("DEBUG SetupStepper: Fetching entities for client:", newClientId);
+      
+      try {
+        // Check if client has entities (including the default entity)
+        const entitiesUrl = '/api/admin/dashboard';
+        console.log(`DEBUG SetupStepper: Fetching from dashboard API to get entities`);
+        
+        const dashboardResponse = await fetch(entitiesUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        if (dashboardResponse.ok) {
+          const dashboardResult = await dashboardResponse.json();
+          console.log("DEBUG SetupStepper: Fetched dashboard data:", dashboardResult);
+          
+          // Find the client and its entities in the dashboard data
+          if (dashboardResult && dashboardResult.data && dashboardResult.data.clients) {
+            const client = dashboardResult.data.clients.find((c: any) => c.id === newClientId);
+            if (client && client.entities && Array.isArray(client.entities)) {
+              console.log(`DEBUG SetupStepper: Found ${client.entities.length} entities for client ${newClientId}`);
+              
+              // Add these entities to our state
+              setSetupEntities(client.entities);
+              
+              // Also save to localStorage
+              localStorage.setItem('setupEntities', JSON.stringify(client.entities));
+              
+              console.log("DEBUG SetupStepper: Added entities to setupEntities:", client.entities);
+            }
+          }
+        }
+      } catch (entitiesError) {
+        console.error("DEBUG SetupStepper: Error fetching entities:", entitiesError);
+        // We can continue even if entity fetching fails - we'll just show an empty list in step 2
+      }
+      
+      // Finally update step AFTER data is set and client is saved
+      const nextStep = 1;
+      console.log(`DEBUG SetupStepper: Setting activeStep to ${nextStep}`);
+      
+      // Save the new active step to localStorage
+      try {
+        localStorage.setItem('setupActiveStep', nextStep.toString());
+        console.log(`DEBUG SetupStepper: Saved active step ${nextStep} to localStorage`);
+      } catch (e) {
+        console.warn("DEBUG SetupStepper: Error saving step to localStorage:", e);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Client information saved successfully.",
+      });
+      
+      setActiveStep(nextStep);
+    } catch (error) {
+      console.error("DEBUG SetupStepper: Error saving client:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save client information. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingClient(false);
     }
-    
-    setActiveStep(nextStep);
-  }, []);
+  }, [user, toast, setClientData, setSetupEntities]);
   
   const handleEntityAdd = useCallback((newEntity: Entity) => {
     console.log("DEBUG SetupStepper: handleEntityAdd received:", newEntity);
@@ -328,8 +464,9 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     console.log(`DEBUG SetupStepper: handleNextFromEntities called. Current: ${activeStep}. Entities count: ${setupEntities.length}`);
     console.log("DEBUG Stepper: Navigating Step 2 -> 3. Entities:", JSON.stringify(setupEntities));
     
+    // Include both default entities (created in step 1) and any new entities added in step 2
     if (setupEntities.length === 0) {
-      console.warn("DEBUG SetupStepper: Blocked navigation - No entities added.");
+      console.warn("DEBUG SetupStepper: Blocked navigation - No entities found.");
       toast({
         title: "Cannot proceed",
         description: "Please add at least one entity before continuing.",
@@ -363,7 +500,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   // Loading state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Completion handler - saves to database then clears localStorage when done
+  // Completion handler - saves or updates the client in database then clears localStorage when done
   const handleCompleteSetup = useCallback(async () => {
     console.log("DEBUG SetupStepper: handleCompleteSetup called.");
     console.log("DEBUG SetupStepper: clientData:", clientData ? Object.keys(clientData).length : 'null', "fields");
@@ -406,58 +543,67 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     setIsSubmitting(true);
     
     try {
-      // 1. Save the client data via API
-      const clientApiUrl = '/api/admin/clients';
-      console.log("DEBUG: Saving Client. URL:", clientApiUrl, "Payload:", JSON.stringify(clientData));
+      // Check if we already have a client ID from step 1
+      const clientId = clientData?.id;
+      let newClientId = clientId;
       
-      // Get the current user data from useAuth
-      console.log("DEBUG: Current user:", user ? `ID: ${user.id}, Role: ${user.role}` : "No user found");
-      
-      // Client API call with detailed logging
-      const clientResponse = await fetch(clientApiUrl, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-         },
-         body: JSON.stringify({
-           ...clientData,
-           userId: user?.id // Ensure user ID is included
-         }),
-         credentials: 'include' // Include cookies for authentication
-      });
-      
-      // Log just the status without trying to iterate headers (which causes TypeScript errors)
-      console.log("DEBUG: Save Client Response Status:", clientResponse.status);
-      
-      let savedClient;
-      let clientResponseText;
-      
-      try {
-        clientResponseText = await clientResponse.text();
-        console.log("DEBUG: Save Client Response Text:", clientResponseText);
+      // Skip client creation if we already created the client in step 1
+      if (!clientId) {
+        // 1. Save the client data via API if it wasn't already saved in step 1
+        const clientApiUrl = '/api/admin/clients';
+        console.log("DEBUG: Saving Client. URL:", clientApiUrl, "Payload:", JSON.stringify(clientData));
         
-        if (clientResponseText) {
-          savedClient = JSON.parse(clientResponseText);
-          console.log("DEBUG: Save Client Response Body:", savedClient);
+        // Get the current user data from useAuth
+        console.log("DEBUG: Current user:", user ? `ID: ${user.id}, Role: ${user.role}` : "No user found");
+        
+        // Client API call with detailed logging
+        const clientResponse = await fetch(clientApiUrl, {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({
+             ...clientData,
+             userId: user?.id // Ensure user ID is included
+           }),
+           credentials: 'include' // Include cookies for authentication
+        });
+        
+        // Log just the status without trying to iterate headers (which causes TypeScript errors)
+        console.log("DEBUG: Save Client Response Status:", clientResponse.status);
+        
+        let savedClient;
+        let clientResponseText;
+        
+        try {
+          clientResponseText = await clientResponse.text();
+          console.log("DEBUG: Save Client Response Text:", clientResponseText);
+          
+          if (clientResponseText) {
+            savedClient = JSON.parse(clientResponseText);
+            console.log("DEBUG: Save Client Response Body:", savedClient);
+          }
+        } catch (jsonError) {
+          console.error("DEBUG: Error parsing client save response JSON:", jsonError, 
+            "Response text:", clientResponseText);
+          throw new Error(`Client save response invalid: ${clientResponse.status}`);
         }
-      } catch (jsonError) {
-        console.error("DEBUG: Error parsing client save response JSON:", jsonError, 
-          "Response text:", clientResponseText);
-        throw new Error(`Client save response invalid: ${clientResponse.status}`);
+        
+        if (!clientResponse.ok) {
+          throw new Error(`Client save failed: ${clientResponse.status} - ${clientResponseText || clientResponse.statusText}`);
+        }
+        
+        if (!savedClient?.data?.id) {
+          console.error("DEBUG: Invalid client response structure:", savedClient);
+          throw new Error("Client ID missing from response. Expected structure: {data: {id: number}}");
+        }
+        
+        // Extract client ID from the response structure
+        newClientId = savedClient.data.id;
+        console.log("DEBUG: Successfully saved client with ID:", newClientId);
+      } else {
+        console.log("DEBUG: Using existing client ID:", clientId);
       }
-      
-      if (!clientResponse.ok) {
-        throw new Error(`Client save failed: ${clientResponse.status} - ${clientResponseText || clientResponse.statusText}`);
-      }
-      
-      if (!savedClient?.data?.id) {
-        console.error("DEBUG: Invalid client response structure:", savedClient);
-        throw new Error("Client ID missing from response. Expected structure: {data: {id: number}}");
-      }
-      
-      // Extract client ID from the response structure
-      const newClientId = savedClient.data.id;
-      console.log("DEBUG: Successfully saved client with ID:", newClientId);
 
       // 2. Save the entities via API, associating with the new client ID
       console.log(`DEBUG: Saving Entities for Client ID: ${newClientId}, Entities:`, 
