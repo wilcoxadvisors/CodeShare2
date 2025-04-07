@@ -831,8 +831,18 @@ function ChartOfAccounts() {
       console.log("DEBUG: handleDeleteConfirm - Calling delete mutation with account ID:", accountToDelete.id);
       console.log("DEBUG: handleDeleteConfirm - Full account object:", accountToDelete);
       
+      // Close all dialogs immediately to prevent further user interaction
+      setShowDeleteConfirm(false);
+      setShowAccountForm(false);
+      
       // Call the delete mutation with the account ID directly
       deleteAccount.mutate(accountToDelete.id);
+      
+      // Immediately show a toast that deletion is in progress
+      toast({
+        title: "Account deletion in progress",
+        description: "The account is being deleted, please wait...",
+      });
     } else {
       console.error("DEBUG: handleDeleteConfirm - No account selected for deletion");
     }
