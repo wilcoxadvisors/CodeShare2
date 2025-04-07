@@ -8,7 +8,7 @@
  *   node testing/run-coa-tests.js
  */
 
-const coaTests = require('./coa-import-tests');
+import { runAllTests } from './coa-import-tests.js';
 
 // Print a fancy header
 console.log('\n============================================================');
@@ -24,7 +24,7 @@ console.log('2. "Partial Selection" - Verify only selected accounts are processe
 console.log('3. "Select All" - Verify all selected accounts are processed correctly\n');
 
 // Run the tests
-coaTests.runAllTests()
+runAllTests()
   .then(results => {
     console.log('\n============================================================');
     console.log('  TEST SUMMARY');

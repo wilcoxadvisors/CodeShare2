@@ -1,0 +1,6 @@
+accountCode,name,type,subtype,balance,isSubledger,active,parentAccountCode,description,fsliBucket,internalReportingBucket,item
+TEST-N1,Test New Account 1,Assets,Current Assets,0,FALSE,TRUE,,Test account for import verification,Current Assets,Operating Assets,Cash & Equivalents
+TEST-N2,Test New Account 2,Expenses,Operating Expenses,0,FALSE,TRUE,,Another test account for import verification,Operating Expenses,Fixed Costs,Administrative
+TEST-N3,Test New Account 3 - Child,Assets,Current Assets,0,FALSE,TRUE,TEST-N1,Child test account for import verification,Current Assets,Operating Assets,Cash & Equivalents
+1000,Updated Cash Account,Assets,Current Assets,0,FALSE,TRUE,,Updated description for existing account,Current Assets,Operating Assets,Cash & Equivalents
+1100,Updated Accounts Receivable,Assets,Current Assets,0,TRUE,TRUE,,Updated description for existing A/R account,Current Assets,Operating Assets,Accounts Receivable

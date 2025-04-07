@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 
-const API_BASE_URL = 'http://localhost:3000'; // Adjust based on your application URL
+const API_BASE_URL = 'http://localhost:5000'; // Adjusted for correct application port
 const LOG_FILE = path.join(process.cwd(), 'coa-seeding-test.log');
 
 // Helper to get a cookie header for authentication

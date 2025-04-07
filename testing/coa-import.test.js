@@ -6,20 +6,25 @@
  * only explicitly selected accounts are processed during import.
  */
 
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
-const Papa = require('papaparse');
+import FormData from 'form-data';
+import fs from 'fs';
+import Papa from 'papaparse';
 
 // Import the test functions from our standalone test script
-const { 
+import { 
   testNoSelection, 
   testPartialSelection, 
   testSelectAll 
-} = require('./coa-import-tests');
+} from './coa-import-tests.js';
 
-// Mock axios to avoid actual API calls during Jest tests
-jest.mock('axios');
+// Import jest functions
+import { jest, describe, beforeEach, test, expect } from '@jest/globals';
+
+// Create mocked axios functions directly
+const axios = {
+  post: jest.fn(),
+  get: jest.fn()
+};
 
 describe('Chart of Accounts Import Functionality', () => {
   // Setup before each test

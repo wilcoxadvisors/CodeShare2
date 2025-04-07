@@ -9,7 +9,7 @@
 const axios = require('axios');
 
 // Base API URL (using local development server)
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:5000/api';
 
 // Test credentials
 const credentials = {
