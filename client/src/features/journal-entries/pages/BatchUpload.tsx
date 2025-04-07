@@ -1,241 +1,267 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { useEntity } from '../../../contexts/EntityContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useEntity } from '../../../contexts/EntityContext';
+import { useToast } from '@/hooks/use-toast';
 import PageHeader from '../../../components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Upload, AlertCircle, Download, FileUp, Check, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
+import {
+  ArrowLeft,
+  Upload,
+  File,
+  FileSpreadsheet,
+  FileText,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Download
+} from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+
+const ACCEPTED_FILE_TYPES = '.csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel';
 
 function BatchUpload() {
   const [, navigate] = useLocation();
   const { currentEntity } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [file, setFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [filePreview, setFilePreview] = useState<any[]>([]);
-  const [validationResults, setValidationResults] = useState<any>(null);
-  const [processingResults, setProcessingResults] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('upload');
-  
-  // Check if the entity ID is available
-  const entityId = currentEntity?.id;
-  const clientId = currentEntity?.clientId;
+  const [preview, setPreview] = useState<any[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isValidating, setIsValidating] = useState(false);
+  const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload');
+  const [result, setResult] = useState<{
+    success: boolean;
+    journalEntries: any[];
+    errors: any[];
+  } | null>(null);
   
   // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    
+    // Reset states when a new file is selected
+    setFile(selectedFile);
+    setPreview([]);
+    setValidationErrors([]);
+    setStep('upload');
+    setResult(null);
+    
     if (selectedFile) {
-      if (!validateFileType(selectedFile)) {
-        toast({
-          title: 'Invalid file type',
-          description: 'Please upload a CSV or Excel file.',
-          variant: 'destructive',
-        });
-        event.target.value = '';
-        return;
-      }
-      
-      setFile(selectedFile);
-      loadFilePreview(selectedFile);
-    }
-  };
-  
-  // Validate file type
-  const validateFileType = (file: File) => {
-    const acceptedTypes = [
-      'text/csv', 
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'application/wps-office.xlsx',
-      'application/wps-office.xls',
-      'application/octet-stream'
-    ];
-    return acceptedTypes.includes(file.type) || file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-  };
-  
-  // Load file preview
-  const loadFilePreview = (file: File) => {
-    setIsLoading(true);
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      
-      // Simple preview for CSV files - not perfect but good enough for display
-      if (file.name.endsWith('.csv')) {
-        const lines = content.split('\n');
-        if (lines.length > 0) {
-          const headers = lines[0].split(',');
-          const rows = lines.slice(1, 6).map(line => line.split(','));
-          setFilePreview({ headers, rows });
-        }
-      } else {
-        // For Excel files, we can't easily preview them on the client side
-        // We'll show a placeholder
-        setFilePreview(null);
-      }
-      
-      setIsLoading(false);
-    };
-    
-    reader.onerror = () => {
       toast({
-        title: 'File error',
-        description: 'An error occurred while reading the file.',
-        variant: 'destructive',
+        title: 'File selected',
+        description: `${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`,
       });
-      setIsLoading(false);
-    };
-    
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsArrayBuffer(file);
     }
   };
   
-  // Handle file upload for validation
+  // Handle file drop
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      setFile(droppedFile);
+      setPreview([]);
+      setValidationErrors([]);
+      setStep('upload');
+      setResult(null);
+      
+      toast({
+        title: 'File dropped',
+        description: `${droppedFile.name} (${(droppedFile.size / 1024).toFixed(2)} KB)`,
+      });
+    }
+  }, [toast]);
+  
+  // Prevent default behavior for drag events
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+  
+  // Handle validation - send file to backend for validation
   const validateFile = useMutation({
     mutationFn: async () => {
-      if (!file || !entityId || !clientId) {
-        throw new Error('Missing required data');
-      }
+      if (!file || !currentEntity) return null;
+      
+      setIsValidating(true);
       
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('entityId', entityId.toString());
-      formData.append('clientId', clientId.toString());
+      formData.append('entityId', currentEntity.id.toString());
       
-      return await apiRequest(
-        `/api/journal-entries/validate-batch`,
-        {
-          method: 'POST',
-          data: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      const response = await apiRequest(`/api/journal-entries/validate-batch`, {
+        method: 'POST',
+        data: formData,
+      });
+      
+      setIsValidating(false);
+      
+      return response;
     },
     onSuccess: (data) => {
-      setValidationResults(data);
-      setActiveTab('validate');
+      if (!data) return;
       
       if (data.valid) {
+        setPreview(data.journalEntries || []);
+        setValidationErrors([]);
+        setStep('preview');
+        
         toast({
           title: 'Validation successful',
-          description: `File validated successfully. ${data.journalEntries.length} entries are ready to be processed.`,
+          description: `${data.journalEntries?.length || 0} journal entries are ready to be imported`,
         });
       } else {
+        setValidationErrors(data.errors || ['Unknown validation error']);
+        
         toast({
           title: 'Validation failed',
-          description: `${data.errors.length} errors found. Please fix the issues before processing.`,
+          description: 'Please fix the errors and try again',
           variant: 'destructive',
         });
       }
     },
     onError: (error: any) => {
+      setIsValidating(false);
+      setValidationErrors([error.message || 'An error occurred during validation']);
+      
       toast({
-        title: 'Validation failed',
-        description: `Error: ${error.message}`,
+        title: 'Validation error',
+        description: error.message || 'An error occurred during validation',
         variant: 'destructive',
       });
     }
   });
   
-  // Handle file upload for processing (after validation)
-  const processFile = useMutation({
+  // Handle import - send validated data to backend for import
+  const importJournalEntries = useMutation({
     mutationFn: async () => {
-      if (!file || !entityId || !clientId || !validationResults?.valid) {
-        throw new Error('Missing required data or validation not complete');
-      }
+      if (!file || !currentEntity) return null;
       
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('entityId', entityId.toString());
-      formData.append('clientId', clientId.toString());
+      formData.append('entityId', currentEntity.id.toString());
       
-      return await apiRequest(
-        `/api/journal-entries/process-batch`,
-        {
-          method: 'POST',
-          data: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-    },
-    onSuccess: (data) => {
-      setProcessingResults(data);
-      setActiveTab('results');
-      
-      toast({
-        title: 'Processing complete',
-        description: `Successfully processed ${data.journalEntries.length} journal entries.`,
+      const response = await apiRequest(`/api/journal-entries/import-batch`, {
+        method: 'POST',
+        data: formData,
       });
       
-      // Invalidate journal entries query to reflect the new entries
-      queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/journal-entries`] });
+      return response;
+    },
+    onSuccess: (data) => {
+      if (!data) return;
+      
+      setResult({
+        success: true,
+        journalEntries: data.journalEntries || [],
+        errors: data.errors || []
+      });
+      
+      setStep('result');
+      
+      toast({
+        title: 'Import successful',
+        description: `${data.journalEntries?.length || 0} journal entries have been imported`,
+      });
     },
     onError: (error: any) => {
+      setResult({
+        success: false,
+        journalEntries: [],
+        errors: [error.message || 'An error occurred during import']
+      });
+      
+      setStep('result');
+      
       toast({
-        title: 'Processing failed',
-        description: `Error: ${error.message}`,
+        title: 'Import error',
+        description: error.message || 'An error occurred during import',
         variant: 'destructive',
       });
     }
   });
+  
+  // Handle download template
+  const handleDownloadTemplate = () => {
+    // Trigger download of CSV template
+    window.location.href = '/api/journal-entries/download-template';
+  };
   
   // Handle back button click
   const handleBack = () => {
     navigate('/journal-entries');
   };
   
-  // Handle download template click
-  const handleDownloadTemplate = () => {
-    // Navigate to the template download endpoint
-    window.location.href = '/api/journal-entries/download-template';
+  // Handle navigation between steps
+  const handlePrevStep = () => {
+    if (step === 'preview') {
+      setStep('upload');
+    } else if (step === 'result') {
+      setStep('preview');
+    }
   };
   
-  // Render "no entity selected" message
-  if (!entityId) {
+  const getFileIcon = () => {
+    if (!file) return <Upload className="w-8 h-8 text-gray-400" />;
+    
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (extension === 'csv') {
+      return <FileText className="w-8 h-8 text-blue-600" />;
+    } else if (['xlsx', 'xls'].includes(extension || '')) {
+      return <FileSpreadsheet className="w-8 h-8 text-green-600" />;
+    } else {
+      return <File className="w-8 h-8 text-gray-600" />;
+    }
+  };
+  
+  if (!currentEntity) {
     return (
       <div className="py-6">
-        <PageHeader 
-          title="Batch Journal Entry Upload" 
-          description="Upload multiple journal entries at once"
+        <PageHeader
+          title="Batch Upload Journal Entries"
+          description="Import multiple journal entries at once from CSV or Excel"
         >
-          <Button 
-            onClick={handleBack} 
-            variant="outline" 
-            className="inline-flex items-center px-4 py-2"
-          >
-            <ArrowLeft className="-ml-1 mr-2 h-5 w-5" />
-            Back to Journal Entries
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
         </PageHeader>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
           <Card>
             <CardContent className="pt-6">
-              <div className="py-10 text-center">
-                <p className="text-red-500">
-                  Please select an entity before uploading journal entries.
-                </p>
+              <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-gray-500 mb-4">Please select an entity before uploading journal entries</p>
               </div>
             </CardContent>
           </Card>
@@ -246,416 +272,268 @@ function BatchUpload() {
   
   return (
     <div className="py-6">
-      <PageHeader 
-        title="Batch Journal Entry Upload" 
-        description="Upload multiple journal entries at once"
+      <PageHeader
+        title="Batch Upload Journal Entries"
+        description="Import multiple journal entries at once from CSV or Excel"
       >
         <div className="flex space-x-2">
-          <Button 
-            onClick={handleBack} 
-            variant="outline" 
-            className="inline-flex items-center px-4 py-2"
-          >
-            <ArrowLeft className="-ml-1 mr-2 h-5 w-5" />
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           
-          <Button 
-            onClick={handleDownloadTemplate} 
-            variant="outline" 
-            className="inline-flex items-center px-4 py-2"
-          >
-            <Download className="-ml-1 mr-2 h-5 w-5" />
+          <Button variant="outline" onClick={handleDownloadTemplate}>
+            <Download className="mr-2 h-4 w-4" />
             Download Template
           </Button>
         </div>
       </PageHeader>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="upload">1. Upload File</TabsTrigger>
-            <TabsTrigger value="validate" disabled={!file}>2. Validate</TabsTrigger>
-            <TabsTrigger value="results" disabled={!validationResults?.valid || !file}>3. Results</TabsTrigger>
-          </TabsList>
+        <Card>
+          <CardHeader>
+            <CardTitle>Batch Upload for {currentEntity.name}</CardTitle>
+            <CardDescription>
+              Upload a CSV or Excel file with multiple journal entries for bulk import
+            </CardDescription>
+          </CardHeader>
           
-          <TabsContent value="upload">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload Journal Entries</CardTitle>
-                <CardDescription>
-                  Upload a CSV or Excel file containing journal entries to be processed.
-                  Make sure your file follows the required format.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6">
-                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                    <div className="mb-4 text-center">
-                      <FileUp className="h-10 w-10 text-gray-400 mx-auto" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        {file ? file.name : 'Upload a file'}
-                      </h3>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {file 
-                          ? `${(file.size / 1024).toFixed(2)} KB, Last modified: ${new Date(file.lastModified).toLocaleString()}`
-                          : 'CSV or Excel files only (.csv, .xlsx, .xls)'}
+          <CardContent>
+            {/* Step 1: File Upload */}
+            {step === 'upload' && (
+              <>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 mb-6 ${
+                    file ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    {getFileIcon()}
+                    
+                    <div className="text-center">
+                      <p className="text-gray-700">
+                        {file
+                          ? `File selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`
+                          : 'Drag and drop your file here, or click to browse'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Accepted file types: CSV, Excel (.xlsx, .xls)
                       </p>
                     </div>
                     
-                    <div className="mt-4 flex text-sm">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="sr-only"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleFileChange}
-                      />
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mr-2"
+                    <div className="flex space-x-2">
+                      <Label
+                        htmlFor="file-upload"
+                        className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-md transition-colors"
                       >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {file ? 'Change file' : 'Select file'}
-                      </Button>
+                        Browse Files
+                      </Label>
                       
                       {file && (
                         <Button
                           type="button"
-                          variant="destructive"
-                          onClick={() => {
-                            setFile(null);
-                            setFilePreview([]);
-                            setValidationResults(null);
-                            setProcessingResults(null);
-                            if (fileInputRef.current) fileInputRef.current.value = '';
-                          }}
+                          variant="outline"
+                          className="text-red-600"
+                          onClick={() => setFile(null)}
                         >
-                          <XCircle className="mr-2 h-4 w-4" />
                           Remove
                         </Button>
                       )}
                     </div>
+                    
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      accept={ACCEPTED_FILE_TYPES}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                   </div>
-                  
-                  {file && filePreview && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">File Preview</h3>
-                      <div className="overflow-x-auto rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              {filePreview.headers?.map((header: string, index: number) => (
-                                <TableHead key={index}>{header}</TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filePreview.rows?.map((row: string[], rowIndex: number) => (
-                              <TableRow key={rowIndex}>
-                                {row.map((cell, cellIndex) => (
-                                  <TableCell key={cellIndex}>{cell}</TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Showing first 5 rows of the file.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {file && !filePreview && (
-                    <Alert className="bg-blue-50 border-blue-100">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertTitle>Excel File Selected</AlertTitle>
-                      <AlertDescription>
-                        Excel files cannot be previewed in the browser. Click Validate to process the file.
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button
-                  disabled={!file || validateFile.isPending}
-                  onClick={() => validateFile.mutate()}
-                  className="ml-auto"
-                >
-                  {validateFile.isPending ? 'Validating...' : 'Validate File'}
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="validate">
-            <Card>
-              <CardHeader>
-                <CardTitle>Validation Results</CardTitle>
-                <CardDescription>
-                  Review the validation results before processing journal entries.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {validationResults && (
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex-1">
-                        <Progress 
-                          value={validationResults.valid ? 100 : 0} 
-                          className="h-3" 
-                        />
-                      </div>
-                      <div className="flex items-center">
-                        {validationResults.valid ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Valid</Badge>
-                        ) : (
-                          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Invalid</Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        <p className="text-sm font-medium text-gray-500">Total Entries</p>
-                        <p className="text-2xl font-bold mt-1">
-                          {validationResults.journalEntries?.length || 0}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-green-50 p-4 rounded-md">
-                        <p className="text-sm font-medium text-green-600">Valid Entries</p>
-                        <p className="text-2xl font-bold mt-1 text-green-700">
-                          {validationResults.valid ? validationResults.journalEntries?.length : 0}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-red-50 p-4 rounded-md">
-                        <p className="text-sm font-medium text-red-600">Errors</p>
-                        <p className="text-2xl font-bold mt-1 text-red-700">
-                          {validationResults.errors?.length || 0}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {!validationResults.valid && validationResults.errors && validationResults.errors.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Validation Errors</h3>
-                        <div className="bg-red-50 p-4 rounded-md space-y-3">
-                          {validationResults.errors.map((error: any, index: number) => (
-                            <div key={index} className="flex">
-                              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mr-2" />
-                              <div>
-                                <p className="text-sm font-medium text-red-800">
-                                  {error.row ? `Row ${error.row}: ` : ''}{error.message}
-                                </p>
-                                {error.details && (
-                                  <p className="text-xs text-red-700 mt-1">
-                                    {error.details}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {validationResults.valid && validationResults.journalEntries && (
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Journal Entries Summary</h3>
-                        <div className="overflow-x-auto rounded-md border">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Reference</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Total Amount</TableHead>
-                                <TableHead className="text-right">Lines</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {validationResults.journalEntries.slice(0, 5).map((entry: any, index: number) => (
-                                <TableRow key={index}>
-                                  <TableCell>{entry.reference || entry.referenceNumber}</TableCell>
-                                  <TableCell>
-                                    {entry.date 
-                                      ? new Date(entry.date).toLocaleDateString() 
-                                      : 'N/A'}
-                                  </TableCell>
-                                  <TableCell className="max-w-xs truncate">
-                                    {entry.description || 'No description'}
-                                  </TableCell>
-                                  <TableCell>{entry.journalType || 'JE'}</TableCell>
-                                  <TableCell className="text-right">
-                                    {new Intl.NumberFormat('en-US', {
-                                      style: 'currency',
-                                      currency: 'USD'
-                                    }).format(entry.totalDebit || entry.totalAmount || 0)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {entry.lines?.length || 0}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                        {validationResults.journalEntries.length > 5 && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Showing 5 of {validationResults.journalEntries.length} entries.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                
+                {validationErrors.length > 0 && (
+                  <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Validation Failed</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-5 text-sm">
+                        {validationErrors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
                 )}
                 
-                {!validationResults && (
-                  <div className="py-10 text-center">
-                    <p className="text-gray-500">
-                      No validation results available. Please upload and validate a file.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab('upload')}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Upload
-                </Button>
-                
-                {validationResults?.valid && (
+                <div className="flex justify-end space-x-2">
                   <Button
-                    onClick={() => processFile.mutate()}
-                    disabled={processFile.isPending}
+                    type="button"
+                    onClick={() => validateFile.mutate()}
+                    disabled={!file || isValidating || validateFile.isPending}
                   >
-                    {processFile.isPending ? 'Processing...' : 'Process Entries'}
+                    {isValidating || validateFile.isPending ? 'Validating...' : 'Validate'}
                   </Button>
-                )}
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="results">
-            <Card>
-              <CardHeader>
-                <CardTitle>Processing Results</CardTitle>
-                <CardDescription>
-                  Journal entries have been processed and saved to the database.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {processingResults ? (
-                  <div className="space-y-6">
-                    <Alert className="bg-green-50 border-green-100">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <AlertTitle>Success!</AlertTitle>
-                      <AlertDescription>
-                        {`Successfully processed ${processingResults.journalEntries?.length || 0} journal entries.`}
-                      </AlertDescription>
-                    </Alert>
-                    
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        <p className="text-sm font-medium text-gray-500">Total Entries</p>
-                        <p className="text-2xl font-bold mt-1">
-                          {processingResults.journalEntries?.length || 0}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-green-50 p-4 rounded-md">
-                        <p className="text-sm font-medium text-green-600">Status</p>
-                        <p className="text-2xl font-bold mt-1 text-green-700">
-                          Processed
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">Processed Journal Entries</h3>
-                      <div className="overflow-x-auto rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>ID</TableHead>
-                              <TableHead>Reference</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Amount</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {processingResults.journalEntries?.map((entry: any, index: number) => (
-                              <TableRow 
-                                key={index}
-                                className="cursor-pointer hover:bg-muted/50"
-                                onClick={() => navigate(`/journal-entries/${entry.id}`)}
-                              >
-                                <TableCell>#{entry.id}</TableCell>
-                                <TableCell>{entry.reference || entry.referenceNumber}</TableCell>
-                                <TableCell>
-                                  {entry.date 
-                                    ? new Date(entry.date).toLocaleDateString() 
-                                    : 'N/A'}
-                                </TableCell>
-                                <TableCell className="max-w-xs truncate">
-                                  {entry.description || 'No description'}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                                    {entry.status || 'Draft'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: 'USD'
-                                  }).format(entry.totalDebit || entry.totalAmount || 0)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-10 text-center">
-                    <p className="text-gray-500">
-                      No processing results available. Please validate and process a file.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab('validate')}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Validation
-                </Button>
+                </div>
+              </>
+            )}
+            
+            {/* Step 2: Preview */}
+            {step === 'preview' && (
+              <>
+                <div className="mb-6">
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertTitle>Validation Successful</AlertTitle>
+                    <AlertDescription>
+                      The file passed validation. Review the entries below before importing.
+                    </AlertDescription>
+                  </Alert>
+                </div>
                 
-                <Button
-                  onClick={handleBack}
-                >
-                  View All Journal Entries
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <div className="border rounded-lg overflow-hidden mb-6">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Reference</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead>Lines</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {preview.map((entry, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{entry.date}</TableCell>
+                            <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                            <TableCell>{entry.reference || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-gray-100 text-gray-800">
+                                {entry.status || 'Draft'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD'
+                              }).format(entry.totalAmount || 0)}
+                            </TableCell>
+                            <TableCell>{entry.lines?.length || 0} lines</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={handlePrevStep}>
+                    Back
+                  </Button>
+                  
+                  <Button
+                    onClick={() => importJournalEntries.mutate()}
+                    disabled={importJournalEntries.isPending}
+                  >
+                    {importJournalEntries.isPending ? 'Importing...' : 'Import Journal Entries'}
+                  </Button>
+                </div>
+              </>
+            )}
+            
+            {/* Step 3: Result */}
+            {step === 'result' && result && (
+              <>
+                <div className="mb-6">
+                  <Alert variant={result.success ? 'default' : 'destructive'}>
+                    {result.success ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    <AlertTitle>
+                      {result.success ? 'Import Successful' : 'Import Failed'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {result.success
+                        ? `Successfully imported ${result.journalEntries.length} journal entries.`
+                        : 'There were errors during the import process.'}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+                
+                {result.errors.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-medium text-red-600 mb-2">Errors:</h3>
+                    <ul className="list-disc pl-5 text-sm">
+                      {result.errors.map((error, index) => (
+                        <li key={index} className="text-red-600">{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {result.journalEntries.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden mb-6">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Reference</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {result.journalEntries.map((entry, index) => (
+                            <TableRow
+                              key={index}
+                              className="cursor-pointer hover:bg-gray-50"
+                              onClick={() => navigate(`/journal-entries/${entry.id}`)}
+                            >
+                              <TableCell className="font-medium">#{entry.id}</TableCell>
+                              <TableCell>{entry.date}</TableCell>
+                              <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                              <TableCell>{entry.reference || '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800">
+                                  {entry.status || 'Draft'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD'
+                                }).format(entry.totalAmount || 0)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={() => setStep('upload')}>
+                    Upload Another File
+                  </Button>
+                  
+                  <Button onClick={() => navigate('/journal-entries')}>
+                    Go to Journal Entries
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
