@@ -643,8 +643,11 @@ function ChartOfAccounts() {
           title: "Account deleted",
           description: "The account has been deleted successfully.",
         });
+        
+        // Close all open dialogs
         setShowDeleteConfirm(false);
         setAccountToDelete(null);
+        setShowAccountForm(false); // Close the edit dialog too
         
         // Invalidate relevant queries to refresh UI
         if (clientIdToUse) {
