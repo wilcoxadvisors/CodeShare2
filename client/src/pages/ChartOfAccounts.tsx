@@ -825,7 +825,13 @@ function ChartOfAccounts() {
   
   const handleDeleteConfirm = () => {
     if (accountToDelete) {
+      console.log("DEBUG: handleDeleteConfirm - Calling delete mutation with account ID:", accountToDelete.id);
+      console.log("DEBUG: handleDeleteConfirm - Full account object:", accountToDelete);
+      
+      // Call the delete mutation with the account ID directly
       deleteAccount.mutate(accountToDelete.id);
+    } else {
+      console.error("DEBUG: handleDeleteConfirm - No account selected for deletion");
     }
   };
   
@@ -1710,7 +1716,8 @@ function ChartOfAccounts() {
       // Force 'selected' strategy to ensure ONLY checked accounts are processed
       // Regardless of what the user selected in the strategy dropdown
       const effectiveUpdateStrategy = 'selected';
-      const effectiveRemoveStrategy = 'selected';
+      // For removal strategy, we'll maintain the user's choice of action (inactive/delete)
+      // but will only apply it to explicitly selected accounts
       
       // These arrays ONLY contain accounts that have been explicitly checked in the UI
       const filteredNewAccountCodes = selectedNewAccounts;
@@ -1731,7 +1738,7 @@ function ChartOfAccounts() {
         // CRITICAL FIX: Force 'selected' strategy regardless of UI setting
         // This ensures only explicitly checked accounts are processed
         updateStrategy: effectiveUpdateStrategy, // Force 'selected' mode
-        removeStrategy: effectiveRemoveStrategy, // Force 'selected' mode
+        removeStrategy: removeStrategy, // Keep original removal strategy type, but only apply to selected items
         
         // Specific accounts to include in each category - ONLY include explicitly selected accounts
         newAccountCodes: filteredNewAccountCodes,
@@ -1756,6 +1763,15 @@ function ChartOfAccounts() {
         
         // Add selections as a JSON string
         formData.append('selections', JSON.stringify(selections));
+        
+        // VERIFICATION: Explicitly log the payload being sent to ensure only checked accounts are included
+        console.log("VERIFICATION: Frontend explicitly sending payload:", {
+          newAccountCodes: filteredNewAccountCodes,
+          modifiedAccountCodes: filteredModifiedAccountCodes,
+          missingAccountCodes: filteredMissingAccountCodes,
+          updateStrategy: effectiveUpdateStrategy,
+          removeStrategy: removeStrategy
+        });
         
         console.log("DEBUG: handleImportConfirm - Prepared form data with selections:", selections);
         
