@@ -157,6 +157,8 @@ export class AccountStorage implements IAccountStorage {
                 errors: []
             };
             
+            let parsedData: any[] = [];
+            
             if (isExcel) {
                 // Process Excel file
                 const XLSX = require('xlsx');
@@ -177,10 +179,21 @@ export class AccountStorage implements IAccountStorage {
                 // Check for required columns
                 this.validateRequiredColumns(preview);
                 
-                // Sample rows (up to 5)
+                // Parse all data rows
                 const dataRows = data.slice(1) as any[];
                 preview.totalRows = dataRows.length;
+                
+                // Sample rows (up to 5) for display
                 preview.sampleRows = dataRows.slice(0, 5).map((row) => {
+                    const rowObj: Record<string, any> = {};
+                    headers.forEach((header, index) => {
+                        rowObj[header] = row[index];
+                    });
+                    return rowObj;
+                });
+                
+                // Process all rows for validation
+                parsedData = dataRows.map((row) => {
                     const rowObj: Record<string, any> = {};
                     headers.forEach((header, index) => {
                         rowObj[header] = row[index];
@@ -210,9 +223,48 @@ export class AccountStorage implements IAccountStorage {
                 // Check for required columns
                 this.validateRequiredColumns(preview);
                 
-                // Sample rows (up to 5)
+                // Process all rows
+                parsedData = parseResult.data;
+                
+                // Sample rows (up to 5) for display
                 preview.totalRows = parseResult.data.length;
                 preview.sampleRows = parseResult.data.slice(0, 5) as Record<string, any>[];
+            }
+            
+            // Perform enhanced validation on the full dataset
+            // Check for circular references
+            if (parsedData.length > 0 && preview.errors.length === 0) {
+                try {
+                    // Get existing accounts for this client to check parent relationships
+                    const existingAccounts = await this.getAccountsByClientId(clientId);
+                    
+                    // Check for circular references among imported accounts and with existing accounts
+                    console.log(`Checking for circular references in preview with ${parsedData.length} imported accounts and ${existingAccounts.length} existing accounts`);
+                    
+                    // First, normalize the data to have consistent field names
+                    const normalizedData = parsedData.map(row => {
+                        return {
+                            AccountCode: row.AccountCode || row.accountCode || row['Account Code'] || row.code,
+                            ParentCode: row.ParentCode || row.parentCode || row['Parent Code'] || row.parent,
+                            Name: row.Name || row.name,
+                            Type: row.Type || row.type
+                        };
+                    });
+                    
+                    // Check for circular references
+                    const circularReferenceCheck = this.detectCircularReferences([...normalizedData, ...existingAccounts]);
+                    
+                    // Add any circular reference errors to the preview
+                    if (!circularReferenceCheck.valid) {
+                        circularReferenceCheck.errors.forEach(err => {
+                            preview.errors.push(err);
+                        });
+                    }
+                } catch (e) {
+                    // Log but don't fail the preview
+                    console.error('Error checking for circular references in preview:', e);
+                    preview.warnings.push('Could not fully validate parent-child relationships. Please review carefully before importing.');
+                }
             }
             
             return preview;
@@ -734,6 +786,37 @@ export class AccountStorage implements IAccountStorage {
                     inactive: 0,
                     deleted: 0
                 };
+            }
+            
+            // Check for complex circular references in the entire account hierarchy
+            console.log(`Checking for circular references in ${validatedAccounts.length} accounts...`);
+            const circularReferenceCheck = this.detectCircularReferences([...validatedAccounts, ...existingAccounts]);
+            
+            if (!circularReferenceCheck.valid) {
+                console.log(`Detected circular references in account hierarchy: ${circularReferenceCheck.errors.length} issues found`);
+                
+                // Add circular reference errors to results
+                circularReferenceCheck.errors.forEach(err => {
+                    results.errors.push(err);
+                });
+                
+                // If there are circular references, don't proceed with import
+                if (circularReferenceCheck.errors.length > 0) {
+                    return {
+                        success: false,
+                        message: `Import failed: Circular references detected in account hierarchy`,
+                        errors: results.errors,
+                        warnings: results.warnings,
+                        count: parsedImportData.length,
+                        added: 0,
+                        updated: 0,
+                        unchanged: 0,
+                        skipped: parsedImportData.length,
+                        failed: parsedImportData.length,
+                        inactive: 0,
+                        deleted: 0
+                    };
+                }
             }
 
             // Process accounts based on industry-standard approach
@@ -1260,10 +1343,105 @@ export class AccountStorage implements IAccountStorage {
             result.errors.push(`Parent account with code ${row.ParentCode} not found`);
         }
         
-        // Check if the parent would create a circular reference
+        // Check if the parent would create a circular reference (self-reference)
         if (row.AccountCode === row.ParentCode) {
             result.valid = false;
             result.errors.push('Account cannot be its own parent');
+        }
+        
+        // Check for direct circular reference (A → B → A)
+        const directParent = newAccounts.find(acc => acc.AccountCode === row.ParentCode);
+        if (directParent && directParent.ParentCode === row.AccountCode) {
+            result.valid = false;
+            result.errors.push(`Circular reference detected between accounts ${row.AccountCode} and ${row.ParentCode}`);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Detect circular references in the entire account hierarchy
+     * This more complex check identifies multi-level circular dependencies (A → B → C → A)
+     */
+    detectCircularReferences(accounts: any[]): { valid: boolean, errors: string[] } {
+        const result = { valid: true, errors: [] as string[] };
+        
+        // Build a graph representation of parent-child relationships
+        const graph: Record<string, string[]> = {};
+        
+        // Initialize graph with empty adjacency lists
+        accounts.forEach(acc => {
+            const code = acc.AccountCode || acc.accountCode;
+            if (code) {
+                graph[code] = [];
+            }
+        });
+        
+        // Populate adjacency lists (parent → child relationships)
+        accounts.forEach(acc => {
+            const code = acc.AccountCode || acc.accountCode;
+            const parentCode = acc.ParentCode;
+            
+            if (parentCode && code && parentCode !== code) {
+                if (!graph[parentCode]) {
+                    graph[parentCode] = [];
+                }
+                graph[parentCode].push(code);
+            }
+        });
+        
+        // Check for cycles using DFS
+        const visited: Record<string, boolean> = {};
+        const recStack: Record<string, boolean> = {};
+        
+        // Track all detected cycles to avoid duplicates
+        const detectedCycles: Set<string> = new Set();
+        
+        const detectCycle = (node: string, path: string[] = []): boolean => {
+            // Node is not present in graph
+            if (!graph[node]) return false;
+            
+            // Mark current node as visited and part of recursion stack
+            visited[node] = true;
+            recStack[node] = true;
+            path.push(node);
+            
+            // Visit all adjacent vertices (children)
+            for (const adjacentNode of graph[node]) {
+                // If not visited, check recursively
+                if (!visited[adjacentNode]) {
+                    if (detectCycle(adjacentNode, [...path])) {
+                        return true;
+                    }
+                } 
+                // If adjacent vertex is already in recursion stack, we found a cycle
+                else if (recStack[adjacentNode]) {
+                    // Found a cycle, report it
+                    const cycleStart = path.indexOf(adjacentNode);
+                    const cyclePath = path.slice(cycleStart).concat(adjacentNode);
+                    const cycleKey = cyclePath.sort().join(','); // Normalize to avoid duplicates
+                    
+                    if (!detectedCycles.has(cycleKey)) {
+                        detectedCycles.add(cycleKey);
+                        const cycleStr = cyclePath.join(' → ');
+                        result.errors.push(`Circular reference detected in account hierarchy: ${cycleStr}`);
+                        result.valid = false;
+                    }
+                    
+                    return true;
+                }
+            }
+            
+            // Remove the node from recursion stack
+            recStack[node] = false;
+            return false;
+        };
+        
+        // Check all nodes
+        for (const node in graph) {
+            if (!visited[node]) {
+                detectCycle(node);
+            }
         }
         
         return result;
