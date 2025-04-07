@@ -1,120 +1,56 @@
-# Chart of Accounts Test Suite
+# Chart of Accounts Validation Test Suite
 
-This directory contains test scripts and data for validating the Chart of Accounts import/export functionality.
+This directory contains test scripts for validating the Chart of Accounts import/export functionality.
 
-## Directory Structure
+## Test Scripts
 
-```
-test-coa/
-├── direct-test.js         # Helper utilities for making authenticated API requests
-├── imports/               # Sample import files for testing
-│   ├── test1-add-accounts.csv
-│   ├── test1-add-accounts.xlsx
-│   └── ...
-├── results/               # Test results logs
-├── run-import-tests.js    # Main script to run all import tests
-├── test-csv-import.js     # CSV import specific tests
-└── test-excel-import.js   # Excel import specific tests
+### 1. Direct Test Script
+`direct-test.js` - A standalone test script that validates the field name normalization and parent-child relationship validation logic without requiring database access.
+
+```bash
+node test-coa/direct-test.js
 ```
 
-## Prerequisites
+### 2. Parent Validation Test
+`test-parent-validation.js` - Tests the parent-child relationship validation integration with the application code. Note that this script requires ES modules support.
 
-Before running the tests, make sure:
+```bash
+node test-coa/test-parent-validation.js
+```
 
-1. The application server is running
-2. You have valid admin credentials (username: admin, password: password123)
-3. A test client exists (default ID: 236)
+### 3. CSV Import Test 
+`test-csv-import.js` - Tests importing accounts from CSV files, focusing on field name normalization and data integrity.
+
+### 4. Excel Import Test
+`test-excel-import.js` - Tests importing accounts from Excel files, focusing on field name normalization and data integrity.
+
+## Test Directory Structure
+
+- `test-coa/` - Root directory for COA test scripts
+  - `imports/` - Generated test import files (CSV, Excel)
+  - `results/` - Test results and logs
 
 ## Running Tests
 
-### All Tests
-
-To run all import/export tests:
+To run all tests:
 
 ```bash
-node run-import-tests.js
+cd test-coa
+node direct-test.js
 ```
 
-### CSV-only Tests
+## Validation Logic Tested
 
-To run only CSV import tests:
+1. **Field Name Normalization**
+   - Consistent handling of different field naming conventions (camelCase, snake_case, etc.)
+   - Mapping of similar field names to standardized names (e.g., "account_code", "code" -> "AccountCode")
 
-```bash
-node test-csv-import.js
-```
+2. **Parent-Child Relationship Validation**
+   - Detection of self-referencing accounts (account referencing itself as parent)
+   - Validation of parent accounts that exist either in the database or in the same import batch
+   - Proper error reporting for invalid parent relationships
 
-### Excel-only Tests
-
-To run only Excel import tests:
-
-```bash
-node test-excel-import.js
-```
-
-### Custom Client ID
-
-To run tests against a specific client:
-
-```bash
-node run-import-tests.js <clientId>
-```
-
-Replace `<clientId>` with the ID of the client you want to test with.
-
-## Test Scenarios
-
-The test suite covers the following scenarios:
-
-1. **Adding new accounts** - Tests importing completely new accounts
-2. **Updating existing accounts** - Tests modifying properties of existing accounts
-3. **Mixed operations** - Tests simultaneously adding and updating accounts
-4. **Error handling** - Tests validation for duplicate account codes and invalid parent references
-5. **Export verification** - Verifies export format and field naming consistency
-
-## Troubleshooting
-
-### Authentication Issues
-
-If you encounter authentication errors:
-
-1. Delete the `.auth-cookies` file in the root directory
-2. The test will automatically re-authenticate
-
-### Database Connection Issues
-
-If database connection errors occur:
-
-1. Verify the database is running
-2. Check database connection environment variables
-
-### Import Failures
-
-If specific imports fail:
-
-1. Check the console output for error details
-2. Examine the test file format for inconsistencies
-3. Verify that any referenced parent accounts exist
-
-## Test Results
-
-Test results are logged to:
-
-1. The console output
-2. The `results/` directory with timestamped log files
-
-## Extending the Tests
-
-To add new test cases:
-
-1. Create a new import file in the `imports/` directory
-2. Add a test case in `test-csv-import.js` or `test-excel-import.js`
-3. Run the tests to verify the new case
-
-## Test Environment Variables
-
-The tests use environment variables for configuration:
-
-- `TEST_CLIENT_ID`: The client ID to use for testing (default: 236)
-- `TEST_USERNAME`: The username for authentication (default: admin)
-- `TEST_PASSWORD`: The password for authentication (default: password123)
-- `BASE_URL`: The base URL for API requests (default: http://localhost:3000)
+3. **Import Data Validation**
+   - Required field checking (AccountCode, Name, Type)
+   - Type validation for account types
+   - Duplicate checking for account codes

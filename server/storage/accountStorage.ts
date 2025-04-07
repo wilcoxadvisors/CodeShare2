@@ -606,19 +606,23 @@ export class AccountStorage implements IAccountStorage {
             console.log(`Importing Chart of Accounts for client ${clientId} from ${fileType} file: ${fileName}`);
             
             // Parse the file based on type
-            let importData: any[] = [];
+            let rawImportData: any[] = [];
+            let parsedImportData: any[] = [];
             
             if (fileType === 'csv') {
                 // Parse CSV using PapaParse
                 const csvString = fileBuffer.toString('utf8');
-                const parseResult = Papa.parse(csvString, { header: true, skipEmptyLines: true });
-                importData = parseResult.data;
+                // Use our new parseCsvImport method for consistent field naming
+                parsedImportData = this.parseCsvImport(csvString);
+                rawImportData = Papa.parse(csvString, { header: true, skipEmptyLines: true }).data;
             } else {
                 // Parse Excel using XLSX
                 const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                importData = XLSX.utils.sheet_to_json(worksheet);
+                rawImportData = XLSX.utils.sheet_to_json(worksheet);
+                // Use our new parseExcelImport method for consistent field naming
+                parsedImportData = this.parseExcelImport(rawImportData);
             }
 
             // Verify client exists
@@ -643,7 +647,7 @@ export class AccountStorage implements IAccountStorage {
             const results = {
                 success: true,
                 message: 'Import successful',
-                totalProcessed: importData.length,
+                totalProcessed: parsedImportData.length,
                 created: 0,
                 updated: 0,
                 skipped: 0,
@@ -651,34 +655,62 @@ export class AccountStorage implements IAccountStorage {
                 warnings: [] as string[]
             };
 
-            // First pass: Process all accounts except parent relationships
-            for (const row of importData) {
+            // Pre-validate all accounts to check for basic validation issues and parent relationships
+            const validatedAccounts: any[] = [];
+            
+            for (const row of parsedImportData) {
+                // Validate the basic row data
+                const validationResult = this.validateImportRow(row, existingAccounts, validatedAccounts);
+                
+                if (!validationResult.valid) {
+                    validationResult.errors.forEach(err => {
+                        results.errors.push(`Account ${row.AccountCode || 'unknown'}: ${err}`);
+                    });
+                    results.skipped++;
+                    continue;
+                }
+                
+                // Validate parent relationships specifically
+                const parentValidation = this.validateParentRelationship(row, existingAccounts, validatedAccounts);
+                
+                if (!parentValidation.valid) {
+                    parentValidation.errors.forEach(err => {
+                        results.errors.push(`Account ${row.AccountCode}: ${err}`);
+                    });
+                    results.warnings.push(`Account ${row.AccountCode} will be imported without parent relationship`);
+                    // We'll still process the account, but without the parent relationship
+                    row.ParentCode = null;
+                }
+                
+                validatedAccounts.push(row);
+            }
+            
+            // If there are critical errors and no accounts would be imported, return early
+            if (validatedAccounts.length === 0) {
+                return {
+                    success: false,
+                    message: `Import failed: All ${parsedImportData.length} accounts had validation errors`,
+                    errors: results.errors,
+                    warnings: results.warnings,
+                    count: parsedImportData.length,
+                    added: 0,
+                    updated: 0,
+                    unchanged: 0,
+                    skipped: parsedImportData.length,
+                    failed: parsedImportData.length
+                };
+            }
+
+            // First pass: Process all validated accounts except parent relationships
+            for (const row of validatedAccounts) {
                 try {
-                    const accountCode = this.getCaseInsensitiveValue(row, 'accountCode');
-                    if (!accountCode) {
-                        results.errors.push(`Row skipped: Missing account code`);
-                        results.skipped++;
-                        continue;
-                    }
-
-                    const name = this.getCaseInsensitiveValue(row, 'name');
-                    if (!name) {
-                        results.errors.push(`Account ${accountCode} skipped: Missing name`);
-                        results.skipped++;
-                        continue;
-                    }
-
-                    const typeValue = this.getCaseInsensitiveValue(row, 'type');
-                    if (!typeValue) {
-                        results.errors.push(`Account ${accountCode} skipped: Missing type`);
-                        results.skipped++;
-                        continue;
-                    }
-
+                    const accountCode = row.AccountCode;
+                    const name = row.Name;
+                    
                     // Try to normalize the account type
                     let type: AccountType;
                     try {
-                        type = this.normalizeAccountType(typeValue);
+                        type = this.normalizeAccountType(row.Type);
                     } catch (e) {
                         const error = e as Error;
                         results.errors.push(`Account ${accountCode} skipped: ${error.message}`);
@@ -750,11 +782,11 @@ export class AccountStorage implements IAccountStorage {
                 }
 
                 // Second pass: Update parent relationships
-                for (const row of importData) {
-                    const accountCode = this.getCaseInsensitiveValue(row, 'accountCode');
+                for (const row of validatedAccounts) {
+                    const accountCode = row.AccountCode;
                     if (!accountCode) continue;
 
-                    const parentCode = this.getParentCode(row);
+                    const parentCode = row.ParentCode;
                     if (!parentCode) continue;
 
                     const account = existingAccountsByCode.get(accountCode);
@@ -810,24 +842,225 @@ export class AccountStorage implements IAccountStorage {
                 .where(eq(accounts.clientId, clientId))
                 .orderBy(accounts.accountCode);
 
-            // Create a map of account ID to account code for parent lookup
+            // Create a map of account ID to code for parent lookup
             const accountIdToCode = new Map<number, string>();
-            allAccounts.forEach(acc => accountIdToCode.set(acc.id, acc.accountCode));
+            const accountIdToName = new Map<number, string>(); // Add this to get parent names
+            allAccounts.forEach(acc => {
+                accountIdToCode.set(acc.id, acc.accountCode);
+                accountIdToName.set(acc.id, acc.name);
+            });
 
-            // Format accounts for export
-            return allAccounts.map(account => ({
-                AccountCode: account.accountCode,
-                Name: account.name,
-                Type: account.type,
-                Subtype: account.subtype || '',
-                Description: account.description || '',
-                IsActive: account.active ? 'YES' : 'NO',
-                ParentCode: account.parentId ? accountIdToCode.get(account.parentId) || '' : '',
-                // Add any other fields needed for export
-            }));
+            // Format accounts for export using our mapping function
+            return allAccounts.map(account => this.mapDbFieldsToExportFields(account, accountIdToCode, accountIdToName));
         } catch (e) {
             throw handleDbError(e, `exporting Chart of Accounts for client ${clientId}`);
         }
+    }
+    
+    /**
+     * Maps database fields to export fields
+     * This ensures consistent field naming in exports
+     */
+    mapDbFieldsToExportFields(account: Account, 
+                              accountIdToCode: Map<number, string> = new Map(),
+                              accountIdToName: Map<number, string> = new Map()): Record<string, any> {
+        return {
+            AccountCode: account.accountCode,
+            Name: account.name,
+            Type: account.type,
+            Subtype: account.subtype || '',
+            IsSubledger: account.isSubledger,
+            SubledgerType: account.subledgerType || '',
+            Active: account.active,
+            Description: account.description || '',
+            ParentId: account.parentId || null,
+            ParentCode: account.parentId ? accountIdToCode.get(account.parentId) || '' : '',
+            ParentName: account.parentId ? accountIdToName.get(account.parentId) || '' : ''
+        };
+    }
+    
+    /**
+     * Parse CSV import content
+     * Converts CSV data to a standardized format for processing
+     */
+    parseCsvImport(csvContent: string): any[] {
+        const records = Papa.parse(csvContent, {
+            header: true,
+            skipEmptyLines: true,
+            transform: (value) => value.trim()
+        }).data;
+        
+        // Normalize the records
+        return records.map(record => this.normalizeImportRecord(record));
+    }
+    
+    /**
+     * Parse Excel import content
+     * Converts Excel data to a standardized format for processing
+     */
+    parseExcelImport(jsonData: any[]): any[] {
+        // Normalize the records
+        return jsonData.map(record => this.normalizeImportRecord(record));
+    }
+    
+    /**
+     * Normalize an import record to ensure consistent field names and types
+     * This handles variations in field naming and formatting from different import sources
+     */
+    private normalizeImportRecord(record: any): any {
+        const normalizedRecord: Record<string, any> = {};
+        
+        // Map fields with case-insensitive matching
+        for (const [key, value] of Object.entries(record)) {
+            const normalizedKey = this.normalizeFieldName(key);
+            
+            // Handle boolean values
+            if (normalizedKey === 'isSubledger' || normalizedKey === 'active') {
+                normalizedRecord[normalizedKey] = this.parseBooleanFlag(value);
+            } else {
+                normalizedRecord[normalizedKey] = value;
+            }
+        }
+        
+        // Map to expected external field names
+        return {
+            AccountCode: normalizedRecord.accountCode || null,
+            Name: normalizedRecord.name || null,
+            Type: normalizedRecord.type || null,
+            Subtype: normalizedRecord.subtype || null,
+            IsSubledger: normalizedRecord.isSubledger || false,
+            SubledgerType: normalizedRecord.subledgerType || null,
+            Active: normalizedRecord.active !== false, // Default to true if not specified
+            Description: normalizedRecord.description || null,
+            ParentCode: normalizedRecord.parentCode || null,
+        };
+    }
+    
+    /**
+     * Normalize field name to handle different naming conventions
+     * Maps external field names to internal field names
+     */
+    private normalizeFieldName(fieldName: string): string {
+        const fieldNameMap: Record<string, string> = {
+            'accountcode': 'accountCode',
+            'account code': 'accountCode',
+            'account_code': 'accountCode',
+            'accountCode': 'accountCode',
+            'AccountCode': 'accountCode',
+            'code': 'accountCode', // Legacy support
+            'Code': 'accountCode', // Legacy support
+            'name': 'name',
+            'Name': 'name',
+            'type': 'type',
+            'Type': 'type',
+            'subtype': 'subtype',
+            'Subtype': 'subtype',
+            'issubledger': 'isSubledger',
+            'isSubledger': 'isSubledger',
+            'IsSubledger': 'isSubledger',
+            'is_subledger': 'isSubledger',
+            'subledgertype': 'subledgerType',
+            'subledgerType': 'subledgerType',
+            'SubledgerType': 'subledgerType',
+            'subledger_type': 'subledgerType',
+            'active': 'active',
+            'Active': 'active',
+            'isactive': 'active',
+            'IsActive': 'active',
+            'is_active': 'active',
+            'description': 'description',
+            'Description': 'description',
+            'parentcode': 'parentCode',
+            'parentCode': 'parentCode',
+            'ParentCode': 'parentCode',
+            'parent_code': 'parentCode',
+            'parent': 'parentCode', // Legacy support
+            'Parent': 'parentCode', // Legacy support
+            'parentid': 'parentId',
+            'parentId': 'parentId',
+            'ParentId': 'parentId',
+            'parent_id': 'parentId',
+        };
+        
+        return fieldNameMap[fieldName] || fieldName.toLowerCase();
+    }
+    
+    /**
+     * Validate an import row for consistency and data integrity
+     * This is used before inserting or updating accounts
+     */
+    validateImportRow(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
+        const result = { valid: true, errors: [] as string[] };
+        
+        // Check required fields
+        if (!row.AccountCode) {
+            result.valid = false;
+            result.errors.push('Account code is required');
+            return result; // No point in continuing without an account code
+        }
+        
+        if (!row.Name) {
+            result.valid = false;
+            result.errors.push('Name is required');
+        }
+        
+        if (!row.Type) {
+            result.valid = false;
+            result.errors.push('Type is required');
+        } else {
+            // Validate account type
+            const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
+            if (!validTypes.includes(row.Type.toUpperCase())) {
+                result.valid = false;
+                result.errors.push(`Type must be one of: ${validTypes.join(', ')}`);
+            }
+        }
+        
+        // Check for duplicate account codes
+        if (existingAccounts.some(acc => acc.accountCode === row.AccountCode) || 
+            newAccounts.some(acc => acc.AccountCode === row.AccountCode)) {
+            result.valid = false;
+            result.errors.push('Duplicate account code');
+        }
+        
+        // If IsSubledger is true, SubledgerType is required
+        if (row.IsSubledger === true && !row.SubledgerType) {
+            result.valid = false;
+            result.errors.push('SubledgerType is required when IsSubledger is true');
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Specifically validate parent-child relationships
+     * This ensures that parent accounts exist before they are referenced
+     */
+    validateParentRelationship(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
+        const result = { valid: true, errors: [] as string[] };
+        
+        // Skip validation if no parent code is specified
+        if (!row.ParentCode) {
+            return result;
+        }
+        
+        // Check if the parent exists in existing accounts or in the new accounts being added
+        const parentExists = 
+            existingAccounts.some(acc => acc.accountCode === row.ParentCode) ||
+            newAccounts.some(acc => acc.AccountCode === row.ParentCode);
+        
+        if (!parentExists) {
+            result.valid = false;
+            result.errors.push(`Parent account with code ${row.ParentCode} not found`);
+        }
+        
+        // Check if the parent would create a circular reference
+        if (row.AccountCode === row.ParentCode) {
+            result.valid = false;
+            result.errors.push('Account cannot be its own parent');
+        }
+        
+        return result;
     }
 }
 

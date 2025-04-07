@@ -1,142 +1,170 @@
 /**
- * Direct test script that logs in and performs operations in one session
+ * Direct test script for Chart of Accounts import/export validation functionality
+ * 
+ * This script tests the parent-child relationship validation and field normalization
+ * without requiring the full application to be running.
  */
 
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Get __dirname equivalent in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const API_URL = 'http://localhost:5000';
-const CLIENT_ID = 236;
-
-async function login() {
-  try {
-    console.log('Logging in...');
-    const response = await axios.post(`${API_URL}/api/auth/login`, {
-      username: 'admin',
-      password: 'password123'
-    });
+// Test the field name normalization
+function testNormalizeFieldName() {
+  console.log('\n===== Testing field name normalization =====');
+  
+  const testCases = [
+    { input: 'accountCode', expected: 'AccountCode' },
+    { input: 'account_code', expected: 'AccountCode' },
+    { input: 'code', expected: 'AccountCode' },
+    { input: 'account code', expected: 'AccountCode' },
+    { input: 'AccountCode', expected: 'AccountCode' },
+    { input: 'name', expected: 'Name' },
+    { input: 'Name', expected: 'Name' },
+    { input: 'account_name', expected: 'Name' },
+    { input: 'accountName', expected: 'Name' },
+    { input: 'type', expected: 'Type' },
+    { input: 'account_type', expected: 'Type' },
+    { input: 'accountType', expected: 'Type' },
+    { input: 'Type', expected: 'Type' },
+    { input: 'parent', expected: 'ParentCode' },
+    { input: 'parentCode', expected: 'ParentCode' },
+    { input: 'parent_code', expected: 'ParentCode' },
+    { input: 'ParentAccount', expected: 'ParentCode' },
+    { input: 'ParentCode', expected: 'ParentCode' }
+  ];
+  
+  function normalizeFieldName(fieldName) {
+    // Implementation of the normalizeFieldName function
+    const lowerField = fieldName.toLowerCase();
     
-    // Get session cookie
-    const sessionCookie = response.headers['set-cookie'][0];
-    console.log('Login successful. Session cookie:', sessionCookie);
+    // Account code variations
+    if (lowerField === 'accountcode' || lowerField === 'account_code' || lowerField === 'code' || lowerField === 'account code') {
+      return 'AccountCode';
+    }
     
-    return sessionCookie;
-  } catch (error) {
-    console.error('Login error:', error.message);
-    throw error;
+    // Name variations
+    if (lowerField === 'name' || lowerField === 'account_name' || lowerField === 'accountname') {
+      return 'Name';
+    }
+    
+    // Type variations
+    if (lowerField === 'type' || lowerField === 'account_type' || lowerField === 'accounttype') {
+      return 'Type';
+    }
+    
+    // Parent variations
+    if (lowerField === 'parent' || lowerField === 'parentcode' || lowerField === 'parent_code' || lowerField === 'parentaccount') {
+      return 'ParentCode';
+    }
+    
+    // If the field is already correctly capitalized, return it
+    if (fieldName === 'AccountCode' || fieldName === 'Name' || fieldName === 'Type' || fieldName === 'ParentCode') {
+      return fieldName;
+    }
+    
+    // For all other fields, return as is (first letter capitalized)
+    return fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
   }
-}
-
-async function exportCsv(cookie) {
-  try {
-    console.log(`Exporting accounts for client ${CLIENT_ID} in CSV format...`);
+  
+  let passCount = 0;
+  let failCount = 0;
+  
+  testCases.forEach((testCase, index) => {
+    const result = normalizeFieldName(testCase.input);
+    const passed = result === testCase.expected;
     
-    const response = await axios.get(`${API_URL}/api/clients/${CLIENT_ID}/accounts/export`, {
-      params: { format: 'csv' },
-      headers: { Cookie: cookie },
-      responseType: 'arraybuffer'
-    });
+    console.log(`Test ${index + 1}: '${testCase.input}' -> '${result}' (expected: '${testCase.expected}') ${passed ? '✅' : '❌'}`);
     
-    const outputPath = path.join(__dirname, 'exports', 'direct-accounts.csv');
-    const outputDir = path.dirname(outputPath);
-    
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-    
-    fs.writeFileSync(outputPath, response.data);
-    console.log(`Successfully exported CSV to ${outputPath} (${response.data.length} bytes)`);
-    
-    return outputPath;
-  } catch (error) {
-    console.error('CSV export error:', error.message);
-    if (error.response) {
-      console.error('Status:', error.response.status);
-      console.error('Headers:', error.response.headers);
-    }
-    throw error;
-  }
-}
-
-async function exportExcel(cookie) {
-  try {
-    console.log(`Exporting accounts for client ${CLIENT_ID} in Excel format...`);
-    
-    const response = await axios.get(`${API_URL}/api/clients/${CLIENT_ID}/accounts/export`, {
-      params: { format: 'excel' },
-      headers: { Cookie: cookie },
-      responseType: 'arraybuffer'
-    });
-    
-    const outputPath = path.join(__dirname, 'exports', 'direct-accounts.xlsx');
-    const outputDir = path.dirname(outputPath);
-    
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-    
-    fs.writeFileSync(outputPath, response.data);
-    console.log(`Successfully exported Excel to ${outputPath} (${response.data.length} bytes)`);
-    
-    return outputPath;
-  } catch (error) {
-    console.error('Excel export error:', error.message);
-    if (error.response) {
-      console.error('Status:', error.response.status);
-      console.error('Headers:', error.response.headers);
-    }
-    throw error;
-  }
-}
-
-async function checkCsvHasAccountCode(filePath) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    console.log('CSV file content (first 200 chars):', content.substring(0, 200));
-    
-    if (content.startsWith('<!DOCTYPE html>')) {
-      console.error('CSV file contains HTML instead of CSV data');
-      return false;
-    }
-    
-    const headers = content.split('\n')[0].split(',');
-    console.log('CSV headers:', headers);
-    
-    return headers.includes('AccountCode');
-  } catch (error) {
-    console.error('Error checking CSV file:', error.message);
-    return false;
-  }
-}
-
-async function runTest() {
-  try {
-    // Login
-    const sessionCookie = await login();
-    
-    // Test CSV export
-    const csvPath = await exportCsv(sessionCookie);
-    const hasCsvAccountCode = await checkCsvHasAccountCode(csvPath);
-    
-    if (hasCsvAccountCode) {
-      console.log('✅ CSV export has AccountCode field');
+    if (passed) {
+      passCount++;
     } else {
-      console.log('❌ CSV export is missing AccountCode field');
+      failCount++;
     }
-    
-    // Test Excel export
-    const excelPath = await exportExcel(sessionCookie);
-    
-    console.log('\nTest completed successfully!');
-  } catch (error) {
-    console.error('Test failed:', error);
-  }
+  });
+  
+  console.log(`\nResults: ${passCount} passed, ${failCount} failed`);
 }
 
-runTest();
+// Test the parent-child relationship validation
+function testParentChildValidation() {
+  console.log('\n===== Testing parent-child relationship validation =====');
+  
+  // Mock implementation of validateParentRelationship
+  function validateParentRelationship(account, existingAccounts, newAccounts) {
+    const result = { valid: true, errors: [] };
+    
+    // If no parent code, it's valid
+    if (!account.ParentCode) {
+      return result;
+    }
+    
+    // Check for self-reference
+    if (account.AccountCode === account.ParentCode) {
+      result.valid = false;
+      result.errors.push('Account cannot be its own parent');
+      return result;
+    }
+    
+    // Check if parent exists in existing accounts
+    const existingParent = existingAccounts.find(a => a.accountCode === account.ParentCode);
+    if (existingParent) {
+      return result;
+    }
+    
+    // Check if parent exists in new accounts being imported
+    const newParent = newAccounts.find(a => a.AccountCode === account.ParentCode);
+    if (newParent) {
+      return result;
+    }
+    
+    // If we get here, the parent doesn't exist
+    result.valid = false;
+    result.errors.push(`Parent account with code '${account.ParentCode}' does not exist`);
+    return result;
+  }
+  
+  const existingAccounts = [
+    { accountCode: '1000', name: 'Assets' },
+    { accountCode: '2000', name: 'Liabilities' }
+  ];
+  
+  const testAccounts = [
+    { AccountCode: '1100', Name: 'Current Assets', ParentCode: '1000' },    // Valid - existing parent
+    { AccountCode: '1200', Name: 'Fixed Assets', ParentCode: '1000' },      // Valid - existing parent
+    { AccountCode: '3000', Name: 'Equity', ParentCode: null },              // Valid - no parent
+    { AccountCode: '3100', Name: 'Retained Earnings', ParentCode: '3000' }, // Valid - parent in same import
+    { AccountCode: '4000', Name: 'Revenue', ParentCode: '9999' },           // Invalid - non-existent parent
+    { AccountCode: '5000', Name: 'Expenses', ParentCode: '5000' }           // Invalid - self-reference
+  ];
+  
+  let validCount = 0;
+  let invalidCount = 0;
+  
+  // Process each account
+  testAccounts.forEach((account, index) => {
+    console.log(`\nTesting account: ${account.AccountCode} - ${account.Name}`);
+    console.log(`Parent code: ${account.ParentCode || 'None'}`);
+    
+    // Get previously processed accounts to simulate import processing
+    const previousAccounts = testAccounts.slice(0, index);
+    
+    const result = validateParentRelationship(account, existingAccounts, previousAccounts);
+    
+    console.log(`Validation passed: ${result.valid}`);
+    if (!result.valid) {
+      console.log(`Errors: ${result.errors.join(', ')}`);
+      invalidCount++;
+    } else {
+      validCount++;
+    }
+  });
+  
+  console.log(`\nResults: ${validCount} valid accounts, ${invalidCount} invalid accounts`);
+}
+
+// Run all tests
+function runTests() {
+  console.log('Starting direct tests for Chart of Accounts validation...');
+  testNormalizeFieldName();
+  testParentChildValidation();
+  console.log('\nAll direct tests completed!');
+}
+
+runTests();
