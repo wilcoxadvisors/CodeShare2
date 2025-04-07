@@ -38,19 +38,22 @@ function NewJournalEntry() {
   const { currentEntity } = useEntity();
   const [, setLocation] = useLocation();
 
-  // Query accounts from API
+  // Get client ID from current entity
+  const clientId = currentEntity?.clientId;
+
+  // Query accounts from API at client level (not entity level)
   const { data: accountsData, isLoading: accountsLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/accounts`] : ["no-entity-selected"],
-    enabled: !!currentEntity
+    queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ["no-client-selected"],
+    enabled: !!clientId,
   });
 
   // Query locations from API
   const { data: locationsData, isLoading: locationsLoading } = useQuery({
-    queryKey: currentEntity ? [`/api/entities/${currentEntity.id}/locations`] : ["no-entity-selected"],
-    enabled: !!currentEntity
+    queryKey: clientId ? [`/api/clients/${clientId}/locations`] : ["no-client-selected"],
+    enabled: !!clientId
   });
   
-  // Query entities from API
+  // Query entities from API - filtered by client
   const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
     queryKey: [`/api/entities`],
     enabled: !!currentEntity
