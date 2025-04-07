@@ -306,6 +306,24 @@ export function registerAccountRoutes(app: Express) {
       // Process the imported file - pass the filename to determine type
       const result = await storage.accounts.importCoaForClient(clientId, req.file.buffer, fileName, selections);
       
+      // Check if import was successful
+      if (!result.success) {
+        // Return error response when the import fails but we have detailed information
+        return res.status(400).json({
+          status: "error",
+          message: result.message || "Import failed",
+          errors: result.errors || [],
+          warnings: result.warnings || [],
+          count: result.count || 0,
+          added: result.added || 0,
+          updated: result.updated || 0,
+          unchanged: result.unchanged || 0,
+          skipped: result.skipped || 0,
+          inactive: result.inactive || 0,
+          deleted: result.deleted || 0
+        });
+      }
+      
       // Return success response with detailed import stats
       const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive, ${result.deleted} deleted.`;
       

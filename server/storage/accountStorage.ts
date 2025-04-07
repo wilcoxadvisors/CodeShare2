@@ -675,6 +675,15 @@ export class AccountStorage implements IAccountStorage {
 
     async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult> {
         try {
+            // Verify client exists
+            const clientCheck = await db.query.clients.findFirst({
+                where: eq(clients.id, clientId)
+            });
+
+            if (!clientCheck) {
+                throw new ApiError(404, `Client with ID ${clientId} not found`);
+            }
+                
             // Determine file type based on file extension
             const fileType = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
             console.log(`Importing Chart of Accounts for client ${clientId} from ${fileType} file: ${fileName}`);
@@ -697,15 +706,6 @@ export class AccountStorage implements IAccountStorage {
                 rawImportData = XLSX.utils.sheet_to_json(worksheet);
                 // Use our new parseExcelImport method for consistent field naming
                 parsedImportData = this.parseExcelImport(rawImportData);
-            }
-
-            // Verify client exists
-            const clientExists = await db.query.clients.findFirst({
-                where: eq(clients.id, clientId)
-            });
-
-            if (!clientExists) {
-                throw new ApiError(404, `Client with ID ${clientId} not found`);
             }
 
             // Get existing accounts for this client
@@ -1051,12 +1051,46 @@ export class AccountStorage implements IAccountStorage {
 
             // Execute the db operations inside a transaction
             await db.transaction(async (tx) => {
-                // Insert new accounts
+                // Insert new accounts with better error handling
                 for (const accountData of accountsToCreate) {
-                    const [inserted] = await tx.insert(accounts).values(accountData).returning();
-                    if (inserted) {
-                        existingAccountsByCode.set(inserted.accountCode, inserted);
-                        results.created++;
+                    try {
+                        // First check if this accountCode already exists for this client
+                        // This helps us provide a better error message than the DB constraint error
+                        const existingAccount = await tx.select()
+                            .from(accounts)
+                            .where(
+                                and(
+                                    eq(accounts.clientId, clientId),
+                                    eq(accounts.accountCode, accountData.accountCode)
+                                )
+                            )
+                            .limit(1);
+                        
+                        if (existingAccount && existingAccount.length > 0) {
+                            // This is a duplicate account code - add as a warning and skip
+                            results.warnings.push(`Account code ${accountData.accountCode} already exists for this client - skipping creation`);
+                            results.skipped++;
+                            continue;
+                        }
+                        
+                        // If no duplicate, insert the new account
+                        const [inserted] = await tx.insert(accounts).values(accountData).returning();
+                        if (inserted) {
+                            existingAccountsByCode.set(inserted.accountCode, inserted);
+                            results.created++;
+                        }
+                    } catch (error) {
+                        // Handle constraint violation errors specially
+                        console.error(`Error creating account ${accountData.accountCode}:`, error);
+                        if (error instanceof Error && error.message.includes('duplicate key') && error.message.includes('account_code_client_unique')) {
+                            // This is a duplicate account code - add as a warning and skip
+                            results.warnings.push(`Account code ${accountData.accountCode} already exists for this client - skipping creation`);
+                            results.skipped++;
+                        } else {
+                            // For other errors, add to the error list and continue with next account
+                            results.errors.push(`Error creating account ${accountData.accountCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            results.skipped++;
+                        }
                     }
                 }
 
@@ -1145,6 +1179,28 @@ export class AccountStorage implements IAccountStorage {
                 accountIds: [] // Not tracked in this implementation
             };
         } catch (e) {
+            // Detect specific constraint violation error for account_code_client_unique
+            if (e instanceof Error) {
+                if (e.message.includes('duplicate key') && e.message.includes('account_code_client_unique')) {
+                    // Return a more user-friendly error with specific instructions
+                    return {
+                        success: false,
+                        message: "Import failed: One or more accounts have duplicate account codes. Please make sure all account codes are unique within this client.",
+                        errors: ["Duplicate account code detected. Each account code must be unique for this client."],
+                        warnings: ["Check your import file for duplicate account codes and ensure they're unique."],
+                        count: 0,
+                        added: 0,
+                        updated: 0,
+                        unchanged: 0,
+                        skipped: 0, 
+                        failed: 1,
+                        inactive: 0,
+                        deleted: 0
+                    };
+                }
+            }
+            
+            // Handle other database errors
             throw handleDbError(e, `importing Chart of Accounts for client ${clientId}`);
         }
     }
@@ -1333,11 +1389,19 @@ export class AccountStorage implements IAccountStorage {
             }
         }
         
-        // Check for duplicate account codes
-        if (existingAccounts.some(acc => acc.accountCode === row.AccountCode) || 
-            newAccounts.some(acc => acc.AccountCode === row.AccountCode)) {
+        // ENHANCED: More aggressive duplicate checking
+        // Check for duplicate account codes in existing accounts
+        const existingDuplicate = existingAccounts.find(acc => acc.accountCode === row.AccountCode);
+        if (existingDuplicate) {
             result.valid = false;
-            result.errors.push('Duplicate account code');
+            result.errors.push(`Duplicate account code: '${row.AccountCode}' already exists in the database`);
+        }
+        
+        // Check for duplicate account codes in the import file
+        const importDuplicate = newAccounts.find(acc => acc.AccountCode === row.AccountCode);
+        if (importDuplicate) {
+            result.valid = false;
+            result.errors.push(`Duplicate account code: '${row.AccountCode}' appears multiple times in the import file`);
         }
         
         // If IsSubledger is true, SubledgerType is required
