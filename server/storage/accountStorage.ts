@@ -590,7 +590,8 @@ export class AccountStorage implements IAccountStorage {
     }
 
     async deleteAccount(accountId: number, clientId: number): Promise<boolean> {
-        console.log(`Processing delete request for account ${accountId} for client ${clientId}`);
+        // Implementation copied from DatabaseStorage in original storage.ts
+        console.log(`Soft deleting account ${accountId} for client ${clientId}`);
         try {
             // Check if account exists and is not already inactive
             const existingAccount = await this.getAccountById(accountId, clientId);
@@ -614,23 +615,16 @@ export class AccountStorage implements IAccountStorage {
 
             // Check if account is used in transactions
             const hasTransactions = await this.accountHasTransactions(accountId);
-            
             if (hasTransactions) {
-                // If account has transactions, perform soft delete by marking it inactive
-                console.log(`Account ${accountId} has transactions - performing soft delete`);
-                await db.update(accounts)
-                    .set({ active: false })
-                    .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId)));
-                
-                return true;
-            } else {
-                // If account has no transactions, perform hard delete
-                console.log(`Account ${accountId} has no transactions - performing hard delete`);
-                await db.delete(accounts)
-                    .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId)));
-                
-                return true;
+                throw new ApiError(400, `Cannot delete account ${accountId} because it is used in transactions. Mark it as inactive instead.`);
             }
+
+            // Soft delete the account by marking it inactive
+            await db.update(accounts)
+                .set({ active: false })
+                .where(and(eq(accounts.id, accountId), eq(accounts.clientId, clientId)));
+
+            return true;
         } catch (e) {
             throw handleDbError(e, `deleting account ${accountId} for client ${clientId}`);
         }
