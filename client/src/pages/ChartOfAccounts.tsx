@@ -1743,14 +1743,63 @@ function ChartOfAccounts() {
       onSuccess: (result) => {
         console.log("EXPLICIT VERIFICATION - Import successful - Backend response:", result);
         
-        // Detailed success message showing exactly what was processed
-        const counts = result.counts || { new: 0, updated: 0, reactivated: 0, missing: 0 };
-        const successMessage = `Successfully imported accounts: ${counts.new} new, ${counts.updated} updated, ${counts.reactivated || 0} reactivated, ${counts.missing} processed missing accounts.`;
+        // Extract all counts from the backend response for a more detailed success message
+        const added = result.added || 0;
+        const updated = result.updated || 0;
+        const reactivated = result.reactivated || 0;
+        const inactive = result.inactive || 0;
+        const deleted = result.deleted || 0;
+        const skipped = result.skipped || 0;
         
+        // Build a more informative success message that shows exactly what happened
+        let successParts = [];
+        if (added > 0) successParts.push(`${added} new account${added > 1 ? 's' : ''} added`);
+        if (updated > 0) successParts.push(`${updated} account${updated > 1 ? 's' : ''} updated`);
+        if (reactivated > 0) successParts.push(`${reactivated} account${reactivated > 1 ? 's' : ''} reactivated`);
+        if (inactive > 0) successParts.push(`${inactive} account${inactive > 1 ? 's' : ''} marked inactive`);
+        if (deleted > 0) successParts.push(`${deleted} account${deleted > 1 ? 's' : ''} deleted`);
+        
+        // Convert the array to a readable message with proper punctuation
+        let successMessage = '';
+        if (successParts.length === 0) {
+          successMessage = 'Import completed successfully. No accounts were modified.';
+        } else if (successParts.length === 1) {
+          successMessage = `Import completed successfully: ${successParts[0]}.`;
+        } else {
+          const lastPart = successParts.pop();
+          successMessage = `Import completed successfully: ${successParts.join(', ')} and ${lastPart}.`;
+        }
+        
+        // Add warnings if available
+        if (result.warnings && result.warnings.length > 0) {
+          // Show the first warning directly in the success message
+          successMessage += `\n\nWarning: ${result.warnings[0]}`;
+          
+          // If there are multiple warnings, add a count
+          if (result.warnings.length > 1) {
+            successMessage += ` (${result.warnings.length - 1} more warning${result.warnings.length > 2 ? 's' : ''})`;
+          }
+        }
+        
+        // Show the success toast with the detailed message
         toast({
-          title: "Accounts imported",
+          title: "Chart of Accounts Import",
           description: successMessage,
+          variant: "default",
         });
+        
+        // If there are multiple warnings, show them in a separate toast after a delay
+        if (result.warnings && result.warnings.length > 1) {
+          setTimeout(() => {
+            toast({
+              title: "Import Warnings",
+              description: result.warnings.slice(0, 3).join('\n\n') + 
+                (result.warnings.length > 3 ? `\n\n(${result.warnings.length - 3} more warnings)` : ''),
+              variant: "default",
+              duration: 7000, // Show warnings for longer
+            });
+          }, 500);
+        }
         
         // Close dialogs and reset import state
         setShowImportDialog(false);
@@ -1787,6 +1836,7 @@ function ChartOfAccounts() {
         // Parse the API error response for more detailed information
         let errorMessage = error instanceof Error ? error.message : 'Unknown error';
         let errorDetails = '';
+        let errorCategories: { [key: string]: string[] } = {};
         
         try {
           // Try to extract error details from the API response
@@ -1800,38 +1850,88 @@ function ChartOfAccounts() {
             
             // Get more detailed error information if available
             if (responseData.errors && responseData.errors.length > 0) {
+              // Store the raw error details
               errorDetails = responseData.errors.join('\n');
+              
+              // Categorize errors for better presentation
+              errorCategories = responseData.errors.reduce((acc: { [key: string]: string[] }, err: string) => {
+                if (err.toLowerCase().includes('parent') || err.toLowerCase().includes('circular')) {
+                  acc['Parent Relationship Issues'] = [...(acc['Parent Relationship Issues'] || []), err];
+                } else if (err.toLowerCase().includes('duplicate') || err.toLowerCase().includes('already exists')) {
+                  acc['Duplicate Account Issues'] = [...(acc['Duplicate Account Issues'] || []), err];
+                } else if (err.toLowerCase().includes('transaction')) {
+                  acc['Transaction Constraints'] = [...(acc['Transaction Constraints'] || []), err];
+                } else if (err.toLowerCase().includes('type') || err.toLowerCase().includes('required field')) {
+                  acc['Data Validation Issues'] = [...(acc['Data Validation Issues'] || []), err];
+                } else {
+                  acc['Other Issues'] = [...(acc['Other Issues'] || []), err];
+                }
+                return acc;
+              }, {});
             }
             
             console.log("EXPLICIT VERIFICATION - Detailed error data:", responseData);
+            console.log("EXPLICIT VERIFICATION - Categorized errors:", errorCategories);
           }
         } catch (parseError) {
           console.error("Error parsing error response:", parseError);
         }
+        
+        // Create a more user-friendly error message
+        let userFriendlyMessage = errorMessage;
         
         // If the error message indicates payload validation issues (which could be due to unchecked accounts)
         if (errorMessage.includes('validation') || 
             errorMessage.includes('selected') || 
             errorMessage.includes('checked') || 
             errorMessage.includes('approve')) {
-          errorMessage += ' Please ensure you have checked the boxes next to accounts you want to import.';
+          userFriendlyMessage = 'No accounts were selected for import. Please check the boxes next to the accounts you want to import, modify, or process.';
+        } else if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+          userFriendlyMessage = 'Duplicate account codes detected. Please ensure all account codes are unique.';
+        } else if (errorMessage.includes('parent') || errorMessage.includes('circular')) {
+          userFriendlyMessage = 'There are issues with parent-child relationships in your chart of accounts. Please check for circular references or invalid parent accounts.';
+        } else if (errorMessage.includes('transaction') || errorMessage.includes('cannot change type')) {
+          userFriendlyMessage = 'Cannot modify accounts with existing transactions. Please review the details for more information.';
         }
         
+        // Display the main error toast
         toast({
-          title: "Import failed",
-          description: errorMessage,
+          title: "Chart of Accounts Import Failed",
+          description: userFriendlyMessage,
           variant: "destructive",
+          duration: 5000,
         });
         
-        // If we have additional error details, show them in a separate toast
-        if (errorDetails) {
+        // Show categorized error details in separate toasts
+        const categoryKeys = Object.keys(errorCategories);
+        if (categoryKeys.length > 0) {
+          // Show errors in categories with a slight delay between each
+          categoryKeys.forEach((category, index) => {
+            const errors = errorCategories[category];
+            if (errors && errors.length > 0) {
+              setTimeout(() => {
+                toast({
+                  title: category,
+                  description: errors.slice(0, 2).join('\n\n') + 
+                    (errors.length > 2 ? `\n\n(${errors.length - 2} more similar issues)` : ''),
+                  variant: "destructive",
+                  duration: 7000,
+                });
+              }, 600 * (index + 1)); // Stagger the error toasts
+            }
+          });
+        } 
+        // If we don't have categorized errors but have raw error details, show them
+        else if (errorDetails) {
           setTimeout(() => {
             toast({
-              title: "Error details",
-              description: errorDetails,
+              title: "Error Details",
+              description: errorDetails.length > 300 ? 
+                errorDetails.substring(0, 300) + '...' : errorDetails,
               variant: "destructive",
+              duration: 7000,
             });
-          }, 500); // Slight delay to ensure toasts appear in sequence
+          }, 600);
         }
       }
     });
