@@ -1870,13 +1870,35 @@ function ChartOfAccounts() {
         );
       }
     },
-    { header: "Type", accessor: "type", type: "text" },
-    { header: "Subtype", accessor: "subtype", type: "text" },
+    { 
+      header: "Type", 
+      accessor: "type", 
+      type: "text",
+      render: (row: Record<string, any>) => (
+        <span className={row.active ? "" : "text-gray-400 italic"}>
+          {row.type}
+        </span>
+      )
+    },
+    { 
+      header: "Subtype", 
+      accessor: "subtype", 
+      type: "text",
+      render: (row: Record<string, any>) => (
+        <span className={row.active ? "" : "text-gray-400 italic"}>
+          {row.subtype || ""}
+        </span>
+      )
+    },
     { 
       header: "Subledger", 
       accessor: "isSubledger", 
       type: "boolean",
-      render: (row: Record<string, any>) => row.isSubledger ? "Yes" : "No"
+      render: (row: Record<string, any>) => (
+        <span className={row.active ? "" : "text-gray-400 italic"}>
+          {row.isSubledger ? "Yes" : "No"}
+        </span>
+      )
     },
     { 
       header: "Status", 

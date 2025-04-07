@@ -479,9 +479,10 @@ export class AccountStorage implements IAccountStorage {
         // Implementation copied from DatabaseStorage in original storage.ts
         console.log(`Getting accounts tree for client ${clientId}`);
         try {
+            // Modified to include inactive accounts - they will be displayed with a greyed-out appearance
             const allAccounts = await db.select()
                                         .from(accounts)
-                                        .where(and(eq(accounts.clientId, clientId), eq(accounts.active, true)))
+                                        .where(eq(accounts.clientId, clientId))
                                         .orderBy(accounts.accountCode);
 
             const accountMap: { [key: number]: AccountTreeNode } = {}; // Use AccountTreeNode
