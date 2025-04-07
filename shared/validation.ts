@@ -77,6 +77,8 @@ export const journalEntryLineSchema = z.object({
     z.number({ invalid_type_error: "Amount must be a number" }).positive({ message: "Amount must be positive" })
   ),
   type: z.enum(['debit', 'credit'], { required_error: "Line type ('debit' or 'credit') is required" }),
+  // Entity code for intercompany transactions
+  entityCode: z.string().min(1, { message: "Entity code is required for intercompany support" }),
   description: optionalString.nullable(),
   // Include fields moved from Account schema
   fsliBucket: optionalString.nullable(),
@@ -105,7 +107,9 @@ export const createJournalEntrySchema = z.object({
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
   locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
-}).refine(data => {
+})
+// First refinement: Check overall balance (debits = credits)
+.refine(data => {
   // Additional cross-field validation for balance
   let totalDebits = 0;
   let totalCredits = 0;
@@ -122,7 +126,42 @@ export const createJournalEntrySchema = z.object({
   const tolerance = 0.0001; // Adjust as needed
   return Math.abs(totalDebits - totalCredits) < tolerance;
 }, {
-  message: "Debits must equal credits",
+  message: "Overall debits must equal credits",
+  path: ["lines"],
+})
+// Second refinement: Check balance within each entity
+.refine(data => {
+  // Group lines by entity code
+  const entities: Record<string, { debits: number, credits: number }> = {};
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  // Calculate totals per entity
+  lines.forEach((line: any) => {
+    const entityCode = line?.entityCode || '';
+    const amount = line?.amount || 0;
+    
+    if (!entities[entityCode]) {
+      entities[entityCode] = { debits: 0, credits: 0 };
+    }
+    
+    if (line?.type === 'debit') {
+      entities[entityCode].debits += amount;
+    } else if (line?.type === 'credit') {
+      entities[entityCode].credits += amount;
+    }
+  });
+  
+  // Check if each entity is balanced
+  const tolerance = 0.0001;
+  const unbalancedEntities = Object.entries(entities)
+    .filter(([, totals]) => Math.abs(totals.debits - totals.credits) >= tolerance)
+    .map(([entityCode]) => entityCode);
+  
+  return unbalancedEntities.length === 0;
+}, {
+  message: "Each entity's debits must equal credits for intercompany transactions",
   path: ["lines"],
 });
 
@@ -145,7 +184,9 @@ export const updateJournalEntrySchema = z.object({
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry update must include at least one line"),
-}).refine(data => {
+})
+// First refinement: Check overall balance (debits = credits)
+.refine(data => {
   // Also validate balance for updates
   let totalDebits = 0;
   let totalCredits = 0;
@@ -162,7 +203,42 @@ export const updateJournalEntrySchema = z.object({
   const tolerance = 0.0001;
   return Math.abs(totalDebits - totalCredits) < tolerance;
 }, {
-  message: "Debits must equal credits in update",
+  message: "Overall debits must equal credits in update",
+  path: ["lines"],
+})
+// Second refinement: Check balance within each entity
+.refine(data => {
+  // Group lines by entity code
+  const entities: Record<string, { debits: number, credits: number }> = {};
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  // Calculate totals per entity
+  lines.forEach((line: any) => {
+    const entityCode = line?.entityCode || '';
+    const amount = line?.amount || 0;
+    
+    if (!entities[entityCode]) {
+      entities[entityCode] = { debits: 0, credits: 0 };
+    }
+    
+    if (line?.type === 'debit') {
+      entities[entityCode].debits += amount;
+    } else if (line?.type === 'credit') {
+      entities[entityCode].credits += amount;
+    }
+  });
+  
+  // Check if each entity is balanced
+  const tolerance = 0.0001;
+  const unbalancedEntities = Object.entries(entities)
+    .filter(([, totals]) => Math.abs(totals.debits - totals.credits) >= tolerance)
+    .map(([entityCode]) => entityCode);
+  
+  return unbalancedEntities.length === 0;
+}, {
+  message: "Each entity's debits must equal credits for intercompany transactions",
   path: ["lines"],
 });
 
@@ -201,7 +277,9 @@ export const batchJournalEntrySchema = z.array(
     entityId: z.number().int().positive({ message: "Entity ID is required" }),
     locationId: z.number().int().positive().optional().nullable(),
     lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
-  }).refine(data => {
+  })
+  // First refinement: Check overall balance (debits = credits)
+  .refine(data => {
     // Additional cross-field validation for balance
     let totalDebits = 0;
     let totalCredits = 0;
@@ -218,7 +296,42 @@ export const batchJournalEntrySchema = z.array(
     const tolerance = 0.0001; // Adjust as needed
     return Math.abs(totalDebits - totalCredits) < tolerance;
   }, {
-    message: "Debits must equal credits",
+    message: "Overall debits must equal credits",
+    path: ["lines"],
+  })
+  // Second refinement: Check balance within each entity
+  .refine(data => {
+    // Group lines by entity code
+    const entities: Record<string, { debits: number, credits: number }> = {};
+    
+    // Ensure lines is treated as an array
+    const lines = Array.isArray(data.lines) ? data.lines : [];
+    
+    // Calculate totals per entity
+    lines.forEach((line: any) => {
+      const entityCode = line?.entityCode || '';
+      const amount = line?.amount || 0;
+      
+      if (!entities[entityCode]) {
+        entities[entityCode] = { debits: 0, credits: 0 };
+      }
+      
+      if (line?.type === 'debit') {
+        entities[entityCode].debits += amount;
+      } else if (line?.type === 'credit') {
+        entities[entityCode].credits += amount;
+      }
+    });
+    
+    // Check if each entity is balanced
+    const tolerance = 0.0001;
+    const unbalancedEntities = Object.entries(entities)
+      .filter(([, totals]) => Math.abs(totals.debits - totals.credits) >= tolerance)
+      .map(([entityCode]) => entityCode);
+    
+    return unbalancedEntities.length === 0;
+  }, {
+    message: "Each entity's debits must equal credits for intercompany transactions",
     path: ["lines"],
   })
 ).min(1, "At least one journal entry is required");

@@ -91,6 +91,8 @@ export const enhancedJournalEntrySchema = z.object({
 export const enhancedJournalEntryLineSchema = z.object({
   journalEntryId: z.number(),
   accountId: z.number(),
+  // Entity code field for intercompany support
+  entityCode: z.string().min(1, "Entity code is required for intercompany transactions"),
   description: z.string().optional().nullable(),
   debit: z.union([z.string(), z.number()]).transform(val => val.toString()),
   credit: z.union([z.string(), z.number()]).transform(val => val.toString()),
@@ -109,6 +111,8 @@ export const batchUploadSchema = z.object({
       lines: z.array(
         z.object({
           accountId: z.number().int().positive(),
+          // Entity code field for intercompany support
+          entityCode: z.string().min(1, "Entity code is required"),
           description: z.string().optional(),
           debit: z.string(),
           credit: z.string()

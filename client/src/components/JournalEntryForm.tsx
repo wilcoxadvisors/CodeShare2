@@ -51,6 +51,7 @@ interface JournalEntryFormProps {
 interface JournalLine {
   id?: number;
   accountId: string;
+  entityCode: string; // Added for intercompany support
   description: string;
   debit: string;
   credit: string;
@@ -67,6 +68,7 @@ const FormSchema = z.object({
   reversalDate: z.string().optional(),
   lines: z.array(z.object({
     accountId: z.string().min(1, "Account is required"),
+    entityCode: z.string().min(1, "Entity code is required for intercompany support"),
     description: z.string().optional(),
     debit: z.string(),
     credit: z.string(),
@@ -89,6 +91,20 @@ const FormSchema = z.object({
   }, {
     message: "Total debits must equal total credits"
   })
+  .refine(lines => {
+    // Check if debits equal credits for each entity code (intercompany validation)
+    const entityCodesArray = lines.map(line => line.entityCode);
+    const uniqueEntityCodes = entityCodesArray.filter((code, index) => entityCodesArray.indexOf(code) === index);
+    
+    return uniqueEntityCodes.every(entityCode => {
+      const entityLines = lines.filter(line => line.entityCode === entityCode);
+      const entityDebit = entityLines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+      const entityCredit = entityLines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+      return Math.abs(entityDebit - entityCredit) < 0.001;
+    });
+  }, {
+    message: "Debits must equal credits for each entity (intercompany balancing)"
+  })
 });
 
 function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
@@ -110,8 +126,8 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
   
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: '', description: '', debit: '', credit: '', locationId: '' },
-      { accountId: '', description: '', debit: '', credit: '', locationId: '' }
+      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' },
+      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' }
     ]
   );
   
@@ -122,6 +138,31 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
   const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
   const difference = Math.abs(totalDebit - totalCredit);
   const isBalanced = difference < 0.001;
+  
+  // Calculate entity balances for intercompany validation
+  const getEntityBalances = () => {
+    // Get unique entity codes without using Set
+    const entityCodesArray = lines.map(line => line.entityCode);
+    const uniqueEntityCodes = entityCodesArray.filter((code, index) => entityCodesArray.indexOf(code) === index);
+    
+    return uniqueEntityCodes.map(code => {
+      const entityLines = lines.filter(line => line.entityCode === code);
+      const entityDebit = entityLines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+      const entityCredit = entityLines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+      const entityDifference = Math.abs(entityDebit - entityCredit);
+      const entityBalanced = entityDifference < 0.001;
+      
+      return {
+        entityCode: code,
+        debit: entityDebit,
+        credit: entityCredit,
+        difference: entityDifference,
+        balanced: entityBalanced
+      };
+    });
+  };
+  
+  const entityBalances = getEntityBalances();
   
   function generateReference() {
     const date = new Date();
@@ -266,6 +307,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
     // Format data for submission
     const formattedLines = validLines.map(line => ({
       accountId: parseInt(line.accountId),
+      entityCode: line.entityCode,
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
@@ -329,7 +371,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: '', description: '', debit: '', credit: '', locationId: '' }]);
+    setLines([...lines, { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' }]);
   };
   
   const removeLine = (index: number) => {
@@ -477,6 +519,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
           <thead className="bg-gray-50">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entity Code</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
@@ -509,6 +552,18 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
                   </Select>
                   {fieldErrors[`line_${index}_accountId`] && (
                     <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_accountId`]}</p>
+                  )}
+                </td>
+                
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    value={line.entityCode}
+                    onChange={(e) => handleLineChange(index, 'entityCode', e.target.value)}
+                    placeholder="Entity Code"
+                    className={fieldErrors[`line_${index}_entityCode`] ? 'border-red-500' : ''}
+                  />
+                  {fieldErrors[`line_${index}_entityCode`] && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_entityCode`]}</p>
                   )}
                 </td>
                 
@@ -589,7 +644,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
           
           <tfoot>
             <tr>
-              <td colSpan={5} className="px-6 py-4">
+              <td colSpan={6} className="px-6 py-4">
                 <Button 
                   type="button" 
                   variant="outline" 
@@ -603,7 +658,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
             </tr>
             
             <tr className="bg-gray-50">
-              <td colSpan={2} className="px-6 py-4 text-right text-sm font-medium text-gray-900">Totals:</td>
+              <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-900">Totals:</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
@@ -614,12 +669,39 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
             </tr>
             
             <tr className="bg-gray-50">
-              <td colSpan={2} className="px-6 py-4 text-right text-sm font-medium text-gray-900">Difference:</td>
+              <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-900">Difference:</td>
               <td colSpan={2} className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
                 {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
               <td className="px-6 py-4"></td>
             </tr>
+            
+            {/* Entity Balance Summary Section - Intercompany Validation */}
+            {entityBalances.length > 1 && (
+              <>
+                <tr className="bg-gray-100">
+                  <td colSpan={6} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Entity Balance Summary (Intercompany)
+                  </td>
+                </tr>
+                {entityBalances.map((balance) => (
+                  <tr key={balance.entityCode} className="bg-gray-50">
+                    <td colSpan={2} className="px-6 py-2 text-right text-xs font-medium text-gray-900">
+                      Entity {balance.entityCode}:
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      DR: {balance.debit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      CR: {balance.credit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td colSpan={2} className={`px-6 py-2 whitespace-nowrap text-xs font-medium ${balance.balanced ? 'text-green-600' : 'text-red-600'}`}>
+                      {balance.balanced ? 'Balanced' : `Difference: ${balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </td>
+                  </tr>
+                ))}
+              </>
+            )}
           </tfoot>
         </table>
       </div>
