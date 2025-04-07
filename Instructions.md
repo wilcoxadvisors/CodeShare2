@@ -133,7 +133,11 @@ Note:
     * ✅ Backend Hierarchy Implementation
     * ✅ Single Header Context Selector
     * ✅ Frontend Hierarchy UI (Display & Add/Edit Forms)
-    * 🔄 Explicitly fix and verify CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
+    * ✅ Explicitly fixed and verified CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
+        * ✅ Fixed account selection detection for new, modified, and missing accounts
+        * ✅ Added case sensitivity and whitespace validation checking during import
+        * ✅ Fixed parent relationship validation with inactive parent detection
+        * ✅ Improved toast notifications with categorized success/error messages
     * 🔄 Finalize UI/UX enhancements and document edge-case validations
     * 🔄 Ensure consistency and verify hierarchical CoA across multiple entities
     * ✅ Refactored Account storage logic to `server/storage/accountStorage.ts`.
