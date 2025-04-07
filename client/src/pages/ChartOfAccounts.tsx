@@ -226,14 +226,19 @@ function ChartOfAccounts() {
   };
   
   // Function to flatten the hierarchical tree into a flat array with depth information
+  // Modified to always include inactive accounts regardless of expand/collapse state
   const flattenAccountTree = (nodes: AccountTreeNode[], depth = 0, result: Array<AccountTreeNode & { depth: number }> = []): Array<AccountTreeNode & { depth: number }> => {
     for (const node of nodes) {
       // Add current node with its depth
       result.push({ ...node, depth });
       
-      // If node is expanded and has children, recursively add them with increased depth
-      if (expandedNodes[node.id] && node.children && node.children.length > 0) {
-        flattenAccountTree(node.children, depth + 1, result);
+      // Check if node has children
+      if (node.children && node.children.length > 0) {
+        // If node is expanded OR we're processing inactive accounts, recursively add children
+        // This ensures inactive accounts stay visible regardless of expand/collapse operations
+        if (expandedNodes[node.id] || !node.active) {
+          flattenAccountTree(node.children, depth + 1, result);
+        }
       }
     }
     return result;
@@ -363,25 +368,10 @@ function ChartOfAccounts() {
     setExpandedNodes(expandAll);
   };
   
-  // Function to collapse all nodes - modified to collapse only root nodes
+  // Function to collapse all nodes at once
   const collapseAllNodes = () => {
-    // Get only the root level nodes
-    const rootNodes = accountTreeData.map(node => node.id);
-    
-    // Create an empty expanded nodes object with the same type as expandedNodes
-    const newExpandedNodes: Record<string, boolean> = {};
-    
-    // Set all non-root nodes to collapsed
-    // We specifically leave expanded nodes that aren't in the rootNodes array
-    Object.keys(expandedNodes).forEach(nodeId => {
-      const id = parseInt(nodeId);
-      if (!rootNodes.includes(id)) {
-        newExpandedNodes[nodeId] = expandedNodes[nodeId];
-      }
-    });
-    
-    // Update the expanded nodes state
-    setExpandedNodes(newExpandedNodes);
+    // Simply reset all expanded nodes to collapse everything at once
+    setExpandedNodes({});
     
     // Scroll to top of the account list to ensure UI consistency
     const accountsContainer = document.querySelector('.overflow-x-auto');
@@ -2158,7 +2148,7 @@ function ChartOfAccounts() {
                 onCheckedChange={setShowInactiveAccounts}
               />
               <Label htmlFor="show-inactive" className="text-sm cursor-pointer">
-                {inactiveAccounts.length > 0 ? `Show Inactive (${inactiveAccounts.length})` : "Show Inactive"}
+                Show Inactive
               </Label>
             </div>
             <Button 
