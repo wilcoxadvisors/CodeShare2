@@ -917,6 +917,11 @@ export class AccountStorage implements IAccountStorage {
                     const description = this.getCaseInsensitiveValue(row, 'description') || '';
                     const isActive = this.parseBooleanFlag(this.getCaseInsensitiveValue(row, 'isActive'), true);
                     
+                    // Get subledger information
+                    const isSubledger = this.parseIsSubledger(row);
+                    const subledgerType = this.getSubledgerType(row);
+                    const subtype = this.getCaseInsensitiveValue(row, 'subtype') || null;
+                    
                     // Check if account exists
                     const existingAccount = existingAccountsByCode.get(accountCode);
                     
@@ -939,6 +944,9 @@ export class AccountStorage implements IAccountStorage {
                                 type,
                                 description,
                                 active: isActive,
+                                isSubledger,
+                                subledgerType,
+                                subtype,
                                 // Note: We don't update parentId here; it will be done in the second pass
                             }
                         });
@@ -951,9 +959,9 @@ export class AccountStorage implements IAccountStorage {
                             type,
                             description,
                             active: isActive,
-                            isSubledger: false, // Default value
-                            subledgerType: null, // Default value
-                            subtype: null, // Default value
+                            isSubledger,
+                            subledgerType,
+                            subtype,
                             parentId: null // Set in second pass
                         });
                     }
