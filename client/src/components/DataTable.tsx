@@ -20,9 +20,10 @@ interface DataTableProps {
   columns: Column[];
   data: any[];
   isLoading?: boolean;
+  pageSize?: number;
 }
 
-function DataTable({ columns, data, isLoading = false }: DataTableProps) {
+function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTableProps) {
   // VERIFICATION STEP 3: Log DataTable component data
   console.log("VERIFICATION STEP 3: DataTable Component", {
     columnsCount: columns.length,
@@ -33,7 +34,7 @@ function DataTable({ columns, data, isLoading = false }: DataTableProps) {
   });
   
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(pageSize);
   
   // Calculate pagination
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -143,12 +144,31 @@ function DataTable({ columns, data, isLoading = false }: DataTableProps) {
           </div>
           
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
+            <div className="flex items-center gap-4">
               <p className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
                 <span className="font-medium">{Math.min(startIndex + itemsPerPage, data.length)}</span> of{' '}
                 <span className="font-medium">{data.length}</span> results
               </p>
+              
+              <div className="flex items-center gap-2">
+                <label htmlFor="perPage" className="text-sm text-gray-700">Per page:</label>
+                <select
+                  id="perPage"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    const newPageSize = parseInt(e.target.value);
+                    setItemsPerPage(newPageSize);
+                    setCurrentPage(1); // Reset to page 1 when changing page size
+                  }}
+                  className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
             </div>
             
             <Pagination>

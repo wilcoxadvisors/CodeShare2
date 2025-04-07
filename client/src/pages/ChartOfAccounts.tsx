@@ -208,11 +208,21 @@ function ChartOfAccounts() {
   }, [accountTreeData]);
   
   // Toggle node expansion
+  // Toggle node expansion - fixed to properly toggle individual nodes without affecting others
   const toggleNodeExpansion = (nodeId: number) => {
-    setExpandedNodes(prev => ({
-      ...prev,
-      [nodeId]: !prev[nodeId]
-    }));
+    setExpandedNodes(prev => {
+      const newExpandedNodes = { ...prev };
+      
+      // If node is currently expanded, collapse it
+      if (newExpandedNodes[nodeId]) {
+        delete newExpandedNodes[nodeId]; // Remove from expanded nodes
+      } else {
+        // If node is currently collapsed, expand it
+        newExpandedNodes[nodeId] = true;
+      }
+      
+      return newExpandedNodes;
+    });
   };
   
   // Function to flatten the hierarchical tree into a flat array with depth information
@@ -357,6 +367,12 @@ function ChartOfAccounts() {
   const collapseAllNodes = () => {
     // Reset expanded nodes to empty object - this will collapse all nodes
     setExpandedNodes({});
+    
+    // Scroll to top of the account list to ensure UI consistency
+    const accountsContainer = document.querySelector('.max-h-\\[calc\\(100vh-280px\\)]');
+    if (accountsContainer) {
+      accountsContainer.scrollTop = 0;
+    }
   };
 
   // Auto-generate account code based on type selection
