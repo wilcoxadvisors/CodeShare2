@@ -327,12 +327,8 @@ function ChartOfAccounts() {
   
   // Function to collapse all nodes
   const collapseAllNodes = () => {
-    // Only keep top-level nodes expanded
-    const collapseAll: Record<number, boolean> = {};
-    accountTreeData.forEach(account => {
-      collapseAll[account.id] = true;
-    });
-    setExpandedNodes(collapseAll);
+    // Reset expanded nodes to empty object - this will collapse all nodes
+    setExpandedNodes({});
   };
 
   // Auto-generate account code based on type selection
@@ -1635,6 +1631,17 @@ function ChartOfAccounts() {
         setShowImportDialog(false);
         setImportData([]);
         setImportErrors([]);
+        
+        // Reset the file input to allow selecting a new file
+        const fileInput = document.getElementById('file-input') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = '';
+        }
+        
+        // Also reset the reference to fileInputRef for React-managed file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         
         // Invalidate relevant queries to refresh UI
         if (clientIdToUse) {
