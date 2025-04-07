@@ -53,6 +53,7 @@ export interface ImportResult {
     results?: any;
     errors: string[];
     warnings: string[];
+    errorSummary?: string;  // NEW: Summary of error categories
     count?: number;
     added?: number;
     updated?: number;
@@ -977,7 +978,9 @@ export class AccountStorage implements IAccountStorage {
                                 name,
                                 type,
                                 description,
-                                active: isActive, // This will reactivate inactive accounts!
+                                // CRITICAL FIX: Force reactivation by ALWAYS explicitly setting active status
+                                // This ensures that inactive to active transitions are handled properly
+                                active: isActive,
                                 isSubledger,
                                 subledgerType,
                                 subtype,
@@ -1119,10 +1122,41 @@ export class AccountStorage implements IAccountStorage {
 
                 // Update existing accounts
                 for (const update of accountsToUpdate) {
-                    await tx.update(accounts)
-                        .set(update.data)
-                        .where(eq(accounts.id, update.id));
-                    results.updated++;
+                    try {
+                        // Check if we're reactivating an inactive account
+                        const accountToUpdate = existingAccounts.find(acc => acc.id === update.id);
+                        const isReactivation = accountToUpdate && !accountToUpdate.active && update.data.active === true;
+                        
+                        if (isReactivation) {
+                            console.log(`🚨 Special handling for reactivating account ID: ${update.id}`);
+                            // First update non-active fields
+                            const dataWithoutActive = { ...update.data };
+                            delete dataWithoutActive.active;
+                            
+                            if (Object.keys(dataWithoutActive).length > 0) {
+                                await tx.update(accounts)
+                                    .set(dataWithoutActive)
+                                    .where(eq(accounts.id, update.id));
+                            }
+                            
+                            // Then explicitly set active status in a separate update
+                            await tx.update(accounts)
+                                .set({ active: true })
+                                .where(eq(accounts.id, update.id));
+                                
+                            console.log(`✅ Successfully reactivated account ID: ${update.id}`);
+                        } else {
+                            // Regular update for non-reactivation cases
+                            await tx.update(accounts)
+                                .set(update.data)
+                                .where(eq(accounts.id, update.id));
+                        }
+                        
+                        results.updated++;
+                    } catch (error) {
+                        console.error(`Error updating account ID ${update.id}:`, error);
+                        results.errors.push(`Error updating account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
                 }
                 
                 // Mark accounts as inactive
@@ -1184,7 +1218,24 @@ export class AccountStorage implements IAccountStorage {
             const successMessage = `Successfully imported: ${results.created} added, ${results.updated} updated, ${results.reactivated} reactivated, ${results.inactive} deactivated, ${results.deleted} deleted`;
             
             // Group and organize errors for better clarity in the UI
-            const groupedErrors = this.categorizeImportErrors(results.errors);
+            // Check if categorizeImportErrors method exists, otherwise create a simple categorization
+            const groupedErrors = this.categorizeImportErrors ? 
+                this.categorizeImportErrors(results.errors) : 
+                {
+                    duplicates: results.errors.filter(e => e.includes('duplicate') || e.includes('already exists')),
+                    validation: results.errors.filter(e => e.includes('required') || e.includes('valid')),
+                    parentRelationship: results.errors.filter(e => e.includes('parent') || e.includes('circular')),
+                    transactionConstraints: results.errors.filter(e => e.includes('transaction')),
+                    other: results.errors.filter(e => 
+                        !e.includes('duplicate') && 
+                        !e.includes('already exists') && 
+                        !e.includes('required') && 
+                        !e.includes('valid') && 
+                        !e.includes('parent') && 
+                        !e.includes('circular') && 
+                        !e.includes('transaction')
+                    )
+                };
             
             // Prepare summarized error messages
             const errorSummaries = [];
@@ -1282,6 +1333,37 @@ export class AccountStorage implements IAccountStorage {
         } catch (e) {
             throw handleDbError(e, `exporting Chart of Accounts for client ${clientId}`);
         }
+    }
+    
+    /**
+     * Categorize import errors for better user feedback
+     * Groups errors by type to provide more structured error messages
+     */
+    categorizeImportErrors(errors: string[]): { 
+        duplicates: string[],
+        validation: string[],
+        parentRelationship: string[],
+        transactionConstraints: string[],
+        reactivationErrors: string[],
+        other: string[]
+    } {
+        return {
+            duplicates: errors.filter(e => e.includes('duplicate') || e.includes('already exists')),
+            validation: errors.filter(e => e.includes('required') || e.includes('valid')),
+            parentRelationship: errors.filter(e => e.includes('parent') || e.includes('circular')),
+            transactionConstraints: errors.filter(e => e.includes('transaction')),
+            reactivationErrors: errors.filter(e => e.includes('reactivat')),
+            other: errors.filter(e => 
+                !e.includes('duplicate') && 
+                !e.includes('already exists') && 
+                !e.includes('required') && 
+                !e.includes('valid') && 
+                !e.includes('parent') && 
+                !e.includes('circular') && 
+                !e.includes('transaction') &&
+                !e.includes('reactivat')
+            )
+        };
     }
     
     /**
