@@ -1600,6 +1600,16 @@ function ChartOfAccounts() {
           changes.push(`Description: "${existingAccount.description || 'None'}" → "${importedAccount.description || 'None'}"`);
         }
         
+        // Check for ParentId changes
+        if (importedAccount.parentId !== existingAccount.parentId) {
+          changes.push(`Parent ID: "${existingAccount.parentId || 'None'}" → "${importedAccount.parentId || 'None'}"`);
+        }
+        
+        // Check for ParentCode changes
+        if ((importedAccount.parentCode || null) !== (existingAccount.parentCode || null)) {
+          changes.push(`Parent Code: "${existingAccount.parentCode || 'None'}" → "${importedAccount.parentCode || 'None'}"`);
+        }
+        
         // If any changes were found, add to modifications list
         if (changes.length > 0) {
           modifications.push({

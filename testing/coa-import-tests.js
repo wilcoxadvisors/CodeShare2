@@ -38,6 +38,12 @@ const config = {
   apiVersion: 'v1'
 };
 
+// Generate timestamp-based test account codes that will be globally available
+const timestamp = Date.now().toString().slice(-6);
+const testCode1 = `TEST-${timestamp}-1`;
+const testCode2 = `TEST-${timestamp}-2`;
+const testCode3 = `TEST-${timestamp}-3`;
+
 // Tracking test results
 const testResults = [];
 
@@ -198,11 +204,12 @@ async function createTestAccountsCsv() {
   
   const filePath = path.join(config.tempDir, `test-accounts-${Date.now()}.csv`);
   
-  // Sample accounts data
+  // Use the globally defined test codes
+  
   const accounts = [
     {
-      accountCode: 'TEST-N1',
-      name: 'Test New Account 1',
+      accountCode: testCode1,
+      name: `Test New Account ${timestamp}-1`,
       type: 'ASSET',
       subtype: 'Current Assets',
       balance: '0',
@@ -215,8 +222,8 @@ async function createTestAccountsCsv() {
       item: 'Cash & Equivalents'
     },
     {
-      accountCode: 'TEST-N2',
-      name: 'Test New Account 2',
+      accountCode: testCode2,
+      name: `Test New Account ${timestamp}-2`,
       type: 'EXPENSE',
       subtype: 'Operating Expenses',
       balance: '0',
@@ -229,14 +236,14 @@ async function createTestAccountsCsv() {
       item: 'Administrative'
     },
     {
-      accountCode: 'TEST-N3',
-      name: 'Test New Account 3 - Child',
+      accountCode: testCode3,
+      name: `Test New Account ${timestamp}-3 - Child`,
       type: 'ASSET',
       subtype: 'Current Assets',
       balance: '0',
       isSubledger: 'FALSE',
       active: 'TRUE',
-      parentAccountCode: 'TEST-N1',
+      parentAccountCode: testCode1,
       description: 'Child test account for import verification',
       fsliBucket: 'Current Assets',
       internalReportingBucket: 'Operating Assets',
@@ -407,15 +414,15 @@ async function testNoSelection() {
     );
     
     // Verify no new accounts were created
-    const testAccount1Exists = await verifyAccountExists('TEST-N1', cookie);
+    const testAccount1Exists = await verifyAccountExists(testCode1, cookie);
     
     if (testAccount1Exists) {
-      log('❌ UNEXPECTED: Test account TEST-N1 was created even though it was not selected!');
+      log(`❌ UNEXPECTED: Test account ${testCode1} was created even though it was not selected!`);
       // This is a critical failure - the account should not exist
       testResults.push({
         name: 'No Selection',
         passed: false,
-        reason: 'Account TEST-N1 was created even though it was not selected'
+        reason: `Account ${testCode1} was created even though it was not selected`
       });
       return false;
     }
@@ -463,7 +470,7 @@ async function testPartialSelection() {
     
     // Import with only some selections
     const importResult = await importAccounts(filePath, cookie, {
-      newAccountCodes: ['TEST-N1'],  // Only select one new account
+      newAccountCodes: [testCode1],  // Only select one new account
       modifiedAccountCodes: ['1000'], // Only select one modified account
       missingAccountCodes: []
     });
@@ -480,25 +487,25 @@ async function testPartialSelection() {
     }
     
     // Verify selected account was created
-    const testAccount1Exists = await verifyAccountExists('TEST-N1', cookie);
+    const testAccount1Exists = await verifyAccountExists(testCode1, cookie);
     if (!testAccount1Exists) {
-      log('❌ FAILURE: Selected account TEST-N1 was not created');
+      log(`❌ FAILURE: Selected account ${testCode1} was not created`);
       testResults.push({
         name: 'Partial Selection',
         passed: false,
-        reason: 'Selected account TEST-N1 was not created'
+        reason: `Selected account ${testCode1} was not created`
       });
       return false;
     }
     
     // Verify unselected account was NOT created
-    const testAccount2Exists = await verifyAccountExists('TEST-N2', cookie);
+    const testAccount2Exists = await verifyAccountExists(testCode2, cookie);
     if (testAccount2Exists) {
-      log('❌ FAILURE: Unselected account TEST-N2 was incorrectly created');
+      log(`❌ FAILURE: Unselected account ${testCode2} was incorrectly created`);
       testResults.push({
         name: 'Partial Selection',
         passed: false,
-        reason: 'Unselected account TEST-N2 was incorrectly created'
+        reason: `Unselected account ${testCode2} was incorrectly created`
       });
       return false;
     }
@@ -536,7 +543,7 @@ async function testSelectAll() {
     
     // Import with all selections
     const importResult = await importAccounts(filePath, cookie, {
-      newAccountCodes: ['TEST-N1', 'TEST-N2', 'TEST-N3'],
+      newAccountCodes: [testCode1, testCode2, testCode3],
       modifiedAccountCodes: ['1000', '1100'],
       missingAccountCodes: []
     });
@@ -553,15 +560,15 @@ async function testSelectAll() {
     }
     
     // Verify all accounts were created
-    const testAccount1Exists = await verifyAccountExists('TEST-N1', cookie);
-    const testAccount2Exists = await verifyAccountExists('TEST-N2', cookie);
-    const testAccount3Exists = await verifyAccountExists('TEST-N3', cookie);
+    const testAccount1Exists = await verifyAccountExists(testCode1, cookie);
+    const testAccount2Exists = await verifyAccountExists(testCode2, cookie);
+    const testAccount3Exists = await verifyAccountExists(testCode3, cookie);
     
     if (!testAccount1Exists || !testAccount2Exists || !testAccount3Exists) {
       log('❌ FAILURE: Not all selected accounts were created');
-      log(`TEST-N1: ${testAccount1Exists ? 'Created' : 'Missing'}`);
-      log(`TEST-N2: ${testAccount2Exists ? 'Created' : 'Missing'}`);
-      log(`TEST-N3: ${testAccount3Exists ? 'Created' : 'Missing'}`);
+      log(`${testCode1}: ${testAccount1Exists ? 'Created' : 'Missing'}`);
+      log(`${testCode2}: ${testAccount2Exists ? 'Created' : 'Missing'}`);
+      log(`${testCode3}: ${testAccount3Exists ? 'Created' : 'Missing'}`);
       
       testResults.push({
         name: 'Select All',
