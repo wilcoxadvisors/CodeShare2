@@ -385,16 +385,33 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throwNotFound("Client not found");
       }
       
-      console.log('Bypassing storage.getEntitiesByClient and using direct DB access');
+      console.log('Attempting to get entities for client');
       
-      // Get client's entities directly from the database to avoid circular dependency
+      // Get client's entities
       try {
-        // Use direct database query instead of storage method
-        const entities = await db
-          .select()
-          .from(entitiesTable)
-          .where(eq(entitiesTable.clientId, clientId))
-          .orderBy(entitiesTable.name);
+        let entities = [];
+        
+        // First try the standard approach via storage.entities
+        try {
+          if (storage.entities && typeof storage.entities.getEntitiesByClient === 'function') {
+            console.log('Using storage.entities.getEntitiesByClient method');
+            entities = await storage.entities.getEntitiesByClient(clientId);
+            console.log(`Successfully fetched ${entities.length} entities using storage.entities.getEntitiesByClient`);
+          } else {
+            throw new Error('storage.entities.getEntitiesByClient not available');
+          }
+        } catch (storageMethodError) {
+          console.warn('Falling back to direct DB access for entities:', 
+            storageMethodError.message || String(storageMethodError));
+          
+          // Fall back to direct database query
+          entities = await db
+            .select()
+            .from(entitiesTable)
+            .where(eq(entitiesTable.clientId, clientId))
+            .orderBy(entitiesTable.name);
+          console.log(`Successfully fetched ${entities.length} entities using direct DB access`);
+        }
           
         console.log('Entities retrieved successfully, count:', entities.length);
         

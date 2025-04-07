@@ -402,6 +402,21 @@ export class EntityStorage implements IEntityStorage {
     try {
       console.log("DEBUG EntityStorage.createEntity: Creating new entity with data:", JSON.stringify(insertEntity));
       
+      if (!insertEntity) {
+        console.error("ERROR EntityStorage.createEntity: Received null or undefined entity data");
+        throw new Error("Cannot create entity with null or undefined data");
+      }
+      
+      if (!insertEntity.clientId) {
+        console.error("ERROR EntityStorage.createEntity: Missing clientId in entity data");
+        throw new Error("Client ID is required to create an entity");
+      }
+      
+      if (!insertEntity.name) {
+        console.error("ERROR EntityStorage.createEntity: Missing name in entity data");
+        throw new Error("Entity name is required");
+      }
+      
       // Process industry data for consistency
       let industryValue = insertEntity.industry;
       
@@ -421,24 +436,130 @@ export class EntityStorage implements IEntityStorage {
       
       // Generate a unique hierarchical entity code if client ID is provided
       let entityCode = null;
-      if (insertEntity.clientId) {
+      try {
         entityCode = await generateUniqueEntityCode(insertEntity.clientId);
         console.log(`DEBUG EntityStorage.createEntity: Generated unique entity code: ${entityCode}`);
-      } else {
-        console.log("DEBUG EntityStorage.createEntity: No client ID provided, skipping entity code generation");
+      } catch (codeError) {
+        console.error("ERROR EntityStorage.createEntity: Failed to generate entity code", codeError);
+        // Log error but continue - entity code is helpful but not critical
+        entityCode = `MANUAL-${Date.now().toString(36).toUpperCase()}`;
+        console.log(`DEBUG EntityStorage.createEntity: Using fallback entity code: ${entityCode}`);
       }
       
       // Insert with processed values
       const entityToInsert = {
         ...insertEntity,
         industry: industryValue,
-        entityCode // Include the generated entity code
+        entityCode, // Include the generated entity code
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        active: insertEntity.active !== undefined ? insertEntity.active : true
       };
       
-      const [newEntity] = await db.insert(entities).values(entityToInsert).returning();
-      return newEntity;
+      console.log("DEBUG EntityStorage.createEntity: Inserting entity with final data:", JSON.stringify(entityToInsert, null, 2));
+      
+      try {
+        const result = await db.insert(entities).values(entityToInsert).returning();
+        
+        if (!result || result.length === 0) {
+          console.error("ERROR EntityStorage.createEntity: Insert query returned empty result");
+          throw new Error("Entity creation failed - database query returned no result");
+        }
+        
+        const newEntity = result[0];
+        
+        if (!newEntity || !newEntity.id) {
+          console.error("ERROR EntityStorage.createEntity: Created entity missing ID:", newEntity);
+          throw new Error("Entity creation failed - invalid entity returned from database");
+        }
+        
+        console.log(`DEBUG EntityStorage.createEntity: Entity created successfully with ID ${newEntity.id}:`, JSON.stringify(newEntity, null, 2));
+        
+        return newEntity;
+      } catch (insertError) {
+        console.error("ERROR EntityStorage.createEntity: Database insert failed:", insertError);
+        
+        // Try to get more details about the error
+        if (insertError instanceof Error) {
+          console.error("ERROR EntityStorage.createEntity: Insert error details:", insertError.message);
+          console.error("ERROR EntityStorage.createEntity: Insert error stack:", insertError.stack);
+        }
+        
+        // Attempt a direct SQL insert to diagnose issues
+        try {
+          console.log("DEBUG EntityStorage.createEntity: Attempting direct SQL insert as diagnostic");
+          
+          // Create field and value lists for the SQL query
+          const fields = Object.keys(entityToInsert).filter(k => entityToInsert[k] !== undefined);
+          const values = fields.map(f => {
+            const val = entityToInsert[f];
+            if (val === null) return 'NULL';
+            if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
+            if (val instanceof Date) return `'${val.toISOString()}'`;
+            return String(val);
+          });
+          
+          // Build the SQL statement
+          const sql = `
+            INSERT INTO entities (${fields.join(', ')})
+            VALUES (${values.join(', ')})
+            RETURNING *
+          `;
+          
+          const sqlResult = await db.execute(sql);
+          console.log("DEBUG EntityStorage.createEntity: Direct SQL result:", sqlResult);
+          
+          if (sqlResult.rows && sqlResult.rows.length > 0) {
+            const rawEntity = sqlResult.rows[0];
+            console.log("DEBUG EntityStorage.createEntity: Direct SQL created entity:", rawEntity);
+            
+            // Manually construct entity from raw DB result
+            const entity: Entity = {
+              id: rawEntity.id,
+              name: rawEntity.name,
+              code: rawEntity.code,
+              entityCode: rawEntity.entity_code,
+              ownerId: rawEntity.owner_id,
+              clientId: rawEntity.client_id,
+              active: rawEntity.active,
+              fiscalYearStart: rawEntity.fiscal_year_start,
+              fiscalYearEnd: rawEntity.fiscal_year_end,
+              industry: rawEntity.industry,
+              currency: rawEntity.currency,
+              timezone: rawEntity.timezone,
+              ein: rawEntity.ein,
+              businessType: rawEntity.business_type,
+              legalName: rawEntity.legal_name,
+              dba: rawEntity.dba,
+              website: rawEntity.website,
+              phone: rawEntity.phone,
+              fax: rawEntity.fax,
+              address: rawEntity.address,
+              city: rawEntity.city,
+              state: rawEntity.state,
+              postalCode: rawEntity.postal_code,
+              country: rawEntity.country,
+              notes: rawEntity.notes,
+              createdAt: rawEntity.created_at ? new Date(rawEntity.created_at) : new Date(),
+              updatedAt: rawEntity.updated_at ? new Date(rawEntity.updated_at) : new Date(),
+              deletedAt: rawEntity.deleted_at ? new Date(rawEntity.deleted_at) : null,
+              corporationSettings: rawEntity.corporation_settings,
+              createdBy: rawEntity.created_by
+            };
+            
+            return entity;
+          } else {
+            throw new Error("Direct SQL insert failed to create entity");
+          }
+        } catch (directSqlError) {
+          console.error("ERROR EntityStorage.createEntity: Direct SQL insert also failed:", directSqlError);
+          throw new Error(`Entity creation failed with both ORM and direct SQL: ${directSqlError.message || String(directSqlError)}`);
+        }
+      }
     } catch (error) {
-      handleDbError(error, "Error creating entity");
+      console.error("ERROR EntityStorage.createEntity: Creation failed with error:", error);
+      console.error("ERROR EntityStorage.createEntity: Error stack:", error instanceof Error ? error.stack : "Unknown");
       throw error;
     }
   }
