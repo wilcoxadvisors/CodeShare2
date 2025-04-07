@@ -1363,51 +1363,68 @@ export class AccountStorage implements IAccountStorage {
      * This is used before inserting or updating accounts
      */
     validateImportRow(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
+        console.log(`DEBUG validateImportRow - Validating row with code: ${row.AccountCode || 'UNKNOWN'}`);
+        console.log(`DEBUG validateImportRow - Row data:`, JSON.stringify(row));
+        
         const result = { valid: true, errors: [] as string[] };
         
         // Check required fields
         if (!row.AccountCode) {
+            console.log(`DEBUG validateImportRow - Missing account code`);
             result.valid = false;
             result.errors.push('Account code is required');
             return result; // No point in continuing without an account code
         }
         
         if (!row.Name) {
+            console.log(`DEBUG validateImportRow - Missing name for account ${row.AccountCode}`);
             result.valid = false;
             result.errors.push('Name is required');
         }
         
         if (!row.Type) {
+            console.log(`DEBUG validateImportRow - Missing type for account ${row.AccountCode}`);
             result.valid = false;
             result.errors.push('Type is required');
         } else {
             // Validate account type
             const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
             if (!validTypes.includes(row.Type.toUpperCase())) {
+                console.log(`DEBUG validateImportRow - Invalid type '${row.Type}' for account ${row.AccountCode}`);
                 result.valid = false;
                 result.errors.push(`Type must be one of: ${validTypes.join(', ')}`);
             }
         }
         
-        // ENHANCED: More aggressive duplicate checking
-        // Check for duplicate account codes in existing accounts
+        // IMPORTANT FIX: Existing accounts are valid! We want to update them.
+        // Don't mark existing accounts as invalid during validation
+        // We'll handle them differently during processing based on updateExisting and updateStrategy
+        
+        // Check if this account exists in the database
         const existingDuplicate = existingAccounts.find(acc => acc.accountCode === row.AccountCode);
         if (existingDuplicate) {
-            result.valid = false;
-            result.errors.push(`Duplicate account code: '${row.AccountCode}' already exists in the database`);
+            console.log(`DEBUG validateImportRow - Account ${row.AccountCode} already exists in database - This is OK!`);
+            // DON'T set result.valid = false! Existing accounts are valid.
         }
         
         // Check for duplicate account codes in the import file
         const importDuplicate = newAccounts.find(acc => acc.AccountCode === row.AccountCode);
         if (importDuplicate) {
+            console.log(`DEBUG validateImportRow - Account ${row.AccountCode} appears multiple times in import file`);
             result.valid = false;
             result.errors.push(`Duplicate account code: '${row.AccountCode}' appears multiple times in the import file`);
         }
         
         // If IsSubledger is true, SubledgerType is required
         if (row.IsSubledger === true && !row.SubledgerType) {
+            console.log(`DEBUG validateImportRow - Missing subledger type for account ${row.AccountCode}`);
             result.valid = false;
             result.errors.push('SubledgerType is required when IsSubledger is true');
+        }
+        
+        console.log(`DEBUG validateImportRow - Validation result for ${row.AccountCode}: valid=${result.valid}, errors=${result.errors.length}`);
+        if (result.errors.length > 0) {
+            console.log(`DEBUG validateImportRow - Errors:`, result.errors);
         }
         
         return result;
