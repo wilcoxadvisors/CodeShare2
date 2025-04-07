@@ -142,10 +142,10 @@ async function getAccounts(cookie) {
 }
 
 /**
- * Delete an account
+ * Hard delete an account
  */
 async function deleteAccount(accountId, cookie) {
-  log(`Deleting account with ID ${accountId}...`);
+  log(`Permanently removing account with ID ${accountId}...`);
   
   try {
     // Create an axios instance that automatically handles cookies
@@ -157,11 +157,12 @@ async function deleteAccount(accountId, cookie) {
     // Set the cookie in headers
     axiosInstance.defaults.headers.common['Cookie'] = cookie;
     
+    // Send a request with force=true parameter to ensure hard delete
     const response = await axiosInstance.delete(
-      `/api/clients/${config.clientId}/accounts/${accountId}`
+      `/api/clients/${config.clientId}/accounts/${accountId}?force=true&permanent=true`
     );
     
-    log(`Account ${accountId} deleted successfully`);
+    log(`Account ${accountId} permanently removed`);
     return true;
   } catch (error) {
     log(`Failed to delete account ${accountId}:`, error.message);
