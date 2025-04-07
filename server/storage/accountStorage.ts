@@ -676,6 +676,14 @@ export class AccountStorage implements IAccountStorage {
     }
 
     async importCoaForClient(clientId: number, fileBuffer: Buffer, fileName: string, selections?: ImportSelections | null): Promise<ImportResult> {
+        // Enhanced logging of full import selections
+        console.log(`🔍 DETAILED IMPORT SELECTIONS:`, JSON.stringify({
+            updateStrategy: selections?.updateStrategy,
+            removeStrategy: selections?.removeStrategy,
+            newAccountCodes: selections?.newAccountCodes || [],
+            modifiedAccountCodes: selections?.modifiedAccountCodes || [],
+            missingAccountCodes: selections?.missingAccountCodes || []
+        }, null, 2));
         try {
             // Verify client exists
             const clientCheck = await db.query.clients.findFirst({
@@ -1647,12 +1655,27 @@ export class AccountStorage implements IAccountStorage {
             return result;
         }
         
-        // Check if the parent exists in existing accounts or in the new accounts being added
-        const parentExists = 
-            existingAccounts.some(acc => acc.accountCode === row.ParentCode) ||
-            newAccounts.some(acc => acc.AccountCode === row.ParentCode);
+        console.log(`🔎 VALIDATING PARENT RELATIONSHIP: Account ${row.AccountCode} has parent ${row.ParentCode}`);
         
-        if (!parentExists) {
+        // Find the parent account if it exists in the database
+        const parentInDb = existingAccounts.find(acc => acc.accountCode === row.ParentCode);
+        // Find the parent account if it exists in the new accounts being imported
+        const parentInNewAccounts = newAccounts.find(acc => acc.AccountCode === row.ParentCode);
+        
+        // Detailed logging about the parent account status
+        if (parentInDb) {
+            console.log(`PARENT CHECK: Parent account ${row.ParentCode} found in database. Active: ${parentInDb.active}`);
+            
+            // CRITICAL FIX: Check if parent account is inactive
+            if (!parentInDb.active) {
+                console.log(`⚠️ WARNING: Parent account ${row.ParentCode} exists but is INACTIVE!`);
+                result.valid = false;
+                result.errors.push(`Parent account ${row.ParentCode} is inactive and cannot be used as a parent`);
+            }
+        } else if (parentInNewAccounts) {
+            console.log(`PARENT CHECK: Parent account ${row.ParentCode} found in current import batch`);
+        } else {
+            console.log(`❌ PARENT CHECK FAILED: Parent account ${row.ParentCode} not found in database or import batch`);
             result.valid = false;
             result.errors.push(`Parent account with code ${row.ParentCode} not found`);
         }
