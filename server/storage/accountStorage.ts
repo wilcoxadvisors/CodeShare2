@@ -1017,6 +1017,13 @@ export class AccountStorage implements IAccountStorage {
                 
                 // Find accounts in the database that weren't in the import file
                 for (const existingAccount of existingAccounts) {
+                    // CRITICAL BUGFIX: Skip inactive accounts that are missing from import
+                    // We don't want to show or process inactive accounts that are not in the import file
+                    if (!existingAccount.active) {
+                        console.log(`CRITICAL FIX: Skipping inactive account ${existingAccount.accountCode} that's missing from import - no action needed`);
+                        continue;
+                    }
+                    
                     if (!importedAccountCodes.has(existingAccount.accountCode)) {
                         // CRITICAL BUGFIX: Check if we are in 'selected' mode and have an explicit selection
                         // Fix issue where unchecked missing accounts were still being processed

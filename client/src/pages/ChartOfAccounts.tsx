@@ -1642,6 +1642,12 @@ function ChartOfAccounts() {
     // Convert to lowercase for case-insensitive comparison
     const importAccountCodes = new Set(importData.map(row => (row.accountCode || '').toLowerCase()));
     const removals = flatAccounts.filter(account => {
+      // CRITICAL FIX: Skip inactive accounts completely - they should not appear in the missing list
+      if (!account.active) {
+        console.log(`CRITICAL FIX: Excluding inactive account ${account.accountCode} from missing accounts list`);
+        return false;
+      }
+      
       const accountCode = (account.accountCode || '').toLowerCase();
       return accountCode && !importAccountCodes.has(accountCode);
     });
