@@ -25,10 +25,13 @@ export interface ImportSelections {
     columnMappings?: Record<string, string>;
     skipRows?: number[];
     
-    // Simplified interface aligned with industry standards (Odoo, Sage Intacct)
-    updateExisting: boolean;          // Updates existing accounts if found in import
-    deactivateMissing: boolean;       // Marks accounts missing from the import as inactive
-    deleteMissing: boolean;           // Deletes accounts missing from the import (only if no transactions exist)
+    // Industry-standard interface (aligned with Odoo, Sage Intacct)
+    updateExisting: boolean;         // Updates existing accounts if found in import
+    handleMissingAccounts?: 'ignore' | 'deactivate' | 'delete';  // Controls how missing accounts are handled
+    
+    // Legacy fields for backward compatibility
+    deactivateMissing?: boolean;     // Marks accounts missing from the import as inactive
+    deleteMissing?: boolean;         // Deletes accounts missing from the import (only if no transactions exist)
     
     // Legacy fields - keeping for backward compatibility but making optional
     updateStrategy?: 'all' | 'none' | 'selected';
@@ -730,19 +733,33 @@ export class AccountStorage implements IAccountStorage {
                 };
             }
 
-            // Process accounts based on simplified approach aligned with industry standards
-            // Get the boolean flags with appropriate defaults if not provided
+            // Process accounts based on industry-standard approach
+            // Get the control options with appropriate defaults if not provided
             const updateExisting = selections?.updateExisting ?? true; // Default to updating existing accounts
-            const deactivateMissing = selections?.deactivateMissing ?? false; // Default to not deactivating
-            const deleteMissing = selections?.deleteMissing ?? false; // Default to not deleting
             
-            console.log(`Import using simplified options: updateExisting=${updateExisting}, deactivateMissing=${deactivateMissing}, deleteMissing=${deleteMissing}`);
+            // Determine how to handle missing accounts, using both industry-standard and legacy options
+            let handleMissingAccounts: 'ignore' | 'deactivate' | 'delete' = 'ignore'; // Default to ignore
             
-            // For backward compatibility
+            // Priority 1: Use the new industry-standard handleMissingAccounts if provided
+            if (selections?.handleMissingAccounts) {
+                handleMissingAccounts = selections.handleMissingAccounts;
+            } 
+            // Priority 2: Map from legacy boolean flags if provided
+            else if (selections?.deactivateMissing || selections?.deleteMissing) {
+                const deactivateMissing = selections?.deactivateMissing ?? false;
+                const deleteMissing = selections?.deleteMissing ?? false;
+                
+                handleMissingAccounts = deleteMissing ? 'delete' : (deactivateMissing ? 'deactivate' : 'ignore');
+            }
+            
+            console.log(`Import using industry-standard options: updateExisting=${updateExisting}, handleMissingAccounts=${handleMissingAccounts}`);
+            
+            // For backward compatibility 
             const updateStrategy = selections?.updateStrategy || (updateExisting ? 'all' : 'none');
             const removeStrategy: 'inactive' | 'delete' | 'none' | 'ignore' = 
                 selections?.removeStrategy || 
-                (deleteMissing ? 'delete' : (deactivateMissing ? 'inactive' : 'none'));
+                (handleMissingAccounts === 'delete' ? 'delete' : 
+                 (handleMissingAccounts === 'deactivate' ? 'inactive' : 'none'));
                 
             // Get selections for specific accounts if provided (for backward compatibility)
             const selectedNewAccounts = selections?.newAccountCodes || [];
@@ -844,11 +861,9 @@ export class AccountStorage implements IAccountStorage {
             }
 
             // Process missing accounts (those that exist in the database but not in the import file)
-            // Simplified approach based on deactivateMissing and deleteMissing flags
-            const handleMissingAccounts = deactivateMissing || deleteMissing;
-            
-            if (handleMissingAccounts) {
-                console.log(`Processing missing accounts with options: deactivateMissing=${deactivateMissing}, deleteMissing=${deleteMissing}`);
+            // Only process if handleMissingAccounts is not set to 'ignore'
+            if (handleMissingAccounts !== 'ignore') {
+                console.log(`Processing missing accounts with option: handleMissingAccounts=${handleMissingAccounts}`);
                 
                 // Find accounts in the database that weren't in the import file
                 for (const existingAccount of existingAccounts) {
@@ -862,32 +877,41 @@ export class AccountStorage implements IAccountStorage {
                         // Check if account has transactions
                         const hasTransactions = await this.accountHasTransactions(existingAccount.id);
                         
-                        // For backward compatibility: check specific account actions
-                        let legacyAction: 'inactive' | 'delete' | 'ignore' | null = null;
+                        // Determine the action to take for this account
+                        // First check if there's a specific action for this account
+                        let accountAction: 'ignore' | 'inactive' | 'delete' | 'deactivate' = 'ignore';
+                        
+                        // First check for per-account overrides
                         if (missingAccountActions[existingAccount.accountCode]) {
-                            legacyAction = missingAccountActions[existingAccount.accountCode];
-                            console.log(`Using specific legacy action '${legacyAction}' for account ${existingAccount.accountCode}`);
+                            const specificAction = missingAccountActions[existingAccount.accountCode];
+                            console.log(`Using specific action '${specificAction}' for account ${existingAccount.accountCode}`);
+                            
+                            if (specificAction === 'inactive') {
+                                accountAction = 'deactivate'; // Map 'inactive' to 'deactivate' for consistency
+                            } else {
+                                accountAction = specificAction as 'ignore' | 'delete';
+                            }
+                        } else {
+                            // Use the general handleMissingAccounts setting
+                            accountAction = handleMissingAccounts;
                         }
                         
-                        // If we have a legacy action and it's ignore, skip this account
-                        if (legacyAction === 'ignore') {
-                            console.log(`Account ${existingAccount.accountCode} ignored as requested in legacy action`);
+                        // Apply the selected action
+                        if (accountAction === 'ignore') {
+                            console.log(`Account ${existingAccount.accountCode} ignored as requested`);
                             continue;
-                        }
-                        
-                        // Now handle based on the simplified approach
-                        if (deleteMissing && !hasTransactions) {
-                            // Can delete only if no transactions and deleteMissing is true
+                        } else if (accountAction === 'delete' && !hasTransactions) {
+                            // Can delete only if no transactions
                             accountsToDelete.push(existingAccount.id);
                             console.log(`Account ${existingAccount.accountCode} marked for deletion`);
-                        } else if (deactivateMissing || (deleteMissing && hasTransactions)) {
-                            // Mark as inactive if: 
-                            // - deactivateMissing is true, OR
-                            // - deleteMissing is true but account has transactions
+                        } else if (accountAction === 'deactivate' || (accountAction === 'delete' && hasTransactions)) {
+                            // Mark as inactive if:
+                            // - deactivate action is selected, OR
+                            // - delete action is selected but account has transactions (fallback to deactivate)
                             accountsToMarkInactive.push(existingAccount.id);
                             console.log(`Account ${existingAccount.accountCode} marked for deactivation`);
                             
-                            if (deleteMissing && hasTransactions) {
+                            if (accountAction === 'delete' && hasTransactions) {
                                 results.warnings.push(`Account ${existingAccount.accountCode} has transactions and cannot be deleted. Marking inactive instead.`);
                             }
                         }

@@ -1655,9 +1655,17 @@ function ChartOfAccounts() {
   // Initialize the import accounts mutation
   const importAccounts = useImportAccounts();
   
-  // Updated state and types for more granular selective imports
+  // Updated state and types for more granular selective imports with industry-standard approach
   interface ImportSelections {
-    // Account inclusion/exclusion strategies
+    // Industry-standard interface (aligned with Odoo, Sage Intacct)
+    updateExisting: boolean;         // Updates existing accounts if found in import
+    handleMissingAccounts?: 'ignore' | 'deactivate' | 'delete';  // Controls how missing accounts are handled
+    
+    // Legacy fields for backward compatibility
+    deactivateMissing?: boolean;     // Marks accounts missing from the import as inactive
+    deleteMissing?: boolean;         // Deletes accounts missing from the import (only if no transactions exist)
+    
+    // Legacy fields - keeping for backward compatibility but making optional
     updateStrategy?: 'all' | 'none' | 'selected';
     removeStrategy?: 'inactive' | 'delete' | 'none';
     includedCodes?: string[];
@@ -1669,14 +1677,14 @@ function ChartOfAccounts() {
     missingAccountCodes: string[];
     
     // For missing accounts, specify the action for each account
-    missingAccountActions: Record<string, 'inactive' | 'delete'>;
+    missingAccountActions: Record<string, 'inactive' | 'delete' | 'ignore'>;
   }
   
   // State for selected accounts in each category
   const [selectedNewAccounts, setSelectedNewAccounts] = useState<string[]>([]);
   const [selectedModifiedAccounts, setSelectedModifiedAccounts] = useState<string[]>([]);
   const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
-  const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete'>>({});
+  const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete' | 'ignore'>>({});
   
   // Legacy state to keep compatibility - will be removed in future refactors
   const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
@@ -1689,7 +1697,16 @@ function ChartOfAccounts() {
       
       // Create selections object to pass to backend
       const selections: ImportSelections = {
-        // Account inclusion/exclusion strategies
+        // Industry-standard interface properties
+        updateExisting: updateStrategy === 'all' || updateStrategy === 'selected',
+        handleMissingAccounts: removeStrategy === 'inactive' ? 'deactivate' : 
+                                removeStrategy === 'delete' ? 'delete' : 'ignore',
+        
+        // Legacy fields for backward compatibility
+        deactivateMissing: removeStrategy === 'inactive',
+        deleteMissing: removeStrategy === 'delete',
+        
+        // Account inclusion/exclusion strategies (legacy)
         updateStrategy: updateStrategy,
         removeStrategy: removeStrategy,
         
