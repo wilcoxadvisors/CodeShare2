@@ -109,6 +109,17 @@ function ChartOfAccounts() {
     unchanged: number;
   }>({ additions: [], modifications: [], removals: [], unchanged: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add pagination state for active and inactive accounts tables
+  const [activePagination, setActivePagination] = useState({
+    currentPage: 1,
+    pageSize: 25
+  });
+  
+  const [inactivePagination, setInactivePagination] = useState({
+    currentPage: 1,
+    pageSize: 25
+  });
 
   // Get hierarchical account tree data using client-based API
   // Use selectedClientId as fallback when no entity is selected
@@ -226,19 +237,14 @@ function ChartOfAccounts() {
   };
   
   // Function to flatten the hierarchical tree into a flat array with depth information
-  // Modified to always include inactive accounts regardless of expand/collapse state
   const flattenAccountTree = (nodes: AccountTreeNode[], depth = 0, result: Array<AccountTreeNode & { depth: number }> = []): Array<AccountTreeNode & { depth: number }> => {
     for (const node of nodes) {
       // Add current node with its depth
       result.push({ ...node, depth });
       
-      // Check if node has children
-      if (node.children && node.children.length > 0) {
-        // If node is expanded OR we're processing inactive accounts, recursively add children
-        // This ensures inactive accounts stay visible regardless of expand/collapse operations
-        if (expandedNodes[node.id] || !node.active) {
-          flattenAccountTree(node.children, depth + 1, result);
-        }
+      // If node has children and is expanded, recursively add them with increased depth
+      if (expandedNodes[node.id] && node.children && node.children.length > 0) {
+        flattenAccountTree(node.children, depth + 1, result);
       }
     }
     return result;
@@ -372,6 +378,17 @@ function ChartOfAccounts() {
   const collapseAllNodes = () => {
     // Simply reset all expanded nodes to collapse everything at once
     setExpandedNodes({});
+    
+    // Reset pagination to first page to ensure we see content after collapse
+    setActivePagination({
+      ...activePagination,
+      currentPage: 1
+    });
+    
+    setInactivePagination({
+      ...inactivePagination,
+      currentPage: 1
+    });
     
     // Scroll to top of the account list to ensure UI consistency
     const accountsContainer = document.querySelector('.overflow-x-auto');

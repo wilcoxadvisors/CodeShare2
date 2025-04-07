@@ -21,9 +21,21 @@ interface DataTableProps {
   data: any[];
   isLoading?: boolean;
   pageSize?: number;
+  pagination?: {
+    currentPage: number;
+    pageSize: number;
+  };
+  onPaginationChange?: (pagination: { currentPage: number, pageSize: number }) => void;
 }
 
-function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTableProps) {
+function DataTable({ 
+  columns, 
+  data, 
+  isLoading = false, 
+  pageSize = 10,
+  pagination,
+  onPaginationChange
+}: DataTableProps) {
   // VERIFICATION STEP 3: Log DataTable component data
   console.log("VERIFICATION STEP 3: DataTable Component", {
     columnsCount: columns.length,
@@ -33,8 +45,42 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
     timestamp: new Date().toISOString()
   });
   
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(pageSize);
+  // Use internal state if no external pagination control is provided
+  const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [internalItemsPerPage, setInternalItemsPerPage] = useState(pageSize);
+  
+  // Use either controlled or uncontrolled pagination values
+  const currentPage = pagination ? pagination.currentPage : internalCurrentPage;
+  const itemsPerPage = pagination ? pagination.pageSize : internalItemsPerPage;
+  
+  // Handler for page changes that works with both controlled and uncontrolled modes
+  const handlePageChange = (newPage: number) => {
+    if (pagination && onPaginationChange) {
+      // Controlled mode - notify parent
+      onPaginationChange({
+        currentPage: newPage,
+        pageSize: itemsPerPage
+      });
+    } else {
+      // Uncontrolled mode - update internal state
+      setInternalCurrentPage(newPage);
+    }
+  };
+  
+  // Handler for page size changes
+  const handlePageSizeChange = (newPageSize: number) => {
+    if (pagination && onPaginationChange) {
+      // Controlled mode - notify parent
+      onPaginationChange({
+        currentPage: 1, // Reset to page 1 when changing page size
+        pageSize: newPageSize
+      });
+    } else {
+      // Uncontrolled mode - update internal state
+      setInternalItemsPerPage(newPageSize);
+      setInternalCurrentPage(1); // Reset to page 1
+    }
+  };
   
   // Calculate pagination
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -129,14 +175,14 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
           <div className="flex-1 flex justify-between sm:hidden">
             <button
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
               className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Previous
             </button>
             <button
               disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
               className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Next
@@ -158,8 +204,7 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
                   value={itemsPerPage}
                   onChange={(e) => {
                     const newPageSize = parseInt(e.target.value);
-                    setItemsPerPage(newPageSize);
-                    setCurrentPage(1); // Reset to page 1 when changing page size
+                    handlePageSizeChange(newPageSize);
                   }}
                   className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
                 >
@@ -175,7 +220,7 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious 
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                     className={currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                   />
                 </PaginationItem>
@@ -190,7 +235,7 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
                     return (
                       <PaginationItem key={i}>
                         <PaginationLink
-                          onClick={() => setCurrentPage(i + 1)}
+                          onClick={() => handlePageChange(i + 1)}
                           isActive={currentPage === i + 1}
                         >
                           {i + 1}
@@ -212,7 +257,7 @@ function DataTable({ columns, data, isLoading = false, pageSize = 10 }: DataTabl
                 
                 <PaginationItem>
                   <PaginationNext 
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                     className={currentPage === totalPages ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                   />
                 </PaginationItem>
