@@ -2518,26 +2518,7 @@ function ChartOfAccounts() {
                     Inactive accounts won't appear in dropdown menus for new transactions.
                   </p>
                   
-                  {isEditMode && (
-                    <div className="pt-6 border-t mt-4">
-                      <Button 
-                        type="button" 
-                        variant="destructive" 
-                        onClick={() => handleDeleteClick({
-                          id: accountData.id,
-                          name: accountData.name,
-                          accountCode: accountData.accountCode
-                        })}
-                        className="w-full"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Warning: This will permanently delete the account. This action cannot be undone.
-                      </p>
-                    </div>
-                  )}
+                  {/* Delete button removed as requested */}
                 </div>
               </TabsContent>
             </Tabs>
