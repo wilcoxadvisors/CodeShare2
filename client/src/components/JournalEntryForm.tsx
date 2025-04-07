@@ -135,8 +135,8 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' },
-      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' }
+      { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' },
+      { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }
     ]
   );
   
@@ -296,7 +296,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
     
     // Prepare data for validation
     const validLines = lines.filter(line => 
-      line.accountId || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
+      (line.accountId && line.accountId !== 'none') || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
     );
     
     const formData = {
@@ -316,11 +316,11 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
     // Format data for submission
     const formattedLines = validLines.map(line => ({
       accountId: parseInt(line.accountId),
-      entityCode: line.entityCode,
+      entityCode: line.entityCode === 'none' ? entityId.toString() : line.entityCode,
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
-      locationId: line.locationId ? parseInt(line.locationId) : null,
+      locationId: line.locationId && line.locationId !== 'none' ? parseInt(line.locationId) : null,
       entityId
     }));
     
@@ -380,7 +380,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: '' }]);
+    setLines([...lines, { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }]);
   };
   
   const removeLine = (index: number) => {
@@ -551,7 +551,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
                       <SelectValue placeholder="Select Account" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select Account</SelectItem>
+                      <SelectItem value="none">Select Account</SelectItem>
                       {accounts.map(account => (
                         <SelectItem key={account.id} value={account.id.toString()}>
                           {account.code} - {account.name}
@@ -573,7 +573,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
                       <SelectValue placeholder="Select Entity" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select Entity</SelectItem>
+                      <SelectItem value="none">Select Entity</SelectItem>
                       {entities.map(entity => (
                         <SelectItem key={entity.id} value={entity.id.toString()}>
                           {entity.code ? `${entity.code} - ` : ''}{entity.name}
@@ -635,7 +635,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
                       <SelectValue placeholder="Select Location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Select Location</SelectItem>
+                      <SelectItem value="none">Select Location</SelectItem>
                       {locations.map(location => (
                         <SelectItem key={location.id} value={location.id.toString()}>
                           {location.code ? `${location.code} - ` : ''}{location.name}
