@@ -21,27 +21,30 @@ export interface ImportPreview {
 }
 
 export interface ImportSelections {
+    // Industry-standard interface (aligned with Odoo, Sage Intacct)
+    // These are the primary fields that should be used
+    updateExisting: boolean;                         // Updates existing accounts if found in import
+    handleMissingAccounts?: 'ignore' | 'deactivate' | 'delete';  // Controls how missing accounts are handled
+    
+    // Primary fields matching the UI and recommended approach from documentation
+    updateStrategy: 'all' | 'none' | 'selected';     // Strategy for updating existing accounts
+    removeStrategy: 'inactive' | 'delete' | 'none';  // Strategy for handling missing accounts
+    
+    // Account code arrays for granular control
+    newAccountCodes: string[];                       // New accounts to include (when updateStrategy is 'selected')
+    modifiedAccountCodes: string[];                  // Existing accounts to update (when updateStrategy is 'selected')
+    missingAccountCodes: string[];                   // Missing accounts to process (when removeStrategy is 'selected')
+    
+    // Per-account action overrides for maximum flexibility
+    missingAccountActions: Record<string, 'inactive' | 'delete' | 'ignore'>;  // Specific action for each account
+    
     // Legacy fields - keeping for backward compatibility
     columnMappings?: Record<string, string>;
     skipRows?: number[];
-    
-    // Industry-standard interface (aligned with Odoo, Sage Intacct)
-    updateExisting: boolean;         // Updates existing accounts if found in import
-    handleMissingAccounts?: 'ignore' | 'deactivate' | 'delete';  // Controls how missing accounts are handled
-    
-    // Legacy fields for backward compatibility
-    deactivateMissing?: boolean;     // Marks accounts missing from the import as inactive
-    deleteMissing?: boolean;         // Deletes accounts missing from the import (only if no transactions exist)
-    
-    // Legacy fields - keeping for backward compatibility but making optional
-    updateStrategy?: 'all' | 'none' | 'selected';
-    removeStrategy?: 'inactive' | 'delete' | 'none';
+    deactivateMissing?: boolean;                     // Marks accounts missing from the import as inactive
+    deleteMissing?: boolean;                         // Deletes accounts missing from the import
     includedCodes?: string[];
     excludedCodes?: string[];
-    newAccountCodes?: string[];
-    modifiedAccountCodes?: string[];
-    missingAccountCodes?: string[];
-    missingAccountActions?: Record<string, 'inactive' | 'delete' | 'ignore'>;
 }
 
 export interface ImportResult {
@@ -738,18 +741,34 @@ export class AccountStorage implements IAccountStorage {
             const updateExisting = selections?.updateExisting ?? true; // Default to updating existing accounts
             
             // Determine how to handle missing accounts, using both industry-standard and legacy options
-            let handleMissingAccounts: 'ignore' | 'deactivate' | 'delete' = 'ignore'; // Default to ignore
+            // Default to 'ignore' (no action) if nothing specified
+            let handleMissingAccounts: 'ignore' | 'deactivate' | 'delete' = 'ignore'; 
             
-            // Priority 1: Use the new industry-standard handleMissingAccounts if provided
+            // Priority chain for determining how to handle missing accounts:
+            // 1. Use explicit industry-standard handleMissingAccounts if provided
             if (selections?.handleMissingAccounts) {
                 handleMissingAccounts = selections.handleMissingAccounts;
+                console.log(`Using industry-standard handleMissingAccounts: ${handleMissingAccounts}`);
             } 
-            // Priority 2: Map from legacy boolean flags if provided
+            // 2. Map from legacy removeStrategy if provided (aligns with UI dropdown)
+            else if (selections?.removeStrategy) {
+                // Map from removeStrategy to handleMissingAccounts
+                if (selections.removeStrategy === 'inactive') {
+                    handleMissingAccounts = 'deactivate';
+                } else if (selections.removeStrategy === 'delete') {
+                    handleMissingAccounts = 'delete';
+                } else {
+                    handleMissingAccounts = 'ignore';
+                }
+                console.log(`Mapped from removeStrategy '${selections.removeStrategy}' to handleMissingAccounts: ${handleMissingAccounts}`);
+            }
+            // 3. Fall back to legacy boolean flags if provided
             else if (selections?.deactivateMissing || selections?.deleteMissing) {
                 const deactivateMissing = selections?.deactivateMissing ?? false;
                 const deleteMissing = selections?.deleteMissing ?? false;
                 
                 handleMissingAccounts = deleteMissing ? 'delete' : (deactivateMissing ? 'deactivate' : 'ignore');
+                console.log(`Mapped from legacy boolean flags to handleMissingAccounts: ${handleMissingAccounts}`);
             }
             
             console.log(`Import using industry-standard options: updateExisting=${updateExisting}, handleMissingAccounts=${handleMissingAccounts}`);

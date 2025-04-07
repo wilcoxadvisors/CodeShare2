@@ -1663,28 +1663,30 @@ function ChartOfAccounts() {
   const importAccounts = useImportAccounts();
   
   // Updated state and types for more granular selective imports with industry-standard approach
+  // Industry-standard interface for Chart of Accounts import
   interface ImportSelections {
     // Industry-standard interface (aligned with Odoo, Sage Intacct)
-    updateExisting: boolean;         // Updates existing accounts if found in import
+    // These are the primary fields that should be used
+    updateExisting: boolean;                         // Updates existing accounts if found in import
     handleMissingAccounts?: 'ignore' | 'deactivate' | 'delete';  // Controls how missing accounts are handled
     
-    // Legacy fields for backward compatibility
-    deactivateMissing?: boolean;     // Marks accounts missing from the import as inactive
-    deleteMissing?: boolean;         // Deletes accounts missing from the import (only if no transactions exist)
+    // Primary fields matching the UI and recommended approach from documentation
+    updateStrategy: 'all' | 'none' | 'selected';     // Strategy for updating existing accounts
+    removeStrategy: 'inactive' | 'delete' | 'none';  // Strategy for handling missing accounts
     
-    // Legacy fields - keeping for backward compatibility but making optional
-    updateStrategy?: 'all' | 'none' | 'selected';
-    removeStrategy?: 'inactive' | 'delete' | 'none';
+    // Account code arrays for granular control
+    newAccountCodes: string[];                       // New accounts to include (when updateStrategy is 'selected')
+    modifiedAccountCodes: string[];                  // Existing accounts to update (when updateStrategy is 'selected')
+    missingAccountCodes: string[];                   // Missing accounts to process (when removeStrategy is 'selected')
+    
+    // Per-account action overrides for maximum flexibility
+    missingAccountActions: Record<string, 'inactive' | 'delete' | 'ignore'>;  // Specific action for each account
+    
+    // Legacy fields - keeping for backward compatibility
+    deactivateMissing?: boolean;                     // Marks accounts missing from the import as inactive
+    deleteMissing?: boolean;                         // Deletes accounts missing from the import
     includedCodes?: string[];
     excludedCodes?: string[];
-    
-    // Specific accounts to include in each category
-    newAccountCodes: string[];
-    modifiedAccountCodes: string[];
-    missingAccountCodes: string[];
-    
-    // For missing accounts, specify the action for each account
-    missingAccountActions: Record<string, 'inactive' | 'delete' | 'ignore'>;
   }
   
   // State for selected accounts in each category
