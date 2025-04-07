@@ -50,7 +50,7 @@ interface Entity {
 interface JournalEntryFormProps {
   entityId: number;
   accounts: Account[];
-  locations?: Location[];
+  locations?: Location[]; // Kept for interface compatibility but not used
   onSubmit: () => void;
   onCancel: () => void;
   existingEntry?: any;

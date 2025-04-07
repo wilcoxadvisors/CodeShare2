@@ -46,12 +46,6 @@ function NewJournalEntry() {
     queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ["no-client-selected"],
     enabled: !!clientId,
   });
-
-  // Query locations from API
-  const { data: locationsData, isLoading: locationsLoading } = useQuery({
-    queryKey: clientId ? [`/api/clients/${clientId}/locations`] : ["no-client-selected"],
-    enabled: !!clientId
-  });
   
   // Query entities from API - filtered by client
   const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
@@ -72,10 +66,8 @@ function NewJournalEntry() {
       })) as Account[]
     : [];
 
-  // Transform locations data
-  const locations = (locationsData && Array.isArray(locationsData))
-    ? locationsData as Location[]
-    : [];
+  // Create empty locations array (to satisfy interface)
+  const locations: Location[] = [];
     
   // Transform entities data
   const entities = (entitiesData && Array.isArray(entitiesData))
@@ -123,7 +115,7 @@ function NewJournalEntry() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            {accountsLoading || locationsLoading || entitiesLoading ? (
+            {accountsLoading || entitiesLoading ? (
               <div className="py-10 text-center">
                 <p className="text-gray-500">Loading...</p>
               </div>
@@ -131,7 +123,7 @@ function NewJournalEntry() {
               <JournalEntryForm 
                 entityId={currentEntity.id}
                 accounts={accounts || []}
-                locations={locations || []}
+                locations={locations}
                 entities={entities || []}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
