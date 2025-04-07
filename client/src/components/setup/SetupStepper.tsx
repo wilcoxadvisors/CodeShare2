@@ -41,9 +41,27 @@ interface ClientData {
   legalName: string;
   taxId?: string;
   industry: string;
-  address?: string;
+  
+  // Contact information
+  contactName?: string;
+  contactTitle?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  
+  // Company contact information
   phone?: string;
   email?: string;
+  
+  // Structured address
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string; // Will ensure this has a default value in the implementation
+  
+  // Legacy address field
+  address?: string;
+  
   website?: string;
   notes?: string;
 }
@@ -174,23 +192,33 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   const handleClientSave = useCallback(async (data: ClientData) => {
     console.log("DEBUG SetupStepper: handleClientSave received:", data);
     
+    // Make sure the country field has a default value
+    // This is to maintain backward compatibility with the interface
+    const processedData = {
+      ...data,
+      // Ensure country has a default value
+      country: data.country || "United States"
+    };
+    
+    console.log("DEBUG SetupStepper: Processed client data with defaults:", processedData);
+    
     // First save data to localStorage
     try {
-      localStorage.setItem('setupClientData', JSON.stringify(data));
+      localStorage.setItem('setupClientData', JSON.stringify(processedData));
       console.log("DEBUG SetupStepper: Saved client data to localStorage");
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error saving to localStorage:", e);
     }
     
-    // Update state
-    setClientData(data);
+    // Update state with processed data
+    setClientData(processedData);
     
     // Don't generate an ID at all - we'll create a real one when saving to database
     console.log(`DEBUG SetupStepper: Using client data without an ID for now - will get real ID on final submit`);
     
     // Store the client data without any ID
     const updatedClientData = {
-      ...data,
+      ...processedData,
       // No ID field here - we'll get that from the server when we save
     };
     setClientData(updatedClientData);
@@ -425,9 +453,27 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
            legalName: clientData.legalName,
            taxId: clientData.taxId,
            industry: clientData.industry,
-           address: clientData.address,
+           
+           // Contact information
+           contactName: clientData.contactName,
+           contactTitle: clientData.contactTitle,
+           contactEmail: clientData.contactEmail,
+           contactPhone: clientData.contactPhone,
+           
+           // Company contact information
            phone: clientData.phone,
            email: clientData.email,
+           
+           // Structured address
+           street: clientData.street,
+           city: clientData.city,
+           state: clientData.state,
+           zipCode: clientData.zipCode,
+           country: clientData.country || "United States",
+           
+           // Legacy address field
+           address: clientData.address,
+           
            website: clientData.website,
            notes: clientData.notes,
            // Add the user ID
@@ -795,7 +841,10 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
               <ClientSetupCard 
                 onNext={handleClientSave} 
                 setClientData={setClientData}
-                initialData={clientData || undefined}
+                initialData={clientData ? {
+                  ...clientData,
+                  country: clientData.country || "United States"
+                } : undefined}
                 open={true} // Always set to true when rendered in the stepper
               />
             )}

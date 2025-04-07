@@ -15,16 +15,39 @@ import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Define schema for client setup form
 const clientSetupSchema = z.object({
+  // Basic company information
   name: z.string().min(2, { message: "Company name must be at least 2 characters." }),
   legalName: z.string().min(2, { message: "Legal name must be at least 2 characters." }),
   taxId: z.string().optional(),
   industry: z.string().min(1, { message: "Please select an industry" }),
-  address: z.string().optional(),
+  
+  // Contact information
+  contactName: z.string().optional(),
+  contactTitle: z.string().optional(),
+  contactEmail: z.string().optional().refine(
+    (val) => !val || val === "" || val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+    { message: "Please enter a valid contact email address if providing one" }
+  ),
+  contactPhone: z.string().optional(),
+  
+  // Company contact information
   phone: z.string().optional(),
   email: z.string().optional().refine(
     (val) => !val || val === "" || val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
     { message: "Please enter a valid email address if providing one" }
   ),
+  
+  // Structured address
+  street: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
+  
+  // Legacy address field (to ensure backward compatibility)
+  address: z.string().optional(),
+  
+  // Additional information
   website: z.string().optional().refine(
     (val) => !val || val === "" || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("www."),
     { message: "Website should start with http://, https://, or www." }
@@ -53,15 +76,36 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
   // Utility function to get default form values with optional overrides
   const getDefaultFormValues = (overrides: Partial<ClientSetupValues> = {}) => {
     return {
+      // Basic company information
       name: "",
       legalName: "",
       taxId: "",
       industry: "other", // Default to "other" to ensure it always has a value
-      address: "",
+      
+      // Contact information
+      contactName: "",
+      contactTitle: "",
+      contactEmail: "",
+      contactPhone: "",
+      
+      // Company contact information
       phone: "",
       email: "",
+      
+      // Structured address
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "United States",
+      
+      // Legacy address field
+      address: "",
+      
+      // Additional information
       website: "",
       notes: "",
+      
       ...overrides // Allow overriding specific fields
     };
   };
@@ -93,13 +137,42 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
     setIsSubmitting(true);
     
     try {
-      // Ensure industry has a valid value before submitting
+      // Process the form data
+      // 1. Ensure industry has a valid value
+      // 2. Generate full address from structured fields for backward compatibility
+      // 3. Fill in missing fields with defaults
+      
+      // Combine structured address fields into legacy address field
+      let fullAddress = "";
+      
+      // Check if any structured address fields are populated
+      if (data.street || data.city || data.state || data.zipCode || data.country) {
+        // Construct formatted address from structured fields
+        const addressParts = [
+          data.street,
+          data.city ? (data.city + (data.state ? ", " + data.state : "")) : data.state,
+          data.zipCode,
+          data.country !== "United States" ? data.country : ""
+        ].filter(Boolean); // Remove empty values
+        
+        fullAddress = addressParts.join("\n");
+        console.log("FORM SUBMIT: Generated structured address:", fullAddress);
+      } else if (data.address) {
+        // Use existing address field if structured fields are empty
+        fullAddress = data.address;
+      }
+      
       const processedData: ClientSetupValues = {
         ...data,
-        industry: ensureIndustryValue(data.industry)
+        // Ensure required fields have values
+        industry: ensureIndustryValue(data.industry),
+        // Always set address field for backward compatibility
+        address: fullAddress || data.address || "",
+        // Ensure country has a value
+        country: data.country || "United States"
       };
       
-      console.log("FORM SUBMIT: Processed form data with ensured industry value:", processedData);
+      console.log("FORM SUBMIT: Processed form data:", processedData);
       
       // First update parent state
       console.log("FORM SUBMIT: Setting client data in parent state");
@@ -286,22 +359,183 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
                 />
               </div>
               
+              {/* Contact information section */}
+              <div className="mt-6 mb-2">
+                <h3 className="text-lg font-medium">Primary Contact Information</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter information about the primary contact person for this company
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="contactName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Jane Doe" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        The primary person to contact at this company
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactTitle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CEO" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        The position or title of the contact person
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="contactEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="contact@example.com" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        The email address for the contact person
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(555) 123-4567" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        The phone number for the contact person
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {/* Address section */}
+              <div className="mt-6 mb-2">
+                <h3 className="text-lg font-medium">Address Information</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter the address information for this company
+                </p>
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Street Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Main St, Suite 100" {...field} />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Street address including unit/apartment number
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input placeholder="New York" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State/Province</FormLabel>
+                      <FormControl>
+                        <Input placeholder="NY" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="zipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP/Postal Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="10001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem className="w-full sm:w-1/2">
+                    <FormLabel>Country</FormLabel>
+                    <FormControl>
+                      <Input placeholder="United States" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Legacy address field for backward compatibility */}
               <FormField
                 control={form.control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem className="w-full">
-                    <FormLabel>Address</FormLabel>
+                  <FormItem className="w-full hidden">
+                    <FormLabel className="sr-only">Legacy Address</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="123 Main St, City, State, ZIP"
+                        placeholder="Full address (legacy field)"
                         className="min-h-[60px] resize-y w-full"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-xs">
-                      Your company's primary address
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
