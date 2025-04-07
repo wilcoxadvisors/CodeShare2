@@ -26,7 +26,8 @@ import AIAnalytics from "./pages/AIAnalytics";
 import BudgetForecastDashboard from "./pages/BudgetForecastDashboard";
 import ClientOnboarding from "./pages/ClientOnboarding";
 import ConsolidationManagement from "./pages/ConsolidationManagement";
-import ManualJournalEntry from "./components/ManualJournalEntry";
+// Deprecated: Using NewJournalEntry with JournalEntryForm instead
+// import ManualJournalEntry from "./components/ManualJournalEntry";
 import ManualJournalEntryTest from "./pages/ManualJournalEntryTest";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -426,9 +427,10 @@ function Router() {
         </AppLayout>
       </Route>
       
+      {/* Redirect to the consolidated JournalEntryForm implementation */}
       <Route path="/journal-entries/create">
         <AppLayout>
-          <ProtectedRoute component={ManualJournalEntryTest} />
+          <ProtectedRoute component={NewJournalEntry} />
         </AppLayout>
       </Route>
       
