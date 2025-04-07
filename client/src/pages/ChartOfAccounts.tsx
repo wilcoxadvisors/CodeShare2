@@ -49,28 +49,7 @@ function ChartOfAccounts() {
   const { currentEntity, selectedClientId } = useEntity();
   const { toast } = useToast();
   
-  // Global keyboard shortcut for focusing the search box
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only trigger if not already in an input/textarea
-      if (
-        e.key === '/' && 
-        document.activeElement?.tagName !== 'INPUT' && 
-        document.activeElement?.tagName !== 'TEXTAREA'
-      ) {
-        e.preventDefault();
-        const searchInput = document.getElementById('account-search');
-        if (searchInput) {
-          searchInput.focus();
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+
   
   console.log("DEBUG - ChartOfAccounts rendering with context:", {
     hasEntity: !!currentEntity,
@@ -1957,37 +1936,20 @@ function ChartOfAccounts() {
         <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 mb-4 mt-2">
           <div className="relative flex-grow">
             <Input
-              placeholder="Search accounts by name, code or description... (Press '/' to focus)"
+              placeholder="Search accounts by name, code or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md pl-3 pr-10" // Added padding for the search icon
-              onKeyDown={(e) => {
-                // Clear search on Escape key
-                if (e.key === 'Escape' && searchTerm) {
-                  e.preventDefault();
-                  setSearchTerm("");
-                }
-              }}
-              id="account-search"
+              className="max-w-md"
             />
-            <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm("")}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full h-6 w-6 flex items-center justify-center"
-                aria-label="Clear search"
-                title="Clear search (Esc)"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
               >
                 ✕
               </button>
             )}
           </div>
-          
-          {/* The search keyboard shortcut is now handled by a useEffect at the component level */}
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
