@@ -47,31 +47,33 @@ function NewJournalEntry() {
     enabled: !!clientId,
   });
   
-  // Query entities from API - filtered by client
+  // Query entities from API - explicitly filtered by client
   const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
-    queryKey: [`/api/entities`],
-    enabled: !!currentEntity
+    queryKey: clientId ? [`/api/clients/${clientId}/entities`] : ["no-client-entities"],
+    enabled: !!clientId
   });
 
   // Transform accounts data to ensure it matches our interface requirements
-  const accounts = (accountsData && Array.isArray(accountsData)) 
-    ? accountsData.map((account: any) => ({
-        ...account,
-        // Ensure required fields have values if they are null/undefined in the API response
-        createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
-        subtype: account.subtype || null,
-        isSubledger: account.isSubledger || false,
-        subledgerType: account.subledgerType || null,
-        parentId: account.parentId || null
-      })) as Account[]
+  const accounts = (accountsData && accountsData.accounts && Array.isArray(accountsData.accounts)) 
+    ? accountsData.accounts
+        .filter((account: any) => account.active)
+        .map((account: any) => ({
+          ...account,
+          // Ensure required fields have values if they are null/undefined in the API response
+          createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
+          subtype: account.subtype || null,
+          isSubledger: account.isSubledger || false,
+          subledgerType: account.subledgerType || null,
+          parentId: account.parentId || null
+        })) as Account[]
     : [];
 
   // Create empty locations array (to satisfy interface)
   const locations: Location[] = [];
     
-  // Transform entities data
-  const entities = (entitiesData && Array.isArray(entitiesData))
-    ? entitiesData
+  // Transform entities data - ensure we properly extract entities from the API response
+  const entities = (entitiesData && entitiesData.entities && Array.isArray(entitiesData.entities))
+    ? entitiesData.entities.filter((entity: any) => entity.active)
     : [];
 
   const handleSubmit = () => {
@@ -127,6 +129,7 @@ function NewJournalEntry() {
                 entities={entities || []}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
+                clientId={clientId}
               />
             )}
           </div>

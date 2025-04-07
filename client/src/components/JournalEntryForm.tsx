@@ -49,6 +49,7 @@ interface Entity {
 
 interface JournalEntryFormProps {
   entityId: number;
+  clientId?: number;  // Added clientId support
   accounts: Account[];
   locations?: Location[]; // Kept for interface compatibility but not used
   onSubmit: () => void;
@@ -116,7 +117,7 @@ const FormSchema = z.object({
   })
 });
 
-function JournalEntryForm({ entityId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
+function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
@@ -182,8 +183,9 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   
   const createEntry = useMutation({
     mutationFn: async (data: any) => {
+      console.log('Journal entry submission data:', JSON.stringify(data));
       return await apiRequest(
-        `/api/entities/${entityId}/journal-entries`,
+        `/api/journal-entries`,
         {
           method: "POST",
           data
@@ -239,8 +241,9 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
+      console.log('Journal entry update data:', JSON.stringify(data));
       return await apiRequest(
-        `/api/entities/${entityId}/journal-entries/${existingEntry?.id}`,
+        `/api/journal-entries/${existingEntry?.id}`,
         {
           method: "PUT",
           data
@@ -324,8 +327,18 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
       entityId
     }));
     
+    // Use passed clientId or get from accounts as fallback
+    const resolvedClientId = clientId || (accounts.length > 0 ? accounts[0].clientId : null);
+    
+    if (!resolvedClientId) {
+      setFormError("Error: Unable to determine client ID. Please refresh the page and try again.");
+      return;
+    }
+    
     const entryData = {
       ...journalData,
+      clientId: resolvedClientId,
+      entityId,
       status: saveAsDraft ? JournalEntryStatus.DRAFT : JournalEntryStatus.POSTED,
       createdBy: user?.id,
       lines: formattedLines
