@@ -10,6 +10,25 @@
 * **Code Location:** `CodeShare/` folder.
 * **Reference Docs:** (Note: Original references were to uploaded files - Business Plan.docx, Outline for Accounting System Integration.docx, etc. These are conceptual references based on past context.)
 
+## 1.1 Onboarding Flow (Explicitly Updated)
+
+The onboarding workflow is simplified to explicitly include only:
+* Client Setup
+  * Collect: Name, Legal Name, Address, Tax Info, Industry, Contacts
+* Default Entity Creation
+  * Automatically created after successful Client creation.
+  * Uses explicitly the Client's Name and Industry as defaults.
+
+Note:
+* Historical Data, Consolidation Group, and Chart of Accounts (CoA) setups are explicitly excluded from onboarding.
+* Historical data will be explicitly handled through the Journal Entry batch upload module.
+
+## 1.2 Industry Dropdown Alignment & Consistency
+
+* Maintain industry dropdown lists explicitly from a single source of truth at: `client/src/lib/industryUtils.ts`
+* Explicitly ensure ALL components (ClientSetupCard.tsx, EntityManagementCard.tsx, EntityForm.tsx, ClientOnboardingForm.tsx, etc.) import and utilize this centralized source.
+* Immediately remove duplicate implementations of utility functions like ensureIndustryValue explicitly from individual components.
+
 ## 2. Business Model & Long-Term Vision
 
 * **Revenue:** Tiered SaaS subscriptions (Basic/Pro/Enterprise) + Add-ons + Implementation Fees. Aggressive growth targets ($10M revenue/2k clients by Year 5).
@@ -25,8 +44,8 @@
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
-    * **Current Update:** Task B.1 (Chart of Accounts) is now COMPLETE. This includes implementation of client-specific hierarchical CoA, backend/frontend management, `code` -> `accountCode` refactoring, import/export functionality (CSV/Excel) with fixes for update logic and UI improvements, resolution of display bugs, and successful verification. Schema refactoring was performed to move reporting fields (`fsliBucket`, `internalReportingBucket`, `item`) from `accounts` to `journalEntryLines`.
-    * **Current Update:** Task B.2 (General Ledger / Journal Entries) backend logic and API are COMPLETE and verified via automated tests. Frontend UI (`ManualJournalEntry.tsx`) created and passed initial verification. Batch Upload backend logic is implemented and verified via tests. **Task B.2 is COMPLETE.**
+    * **Current Update:** Task B.1 (Chart of Accounts) is IN PROGRESS. Priority is to explicitly fix and verify the import/export functionality after recent refactoring, ensure manual journal entries work, and finalize UI/UX enhancements with documentation of edge cases. Need to ensure consistency and verify hierarchical CoA across multiple entities.
+    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Need to finalize and verify batch journal entry upload functionality and UI, and expand comprehensive automated testing covering all key edge cases.
     * **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
         * **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
         * **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -46,14 +65,29 @@
         * **Audit Log Storage:** ✅ Implemented audit log functionality to `server/storage/auditLogStorage.ts`.
         * **Content Storage:** ✅ Implemented content storage for website content management to `server/storage/contentStorage.ts`.
 
-* **Phase 4 (Website Content Management):** IN PROGRESS.
-    * **Authentication Middleware:** ✅ Passport.js authentication middleware explicitly verified and fixed to correctly use req.user for authenticated user data.
-    * **Homepage Content Schema:** ✅ Created and verified homepageContent schema in `shared/schema.ts` for managing website content.
-    * **Content Storage:** ✅ Implemented and verified CRUD storage methods for homepage content in `server/storage/contentStorage.ts`.
-    * **RESTful API Endpoints:** ✅ Created and verified API endpoints for content management in `server/routes/contentRoutes.ts`.
-    * **Admin UI Component:** ✅ Developed AdminWebsiteContent.tsx component for managing website content with tabbed interface.
-    * **Blog Integration:** ✅ Verified blog posts CRUD operations with proper authentication in `server/routes/blogRoutes.ts`.
-    * **Admin Dashboard Integration:** ✅ Successfully integrated AdminWebsiteContent component into Dashboard.tsx's content-management tab while preserving existing blog management UI.
+* **Phase 4 (Website Content Management):** IN PROGRESS (As of 2025-04-06).
+    * **✅ Completed Tasks:**
+        * **Authentication Middleware:** ✅ Passport.js authentication middleware verified and fixed to correctly use req.user for authenticated user data.
+        * **Homepage Content Schema:** ✅ Created and verified homepageContent schema in `shared/schema.ts`.
+        * **Content Storage:** ✅ Implemented CRUD storage methods for homepage content in `server/storage/contentStorage.ts`.
+        * **RESTful API Endpoints:** ✅ Created and verified API endpoints for content management in `server/routes/contentRoutes.ts`.
+        * **Admin UI Component:** ✅ Developed AdminWebsiteContent.tsx component for managing website content with tabbed interface.
+        * **Blog Integration:** ✅ Verified blog posts CRUD operations with authentication in `server/routes/blogRoutes.ts`.
+        * **Admin Dashboard Integration:** ✅ Successfully integrated AdminWebsiteContent component into Dashboard.tsx while preserving existing blog management UI.
+        * **UI/UX Enhancements:** ✅ Enhanced AdminWebsiteContent with improved responsive layouts, visual hierarchy, and better user interaction patterns.
+        * **Blog Management UI:** ✅ Improved BlogContentManager with refined tabs, better filtering controls, search functionality, and enhanced subscriber management interface.
+    
+    * **📌 Current State:**
+        * Admin Dashboard integration is complete with responsive designs across all device sizes.
+        * Blog management functionality has been verified and enhanced with improved UI/UX.
+        * Homepage content management is fully operational with responsive component designs.
+        * Blog subscription form errors have been resolved, improving user experience.
+        * Comprehensive verification documents have been created for ongoing quality assurance.
+    
+    * **🎯 Immediate Next Steps:**
+        * Begin AI integration planning for automated blog content generation.
+        * Begin implementing the accounting module, focusing on batch journal entry uploads.
+        * Plan for analytics dashboard to track website content performance.
 
 ### Verification Status (COMPLETED):
         * **Consolidation Storage:** ✅ Refactored consolidation group logic to `server/storage/consolidationStorage.ts`.
@@ -74,6 +108,8 @@
 - [x] Confirmed all modules and methods have clear, updated documentation.
 
 #### Next Immediate Task:
+- 📝 Review UI/UX verification document for content management components.
+- 📝 Begin AI integration planning for blog content generation.
 - 📝 Move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
@@ -88,74 +124,92 @@
 * **Additional Completed Tasks:**
     * ✅ Dashboard Client Actions: View Details, Edit Client, Deactivate Client.
 
-**Phase B: Core Accounting Module (COMPLETED - Moving to B.3)**
+**Phase B: Core Accounting Module (IN PROGRESS)**
 
-* **(Task B.1)** Customizable Chart of Accounts (CoA): **COMPLETE**
+* **(Task B.1)** Customizable Chart of Accounts (CoA): **IN PROGRESS**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`)
     * ✅ Implement backend CRUD API (`server/accountRoutes.ts`, `/accounts/tree`)
     * ✅ Basic CRUD API Testing
     * ✅ Backend Hierarchy Implementation
     * ✅ Single Header Context Selector
     * ✅ Frontend Hierarchy UI (Display & Add/Edit Forms)
-    * ✅ CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
-    * ✅ Fixed CoA Import Deletion Logic (inactive marking)
-    * ✅ Enhanced CoA Import UI (simplified workflow)
-    * ✅ CoA Automated Testing (Import/Export API verified)
+    * 🔄 Explicitly fix and verify CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
+    * 🔄 Finalize UI/UX enhancements and document edge-case validations
+    * 🔄 Ensure consistency and verify hierarchical CoA across multiple entities
     * ✅ Refactored Account storage logic to `server/storage/accountStorage.ts`.
-* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **COMPLETE**
+* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **IN PROGRESS**
     * ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
     * ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
     * ✅ Build frontend UI for manual JE creation (`ManualJournalEntry.tsx` in `components/forms/`) - Verified via test page.
-    * ✅ Implement logic for processing batch JE uploads (Backend API in `batchUploadRoutes.ts`, storage logic) - Verified via test script.
+    * 🔄 Finalize and verify batch journal entry upload functionality and UI
+    * 🔄 Expand comprehensive automated testing covering all key edge cases
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
     * **(AI Link - Future):** Consider hooks for "JE learning".
-* **(Task B.3)** Accounting Modules: **NEXT**
-    * 📝 **Next:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
+* **(Task B.3)** Accounting Modules: **NOT STARTED**
+    * 📝 **Next explicit priority after completion of B.1 and B.2:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
     * 📝 Implement Accounts Receivable (AR) module.
     * 📝 Implement other modules (Debt/Notes Payable, Inventory, Fixed Assets, Lease Accounting, Prepaid Expenses).
     * 📝 Ensure integration with CoA and GL.
     * 📝 Design/implement GAAP/IFRS financial statements with footnotes.
 
-**Phase C: Reporting (Standard & Custom) & Data Collection**
+**Phase C: Website Content Management (NEARLY COMPLETE)**
 
-* **(Task C.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
-* **(Task C.2)** Custom Reporting:
+* **(Task C.1)** ✅ Authentication & Backend: Authentication middleware verified and fixed, with proper user access control.
+* **(Task C.2)** ✅ Content Schema & Storage: Homepage content schema and storage methods created and verified.
+* **(Task C.3)** ✅ Admin UI Component: AdminWebsiteContent component developed with tabbed interface for content management.
+* **(Task C.4)** ✅ Dashboard Integration: AdminWebsiteContent component integrated into Dashboard while preserving existing UI.
+* **(Task C.5)** Blog Management & Integration:
+    * ✅ Backend CRUD operations verified
+    * ✅ Fixed homepage blog previews and "View Articles" link (Issue #6)
+    * ✅ Resolved subscription form submission error (Issue #7)
+    * ✅ Enhanced UI/UX for content management with responsive designs
+    * ✅ Improved BlogContentManager with better tabs, filters, and search
+* **(Task C.6)** AI Content Generation (NEXT):
+    * 📝 Plan integration of financial news feeds
+    * 📝 Design AI content draft generation process
+    * 📝 Create admin review workflow for AI-generated content
+
+**Phase D: Reporting (Standard & Custom) & Data Collection**
+
+* **(Task D.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
+* **(Task D.2)** Custom Reporting:
     * Define backend API capabilities for fetching data with flexible filters.
     * Build a frontend UI for custom report building.
-* **(Task C.3)** Data Collection and Analysis:
+* **(Task D.3)** Data Collection and Analysis:
     * Implement data collection mechanisms.
     * Ensure anonymization, privacy policies, and user consent.
     * Design for AI/ML and forecasting.
     * Prioritize state-of-the-art, innovative, customer-focused, easy-to-use solutions.
     * Create a great design (trustworthy, trendy, fun).
 
-**Phase D: API Integrations & Automation**
+**Phase E: API Integrations & Automation**
 
-* **(Task D.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
-* **(Task D.2)** Automate JE Creation: From fetched API data (AI assistance).
+* **(Task E.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
+* **(Task E.2)** Automate JE Creation: From fetched API data (AI assistance).
     * **(AI Assistance):** Explore Plaid, document analysis. Odoo/Sage Intacct inspiration.
 
-**Phase E: AI/ML & Predictive Forecasting**
+**Phase F: AI/ML & Predictive Forecasting**
 
-* **(Task E.1)** Verify Python Service Integration: Check DB access for `python_service/ml_service.py`.
-* **(Task E.2)** Implement AI/ML and Predictive Forecasting: Models for forecasting, auto-categorization, anomaly detection, NLP queries. Advanced analytics features. Prioritize state-of-the-art, innovative design.
-* **(Task E.3)** Implement Other AI Features: Auto-categorization, anomaly detection, NLP from plans.
+* **(Task F.1)** Verify Python Service Integration: Check DB access for `python_service/ml_service.py`.
+* **(Task F.2)** Implement AI/ML and Predictive Forecasting: Models for forecasting, auto-categorization, anomaly detection, NLP queries. Advanced analytics features. Prioritize state-of-the-art, innovative design.
+* **(Task F.3)** Implement Other AI Features: Auto-categorization, anomaly detection, NLP from plans.
 
-**Phase F: Deferred Features & Final Polish**
+**Phase G: Future Enhancements**
 
-* **(Task F.1)** ✅ Implement Client Edit/Deactivate (Done).
-* **(Task F.2)** Fix "Use Client Data" Button (Bug 6).
-* **(Task F.3)** Comprehensive Testing: Expand unit, integration, E2E tests.
-* **(Task F.4)** Documentation: Update all technical and user documentation.
-* **(Task F.5)** Deployment Prep: Finalize cloud configuration, CI/CD, monitoring.
+* **(Task G.1)** ✅ Implement Client Edit/Deactivate (Done).
+* **(Task G.2)** Comprehensive Testing: Expand unit, integration, E2E tests.
+* **(Task G.3)** Documentation: Update all technical and user documentation.
+* **(Task G.4)** Deployment Prep: Finalize cloud configuration, CI/CD, monitoring.
+* **(Task G.5)** AI-driven proactive website health monitoring and autonomous code updates.
+* **(Task G.6)** XAI integration to enhance explainability and transparency in the accounting system.
 
-**Phase G: Future-Proofing (Long Term)**
+**Phase H: Future-Proofing (Long Term)**
 
-* **(Task G.1)** Explore Blockchain & IoT integrations.
+* **(Task H.1)** Explore Blockchain & IoT integrations.
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Focus on **Task B.3: Accounts Payable Backend Foundation**.
+* **Prioritize:** Focus on AI integration planning, then move to **Task B.3: Accounts Payable Backend Foundation**.
 * **Maintain Structure:** Keep the client-specific accounting design consistent. Follow established patterns (e.g., modular storage).
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
@@ -166,27 +220,30 @@
 * **Design Considerations:** Prioritize state-of-the-art, innovative, customer-focused, easy-to-use design. Aim for trust, trendiness, and fun.
 * **Data Strategy:** Keep data collection/strategy goals in mind during design.
 * **Code Quality:** Write clean, well-organized, documented code. Follow linting/formatting rules.
-* **Efficiency:** Prioritize efficient algorithms and data structures.
-* **Error Handling:** Implement robust error catching and user-friendly messages.
-* **Documentation:** Maintain clear documentation and code comments.
+* **Efficiency:** Prioritize efficient algorithms and queries. Balance performance and maintainability.
 
-## 6. Code Quality & Cleanup Strategy
+## 6. Continuous Refactoring & Code Quality Requirements
 
-* **Automated Linting and Formatting:**
-    * **Tools:** Use ESLint and Prettier via project configurations (`.eslintrc.js`, `.prettierrc.json`).
-    * **Agent Action:** Run linting/formatting commands periodically (e.g., `npx eslint . --fix`, `npx prettier . --write`) to fix issues automatically.
-* **Automated Unused Code/Dependency Detection:**
-    * **Tools:** Consider using tools like `ts-prune` or Knip to find unused exports, files, types, and dependencies.
-    * **Agent Action:** Run these tools periodically. Based on reports, remove identified unused items after review.
-* **TypeScript Static Analysis:**
-    * **Tools:** Use the TypeScript compiler (`tsc`) with strict settings (`tsconfig.json`).
-    * **Agent Action:** Run `npx tsc --noEmit` regularly to check for type errors and potential dead code.
-* **Targeted Refactoring (Manual via Agent):**
-    * **Strategy:** Address large files (like the ongoing `storage.ts` refactor) or duplicate code by breaking them down logically by domain/feature.
-    * **Agent Action:** Follow specific, step-by-step refactoring instructions, creating new modules, moving code, updating imports, and verifying with tests. Emphasize single responsibility, avoiding side effects, good abstractions.
-* **Leveraging Automated Tests:**
-    * **Strategy:** Maintain comprehensive automated tests (unit, integration, API via scripts in `/test`) to ensure refactoring and cleanup don't introduce regressions.
-    * **Agent Action:** Write missing tests for critical modules. Run relevant test suites after changes.
-* **Recommended Approach:**
-    * **Incremental Cleanup:** Apply cleanup practices alongside feature development and refactoring.
-    * **Continue Refactoring `storage.ts`:** Systematically move logic out of the monolithic `storage.ts` into domain-specific modules (e.g., `clientStorage.ts`, `entityStorage.ts`, `accountStorage.ts` etc.) after the current task.
+Throughout every task explicitly:
+* Refactor continuously from monolithic to modular/microservice architecture:
+  * Clearly ensure each module handles single, explicit responsibilities.
+  * Immediately extract logic from large files/functions into smaller, maintainable, explicitly named modules and services.
+* Proactively search for and remove explicitly:
+  * Duplicate implementations, particularly resulting from refactoring.
+  * Outdated or unused code, especially from old testing, agent mistakes, or deprecated implementations.
+  * Run tools like ts-prune or Knip periodically to clearly detect unused or outdated code explicitly:
+    ```bash
+    npx ts-prune
+    npx knip
+    ```
+  * Explicitly review results and safely remove verified unnecessary code.
+
+## 7. Immediate Verification Checklist (Explicitly Required)
+
+* Onboarding explicitly matches simplified flow:
+  * Client → Automatic Default Entity creation
+* Industry dropdown lists explicitly aligned and consistent everywhere.
+* Task B.1 import/export functionality explicitly fixed post-refactoring.
+* Continuous refactoring explicitly evident in PRs/code changes.
+* All new and existing modules clearly documented explicitly.
+* Regular execution of unused code detection scripts (ts-prune, knip).

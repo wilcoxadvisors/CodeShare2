@@ -10,6 +10,25 @@
 * **Code Location:** `CodeShare/` folder.
 * **Reference Docs:** (Note: Original references were to uploaded files - Business Plan.docx, Outline for Accounting System Integration.docx, etc. These are conceptual references based on past context.)
 
+## 1.1 Onboarding Flow (Explicitly Updated)
+
+The onboarding workflow is simplified to explicitly include only:
+* Client Setup
+  * Collect: Name, Legal Name, Address, Tax Info, Industry, Contacts
+* Default Entity Creation
+  * Automatically created after successful Client creation.
+  * Uses explicitly the Client's Name and Industry as defaults.
+
+Note:
+* Historical Data, Consolidation Group, and Chart of Accounts (CoA) setups are explicitly excluded from onboarding.
+* Historical data will be explicitly handled through the Journal Entry batch upload module.
+
+## 1.2 Industry Dropdown Alignment & Consistency
+
+* Maintain industry dropdown lists explicitly from a single source of truth at: `client/src/lib/industryUtils.ts`
+* Explicitly ensure ALL components (ClientSetupCard.tsx, EntityManagementCard.tsx, EntityForm.tsx, ClientOnboardingForm.tsx, etc.) import and utilize this centralized source.
+* Immediately remove duplicate implementations of utility functions like ensureIndustryValue explicitly from individual components.
+
 ## 2. Business Model & Long-Term Vision
 
 * **Revenue:** Tiered SaaS subscriptions (Basic/Pro/Enterprise) + Add-ons + Implementation Fees. Aggressive growth targets ($10M revenue/2k clients by Year 5).
@@ -25,8 +44,8 @@
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
-    * **Current Update:** Task B.1 (Chart of Accounts) is now COMPLETE. This includes implementation of client-specific hierarchical CoA, backend/frontend management, `code` -> `accountCode` refactoring, import/export functionality (CSV/Excel) with fixes for update logic and UI improvements, resolution of display bugs, and successful verification. Schema refactoring was performed to move reporting fields (`fsliBucket`, `internalReportingBucket`, `item`) from `accounts` to `journalEntryLines`.
-    * **Current Update:** Task B.2 (General Ledger / Journal Entries) backend logic and API are COMPLETE and verified via automated tests. Frontend UI (`ManualJournalEntry.tsx`) created and passed initial verification. Batch Upload backend logic is implemented and verified via tests. **Task B.2 is COMPLETE.**
+    * **Current Update:** Task B.1 (Chart of Accounts) is IN PROGRESS. Priority is to explicitly fix and verify the import/export functionality after recent refactoring, ensure manual journal entries work, and finalize UI/UX enhancements with documentation of edge cases. Need to ensure consistency and verify hierarchical CoA across multiple entities.
+    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Need to finalize and verify batch journal entry upload functionality and UI, and expand comprehensive automated testing covering all key edge cases.
     * **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
         * **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
         * **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -105,29 +124,29 @@
 * **Additional Completed Tasks:**
     * ✅ Dashboard Client Actions: View Details, Edit Client, Deactivate Client.
 
-**Phase B: Core Accounting Module (COMPLETED - Moving to B.3)**
+**Phase B: Core Accounting Module (IN PROGRESS)**
 
-* **(Task B.1)** Customizable Chart of Accounts (CoA): **COMPLETE**
+* **(Task B.1)** Customizable Chart of Accounts (CoA): **IN PROGRESS**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`)
     * ✅ Implement backend CRUD API (`server/accountRoutes.ts`, `/accounts/tree`)
     * ✅ Basic CRUD API Testing
     * ✅ Backend Hierarchy Implementation
     * ✅ Single Header Context Selector
     * ✅ Frontend Hierarchy UI (Display & Add/Edit Forms)
-    * ✅ CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
-    * ✅ Fixed CoA Import Deletion Logic (inactive marking)
-    * ✅ Enhanced CoA Import UI (simplified workflow)
-    * ✅ CoA Automated Testing (Import/Export API verified)
+    * 🔄 Explicitly fix and verify CoA Import/Export functionality (CSV/Excel, update logic, `accountCode` refactor)
+    * 🔄 Finalize UI/UX enhancements and document edge-case validations
+    * 🔄 Ensure consistency and verify hierarchical CoA across multiple entities
     * ✅ Refactored Account storage logic to `server/storage/accountStorage.ts`.
-* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **COMPLETE**
+* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **IN PROGRESS**
     * ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
     * ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
     * ✅ Build frontend UI for manual JE creation (`ManualJournalEntry.tsx` in `components/forms/`) - Verified via test page.
-    * ✅ Implement logic for processing batch JE uploads (Backend API in `batchUploadRoutes.ts`, storage logic) - Verified via test script.
+    * 🔄 Finalize and verify batch journal entry upload functionality and UI
+    * 🔄 Expand comprehensive automated testing covering all key edge cases
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
     * **(AI Link - Future):** Consider hooks for "JE learning".
-* **(Task B.3)** Accounting Modules: **NEXT**
-    * 📝 **Next:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
+* **(Task B.3)** Accounting Modules: **NOT STARTED**
+    * 📝 **Next explicit priority after completion of B.1 and B.2:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
     * 📝 Implement Accounts Receivable (AR) module.
     * 📝 Implement other modules (Debt/Notes Payable, Inventory, Fixed Assets, Lease Accounting, Prepaid Expenses).
     * 📝 Ensure integration with CoA and GL.
@@ -201,29 +220,30 @@
 * **Design Considerations:** Prioritize state-of-the-art, innovative, customer-focused, easy-to-use design. Aim for trust, trendiness, and fun.
 * **Data Strategy:** Keep data collection/strategy goals in mind during design.
 * **Code Quality:** Write clean, well-organized, documented code. Follow linting/formatting rules.
-* **Efficiency:** Prioritize efficient algorithms and data structures.
-* **Error Handling:** Implement robust error catching and user-friendly messages.
-* **Documentation:** Maintain clear documentation and code comments.
+* **Efficiency:** Prioritize efficient algorithms and queries. Balance performance and maintainability.
 
-## 6. Code Quality & Cleanup Strategy
+## 6. Continuous Refactoring & Code Quality Requirements
 
-* **Automated Linting and Formatting:**
-    * **Tools:** Use ESLint and Prettier via project configurations (`.eslintrc.js`, `.prettierrc.json`).
-    * **Agent Action:** Run linting/formatting commands periodically (e.g., `npx eslint . --fix`, `npx prettier . --write`) to fix issues automatically.
-* **Automated Unused Code/Dependency Detection:**
-    * **Tools:** Consider using tools like `ts-prune` or Knip to find unused exports, files, types, and dependencies.
-    * **Agent Action:** Run these tools periodically. Based on reports, remove identified unused items after reviewing for potential impacts.
-* **Manual Code Review:**
-    * **Agent Action:** On completion of major features or key milestones, conduct a code review focused on identifying code smells, duplicated code, and potential refactoring opportunities.
-* **Performance Profiling:**
-    * **Tools:** Use browser performance tools for frontend (especially Lighthouse); use Node.js profiling tools for backend.
-    * **Agent Action:** Identify and address performance bottlenecks, focusing on critical paths first.
-* **Documentation Quality:**
-    * **Agent Action:** Ensure comprehensive technical (code) and user documentation is created and maintained, with a focus on clarity and completeness.
-* **Regression Testing:**
-    * **Agent Action:** Implement a robust suite of automated tests for each critical system component, ensuring new changes don't break existing functionality.
-* **Specific Focus Areas:**
-    * **Storage Logic:** Further decompose remaining monolithic pieces.
-    * **API Layer:** Continue enhancing route organization and documentation.
-    * **Frontend State Management:** Identify and clean up redundant state.
-    * **TypeScript Type Safety:** Enhance type coverage, especially for API boundary interfaces.
+Throughout every task explicitly:
+* Refactor continuously from monolithic to modular/microservice architecture:
+  * Clearly ensure each module handles single, explicit responsibilities.
+  * Immediately extract logic from large files/functions into smaller, maintainable, explicitly named modules and services.
+* Proactively search for and remove explicitly:
+  * Duplicate implementations, particularly resulting from refactoring.
+  * Outdated or unused code, especially from old testing, agent mistakes, or deprecated implementations.
+  * Run tools like ts-prune or Knip periodically to clearly detect unused or outdated code explicitly:
+    ```bash
+    npx ts-prune
+    npx knip
+    ```
+  * Explicitly review results and safely remove verified unnecessary code.
+
+## 7. Immediate Verification Checklist (Explicitly Required)
+
+* Onboarding explicitly matches simplified flow:
+  * Client → Automatic Default Entity creation
+* Industry dropdown lists explicitly aligned and consistent everywhere.
+* Task B.1 import/export functionality explicitly fixed post-refactoring.
+* Continuous refactoring explicitly evident in PRs/code changes.
+* All new and existing modules clearly documented explicitly.
+* Regular execution of unused code detection scripts (ts-prune, knip).

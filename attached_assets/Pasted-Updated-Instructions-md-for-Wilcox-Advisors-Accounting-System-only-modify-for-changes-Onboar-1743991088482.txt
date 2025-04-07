@@ -1,0 +1,59 @@
+Updated Instructions.md for Wilcox Advisors Accounting System.
+
+only modify for changes
+📌 Onboarding Flow (Explicitly Updated)
+The onboarding workflow is simplified to explicitly include only:
+•	Client Setup
+o	Collect: Name, Legal Name, Address, Tax Info, Industry, Contacts
+•	Default Entity Creation
+o	Automatically created after successful Client creation.
+o	Uses explicitly the Client’s Name and Industry as defaults.
+Note:
+•	Historical Data, Consolidation Group, and Chart of Accounts (CoA) setups are explicitly excluded from onboarding.
+•	Historical data will be explicitly handled through the Journal Entry batch upload module.
+________________________________________
+📌 Industry Dropdown Alignment & Consistency
+•	Maintain industry dropdown lists explicitly from a single source of truth at:
+bash
+CopyEdit
+client/src/lib/industryUtils.ts
+•	Explicitly ensure ALL components (ClientSetupCard.tsx, EntityManagementCard.tsx, EntityForm.tsx, ClientOnboardingForm.tsx, etc.) import and utilize this centralized source.
+•	Immediately remove duplicate implementations of utility functions like ensureIndustryValue explicitly from individual components.
+________________________________________
+📌 Core Accounting Tasks (Explicitly Corrected Status)
+🔄 Task B.1: Chart of Accounts (CoA) – IN PROGRESS
+•	Priority:
+o	Explicitly fix and verify the import/export functionality after recent refactoring.
+o	Making sure the manual journal entries work
+o	Finalize the UI/UX enhancements and clearly document all edge-case validations.
+•	Ensure consistency and explicitly verify hierarchical CoA across multiple entities.
+🔄 Task B.2: General Ledger & Journal Entries (GL/JE) – IN PROGRESS
+•	Clearly finalize and explicitly verify batch journal entry upload functionality and UI.
+•	Expand comprehensive automated testing explicitly covering all key edge cases.
+🔲 Task B.3: Accounts Payable Backend Foundation – NOT STARTED
+•	Next explicit priority after completion and verification of B.1 and B.2.
+________________________________________
+📌 Continuous Refactoring & Code Quality Requirements
+Throughout every task explicitly:
+•	Refactor continuously from monolithic to modular/microservice architecture:
+o	Clearly ensure each module handles single, explicit responsibilities.
+o	Immediately extract logic from large files/functions into smaller, maintainable, explicitly named modules and services.
+•	Proactively search for and remove explicitly:
+o	Duplicate implementations, particularly resulting from refactoring.
+o	Outdated or unused code, especially from old testing, agent mistakes, or deprecated implementations.
+o	Run tools like ts-prune or Knip periodically to clearly detect unused or outdated code explicitly:
+bash
+CopyEdit
+npx ts-prune
+npx knip
+o	Explicitly review results and safely remove verified unnecessary code.
+________________________________________
+📌 Immediate Verification Checklist (Explicitly Required)
+•	Onboarding explicitly matches simplified flow:
+o	Client → Automatic Default Entity creation
+•	Industry dropdown lists explicitly aligned and consistent everywhere.
+•	Task B.1 import/export functionality explicitly fixed post-refactoring.
+•	Continuous refactoring explicitly evident in PRs/code changes.
+•	All new and existing modules clearly documented explicitly.
+•	Regular execution of unused code detection scripts (ts-prune, knip).
+
