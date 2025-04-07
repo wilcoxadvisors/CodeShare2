@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import GeneralLedger from "./pages/GeneralLedger";
 import JournalEntries from "./pages/JournalEntries";
 import JournalEntryDetail from "./pages/JournalEntryDetail";
+import NewJournalEntry from "./pages/NewJournalEntry";
 import BatchUpload from "./pages/BatchUpload";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import Reports from "./pages/Reports";
@@ -337,7 +338,7 @@ function Router() {
       
       <Route path="/journal-entries/new">
         <AppLayout>
-          <ProtectedRoute component={ManualJournalEntry} />
+          <ProtectedRoute component={NewJournalEntry} />
         </AppLayout>
       </Route>
       

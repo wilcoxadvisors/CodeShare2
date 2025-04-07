@@ -39,6 +39,14 @@ interface Location {
   active: boolean;
 }
 
+interface Entity {
+  id: number;
+  name: string;
+  code: string;
+  description?: string | null;
+  active: boolean;
+}
+
 interface JournalEntryFormProps {
   entityId: number;
   accounts: Account[];
@@ -46,6 +54,7 @@ interface JournalEntryFormProps {
   onSubmit: () => void;
   onCancel: () => void;
   existingEntry?: any;
+  entities?: Entity[];
 }
 
 interface JournalLine {
@@ -107,7 +116,7 @@ const FormSchema = z.object({
   })
 });
 
-function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
+function JournalEntryForm({ entityId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
@@ -556,12 +565,22 @@ function JournalEntryForm({ entityId, accounts, locations = [], onSubmit, onCanc
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Input
-                    value={line.entityCode}
-                    onChange={(e) => handleLineChange(index, 'entityCode', e.target.value)}
-                    placeholder="Entity Code"
-                    className={fieldErrors[`line_${index}_entityCode`] ? 'border-red-500' : ''}
-                  />
+                  <Select 
+                    value={line.entityCode} 
+                    onValueChange={(value) => handleLineChange(index, 'entityCode', value)}
+                  >
+                    <SelectTrigger className={fieldErrors[`line_${index}_entityCode`] ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select Entity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Select Entity</SelectItem>
+                      {entities.map(entity => (
+                        <SelectItem key={entity.id} value={entity.id.toString()}>
+                          {entity.code ? `${entity.code} - ` : ''}{entity.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {fieldErrors[`line_${index}_entityCode`] && (
                     <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_entityCode`]}</p>
                   )}
