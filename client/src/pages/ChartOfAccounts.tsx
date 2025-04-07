@@ -49,6 +49,29 @@ function ChartOfAccounts() {
   const { currentEntity, selectedClientId } = useEntity();
   const { toast } = useToast();
   
+  // Global keyboard shortcut for focusing the search box
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not already in an input/textarea
+      if (
+        e.key === '/' && 
+        document.activeElement?.tagName !== 'INPUT' && 
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
+        e.preventDefault();
+        const searchInput = document.getElementById('account-search');
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+  
   console.log("DEBUG - ChartOfAccounts rendering with context:", {
     hasEntity: !!currentEntity,
     entityId: currentEntity?.id,
@@ -1964,34 +1987,7 @@ function ChartOfAccounts() {
             )}
           </div>
           
-          {/* Add global keyboard shortcut to focus the search box when pressing '/' */}
-          <div style={{ display: 'none' }}>
-            {(() => {
-              // Add event listener for the '/' key to focus the search input
-              useEffect(() => {
-                const handleKeyDown = (e: KeyboardEvent) => {
-                  // Only trigger if not already in an input/textarea
-                  if (
-                    e.key === '/' && 
-                    document.activeElement?.tagName !== 'INPUT' && 
-                    document.activeElement?.tagName !== 'TEXTAREA'
-                  ) {
-                    e.preventDefault();
-                    const searchInput = document.getElementById('account-search');
-                    if (searchInput) {
-                      searchInput.focus();
-                    }
-                  }
-                };
-                
-                window.addEventListener('keydown', handleKeyDown);
-                return () => {
-                  window.removeEventListener('keydown', handleKeyDown);
-                };
-              }, []);
-              return null;
-            })()}
-          </div>
+          {/* The search keyboard shortcut is now handled by a useEffect at the component level */}
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
