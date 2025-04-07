@@ -2866,103 +2866,22 @@ function ChartOfAccounts() {
               </div>
             )}
             
-            {/* Import Settings Section */}
-            <div className="mt-6 border-t pt-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">Import Settings</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Update Existing Accounts */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700">Update Existing Accounts</h4>
-                  <RadioGroup 
-                    value={updateStrategy} 
-                    onValueChange={(value) => setUpdateStrategy(value as 'all' | 'none' | 'selected')}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-start">
-                      <RadioGroupItem value="all" id="update-all" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="update-all" className="text-sm font-medium">
-                          Update all accounts
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          All existing accounts in the file will be updated with the new data
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <RadioGroupItem value="none" id="update-none" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="update-none" className="text-sm font-medium">
-                          Don't update any accounts
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          Only add new accounts, keep existing accounts unchanged
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <RadioGroupItem value="selected" id="update-selected" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="update-selected" className="text-sm font-medium">
-                          Update selected accounts only
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          Only update the modified accounts selected above
-                        </p>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                {/* Missing Account Handling */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700">Missing Account Handling</h4>
-                  <RadioGroup 
-                    value={removeStrategy} 
-                    onValueChange={(value) => setRemoveStrategy(value as 'inactive' | 'delete' | 'none')}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-start">
-                      <RadioGroupItem value="inactive" id="remove-inactive" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="remove-inactive" className="text-sm font-medium">
-                          Mark as inactive
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          Accounts in the system but not in the import will be marked as inactive
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <RadioGroupItem value="delete" id="remove-delete" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="remove-delete" className="text-sm font-medium">
-                          Delete if possible
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          Delete accounts not in the import file (if they have no transactions)
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <RadioGroupItem value="none" id="remove-none" className="mr-2 mt-1" />
-                      <div>
-                        <Label htmlFor="remove-none" className="text-sm font-medium">
-                          Ignore missing accounts
-                        </Label>
-                        <p className="text-xs text-gray-500">
-                          Keep all existing accounts regardless of whether they appear in the import
-                        </p>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
+            {/* Hidden settings for import functionality - using defaults */}
+            <div className="hidden">
+              <input 
+                type="hidden" 
+                name="import-strategy" 
+                value="all" 
+                checked={updateStrategy === 'all'} 
+                onChange={() => setUpdateStrategy('all')} 
+              />
+              <input 
+                type="hidden" 
+                name="remove-strategy" 
+                value="inactive" 
+                checked={removeStrategy === 'inactive'}
+                onChange={() => setRemoveStrategy('inactive')} 
+              />
             </div>
             
             <DialogFooter className="mt-6">

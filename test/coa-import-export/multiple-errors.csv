@@ -1,0 +1,4 @@
+AccountCode,Name,Type,ParentCode
+3000,Receivable,ASSET,3000
+3100,Bank Account,ASST,9999
+3200,Credit Cards,LIABILITY,3200

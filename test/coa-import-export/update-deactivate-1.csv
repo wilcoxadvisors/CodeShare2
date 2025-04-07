@@ -1,0 +1,3 @@
+AccountCode,Name,Type,ParentCode
+2000,Liabilities,LIABILITY,
+2100,Payables,LIABILITY,2000
