@@ -80,9 +80,12 @@ function JournalEntries() {
   
   // Filter and search journal entries
   const filteredEntries = React.useMemo(() => {
-    if (!data?.entries) return [];
+    if (!data) return [];
     
-    return data.entries.filter((entry: any) => {
+    // Handle different response structures
+    const entries = Array.isArray(data) ? data : (data.entries || []);
+    
+    return entries.filter((entry: any) => {
       const matchesSearch = searchTerm === '' || 
         entry.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,7 +95,7 @@ function JournalEntries() {
       
       return matchesSearch && matchesStatus;
     });
-  }, [data?.entries, searchTerm, filterStatus]);
+  }, [data, searchTerm, filterStatus]);
   
   // Pagination
   const totalPages = Math.ceil((filteredEntries?.length || 0) / pageSize);
