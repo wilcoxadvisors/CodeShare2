@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AccountType } from "@shared/schema";
@@ -92,6 +93,7 @@ function ChartOfAccounts() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string, accountCode: string} | null>(null);
+  const [showInactiveAccounts, setShowInactiveAccounts] = useState(true);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
@@ -228,8 +230,18 @@ function ChartOfAccounts() {
   };
   
   // Create a flattened account list for display, respecting the expanded state
-  const flattenedAccounts = useMemo(() => {
-    return flattenAccountTree(accountTreeData);
+  // The flattened accounts will now be split into active and inactive (deleted) accounts
+  const { activeAccounts, inactiveAccounts } = useMemo(() => {
+    const allFlattenedAccounts = flattenAccountTree(accountTreeData);
+    
+    // Split into active and inactive accounts
+    const active = allFlattenedAccounts.filter(account => account.active);
+    const inactive = allFlattenedAccounts.filter(account => !account.active);
+    
+    return { 
+      activeAccounts: active,
+      inactiveAccounts: inactive 
+    };
   }, [accountTreeData, expandedNodes]);
   
   // Create a complete account list (all nodes) for searching, ignoring expansion state
@@ -252,8 +264,14 @@ function ChartOfAccounts() {
   }, [accountTreeData]);
   
   // Improved filtering for accounts based on search term that preserves hierarchy
-  const filteredAccounts = useMemo(() => {
-    if (!searchTerm) return flattenedAccounts;
+  const { filteredActiveAccounts, filteredInactiveAccounts } = useMemo(() => {
+    // If no search term, return the original split active and inactive accounts
+    if (!searchTerm) {
+      return {
+        filteredActiveAccounts: activeAccounts,
+        filteredInactiveAccounts: inactiveAccounts
+      };
+    }
     
     // Step 1: Find accounts that match the search criteria (search through ALL accounts)
     const matchingAccountIds = new Set<number>();
@@ -309,17 +327,27 @@ function ChartOfAccounts() {
       }, 0);
     }
     
-    // Recreate the flattened accounts tree with the new expanded nodes
-    // But only show relevant accounts (matching or their ancestors)
-    return flattenAccountTree(accountTreeData).filter(account => 
+    // Get all accounts matching the search criteria and filter for active/inactive
+    const allMatchingAccounts = flattenAccountTree(accountTreeData).filter(account => 
       relevantAccountIds.has(account.id)
     );
-  }, [accountTreeData, allAccounts, searchTerm, expandedNodes]);
+    
+    // Split the matching accounts into active and inactive
+    return {
+      filteredActiveAccounts: allMatchingAccounts.filter(account => account.active),
+      filteredInactiveAccounts: allMatchingAccounts.filter(account => !account.active)
+    };
+  }, [accountTreeData, allAccounts, searchTerm, expandedNodes, activeAccounts, inactiveAccounts]);
+  
+  // Create a combined list of active and inactive accounts for operations that need all accounts
+  const allFlattenedAccounts = useMemo(() => {
+    return [...activeAccounts, ...inactiveAccounts];
+  }, [activeAccounts, inactiveAccounts]);
   
   // Function to expand all nodes
   const expandAllNodes = () => {
     const expandAll: Record<number, boolean> = {};
-    flattenedAccounts.forEach(account => {
+    allFlattenedAccounts.forEach(account => {
       expandAll[account.id] = true;
     });
     setExpandedNodes(expandAll);
@@ -370,10 +398,10 @@ function ChartOfAccounts() {
       // Only auto-generate code for new accounts, not when editing
       if (prefix && !accountData.id) {
         // Get accounts of the current type from the flattened account tree
-        const accountsOfType = flattenedAccounts.filter(account => account.type === accountData.type);
+        const accountsOfType = allFlattenedAccounts.filter(account => account.type === accountData.type);
         const existingCodes = accountsOfType
-          .map((a) => a.accountCode || a.code) // Support both formats for backward compatibility
-          .filter((code): code is string => 
+          .map((a: AccountTreeNode) => a.accountCode || a.code) // Support both formats for backward compatibility
+          .filter((code: any): code is string => 
             typeof code === 'string' && code.startsWith(prefix)
           )
           .sort();
@@ -402,7 +430,7 @@ function ChartOfAccounts() {
         }
       }
     }
-  }, [accountData.type, isEditMode, currentEntity, flattenedAccounts]);
+  }, [accountData.type, isEditMode, currentEntity, allFlattenedAccounts]);
 
   // Custom hook for adding an account
   const useAddAccount = () => {
@@ -884,7 +912,7 @@ function ChartOfAccounts() {
   
   const handleExportToExcel = async () => {
     // First check if we have accounts in the current view
-    if (!Array.isArray(flattenedAccounts) || flattenedAccounts.length === 0) {
+    if (!Array.isArray(allFlattenedAccounts) || allFlattenedAccounts.length === 0) {
       toast({
         title: "No accounts to export",
         description: "Please add accounts to the chart of accounts before exporting.",
@@ -2063,9 +2091,11 @@ function ChartOfAccounts() {
         {(() => {
           console.log("VERIFICATION STEP 3: DataTable Props", {
             columnsCount: columns.length,
-            dataCount: flattenedAccounts?.length || 0,
+            dataCount: allFlattenedAccounts?.length || 0,
+            activeCount: activeAccounts?.length || 0,
+            inactiveCount: inactiveAccounts?.length || 0,
             isLoading,
-            sample: flattenedAccounts?.slice(0, 2) || [],
+            sample: allFlattenedAccounts?.slice(0, 2) || [],
             timestamp: new Date().toISOString()
           });
           return null; // Return null to avoid rendering issues
@@ -2089,7 +2119,17 @@ function ChartOfAccounts() {
               </button>
             )}
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 items-center">
+            <div className="flex items-center space-x-2 mr-4">
+              <Switch
+                id="show-inactive"
+                checked={showInactiveAccounts}
+                onCheckedChange={setShowInactiveAccounts}
+              />
+              <Label htmlFor="show-inactive" className="text-sm cursor-pointer">
+                {inactiveAccounts.length > 0 ? `Show Inactive (${inactiveAccounts.length})` : "Show Inactive"}
+              </Label>
+            </div>
             <Button 
               variant="outline" 
               size="sm" 
@@ -2111,11 +2151,24 @@ function ChartOfAccounts() {
           </div>
         </div>
         
+        {/* Display active accounts */}
         <DataTable 
           columns={columns} 
-          data={filteredAccounts || []} 
+          data={filteredActiveAccounts || []} 
           isLoading={isLoading} 
         />
+        
+        {/* Display inactive accounts if toggle is enabled */}
+        {showInactiveAccounts && inactiveAccounts.length > 0 && (
+          <div className="mt-6 border-t pt-4">
+            <h3 className="text-lg font-medium mb-3">Inactive Accounts</h3>
+            <DataTable 
+              columns={columns} 
+              data={filteredInactiveAccounts || []} 
+              isLoading={isLoading} 
+            />
+          </div>
+        )}
       </div>
 
       <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
@@ -2277,9 +2330,9 @@ function ChartOfAccounts() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">No Parent (Top Level)</SelectItem>
-                        {flattenedAccounts
+                        {allFlattenedAccounts
                           .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
-                          .map((account: any) => (
+                          .map((account: AccountTreeNode) => (
                             <SelectItem key={account.id} value={account.id.toString()}>
                               {account.accountCode} - {account.name}
                             </SelectItem>
