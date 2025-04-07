@@ -859,7 +859,11 @@ export class AccountStorage implements IAccountStorage {
             
             // For backward compatibility 
             const updateStrategy = selections?.updateStrategy || (updateExisting ? 'all' : 'none');
-            const removeStrategy: 'inactive' | 'delete' | 'none' | 'ignore' = 
+            // If updateStrategy is 'selected', we need to treat the missing accounts based on selection too
+            const isUsingSelectedMode = updateStrategy === 'selected';
+            console.log(`Import using updateStrategy=${updateStrategy}, isUsingSelectedMode=${isUsingSelectedMode}`);
+            
+            const removeStrategy: 'inactive' | 'delete' | 'none' | 'ignore' | 'selected' = 
                 selections?.removeStrategy || 
                 (handleMissingAccounts === 'delete' ? 'delete' : 
                  (handleMissingAccounts === 'deactivate' ? 'inactive' : 'none'));
@@ -983,7 +987,9 @@ export class AccountStorage implements IAccountStorage {
                     if (!importedAccountCodes.has(existingAccount.accountCode)) {
                         // BUGFIX: Always check if this account is explicitly selected when in 'selected' mode
                         // Fix issue where unchecked missing accounts were still being processed
-                        if (removeStrategy === 'selected' as any && !selectedMissingAccounts.includes(existingAccount.accountCode)) {
+                        // Also handle case where updateStrategy is 'selected' which forces individual account selection
+                        if ((removeStrategy === 'selected' as any || updateStrategy === 'selected') && 
+                            !selectedMissingAccounts.includes(existingAccount.accountCode)) {
                             console.log(`BUGFIX: Skipping missing account ${existingAccount.accountCode} because it's not explicitly selected in missingAccountCodes`);
                             continue;
                         }
