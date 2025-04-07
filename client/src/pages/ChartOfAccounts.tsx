@@ -1240,8 +1240,8 @@ function ChartOfAccounts() {
     // Map of codes to account IDs for parent resolution
     const codeToIdMap = new Map<string, number>();
     flatAccounts.forEach(account => {
-      // Use accountCode if available, fall back to code for backward compatibility
-      const accountIdentifier = account.accountCode || account.code;
+      // Use accountCode for consistency with backend schema
+      const accountIdentifier = account.accountCode;
       // Only add to map if we have a valid string identifier
       if (accountIdentifier && typeof accountIdentifier === 'string') {
         codeToIdMap.set(accountIdentifier, account.id);
@@ -1253,7 +1253,7 @@ function ChartOfAccounts() {
     const processedData = data.map((row, index) => {
       const rowNum = index + 2; // +2 for Excel row number (1-based + header row)
       const validatedRow: {
-        code: string;
+        accountCode: string;
         name: string;
         type: string;
         subtype: string | null;
@@ -1263,7 +1263,7 @@ function ChartOfAccounts() {
         description: string | null;
         parentId?: number | null;
       } = {
-        code: row.Code?.toString().trim(),
+        accountCode: (row.AccountCode || row.Code)?.toString().trim(),
         name: row.Name?.toString().trim(),
         type: row.Type?.toString().toLowerCase().trim(),
         subtype: row.Subtype?.toString().trim() || null,
@@ -1290,8 +1290,8 @@ function ChartOfAccounts() {
       }
       
       // Validate required fields
-      if (!validatedRow.code) {
-        errors.push(`Row ${rowNum}: Code is required`);
+      if (!validatedRow.accountCode) {
+        errors.push(`Row ${rowNum}: Account Code is required`);
       }
       
       if (!validatedRow.name) {
@@ -1364,13 +1364,12 @@ function ChartOfAccounts() {
         }
       }
       
-      // If no match by ID, try to match by code
+      // If no match by ID, try to match by accountCode
       if (!existingAccount) {
         existingAccount = flatAccounts.find(acc => 
-          (acc.accountCode && acc.accountCode.toLowerCase() === importedAccount.code.toLowerCase()) || 
-          (acc.code && acc.code.toLowerCase() === importedAccount.code.toLowerCase())
+          acc.accountCode && acc.accountCode.toLowerCase() === importedAccount.accountCode.toLowerCase()
         );
-        console.log(`Matching by code ${importedAccount.code} - match found: ${Boolean(existingAccount)}`);
+        console.log(`Matching by accountCode ${importedAccount.accountCode} - match found: ${Boolean(existingAccount)}`);
       }
       
       if (!existingAccount) {
@@ -1381,9 +1380,9 @@ function ChartOfAccounts() {
         const changes: string[] = [];
         
         // Check each field for changes, starting with accountCode
-        const existingCode = existingAccount.accountCode || existingAccount.code || '';
-        if (importedAccount.code !== existingCode) {
-          changes.push(`Account Code: "${existingCode}" → "${importedAccount.code}"`);
+        const existingCode = existingAccount.accountCode || '';
+        if (importedAccount.accountCode !== existingCode) {
+          changes.push(`Account Code: "${existingCode}" → "${importedAccount.accountCode}"`);
         }
         
         if (importedAccount.name !== existingAccount.name) {
@@ -1428,9 +1427,9 @@ function ChartOfAccounts() {
     // Find accounts in the database that are not in the import (missing/removals)
     // These are accounts that exist in flatAccounts but their accountCode is not in importAccountCodes
     // Convert to lowercase for case-insensitive comparison
-    const importAccountCodes = new Set(importData.map(row => (row.accountCode || row.code || '').toLowerCase()));
+    const importAccountCodes = new Set(importData.map(row => (row.accountCode || '').toLowerCase()));
     const removals = flatAccounts.filter(account => {
-      const accountCode = (account.accountCode || account.code || '').toLowerCase();
+      const accountCode = (account.accountCode || '').toLowerCase();
       return accountCode && !importAccountCodes.has(accountCode);
     });
     
@@ -1633,17 +1632,7 @@ function ChartOfAccounts() {
       accessor: "accountCode", 
       type: "text",
       render: (row: Record<string, any>) => {
-        // Support both accountCode and code fields for backward compatibility
-        const displayCode = row.accountCode || row.code || "";
-        
-        // Debug output to understand what code is being displayed
-        console.log("DEBUG: Rendering account code", { 
-          id: row.id, 
-          accountCode: row.accountCode, 
-          code: row.code, 
-          displayCode,
-          clientId: clientIdToUse
-        });
+        const displayCode = row.accountCode || "";
         
         return (
           <span className={row.active ? "" : "text-gray-400 italic"}>

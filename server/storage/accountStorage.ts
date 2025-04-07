@@ -816,13 +816,12 @@ export class AccountStorage implements IAccountStorage {
 
             // Format accounts for export
             return allAccounts.map(account => ({
-                Code: account.accountCode,
+                AccountCode: account.accountCode,
                 Name: account.name,
                 Type: account.type,
                 Subtype: account.subtype || '',
                 Description: account.description || '',
                 IsActive: account.active ? 'YES' : 'NO',
-                // IsFolder field removed as it's not in the schema
                 ParentCode: account.parentId ? accountIdToCode.get(account.parentId) || '' : '',
                 // Add any other fields needed for export
             }));

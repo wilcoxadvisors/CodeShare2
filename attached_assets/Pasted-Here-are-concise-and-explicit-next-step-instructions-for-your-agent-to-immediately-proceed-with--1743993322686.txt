@@ -1,0 +1,65 @@
+Here are concise and explicit **next-step instructions** for your agent to immediately proceed with:
+
+---
+
+## ✅ **Immediate Next Steps for Task B.1 (Chart of Accounts)**
+
+### 📌 **1. Identify & Fix Import/Export Functionality (Highest Priority)**
+
+- **Explicitly test import/export** using the current UI (`client/src/components/account/ChartOfAccountsImportExport.tsx`).
+- Check backend endpoints (`server/accountRoutes.ts`).
+- Identify and explicitly document any issues caused by recent refactoring:
+  - Missing fields
+  - Incorrect mappings
+  - Error handling issues
+  - UI responsiveness and validation
+- Explicitly fix these issues and clearly document the resolutions.
+
+### 📌 **2. Verify & Document Hierarchical Integrity**
+
+- Explicitly ensure the hierarchical structure of CoA is stable and consistent:
+  - Verify entity-specific hierarchies (`accountStorage.ts`).
+  - Ensure accounts correctly roll up under their parents.
+- Provide explicit examples in documentation of verified successful hierarchies.
+
+### 📌 **3. UI/UX Finalization**
+
+- Clearly verify and finalize UI improvements:
+  - Explicit error messages on failed import/export.
+  - Clear user feedback on validation errors.
+  - Improve overall UI responsiveness explicitly for large datasets.
+
+### 📌 **4. Comprehensive Testing & Edge-Case Handling**
+
+- Explicitly create test cases for:
+  - Duplicate accounts
+  - Invalid formats
+  - Updates versus new account handling
+- Run and clearly document test results.
+
+---
+
+## 🚩 **Continuous Refactoring & Code Quality Checks (During Task B.1)**
+
+- Explicitly ensure all new changes follow modular architecture principles.
+- Immediately remove duplicate, outdated, or unused code.
+- Run explicitly:
+  ```bash
+  npx ts-prune
+  npx knip
+  ```
+- Document explicitly any removals clearly for future reference.
+
+---
+
+## 📋 **Explicit Task Completion Checklist (for Task B.1):**
+
+- [ ] Import/export explicitly working post-refactoring.
+- [ ] UI/UX enhancements explicitly completed and verified.
+- [ ] Comprehensive edge-case testing explicitly documented.
+- [ ] Continuous refactoring clearly visible and verified.
+- [ ] Unused code detection scripts (`ts-prune`, `knip`) explicitly run and results addressed.
+
+---
+
+Your agent can now explicitly begin working on these actionable instructions immediately.
