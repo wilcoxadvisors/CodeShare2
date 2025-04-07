@@ -1778,8 +1778,30 @@ function ChartOfAccounts() {
       onError: (error: any) => {
         console.error("EXPLICIT VERIFICATION - Import failed - Error:", error);
         
-        // Detailed error message
+        // Parse the API error response for more detailed information
         let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let errorDetails = '';
+        
+        try {
+          // Try to extract error details from the API response
+          if (error.response?.data) {
+            const responseData = error.response.data;
+            
+            // Use the formatted message if available
+            if (responseData.message) {
+              errorMessage = responseData.message;
+            }
+            
+            // Get more detailed error information if available
+            if (responseData.errors && responseData.errors.length > 0) {
+              errorDetails = responseData.errors.join('\n');
+            }
+            
+            console.log("EXPLICIT VERIFICATION - Detailed error data:", responseData);
+          }
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
         
         // If the error message indicates payload validation issues (which could be due to unchecked accounts)
         if (errorMessage.includes('validation') || 
@@ -1791,9 +1813,20 @@ function ChartOfAccounts() {
         
         toast({
           title: "Import failed",
-          description: `Failed to import accounts: ${errorMessage}`,
+          description: errorMessage,
           variant: "destructive",
         });
+        
+        // If we have additional error details, show them in a separate toast
+        if (errorDetails) {
+          setTimeout(() => {
+            toast({
+              title: "Error details",
+              description: errorDetails,
+              variant: "destructive",
+            });
+          }, 500); // Slight delay to ensure toasts appear in sequence
+        }
       }
     });
   };

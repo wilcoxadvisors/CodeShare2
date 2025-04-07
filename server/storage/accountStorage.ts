@@ -1183,11 +1183,40 @@ export class AccountStorage implements IAccountStorage {
             // Build success message including all operations
             const successMessage = `Successfully imported: ${results.created} added, ${results.updated} updated, ${results.reactivated} reactivated, ${results.inactive} deactivated, ${results.deleted} deleted`;
             
+            // Group and organize errors for better clarity in the UI
+            const groupedErrors = this.categorizeImportErrors(results.errors);
+            
+            // Prepare summarized error messages
+            const errorSummaries = [];
+            
+            // Add summaries for each error category if they exist
+            if (groupedErrors.duplicates.length > 0) {
+                errorSummaries.push(`${groupedErrors.duplicates.length} duplicate account code(s)`);
+            }
+            if (groupedErrors.validation.length > 0) {
+                errorSummaries.push(`${groupedErrors.validation.length} data validation issue(s)`);
+            }
+            if (groupedErrors.parentRelationship.length > 0) {
+                errorSummaries.push(`${groupedErrors.parentRelationship.length} parent relationship problem(s)`);
+            }
+            if (groupedErrors.transactionConstraints.length > 0) {
+                errorSummaries.push(`${groupedErrors.transactionConstraints.length} transaction constraint violation(s)`);
+            }
+            if (groupedErrors.other.length > 0) {
+                errorSummaries.push(`${groupedErrors.other.length} other error(s)`);
+            }
+            
+            // Create a more informative error message when errors exist
+            const errorMessage = results.errors.length > 0
+                ? `Import completed with issues: ${errorSummaries.join(', ')}`
+                : null;
+                
             return {
                 success: results.errors.length === 0,
                 message: results.errors.length === 0 
                     ? successMessage
-                    : `Import completed with ${results.errors.length} errors: ${successMessage}`,
+                    : errorMessage || `Import completed with ${results.errors.length} errors: ${successMessage}`,
+                errorSummary: errorSummaries.join(', '),
                 results,
                 errors: results.errors,
                 warnings: results.warnings,

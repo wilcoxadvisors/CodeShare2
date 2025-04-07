@@ -308,16 +308,22 @@ export function registerAccountRoutes(app: Express) {
       
       // Check if import was successful
       if (!result.success) {
+        // Construct a more detailed error message that includes import stats
+        const detailedMessage = result.message || "Import failed";
+        const statsMessage = `Successfully imported: ${result.added || 0} added, ${result.updated || 0} updated, ${result.reactivated || 0} reactivated, ${result.inactive || 0} deactivated, ${result.deleted || 0} deleted`;
+        
         // Return error response when the import fails but we have detailed information
         return res.status(400).json({
           status: "error",
-          message: result.message || "Import failed",
+          message: `${detailedMessage}: ${statsMessage}`,
+          detailedMessage: detailedMessage, // Keep the original message also for reference
+          statsMessage: statsMessage,
           errors: result.errors || [],
           warnings: result.warnings || [],
           count: result.count || 0,
           added: result.added || 0,
           updated: result.updated || 0,
-          reactivated: result.reactivated || 0, // Include reactivated accounts count
+          reactivated: result.reactivated || 0,
           unchanged: result.unchanged || 0,
           skipped: result.skipped || 0,
           inactive: result.inactive || 0,
