@@ -168,9 +168,6 @@ export default function EntityManagementCard({
   const populateFromClientData = () => {
     console.log("POPULATE: Using client data to pre-fill entity form", clientData);
     if (clientData) {
-      // First clear the form to prevent any stale values
-      form.reset({});
-      
       // Prepare clean values from client data with proper defaults
       const cleanValues = {
         name: clientData.name?.trim() || "",
@@ -185,8 +182,16 @@ export default function EntityManagementCard({
         // code field removed - auto-generated on server
       };
       
-      // Apply the clean values to the form
-      form.reset(cleanValues);
+      console.log("POPULATE: Clean values prepared:", cleanValues);
+      
+      // Apply the clean values directly to form fields to prevent UI blur
+      Object.keys(cleanValues).forEach(fieldName => {
+        form.setValue(fieldName as any, (cleanValues as any)[fieldName], {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      });
       
       toast({
         title: "Form Populated",

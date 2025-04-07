@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Client form schema
 const clientEditSchema = z.object({
@@ -41,13 +42,18 @@ export function ClientEditForm({ clientData, clientId, onUpdateSuccess }: Client
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Normalize industry value 
+  console.log("ClientEditForm: Raw client data received:", clientData);
+  const normalizedIndustry = ensureIndustryValue(clientData.industry);
+  console.log("ClientEditForm: Normalized industry value:", normalizedIndustry);
+  
   // Initialize form with client data
   const form = useForm<ClientEditFormValues>({
     resolver: zodResolver(clientEditSchema),
     defaultValues: {
       name: clientData.name || "",
       legalName: clientData.legalName || "",
-      industry: clientData.industry || "",
+      industry: normalizedIndustry, // Use normalized industry value
       contactName: clientData.contactName || "",
       contactEmail: clientData.contactEmail || "",
       contactPhone: clientData.contactPhone || "",
@@ -58,6 +64,11 @@ export function ClientEditForm({ clientData, clientId, onUpdateSuccess }: Client
       active: clientData.active || false
     }
   });
+  
+  // Debug effect to log form values
+  useEffect(() => {
+    console.log("Current form values:", form.getValues());
+  }, [form]);
 
   // Create a mutation to update the client
   const updateClientMutation = useMutation({
@@ -155,15 +166,11 @@ export function ClientEditForm({ clientData, clientId, onUpdateSuccess }: Client
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="finance">Finance</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="retail">Retail</SelectItem>
-                    <SelectItem value="real-estate">Real Estate</SelectItem>
-                    <SelectItem value="professional-services">Professional Services</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {INDUSTRY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />

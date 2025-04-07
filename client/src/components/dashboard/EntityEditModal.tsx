@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, ArchiveRestore, Trash2, Power } from "lucide-react";
-import { INDUSTRY_OPTIONS } from "@/lib/industryUtils";
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Entity form schema
 const entityEditSchema = z.object({
@@ -42,12 +42,12 @@ export function EntityEditModal({ entity, isOpen, onOpenChange, onUpdateSuccess 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
 
-  // Initialize form with entity data
+  // Initialize form with entity data and normalize industry value
   const form = useForm<EntityEditFormValues>({
     resolver: zodResolver(entityEditSchema),
     defaultValues: {
       name: entity?.name || "",
-      industry: entity?.industry || "",
+      industry: entity ? ensureIndustryValue(entity.industry) : "",
       taxId: entity?.taxId || "",
       address: entity?.address || "",
       phone: entity?.phone || "",
@@ -56,18 +56,29 @@ export function EntityEditModal({ entity, isOpen, onOpenChange, onUpdateSuccess 
     }
   });
 
-  // Reset form when entity changes
-  React.useEffect(() => {
+  // Reset form when entity changes and normalize industry value
+  useEffect(() => {
     if (entity && isOpen) {
+      // Log raw entity data for debugging
+      console.log("EntityEditModal: Raw entity data:", entity);
+      
+      // Normalize industry value using our utility function
+      const normalizedIndustry = ensureIndustryValue(entity.industry);
+      console.log("EntityEditModal: Normalized industry value:", normalizedIndustry);
+      
+      // Reset form with normalized values
       form.reset({
         name: entity.name || "",
-        industry: entity.industry || "",
+        industry: normalizedIndustry, // Use normalized industry value
         taxId: entity.taxId || "",
         address: entity.address || "",
         phone: entity.phone || "",
         email: entity.email || "",
         active: entity.active || false
       });
+      
+      // Debug current form values after reset
+      console.log("EntityEditModal: Form values after reset:", form.getValues());
     }
   }, [entity, form, isOpen]);
 
@@ -251,7 +262,14 @@ export function EntityEditModal({ entity, isOpen, onOpenChange, onUpdateSuccess 
 
   // Handle form submission
   const onSubmit = (data: EntityEditFormValues) => {
-    updateEntityMutation.mutate(data);
+    // Normalize the industry value before mutating
+    const normalizedData = {
+      ...data,
+      industry: ensureIndustryValue(data.industry)
+    };
+    
+    console.log("EntityEditModal: Submitting form with normalized data:", normalizedData);
+    updateEntityMutation.mutate(normalizedData);
   };
 
   // Check if entity is soft-deleted
