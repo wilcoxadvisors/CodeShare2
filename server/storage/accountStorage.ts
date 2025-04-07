@@ -56,6 +56,7 @@ export interface ImportResult {
     count?: number;
     added?: number;
     updated?: number;
+    reactivated?: number;   // NEW: Track reactivated accounts
     unchanged?: number;
     skipped?: number;
     failed?: number;
@@ -709,9 +710,21 @@ export class AccountStorage implements IAccountStorage {
             }
 
             // Get existing accounts for this client
-            const existingAccounts = await this.getAccountsByClientId(clientId);
+            // IMPORTANT: Get ALL accounts including inactive ones
+            console.log(`Getting ALL existing accounts for client ${clientId}, including inactive accounts`);
+            const existingAccounts = await db.select()
+                .from(accounts)
+                .where(eq(accounts.clientId, clientId));
+                
+            console.log(`Found ${existingAccounts.length} existing accounts, including inactive ones`);
+            
             const existingAccountsByCode = new Map<string, Account>();
-            existingAccounts.forEach(acc => existingAccountsByCode.set(acc.accountCode, acc));
+            existingAccounts.forEach(acc => {
+                existingAccountsByCode.set(acc.accountCode, acc);
+                if (!acc.active) {
+                    console.log(`Found inactive account: ${acc.accountCode} (${acc.name})`);
+                }
+            });
 
             // Prepare data for import
             const accountsToCreate: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>[] = [];
@@ -727,7 +740,8 @@ export class AccountStorage implements IAccountStorage {
                 created: 0,
                 updated: 0,
                 skipped: 0,
-                inactive: 0, // Track inactive accounts
+                inactive: 0, // Track deactivated accounts
+                reactivated: 0, // NEW: Track reactivated accounts
                 deleted: 0, // Track deleted accounts
                 errors: [] as string[],
                 warnings: [] as string[]
@@ -781,6 +795,7 @@ export class AccountStorage implements IAccountStorage {
                     count: parsedImportData.length,
                     added: 0,
                     updated: 0,
+                    reactivated: 0,
                     unchanged: 0,
                     skipped: parsedImportData.length,
                     failed: parsedImportData.length,
@@ -811,6 +826,7 @@ export class AccountStorage implements IAccountStorage {
                         count: parsedImportData.length,
                         added: 0,
                         updated: 0,
+                        reactivated: 0,
                         unchanged: 0,
                         skipped: parsedImportData.length,
                         failed: parsedImportData.length,
@@ -948,13 +964,20 @@ export class AccountStorage implements IAccountStorage {
                         }
                         
                         // Update existing account
+                        // REACTIVATION FIX: Explicitly log when reactivating an account
+                        if (!existingAccount.active && isActive) {
+                            console.log(`🔄 REACTIVATING inactive account: ${accountCode} (${name})`);
+                            results.reactivated++; // Increment the reactivated counter
+                            results.warnings.push(`Account ${accountCode} (${name}) was inactive and has been reactivated.`);
+                        }
+                        
                         accountsToUpdate.push({
                             id: existingAccount.id,
                             data: {
                                 name,
                                 type,
                                 description,
-                                active: isActive,
+                                active: isActive, // This will reactivate inactive accounts!
                                 isSubledger,
                                 subledgerType,
                                 subtype,
@@ -1158,7 +1181,7 @@ export class AccountStorage implements IAccountStorage {
             });
 
             // Build success message including all operations
-            const successMessage = `Successfully imported: ${results.created} added, ${results.updated} updated, ${results.inactive} deactivated, ${results.deleted} deleted`;
+            const successMessage = `Successfully imported: ${results.created} added, ${results.updated} updated, ${results.reactivated} reactivated, ${results.inactive} deactivated, ${results.deleted} deleted`;
             
             return {
                 success: results.errors.length === 0,
@@ -1171,6 +1194,7 @@ export class AccountStorage implements IAccountStorage {
                 count: results.totalProcessed,
                 added: results.created,
                 updated: results.updated,
+                reactivated: results.reactivated, // Include reactivated count in the response
                 unchanged: 0, // Not tracked in this implementation
                 skipped: results.skipped,
                 failed: results.errors.length,
@@ -1191,6 +1215,7 @@ export class AccountStorage implements IAccountStorage {
                         count: 0,
                         added: 0,
                         updated: 0,
+                        reactivated: 0, // Include reactivated count even in error state
                         unchanged: 0,
                         skipped: 0, 
                         failed: 1,

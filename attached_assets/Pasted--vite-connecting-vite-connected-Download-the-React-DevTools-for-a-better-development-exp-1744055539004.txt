@@ -1,0 +1,302 @@
+ [vite] connecting...
+ [vite] connected.
+ Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ 🔒 Checking authentication status...
+ 🔒 Debug session ID found: 839Pcieo_jbKrrbAsuI7yu33EV1Naiv0
+ 🔒 Auth check response status: 200
+ 🔒 User authenticated: Object
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ DEBUG: Entity context in ChartOfAccounts Object
+ EXPLICIT VERIFICATION - Selection state changed: Object
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 0
+ DEBUG: Filtered list for Client 235. Length: 0 Array(0)
+ Final result - Client 235 (Admin Client): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 0
+ DEBUG: Filtered list for Client 250. Length: 0 Array(0)
+ Final result - Client 250 (GCW): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 0
+ DEBUG: Filtered list for Client 2. Length: 0 Array(0)
+ Final result - Client 2 (OK): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 0
+ DEBUG: Filtered list for Client 73. Length: 0 Array(0)
+ Final result - Client 73 (ONE1): Found 0 entities, 0 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 0
+ DEBUG: Filtered list for Client 7. Length: 0 Array(0)
+ Final result - Client 7 (Pepper): Found 0 entities, 0 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ DEBUG: Entities data updated - received 51 entities
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Client selection triggered - clientId: 250
+ DEBUG: Setting client context: 250 (GCW)
+ DEBUG: BEFORE client selection - Current state: Object
+ DEBUG: AFTER client selection initiated - clientId: 250, entityId: null
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ DEBUG: Entity context in ChartOfAccounts Object
+ DEBUG: Triggering account data refetch due to client/entity change Object
+ DEBUG: Entities data updated - received 51 entities
+ DEBUG: After entities update, found 1 entities for selected client 250
+ DEBUG: Client selection changed: 250
+ DEBUG: Refetching entities for client: 250
+ DEBUG: Checking for auto-select of entity for client 250
+ DEBUG: Found 1 entities to potentially auto-select for client 250
+ DEBUG: Auto-selecting first entity for client 250: Object
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ VERIFICATION STEP 3: DataTable Props Object
+ VERIFICATION STEP 3: DataTable Component Object
+ DEBUG: Entity context in ChartOfAccounts Object
+ DEBUG: Triggering account data refetch due to client/entity change Object
+ DEBUG: Client selection changed: 250
+ DEBUG: Refetching entities for client: 250
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ VERIFICATION STEP 3: DataTable Props Object
+ VERIFICATION STEP 3: DataTable Component Object
+ VERIFICATION STEP 3: DataTable Component Object
+ DEBUG - ChartOfAccounts rendering with context: Object
+ DEBUG: Account Tree Data Object
+ VERIFICATION STEP 3: Account Tree Structure Object
+ VERIFICATION STEP 3: DataTable Props Object
+ VERIFICATION STEP 3: DataTable Component Object
+ VERIFICATION STEP 3: DataTable Component Object
+ Matching by accountCode 1 - match found: true
+ Matching by accountCode 1100 - match found: true
+ Matching by accountCode 1110 - match found: true
+ Matching by accountCode 1112 - match found: true
+ Matching by accountCode 1120 - match found: true
+ Matching by accountCode 1130 - match found: true
+ Matching by accountCode 1140 - match found: true
+ Matching by accountCode 1150 - match found: true
+ Matching by accountCode TEST-753144-1 - match found: true
+ Matching by accountCode 1400 - match found: true
+ Matching by accountCode 1410 - match found: true
+ Matching by accountCode 1420 - match found: true
+ Matching by accountCode 1430 - match found: true
+ Matching by accountCode 1440 - match found: true
+ Matching by accountCode 1450 - match found: true
+ Matching by accountCode 1490 - match found: true
+ Matching by accountCode 1800 - match found: true
+ Matching by accountCode 1810 - match found: true
+ Matching by accountCode 1820 - match found: true
+ Matching by accountCode 1111 - match found: true
+ Matching by accountCode 2 - match found: true
+ Matching by accountCode 2100 - match found: true
+ Matching by accountCode 2110 - match found: true
+ Matching by accountCode 2120 - match found: true
+ Matching by accountCode 2130 - match found: true
+ Matching by accountCode 2140 - match found: true
+ Matching by accountCode 2150 - match found: true
+ Matching by accountCode 2160 - match found: true
+ Matching by accountCode 2170 - match found: true
+ Matching by accountCode 2400 - match found: true
+ Matching by accountCode 2410 - match found: true
+ Matching by accountCode 2420 - match found: true
+ Matching by accountCode 2430 - match found: true
+ Matching by accountCode 3 - match found: true
+ Matching by accountCode 3100 - match found: true
+ Matching by accountCode 3110 - match found: true
+ Matching by accountCode 3120 - match found: true
+ Matching by accountCode 3200 - match found: true
+ Matching by accountCode 3300 - match found: true
+ Matching by accountCode 3400 - match found: true
+ Matching by accountCode 4 - match found: true
+ Matching by accountCode 4100 - match found: true
+ Matching by accountCode 4110 - match found: true
+ Matching by accountCode 4120 - match found: true
+ Matching by accountCode 4200 - match found: true
+ Matching by accountCode 4210 - match found: true
+ Matching by accountCode 4220 - match found: true
+ Matching by accountCode 4230 - match found: true
+ Matching by accountCode 5 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 5100 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 5110 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 5120 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 5130 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6000 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6100 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6110 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6120 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6200 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6210 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6220 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6230 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6300 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6310 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6320 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6400 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6410 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6420 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6430 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6500 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6600 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6700 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 6800 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 7000 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 7100 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 7200 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 7300 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode 9000 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-753144-2 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-753144-3 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-782138-1 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-782138-2 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-782138-3 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-N1 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-N2 - match found: true
+ChartOfAccounts.tsx:1559 Matching by accountCode TEST-N3 - match found: true
+ChartOfAccounts.tsx:55 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:164 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:174 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2202 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+ChartOfAccounts.tsx:2935 Select All Modifications clicked. New state: true
+ChartOfAccounts.tsx:2941 Adding ALL modification codes: Array(76)
+ChartOfAccounts.tsx:55 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:164 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:174 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2202 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+ChartOfAccounts.tsx:1840 EXPLICIT VERIFICATION - Selection state changed: Object
+ChartOfAccounts.tsx:1854 DEBUG: handleImportConfirm - About to import accounts with granular selections
+ChartOfAccounts.tsx:1855 DEBUG: Total accounts from import data: 85
+ChartOfAccounts.tsx:1859 DEBUG: Current selection state before import:
+ChartOfAccounts.tsx:1860   - selectedNewAccounts: 0 items
+ChartOfAccounts.tsx:1861   - selectedModifiedAccounts: 76 items
+ChartOfAccounts.tsx:1862   - selectedMissingAccounts: 0 items
+ChartOfAccounts.tsx:1874 EXPLICIT VERIFICATION - Selected new accounts: Array(0)
+ChartOfAccounts.tsx:1875 EXPLICIT VERIFICATION - Selected modified accounts: Array(76)
+ChartOfAccounts.tsx:1876 EXPLICIT VERIFICATION - Selected missing accounts: Array(0)
+ChartOfAccounts.tsx:1904 EXPLICIT VERIFICATION - Will process exactly: 0 new accounts, 76 modified accounts, and 0 missing accounts
+ChartOfAccounts.tsx:1935 EXPLICIT VERIFICATION - Frontend is sending ONLY these explicitly selected accounts: Object
+ChartOfAccounts.tsx:1943 EXPLICIT VERIFICATION - Complete selections object: Object
+ChartOfAccounts.tsx:55 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:164 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:174 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2202 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+ChartOfAccounts.tsx:1668 DEBUG: useImportAccounts - Starting import with clientIdToUse: 250
+ChartOfAccounts.tsx:1681 DEBUG: useImportAccounts - Using endpoint /api/clients/250/accounts/import
+ChartOfAccounts.tsx:1687 DEBUG: useImportAccounts - Using prepared FormData with selections
+api/clients/250/accounts/import:1 
+            
+            
+           Failed to load resource: the server responded with a status of 400 (Bad Request)
+ChartOfAccounts.tsx:1712 DEBUG: useImportAccounts - Response status: 400
+ChartOfAccounts.tsx:1715 DEBUG: useImportAccounts - Response error status: 400
+mutationFn @ ChartOfAccounts.tsx:1715
+ChartOfAccounts.tsx:1721 DEBUG: useImportAccounts - Error data: Object
+mutationFn @ ChartOfAccounts.tsx:1721
+ChartOfAccounts.tsx:1733 DEBUG: useImportAccounts - Fetch error: Error: Import completed with 1 errors: Successfully imported: 0 added, 0 updated, 0 deactivated, 0 deleted
+    at Object.mutationFn (ChartOfAccounts.tsx:1726:19)
+mutationFn @ ChartOfAccounts.tsx:1733
+ChartOfAccounts.tsx:1779 EXPLICIT VERIFICATION - Import failed - Error: Error: Import completed with 1 errors: Successfully imported: 0 added, 0 updated, 0 deactivated, 0 deleted
+    at Object.mutationFn (ChartOfAccounts.tsx:1726:19)
+onError @ ChartOfAccounts.tsx:1779
+ChartOfAccounts.tsx:55 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:164 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:174 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2202 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
