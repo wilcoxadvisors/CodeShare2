@@ -26,9 +26,6 @@ import AIAnalytics from "./pages/AIAnalytics";
 import BudgetForecastDashboard from "./pages/BudgetForecastDashboard";
 import ClientOnboarding from "./pages/ClientOnboarding";
 import ConsolidationManagement from "./pages/ConsolidationManagement";
-// Deprecated: Using NewJournalEntry with JournalEntryForm instead
-// import ManualJournalEntry from "./components/ManualJournalEntry";
-import ManualJournalEntryTest from "./pages/ManualJournalEntryTest";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Home from "./pages/Home";
@@ -418,12 +415,6 @@ function Router() {
       <Route path="/consolidation-management">
         <AppLayout>
           <ProtectedRoute component={ConsolidationManagement} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/manual-journal-entry-test">
-        <AppLayout>
-          <ProtectedRoute component={ManualJournalEntryTest} />
         </AppLayout>
       </Route>
       
