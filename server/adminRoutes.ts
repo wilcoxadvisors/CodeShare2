@@ -455,21 +455,9 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
       const newClient = await storage.clients.createClient(clientData);
       console.log(`DEBUG: Admin client created successfully with ID ${newClient.id}`);
       
-      // Explicitly create default entity first (to ensure dependencies)
-      const defaultEntityData = {
-        name: `${newClient.name} Default Entity`,
-        code: "DEFAULT",
-        entityCode: "DEFAULT",
-        ownerId: userId,
-        clientId: newClient.id,
-        active: true,
-        fiscalYearStart: "01-01",
-        fiscalYearEnd: "12-31",
-        currency: "USD",
-        timezone: "UTC"
-      };
-      const entity = await storage.entities.createEntity(defaultEntityData);
-      console.log(`DEBUG: Admin default entity created with ID ${entity.id} for client ID ${newClient.id}`);
+      // IMPORTANT CHANGE: No longer automatically creating default entity
+      // Entities will be created explicitly during the client setup flow
+      console.log(`DEBUG: Admin client created with ID ${newClient.id} - NOT creating default entity automatically`);
       
       // Explicitly seed the Chart of Accounts after entity creation
       // IMPORTANT: This must happen after entity creation to ensure all parent-child relationships work

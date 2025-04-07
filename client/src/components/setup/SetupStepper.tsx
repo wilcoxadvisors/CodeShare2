@@ -76,60 +76,34 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
   
   console.log(`DEBUG SetupStepper: Instance ${instanceId} Rendering/Re-rendering START`);
   
+  // Helper function to clear all setup data
+  const clearSetupData = useCallback(() => {
+    console.log("DEBUG SetupStepper: Clearing all setup data from localStorage");
+    try {
+      localStorage.removeItem('setupEntities');
+      localStorage.removeItem('setupClientData');
+      localStorage.removeItem('setupActiveStep');
+      
+      // Reset states
+      setSetupEntities([]);
+      setClientData(null);
+      setActiveStep(0);
+      
+      console.log("DEBUG SetupStepper: Successfully cleared all setup data and reset state");
+    } catch (e) {
+      console.warn("DEBUG SetupStepper: Error clearing localStorage:", e);
+    }
+  }, []);
+
   // Add lifecycle monitoring and state restoration from localStorage on mount
   useEffect(() => {
     console.log(`DEBUG SetupStepper: Instance ${instanceId} MOUNTED`);
     
-    // CRITICAL FIX: Load state from localStorage instead of resetting
-    console.log("DEBUG SetupStepper: Mounting - checking localStorage for saved state...");
+    // CRITICAL FIX: Always clear previous data when this component mounts
+    // This ensures we have a fresh start each time the setup process begins
+    clearSetupData();
     
-    try {
-      // First check if there are any saved entities
-      const savedEntities = localStorage.getItem('setupEntities');
-      if (savedEntities) {
-        try {
-          const parsedEntities = JSON.parse(savedEntities);
-          console.log(`DEBUG SetupStepper: Found ${parsedEntities.length} saved entities in localStorage`);
-          if (Array.isArray(parsedEntities)) {
-            setSetupEntities(parsedEntities);
-          } else {
-            console.warn("DEBUG SetupStepper: Saved entities not in expected array format");
-          }
-        } catch (e) {
-          console.warn("DEBUG SetupStepper: Error parsing saved entities:", e);
-        }
-      } else {
-        console.log("DEBUG SetupStepper: No saved entities found in localStorage");
-      }
-      
-      // Check for client data
-      const savedClientData = localStorage.getItem('setupClientData');
-      if (savedClientData) {
-        try {
-          const parsedClientData = JSON.parse(savedClientData);
-          console.log(`DEBUG SetupStepper: Found saved client data in localStorage`);
-          setClientData(parsedClientData);
-        } catch (e) {
-          console.warn("DEBUG SetupStepper: Error parsing saved client data:", e);
-        }
-      } else {
-        console.log("DEBUG SetupStepper: No saved client data found in localStorage");
-      }
-      
-      // Check for active step - do this last to ensure data is loaded first
-      const savedStep = localStorage.getItem('setupActiveStep');
-      if (savedStep) {
-        const step = parseInt(savedStep, 10);
-        console.log(`DEBUG SetupStepper: Found saved step ${step} in localStorage`);
-        setActiveStep(step);
-      } else {
-        console.log("DEBUG SetupStepper: No saved step found in localStorage, using default");
-      }
-      
-      console.log("DEBUG SetupStepper: State loaded from localStorage");
-    } catch (e) {
-      console.warn("DEBUG SetupStepper: Error loading state from localStorage:", e);
-    }
+    console.log("DEBUG SetupStepper: Setup initialized with clean state");
     
     return () => {
       // Just log that we're unmounting, but don't try to save state
@@ -539,54 +513,78 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       
       console.log(`DEBUG: Processed entity data:`, JSON.stringify(entitiesDeepCopy));
       
-      // Create entity save promises with detailed logging
-      const entitySavePromises = entitiesDeepCopy.map(entityPayload => {
-        const entityApiUrl = '/api/admin/entities';
-        console.log(`DEBUG: Saving Entity. URL: ${entityApiUrl}, Entity: ${entityPayload.name}, Payload:`, 
-          JSON.stringify(entityPayload));
-        
-        return fetch(entityApiUrl, {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-           },
-           body: JSON.stringify(entityPayload),
-           credentials: 'include' // Include cookies for authentication
-        }).then(async entityResponse => {
-          // Log response status without trying to iterate headers (which causes TypeScript errors)
-          console.log(`DEBUG: Save Entity Response Status for ${entityPayload.name}:`, entityResponse.status);
+      // PERFORMANCE OPTIMIZATION: Process entities more efficiently
+      console.log(`DEBUG: Setting up optimized entity creation for ${entitiesDeepCopy.length} entities`);
+      
+      // Function to create a single entity with better error handling
+      const createSingleEntity = async (entityPayload: any) => {
+        try {
+          const entityApiUrl = '/api/admin/entities';
+          console.log(`DEBUG: Creating entity ${entityPayload.name} for client ${newClientId}`);
           
-          let entityResponseText;
+          const response = await fetch(entityApiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(entityPayload),
+            credentials: 'include'
+          });
           
-          try {
-            entityResponseText = await entityResponse.text();
-            console.log(`DEBUG: Save Entity Response Text for ${entityPayload.name}:`, entityResponseText);
-            
-            if (!entityResponse.ok) {
-              throw new Error(`Failed to save entity ${entityPayload.name}: ${entityResponse.status} - ${entityResponseText}`);
-            }
-            
-            if (entityResponseText) {
-              return JSON.parse(entityResponseText);
-            }
-            return null;
-          } catch (jsonError) {
-            if (jsonError instanceof SyntaxError) {
-              console.error(`DEBUG: Error parsing entity save response JSON for ${entityPayload.name}:`, 
-                jsonError, "Response text:", entityResponseText);
-              throw new Error(`Entity save response invalid for ${entityPayload.name}: ${entityResponse.status}`);
-            }
-            throw jsonError; // Re-throw other errors
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error creating entity ${entityPayload.name}:`, errorText);
+            return { 
+              success: false, 
+              name: entityPayload.name,
+              error: `Status ${response.status}: ${errorText}`
+            };
           }
-        });
-      });
+          
+          const data = await response.json();
+          return { success: true, data, name: entityPayload.name };
+        } catch (err: unknown) {
+          console.error(`Exception creating entity ${entityPayload.name}:`, err);
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          return { 
+            success: false, 
+            name: entityPayload.name,
+            error: errorMessage
+          };
+        }
+      };
+      
+      // Process entities in parallel batches for better performance without overwhelming the server
+      const batchSize = 3; // Process 3 entities at once
+      const entityResults = [];
+      
+      // Process entities in batches
+      for (let i = 0; i < entitiesDeepCopy.length; i += batchSize) {
+        const batch = entitiesDeepCopy.slice(i, i + batchSize);
+        const batchPromises = batch.map(entity => createSingleEntity(entity));
+        
+        // Wait for the current batch to complete before proceeding to the next
+        const batchResults = await Promise.all(batchPromises);
+        entityResults.push(...batchResults);
+        
+        console.log(`DEBUG: Completed batch ${Math.floor(i/batchSize) + 1} of entity creation with ${batchResults.length} entities`);
+      }
+      
+      // Check for any failures
+      const failures = entityResults.filter(result => !result.success);
+      if (failures.length > 0) {
+        console.error(`DEBUG: Failed to create ${failures.length} entities:`, failures);
+        throw new Error(`Failed to create ${failures.length} entities. First error: ${failures[0].error}`);
+      }
+      
+      // Extract the successful entity data for further processing
+      const entitySavePromises = entityResults.map(result => result.data);
 
       try {
-        // Wait for all entity save calls to complete
-        console.log("DEBUG: Executing all entity save promises...");
-        const savedEntities = await Promise.all(entitySavePromises);
+        // Since we've already processed all entities in batches above,
+        // we can skip this additional Promise.all step which is now redundant
         console.log("DEBUG: All entity saves completed successfully.", 
-          savedEntities.filter(Boolean).length, "entities saved");
+          entityResults.filter(result => result.success).length, "entities saved");
         
         // Show success toast
         toast({

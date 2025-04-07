@@ -1320,29 +1320,29 @@ export default function EntityManagementCard({
                     }
                     
                     return (
-                      <FormItem>
+                      <FormItem className="w-full">
                         <FormLabel>Industry*</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            console.log(`CRITICAL-DEBUG Industry onChange: New value selected: "${value}"`);
-                            field.onChange(value);
-                          }}
-                          value={safeValue} // Use validated value with better error handling
-                          defaultValue="other"
-                        >
-                          <FormControl>
-                            <SelectTrigger>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => {
+                              console.log(`CRITICAL-DEBUG Industry onChange: New value selected: "${value}"`);
+                              field.onChange(value);
+                            }}
+                            value={safeValue} // Use validated value with better error handling
+                            defaultValue="other"
+                          >
+                            <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select an industry" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {INDUSTRY_OPTIONS.map((industry) => (
-                              <SelectItem key={industry.value} value={industry.value}>
-                                {industry.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {INDUSTRY_OPTIONS.map((industry) => (
+                                <SelectItem key={industry.value} value={industry.value}>
+                                  {industry.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormDescription>
                           The primary industry this entity operates in
                         </FormDescription>
