@@ -1709,13 +1709,28 @@ function ChartOfAccounts() {
         }
       },
       onSuccess: (result) => {
+        console.log("EXPLICIT VERIFICATION - Import successful - Backend response:", result);
+        
+        // Detailed success message showing exactly what was processed
+        const counts = result.counts || { new: 0, updated: 0, missing: 0 };
+        const successMessage = `Successfully imported accounts: ${counts.new} new, ${counts.updated} updated, ${counts.missing} processed missing accounts.`;
+        
         toast({
           title: "Accounts imported",
-          description: result.message || `Successfully imported ${importData.length} accounts.`,
+          description: successMessage,
         });
+        
+        // Close dialogs and reset import state
         setShowImportDialog(false);
+        setShowPreviewDialog(false);
         setImportData([]);
         setImportErrors([]);
+        
+        // Reset selection state - critical for next import session
+        setSelectedNewAccounts([]);
+        setSelectedModifiedAccounts([]);
+        setSelectedMissingAccounts([]);
+        setMissingAccountActions({});
         
         // Reset the file input to allow selecting a new file
         const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -1735,9 +1750,22 @@ function ChartOfAccounts() {
         }
       },
       onError: (error: any) => {
+        console.error("EXPLICIT VERIFICATION - Import failed - Error:", error);
+        
+        // Detailed error message
+        let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        // If the error message indicates payload validation issues (which could be due to unchecked accounts)
+        if (errorMessage.includes('validation') || 
+            errorMessage.includes('selected') || 
+            errorMessage.includes('checked') || 
+            errorMessage.includes('approve')) {
+          errorMessage += ' Please ensure you have checked the boxes next to accounts you want to import.';
+        }
+        
         toast({
           title: "Import failed",
-          description: `Failed to import accounts: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: `Failed to import accounts: ${errorMessage}`,
           variant: "destructive",
         });
       }
@@ -1774,11 +1802,21 @@ function ChartOfAccounts() {
     excludedCodes?: string[];
   }
   
-  // State for selected accounts in each category
+  // State for selected accounts in each category - these arrays control which accounts are processed
+  // CRITICAL: These arrays must ONLY contain accounts that have been explicitly checked in the UI
   const [selectedNewAccounts, setSelectedNewAccounts] = useState<string[]>([]);
   const [selectedModifiedAccounts, setSelectedModifiedAccounts] = useState<string[]>([]);
   const [selectedMissingAccounts, setSelectedMissingAccounts] = useState<string[]>([]);
   const [missingAccountActions, setMissingAccountActions] = useState<Record<string, 'inactive' | 'delete' | 'ignore'>>({});
+  
+  // DEBUG: Log selection state changes to verify correct behavior
+  useEffect(() => {
+    console.log("EXPLICIT VERIFICATION - Selection state changed:", {
+      selectedNewAccounts,
+      selectedModifiedAccounts,
+      selectedMissingAccounts
+    });
+  }, [selectedNewAccounts, selectedModifiedAccounts, selectedMissingAccounts]);
   
   // Legacy state to keep compatibility - will be removed in future refactors
   const [updateStrategy, setUpdateStrategy] = useState<'all' | 'none' | 'selected'>('all');
@@ -1795,13 +1833,16 @@ function ChartOfAccounts() {
       // Force 'selected' strategy to ensure ONLY checked accounts are processed
       // Regardless of what the user selected in the strategy dropdown
       const effectiveUpdateStrategy = 'selected';
-      // For removal strategy, we'll maintain the user's choice of action (inactive/delete)
-      // but will only apply it to explicitly selected accounts
       
+      // CRITICAL FIX: Explicitly verify that we're ONLY using accounts that have been checked in the UI
       // These arrays ONLY contain accounts that have been explicitly checked in the UI
-      const filteredNewAccountCodes = selectedNewAccounts;
-      const filteredModifiedAccountCodes = selectedModifiedAccounts;
-      const filteredMissingAccountCodes = selectedMissingAccounts;
+      const filteredNewAccountCodes = [...selectedNewAccounts]; // Create copy to avoid reference issues
+      const filteredModifiedAccountCodes = [...selectedModifiedAccounts]; // Create copy to avoid reference issues
+      const filteredMissingAccountCodes = [...selectedMissingAccounts]; // Create copy to avoid reference issues
+      
+      console.log("EXPLICIT VERIFICATION - Selected new accounts:", filteredNewAccountCodes);
+      console.log("EXPLICIT VERIFICATION - Selected modified accounts:", filteredModifiedAccountCodes);
+      console.log("EXPLICIT VERIFICATION - Selected missing accounts:", filteredMissingAccountCodes);
       
       // Create selections object to pass to backend
       const selections: ImportSelections = {
@@ -1816,10 +1857,11 @@ function ChartOfAccounts() {
         
         // CRITICAL FIX: Force 'selected' strategy regardless of UI setting
         // This ensures only explicitly checked accounts are processed
-        updateStrategy: effectiveUpdateStrategy, // Force 'selected' mode
+        updateStrategy: 'selected', // Always force 'selected' mode regardless of dropdown
         removeStrategy: removeStrategy, // Keep original removal strategy type, but only apply to selected items
         
-        // Specific accounts to include in each category - ONLY include explicitly selected accounts
+        // CRITICAL FIX: Specific accounts to include in each category - ONLY include explicitly selected accounts
+        // These arrays MUST contain ONLY accounts where the checkbox was explicitly checked
         newAccountCodes: filteredNewAccountCodes,
         modifiedAccountCodes: filteredModifiedAccountCodes,
         missingAccountCodes: filteredMissingAccountCodes,
@@ -1828,32 +1870,9 @@ function ChartOfAccounts() {
         missingAccountActions: missingAccountActions
       };
       
-      console.log(`DEBUG: handleImportConfirm - Selected ${selectedNewAccounts.length} new accounts, ${selectedModifiedAccounts.length} modified accounts, and ${selectedMissingAccounts.length} missing accounts`);
-      
+      console.log(`EXPLICIT VERIFICATION - Will process exactly: ${filteredNewAccountCodes.length} new accounts, ${filteredModifiedAccountCodes.length} modified accounts, and ${filteredMissingAccountCodes.length} missing accounts`);
       
       try {
-        // Need to create FormData because the import endpoint expects multipart/form-data
-        const formData = new FormData();
-        
-        // Convert accounts to CSV string and add as a file
-        const csv = Papa.unparse(importData);
-        const file = new Blob([csv], { type: 'text/csv' });
-        formData.append('file', file, 'accounts_import.csv');
-        
-        // Add selections as a JSON string
-        formData.append('selections', JSON.stringify(selections));
-        
-        // VERIFICATION: Explicitly log the payload being sent to ensure only checked accounts are included
-        console.log("VERIFICATION: Frontend explicitly sending payload:", {
-          newAccountCodes: filteredNewAccountCodes,
-          modifiedAccountCodes: filteredModifiedAccountCodes,
-          missingAccountCodes: filteredMissingAccountCodes,
-          updateStrategy: effectiveUpdateStrategy,
-          removeStrategy: removeStrategy
-        });
-        
-        console.log("DEBUG: handleImportConfirm - Prepared form data with selections:", selections);
-        
         // BUGFIX: Check if there are actually any selections to process
         // If no accounts are selected for any operation, show alert and don't submit
         const hasSelectedAccounts = 
@@ -1864,11 +1883,33 @@ function ChartOfAccounts() {
         if (!hasSelectedAccounts) {
           toast({
             title: "No accounts selected",
-            description: "You haven't selected any accounts to import, modify, or remove. Please select at least one account or change your update/remove strategy.",
+            description: "You haven't selected any accounts to import, modify, or remove. Please select at least one account by checking the checkboxes next to the accounts you want to process.",
             variant: "destructive",
           });
           return; // Stop here and don't submit
         }
+        
+        // Need to create FormData because the import endpoint expects multipart/form-data
+        const formData = new FormData();
+        
+        // Convert accounts to CSV string and add as a file
+        const csv = Papa.unparse(importData);
+        const file = new Blob([csv], { type: 'text/csv' });
+        formData.append('file', file, 'accounts_import.csv');
+        
+        // Add selections as a JSON string - CRITICAL: This is what controls which accounts get processed
+        formData.append('selections', JSON.stringify(selections));
+        
+        // VERIFICATION: Explicitly log the payload being sent to ensure only checked accounts are included
+        console.log("EXPLICIT VERIFICATION - Frontend is sending ONLY these explicitly selected accounts:", {
+          newAccountCodes: filteredNewAccountCodes,
+          modifiedAccountCodes: filteredModifiedAccountCodes,
+          missingAccountCodes: filteredMissingAccountCodes,
+          updateStrategy: 'selected', // Always force selected mode
+          removeStrategy: removeStrategy
+        });
+        
+        console.log("EXPLICIT VERIFICATION - Complete selections object:", selections);
         
         // Use the import mutation but pass the FormData manually
         importAccounts.mutate(formData as any);
@@ -2748,6 +2789,10 @@ function ChartOfAccounts() {
             </DialogTitle>
             <DialogDescription>
               Review the changes that will be made to your Chart of Accounts before confirming the import.
+              <span className="font-bold text-red-600 block mt-1">
+                IMPORTANT: You must explicitly check boxes next to accounts you want to process - 
+                only checked accounts will be imported, modified, or removed.
+              </span>
             </DialogDescription>
           </DialogHeader>
           
