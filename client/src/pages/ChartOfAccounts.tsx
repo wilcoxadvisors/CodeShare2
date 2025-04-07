@@ -2194,7 +2194,9 @@ function ChartOfAccounts() {
           columns={columns} 
           data={filteredActiveAccounts || []} 
           isLoading={isLoading}
-          pageSize={25} 
+          pageSize={25}
+          pagination={activePagination}
+          onPaginationChange={setActivePagination}
         />
         
         {/* Display inactive accounts if toggle is enabled */}
@@ -2206,6 +2208,8 @@ function ChartOfAccounts() {
               data={filteredInactiveAccounts || []} 
               isLoading={isLoading}
               pageSize={25}
+              pagination={inactivePagination}
+              onPaginationChange={setInactivePagination}
             />
           </div>
         )}
