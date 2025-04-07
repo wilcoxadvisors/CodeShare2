@@ -1,107 +1,186 @@
-# Chart of Accounts Import/Export Guide
+# Chart of Accounts Management Guide
 
 ## Overview
 
-The Chart of Accounts (CoA) is a critical component of your accounting system. It provides an organized list of accounts used to track financial transactions. This guide explains how to import and export your Chart of Accounts in the Wilcox Advisors Accounting System.
+The Chart of Accounts (CoA) is the foundation of your accounting system. It organizes all financial transactions into a structured hierarchy of accounts that allows for accurate financial reporting. This guide explains how to use the CoA management features in the Wilcox Advisors Accounting System.
 
-## File Format
+## Table of Contents
 
-The system supports importing and exporting Chart of Accounts data in both CSV and Excel (XLSX) formats. The following fields are included:
+1. [Account Structure](#account-structure)
+2. [Accessing the Chart of Accounts](#accessing-the-chart-of-accounts)
+3. [Managing Accounts](#managing-accounts)
+   - [Creating Accounts](#creating-accounts)
+   - [Editing Accounts](#editing-accounts)
+   - [Activating/Deactivating Accounts](#activatingdeactivating-accounts)
+4. [Import/Export Functionality](#importexport-functionality)
+   - [Exporting Accounts](#exporting-accounts)
+   - [Importing Accounts](#importing-accounts)
+   - [Import Format Requirements](#import-format-requirements)
+5. [Best Practices](#best-practices)
+6. [Troubleshooting](#troubleshooting)
+
+## Account Structure
+
+Each account in the Chart of Accounts has the following attributes:
+
+- **Account Code**: A unique identifier for the account (e.g., "1000")
+- **Name**: The descriptive name of the account (e.g., "Cash")
+- **Type**: The primary classification (ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE)
+- **Subtype**: Further classification within the primary type
+- **Parent Account**: Optional relationship to a parent account, creating a hierarchy
+- **Description**: Optional detailed explanation of the account's purpose
+- **Is Subledger**: Whether the account can have subledger entries
+- **Subledger Type**: If applicable, the type of subledger (e.g., "customer", "vendor")
+- **Active**: Whether the account is currently active and available for use
+
+## Accessing the Chart of Accounts
+
+To access the Chart of Accounts:
+
+1. Log in to the accounting system
+2. Select the appropriate client from the client selection dropdown
+3. Navigate to "Chart of Accounts" in the main navigation menu
+4. The system will display the complete Chart of Accounts for the selected client
+
+## Managing Accounts
+
+### Creating Accounts
+
+To create a new account:
+
+1. From the Chart of Accounts screen, click the "Add Account" button
+2. Fill in the required fields:
+   - Account Code
+   - Name
+   - Type
+   - Subtype (if applicable)
+3. Optionally set a parent account to create a hierarchical structure
+4. Add a description if needed
+5. Set subledger options if applicable
+6. Click "Save" to create the account
+
+### Editing Accounts
+
+To edit an existing account:
+
+1. Locate the account in the Chart of Accounts list
+2. Click the "Edit" icon next to the account
+3. Modify the desired fields
+4. Click "Save" to update the account
+
+Note: Some fields may be restricted from editing if the account has been used in transactions.
+
+### Activating/Deactivating Accounts
+
+Rather than deleting accounts (which could affect historical data), you can deactivate them:
+
+1. Locate the account in the Chart of Accounts list
+2. Click the "Edit" icon next to the account
+3. Toggle the "Active" switch to Off
+4. Click "Save" to update the account
+
+Inactive accounts will not appear in transaction entry forms but will still be available for reporting on historical data.
+
+## Import/Export Functionality
+
+The system provides powerful import and export features for managing accounts in bulk.
+
+### Exporting Accounts
+
+To export the Chart of Accounts:
+
+1. From the Chart of Accounts screen, click the "Export" button
+2. Select your preferred format (CSV or Excel)
+3. The system will generate and download the file
+
+### Importing Accounts
+
+To import accounts:
+
+1. From the Chart of Accounts screen, click the "Import" button
+2. Select your file format (CSV or Excel)
+3. Upload your file
+4. Review any validation messages
+5. Confirm the import to proceed
+
+The import process supports both adding new accounts and updating existing ones.
+
+### Import Format Requirements
+
+For successful imports, your file must include the following columns:
 
 | Field Name | Required | Description |
 |------------|----------|-------------|
-| AccountCode | Yes | Unique identifier for the account. Must be unique across all accounts in the Chart of Accounts. |
-| Name | Yes | Descriptive name of the account. |
-| Type | Yes | Account type. Must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE. |
-| Subtype | No | Further classification of the account type. Examples: current_asset, accounts_receivable, etc. |
-| IsSubledger | No | Boolean (TRUE/FALSE) indicating if this account has a subledger. Default is FALSE. |
-| SubledgerType | No | Type of subledger if IsSubledger is TRUE. Examples: customer, vendor, employee, etc. |
-| Active | No | Boolean (TRUE/FALSE) indicating if the account is active. Default is TRUE. |
-| Description | No | Detailed description of the account's purpose. |
-| ParentCode | No | AccountCode of the parent account. Used to create the account hierarchy. |
+| AccountCode | Yes | Unique identifier for the account |
+| Name | Yes | Descriptive name |
+| Type | Yes | Must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE |
+| Subtype | No | Further classification |
+| IsSubledger | No | TRUE or FALSE (defaults to FALSE) |
+| SubledgerType | No | Only required if IsSubledger is TRUE |
+| Active | No | TRUE or FALSE (defaults to TRUE) |
+| Description | No | Detailed explanation |
+| ParentCode | No | Account code of the parent account (if any) |
 
-## Import Process
+Notes:
+- Boolean values should be entered as TRUE or FALSE (case-insensitive)
+- Parent accounts must exist before child accounts that reference them
+- Field names are case-sensitive; please use exactly as shown
 
-### Step 1: Prepare Your Import File
-
-Create a CSV or Excel file with the fields mentioned above. Ensure that:
-- All required fields are present
-- AccountCode values are unique
-- Type values are valid account types
-- ParentCode values refer to existing AccountCode values in the same file or already in the system
-
-### Step 2: Import the File
-
-1. Navigate to the Chart of Accounts page
-2. Click the "Import" button
-3. Select your prepared file from your device
-4. The system will analyze the file and display a preview of changes
-5. Review the changes (additions, modifications, and removals)
-6. Click "Confirm" to apply the changes
-
-### Import Validation
-
-The system performs the following validations:
-- Required fields are present
-- AccountCode values are unique
-- Type values are valid
-- Parent accounts exist (either in the file or already in the system)
-- Account hierarchy is valid (no circular references)
-
-## Export Process
-
-### Step 1: Export the Chart of Accounts
-
-1. Navigate to the Chart of Accounts page
-2. Click the "Export CSV" or "Export Excel" button
-3. The file will be downloaded to your device
-
-### Export Format
-
-The exported file includes all accounts in your Chart of Accounts with the fields mentioned in the File Format section.
-
-## Error Handling
-
-The system provides detailed error messages for common issues:
-
-| Error | Description | Resolution |
-|-------|-------------|------------|
-| Duplicate AccountCode | An account with the same AccountCode already exists | Use a unique AccountCode |
-| Missing Required Field | Required field is missing | Add the missing field to your import file |
-| Invalid Type | The specified Type is not valid | Use one of the valid account types |
-| Parent Account Not Found | The specified ParentCode doesn't exist | Ensure the parent account exists in the system or import file |
-| Circular Reference | The account hierarchy contains a circular reference | Fix the ParentCode values to create a valid hierarchy |
-
-## Parent-Child Hierarchy
-
-The Chart of Accounts supports a hierarchical structure through the ParentCode field. When importing:
-
-1. The system ensures all parent accounts exist
-2. The hierarchy is validated to avoid circular references
-3. If a parent account is referenced but doesn't exist, an error is shown
-4. The hierarchy is preserved when exporting accounts
+Sample import format:
+```
+AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+1000,Cash,ASSET,current_asset,FALSE,,TRUE,Cash accounts,
+1100,Checking Account,ASSET,current_asset,FALSE,,TRUE,Main checking account,1000
+```
 
 ## Best Practices
 
-1. **Start with a Template**: Use the "Template" button to download a template file with the correct format
-2. **Validate Before Import**: Check your import file for errors before uploading
-3. **Backup Before Import**: Export your existing Chart of Accounts before making significant changes
-4. **Use Consistent Naming**: Follow a consistent naming convention for your accounts
-5. **Maintain Hierarchy**: Use the parent-child relationship to organize your accounts logically
+1. **Use a consistent account numbering system**:
+   - 1000-1999: Assets
+   - 2000-2999: Liabilities
+   - 3000-3999: Equity
+   - 4000-4999: Revenue
+   - 5000-9999: Expenses
+
+2. **Create account hierarchies** to organize related accounts together
+
+3. **Keep descriptions clear and consistent** to help users understand the purpose of each account
+
+4. **Review the chart periodically** to ensure it still meets reporting needs
+
+5. **Deactivate unused accounts** rather than deleting them to preserve historical data
+
+6. **Test imports with a small dataset** before attempting large imports
 
 ## Troubleshooting
 
-| Issue | Resolution |
-|-------|------------|
-| Import fails | Check the error messages and fix the issues in your import file |
-| Export is incomplete | Ensure you have selected the correct client and have appropriate permissions |
-| Hierarchy doesn't display correctly | Check the ParentCode values in your import file |
-| Account not showing | Verify the account is set as Active |
+### Common Import Issues
 
-## Technical Notes
+1. **Duplicate Account Codes**:
+   - Each account code must be unique within a client
+   - The system will reject imports with duplicate codes
 
-- The system uses the AccountCode field as the unique identifier for accounts
-- The parent-child relationship is established through the ParentCode field
-- All fields are case-sensitive
-- Boolean fields accept TRUE/FALSE values (case-insensitive)
-- When exporting, the AccountCode field is used (not the legacy 'code' field)
+2. **Missing Required Fields**:
+   - Ensure AccountCode, Name, and Type are provided for all accounts
+   - Check for empty cells in your import file
+
+3. **Invalid Parent References**:
+   - Parent accounts must exist before they can be referenced
+   - Import parent accounts first, then child accounts
+   - Or arrange your import file so parents appear before their children
+
+4. **Invalid Account Types**:
+   - Account Type must be one of the allowed values
+   - Check for typos and case sensitivity
+
+### Export Issues
+
+1. **No File Downloaded**:
+   - Ensure your browser allows downloads from the application
+   - Check for browser pop-up blockers
+
+2. **Incomplete Data**:
+   - Verify you have the correct permissions
+   - Check if any filters are applied that might be limiting the export
+
+If you continue to experience issues with the Chart of Accounts functionality, please contact your system administrator for assistance.

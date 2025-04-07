@@ -1,138 +1,165 @@
 # Chart of Accounts Import/Export Test Procedure
 
-This document outlines the procedure for testing the Chart of Accounts import and export functionality.
+This document outlines the step-by-step procedure for testing the Chart of Accounts import/export functionality in the Wilcox Advisors Accounting System. It covers both CSV and Excel formats and includes test cases for various scenarios.
 
 ## Prerequisites
 
-- Admin user login (username: admin, password: password123)
-- Test client and entity created (Client ID: 236, Entity ID: 375)
-- Test files prepared (valid-accounts.csv, duplicate-codes.csv, invalid-parents.csv)
+- Access to the Wilcox Advisors Accounting System (test environment preferred)
+- Administrative user credentials
+- Test client account with an initialized Chart of Accounts
+- Spreadsheet software for editing test files (e.g., Microsoft Excel, Google Sheets)
+- Testing credentials: username "admin" with password "password123"
 
-## Test Cases
+## Test Environment Setup
 
-### 1. Valid Accounts Import
+1. Log in to the system using the admin account credentials
+2. Create a test client specifically for import/export testing
+3. Note the client ID for use in testing scripts
+4. Verify the client has a basic Chart of Accounts seeded
 
-**Objective**: Verify that valid account data can be imported successfully.
+## Export Testing
 
-**Steps**:
+### CSV Export Testing
+
 1. Navigate to the Chart of Accounts page for the test client
-2. Click "Import" button
-3. Select the valid-accounts.csv file
-4. Verify that the preview shows the accounts to be imported
-5. Confirm the import
-6. Verify that all accounts are imported correctly with the proper hierarchical structure
+2. Click the "Export" button and select CSV format
+3. Save the exported file
+4. Open the file in a text editor or spreadsheet application
+5. Verify the following:
+   - The file contains all accounts from the client's Chart of Accounts
+   - The first row contains the correct headers
+   - The "AccountCode" field name is present (not "code")
+   - All required columns are present
+   - Data is correctly formatted
 
-**Expected Result**: All accounts from the valid-accounts.csv file are imported successfully.
+### Excel Export Testing
 
-### 2. Duplicate Account Codes Validation
-
-**Objective**: Verify that the system rejects imports with duplicate account codes.
-
-**Steps**:
 1. Navigate to the Chart of Accounts page for the test client
-2. Click "Import" button
-3. Select the duplicate-codes.csv file
-4. Verify that the system shows an error about duplicate account codes
+2. Click the "Export" button and select Excel format
+3. Save the exported file
+4. Open the file in a spreadsheet application
+5. Verify the following:
+   - The file contains all accounts from the client's Chart of Accounts
+   - The first row contains the correct headers
+   - The "AccountCode" field name is present (not "code")
+   - All required columns are present
+   - Data is correctly formatted
 
-**Expected Result**: The system rejects the import and shows an error message indicating duplicate account codes.
+## Import Testing
 
-### 3. Invalid Parent Codes Validation
+### Test Case 1: Adding New Accounts
 
-**Objective**: Verify that the system validates parent-child relationships.
+1. Create a new CSV or Excel file with the following structure:
+   ```
+   AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+   9100,Test Revenue,REVENUE,sales,FALSE,,TRUE,Test revenue account,
+   9110,Test Product Sales,REVENUE,sales,FALSE,,TRUE,Test product sales,9100
+   9200,Test Expense,EXPENSE,operating_expense,FALSE,,TRUE,Test expense account,
+   ```
+2. Save the file as `test1-add-accounts.csv` or `test1-add-accounts.xlsx`
+3. Navigate to the Chart of Accounts page for the test client
+4. Click the "Import" button and select the appropriate format
+5. Upload the test file
+6. Confirm the import
+7. Verify the following:
+   - The three new accounts appear in the Chart of Accounts
+   - All fields are correctly imported
+   - The parent-child relationship is established
 
-**Steps**:
-1. Navigate to the Chart of Accounts page for the test client
-2. Click "Import" button
-3. Select the invalid-parents.csv file
-4. Verify that the system shows an error about invalid parent codes
+### Test Case 2: Updating Existing Accounts
 
-**Expected Result**: The system rejects the import and shows an error message indicating invalid parent codes.
+1. Export the current Chart of Accounts to CSV or Excel
+2. Edit the file to modify some existing accounts:
+   - Change the name of an account
+   - Change the description of an account
+   - Change a boolean field (Active, IsSubledger)
+3. Save the file as `test2-update-accounts.csv` or `test2-update-accounts.xlsx`
+4. Import the modified file
+5. Verify the following:
+   - The changes to existing accounts are applied
+   - No duplicate accounts are created
+   - Related accounts and relationships remain intact
 
-### 4. CSV Export
+### Test Case 3: Mixed Operations (Add & Update)
 
-**Objective**: Verify that accounts can be exported to CSV with the correct field names.
+1. Create a new CSV or Excel file with both new accounts and modifications to existing accounts
+2. Save the file as `test3-mixed-operations.csv` or `test3-mixed-operations.xlsx`
+3. Import the file
+4. Verify the following:
+   - New accounts are added
+   - Existing accounts are updated
+   - No errors occur during the import
 
-**Steps**:
-1. Navigate to the Chart of Accounts page for the test client
-2. Click "Export CSV" button
-3. Open the downloaded CSV file
-4. Verify that the file contains the "AccountCode" field (not "code")
-5. Check that all account data is correctly exported
+### Test Case 4: Error Handling - Duplicate Account Codes
 
-**Expected Result**: All accounts are exported to CSV with the "AccountCode" field.
+1. Create a CSV or Excel file with duplicate account codes:
+   ```
+   AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+   9800,Test Account 1,ASSET,current_asset,FALSE,,TRUE,First test account,
+   9800,Test Account 2,ASSET,current_asset,FALSE,,TRUE,Second test account with same code,
+   ```
+2. Attempt to import the file
+3. Verify that:
+   - The system reports an error about duplicate account codes
+   - No accounts from the file are imported
+   - The system provides clear error messaging
 
-### 5. Excel Export
+### Test Case 5: Error Handling - Invalid Parent References
 
-**Objective**: Verify that accounts can be exported to Excel with the correct field names.
+1. Create a CSV or Excel file with invalid parent references:
+   ```
+   AccountCode,Name,Type,Subtype,IsSubledger,SubledgerType,Active,Description,ParentCode
+   9900,Test Parent,ASSET,current_asset,FALSE,,TRUE,Test parent account,
+   9910,Test Child,ASSET,current_asset,FALSE,,TRUE,Test child account,99999
+   ```
+2. Attempt to import the file
+3. Verify that:
+   - The system reports an error about invalid parent references
+   - The system provides clear error messaging about which parent code is invalid
 
-**Steps**:
-1. Navigate to the Chart of Accounts page for the test client
-2. Click "Export Excel" button
-3. Open the downloaded Excel file
-4. Verify that the file contains the "AccountCode" field (not "code")
-5. Check that all account data is correctly exported
+## API Testing
 
-**Expected Result**: All accounts are exported to Excel with the "AccountCode" field.
+For automated testing, use the following API endpoints:
 
-## Field Mapping Verification
+### Export API
 
-Verify that the following field mappings are correct in both import and export:
+- CSV: `GET /api/clients/:clientId/accounts/export?format=csv`
+- Excel: `GET /api/clients/:clientId/accounts/export?format=excel`
 
-| Database Field | Import/Export Field |
-|----------------|---------------------|
-| accountCode    | AccountCode         |
-| name           | Name                |
-| type           | Type                |
-| subtype        | Subtype             |
-| isSubledger    | IsSubledger         |
-| subledgerType  | SubledgerType       |
-| active         | Active              |
-| description    | Description         |
-| parentCode     | ParentCode          |
+### Import API
 
-## Automated Testing
+- `POST /api/clients/:clientId/accounts/import`
+- Form data parameters:
+  - `file`: The file to import
+  - `format`: "csv" or "excel"
 
-### 1. Main Test Script 
+## Automated Testing Scripts
 
-The test-import-export.js script automates these test cases:
+Automated testing scripts are available in the `test-coa` directory:
+
+- `direct-test.js`: Helper utilities for API testing with session handling
+- `test-csv-import.js`: Tests for CSV import functionality
+- `test-excel-import.js`: Tests for Excel import functionality
+- `run-import-tests.js`: Runner script that executes all import tests
+
+To run the automated tests:
 
 ```bash
 cd test-coa
-node test-import-export.js
+node run-import-tests.js
 ```
 
-### 2. Direct Test Script (Session-Based)
+## Test Results Documentation
 
-For authentication-sensitive tests, use the direct-test.js script which handles login and maintains session:
+After completing the tests, document the results in the following format:
 
-```bash
-cd test-coa
-node direct-test.js
-```
+| Test Case | CSV Result | Excel Result | Notes |
+|-----------|------------|--------------|-------|
+| Export Field Names | Pass/Fail | Pass/Fail | |
+| Adding New Accounts | Pass/Fail | Pass/Fail | |
+| Updating Existing Accounts | Pass/Fail | Pass/Fail | |
+| Mixed Operations | Pass/Fail | Pass/Fail | |
+| Duplicate Account Codes | Pass/Fail | Pass/Fail | |
+| Invalid Parent References | Pass/Fail | Pass/Fail | |
 
-This script:
-- Logs in with the admin user
-- Exports accounts to CSV and Excel formats in a single session
-- Verifies that the AccountCode field is present in the exports
-
-### 3. Test Results
-
-Review the test results summary in test-results.md to see the latest test outcomes and fixes.
-
-## Troubleshooting
-
-If tests fail, check:
-
-1. Authentication middleware in accountRoutes.ts - ensure it uses both req.isAuthenticated() and req.user
-2. API endpoints for correct field naming
-3. Import/export logic in accountStorage.ts
-4. Frontend code in ChartOfAccounts.tsx for field mapping
-5. Database schema in shared/schema.ts for field definitions
-6. Session handling in the Express app configuration
-
-## Next Steps After Testing
-
-1. Update documentation with any issues found
-2. Fix any bugs in field naming or validation
-3. Ensure consistent naming across frontend and backend
-4. Clean up any legacy code supporting old field names
+For any failures, include detailed notes on the nature of the failure and steps to reproduce.
