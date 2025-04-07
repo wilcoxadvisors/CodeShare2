@@ -567,12 +567,27 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
           
         console.log('Entities retrieved successfully, count:', entities.length);
         
+        // Ensure industry field is properly formatted
+        const normalizedClient = {
+          ...client,
+          // Normalize industry field - ensuring it's not null/undefined
+          industry: client.industry || "other",
+          // Ensure all needed fields are present
+          name: client.name || "",
+          legalName: client.legalName || client.name || "",
+          taxId: client.taxId || "",
+          email: client.email || "",
+          phone: client.phone || "",
+          address: client.address || "",
+          // Include entities
+          entities
+        };
+        
+        console.log('Responding with normalized client data with industry:', normalizedClient.industry);
+        
         return res.json({
           status: "success",
-          data: {
-            ...client,
-            entities
-          }
+          data: normalizedClient
         });
       } catch (error: any) {
         console.error("Error getting entities by client:", error.message || error);

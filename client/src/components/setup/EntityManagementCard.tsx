@@ -168,19 +168,25 @@ export default function EntityManagementCard({
   const populateFromClientData = () => {
     console.log("POPULATE: Using client data to pre-fill entity form", clientData);
     if (clientData) {
-      // Set form values with client data, ensuring industry has a fallback value
-      form.reset(getDefaultFormValues({
-        name: clientData.name || "",
-        legalName: clientData.legalName || "",
+      // First clear the form to prevent any stale values
+      form.reset({});
+      
+      // Prepare clean values from client data with proper defaults
+      const cleanValues = {
+        name: clientData.name?.trim() || "",
+        legalName: clientData.legalName?.trim() || clientData.name?.trim() || "",
         taxId: clientData.taxId || "",
         entityType: "llc",
-        industry: clientData.industry || "other", // Ensure industry has a default value
+        industry: clientData.industry || "other", // Ensure industry has a valid default
         address: clientData.address || "",
         phone: clientData.phone || "",
         email: clientData.email || "",
-        ownerId: user?.id,
+        ownerId: user?.id
         // code field removed - auto-generated on server
-      }));
+      };
+      
+      // Apply the clean values to the form
+      form.reset(cleanValues);
       
       toast({
         title: "Form Populated",
