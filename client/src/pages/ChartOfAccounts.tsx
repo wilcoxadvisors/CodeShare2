@@ -1602,14 +1602,27 @@ function ChartOfAccounts() {
         
         // Check for ParentId changes - handle both camelCase and PascalCase field names
         const importedParentId = importedAccount.parentId || importedAccount.ParentId;
-        if (importedParentId !== existingAccount.parentId) {
-          changes.push(`Parent ID: "${existingAccount.parentId || 'None'}" → "${importedParentId || 'None'}"`);
+        const existingParentId = existingAccount.parentId;
+        
+        // Special handling for null/undefined comparison - only show as a change if one is null and the other isn't
+        const bothParentIdsNull = (importedParentId === null || importedParentId === undefined) && 
+                                  (existingParentId === null || existingParentId === undefined);
+        
+        // Only show as a change if they're different AND not both null/undefined
+        if (importedParentId !== existingParentId && !bothParentIdsNull) {
+          changes.push(`Parent ID: "${existingParentId || 'None'}" → "${importedParentId || 'None'}"`);
         }
         
         // Check for ParentCode changes - handle both camelCase and PascalCase field names
         const importedParentCode = importedAccount.parentCode || importedAccount.ParentCode;
         const existingParentCode = existingAccount.parentCode || null;
-        if ((importedParentCode || null) !== existingParentCode) {
+        
+        // Special handling for null/undefined comparison
+        const bothParentCodesNull = (importedParentCode === null || importedParentCode === undefined) && 
+                                    (existingParentCode === null || existingParentCode === undefined);
+        
+        // Only show as a change if they're different AND not both null/undefined
+        if ((importedParentCode || null) !== existingParentCode && !bothParentCodesNull) {
           changes.push(`Parent Code: "${existingParentCode || 'None'}" → "${importedParentCode || 'None'}"`);
         }
         
