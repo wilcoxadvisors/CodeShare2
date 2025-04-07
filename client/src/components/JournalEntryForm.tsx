@@ -135,8 +135,8 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' },
-      { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }
+      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' },
+      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }
     ]
   );
   
@@ -294,9 +294,9 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
     setFormError(null);
     setFieldErrors({});
     
-    // Prepare data for validation
+    // Prepare data for validation - only keep lines with account or debit/credit values
     const validLines = lines.filter(line => 
-      (line.accountId && line.accountId !== 'none') || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
+      line.accountId || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
     );
     
     const formData = {
@@ -316,7 +316,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
     // Format data for submission
     const formattedLines = validLines.map(line => ({
       accountId: parseInt(line.accountId),
-      entityCode: line.entityCode === 'none' ? entityId.toString() : line.entityCode,
+      entityCode: line.entityCode || entityId.toString(),
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
@@ -380,7 +380,7 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: 'none', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }]);
+    setLines([...lines, { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }]);
   };
   
   const removeLine = (index: number) => {
@@ -551,8 +551,9 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
                       <SelectValue placeholder="Select Account" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Select Account</SelectItem>
-                      {accounts.map(account => (
+                      {accounts
+                        .filter(account => account.active)
+                        .map(account => (
                         <SelectItem key={account.id} value={account.id.toString()}>
                           {account.code} - {account.name}
                         </SelectItem>
@@ -573,8 +574,9 @@ function JournalEntryForm({ entityId, accounts, locations = [], entities = [], o
                       <SelectValue placeholder="Select Entity" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Select Entity</SelectItem>
-                      {entities.map(entity => (
+                      {entities
+                        .filter(entity => entity.active)
+                        .map(entity => (
                         <SelectItem key={entity.id} value={entity.id.toString()}>
                           {entity.code ? `${entity.code} - ` : ''}{entity.name}
                         </SelectItem>
