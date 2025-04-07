@@ -21,26 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { enhancedEntitySchema } from '@/lib/validation';
 import { apiRequest } from '@/lib/queryClient';
-
-// Define Industry Options
-const INDUSTRY_OPTIONS = [
-  { value: 'accounting', label: 'Accounting & Bookkeeping' },
-  { value: 'agriculture', label: 'Agriculture' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'consulting', label: 'Consulting' },
-  { value: 'education', label: 'Education' },
-  { value: 'finance', label: 'Finance & Banking' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'hospitality', label: 'Hospitality & Tourism' },
-  { value: 'legal', label: 'Legal Services' },
-  { value: 'manufacturing', label: 'Manufacturing' },
-  { value: 'nonprofit', label: 'Non-profit' },
-  { value: 'real_estate', label: 'Real Estate' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'technology', label: 'Technology & Software' },
-  { value: 'transportation', label: 'Transportation & Logistics' },
-  { value: 'other', label: 'Other' },
-];
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from '@/lib/industryUtils';
 
 // Define Currency Options
 const CURRENCY_OPTIONS = [

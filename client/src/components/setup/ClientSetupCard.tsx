@@ -11,19 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-
-// Industry options
-const INDUSTRY_OPTIONS = [
-  { value: "retail", label: "Retail" },
-  { value: "manufacturing", label: "Manufacturing" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "tech", label: "Technology" },
-  { value: "finance", label: "Finance" },
-  { value: "construction", label: "Construction" },
-  { value: "hospitality", label: "Hospitality" },
-  { value: "services", label: "Professional Services" },
-  { value: "other", label: "Other" }
-];
+import { INDUSTRY_OPTIONS, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Define schema for client setup form
 const clientSetupSchema = z.object({
@@ -59,13 +47,7 @@ export default function ClientSetupCard({ onNext, setClientData, initialData, op
   
   console.log("FORM INIT: ClientSetupCard rendering. Has initialData:", !!initialData, "Open:", open);
   
-  // Utility function to ensure industry always has a value
-  const ensureIndustryValue = (industryValue: string | undefined | null): string => {
-    // Check if the industry value is valid
-    return industryValue && INDUSTRY_OPTIONS.some(opt => opt.value === industryValue)
-      ? industryValue
-      : "other"; // Default to "other" if the value is invalid or missing
-  };
+  // Using ensureIndustryValue from industryUtils.ts for consistent industry validation
   
   // Utility function to get default form values with optional overrides
   const getDefaultFormValues = (overrides: Partial<ClientSetupValues> = {}) => {

@@ -18,7 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "../../contexts/AuthContext";
 import { UserRole } from "@shared/schema";
-import { INDUSTRY_OPTIONS, getIndustryLabel } from "@/lib/industryUtils";
+import { INDUSTRY_OPTIONS, getIndustryLabel, ensureIndustryValue } from "@/lib/industryUtils";
 
 // Entity type options
 const ENTITY_TYPE_OPTIONS = [
@@ -259,65 +259,7 @@ export default function EntityManagementCard({
     }
   };
   
-  // Utility function to ensure industry always has a valid value
-  const ensureIndustryValue = (industryValue: string | number | undefined | null): string => {
-    // Log the incoming value for debugging with more details
-    console.log(`DEBUG ensureIndustryValue: Received value type: ${typeof industryValue}, value: "${industryValue}"`);
-    
-    try {
-      // CRITICAL FIX: Improved handling for different input types
-      // Case 1: null or undefined values
-      if (industryValue === null || industryValue === undefined) {
-        console.log("DEBUG ensureIndustryValue: Null or undefined value detected, defaulting to 'other'");
-        return "other";
-      }
-      
-      // Case 2: Convert numeric values to strings
-      // This fixes issues when numeric value like 123 is received instead of "123"
-      if (typeof industryValue === 'number') {
-        const stringValue = String(industryValue);
-        console.log(`DEBUG ensureIndustryValue: Converted numeric value ${industryValue} to string "${stringValue}"`);
-        // Check if the converted string is a valid industry value
-        const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === stringValue);
-        if (isValidIndustry) {
-          return stringValue;
-        }
-        // If not valid after conversion, default to "other"
-        console.log(`DEBUG ensureIndustryValue: Converted numeric value is not valid, defaulting to 'other'`);
-        return "other";
-      }
-      
-      // Case 3: Empty string values
-      if (industryValue === '') {
-        console.log("DEBUG ensureIndustryValue: Empty string detected, defaulting to 'other'");
-        return "other";
-      }
-      
-      // Case 4: String values that need trimming
-      const trimmedValue = String(industryValue).trim();
-      
-      // Check for empty string after trimming
-      if (trimmedValue === '') {
-        console.log("DEBUG ensureIndustryValue: Empty string after trimming, defaulting to 'other'");
-        return "other";
-      }
-      
-      // Check if the industry value is valid
-      const isValidIndustry = INDUSTRY_OPTIONS.some(opt => opt.value === trimmedValue);
-      
-      if (!isValidIndustry) {
-        console.log(`DEBUG ensureIndustryValue: Value "${trimmedValue}" is not in valid options, defaulting to 'other'`);
-        return "other";
-      }
-      
-      console.log(`DEBUG ensureIndustryValue: Using valid industry value: "${trimmedValue}"`);
-      return trimmedValue;
-    } catch (err) {
-      console.error("ERROR in ensureIndustryValue:", err);
-      console.log("CRITICAL FIX: Defaulting to 'other' due to processing error");
-      return "other";
-    }
-  };
+  // Using imported ensureIndustryValue from industryUtils.ts for consistent industry validation across components
 
   // Create entity mutation
   const createEntityMutation = useMutation({
