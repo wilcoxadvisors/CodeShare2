@@ -1600,14 +1600,17 @@ function ChartOfAccounts() {
           changes.push(`Description: "${existingAccount.description || 'None'}" → "${importedAccount.description || 'None'}"`);
         }
         
-        // Check for ParentId changes
-        if (importedAccount.parentId !== existingAccount.parentId) {
-          changes.push(`Parent ID: "${existingAccount.parentId || 'None'}" → "${importedAccount.parentId || 'None'}"`);
+        // Check for ParentId changes - handle both camelCase and PascalCase field names
+        const importedParentId = importedAccount.parentId || importedAccount.ParentId;
+        if (importedParentId !== existingAccount.parentId) {
+          changes.push(`Parent ID: "${existingAccount.parentId || 'None'}" → "${importedParentId || 'None'}"`);
         }
         
-        // Check for ParentCode changes
-        if ((importedAccount.parentCode || null) !== (existingAccount.parentCode || null)) {
-          changes.push(`Parent Code: "${existingAccount.parentCode || 'None'}" → "${importedAccount.parentCode || 'None'}"`);
+        // Check for ParentCode changes - handle both camelCase and PascalCase field names
+        const importedParentCode = importedAccount.parentCode || importedAccount.ParentCode;
+        const existingParentCode = existingAccount.parentCode || null;
+        if ((importedParentCode || null) !== existingParentCode) {
+          changes.push(`Parent Code: "${existingParentCode || 'None'}" → "${importedParentCode || 'None'}"`);
         }
         
         // If any changes were found, add to modifications list
