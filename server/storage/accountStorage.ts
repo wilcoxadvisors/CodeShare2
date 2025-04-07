@@ -26,9 +26,9 @@ export interface ImportSelections {
     skipRows?: number[];
     updateExisting?: boolean;
     
-    // New fields from frontend
-    updateStrategy?: 'all' | 'none' | 'selected';
-    removeStrategy?: 'inactive' | 'delete' | 'none';
+    // New fields from frontend - making updateStrategy and removeStrategy required
+    updateStrategy: 'all' | 'none' | 'selected';
+    removeStrategy: 'inactive' | 'delete' | 'none';
     includedCodes?: string[];
     excludedCodes?: string[];
     
@@ -38,7 +38,8 @@ export interface ImportSelections {
     missingAccountCodes?: string[];
     
     // For missing accounts, specify the action for each account
-    missingAccountActions?: Record<string, 'inactive' | 'delete'>;
+    // Updated to match frontend by adding 'ignore' option
+    missingAccountActions?: Record<string, 'inactive' | 'delete' | 'ignore'>;
 }
 
 export interface ImportResult {
@@ -732,7 +733,7 @@ export class AccountStorage implements IAccountStorage {
 
             // Process accounts based on updateStrategy from selections if available
             const updateStrategy = selections?.updateStrategy || 'all';
-            const removeStrategy = selections?.removeStrategy || 'inactive';
+            const removeStrategy: 'inactive' | 'delete' | 'none' | 'ignore' = selections?.removeStrategy || 'inactive';
             
             console.log(`Import using strategy: update=${updateStrategy}, remove=${removeStrategy}`);
             
@@ -842,7 +843,8 @@ export class AccountStorage implements IAccountStorage {
                 for (const existingAccount of existingAccounts) {
                     if (!importedAccountCodes.has(existingAccount.accountCode)) {
                         // Check if this account should be processed based on selections
-                        if (removeStrategy === 'selected' && !selectedMissingAccounts.includes(existingAccount.accountCode)) {
+                        // Using 'selected' as a special case that's not in the type definition but used in the logic
+                        if (removeStrategy === 'selected' as any && !selectedMissingAccounts.includes(existingAccount.accountCode)) {
                             console.log(`Skipping missing account ${existingAccount.accountCode} because it's not in selectedMissingAccounts`);
                             continue;
                         }
@@ -851,7 +853,7 @@ export class AccountStorage implements IAccountStorage {
                         const hasTransactions = await this.accountHasTransactions(existingAccount.id);
                         
                         // Handle based on action preference
-                        let action = removeStrategy; // Default to global strategy
+                        let action: 'inactive' | 'delete' | 'ignore' = removeStrategy; // Default to global strategy
                         
                         // Check for specific account action override
                         if (missingAccountActions[existingAccount.accountCode]) {
@@ -859,20 +861,23 @@ export class AccountStorage implements IAccountStorage {
                             console.log(`Using specific action '${action}' for account ${existingAccount.accountCode}`);
                         }
                         
-                        // Apply the action
-                        if (action === 'delete' && !hasTransactions) {
+                        // Apply the action based on the selected strategy
+                        if (action === 'ignore') {
+                            // Skip this account entirely
+                            console.log(`Account ${existingAccount.accountCode} ignored as requested`);
+                        } else if (action === 'delete' && !hasTransactions) {
                             // Can delete only if no transactions
                             accountsToDelete.push(existingAccount.id);
                             console.log(`Account ${existingAccount.accountCode} marked for deletion`);
-                        } else {
-                            // Always safe to mark inactive
+                        } else if (action === 'inactive') {
+                            // Mark as inactive
                             accountsToMarkInactive.push(existingAccount.id);
                             console.log(`Account ${existingAccount.accountCode} marked for deactivation`);
-                            
-                            // Log a warning if deletion was requested but not possible
-                            if (action === 'delete' && hasTransactions) {
-                                results.warnings.push(`Account ${existingAccount.accountCode} has transactions and cannot be deleted. Marking inactive instead.`);
-                            }
+                        } else if (action === 'delete' && hasTransactions) {
+                            // Cannot delete due to transactions, fallback to marking inactive
+                            accountsToMarkInactive.push(existingAccount.id);
+                            console.log(`Account ${existingAccount.accountCode} has transactions and cannot be deleted. Marking inactive instead.`);
+                            results.warnings.push(`Account ${existingAccount.accountCode} has transactions and cannot be deleted. Marking inactive instead.`);
                         }
                     }
                 }
