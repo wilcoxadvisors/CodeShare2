@@ -1839,9 +1839,14 @@ function ChartOfAccounts() {
   const handleImportConfirm = () => {
     if (importData.length > 0) {
       console.log("DEBUG: handleImportConfirm - About to import accounts with granular selections");
+      console.log("DEBUG: Total accounts from import data:", importData.length);
       
       // BUGFIX: Make sure we only process accounts that were explicitly selected in the UI
-      // CRITICAL FIX: The issue is we're not always enforcing explicit selection
+      // Log the selection state for debugging
+      console.log("DEBUG: Current selection state before import:");
+      console.log("  - selectedNewAccounts:", selectedNewAccounts.length, "items");
+      console.log("  - selectedModifiedAccounts:", selectedModifiedAccounts.length, "items");
+      console.log("  - selectedMissingAccounts:", selectedMissingAccounts.length, "items");
       
       // Force 'selected' strategy to ensure ONLY checked accounts are processed
       // Regardless of what the user selected in the strategy dropdown
@@ -2838,17 +2843,18 @@ function ChartOfAccounts() {
                         selectedNewAccounts.includes(account.accountCode || account.code)
                       )}
                       onCheckedChange={(checked) => {
+                        console.log("Select All New Accounts clicked. New state:", checked);
                         if (checked) {
-                          // Add all addition account codes that aren't already in the selection
-                          const newCodes = changesPreview.additions
-                            .map(a => a.accountCode || a.code)
-                            .filter(code => !selectedNewAccounts.includes(code));
+                          // Set all addition account codes directly
+                          const allCodes = changesPreview.additions
+                            .map(a => a.accountCode || a.code);
                           
-                          setSelectedNewAccounts(prev => [...prev, ...newCodes]);
+                          console.log("Adding ALL new account codes:", allCodes);
+                          setSelectedNewAccounts(allCodes); // Replace with all codes directly
                         } else {
-                          // Remove all addition account codes from the selection
-                          const additionCodes = changesPreview.additions.map(a => a.accountCode || a.code);
-                          setSelectedNewAccounts(prev => prev.filter(code => !additionCodes.includes(code)));
+                          // Clear all addition account codes
+                          console.log("Clearing ALL new account codes");
+                          setSelectedNewAccounts([]);
                         }
                       }}
                       className="mr-2 h-4 w-4"
@@ -2913,17 +2919,18 @@ function ChartOfAccounts() {
                         selectedModifiedAccounts.includes(mod.original.accountCode || mod.original.code)
                       )}
                       onCheckedChange={(checked) => {
+                        console.log("Select All Modifications clicked. New state:", checked);
                         if (checked) {
                           // Add all modification account codes that aren't already in the selection
-                          const newCodes = changesPreview.modifications
-                            .map(m => m.original.accountCode || m.original.code)
-                            .filter(code => !selectedModifiedAccounts.includes(code));
+                          const allCodes = changesPreview.modifications
+                            .map(m => m.original.accountCode || m.original.code);
                           
-                          setSelectedModifiedAccounts(prev => [...prev, ...newCodes]);
+                          console.log("Adding ALL modification codes:", allCodes);
+                          setSelectedModifiedAccounts(allCodes); // Replace with all codes directly
                         } else {
-                          // Remove all modification account codes from the selection
-                          const modCodes = changesPreview.modifications.map(m => m.original.accountCode || m.original.code);
-                          setSelectedModifiedAccounts(prev => prev.filter(code => !modCodes.includes(code)));
+                          // Clear all modification account codes
+                          console.log("Clearing ALL modification codes");
+                          setSelectedModifiedAccounts([]);
                         }
                       }}
                       className="mr-2 h-4 w-4"
@@ -2997,17 +3004,18 @@ function ChartOfAccounts() {
                         return accountCode && selectedMissingAccounts.some(code => code.toLowerCase() === accountCode);
                       })}
                       onCheckedChange={(checked) => {
+                        console.log("Select All Missing Accounts clicked. New state:", checked);
                         if (checked) {
-                          // Add all removal account codes that aren't already in the selection
-                          const newCodes = changesPreview.removals
-                            .map(a => a.accountCode || a.code)
-                            .filter(code => !selectedMissingAccounts.includes(code));
+                          // Set all removal account codes directly
+                          const allCodes = changesPreview.removals
+                            .map(a => a.accountCode || a.code);
                           
-                          setSelectedMissingAccounts(prev => [...prev, ...newCodes]);
+                          console.log("Adding ALL missing account codes:", allCodes);
+                          setSelectedMissingAccounts(allCodes); // Replace with all codes directly
                         } else {
-                          // Remove all removal account codes from the selection
-                          const removalCodes = changesPreview.removals.map(a => a.accountCode || a.code);
-                          setSelectedMissingAccounts(prev => prev.filter(code => !removalCodes.includes(code)));
+                          // Clear all removal account codes
+                          console.log("Clearing ALL missing account codes");
+                          setSelectedMissingAccounts([]);
                         }
                       }}
                       className="mr-2 h-4 w-4"
