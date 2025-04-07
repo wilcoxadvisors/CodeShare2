@@ -304,15 +304,16 @@ export default function EntityManagementCard({
       cleanedData.ownerId = data.ownerId;
       if (user?.id) cleanedData.createdBy = user.id;
       
-      // Include clientId from clientData if available (critical for client-entity relationship)
-      if (clientData && clientData.id) {
+      // In the setup flow, we don't add a clientId at all
+      // The clientId will be added when all entities are saved in the final step
+      // This avoids issues with negative or invalid client IDs
+      if (clientData && clientData.id && clientData.id > 0) {
+        // Only set clientId if it's a positive real ID from an existing client
         cleanedData.clientId = clientData.id;
-        console.log("Setting clientId in entity creation:", clientData.id);
+        console.log("Setting real clientId in entity creation:", clientData.id);
       } else {
-        // For setup flow, we're creating entities before the client has an ID
-        // Set a temporary value (will be replaced with actual client ID on final save)
-        cleanedData.clientId = -1; // Temporary value that indicates "setup flow entity"
-        console.log("SETUP FLOW: Using temporary clientId for setup flow:", cleanedData.clientId);
+        // For setup flow, don't set any client ID yet
+        console.log("SETUP FLOW: Not setting clientId for new entity (will be set during final submission)");
       }
       
       // Log the complete entity data
@@ -495,10 +496,16 @@ export default function EntityManagementCard({
       // Always include owner info
       cleanedData.ownerId = data.ownerId;
       
-      // Include clientId from clientData if available (critical for client-entity relationship)
-      if (clientData && clientData.id) {
+      // In the setup flow, we don't add a clientId at all during update
+      // The clientId will be added when all entities are saved in the final step
+      // This avoids issues with negative or invalid client IDs
+      if (clientData && clientData.id && clientData.id > 0) {
+        // Only set clientId if it's a positive real ID from an existing client
         cleanedData.clientId = clientData.id;
-        console.log("Setting clientId in entity update:", clientData.id);
+        console.log("Setting real clientId in entity update:", clientData.id);
+      } else {
+        // Don't set any client ID for entities in the setup flow
+        console.log("SETUP FLOW: Not setting clientId during entity update (will be set during final submission)");
       }
 
       console.log("Updating entity with data:", cleanedData);

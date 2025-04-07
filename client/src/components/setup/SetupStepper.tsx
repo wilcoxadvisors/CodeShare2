@@ -132,19 +132,9 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     }
     
     return () => {
-      // THIS IS THE CRITICAL LOG!
-      console.error(`DEBUG SetupStepper: Instance ${instanceId} UNMOUNTING! Saving state to localStorage...`);
-      
-      // CRITICAL FIX: Save state to localStorage on unmount to ensure persistence
-      try {
-        // Only save entities if they exist and have data
-        if (setupEntities && setupEntities.length > 0) {
-          localStorage.setItem('setupEntities', JSON.stringify(setupEntities));
-          console.log(`DEBUG SetupStepper: Saved ${setupEntities.length} entities to localStorage on unmount`);
-        }
-      } catch (e) {
-        console.warn("DEBUG SetupStepper: Error saving state to localStorage on unmount:", e);
-      }
+      // Just log that we're unmounting, but don't try to save state
+      // The state is already being saved after each action
+      console.log(`DEBUG SetupStepper: Instance ${instanceId} unmounting`);
     };
   }, []); // Empty dependency array ensures this runs only once on mount
   
@@ -221,20 +211,19 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     // Update state
     setClientData(data);
     
-    // Generate a temporary client ID for local use only - will be replaced with real ID on final submit
-    const tempClientId = Math.floor(Math.random() * -10000) - 1; // Negative ID to ensure it doesn't clash with real IDs
-    console.log(`DEBUG SetupStepper: Generated temporary client ID: ${tempClientId} for local use only`);
+    // Don't generate an ID at all - we'll create a real one when saving to database
+    console.log(`DEBUG SetupStepper: Using client data without an ID for now - will get real ID on final submit`);
     
-    // Update the stored client data with the temporary ID
+    // Store the client data without any ID
     const updatedClientData = {
       ...data,
-      id: tempClientId
+      // No ID field here - we'll get that from the server when we save
     };
     setClientData(updatedClientData);
     
     try {
       localStorage.setItem('setupClientData', JSON.stringify(updatedClientData));
-      console.log("DEBUG SetupStepper: Updated client data in localStorage with temp ID");
+      console.log("DEBUG SetupStepper: Saved clean client data to localStorage without ID");
     } catch (e) {
       console.warn("DEBUG SetupStepper: Error saving updated client to localStorage:", e);
     }
@@ -437,8 +426,8 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
     setIsSubmitting(true);
     
     try {
-      // Check if we already have a client ID (it should be a temporary negative ID for our new approach)
-      const clientId = clientData?.id;
+      // We're using a clean approach now - don't rely on any existing client ID
+      // but instead always create a new client on final submission
       let newClientId: number | undefined;
       
       // Always create the client in the database on final setup
@@ -457,8 +446,18 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
            'Content-Type': 'application/json',
          },
          body: JSON.stringify({
-           ...clientData,
-           userId: user?.id // Ensure user ID is included
+           // Don't include any existing ID field, but extract all other client data
+           name: clientData.name,
+           legalName: clientData.legalName,
+           taxId: clientData.taxId,
+           industry: clientData.industry,
+           address: clientData.address,
+           phone: clientData.phone,
+           email: clientData.email,
+           website: clientData.website,
+           notes: clientData.notes,
+           // Add the user ID
+           userId: user?.id 
          }),
          credentials: 'include' // Include cookies for authentication
       });
@@ -523,6 +522,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           throw new Error("Invalid client ID for entity creation. Database returned: " + newClientId);
         }
         
+        // Create a clean entity without any temporary ID
         return {
           name: entity.name,
           legalName: entity.legalName || entity.name,
@@ -533,6 +533,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           clientId: newClientId, // Use the real client ID from the API response
           ownerId: user?.id, // Set owner to current user
           active: true
+          // Explicitly not including any entity.id field to avoid sending temporary IDs
         };
       });
       
