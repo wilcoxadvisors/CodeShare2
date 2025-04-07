@@ -369,7 +369,8 @@ function ChartOfAccounts() {
     setExpandedNodes({});
     
     // Scroll to top of the account list to ensure UI consistency
-    const accountsContainer = document.querySelector('.max-h-\\[calc\\(100vh-280px\\)]');
+    // Using a more reliable selector
+    const accountsContainer = document.querySelector('.overflow-x-auto');
     if (accountsContainer) {
       accountsContainer.scrollTop = 0;
     }
@@ -2167,11 +2168,12 @@ function ChartOfAccounts() {
           </div>
         </div>
         
-        {/* Display active accounts */}
+        {/* Display active accounts with adjustable page size */}
         <DataTable 
           columns={columns} 
           data={filteredActiveAccounts || []} 
-          isLoading={isLoading} 
+          isLoading={isLoading}
+          pageSize={25} 
         />
         
         {/* Display inactive accounts if toggle is enabled */}
@@ -2181,7 +2183,8 @@ function ChartOfAccounts() {
             <DataTable 
               columns={columns} 
               data={filteredInactiveAccounts || []} 
-              isLoading={isLoading} 
+              isLoading={isLoading}
+              pageSize={25}
             />
           </div>
         )}
