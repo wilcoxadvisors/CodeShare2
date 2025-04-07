@@ -886,18 +886,25 @@ export class AccountStorage implements IAccountStorage {
                     // Check if we should process this account based on simplified settings
                     const isExisting = existingAccountsByCode.has(accountCode);
                     
-                    // BUGFIX: Always check if this account is explicitly selected when in 'selected' mode
-                    // Fix issue where unchecked accounts were still being processed
+                    // CRITICAL BUGFIX: Check if we are in 'selected' mode and have an explicit selection
                     if (updateStrategy === 'selected') {
                         // For existing accounts, check if they're in the selectedModifiedAccounts array
-                        if (isExisting && !selectedModifiedAccounts.includes(accountCode)) {
-                            console.log(`BUGFIX: Skipping update for account ${accountCode} because it's not explicitly selected in modifiedAccountCodes`);
-                            continue;
+                        if (isExisting) {
+                            // If we have selectedModifiedAccounts and this account is not in it, skip
+                            if (selectedModifiedAccounts.length > 0 && !selectedModifiedAccounts.includes(accountCode)) {
+                                console.log(`BUGFIX: Skipping update for account ${accountCode} because it's not explicitly selected in modifiedAccountCodes (${selectedModifiedAccounts.length} accounts selected)`);
+                                continue;
+                            }
+                            console.log(`Processing existing account ${accountCode} because it's in the selectedModifiedAccounts list or no specific selections were made`);
                         } 
                         // For new accounts, check if they're in the selectedNewAccounts array
-                        else if (!isExisting && !selectedNewAccounts.includes(accountCode)) {
-                            console.log(`BUGFIX: Skipping creation for account ${accountCode} because it's not explicitly selected in newAccountCodes`);
-                            continue;
+                        else if (!isExisting) {
+                            // If we have selectedNewAccounts and this account is not in it, skip
+                            if (selectedNewAccounts.length > 0 && !selectedNewAccounts.includes(accountCode)) {
+                                console.log(`BUGFIX: Skipping creation for account ${accountCode} because it's not explicitly selected in newAccountCodes (${selectedNewAccounts.length} accounts selected)`);
+                                continue;
+                            }
+                            console.log(`Processing new account ${accountCode} because it's in the selectedNewAccounts list or no specific selections were made`);
                         }
                     }
                     // Also check the legacy setting - If existing account and updateExisting is false, skip updating
@@ -985,13 +992,16 @@ export class AccountStorage implements IAccountStorage {
                 // Find accounts in the database that weren't in the import file
                 for (const existingAccount of existingAccounts) {
                     if (!importedAccountCodes.has(existingAccount.accountCode)) {
-                        // BUGFIX: Always check if this account is explicitly selected when in 'selected' mode
+                        // CRITICAL BUGFIX: Check if we are in 'selected' mode and have an explicit selection
                         // Fix issue where unchecked missing accounts were still being processed
                         // Also handle case where updateStrategy is 'selected' which forces individual account selection
-                        if ((removeStrategy === 'selected' as any || updateStrategy === 'selected') && 
-                            !selectedMissingAccounts.includes(existingAccount.accountCode)) {
-                            console.log(`BUGFIX: Skipping missing account ${existingAccount.accountCode} because it's not explicitly selected in missingAccountCodes`);
-                            continue;
+                        if ((removeStrategy === 'selected' as any || updateStrategy === 'selected')) {
+                            // If we have selectedMissingAccounts and this account is not in it, skip
+                            if (selectedMissingAccounts.length > 0 && !selectedMissingAccounts.includes(existingAccount.accountCode)) {
+                                console.log(`BUGFIX: Skipping missing account ${existingAccount.accountCode} because it's not explicitly selected in missingAccountCodes (${selectedMissingAccounts.length} accounts selected)`);
+                                continue;
+                            }
+                            console.log(`Processing missing account ${existingAccount.accountCode} because it's in the selectedMissingAccounts list or no specific selections were made`);
                         }
                         
                         // Check if account has transactions
