@@ -363,13 +363,27 @@ function ChartOfAccounts() {
     setExpandedNodes(expandAll);
   };
   
-  // Function to collapse all nodes
+  // Function to collapse all nodes - modified to collapse only root nodes
   const collapseAllNodes = () => {
-    // Reset expanded nodes to empty object - this will collapse all nodes
-    setExpandedNodes({});
+    // Get only the root level nodes
+    const rootNodes = accountTreeData.map(node => node.id);
+    
+    // Create an empty expanded nodes object with the same type as expandedNodes
+    const newExpandedNodes: Record<string, boolean> = {};
+    
+    // Set all non-root nodes to collapsed
+    // We specifically leave expanded nodes that aren't in the rootNodes array
+    Object.keys(expandedNodes).forEach(nodeId => {
+      const id = parseInt(nodeId);
+      if (!rootNodes.includes(id)) {
+        newExpandedNodes[nodeId] = expandedNodes[nodeId];
+      }
+    });
+    
+    // Update the expanded nodes state
+    setExpandedNodes(newExpandedNodes);
     
     // Scroll to top of the account list to ensure UI consistency
-    // Using a more reliable selector
     const accountsContainer = document.querySelector('.overflow-x-auto');
     if (accountsContainer) {
       accountsContainer.scrollTop = 0;
@@ -2154,7 +2168,7 @@ function ChartOfAccounts() {
               className="flex items-center"
             >
               <ChevronDown className="h-4 w-4 mr-1" />
-              Expand All
+              Expand
             </Button>
             <Button 
               variant="outline" 
@@ -2163,7 +2177,7 @@ function ChartOfAccounts() {
               className="flex items-center"
             >
               <ChevronRight className="h-4 w-4 mr-1" />
-              Collapse All
+              Collapse
             </Button>
           </div>
         </div>
