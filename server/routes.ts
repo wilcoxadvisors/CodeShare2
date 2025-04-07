@@ -340,6 +340,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all entities for a specific client
+  app.get("/api/clients/:clientId/entities", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log(`GET /api/clients/:clientId/entities - Getting entities for client ID: ${req.params.clientId}`);
+      const clientId = parseInt(req.params.clientId);
+      
+      if (isNaN(clientId) || clientId <= 0) {
+        return res.status(400).json({ error: "Invalid client ID format" });
+      }
+      
+      // Validate user has access to this client
+      const userId = (req.user as AuthUser).id;
+      const userRole = (req.user as AuthUser).role;
+      
+      if (userRole !== 'admin') {
+        const client = await storage.clients.getClient(clientId);
+        if (!client || (client.userId !== userId)) {
+          return res.status(403).json({ message: "You don't have access to this client" });
+        }
+      }
+      
+      console.log(`Fetching entities for client ID: ${clientId}`);
+      const entities = await storage.entities.getEntitiesByClient(clientId);
+      
+      return res.json({
+        status: "success",
+        entities
+      });
+    } catch (error: any) {
+      console.error("Error fetching entities by client:", error.message || error);
+      throw error;
+    }
+  }));
+  
+  // Get general ledger entries for an entity
+  app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      
+      if (isNaN(entityId) || entityId <= 0) {
+        return res.status(400).json({ error: "Invalid entity ID format" });
+      }
+      
+      // Check permissions for the entity
+      const entity = await storage.entities.getEntity(entityId);
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      // Check if user has access to this entity
+      const userId = (req.user as AuthUser).id;
+      if (entity.ownerId !== userId) {
+        const accessLevel = await userStorage.getUserEntityAccess(userId, entityId);
+        if (!accessLevel) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+      
+      // Get query parameters
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : null;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : null;
+      const accountId = req.query.accountId ? parseInt(req.query.accountId as string) : null;
+      
+      // Get client ID from entity (for account filtering)
+      const clientId = entity.clientId as number;
+      
+      // Fetch general ledger entries
+      const entries = await journalEntryStorage.getGeneralLedgerEntries({
+        entityId,
+        clientId,
+        startDate,
+        endDate,
+        accountId
+      });
+      
+      res.json({
+        status: "success",
+        data: entries
+      });
+    } catch (error) {
+      console.error("Error getting general ledger:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   app.get("/api/entities/:id", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.id);

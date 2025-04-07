@@ -45,12 +45,18 @@ function NewJournalEntry() {
   const { data: accountsData, isLoading: accountsLoading } = useQuery({
     queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ["no-client-selected"],
     enabled: !!clientId,
+    onSuccess: (data) => {
+      console.log("Accounts API response:", data);
+    }
   });
   
   // Query entities from API - explicitly filtered by client
   const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
     queryKey: clientId ? [`/api/clients/${clientId}/entities`] : ["no-client-entities"],
-    enabled: !!clientId
+    enabled: !!clientId,
+    onSuccess: (data) => {
+      console.log("Entities API response:", data);
+    }
   });
 
   // Transform accounts data to ensure it matches our interface requirements

@@ -28,6 +28,32 @@ function handleDbError(error: unknown, operation: string): Error {
 }
 
 // Define interface for Journal Entry Storage operations
+// Interface for General Ledger options
+export interface GLOptions {
+  entityId: number;
+  clientId: number;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  accountId?: number | null;
+}
+
+// Interface for General Ledger Entry
+export interface GeneralLedgerEntry {
+  id: number;
+  date: Date;
+  referenceNumber: string | null;
+  description: string | null;
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  journalEntryId: number;
+  lineId: number;
+  entityCode: string | null;
+}
+
 export interface IJournalEntryStorage {
   // Journal Entry operations
   createJournalEntry(clientId: number, createdById: number, entryData: InsertJournalEntry): Promise<JournalEntry>;
@@ -37,6 +63,9 @@ export interface IJournalEntryStorage {
   listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
   deleteJournalEntry(id: number): Promise<boolean>;
+  
+  // General Ledger operations
+  getGeneralLedgerEntries(options: GLOptions): Promise<GeneralLedgerEntry[]>;
   
   // Legacy Journal methods (aliases for JournalEntry methods)
   getJournal(id: number): Promise<JournalEntry | undefined>;
@@ -362,6 +391,120 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .where(eq(journalEntryLines.journalEntryId, journalEntryId));
     } catch (e) {
       throw handleDbError(e, `getting lines for journal entry ${journalEntryId}`);
+    }
+  }
+  
+  /**
+   * Get general ledger entries for an entity with optional filters
+   * Returns transactions with running balance calculation
+   */
+  async getGeneralLedgerEntries(options: GLOptions): Promise<GeneralLedgerEntry[]> {
+    console.log(`Getting general ledger entries for entity ${options.entityId}`);
+    try {
+      // Build base query conditions
+      const conditions = [
+        eq(journalEntries.entityId, options.entityId),
+        eq(journalEntries.status, 'posted') // Only include posted entries
+      ];
+      
+      // Add date range conditions if provided
+      if (options.startDate) {
+        conditions.push(gte(journalEntries.date, options.startDate));
+      }
+      
+      if (options.endDate) {
+        conditions.push(lte(journalEntries.date, options.endDate));
+      }
+      
+      // Get account information first for the client (needed for account details and filtering)
+      const clientAccounts = await db.select({
+        id: accounts.id,
+        code: accounts.accountCode,
+        name: accounts.name,
+        type: accounts.type
+      })
+      .from(accounts)
+      .where(eq(accounts.clientId, options.clientId));
+      
+      // Create a map for fast account lookup
+      const accountMap = new Map(clientAccounts.map(acc => [acc.id, acc]));
+      
+      // Get journal entries and their lines
+      const query = db.select({
+        entryId: journalEntries.id,
+        entryDate: journalEntries.date,
+        referenceNumber: journalEntries.referenceNumber,
+        description: journalEntries.description,
+        lineId: journalEntryLines.id,
+        accountId: journalEntryLines.accountId,
+        lineType: journalEntryLines.type,
+        amount: journalEntryLines.amount,
+        lineDescription: journalEntryLines.description,
+        entityCode: journalEntryLines.entityCode
+      })
+      .from(journalEntries)
+      .innerJoin(journalEntryLines, eq(journalEntries.id, journalEntryLines.journalEntryId))
+      .where(and(...conditions))
+      .orderBy(asc(journalEntries.date), asc(journalEntries.id));
+      
+      // Apply account filter if provided
+      if (options.accountId) {
+        query.where(eq(journalEntryLines.accountId, options.accountId));
+      }
+      
+      // Execute the query
+      const results = await query;
+      
+      // Transform results to GeneralLedgerEntry format with balance calculation
+      let entries: GeneralLedgerEntry[] = [];
+      let runningBalance = 0;
+      
+      for (const row of results) {
+        // Skip if account not found (shouldn't happen with proper constraints)
+        if (!accountMap.has(row.accountId)) continue;
+        
+        const account = accountMap.get(row.accountId)!;
+        const amount = parseFloat(row.amount) || 0;
+        
+        // Determine debit/credit values
+        let debit = 0;
+        let credit = 0;
+        if (row.lineType === 'debit') {
+          debit = amount;
+        } else {
+          credit = amount;
+        }
+        
+        // Calculate running balance based on account type
+        // For assets and expenses, debits increase balance
+        // For liabilities, equity, and revenue, credits increase balance
+        if (account.type === 'asset' || account.type === 'expense') {
+          runningBalance += debit - credit;
+        } else {
+          runningBalance += credit - debit;
+        }
+        
+        // Create GeneralLedgerEntry
+        entries.push({
+          id: row.lineId,
+          date: row.entryDate,
+          referenceNumber: row.referenceNumber,
+          description: row.description || row.lineDescription,
+          accountId: row.accountId,
+          accountCode: account.code,
+          accountName: account.name,
+          debit,
+          credit,
+          balance: runningBalance,
+          journalEntryId: row.entryId,
+          lineId: row.lineId,
+          entityCode: row.entityCode
+        });
+      }
+      
+      return entries;
+    } catch (e) {
+      throw handleDbError(e, `getting general ledger entries for entity ${options.entityId}`);
     }
   }
   

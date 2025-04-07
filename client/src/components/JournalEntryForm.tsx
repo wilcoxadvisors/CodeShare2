@@ -134,10 +134,19 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     reversalDate: existingEntry?.reversalDate ? new Date(existingEntry.reversalDate).toISOString().split('T')[0] : '',
   });
   
+  // Get default entity code from entities list based on current entityId
+  const defaultEntityCode = React.useMemo(() => {
+    if (entities && entities.length > 0) {
+      const currentEntity = entities.find(entity => entity.id === entityId);
+      return currentEntity ? currentEntity.code : '';
+    }
+    return '';
+  }, [entities, entityId]);
+
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' },
-      { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }
+      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' },
+      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' }
     ]
   );
   
@@ -319,7 +328,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     // Format data for submission
     const formattedLines = validLines.map(line => ({
       accountId: parseInt(line.accountId),
-      entityCode: line.entityCode || entityId.toString(),
+      entityCode: line.entityCode || defaultEntityCode,
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
@@ -393,7 +402,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: '', entityCode: entityId.toString(), description: '', debit: '', credit: '', locationId: 'none' }]);
+    setLines([...lines, { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' }]);
   };
   
   const removeLine = (index: number) => {
@@ -590,8 +599,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                       {entities
                         .filter(entity => entity.active)
                         .map(entity => (
-                        <SelectItem key={entity.id} value={entity.id.toString()}>
-                          {entity.code ? `${entity.code} - ` : ''}{entity.name}
+                        <SelectItem key={entity.id} value={entity.code}>
+                          {entity.code} - {entity.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
