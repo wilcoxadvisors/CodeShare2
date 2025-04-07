@@ -1704,6 +1704,26 @@ function ChartOfAccounts() {
     if (importData.length > 0) {
       console.log("DEBUG: handleImportConfirm - About to import accounts with granular selections");
       
+      // BUGFIX: Make sure we only process accounts that were explicitly selected in the UI
+      // by filtering the selections based on the updateStrategy and removeStrategy
+      
+      // If updateStrategy is 'selected', only include selected items
+      // If updateStrategy is 'all', include all items (but respect UI selection for 'selected' strategy)
+      // If updateStrategy is 'none', include no items
+      
+      // Filter lists based on strategy
+      const filteredNewAccountCodes = updateStrategy === 'none' 
+        ? [] 
+        : (updateStrategy === 'selected' ? selectedNewAccounts : changesPreview.additions.map(a => a.accountCode || a.code));
+      
+      const filteredModifiedAccountCodes = updateStrategy === 'none' 
+        ? [] 
+        : (updateStrategy === 'selected' ? selectedModifiedAccounts : changesPreview.modifications.map(m => m.original.accountCode || m.original.code));
+      
+      const filteredMissingAccountCodes = removeStrategy === 'none' 
+        ? [] 
+        : selectedMissingAccounts;
+      
       // Create selections object to pass to backend
       const selections: ImportSelections = {
         // Industry-standard interface properties
@@ -1719,10 +1739,10 @@ function ChartOfAccounts() {
         updateStrategy: updateStrategy,
         removeStrategy: removeStrategy,
         
-        // Specific accounts to include in each category
-        newAccountCodes: selectedNewAccounts,
-        modifiedAccountCodes: selectedModifiedAccounts,
-        missingAccountCodes: selectedMissingAccounts,
+        // Specific accounts to include in each category - BUGFIX: Use filtered lists that respect UI selections
+        newAccountCodes: filteredNewAccountCodes,
+        modifiedAccountCodes: filteredModifiedAccountCodes,
+        missingAccountCodes: filteredMissingAccountCodes,
         
         // For missing accounts, specify the action for each account
         missingAccountActions: missingAccountActions
@@ -1744,6 +1764,22 @@ function ChartOfAccounts() {
         formData.append('selections', JSON.stringify(selections));
         
         console.log("DEBUG: handleImportConfirm - Prepared form data with selections:", selections);
+        
+        // BUGFIX: Check if there are actually any selections to process
+        // If no accounts are selected for any operation, show alert and don't submit
+        const hasSelectedAccounts = 
+          filteredNewAccountCodes.length > 0 ||
+          filteredModifiedAccountCodes.length > 0 ||
+          filteredMissingAccountCodes.length > 0;
+        
+        if (!hasSelectedAccounts) {
+          toast({
+            title: "No accounts selected",
+            description: "You haven't selected any accounts to import, modify, or remove. Please select at least one account or change your update/remove strategy.",
+            variant: "destructive",
+          });
+          return; // Stop here and don't submit
+        }
         
         // Use the import mutation but pass the FormData manually
         importAccounts.mutate(formData as any);
