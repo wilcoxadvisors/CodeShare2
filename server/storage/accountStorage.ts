@@ -1570,6 +1570,10 @@ export class AccountStorage implements IAccountStorage {
      */
     validateImportRow(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
         console.log(`✓ VALIDATING ROW: ${JSON.stringify(row)}`); // DEBUG: Detailed row data
+        console.log(`----------------------------------------`);
+        console.log(`🔎 ACCOUNT VALIDATION: ${row.AccountCode || 'UNKNOWN ACCOUNT'}`);
+        console.log(`ACCOUNT DATA DUMP: ${JSON.stringify(row, null, 2)}`);
+        console.log(`----------------------------------------`);
         console.log(`DEBUG validateImportRow - Validating row with code: ${row.AccountCode || 'UNKNOWN'}`);
         console.log(`DEBUG validateImportRow - Row data:`, JSON.stringify(row));
         
@@ -1655,12 +1659,21 @@ export class AccountStorage implements IAccountStorage {
             return result;
         }
         
+        console.log(`------ PARENT RELATIONSHIP CHECK ------`);
         console.log(`🔎 VALIDATING PARENT RELATIONSHIP: Account ${row.AccountCode} has parent ${row.ParentCode}`);
         
         // Find the parent account if it exists in the database
         const parentInDb = existingAccounts.find(acc => acc.accountCode === row.ParentCode);
         // Find the parent account if it exists in the new accounts being imported
         const parentInNewAccounts = newAccounts.find(acc => acc.AccountCode === row.ParentCode);
+        
+        console.log(`DETAILED PARENT CHECK:
+        - Account being validated: ${row.AccountCode}
+        - Parent account: ${row.ParentCode}
+        - Parent exists in database: ${parentInDb ? 'Yes' : 'No'}
+        - Parent active status: ${parentInDb ? (parentInDb.active ? 'Active' : 'INACTIVE') : 'N/A'}
+        - Parent exists in current import: ${parentInNewAccounts ? 'Yes' : 'No'}
+        `);
         
         // Detailed logging about the parent account status
         if (parentInDb) {
