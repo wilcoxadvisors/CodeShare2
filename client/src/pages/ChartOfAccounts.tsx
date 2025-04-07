@@ -227,18 +227,37 @@ function ChartOfAccounts() {
     return result;
   };
   
-  // Memoize the flattened account list to prevent unnecessary recalculations
+  // Create a flattened account list for display, respecting the expanded state
   const flattenedAccounts = useMemo(() => {
     return flattenAccountTree(accountTreeData);
   }, [accountTreeData, expandedNodes]);
+  
+  // Create a complete account list (all nodes) for searching, ignoring expansion state
+  const allAccounts = useMemo(() => {
+    // Helper function that flattens the entire tree regardless of expansion state
+    const flattenAllAccounts = (nodes: AccountTreeNode[], result: AccountTreeNode[] = []): AccountTreeNode[] => {
+      for (const node of nodes) {
+        // Add the current node
+        result.push(node);
+        
+        // Always process children, regardless of expanded state
+        if (node.children && node.children.length > 0) {
+          flattenAllAccounts(node.children, result);
+        }
+      }
+      return result;
+    };
+    
+    return flattenAllAccounts(accountTreeData);
+  }, [accountTreeData]);
   
   // Improved filtering for accounts based on search term that preserves hierarchy
   const filteredAccounts = useMemo(() => {
     if (!searchTerm) return flattenedAccounts;
     
-    // Step 1: Find accounts that match the search criteria
+    // Step 1: Find accounts that match the search criteria (search through ALL accounts)
     const matchingAccountIds = new Set<number>();
-    const matchingAccounts = flattenedAccounts.filter(account => {
+    allAccounts.filter(account => {
       const matches = 
         account.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         account.accountCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -252,7 +271,7 @@ function ChartOfAccounts() {
     
     // Step 2: Find all parent IDs of matching accounts to maintain hierarchy
     const parentMap = new Map<number, number | null>();
-    flattenedAccounts.forEach(account => {
+    allAccounts.forEach(account => {
       parentMap.set(account.id, account.parentId);
     });
     
@@ -275,15 +294,27 @@ function ChartOfAccounts() {
       parentIdsToExpand.forEach(id => {
         newExpandedNodes[id] = true;
       });
+      // Make sure all parent nodes in the path to matching accounts are expanded
+      matchingAccountIds.forEach(id => {
+        let currentParentId = parentMap.get(id);
+        while (currentParentId !== null && currentParentId !== undefined) {
+          newExpandedNodes[currentParentId] = true;
+          currentParentId = parentMap.get(currentParentId);
+        }
+      });
+      
       // Use setTimeout to avoid state updates during render
       setTimeout(() => {
         setExpandedNodes(newExpandedNodes);
       }, 0);
     }
     
-    // Step 3: Return only accounts that are either matches or ancestors of matches
-    return flattenedAccounts.filter(account => relevantAccountIds.has(account.id));
-  }, [flattenedAccounts, searchTerm, expandedNodes]);
+    // Recreate the flattened accounts tree with the new expanded nodes
+    // But only show relevant accounts (matching or their ancestors)
+    return flattenAccountTree(accountTreeData).filter(account => 
+      relevantAccountIds.has(account.id)
+    );
+  }, [accountTreeData, allAccounts, searchTerm, expandedNodes]);
   
   // Function to expand all nodes
   const expandAllNodes = () => {
@@ -1944,7 +1975,8 @@ function ChartOfAccounts() {
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm("")}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+                aria-label="Clear search"
               >
                 ✕
               </button>
