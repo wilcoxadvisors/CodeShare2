@@ -43,9 +43,8 @@ const entitySchema = z.object({
     (val) => !val || val === "" || val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
     { message: "Please enter a valid email address if providing one" }
   ),
-  ownerId: z.number().optional(),
-  // Code is required in database schema
-  code: z.string().min(2, { message: "Code must be at least 2 characters." })
+  ownerId: z.number().optional()
+  // Entity code is auto-generated on the server, removed from form
 });
 
 type EntityFormValues = z.infer<typeof entitySchema>;
@@ -64,8 +63,8 @@ const getDefaultFormValues = (initialValues = {}) => {
     phone: "",
     email: "",
     ownerId: user?.id,
-    code: "",
-    ...initialValues // Allow overriding defaults with initialValues
+    // code field removed - auto-generated on server
+    ...initialValues, // Allow overriding defaults with initialValues
   };
 };
 
@@ -122,7 +121,7 @@ export default function EntityManagementCard({
       phone: "",
       email: "",
       ownerId: user?.id,
-      code: "",
+      // code removed - auto-generated on server
       ...overrides // Allow overriding specific fields
     };
   };
@@ -180,7 +179,7 @@ export default function EntityManagementCard({
         phone: clientData.phone || "",
         email: clientData.email || "",
         ownerId: user?.id,
-        code: clientData.code || ""
+        // code field removed - auto-generated on server
       }));
       
       toast({
@@ -284,8 +283,8 @@ export default function EntityManagementCard({
         // Use our utility function to ensure industry is valid
         industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
-        // Generate a code from the name if not provided
-        code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+        // Generate a code from the name - auto-generated
+        code: data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
         // Set default fiscal year values
         fiscalYearStart: "01-01",
         fiscalYearEnd: "12-31",
@@ -364,7 +363,7 @@ export default function EntityManagementCard({
             industry: respData.industry || formValues.industry || "",
             active: respData.active === undefined ? true : respData.active,
             isActive: true, // UI needs this
-            code: respData.code || formValues.code || "",
+            code: respData.code || "",
             // Critical: Add client relationship
             clientId: respData.clientId || clientData?.id,
             // Include all other fields from API response
@@ -447,8 +446,8 @@ export default function EntityManagementCard({
       if (!data.name || data.name.trim() === "") {
         console.error("CRITICAL ERROR: Entity name is empty in update. This should never happen.");
         
-        // Use the most robust fallback chain
-        const nameBackup = data.legalName || data.code || `Entity ${id}`;
+        // Use legal name as fallback or a generated entity ID
+        const nameBackup = data.legalName || `Entity ${id}`;
         console.log("CRITICAL FIX: Using fallback name in entity update:", nameBackup);
         data.name = nameBackup;
       }
@@ -474,10 +473,8 @@ export default function EntityManagementCard({
         // Use our utility function to ensure industry is valid
         industry: ensureIndustryValue(data.industry),
         active: true, // Using 'active' instead of 'isActive' to match schema
-        // Better code generation with validation
-        code: data.code && data.code.trim() ? 
-              data.code.trim() : 
-              (data.name ? data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100) : "ENT" + id),
+        // Auto-generate code - this will be handled server-side
+        code: data.name ? data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100) : "ENT" + id,
         // Set default fiscal year values if updating
         fiscalYearStart: "01-01",
         fiscalYearEnd: "12-31",
@@ -746,7 +743,7 @@ export default function EntityManagementCard({
             address: dataCopy.address || "",
             phone: dataCopy.phone || "",
             email: dataCopy.email || "",
-            code: dataCopy.code || dataCopy.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+            code: dataCopy.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
             ownerId: dataCopy.ownerId,
             active: true,
             isActive: true
@@ -807,7 +804,7 @@ export default function EntityManagementCard({
           address: data.address || "",
           phone: data.phone || "",
           email: data.email || "",
-          code: data.code || data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+          code: data.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
           ownerId: data.ownerId,
           active: true,
           isActive: true
@@ -929,8 +926,8 @@ export default function EntityManagementCard({
       address: entityClone.address || "",
       phone: entityClone.phone || "",
       email: entityClone.email || "",
-      ownerId: entityClone.ownerId || user?.id,
-      code: entityClone.code || ""
+      ownerId: entityClone.ownerId || user?.id
+      // code field removed - auto-generated on server
     };
     
     console.log("CRITICAL-DEBUG: Final form values being set:", JSON.stringify(formValues));
@@ -1253,23 +1250,17 @@ export default function EntityManagementCard({
                   )}
                 />
                 
-                <FormField
-                  key="field-code"
-                  control={form.control}
-                  name="code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Entity Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ABC123" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        A unique identifier code for this entity
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Entity code field removed - now auto-generated on the server */}
+                <div className="p-2 mb-2 rounded-md bg-muted/20">
+                  <p className="text-sm text-muted-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1 h-4 w-4">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    An entity code will be automatically generated for you based on the entity name.
+                  </p>
+                </div>
                 
                 <FormField
                   key="field-entityType"

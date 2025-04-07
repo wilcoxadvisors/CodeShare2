@@ -450,9 +450,20 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         });
       }
       
+      // Process industry value for consistency
+      let industryValue = req.body.industry;
+      if (industryValue !== undefined && industryValue !== null) {
+        industryValue = String(industryValue);
+      } else if (industryValue === '' || industryValue === null) {
+        industryValue = "other";
+      }
+      
+      console.log("CREATE CLIENT: Processing industry value:", req.body.industry, "→", industryValue);
+      
       // Create the client with owner information
       const clientData = {
         ...req.body,
+        industry: industryValue, // Ensure industry is properly set
         userId: userId, // This is the field for the client table
         ownerId: userId, // For backward compatibility
         createdBy: userId
@@ -579,6 +590,8 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
   app.put("/api/admin/clients/:id", isAdmin, asyncHandler(async (req: Request, res: Response) => {
     try {
       const clientId = parseInt(req.params.id);
+      console.log("PUT /api/admin/clients/:id - Updating client:", clientId);
+      console.log("Update data:", req.body);
       
       // Verify client exists
       const existingClient = await storage.getClient(clientId);
@@ -586,7 +599,29 @@ export function registerAdminRoutes(app: Express, storage: IStorage) {
         throwNotFound("Client not found");
       }
       
-      const updatedClient = await storage.updateClient(clientId, req.body);
+      // Process industry value for consistency
+      let updateData = { ...req.body };
+      
+      // Handle industry specifically for consistency
+      if ('industry' in updateData) {
+        let industryValue = updateData.industry;
+        if (industryValue !== undefined && industryValue !== null) {
+          // Ensure string value for industry
+          industryValue = String(industryValue);
+        } else if (industryValue === '' || industryValue === null) {
+          // Default to "other" if empty
+          industryValue = "other";
+        }
+        
+        console.log("UPDATE CLIENT: Processing industry value:", 
+          req.body.industry, "→", industryValue);
+        
+        // Update the industry value in the update data
+        updateData.industry = industryValue;
+      }
+      
+      console.log("Final update data:", updateData);
+      const updatedClient = await storage.updateClient(clientId, updateData);
       
       return res.json({
         status: "success",
