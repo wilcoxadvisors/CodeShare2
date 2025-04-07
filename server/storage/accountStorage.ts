@@ -690,6 +690,18 @@ export class AccountStorage implements IAccountStorage {
             const fileType = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
             console.log(`Importing Chart of Accounts for client ${clientId} from ${fileType} file: ${fileName}`);
             
+            // Enhanced debugging for selections
+            if (selections) {
+                console.log(`ENHANCED DEBUG - Selection details:`);
+                console.log(`- Update existing: ${selections.updateExisting}`);
+                console.log(`- Handle missing: ${selections.handleMissingAccounts || 'not specified'}`);
+                console.log(`- Update strategy: ${selections.updateStrategy || 'not specified'}`);
+                console.log(`- Remove strategy: ${selections.removeStrategy || 'not specified'}`);
+                console.log(`- Selected new accounts: ${JSON.stringify(selections.newAccountCodes || [])}`);
+                console.log(`- Selected modified accounts: ${JSON.stringify(selections.modifiedAccountCodes || [])}`);
+                console.log(`- Selected missing accounts: ${JSON.stringify(selections.missingAccountCodes || [])}`);
+            }
+            
             // Parse the file based on type
             let rawImportData: any[] = [];
             let parsedImportData: any[] = [];
@@ -967,6 +979,12 @@ export class AccountStorage implements IAccountStorage {
                         // Update existing account
                         // REACTIVATION FIX: Explicitly log when reactivating an account
                         if (!existingAccount.active && isActive) {
+                            // Check if we should reactivate this account
+                            if (updateStrategy === 'selected' && selectedModifiedAccounts.length > 0 && !selectedModifiedAccounts.includes(accountCode)) {
+                                console.log(`🚫 Skipping reactivation for account ${accountCode} (${name}) because it's not explicitly selected for update`);
+                                continue; // Skip processing this account
+                            }
+                            
                             console.log(`🔄 REACTIVATING inactive account: ${accountCode} (${name})`);
                             results.reactivated++; // Increment the reactivated counter
                             results.warnings.push(`Account ${accountCode} (${name}) was inactive and has been reactivated.`);
@@ -1547,6 +1565,12 @@ export class AccountStorage implements IAccountStorage {
         const existingDuplicate = existingAccounts.find(acc => acc.accountCode === row.AccountCode);
         if (existingDuplicate) {
             console.log(`DEBUG validateImportRow - Account ${row.AccountCode} already exists in database - This is OK!`);
+            
+            // ENHANCED: Log if this would reactivate an inactive account
+            if (!existingDuplicate.active) {
+                console.log(`DEBUG validateImportRow - Account ${row.AccountCode} is currently inactive in database. Import would reactivate it.`);
+            }
+            
             // DON'T set result.valid = false! Existing accounts are valid.
         }
         
