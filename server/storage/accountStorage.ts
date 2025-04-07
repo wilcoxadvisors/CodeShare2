@@ -21,9 +21,24 @@ export interface ImportPreview {
 }
 
 export interface ImportSelections {
-    columnMappings: Record<string, string>;
+    // Legacy fields
+    columnMappings?: Record<string, string>;
     skipRows?: number[];
     updateExisting?: boolean;
+    
+    // New fields from frontend
+    updateStrategy?: 'all' | 'none' | 'selected';
+    removeStrategy?: 'inactive' | 'delete' | 'none';
+    includedCodes?: string[];
+    excludedCodes?: string[];
+    
+    // Specific accounts to include in each category
+    newAccountCodes?: string[];
+    modifiedAccountCodes?: string[];
+    missingAccountCodes?: string[];
+    
+    // For missing accounts, specify the action for each account
+    missingAccountActions?: Record<string, 'inactive' | 'delete'>;
 }
 
 export interface ImportResult {
@@ -642,6 +657,8 @@ export class AccountStorage implements IAccountStorage {
             // Prepare data for import
             const accountsToCreate: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>[] = [];
             const accountsToUpdate: Array<{ id: number, data: Partial<Account> }> = [];
+            const accountsToMarkInactive: number[] = [];
+            const accountsToDelete: number[] = [];
             
             // Track results
             const results = {
@@ -651,14 +668,24 @@ export class AccountStorage implements IAccountStorage {
                 created: 0,
                 updated: 0,
                 skipped: 0,
+                inactive: 0, // Track inactive accounts
+                deleted: 0, // Track deleted accounts
                 errors: [] as string[],
                 warnings: [] as string[]
             };
 
+            // Keep track of import data account codes for identifying missing accounts
+            const importedAccountCodes = new Set<string>();
+            
             // Pre-validate all accounts to check for basic validation issues and parent relationships
             const validatedAccounts: any[] = [];
             
             for (const row of parsedImportData) {
+                // Add to our tracked codes
+                if (row.AccountCode) {
+                    importedAccountCodes.add(row.AccountCode);
+                }
+                
                 // Validate the basic row data
                 const validationResult = this.validateImportRow(row, existingAccounts, validatedAccounts);
                 
@@ -697,15 +724,51 @@ export class AccountStorage implements IAccountStorage {
                     updated: 0,
                     unchanged: 0,
                     skipped: parsedImportData.length,
-                    failed: parsedImportData.length
+                    failed: parsedImportData.length,
+                    inactive: 0,
+                    deleted: 0
                 };
             }
 
+            // Process accounts based on updateStrategy from selections if available
+            const updateStrategy = selections?.updateStrategy || 'all';
+            const removeStrategy = selections?.removeStrategy || 'inactive';
+            
+            console.log(`Import using strategy: update=${updateStrategy}, remove=${removeStrategy}`);
+            
+            // Get selections for specific accounts if provided
+            const selectedNewAccounts = selections?.newAccountCodes || [];
+            const selectedModifiedAccounts = selections?.modifiedAccountCodes || [];
+            const selectedMissingAccounts = selections?.missingAccountCodes || [];
+            const missingAccountActions = selections?.missingAccountActions || {};
+            
+            // Log selection details for debugging
+            console.log(`Selected account counts: new=${selectedNewAccounts.length}, modified=${selectedModifiedAccounts.length}, missing=${selectedMissingAccounts.length}`);
+            
             // First pass: Process all validated accounts except parent relationships
             for (const row of validatedAccounts) {
                 try {
                     const accountCode = row.AccountCode;
                     const name = row.Name;
+                    
+                    // Skip accounts that aren't selected if the update strategy is 'selected'
+                    if (updateStrategy === 'selected') {
+                        // For new accounts, check if they're in the selectedNewAccounts array
+                        const isExisting = existingAccountsByCode.has(accountCode);
+                        if (isExisting && !selectedModifiedAccounts.includes(accountCode)) {
+                            console.log(`Skipping update for account ${accountCode} because it's not in selectedModifiedAccounts`);
+                            continue;
+                        } else if (!isExisting && !selectedNewAccounts.includes(accountCode)) {
+                            console.log(`Skipping creation for account ${accountCode} because it's not in selectedNewAccounts`);
+                            continue;
+                        }
+                    } else if (updateStrategy === 'none') {
+                        // Skip all updates
+                        if (existingAccountsByCode.has(accountCode)) {
+                            console.log(`Skipping update for account ${accountCode} because updateStrategy is 'none'`);
+                            continue;
+                        }
+                    }
                     
                     // Try to normalize the account type
                     let type: AccountType;
@@ -721,12 +784,21 @@ export class AccountStorage implements IAccountStorage {
                     // Get optional fields
                     const description = this.getCaseInsensitiveValue(row, 'description') || '';
                     const isActive = this.parseBooleanFlag(this.getCaseInsensitiveValue(row, 'isActive'), true);
-                    // isFolder removed as it's not in the schema
                     
                     // Check if account exists
                     const existingAccount = existingAccountsByCode.get(accountCode);
                     
                     if (existingAccount) {
+                        // Check for transaction existence for critical field updates
+                        if (existingAccount.type !== type) {
+                            const hasTransactions = await this.accountHasTransactions(existingAccount.id);
+                            if (hasTransactions) {
+                                results.errors.push(`Cannot change type for account ${accountCode} because it has transactions`);
+                                results.skipped++;
+                                continue;
+                            }
+                        }
+                        
                         // Update existing account
                         accountsToUpdate.push({
                             id: existingAccount.id,
@@ -735,7 +807,6 @@ export class AccountStorage implements IAccountStorage {
                                 type,
                                 description,
                                 active: isActive,
-                                // isFolder removed as it's not in the schema
                                 // Note: We don't update parentId here; it will be done in the second pass
                             }
                         });
@@ -762,6 +833,51 @@ export class AccountStorage implements IAccountStorage {
                 }
             }
 
+            // Process missing accounts (those that exist in the database but not in the import file)
+            // Only process if removeStrategy is not 'none'
+            if (removeStrategy !== 'none') {
+                console.log(`Processing missing accounts with strategy: ${removeStrategy}`);
+                
+                // Find accounts in the database that weren't in the import file
+                for (const existingAccount of existingAccounts) {
+                    if (!importedAccountCodes.has(existingAccount.accountCode)) {
+                        // Check if this account should be processed based on selections
+                        if (removeStrategy === 'selected' && !selectedMissingAccounts.includes(existingAccount.accountCode)) {
+                            console.log(`Skipping missing account ${existingAccount.accountCode} because it's not in selectedMissingAccounts`);
+                            continue;
+                        }
+                        
+                        // Check if account has transactions
+                        const hasTransactions = await this.accountHasTransactions(existingAccount.id);
+                        
+                        // Handle based on action preference
+                        let action = removeStrategy; // Default to global strategy
+                        
+                        // Check for specific account action override
+                        if (missingAccountActions[existingAccount.accountCode]) {
+                            action = missingAccountActions[existingAccount.accountCode];
+                            console.log(`Using specific action '${action}' for account ${existingAccount.accountCode}`);
+                        }
+                        
+                        // Apply the action
+                        if (action === 'delete' && !hasTransactions) {
+                            // Can delete only if no transactions
+                            accountsToDelete.push(existingAccount.id);
+                            console.log(`Account ${existingAccount.accountCode} marked for deletion`);
+                        } else {
+                            // Always safe to mark inactive
+                            accountsToMarkInactive.push(existingAccount.id);
+                            console.log(`Account ${existingAccount.accountCode} marked for deactivation`);
+                            
+                            // Log a warning if deletion was requested but not possible
+                            if (action === 'delete' && hasTransactions) {
+                                results.warnings.push(`Account ${existingAccount.accountCode} has transactions and cannot be deleted. Marking inactive instead.`);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Execute the db operations inside a transaction
             await db.transaction(async (tx) => {
                 // Insert new accounts
@@ -779,6 +895,31 @@ export class AccountStorage implements IAccountStorage {
                         .set(update.data)
                         .where(eq(accounts.id, update.id));
                     results.updated++;
+                }
+                
+                // Mark accounts as inactive
+                for (const accountId of accountsToMarkInactive) {
+                    await tx.update(accounts)
+                        .set({ active: false })
+                        .where(eq(accounts.id, accountId));
+                    results.inactive++;
+                }
+                
+                // Delete accounts
+                for (const accountId of accountsToDelete) {
+                    // Double-check for transactions
+                    const hasTransactions = await this.accountHasTransactions(accountId);
+                    
+                    if (!hasTransactions) {
+                        // Do a soft delete by setting active to false
+                        await tx.update(accounts)
+                            .set({ active: false })
+                            .where(eq(accounts.id, accountId));
+                        results.deleted++;
+                    } else {
+                        results.warnings.push(`Account ${accountId} has transactions and cannot be deleted. Marked inactive instead.`);
+                        results.inactive++;
+                    }
                 }
 
                 // Second pass: Update parent relationships
@@ -811,11 +952,14 @@ export class AccountStorage implements IAccountStorage {
                 }
             });
 
+            // Build success message including all operations
+            const successMessage = `Successfully imported: ${results.created} added, ${results.updated} updated, ${results.inactive} deactivated, ${results.deleted} deleted`;
+            
             return {
                 success: results.errors.length === 0,
                 message: results.errors.length === 0 
-                    ? `Successfully imported: ${results.created} created, ${results.updated} updated` 
-                    : `Import completed with ${results.errors.length} errors`,
+                    ? successMessage
+                    : `Import completed with ${results.errors.length} errors: ${successMessage}`,
                 results,
                 errors: results.errors,
                 warnings: results.warnings,
@@ -825,6 +969,8 @@ export class AccountStorage implements IAccountStorage {
                 unchanged: 0, // Not tracked in this implementation
                 skipped: results.skipped,
                 failed: results.errors.length,
+                inactive: results.inactive,
+                deleted: results.deleted,
                 accountIds: [] // Not tracked in this implementation
             };
         } catch (e) {
