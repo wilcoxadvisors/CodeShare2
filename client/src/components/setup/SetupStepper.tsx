@@ -487,14 +487,28 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
         throw new Error(`Client save failed: ${clientResponse.status} - ${clientResponseText || clientResponse.statusText}`);
       }
       
-      if (!savedClient?.data?.id) {
+      // Check for client ID in different possible response structures
+      if (savedClient?.data?.id) {
+        // Standard response structure: { data: { id: number } }
+        newClientId = savedClient.data.id;
+        console.log("DEBUG: Found client ID in standard response structure:", newClientId);
+      } else if (savedClient?.id) {
+        // Alternative response structure: { id: number }
+        newClientId = savedClient.id;
+        console.log("DEBUG: Found client ID in alternative response structure:", newClientId);
+      } else {
+        // No recognizable structure found
         console.error("DEBUG: Invalid client response structure:", savedClient);
-        throw new Error("Client ID missing from response. Expected structure: {data: {id: number}}");
+        throw new Error("Client ID missing from response. Cannot detect a valid ID in the server response.");
       }
       
-      // Extract client ID from the response structure
-      newClientId = savedClient.data.id;
-      console.log("DEBUG: Successfully saved client with ID:", newClientId);
+      // Ensure we have a valid positive client ID before proceeding
+      if (!newClientId || newClientId <= 0) {
+        console.error("DEBUG: Invalid client ID value:", newClientId);
+        throw new Error("Invalid client ID returned from server: " + newClientId);
+      }
+      
+      console.log("DEBUG: Successfully extracted client ID:", newClientId);
 
       // 2. Save the entities via API, associating with the new client ID
       console.log(`DEBUG: Saving Entities for Client ID: ${newClientId}, Entities:`, 
@@ -503,6 +517,12 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
       // Deep clone entities to avoid circular references and ensure data integrity
       const entitiesDeepCopy = setupEntities.map(entity => {
         // Create a clean entity object with only the necessary properties
+        // CRITICAL: Make sure we're using the real client ID returned from the API, not any temporary IDs
+        if (!newClientId || newClientId < 1) {
+          console.error("DEBUG: ERROR - Invalid client ID for entity creation:", newClientId);
+          throw new Error("Invalid client ID for entity creation. Database returned: " + newClientId);
+        }
+        
         return {
           name: entity.name,
           legalName: entity.legalName || entity.name,
@@ -510,7 +530,7 @@ export default function SetupStepper({ onComplete }: SetupStepperProps) {
           industry: entity.industry === null || entity.industry === undefined ? "other" : entity.industry,
           code: entity.code || "",
           taxId: entity.taxId || "",
-          clientId: newClientId,
+          clientId: newClientId, // Use the real client ID from the API response
           ownerId: user?.id, // Set owner to current user
           active: true
         };
