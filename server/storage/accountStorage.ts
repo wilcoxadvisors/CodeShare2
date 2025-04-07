@@ -764,6 +764,13 @@ export class AccountStorage implements IAccountStorage {
             const importedAccountCodes = new Set<string>();
             
             // Pre-validate all accounts to check for basic validation issues and parent relationships
+            // Get selections for specific accounts if provided (for backward compatibility)
+            // Define these early so they can be used in the validation logging
+            const selectedNewAccounts = selections?.newAccountCodes || [];
+            const selectedModifiedAccounts = selections?.modifiedAccountCodes || [];
+            const selectedMissingAccounts = selections?.missingAccountCodes || [];
+            const missingAccountActions = selections?.missingAccountActions || {};
+            
             const validatedAccounts: any[] = [];
             
             for (const row of parsedImportData) {
@@ -775,7 +782,26 @@ export class AccountStorage implements IAccountStorage {
                 // Validate the basic row data
                 const validationResult = this.validateImportRow(row, existingAccounts, validatedAccounts);
                 
+                // ENHANCED: Add more detailed validation logging
+                console.log(`VALIDATION DETAILS: Account ${row.AccountCode || 'unknown'} validation result:`, 
+                    JSON.stringify({
+                        valid: validationResult.valid,
+                        errors: validationResult.errors,
+                        isExisting: existingAccountsByCode.has(row.AccountCode),
+                        isSelectedForModification: selectedModifiedAccounts.includes(row.AccountCode),
+                        isSelectedForNew: selectedNewAccounts.includes(row.AccountCode),
+                        accountData: {
+                            type: row.Type,
+                            name: row.Name,
+                            isSubledger: row.IsSubledger,
+                            subledgerType: row.SubledgerType,
+                            parentCode: row.ParentCode
+                        }
+                    })
+                );
+                
                 if (!validationResult.valid) {
+                    console.error(`❌ VALIDATION FAILED: Account ${row.AccountCode || 'unknown'} failed validation with errors:`, validationResult.errors);
                     validationResult.errors.forEach(err => {
                         results.errors.push(`Account ${row.AccountCode || 'unknown'}: ${err}`);
                     });
@@ -786,7 +812,24 @@ export class AccountStorage implements IAccountStorage {
                 // Validate parent relationships specifically
                 const parentValidation = this.validateParentRelationship(row, existingAccounts, validatedAccounts);
                 
+                // ENHANCED: Add more detailed parent validation logging
+                console.log(`PARENT VALIDATION DETAILS: Account ${row.AccountCode || 'unknown'} parent validation result:`, 
+                    JSON.stringify({
+                        valid: parentValidation.valid,
+                        errors: parentValidation.errors,
+                        parentCode: row.ParentCode,
+                        parentExists: row.ParentCode ? (
+                            existingAccounts.some(acc => acc.accountCode === row.ParentCode) ||
+                            validatedAccounts.some(acc => acc.AccountCode === row.ParentCode)
+                        ) : null,
+                        parentInactive: row.ParentCode ? (
+                            existingAccounts.some(acc => acc.accountCode === row.ParentCode && !acc.active)
+                        ) : null
+                    })
+                );
+                
                 if (!parentValidation.valid) {
+                    console.error(`❌ PARENT VALIDATION FAILED: Account ${row.AccountCode || 'unknown'} failed parent validation with errors:`, parentValidation.errors);
                     parentValidation.errors.forEach(err => {
                         results.errors.push(`Account ${row.AccountCode}: ${err}`);
                     });
@@ -897,12 +940,6 @@ export class AccountStorage implements IAccountStorage {
                 (handleMissingAccounts === 'delete' ? 'delete' : 
                  (handleMissingAccounts === 'deactivate' ? 'inactive' : 'none'));
                 
-            // Get selections for specific accounts if provided (for backward compatibility)
-            const selectedNewAccounts = selections?.newAccountCodes || [];
-            const selectedModifiedAccounts = selections?.modifiedAccountCodes || [];
-            const selectedMissingAccounts = selections?.missingAccountCodes || [];
-            const missingAccountActions = selections?.missingAccountActions || {};
-            
             // Log selection details for debugging
             console.log(`Selected account counts (legacy): new=${selectedNewAccounts.length}, modified=${selectedModifiedAccounts.length}, missing=${selectedMissingAccounts.length}`);
             
@@ -1524,6 +1561,7 @@ export class AccountStorage implements IAccountStorage {
      * This is used before inserting or updating accounts
      */
     validateImportRow(row: any, existingAccounts: any[], newAccounts: any[]): { valid: boolean, errors: string[] } {
+        console.log(`✓ VALIDATING ROW: ${JSON.stringify(row)}`); // DEBUG: Detailed row data
         console.log(`DEBUG validateImportRow - Validating row with code: ${row.AccountCode || 'UNKNOWN'}`);
         console.log(`DEBUG validateImportRow - Row data:`, JSON.stringify(row));
         
