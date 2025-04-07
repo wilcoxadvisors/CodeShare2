@@ -1738,8 +1738,8 @@ function ChartOfAccounts() {
         console.log("EXPLICIT VERIFICATION - Import successful - Backend response:", result);
         
         // Detailed success message showing exactly what was processed
-        const counts = result.counts || { new: 0, updated: 0, missing: 0 };
-        const successMessage = `Successfully imported accounts: ${counts.new} new, ${counts.updated} updated, ${counts.missing} processed missing accounts.`;
+        const counts = result.counts || { new: 0, updated: 0, reactivated: 0, missing: 0 };
+        const successMessage = `Successfully imported accounts: ${counts.new} new, ${counts.updated} updated, ${counts.reactivated || 0} reactivated, ${counts.missing} processed missing accounts.`;
         
         toast({
           title: "Accounts imported",

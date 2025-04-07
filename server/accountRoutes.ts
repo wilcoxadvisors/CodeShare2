@@ -317,6 +317,7 @@ export function registerAccountRoutes(app: Express) {
           count: result.count || 0,
           added: result.added || 0,
           updated: result.updated || 0,
+          reactivated: result.reactivated || 0, // Include reactivated accounts count
           unchanged: result.unchanged || 0,
           skipped: result.skipped || 0,
           inactive: result.inactive || 0,
@@ -325,7 +326,7 @@ export function registerAccountRoutes(app: Express) {
       }
       
       // Return success response with detailed import stats
-      const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive, ${result.deleted} deleted.`;
+      const message = `Successfully processed ${result.count} accounts: ${result.added} added, ${result.updated} updated, ${result.reactivated || 0} reactivated, ${result.unchanged} unchanged, ${result.skipped} skipped, ${result.inactive} marked inactive, ${result.deleted} deleted.`;
       
       res.json({
         status: "success",
@@ -333,6 +334,7 @@ export function registerAccountRoutes(app: Express) {
         count: result.count,
         added: result.added,
         updated: result.updated,
+        reactivated: result.reactivated || 0, // Include reactivated accounts count
         unchanged: result.unchanged,
         skipped: result.skipped,
         inactive: result.inactive,
