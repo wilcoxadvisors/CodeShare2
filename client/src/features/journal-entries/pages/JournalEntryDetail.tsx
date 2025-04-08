@@ -81,11 +81,47 @@ function JournalEntryDetail() {
     error,
     refetch
   } = useQuery({
-    queryKey: entryId ? [`/api/journal-entries/${entryId}`] : null,
+    queryKey: entryId ? [`/api/journal-entries/${entryId}`] : ['dummy-empty-key'],
     enabled: !!entryId
   });
   
-  const journalEntry = data?.journalEntry;
+  // Define type for a journal entry
+  interface JournalEntry {
+    id: number;
+    date: string;
+    description?: string;
+    reference?: string;
+    journalType?: string;
+    status: string;
+    lines: JournalEntryLine[];
+  }
+  
+  // API might return the journal entry directly or wrapped in a journalEntry property
+  // The explicit cast and nullish coalescing ensure we get a properly typed object or undefined
+  const journalEntry = data ? 
+    ('journalEntry' in data ? (data.journalEntry as JournalEntry) : (data as JournalEntry)) 
+    : undefined;
+  
+  console.log("DEBUG - JournalEntryDetail - Data type:", typeof data);
+  console.log("DEBUG - JournalEntryDetail - Data structure:", data);
+  console.log("DEBUG - JournalEntryDetail - Using journalEntry:", journalEntry);
+  
+  // Log specific properties to help track format issues
+  if (data && typeof data === 'object') {
+    console.log("DEBUG - JournalEntryDetail - Data has journalEntry property:", 'journalEntry' in data);
+    console.log("DEBUG - JournalEntryDetail - Data has id property:", 'id' in data);
+    console.log("DEBUG - JournalEntryDetail - Data has lines property:", 'lines' in data);
+  }
+  
+  // Log line format to help with client/server format detection
+  if (journalEntry && journalEntry.lines && journalEntry.lines.length > 0) {
+    const firstLine = journalEntry.lines[0];
+    console.log("DEBUG - JournalEntryDetail - First line format:", 
+      isClientFormatLine(firstLine) ? "Client format (debit/credit)" : 
+      isServerFormatLine(firstLine) ? "Server format (type/amount)" : 
+      "Unknown format");
+    console.log("DEBUG - JournalEntryDetail - First line properties:", Object.keys(firstLine));
+  }
   
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -114,36 +150,50 @@ function JournalEntryDetail() {
     }
   };
   
-  // Calculate totals
-  const calculateTotals = () => {
-    if (!journalEntry?.lines) return { totalDebit: 0, totalCredit: 0 };
-    
-    return journalEntry.lines.reduce((acc, line) => {
-      const debit = parseFloat(line.debit) || 0;
-      const credit = parseFloat(line.credit) || 0;
-      
-      return {
-        totalDebit: acc.totalDebit + debit,
-        totalCredit: acc.totalCredit + credit
-      };
-    }, { totalDebit: 0, totalCredit: 0 });
+  // Define types for line formats
+  type ClientFormatLine = {
+    debit: string;
+    credit: string;
+    accountId: string | number;
+    entityCode?: string;
+    description?: string;
   };
   
-  // Calculate entity balances
-  const calculateEntityBalances = () => {
-    if (!journalEntry?.lines) return [];
+  type ServerFormatLine = {
+    type: 'debit' | 'credit';
+    amount: string | number;
+    accountId: string | number;
+    entityCode?: string;
+    description?: string;
+  };
+  
+  // A type guard to check if a line is in client format
+  function isClientFormatLine(line: any): line is ClientFormatLine {
+    return 'debit' in line && 'credit' in line;
+  }
+  
+  // A type guard to check if a line is in server format
+  function isServerFormatLine(line: any): line is ServerFormatLine {
+    return 'type' in line && 'amount' in line;
+  };
+  
+  // Union type for both formats
+  type JournalEntryLine = ClientFormatLine | ServerFormatLine;
+  
+  // Type for totals
+  type Totals = {
+    totalDebit: number;
+    totalCredit: number;
+  };
+  
+  // Calculate totals - handling both client format (debit/credit) and server format (type/amount)
+  const calculateTotals = (): Totals => {
+    if (!journalEntry?.lines) return { totalDebit: 0, totalCredit: 0 };
     
-    // Get unique entity codes
-    const entityCodes = Array.from(
-      new Set(journalEntry.lines.map(line => line.entityCode))
-    );
-    
-    // Calculate balance for each entity
-    return entityCodes.map(code => {
-      if (!code) return null;
-      
-      const entityLines = journalEntry.lines.filter(line => line.entityCode === code);
-      const { totalDebit, totalCredit } = entityLines.reduce((acc, line) => {
+    return (journalEntry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
+      // Check which format the line data is in and handle accordingly
+      if (isClientFormatLine(line)) {
+        // Client format (debit/credit)
         const debit = parseFloat(line.debit) || 0;
         const credit = parseFloat(line.credit) || 0;
         
@@ -151,6 +201,79 @@ function JournalEntryDetail() {
           totalDebit: acc.totalDebit + debit,
           totalCredit: acc.totalCredit + credit
         };
+      } else if (isServerFormatLine(line)) {
+        // Server format (type/amount)
+        const amount = parseFloat(line.amount.toString()) || 0;
+        if (line.type === 'debit') {
+          return {
+            totalDebit: acc.totalDebit + amount,
+            totalCredit: acc.totalCredit
+          };
+        } else if (line.type === 'credit') {
+          return {
+            totalDebit: acc.totalDebit,
+            totalCredit: acc.totalCredit + amount
+          };
+        }
+      }
+      
+      // Default case if neither format is detected
+      return acc;
+    }, { totalDebit: 0, totalCredit: 0 });
+  };
+  
+  // Type definition for entity balance
+  type EntityBalance = {
+    entityCode: string;
+    totalDebit: number;
+    totalCredit: number;
+    difference: number;
+    isBalanced: boolean;
+  };
+  
+  // Calculate entity balances - handling both client format (debit/credit) and server format (type/amount)
+  const calculateEntityBalances = (): EntityBalance[] => {
+    if (!journalEntry?.lines) return [];
+    
+    // Get unique entity codes
+    const entityCodes = Array.from(
+      new Set((journalEntry.lines as JournalEntryLine[]).map(line => line.entityCode))
+    );
+    
+    // Calculate balance for each entity
+    return entityCodes.map(code => {
+      if (!code) return null;
+      
+      const entityLines = (journalEntry.lines as JournalEntryLine[]).filter(line => line.entityCode === code);
+      const { totalDebit, totalCredit } = entityLines.reduce((acc: Totals, line: JournalEntryLine) => {
+        // Check which format the line data is in and handle accordingly
+        if (isClientFormatLine(line)) {
+          // Client format (debit/credit)
+          const debit = parseFloat(line.debit) || 0;
+          const credit = parseFloat(line.credit) || 0;
+          
+          return {
+            totalDebit: acc.totalDebit + debit,
+            totalCredit: acc.totalCredit + credit
+          };
+        } else if (isServerFormatLine(line)) {
+          // Server format (type/amount)
+          const amount = parseFloat(line.amount.toString()) || 0;
+          if (line.type === 'debit') {
+            return {
+              totalDebit: acc.totalDebit + amount,
+              totalCredit: acc.totalCredit
+            };
+          } else if (line.type === 'credit') {
+            return {
+              totalDebit: acc.totalDebit,
+              totalCredit: acc.totalCredit + amount
+            };
+          }
+        }
+        
+        // Default case if neither format is detected
+        return acc;
       }, { totalDebit: 0, totalCredit: 0 });
       
       const difference = Math.abs(totalDebit - totalCredit);
@@ -163,7 +286,7 @@ function JournalEntryDetail() {
         difference,
         isBalanced
       };
-    }).filter(Boolean);
+    }).filter(Boolean) as EntityBalance[];
   };
   
   // Handle edit button click
@@ -629,29 +752,29 @@ function JournalEntryDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entityBalances.map((balance, index) => (
+                  {entityBalances.map((balance: EntityBalance, index: number) => (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{balance?.entityCode}</TableCell>
+                      <TableCell className="font-medium">{balance.entityCode}</TableCell>
                       <TableCell className="text-right">
                         {new Intl.NumberFormat('en-US', {
                           style: 'currency',
                           currency: 'USD'
-                        }).format(balance?.totalDebit || 0)}
+                        }).format(balance.totalDebit)}
                       </TableCell>
                       <TableCell className="text-right">
                         {new Intl.NumberFormat('en-US', {
                           style: 'currency',
                           currency: 'USD'
-                        }).format(balance?.totalCredit || 0)}
+                        }).format(balance.totalCredit)}
                       </TableCell>
                       <TableCell className="text-right">
                         {new Intl.NumberFormat('en-US', {
                           style: 'currency',
                           currency: 'USD'
-                        }).format(balance?.difference || 0)}
+                        }).format(balance.difference)}
                       </TableCell>
                       <TableCell>
-                        {balance?.isBalanced ? (
+                        {balance.isBalanced ? (
                           <div className="flex items-center text-green-600">
                             <CheckCircle2 className="mr-1 h-4 w-4" />
                             <span>Balanced</span>
@@ -691,25 +814,45 @@ function JournalEntryDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {journalEntry.lines.map((line, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{line.accountId}</TableCell>
-                    <TableCell>{line.entityCode}</TableCell>
-                    <TableCell>{line.description || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      {line.debit ? new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD'
-                      }).format(parseFloat(line.debit)) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {line.credit ? new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD'
-                      }).format(parseFloat(line.credit)) : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {(journalEntry.lines as JournalEntryLine[]).map((line: JournalEntryLine, index: number) => {
+                  // Determine debit and credit values based on format
+                  let debitValue = 0;
+                  let creditValue = 0;
+                  
+                  if (isClientFormatLine(line)) {
+                    // Client format (debit/credit)
+                    debitValue = parseFloat(line.debit) || 0;
+                    creditValue = parseFloat(line.credit) || 0;
+                  } else if (isServerFormatLine(line)) {
+                    // Server format (type/amount)
+                    const amount = parseFloat(line.amount.toString()) || 0;
+                    if (line.type === 'debit') {
+                      debitValue = amount;
+                    } else if (line.type === 'credit') {
+                      creditValue = amount;
+                    }
+                  }
+                  
+                  return (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{line.accountId}</TableCell>
+                      <TableCell>{line.entityCode}</TableCell>
+                      <TableCell>{line.description || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        {debitValue > 0 ? new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(debitValue) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {creditValue > 0 ? new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(creditValue) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 <TableRow className="bg-gray-50 font-bold">
                   <TableCell colSpan={3} className="text-right">
                     Totals

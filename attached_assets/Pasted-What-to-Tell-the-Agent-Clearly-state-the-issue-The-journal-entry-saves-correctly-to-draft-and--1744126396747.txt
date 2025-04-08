@@ -1,0 +1,27 @@
+What to Tell the Agent:
+
+Clearly state the issue: "The journal entry saves correctly to 'draft' and shows up on the main JE list page. However, when I try to view the details of a specific entry (e.g., by clicking on it in the list), the detail page either doesn't load, is blank, or doesn't show the correct information."
+
+Ask the agent to investigate these specific areas:
+
+Routing and Linking:
+
+Check the code for the Journal Entry list page (client/src/features/journal-entries/pages/JournalEntries.tsx is a likely location).
+Verify how the link/button for viewing details is generated. Does it create the correct URL path, including the specific Journal Entry id (and potentially entityId)? (e.g., /journal-entries/123 or /entities/391/journal-entries/123).
+Confirm the wouter routing configuration correctly maps this URL path to the JournalEntryDetail page component.
+Journal Entry Detail Page (client/src/features/journal-entries/pages/JournalEntryDetail.tsx):
+
+How does this page get the id (and entityId) of the JE to display? Does it correctly parse it from the URL parameters?
+Does this component trigger an API call to fetch the specific details for that JE ID? (e.g., GET /api/entities/:entityId/journal-entries/:id as listed in README-journal-api-improvements.md).
+Is the data returned from the API call being correctly processed and displayed by the component? Check for errors in data fetching (using TanStack Query?) or rendering logic within this component.
+Backend API Endpoint (GET /api/entities/:entityId/journal-entries/:id):
+
+Verify that this specific API endpoint on the server (server/journalEntryRoutes.ts?) is working correctly.
+Does it successfully fetch all required details (header info and all associated lines) for a given entityId and id from the database (server/storage/journalEntryStorage.ts?)?
+Test this endpoint independently if possible (e.g., using curl or a tool like Postman) to confirm it returns the expected data. Check server logs for any errors related to this endpoint.
+How to Make This Better & Align with Instructions.md:
+
+User Experience & Design: Not being able to view details is a critical functional gap. Fixing this directly supports the goal of an "easy-to-use" platform. The detail view should be clear, displaying all relevant JE information logically (header fields, line items table, status, etc.).
+Testing: This reinforces the need for more comprehensive testing mentioned in Phase G. An integration or end-to-end test should specifically cover the flow: Create JE -> View JE List -> View JE Details.
+Error Handling: If the detail page is trying to load data but failing (e.g., API error), it should display a user-friendly error message instead of just appearing blank or broken. This aligns with the need for robust error handling.
+Workflow Enablement: Viewing JE details is essential before taking actions like approving or posting, which are part of the core accounting module (Phase B). This fix is necessary to enable the planned workflow.
