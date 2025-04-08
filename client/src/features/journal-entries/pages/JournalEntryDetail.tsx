@@ -74,6 +74,43 @@ function JournalEntryDetail() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   
+  // Get client ID for accounts query - use entity's clientId
+  const clientId = currentEntity?.clientId;
+  
+  // Fetch accounts for displaying account information
+  const { 
+    data: accountsData,
+    isLoading: accountsLoading 
+  } = useQuery({
+    queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ['no-client-selected'],
+    enabled: !!clientId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+  
+  // Create a map of account IDs to account details for quick lookup
+  const accountsMap = React.useMemo(() => {
+    if (!accountsData || !accountsData.accounts) return {};
+    
+    // Cast to any to avoid TS errors as we don't know the exact shape of accountsData
+    const accounts = (accountsData as any).accounts || [];
+    
+    return accounts.reduce((acc: {[key: string]: any}, account: any) => {
+      acc[account.id] = account;
+      return acc;
+    }, {});
+  }, [accountsData]);
+  
+  // Function to get formatted account display
+  const getAccountDisplay = (accountId: string | number) => {
+    if (!accountsMap || !accountId) return accountId;
+    
+    const account = accountsMap[accountId];
+    if (!account) return accountId;
+    
+    // Return formatted account code + name
+    return `${account.accountCode} - ${account.name}`;
+  };
+  
   // Fetch journal entry by ID
   const { 
     data,
@@ -99,7 +136,7 @@ function JournalEntryDetail() {
   // API might return the journal entry directly or wrapped in a journalEntry property
   // The explicit cast and nullish coalescing ensure we get a properly typed object or undefined
   const journalEntry = data ? 
-    ('journalEntry' in data ? (data.journalEntry as JournalEntry) : (data as JournalEntry)) 
+    (data && typeof data === 'object' && 'journalEntry' in data ? (data.journalEntry as JournalEntry) : (data as JournalEntry)) 
     : undefined;
   
   console.log("DEBUG - JournalEntryDetail - Data type:", typeof data);
@@ -835,7 +872,7 @@ function JournalEntryDetail() {
                   
                   return (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{line.accountId}</TableCell>
+                      <TableCell className="font-medium">{getAccountDisplay(line.accountId)}</TableCell>
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">

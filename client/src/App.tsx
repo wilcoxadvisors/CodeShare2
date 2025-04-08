@@ -349,6 +349,12 @@ function Router() {
         </AppLayout>
       </Route>
       
+      <Route path="/journal-entries/edit/:id">
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      </Route>
+      
       <Route path="/chart-of-accounts">
         <AppLayout>
           <ProtectedRoute component={ChartOfAccounts} />
