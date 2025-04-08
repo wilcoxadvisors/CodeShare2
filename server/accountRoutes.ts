@@ -422,8 +422,15 @@ export function registerAccountRoutes(app: Express) {
     const accounts = await storage.accounts.getAccounts(clientId);
     console.log(`VERIFICATION TEST: Fetched ${accounts.length} accounts for client ${clientId}`);
     
-    // Return accounts
-    res.json(accounts);
+    // Enhanced debugging
+    if (accounts.length > 0) {
+      console.log(`VERIFICATION TEST: First account example - ${accounts[0].accountCode} - ${accounts[0].name}`);
+    } else {
+      console.log(`VERIFICATION TEST: WARNING - No accounts found for client ${clientId}`);
+    }
+    
+    // Return accounts with the expected structure
+    res.json({ accounts });
   }));
   
   // Get account by ID

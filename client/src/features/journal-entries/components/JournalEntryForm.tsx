@@ -134,10 +134,23 @@ const FormSchema = z.object({
   })
 });
 
+/**
+ * JournalEntryForm Component
+ * Renders a form for creating or editing journal entries
+ * @param props - The component props
+ */
 function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   console.log('DEBUG JournalEntryForm - received accounts:', accounts);
+  console.log('DEBUG JournalEntryForm - accounts length:', accounts?.length || 0);
+  console.log('DEBUG JournalEntryForm - accounts first item:', accounts?.length > 0 ? accounts[0] : 'no accounts');
   console.log('DEBUG JournalEntryForm - clientId:', clientId);
   console.log('DEBUG JournalEntryForm - entityId:', entityId);
+  
+  // Log the structure of account items, which helps diagnose render issues
+  if (accounts?.length > 0) {
+    console.log('DEBUG JournalEntryForm - account item structure:', 
+      Object.keys(accounts[0]).map(key => `${key}: ${typeof accounts[0][key]}`).join(', '));
+  }
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
@@ -678,13 +691,29 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                       <SelectValue placeholder="Select Account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts
-                        .filter(account => account.active)
-                        .map(account => (
-                        <SelectItem key={account.id} value={account.id.toString()}>
-                          {account.code} - {account.name}
+                      {/* Debug accounts being rendered */}
+                      <>{console.log('DEBUG Account Select - rendering accounts dropdown, available accounts:', accounts.length)}</>
+                      
+                      {accounts.length === 0 ? (
+                        // If no accounts available, show a placeholder item
+                        <SelectItem value="no-accounts" disabled>
+                          No accounts available
                         </SelectItem>
-                      ))}
+                      ) : (
+                        // If accounts are available, render them
+                        accounts
+                          .filter(account => account.active)
+                          .map(account => {
+                            // Debug log for account options
+                            {/* eslint-disable-next-line no-console */}
+                            (() => console.log('DEBUG Account Select - rendering account option:', account.code, account.name))();
+                            return (
+                              <SelectItem key={account.id} value={account.id.toString()}>
+                                {account.code} - {account.name}
+                              </SelectItem>
+                            );
+                          })
+                      )}
                     </SelectContent>
                   </Select>
                   {fieldErrors[`line_${index}_accountId`] && (

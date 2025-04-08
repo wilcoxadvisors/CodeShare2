@@ -44,34 +44,94 @@ function NewJournalEntry() {
   // Convert to number or undefined (not null) for proper prop passing
   const safeClientId = clientId ? Number(clientId) : undefined;
 
+  // Define the response type explicitly for proper TypeScript typing
+  interface AccountsResponse {
+    accounts: any[];
+  }
+  
   // Query accounts from API at client level (not entity level)
   // This will fetch accounts as soon as the clientId is available, even before an entity is selected
-  const { data: accountsData, isLoading: accountsLoading } = useQuery<{accounts: any[]}>({
+  const { 
+    data: accountsData, 
+    isLoading: accountsLoading, 
+    error: accountsError 
+  } = useQuery<AccountsResponse>({
     queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ["no-client-selected"],
     enabled: !!clientId,
     staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
   });
   
+  // Add separate effect for debugging the query result
+  useEffect(() => {
+    if (accountsData) {
+      console.log("DEBUG NewJournalEntry - Accounts API success response:", accountsData);
+      console.log("DEBUG NewJournalEntry - Response has accounts array:", !!accountsData.accounts);
+      console.log("DEBUG NewJournalEntry - Accounts array length:", accountsData.accounts?.length || 0);
+    }
+    if (accountsError) {
+      console.error("DEBUG NewJournalEntry - Accounts API error:", accountsError);
+    }
+  }, [accountsData, accountsError]);
+  
+  // Define entities response type
+  interface EntitiesResponse {
+    entities: any[];
+  }
+  
   // Query entities from API - explicitly filtered by client
-  const { data: entitiesData, isLoading: entitiesLoading } = useQuery<{entities: any[]}>({
+  const { 
+    data: entitiesData, 
+    isLoading: entitiesLoading,
+    error: entitiesError
+  } = useQuery<EntitiesResponse>({
     queryKey: clientId ? [`/api/clients/${clientId}/entities`] : ["no-client-entities"],
     enabled: !!clientId,
   });
+  
+  // Add debugging for entities response
+  useEffect(() => {
+    if (entitiesData) {
+      console.log("DEBUG NewJournalEntry - Entities API success response:", entitiesData);
+      console.log("DEBUG NewJournalEntry - Response has entities array:", !!entitiesData.entities);
+      console.log("DEBUG NewJournalEntry - Entities array length:", entitiesData.entities?.length || 0);
+    }
+    if (entitiesError) {
+      console.error("DEBUG NewJournalEntry - Entities API error:", entitiesError);
+    }
+  }, [entitiesData, entitiesError]);
 
+  // Add debugging around accounts transformation
+  console.log("DEBUG NewJournalEntry - Raw accountsData:", accountsData);
+  
   // Transform accounts data to ensure it matches our interface requirements
-  const accounts = (accountsData && accountsData.accounts && Array.isArray(accountsData.accounts)) 
-    ? accountsData.accounts
-        .filter((account: any) => account.active)
-        .map((account: any) => ({
-          ...account,
-          // Ensure required fields have values if they are null/undefined in the API response
-          createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
-          subtype: account.subtype || null,
-          isSubledger: account.isSubledger || false,
-          subledgerType: account.subledgerType || null,
-          parentId: account.parentId || null
-        })) as Account[]
-    : [];
+  let accounts: Account[] = [];
+  
+  if (accountsData && accountsData.accounts && Array.isArray(accountsData.accounts)) {
+    console.log("DEBUG NewJournalEntry - accountsData.accounts exists and is an array with length:", accountsData.accounts.length);
+    
+    // Filter active accounts
+    const activeAccounts = accountsData.accounts.filter((account: any) => account.active);
+    console.log("DEBUG NewJournalEntry - After filtering active accounts:", activeAccounts.length);
+    
+    // Map to ensure all required fields
+    accounts = activeAccounts.map((account: any) => {
+      const mappedAccount = {
+        ...account,
+        // Ensure required fields have values if they are null/undefined in the API response
+        createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
+        subtype: account.subtype || null,
+        isSubledger: account.isSubledger || false,
+        subledgerType: account.subledgerType || null,
+        parentId: account.parentId || null
+      };
+      return mappedAccount;
+    }) as Account[];
+    
+    console.log("DEBUG NewJournalEntry - Final accounts array after mapping:", accounts.length);
+  } else {
+    console.log("DEBUG NewJournalEntry - accountsData.accounts is missing or not an array:", 
+                accountsData ? Object.keys(accountsData).join(', ') : 'accountsData is null/undefined');
+  }
 
   // Create empty locations array (to satisfy interface)
   const locations: Location[] = [];
