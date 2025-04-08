@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useEntity } from '../../../contexts/EntityContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
-import PageHeader from '../../../components/PageHeader';
+import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

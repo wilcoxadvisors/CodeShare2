@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { useEntity } from '../../../contexts/EntityContext';
+import { useEntity } from '@/contexts/EntityContext';
 import { JournalEntryStatus } from '@shared/schema';
 
 // Define line item interface for journal entry lines
