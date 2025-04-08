@@ -400,6 +400,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       lines: formattedLines
     };
     
+    // Debug logging for the API payload
+    console.log('DEBUG: API Payload to be sent:', JSON.stringify(entryData, null, 2));
+    
     if (isEditing) {
       updateEntry.mutate(entryData);
     } else {
