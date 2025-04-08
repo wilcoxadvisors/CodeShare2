@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEntity } from "@/contexts/EntityContext";
 import PageHeader from "@/components/PageHeader";
-import JournalEntryForm from "../components/JournalEntryForm";
+import JournalEntryForm from "@/features/journal-entries/components/JournalEntryForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { AccountType } from "@shared/schema";

@@ -4,7 +4,7 @@ import { useEntity } from "../contexts/EntityContext";
 import PageHeader from "../components/PageHeader";
 import FilterSection from "../components/FilterSection";
 import DataTable from "../components/DataTable";
-import JournalEntryForm from "../components/JournalEntryForm";
+import JournalEntryForm from "@/features/journal-entries/components/JournalEntryForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { JournalEntryStatus } from "@shared/schema";
 

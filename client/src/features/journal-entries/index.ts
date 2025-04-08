@@ -6,7 +6,6 @@ export { default as BatchUpload } from './pages/BatchUpload';
 
 // Components exports
 export { default as JournalEntryForm } from './components/JournalEntryForm';
-export { default as BatchJournalUpload } from './components/BatchJournalUpload';
 
 // Hooks exports
 export { useJournalEntry } from './hooks/useJournalEntry';
