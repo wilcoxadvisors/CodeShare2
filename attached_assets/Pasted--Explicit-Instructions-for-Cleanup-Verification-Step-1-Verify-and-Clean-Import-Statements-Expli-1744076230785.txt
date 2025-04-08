@@ -1,0 +1,74 @@
+✅ Explicit Instructions for Cleanup & Verification
+Step 1: Verify and Clean Import Statements
+
+Explicitly open and inspect each of these files:
+
+client/src/App.tsx
+
+client/src/features/journal-entries/pages/JournalEntries.tsx
+
+client/src/features/journal-entries/pages/NewJournalEntry.tsx
+
+client/src/features/journal-entries/components/BatchJournalUpload.tsx
+
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+For each file, explicitly:
+
+Remove any outdated or incorrect imports (e.g., imports referencing ../components/, ../pages/, or old directories).
+
+Ensure all imports correctly reference the new features/journal-entries/... paths only.
+
+Explicitly confirm that all imports are correctly pointing to the new, consolidated location (client/src/features/journal-entries/...).
+
+Step 2: Verify and Clean the index.ts file
+
+Explicitly open:
+client/src/features/journal-entries/index.ts
+
+Clearly verify:
+
+The file only exports currently used and existing components/pages/hooks.
+
+Remove explicitly any exports pointing to old or non-existing files/components.
+
+Ensure the export names explicitly match their default exports (confirm consistency).
+
+Step 3: Comprehensive Code Cleanup
+
+Explicitly run the tool ts-prune or an equivalent to identify:
+
+Unused imports
+
+Unused exports
+
+Unused components or logic
+
+Explicitly remove any unused code identified by this tool from:
+
+client/src/features/journal-entries/...
+
+Any other file flagged as having unused imports or components related to the journal entries functionality.
+
+Clearly remove any commented-out code or legacy logic fragments still present in the journal entries files listed above.
+
+Step 4: Restart and Verify Application
+
+Restart the development application explicitly.
+
+Clearly verify:
+
+The application starts without any runtime errors or console warnings.
+
+The Journal Entries, New Journal Entry, and Batch Upload pages load correctly and function without errors.
+
+Step 5: Explicit Confirmation of Task Completion
+Once you've explicitly performed the above steps, please provide a concise summary clearly stating:
+
+✅ Confirmation that imports are now fully cleaned and correctly reference the new feature structure.
+
+✅ Confirmation that the index.ts file is accurately reflecting the current, cleaned structure.
+
+✅ Confirmation that unused imports, exports, and code fragments have been removed explicitly.
+
+✅ Confirmation that the application is running without runtime errors or console warnings.
