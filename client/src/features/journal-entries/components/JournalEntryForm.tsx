@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDebouncedCallback } from '@/hooks/useDebounce';
 import { z } from 'zod';
 import { validateForm } from '@/lib/validation';
 import { 
@@ -162,14 +163,18 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   const [supportingDoc, setSupportingDoc] = useState<File | null>(null);
   
-  // Calculate totals
-  const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-  const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
-  const difference = Math.abs(totalDebit - totalCredit);
-  const isBalanced = difference < 0.001;
+  // Calculate totals - memoized to avoid recalculation on every render
+  const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
+    const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+    const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+    const difference = Math.abs(totalDebit - totalCredit);
+    const isBalanced = difference < 0.001;
+    
+    return { totalDebit, totalCredit, difference, isBalanced };
+  }, [lines]); // Only recalculate when lines change
   
-  // Calculate entity balances for intercompany validation
-  const getEntityBalances = () => {
+  // Calculate entity balances for intercompany validation - memoized
+  const getEntityBalances = useCallback(() => {
     // Get unique entity codes without using Set
     const entityCodesArray = lines.map(line => line.entityCode);
     const uniqueEntityCodes = entityCodesArray.filter((code, index) => entityCodesArray.indexOf(code) === index);
@@ -189,9 +194,10 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         balanced: entityBalanced
       };
     });
-  };
+  }, [lines]); // Only recalculate when lines change
   
-  const entityBalances = getEntityBalances();
+  // Memoize entity balances result
+  const entityBalances = useMemo(() => getEntityBalances(), [getEntityBalances]);
   
   function generateReference() {
     const date = new Date();
@@ -383,7 +389,36 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     }
   };
   
+  // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
+    // For debit/credit fields, use the debounced version
+    if (field === 'debit' || field === 'credit') {
+      handleDebouncedLineChange(index, field, value);
+      
+      // Immediately update the UI for responsiveness, but calculations will be debounced
+      const updatedLines = [...lines];
+      updatedLines[index] = { ...updatedLines[index], [field]: value };
+      setLines(updatedLines);
+    } else {
+      // For non-numeric fields, update immediately
+      const updatedLines = [...lines];
+      updatedLines[index] = { ...updatedLines[index], [field]: value };
+      setLines(updatedLines);
+      
+      // Clear field error when user changes the value
+      const errorKey = `line_${index}_${field}`;
+      if (fieldErrors[errorKey]) {
+        setFieldErrors(prev => {
+          const updated = { ...prev };
+          delete updated[errorKey];
+          return updated;
+        });
+      }
+    }
+  };
+  
+  // Create a debounced version of line change handler for numeric fields (debit/credit)
+  const handleDebouncedLineChange = useDebouncedCallback((index: number, field: string, value: string) => {
     const updatedLines = [...lines];
     updatedLines[index] = { ...updatedLines[index], [field]: value };
     
@@ -408,7 +443,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         return updated;
       });
     }
-  };
+  }, 300); // 300ms debounce delay
   
   const addLine = () => {
     setLines([...lines, { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '' }]);
