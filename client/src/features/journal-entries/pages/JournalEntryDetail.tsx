@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
-import { useJournalEntry, JournalEntry } from '../hooks/useJournalEntry';
+import { useJournalEntry, JournalEntry } from '@/features/journal-entries/hooks/useJournalEntry';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
