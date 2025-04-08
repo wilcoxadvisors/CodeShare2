@@ -482,7 +482,7 @@ function JournalEntryDetail() {
       
       return await apiRequest(`/api/journal-entries/${entryId}/reject`, {
         method: 'POST',
-        data: { reason: rejectReason }
+        data: { rejectionReason: rejectReason }
       });
     },
     onSuccess: () => {

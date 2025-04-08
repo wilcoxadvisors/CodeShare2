@@ -390,11 +390,141 @@ export function registerJournalEntryRoutes(app: Express) {
   }));
   
   /**
+   * Submit a journal entry for approval
+   */
+  app.post('/api/journal-entries/:id/submit', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = req.user as { id: number };
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Get the existing entry to check its status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!existingEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Can only submit draft entries for approval
+    if (existingEntry.status !== JournalEntryStatus.DRAFT) {
+      throwBadRequest(`Cannot submit a journal entry with status '${existingEntry.status}'. Must be 'draft'.`);
+    }
+    
+    // Update the status to pending_approval
+    const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+      status: JournalEntryStatus.PENDING_APPROVAL,
+      requestedBy: user.id,
+      requestedAt: new Date()
+    }, existingEntry.lines);
+    
+    res.json({
+      message: 'Journal entry submitted for approval successfully',
+      entry: updatedEntry
+    });
+  }));
+
+  /**
+   * Approve a journal entry
+   */
+  app.post('/api/journal-entries/:id/approve', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = req.user as { id: number, role?: string };
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Get the existing entry to check its status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!existingEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Only admin users can approve journal entries
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can approve journal entries' });
+    }
+    
+    // Can only approve entries that are pending approval
+    if (existingEntry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+      throwBadRequest(`Cannot approve a journal entry with status '${existingEntry.status}'. Must be 'pending_approval'.`);
+    }
+    
+    // Update the status to approved
+    const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+      status: JournalEntryStatus.APPROVED,
+      approvedBy: user.id,
+      approvedAt: new Date()
+    }, existingEntry.lines);
+    
+    res.json({
+      message: 'Journal entry approved successfully',
+      entry: updatedEntry
+    });
+  }));
+
+  /**
+   * Reject a journal entry
+   */
+  app.post('/api/journal-entries/:id/reject', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const user = req.user as { id: number, role?: string };
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Get the existing entry to check its status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!existingEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Only admin users can reject journal entries
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can reject journal entries' });
+    }
+    
+    // Can only reject entries that are pending approval
+    if (existingEntry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+      throwBadRequest(`Cannot reject a journal entry with status '${existingEntry.status}'. Must be 'pending_approval'.`);
+    }
+    
+    // Require a rejection reason
+    const { rejectionReason } = req.body;
+    if (!rejectionReason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+    
+    // Update the status to rejected
+    const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+      status: JournalEntryStatus.REJECTED,
+      rejectedBy: user.id,
+      rejectedAt: new Date(),
+      rejectionReason
+    }, existingEntry.lines);
+    
+    res.json({
+      message: 'Journal entry rejected successfully',
+      entry: updatedEntry
+    });
+  }));
+
+  /**
    * Post a journal entry (change status from draft to posted)
    */
   app.post('/api/journal-entries/:id/post', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const user = req.user as { id: number };
+    const user = req.user as { id: number, role?: string };
+    
+    // Only admin users can post journal entries
+    if (user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can post journal entries' });
+    }
     
     if (isNaN(id)) {
       throwBadRequest('Invalid journal entry ID provided');
