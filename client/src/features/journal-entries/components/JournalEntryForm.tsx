@@ -643,6 +643,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           <Input
             id="reference-number"
             name="referenceNumber"
+            value={journalData.referenceNumber}
+            onChange={handleChange}
             placeholder="Invoice #, Check #, etc."
             className="mt-1"
           />

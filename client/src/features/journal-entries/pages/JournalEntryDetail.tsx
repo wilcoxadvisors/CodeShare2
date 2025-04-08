@@ -182,6 +182,16 @@ function JournalEntryDetail() {
     return new Date(dateString).toLocaleDateString();
   };
   
+  // Format currency values consistently with 2 decimal places
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+  
   // Get badge color based on status
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -735,12 +745,24 @@ function JournalEntryDetail() {
                   <span>{formatDate(journalEntry.date)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Reference:</span>
+                  <span className="text-gray-500">Reference Number:</span>
                   <span>{journalEntry.reference || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Journal ID:</span>
+                  <span>{journalEntry.id || '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Type:</span>
                   <span>{journalEntry.journalType || 'JE'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Description:</span>
+                  <span className="text-right">{journalEntry.description || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Entity:</span>
+                  <span>{currentEntity?.code || '-'}</span>
                 </div>
               </div>
             </CardContent>
@@ -754,29 +776,16 @@ function JournalEntryDetail() {
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Debit:</span>
-                  <span>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(totalDebit)}
-                  </span>
+                  <span>{formatCurrency(totalDebit)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Credit:</span>
-                  <span>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(totalCredit)}
-                  </span>
+                  <span>{formatCurrency(totalCredit)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium">
                   <span className="text-gray-500">Difference:</span>
                   <span className={isBalanced ? 'text-green-600' : 'text-red-600'}>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(Math.abs(totalDebit - totalCredit))}
+                    {formatCurrency(Math.abs(totalDebit - totalCredit))}
                     {isBalanced && ' (Balanced)'}
                   </span>
                 </div>
@@ -810,22 +819,13 @@ function JournalEntryDetail() {
                     <TableRow key={index}>
                       <TableCell className="font-medium">{balance.entityCode}</TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(balance.totalDebit)}
+                        {formatCurrency(balance.totalDebit)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(balance.totalCredit)}
+                        {formatCurrency(balance.totalCredit)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(balance.difference)}
+                        {formatCurrency(balance.difference)}
                       </TableCell>
                       <TableCell>
                         {balance.isBalanced ? (
@@ -893,16 +893,10 @@ function JournalEntryDetail() {
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">
-                        {debitValue > 0 ? new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(debitValue) : '-'}
+                        {debitValue > 0 ? formatCurrency(debitValue) : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {creditValue > 0 ? new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD'
-                        }).format(creditValue) : '-'}
+                        {creditValue > 0 ? formatCurrency(creditValue) : '-'}
                       </TableCell>
                     </TableRow>
                   );
@@ -912,16 +906,10 @@ function JournalEntryDetail() {
                     Totals
                   </TableCell>
                   <TableCell className="text-right">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(totalDebit)}
+                    {formatCurrency(totalDebit)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(totalCredit)}
+                    {formatCurrency(totalCredit)}
                   </TableCell>
                 </TableRow>
               </TableBody>
