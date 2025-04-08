@@ -407,9 +407,9 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('Journal Entry');
     }
     
-    // Prevent posting an already posted or voided entry
-    if (existingEntry.status !== JournalEntryStatus.DRAFT) {
-      throwBadRequest(`Cannot post a journal entry with status '${existingEntry.status}'`);
+    // Prevent posting if not in draft or approved status
+    if (existingEntry.status !== JournalEntryStatus.DRAFT && existingEntry.status !== JournalEntryStatus.APPROVED) {
+      throwBadRequest(`Cannot post a journal entry with status '${existingEntry.status}'. Must be 'draft' or 'approved'.`);
     }
     
     // Update the status to posted

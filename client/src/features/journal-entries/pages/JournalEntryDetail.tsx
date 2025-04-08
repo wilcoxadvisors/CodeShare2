@@ -625,7 +625,7 @@ function JournalEntryDetail() {
           </>
         )}
         
-        {status === 'approved' && isAdmin && (
+        {(status === 'draft' || status === 'approved') && isAdmin && (
           <Button
             onClick={() => postEntry.mutate()}
             size="sm"
