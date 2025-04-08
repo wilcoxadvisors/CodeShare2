@@ -17,7 +17,6 @@ import { registerAccountRoutes } from "./accountRoutes";
 import { 
   enhancedUserSchema,
   enhancedEntitySchema,
-  journalEntryWithLinesSchema,
   validateRequest 
 } from "@shared/validation";
 import { registerAIRoutes } from "./aiRoutes";

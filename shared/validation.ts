@@ -242,12 +242,7 @@ export const updateJournalEntrySchema = z.object({
   path: ["lines"],
 });
 
-/**
- * Schema for journal entry with lines
- */
-export const journalEntryWithLinesSchema = enhancedJournalEntrySchema.extend({
-  lines: z.array(enhancedJournalEntryLineSchema)
-});
+// This section was removed as it was part of an unused schema
 
 /**
  * Enhanced schema for validating fixed asset input
