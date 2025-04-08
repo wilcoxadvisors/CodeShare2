@@ -145,8 +145,7 @@ function JournalEntries() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col items-center justify-center h-64">
-                <p className="text-gray-500 mb-4">Please select an entity to view journal entries</p>
-                <EntitySelect />
+                <p className="text-gray-500 mb-4">Please select an entity from the header to view journal entries</p>
               </div>
             </CardContent>
           </Card>

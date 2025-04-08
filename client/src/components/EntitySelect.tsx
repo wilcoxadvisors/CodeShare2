@@ -74,14 +74,8 @@ function EntitySelect() {
     );
   }
 
-  if (entities.length === 0) {
-    return (
-      <Button variant="outline" className="w-full md:w-[200px] h-10 justify-between text-yellow-500">
-        <span>No entities available</span>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    );
-  }
+  // We'll handle no entities in the dropdown menu instead of showing a separate component
+  // This allows us to have a consistent UI between states
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
