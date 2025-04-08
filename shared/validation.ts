@@ -257,79 +257,80 @@ export const enhancedFixedAssetSchema = schema.insertFixedAssetSchema.extend({
 /**
  * Schema for batch journal entry uploads
  */
-export const batchJournalEntrySchema = z.array(
-  z.object({
-    date: z.preprocess((arg) => {
-      if (typeof arg === "string" || arg instanceof Date) {
-        const date = new Date(arg);
-        return isNaN(date.getTime()) ? undefined : date;
-      }
-      return undefined;
-    }, z.date({ required_error: "Date is required", invalid_type_error: "Invalid date format" })),
-    description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
-    referenceNumber: optionalString.nullable(),
-    journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
-    entityId: z.number().int().positive({ message: "Entity ID is required" }),
-    locationId: z.number().int().positive().optional().nullable(),
-    lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
-  })
-  // First refinement: Check overall balance (debits = credits)
-  .refine(data => {
-    // Additional cross-field validation for balance
-    let totalDebits = 0;
-    let totalCredits = 0;
+export const singleJournalEntrySchema = z.object({
+  date: z.preprocess((arg) => {
+    if (typeof arg === "string" || arg instanceof Date) {
+      const date = new Date(arg);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+    return undefined;
+  }, z.date({ required_error: "Date is required", invalid_type_error: "Invalid date format" })),
+  description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
+  referenceNumber: optionalString.nullable(),
+  journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
+  entityId: z.number().int().positive({ message: "Entity ID is required" }),
+  locationId: z.number().int().positive().optional().nullable(),
+  lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
+})
+// First refinement: Check overall balance (debits = credits)
+.refine(data => {
+  // Additional cross-field validation for balance
+  let totalDebits = 0;
+  let totalCredits = 0;
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  lines.forEach((line: any) => {
+    const amount = line?.amount || 0;
+    if (line?.type === 'debit') totalDebits += amount;
+    if (line?.type === 'credit') totalCredits += amount;
+  });
+  
+  const tolerance = 0.0001; // Adjust as needed
+  return Math.abs(totalDebits - totalCredits) < tolerance;
+}, {
+  message: "Overall debits must equal credits",
+  path: ["lines"],
+})
+// Second refinement: Check balance within each entity
+.refine(data => {
+  // Group lines by entity code
+  const entities: Record<string, { debits: number, credits: number }> = {};
+  
+  // Ensure lines is treated as an array
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  // Calculate totals per entity
+  lines.forEach((line: any) => {
+    const entityCode = line?.entityCode || '';
+    const amount = line?.amount || 0;
     
-    // Ensure lines is treated as an array
-    const lines = Array.isArray(data.lines) ? data.lines : [];
+    if (!entities[entityCode]) {
+      entities[entityCode] = { debits: 0, credits: 0 };
+    }
     
-    lines.forEach((line: any) => {
-      const amount = line?.amount || 0;
-      if (line?.type === 'debit') totalDebits += amount;
-      if (line?.type === 'credit') totalCredits += amount;
-    });
-    
-    const tolerance = 0.0001; // Adjust as needed
-    return Math.abs(totalDebits - totalCredits) < tolerance;
-  }, {
-    message: "Overall debits must equal credits",
-    path: ["lines"],
-  })
-  // Second refinement: Check balance within each entity
-  .refine(data => {
-    // Group lines by entity code
-    const entities: Record<string, { debits: number, credits: number }> = {};
-    
-    // Ensure lines is treated as an array
-    const lines = Array.isArray(data.lines) ? data.lines : [];
-    
-    // Calculate totals per entity
-    lines.forEach((line: any) => {
-      const entityCode = line?.entityCode || '';
-      const amount = line?.amount || 0;
-      
-      if (!entities[entityCode]) {
-        entities[entityCode] = { debits: 0, credits: 0 };
-      }
-      
-      if (line?.type === 'debit') {
-        entities[entityCode].debits += amount;
-      } else if (line?.type === 'credit') {
-        entities[entityCode].credits += amount;
-      }
-    });
-    
-    // Check if each entity is balanced
-    const tolerance = 0.0001;
-    const unbalancedEntities = Object.entries(entities)
-      .filter(([, totals]) => Math.abs(totals.debits - totals.credits) >= tolerance)
-      .map(([entityCode]) => entityCode);
-    
-    return unbalancedEntities.length === 0;
-  }, {
-    message: "Each entity's debits must equal credits for intercompany transactions",
-    path: ["lines"],
-  })
-).min(1, "At least one journal entry is required");
+    if (line?.type === 'debit') {
+      entities[entityCode].debits += amount;
+    } else if (line?.type === 'credit') {
+      entities[entityCode].credits += amount;
+    }
+  });
+  
+  // Check if each entity is balanced
+  const tolerance = 0.0001;
+  const unbalancedEntities = Object.entries(entities)
+    .filter(([, totals]) => Math.abs(totals.debits - totals.credits) >= tolerance)
+    .map(([entityCode]) => entityCode);
+  
+  return unbalancedEntities.length === 0;
+}, {
+  message: "Each entity's debits must equal credits for intercompany transactions",
+  path: ["lines"],
+});
+
+export const batchJournalEntryImportSchema = z.array(singleJournalEntrySchema)
+  .min(1, "At least one journal entry is required");
 
 /**
  * Format Zod error into a user-friendly format

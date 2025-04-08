@@ -122,9 +122,7 @@ export const batchUploadSchema = z.object({
   ).min(1, "At least one journal entry is required")
 });
 
-export const journalEntryWithLinesSchema = enhancedJournalEntrySchema.extend({
-  lines: z.array(enhancedJournalEntryLineSchema)
-});
+// The journalEntryWithLinesSchema was removed as it was unused
 
 export const enhancedFixedAssetSchema = z.object({
   name: z.string().min(2, "Asset name must be at least 2 characters long"),
