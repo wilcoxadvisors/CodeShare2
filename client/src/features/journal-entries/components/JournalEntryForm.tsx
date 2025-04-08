@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
@@ -55,6 +55,15 @@ interface Entity {
   code: string;
   description?: string | null;
   active: boolean;
+}
+
+// Interface for entity balance
+interface EntityBalance {
+  entityCode: string;
+  debit: number;
+  credit: number;
+  difference: number;
+  balanced: boolean;
 }
 
 interface JournalEntryFormProps {
@@ -803,7 +812,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                     Entity Balance Summary (Intercompany)
                   </td>
                 </tr>
-                {entityBalances.map((balance) => (
+                {entityBalances.map((balance: EntityBalance) => (
                   <tr key={balance.entityCode} className="bg-gray-50">
                     <td colSpan={2} className="px-6 py-2 text-right text-xs font-medium text-gray-900">
                       Entity {balance.entityCode}:

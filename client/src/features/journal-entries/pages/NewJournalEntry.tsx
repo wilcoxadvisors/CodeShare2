@@ -38,25 +38,24 @@ function NewJournalEntry() {
   const { currentEntity } = useEntity();
   const [, setLocation] = useLocation();
 
-  // Get client ID from current entity
-  const clientId = currentEntity?.clientId;
+  // Get client ID from current entity or directly from EntityContext
+  const { selectedClientId } = useEntity();
+  const clientId = currentEntity?.clientId || selectedClientId;
+  // Convert to number or undefined (not null) for proper prop passing
+  const safeClientId = clientId ? Number(clientId) : undefined;
 
   // Query accounts from API at client level (not entity level)
-  const { data: accountsData, isLoading: accountsLoading } = useQuery({
+  // This will fetch accounts as soon as the clientId is available, even before an entity is selected
+  const { data: accountsData, isLoading: accountsLoading } = useQuery<{accounts: any[]}>({
     queryKey: clientId ? [`/api/clients/${clientId}/accounts`] : ["no-client-selected"],
     enabled: !!clientId,
-    onSuccess: (data) => {
-      console.log("Accounts API response:", data);
-    }
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
   });
   
   // Query entities from API - explicitly filtered by client
-  const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
+  const { data: entitiesData, isLoading: entitiesLoading } = useQuery<{entities: any[]}>({
     queryKey: clientId ? [`/api/clients/${clientId}/entities`] : ["no-client-entities"],
     enabled: !!clientId,
-    onSuccess: (data) => {
-      console.log("Entities API response:", data);
-    }
   });
 
   // Transform accounts data to ensure it matches our interface requirements
@@ -135,7 +134,7 @@ function NewJournalEntry() {
                 entities={entities || []}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
-                clientId={clientId}
+                clientId={safeClientId}
               />
             )}
           </div>
