@@ -1,0 +1,39 @@
+I understand the following problems remain based on your testing:
+
+
+
+Non-functional Header Buttons: "Create Entry" and "Batch Upload" buttons in the main header need removal.
+
+JE List - ID Display: Shows an ID like "#80" – we need to confirm if this is the correct database id as intended by your previous fix or something else.
+
+JE List - Amounts: Shows "$0.00" instead of differentiating Total Debits and Credits.
+
+Reference Field (Detail/Edit): Still appearing blank despite the attempt to fix the form binding.
+
+Edit Form - Account Lines: Account lines are blank when editing an existing entry.
+
+Workflow Buttons:"Submit for approval" doesn't work from the detail page (presumably when viewing a draft).
+
+Only "Save [as Draft]" is available during edit, no option to "Post".
+
+
+
+
+
+Remove Header Buttons: I'll find the main application layout component (likely App.tsx or a dedicated Header.tsx) and identify where these buttons are rendered to guide their removal.
+
+Fix JE List Page (JournalEntries.tsx):Verify the ID column displays the correct journalEntry.id.
+
+Update the "Amount" column to show separate "Total Debit" and "Total Credit" values. I'll need to analyze how the list data is fetched and processed in JournalEntries.tsx.
+
+Revisit Reference Field: I'll re-examine JournalEntryDetail.tsx and JournalEntryForm.tsx focusing on:How the referenceNumber is fetched/passed to the detail view.
+
+How the referenceNumber state is managed and bound in the form during create and edit modes.
+
+Fix Edit Form Blank Account Lines: I'll analyze JournalEntryForm.tsx specifically in edit mode. This involves checking how existingEntry data (loaded via useEditJournalEntry) is used to populate the line item inputs.
+
+Implement/Fix Workflow Buttons:Detail Page: Examine the button rendering logic in JournalEntryDetail.tsx based on the entry status. Add/connect the API call for "Submit for Approval".
+
+Edit/Create Form: Modify JournalEntryForm.tsx to potentially include a "Post" button (perhaps conditionally based on status or permissions) alongside "Save as Draft".
+
+Backend: Verify the necessary API endpoints (/submit, /approve, /post) exist and function correctly in journalEntryRoutes.ts.

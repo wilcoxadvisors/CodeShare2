@@ -240,7 +240,8 @@ function JournalEntries() {
                       <TableHead>Description</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -265,7 +266,13 @@ function JournalEntries() {
                           {new Intl.NumberFormat('en-US', {
                             style: 'currency',
                             currency: 'USD'
-                          }).format(entry.totalAmount || entry.totalDebit || 0)}
+                          }).format(entry.totalDebit || 0)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD'
+                          }).format(entry.totalCredit || 0)}
                         </TableCell>
                       </TableRow>
                     ))}

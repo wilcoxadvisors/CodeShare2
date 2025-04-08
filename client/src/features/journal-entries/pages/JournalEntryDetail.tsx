@@ -746,7 +746,7 @@ function JournalEntryDetail() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Reference Number:</span>
-                  <span>{journalEntry.reference || '-'}</span>
+                  <span>{journalEntry.referenceNumber || '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Journal ID:</span>

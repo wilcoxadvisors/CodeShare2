@@ -35,9 +35,7 @@ const sectionTabs = {
     { path: '/journal-entries', label: 'Journal Entries' }
   ],
   '/journal-entries': [
-    { path: '/journal-entries', label: 'All Entries' },
-    { path: '/journal-entries/create', label: 'Create Entry' },
-    { path: '/journal-entries/batch', label: 'Batch Upload' }
+    { path: '/journal-entries', label: 'All Entries' }
   ],
   '/chart-of-accounts': [
     { path: '/chart-of-accounts', label: 'All Accounts' }
@@ -156,12 +154,6 @@ function Header() {
                 <>
                   <a href="/journal-entries" className={`${location === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     All Entries
-                  </a>
-                  <a href="/journal-entries/create" className={`${location === '/journal-entries/create' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                    Create Entry
-                  </a>
-                  <a href="/journal-entries/batch" className={`${location === '/journal-entries/batch' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                    Batch Upload
                   </a>
                 </>
               )}
