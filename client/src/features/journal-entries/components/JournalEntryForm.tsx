@@ -116,6 +116,9 @@ const FormSchema = z.object({
 });
 
 function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
+  console.log('DEBUG JournalEntryForm - received accounts:', accounts);
+  console.log('DEBUG JournalEntryForm - clientId:', clientId);
+  console.log('DEBUG JournalEntryForm - entityId:', entityId);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing] = useState(!!existingEntry);
