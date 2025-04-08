@@ -19,7 +19,7 @@ interface Account {
   parentId?: number | null;
   [key: string]: any;
 }
-import { X, Plus, FileUp, AlertCircle } from 'lucide-react';
+import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,6 +30,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { validateForm } from '@/lib/validation';
+import { 
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
 
 interface Location {
   id: number;
@@ -475,9 +484,24 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   return (
     <div>
-      <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-        {isEditing ? 'Edit Journal Entry' : 'Manual Journal Entry'}
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg leading-6 font-medium text-gray-900">
+          {isEditing ? 'Edit Journal Entry' : 'Manual Journal Entry'}
+        </h3>
+        
+        {/* Balance status indicator */}
+        <div className={`px-3 py-1 rounded-md inline-flex items-center text-sm
+          ${isBalanced 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+          {isBalanced 
+            ? <CheckCircle2 className="h-4 w-4 mr-1" /> 
+            : <AlertCircle className="h-4 w-4 mr-1" />}
+          {isBalanced 
+            ? 'Balanced' 
+            : `Unbalanced (${difference.toFixed(2)})`}
+        </div>
+      </div>
       
       {formError && (
         <Alert variant="destructive" className="mb-4">
@@ -487,34 +511,63 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         </Alert>
       )}
       
+      {/* API Request status indicator */}
+      {(createEntry.isPending || updateEntry.isPending) && (
+        <Alert className="mb-4 bg-blue-50 border-blue-200">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertTitle>Processing</AlertTitle>
+          <AlertDescription>
+            {createEntry.isPending ? 'Creating journal entry...' : 'Updating journal entry...'}
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <Label htmlFor="reference">Journal ID</Label>
-          <Input
-            id="reference"
-            name="reference"
-            value={journalData.reference}
-            onChange={handleChange}
-            className={`mt-1 ${fieldErrors.reference ? 'border-red-500' : ''}`}
-            readOnly
-          />
+          <div className="relative">
+            <Input
+              id="reference"
+              name="reference"
+              value={journalData.reference}
+              onChange={handleChange}
+              className={`mt-1 ${fieldErrors.reference ? 'border-red-500 pr-10' : ''}`}
+              readOnly
+            />
+            {fieldErrors.reference && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
+              </div>
+            )}
+          </div>
           {fieldErrors.reference && (
-            <p className="text-red-500 text-sm mt-1">{fieldErrors.reference}</p>
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.reference}
+            </p>
           )}
         </div>
         
         <div>
           <Label htmlFor="date">Date</Label>
-          <Input
-            id="date"
-            name="date"
-            type="date"
-            value={journalData.date}
-            onChange={handleChange}
-            className={`mt-1 ${fieldErrors.date ? 'border-red-500' : ''}`}
-          />
+          <div className="relative">
+            <Input
+              id="date"
+              name="date"
+              type="date"
+              value={journalData.date}
+              onChange={handleChange}
+              className={`mt-1 ${fieldErrors.date ? 'border-red-500 pr-10' : ''}`}
+            />
+            {fieldErrors.date && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
+              </div>
+            )}
+          </div>
           {fieldErrors.date && (
-            <p className="text-red-500 text-sm mt-1">{fieldErrors.date}</p>
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.date}
+            </p>
           )}
         </div>
         
@@ -531,17 +584,26 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       <div className="mb-4">
         <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          name="description"
-          value={journalData.description}
-          onChange={handleChange}
-          rows={2}
-          placeholder="Enter a description for this journal entry"
-          className={`mt-1 ${fieldErrors.description ? 'border-red-500' : ''}`}
-        />
+        <div className="relative">
+          <Textarea
+            id="description"
+            name="description"
+            value={journalData.description}
+            onChange={handleChange}
+            rows={2}
+            placeholder="Enter a description for this journal entry"
+            className={`mt-1 ${fieldErrors.description ? 'border-red-500 pr-10' : ''}`}
+          />
+          {fieldErrors.description && (
+            <div className="absolute top-3 right-3 pointer-events-none">
+              <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
+            </div>
+          )}
+        </div>
         {fieldErrors.description && (
-          <p className="text-red-500 text-sm mt-1">{fieldErrors.description}</p>
+          <p className="text-red-500 text-sm mt-1 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.description}
+          </p>
         )}
       </div>
       
@@ -770,17 +832,30 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           <Button
             onClick={() => handleSubmit(true)}
             disabled={createEntry.isPending || updateEntry.isPending}
+            className="relative"
           >
-            {createEntry.isPending || updateEntry.isPending ? 'Saving...' : 'Save as Draft'}
+            {(createEntry.isPending || updateEntry.isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+            )}
+            {!(createEntry.isPending || updateEntry.isPending) && 'Save as Draft'}
+            {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
           </Button>
           
           <Button
             variant="default"
-            className="bg-green-600 hover:bg-green-700"
+            className={`${isBalanced ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400'} relative`}
             onClick={() => handleSubmit(false)}
             disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
+            title={!isBalanced ? "Journal entry must be balanced before posting" : ""}
           >
-            {createEntry.isPending || updateEntry.isPending ? 'Posting...' : 'Post Journal Entry'}
+            {(createEntry.isPending || updateEntry.isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+            )}
+            {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
+              <CheckCircle2 className="mr-2 h-4 w-4 inline" />
+            )}
+            {!(createEntry.isPending || updateEntry.isPending) && 'Post Journal Entry'}
+            {(createEntry.isPending || updateEntry.isPending) && 'Posting...'}
           </Button>
         </div>
       </div>
