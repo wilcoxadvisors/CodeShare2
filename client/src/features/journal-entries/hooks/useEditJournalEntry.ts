@@ -42,6 +42,8 @@ export function useEditJournalEntry() {
   let processedEntry = journalEntry;
   
   if (journalEntry && journalEntry.lines && Array.isArray(journalEntry.lines)) {
+    console.log("useEditJournalEntry - Journal entry lines:", journalEntry.lines);
+    
     // Check if the first line is in server format
     const firstLine = journalEntry.lines[0];
     const isServerFormat = firstLine && 'type' in firstLine && 'amount' in firstLine;
@@ -51,7 +53,7 @@ export function useEditJournalEntry() {
       
       // Convert server format to client format
       const convertedLines = journalEntry.lines.map((line: any) => ({
-        accountId: line.accountId,
+        accountId: line.accountId.toString(),
         entityCode: line.entityCode || '',
         description: line.description || '',
         debit: line.type === 'debit' ? line.amount.toString() : '0',
@@ -62,7 +64,25 @@ export function useEditJournalEntry() {
         ...journalEntry,
         lines: convertedLines
       };
+    } else {
+      // Even if not in server format, ensure accountId is a string 
+      // for proper form field binding and comparison
+      const normalizedLines = journalEntry.lines.map((line: any) => ({
+        ...line,
+        accountId: line.accountId ? line.accountId.toString() : '',
+        debit: line.debit ? line.debit.toString() : '0',
+        credit: line.credit ? line.credit.toString() : '0',
+      }));
+      
+      processedEntry = {
+        ...journalEntry,
+        lines: normalizedLines
+      };
     }
+    
+    console.log("useEditJournalEntry - Processed entry lines:", processedEntry.lines);
+  } else {
+    console.log("useEditJournalEntry - No lines found in journal entry");
   }
   
   return {

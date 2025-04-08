@@ -57,7 +57,9 @@ import {
   RotateCcw,
   Check,
   X,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Info
 } from 'lucide-react';
 
 function JournalEntryDetail() {
@@ -196,20 +198,55 @@ function JournalEntryDetail() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'draft':
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800">Draft</Badge>;
+        return (
+          <Badge variant="outline" className="bg-gray-100 text-gray-800 flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            Draft
+          </Badge>
+        );
       case 'pending_approval':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending Approval</Badge>;
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Pending Approval
+          </Badge>
+        );
       case 'approved':
-        return <Badge variant="outline" className="bg-green-100 text-green-800">Approved</Badge>;
+        return (
+          <Badge variant="outline" className="bg-green-100 text-green-800 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Approved
+          </Badge>
+        );
       case 'rejected':
-        return <Badge variant="outline" className="bg-red-100 text-red-800">Rejected</Badge>;
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-800 flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            Rejected
+          </Badge>
+        );
       case 'posted':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800">Posted</Badge>;
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 flex items-center gap-1">
+            <Check className="h-3 w-3" />
+            Posted
+          </Badge>
+        );
       case 'void':
       case 'voided':
-        return <Badge variant="outline" className="bg-purple-100 text-purple-800">Void</Badge>;
+        return (
+          <Badge variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1">
+            <X className="h-3 w-3" />
+            Void
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            {status}
+          </Badge>
+        );
     }
   };
   
@@ -723,13 +760,41 @@ function JournalEntryDetail() {
               <CardTitle className="text-sm font-medium">Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-2">
-                {getStatusBadge(journalEntry.status)}
-                {!isBalanced && (
-                  <Badge variant="outline" className="bg-red-100 text-red-800">
-                    Unbalanced
-                  </Badge>
-                )}
+              <div className="flex flex-col space-y-3">
+                <div className="flex items-center space-x-2">
+                  {getStatusBadge(journalEntry.status)}
+                  {!isBalanced && (
+                    <Badge variant="outline" className="bg-red-100 text-red-800">
+                      Unbalanced
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Workflow visualization */}
+                <div className="pt-2">
+                  <p className="text-xs text-gray-500 mb-2">Workflow Status</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col items-center">
+                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs mt-1">Draft</span>
+                    </div>
+                    <div className={`h-0.5 w-12 ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className="flex flex-col items-center">
+                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs mt-1">Approval</span>
+                    </div>
+                    <div className={`h-0.5 w-12 ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className="flex flex-col items-center">
+                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs mt-1">Approved</span>
+                    </div>
+                    <div className={`h-0.5 w-12 ${journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className="flex flex-col items-center">
+                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'posted' ? 'bg-blue-500' : journalEntry.status === 'voided' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                      <span className="text-xs mt-1">Posted</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
