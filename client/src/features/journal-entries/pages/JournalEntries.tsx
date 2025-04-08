@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/PageHeader';
-import EntitySelect from '@/components/EntitySelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -138,7 +137,7 @@ function JournalEntries() {
           title="Journal Entries"
           description="Create, view, and manage journal entries"
         >
-          <EntitySelect />
+          {/* Entity selection is handled in the main header */}
         </PageHeader>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
