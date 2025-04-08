@@ -242,8 +242,6 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
   description: text("description"),
   // Entity code for intercompany transactions
   entityCode: text("entity_code"), // Entity code for intercompany transactions - allows entries across entities
-  // Additional fields for dimensionality
-  locationId: integer("location_id"), // FK to locations table (future)
   // Reporting fields moved from accounts
   fsliBucket: text("fsli_bucket"), // Financial Statement Line Item
   internalReportingBucket: text("internal_reporting_bucket"),

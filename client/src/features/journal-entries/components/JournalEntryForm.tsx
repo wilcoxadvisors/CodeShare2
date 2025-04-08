@@ -65,7 +65,6 @@ interface JournalLine {
   description: string;
   debit: string;
   credit: string;
-  locationId?: string;
 }
 
 // Form validation schema
@@ -81,8 +80,7 @@ const FormSchema = z.object({
     entityCode: z.string().min(1, "Entity code is required for intercompany support"),
     description: z.string().optional(),
     debit: z.string(),
-    credit: z.string(),
-    locationId: z.string().optional()
+    credit: z.string()
   }))
   .min(2, "Journal entry must have at least 2 lines")
   .refine(lines => {
@@ -145,8 +143,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
 
   const [lines, setLines] = useState<JournalLine[]>(
     existingEntry?.lines || [
-      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' },
-      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' }
+      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '' },
+      { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '' }
     ]
   );
   
@@ -332,7 +330,6 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       description: line.description,
       debit: line.debit || '0',
       credit: line.credit || '0',
-      locationId: line.locationId && line.locationId !== 'none' ? parseInt(line.locationId) : null,
       entityId
     }));
     
@@ -402,7 +399,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   };
   
   const addLine = () => {
-    setLines([...lines, { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '', locationId: 'none' }]);
+    setLines([...lines, { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '' }]);
   };
   
   const removeLine = (index: number) => {
@@ -554,7 +551,6 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -650,27 +646,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                   )}
                 </td>
                 
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Select 
-                    value={line.locationId || ''} 
-                    onValueChange={(value) => handleLineChange(index, 'locationId', value)}
-                  >
-                    <SelectTrigger className={fieldErrors[`line_${index}_locationId`] ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select Location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Select Location</SelectItem>
-                      {locations.map(location => (
-                        <SelectItem key={location.id} value={location.id.toString()}>
-                          {location.code ? `${location.code} - ` : ''}{location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors[`line_${index}_locationId`] && (
-                    <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_locationId`]}</p>
-                  )}
-                </td>
+
                 
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button 

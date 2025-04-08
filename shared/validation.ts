@@ -84,8 +84,6 @@ export const journalEntryLineSchema = z.object({
   fsliBucket: optionalString.nullable(),
   internalReportingBucket: optionalString.nullable(),
   item: optionalString.nullable(),
-  // Optional fields
-  locationId: z.number().int().positive().optional().nullable(),
 });
 
 /**
@@ -105,7 +103,6 @@ export const createJournalEntrySchema = z.object({
   referenceNumber: optionalString.nullable(),
   description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
-  locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
 })
 // First refinement: Check overall balance (debits = credits)
@@ -182,7 +179,6 @@ export const updateJournalEntrySchema = z.object({
   referenceNumber: optionalString.nullable(),
   description: z.string().max(255, "Description cannot exceed 255 characters").optional().nullable(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
-  locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry update must include at least one line"),
 })
 // First refinement: Check overall balance (debits = credits)
@@ -269,7 +265,6 @@ export const singleJournalEntrySchema = z.object({
   referenceNumber: optionalString.nullable(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
   entityId: z.number().int().positive({ message: "Entity ID is required" }),
-  locationId: z.number().int().positive().optional().nullable(),
   lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
 })
 // First refinement: Check overall balance (debits = credits)
