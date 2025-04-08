@@ -252,7 +252,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Prevent updates to posted or void entries
-    if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+    if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
       throwBadRequest(`Cannot update a journal entry with status '${existingEntry.status}'`);
     }
     
@@ -283,7 +283,7 @@ export function registerJournalEntryRoutes(app: Express) {
    */
   app.delete('/api/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const user = req.user as { id: number };
+    const user = req.user as { id: number, role?: string };
     
     if (isNaN(id)) {
       throwBadRequest('Invalid journal entry ID provided');
@@ -297,24 +297,101 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // If entry is posted, change status to void instead of actually deleting
-    if (existingEntry.status === 'posted') {
+    if (existingEntry.status === JournalEntryStatus.POSTED) {
+      // For posted entries, only admin users can void them
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Only administrators can void posted journal entries' });
+      }
+      
+      // Require a void reason
+      const voidReason = req.body.reason || req.body.voidReason;
+      if (!voidReason) {
+        return res.status(400).json({ message: 'A reason is required to void a posted journal entry' });
+      }
+      
       const voidedEntry = await journalEntryStorage.updateJournalEntry(id, { 
-        status: 'void' as any,  // TODO: Fix type casting here once schema is updated
+        status: JournalEntryStatus.VOID,
         rejectedBy: user.id,
         rejectedAt: new Date(),
-        rejectionReason: req.body.reason || 'Voided by user'
+        rejectionReason: voidReason
       }, existingEntry.lines);
       
       return res.json({ 
         message: 'Journal entry voided successfully', 
         entry: voidedEntry 
       });
+    } else if (existingEntry.status === JournalEntryStatus.DRAFT) {
+      // If draft, perform actual deletion
+      await journalEntryStorage.deleteJournalEntry(id);
+      
+      return res.json({ message: 'Journal entry deleted successfully' });
+    } else {
+      // Other statuses cannot be deleted
+      return res.status(400).json({ 
+        message: `Journal entries with status '${existingEntry.status}' cannot be deleted` 
+      });
+    }
+  }));
+  
+  /**
+   * Delete or void a journal entry (entity-specific endpoint)
+   */
+  app.delete('/api/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const user = req.user as { id: number, role?: string };
+    
+    if (isNaN(id) || isNaN(entityId)) {
+      throwBadRequest('Invalid journal entry ID or entity ID provided');
     }
     
-    // If draft, perform actual deletion
-    await journalEntryStorage.deleteJournalEntry(id);
+    // Get the existing entry to check its status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
     
-    res.json({ message: 'Journal entry deleted successfully' });
+    if (!existingEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Check that the journal entry belongs to the specified entity
+    if (existingEntry.entityId !== entityId) {
+      return res.status(404).json({ message: 'Journal entry not found for the specified entity' });
+    }
+    
+    // If entry is posted, change status to void instead of actually deleting
+    if (existingEntry.status === JournalEntryStatus.POSTED) {
+      // For posted entries, only admin users can void them
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Only administrators can void posted journal entries' });
+      }
+      
+      // Require a void reason
+      const voidReason = req.body.reason || req.body.voidReason;
+      if (!voidReason) {
+        return res.status(400).json({ message: 'A reason is required to void a posted journal entry' });
+      }
+      
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(id, { 
+        status: JournalEntryStatus.VOID,
+        rejectedBy: user.id,
+        rejectedAt: new Date(),
+        rejectionReason: voidReason
+      }, existingEntry.lines);
+      
+      return res.json({ 
+        message: 'Journal entry voided successfully', 
+        entry: voidedEntry 
+      });
+    } else if (existingEntry.status === JournalEntryStatus.DRAFT) {
+      // If draft, perform actual deletion
+      await journalEntryStorage.deleteJournalEntry(id);
+      
+      return res.json({ message: 'Journal entry deleted successfully' });
+    } else {
+      // Other statuses cannot be deleted
+      return res.status(400).json({ 
+        message: `Journal entries with status '${existingEntry.status}' cannot be deleted` 
+      });
+    }
   }));
   
   /**
@@ -336,13 +413,13 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Prevent posting an already posted or voided entry
-    if (existingEntry.status !== 'draft') {
+    if (existingEntry.status !== JournalEntryStatus.DRAFT) {
       throwBadRequest(`Cannot post a journal entry with status '${existingEntry.status}'`);
     }
     
     // Update the status to posted
     const postedEntry = await journalEntryStorage.updateJournalEntry(id, {
-      status: 'posted' as any, // TODO: Fix type casting here once schema is updated
+      status: JournalEntryStatus.POSTED,
       postedBy: user.id,
       postedAt: new Date()
     }, existingEntry.lines);
@@ -378,7 +455,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Prevent modifications to posted or void entries
-    if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+    if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
       console.log(`ADD JOURNAL ENTRY LINE - Cannot modify entry with status: ${existingEntry.status}`);
       throwBadRequest(`Cannot modify a journal entry with status '${existingEntry.status}'`);
     }
@@ -498,7 +575,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Prevent modifications to posted or void entries
-    if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+    if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
       throwBadRequest(`Cannot modify a journal entry with status '${existingEntry.status}'`);
     }
     
@@ -597,7 +674,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Prevent modifications to posted or void entries
-    if (existingEntry.status === 'posted' || existingEntry.status === 'void') {
+    if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
       throwBadRequest(`Cannot modify a journal entry with status '${existingEntry.status}'`);
     }
     
@@ -663,7 +740,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Only posted entries can be reversed
-    if (existingEntry.status !== 'posted') {
+    if (existingEntry.status !== JournalEntryStatus.POSTED) {
       throwBadRequest(`Only posted journal entries can be reversed. Current status: '${existingEntry.status}'`);
     }
     

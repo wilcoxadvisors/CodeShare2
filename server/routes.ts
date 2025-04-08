@@ -1264,9 +1264,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-
-  
-
+  // Delete journal entry or void if posted
+  app.delete("/api/entities/:entityId/journal-entries/:id", isAuthenticated, async (req, res) => {
+    try {
+      const entityId = parseInt(req.params.entityId);
+      const entryId = parseInt(req.params.id);
+      const userId = (req.user as AuthUser).id;
+      
+      // Get existing entry
+      const entry = await storage.journalEntry.getJournalEntry(entryId);
+      if (!entry || entry.entityId !== entityId) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      
+      // Handle based on status
+      if (entry.status === "posted") {
+        // Admin can void posted entries
+        const userRole = (req.user as AuthUser).role;
+        if (userRole !== "admin") {
+          return res.status(403).json({ message: "Only admins can void posted journal entries" });
+        }
+        
+        const { voidReason } = req.body;
+        if (!voidReason) {
+          return res.status(400).json({ message: "Void reason is required for posted entries" });
+        }
+        
+        // Void instead of delete
+        const updatedEntry = await storage.journalEntry.updateJournalEntry(entryId, {
+          status: "void",
+          rejectedBy: userId, // Using existing field as per current implementation
+          rejectedAt: new Date(),
+          rejectionReason: voidReason, // Using existing field as per current implementation
+          updatedAt: new Date()
+        });
+        
+        return res.json({
+          message: "Journal entry voided successfully",
+          entry: updatedEntry
+        });
+      } else if (entry.status === "draft") {
+        // Actually delete draft entries
+        const success = await storage.journalEntry.deleteJournalEntry(entryId);
+        if (success) {
+          return res.json({ message: "Journal entry deleted successfully" });
+        } else {
+          return res.status(500).json({ message: "Failed to delete journal entry" });
+        }
+      } else {
+        // Other statuses can't be deleted
+        return res.status(400).json({ 
+          message: `Journal entries with status '${entry.status}' cannot be deleted` 
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting/voiding journal entry:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
   
   // Reports
   app.get("/api/entities/:entityId/reports/trial-balance", isAuthenticated, async (req, res) => {
