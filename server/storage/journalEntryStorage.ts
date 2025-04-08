@@ -62,6 +62,7 @@ export interface IJournalEntryStorage {
   getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]>;
   listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
+  updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[]): Promise<JournalEntry | undefined>;
   deleteJournalEntry(id: number): Promise<boolean>;
   
   // General Ledger operations
@@ -357,6 +358,57 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       return updatedEntry;
     } catch (e) {
       throw handleDbError(e, `updating journal entry ${id}`);
+    }
+  }
+  
+  async updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[]): Promise<JournalEntry | undefined> {
+    console.log(`Updating journal entry ${id} with ${lines?.length || 0} lines`);
+    try {
+      // Check if entry exists
+      const existingEntry = await this.getJournalEntry(id);
+      if (!existingEntry) {
+        return undefined;
+      }
+      
+      // Start a transaction
+      return await db.transaction(async (tx) => {
+        // Update the journal entry
+        const [updatedEntry] = await tx.update(journalEntries)
+          .set(entryData)
+          .where(eq(journalEntries.id, id))
+          .returning();
+        
+        // If lines are provided, handle line updates
+        if (lines && lines.length > 0) {
+          // Get existing lines
+          const existingLines = await tx.select()
+            .from(journalEntryLines)
+            .where(eq(journalEntryLines.journalEntryId, id));
+          
+          // Delete existing lines for this journal entry
+          await tx.delete(journalEntryLines)
+            .where(eq(journalEntryLines.journalEntryId, id));
+          
+          // Insert new lines
+          for (const line of lines) {
+            await tx.insert(journalEntryLines)
+              .values({
+                ...line,
+                journalEntryId: id,
+                // Ensure amount is a string
+                amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount
+              } as any);
+          }
+        }
+        
+        // Return the updated entry
+        return {
+          ...updatedEntry,
+          lines: lines || []
+        };
+      });
+    } catch (e) {
+      throw handleDbError(e, `updating journal entry ${id} with lines`);
     }
   }
   

@@ -309,7 +309,7 @@ export function registerJournalEntryRoutes(app: Express) {
         return res.status(400).json({ message: 'A reason is required to void a posted journal entry' });
       }
       
-      const voidedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, { 
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(id, { 
         status: JournalEntryStatus.VOID,
         rejectedBy: user.id,
         rejectedAt: new Date(),
@@ -370,7 +370,7 @@ export function registerJournalEntryRoutes(app: Express) {
         return res.status(400).json({ message: 'A reason is required to void a posted journal entry' });
       }
       
-      const voidedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, { 
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(id, { 
         status: JournalEntryStatus.VOID,
         rejectedBy: user.id,
         rejectedAt: new Date(),
@@ -418,7 +418,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Update the status to posted
-    const postedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+    const postedEntry = await journalEntryStorage.updateJournalEntry(id, {
       status: JournalEntryStatus.POSTED,
       postedBy: user.id,
       postedAt: new Date()
@@ -780,206 +780,6 @@ export function registerJournalEntryRoutes(app: Express) {
         return res.status(400).json({ errors: formatZodError(error) });
       }
       throw error;
-    }
-  }));
-
-  /**
-   * Entity-specific endpoints
-   */
-
-  /**
-   * Get journal entries for a specific entity
-   */
-  app.get('/api/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
-    
-    if (isNaN(entityId)) {
-      throwBadRequest('Invalid entity ID provided');
-    }
-    
-    // Use listJournalEntries with entityId filter
-    const filters: ListJournalEntriesFilters = {
-      entityId
-    };
-    
-    // Add any query parameters to filters
-    const { startDate: startDateStr, endDate: endDateStr, status } = req.query;
-    
-    // Parse dates if provided
-    if (startDateStr && typeof startDateStr === 'string') {
-      const parsedDate = parse(startDateStr, 'yyyy-MM-dd', new Date());
-      if (isValid(parsedDate)) {
-        filters.startDate = parsedDate;
-      }
-    }
-    
-    if (endDateStr && typeof endDateStr === 'string') {
-      const parsedDate = parse(endDateStr, 'yyyy-MM-dd', new Date());
-      if (isValid(parsedDate)) {
-        filters.endDate = parsedDate;
-      }
-    }
-    
-    // Add status filter if provided
-    if (status && typeof status === 'string') {
-      if (['draft', 'posted', 'void'].includes(status)) {
-        filters.status = status as JournalEntryStatus;
-      }
-    }
-    
-    // Get journal entries for this entity
-    const entries = await journalEntryStorage.listJournalEntries(filters);
-    
-    res.json(entries);
-  }));
-  
-  /**
-   * Create a journal entry for a specific entity
-   */
-  app.post('/api/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
-    const user = req.user as { id: number };
-    
-    if (isNaN(entityId)) {
-      throwBadRequest('Invalid entity ID provided');
-    }
-    
-    try {
-      // Add entityId to the request body
-      const requestData = {
-        ...req.body,
-        entityId,
-        createdBy: user.id
-      };
-      
-      // Validate with schema
-      const validatedData = createJournalEntrySchema.parse(requestData);
-      
-      // Extract lines from validated data
-      const { lines, ...journalEntryData } = validatedData;
-      
-      // Create the journal entry
-      const journalEntry = await journalEntryStorage.createJournalEntry(
-        journalEntryData.clientId,
-        journalEntryData.createdBy,
-        journalEntryData
-      );
-      
-      // Add lines to the journal entry
-      if (lines && lines.length > 0) {
-        for (const line of lines) {
-          await journalEntryStorage.createJournalEntryLine({
-            ...line,
-            journalEntryId: journalEntry.id
-          });
-        }
-      }
-      
-      res.status(201).json(journalEntry);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ errors: formatZodError(error) });
-      }
-      throw error;
-    }
-  }));
-  
-  /**
-   * Update a journal entry for a specific entity
-   */
-  app.put('/api/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
-    const id = parseInt(req.params.id);
-    const user = req.user as { id: number };
-    
-    if (isNaN(entityId) || isNaN(id)) {
-      throwBadRequest('Invalid entity ID or journal entry ID provided');
-    }
-    
-    // Get the existing entry to check
-    const existingEntry = await journalEntryStorage.getJournalEntry(id);
-    
-    if (!existingEntry) {
-      throwNotFound('Journal Entry');
-    }
-    
-    // Verify this entry belongs to the specified entity
-    if (existingEntry.entityId !== entityId) {
-      return res.status(404).json({ message: 'Journal entry not found for the specified entity' });
-    }
-    
-    // Prevent updates to posted or void entries
-    if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
-      throwBadRequest(`Cannot update a journal entry with status '${existingEntry.status}'`);
-    }
-    
-    try {
-      // Validate update data
-      const validatedData = updateJournalEntrySchema.parse({
-        ...req.body,
-        updatedBy: user.id
-      });
-      
-      // Extract lines from validated data
-      const { lines, ...entryData } = validatedData;
-      
-      // Update the journal entry with lines
-      const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
-      
-      res.json(updatedEntry);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ errors: formatZodError(error) });
-      }
-      throw error;
-    }
-  }));
-  
-  /**
-   * Delete or void a journal entry (entity-specific endpoint)
-   */
-  app.delete('/api/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
-    const entityId = parseInt(req.params.entityId);
-    const id = parseInt(req.params.id);
-    const user = req.user as { id: number; isAdmin?: boolean };
-    
-    if (isNaN(entityId) || isNaN(id)) {
-      throwBadRequest('Invalid entity ID or journal entry ID provided');
-    }
-    
-    // Get the existing entry to check
-    const existingEntry = await journalEntryStorage.getJournalEntry(id);
-    
-    if (!existingEntry) {
-      throwNotFound('Journal Entry');
-    }
-    
-    // Verify this entry belongs to the specified entity
-    if (existingEntry.entityId !== entityId) {
-      return res.status(404).json({ message: 'Journal entry not found for the specified entity' });
-    }
-    
-    // Handle deletion based on status
-    if (existingEntry.status === JournalEntryStatus.DRAFT) {
-      // Draft entries can be fully deleted
-      await journalEntryStorage.deleteJournalEntry(id);
-      return res.status(204).send();
-    } else if (existingEntry.status === JournalEntryStatus.POSTED) {
-      // Posted entries can only be voided, and only by admins
-      if (!user.isAdmin) {
-        return res.status(403).json({ message: 'Only administrators can void posted journal entries' });
-      }
-      
-      // Void the entry by updating its status
-      await journalEntryStorage.updateJournalEntry(id, {
-        status: JournalEntryStatus.VOID,
-        updatedBy: user.id
-      });
-      
-      return res.status(200).json({ message: 'Journal entry voided successfully' });
-    } else {
-      // Void entries cannot be modified
-      return res.status(400).json({ message: 'Voided journal entries cannot be modified' });
     }
   }));
 }
