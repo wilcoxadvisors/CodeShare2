@@ -1,0 +1,40 @@
+"Great, the initial form loading for 'New Journal Entry' is confirmed working. Now, let's test the user interactions and the save process rigorously (continuing Prompt 1 steps 2-6).
+
+Task: Perform the following actions step-by-step on the 'New Journal Entry' form. Carefully observe the UI, browser console, and network activity (especially on save). Report the outcome of each step:
+
+Fill Header Fields:
+
+Enter today's date.
+Enter Description: Test Create JE - Manual
+Enter Reference Number: Manual001
+Observe: Do the fields accept input correctly?
+Fill First Line Item:
+
+Select an Asset account (e.g., 1110 Cash).
+Enter 150 in the Debit field.
+Enter Description: Test debit cash
+Observe: Does the Account dropdown work? Does the Debit field accept the number? Do the Totals at the bottom update to Debit 150.00, Credit 0.00, and Status "Unbalanced"? Check the console for any errors during this.
+Add Second Line Item:
+
+Click the "Add Line" button.
+Observe: Does a new, empty line appear below the first? Check the console for related logs or errors.
+Fill Second Line Item:
+
+On the new line, select a Revenue account (e.g., 4110 Service Revenue).
+Enter 150 in the Credit field.
+Enter Description: Test credit revenue
+Observe: Does the Account dropdown work? Does the Credit field accept the number? Do the Totals update to Debit 150.00, Credit 150.00, and Status "Balanced"? Check the console.
+Test Client-Side Validation (Optional but Recommended):
+
+Briefly change the Credit amount on the second line to 140.
+Observe: Does the Status change to "Unbalanced"? Click "Save Journal Entry". Does a validation message appear (either near the Totals or as a toast) indicating the entry is unbalanced, preventing the API call? (Check validateJournalEntry in useJournalEntry.ts).
+Change the Credit amount back to 150.
+Save the Journal Entry:
+
+Click the "Save Journal Entry" button.
+Observe: What happens immediately in the UI? (e.g., Loading state, success/error message/toast, navigation?).
+Crucially, inspect the API call:
+Browser Network Tab: Find the request (likely POST to /api/journal-entries). Record the Request Payload (especially the lines array format) and the Response Status Code and Response Body.
+Browser Console: Note any errors or success/failure logs related to the createJournalEntry mutation.
+Server Console: Check for logs from server/journalEntryRoutes.ts indicating the request was received and processed, or if any errors occurred during backend validation (createJournalEntrySchema) or database insertion (journalEntryStorage.createJournalEntry).
+Report: Describe the success or failure of each step. If saving fails (Step 6), provide the exact API request payload, the response status/body, and any related console/server errors."
