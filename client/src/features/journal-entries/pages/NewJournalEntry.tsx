@@ -7,6 +7,7 @@ import JournalEntryForm from "@/features/journal-entries/components/JournalEntry
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { AccountType } from "@shared/schema";
+import { useEditJournalEntry } from "@/features/journal-entries/hooks/useEditJournalEntry";
 
 // Define interface for account
 interface Account {
@@ -37,6 +38,9 @@ interface Location {
 function NewJournalEntry() {
   const { currentEntity } = useEntity();
   const [, setLocation] = useLocation();
+  
+  // Use the edit hook to fetch journal entry data if in edit mode
+  const { journalEntry: existingEntry, isLoading: entryLoading, isEditMode } = useEditJournalEntry();
 
   // Get client ID from current entity or directly from EntityContext
   const { selectedClientId } = useEntity();
@@ -172,8 +176,8 @@ function NewJournalEntry() {
   return (
     <>
       <PageHeader 
-        title="New Journal Entry" 
-        description="Create a new journal entry"
+        title={isEditMode ? "Edit Journal Entry" : "New Journal Entry"} 
+        description={isEditMode ? "Edit an existing journal entry" : "Create a new journal entry"}
       >
         <Button 
           onClick={handleCancel}
@@ -188,7 +192,7 @@ function NewJournalEntry() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            {accountsLoading || entitiesLoading ? (
+            {accountsLoading || entitiesLoading || (isEditMode && entryLoading) ? (
               <div className="py-10 text-center">
                 <p className="text-gray-500">Loading...</p>
               </div>
@@ -201,6 +205,7 @@ function NewJournalEntry() {
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
                 clientId={safeClientId}
+                existingEntry={existingEntry}
               />
             )}
           </div>

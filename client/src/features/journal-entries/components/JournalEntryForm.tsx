@@ -937,8 +937,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
               <CheckCircle2 className="mr-2 h-4 w-4 inline" />
             )}
-            {!(createEntry.isPending || updateEntry.isPending) && 'Post Journal Entry'}
-            {(createEntry.isPending || updateEntry.isPending) && 'Posting...'}
+            {!(createEntry.isPending || updateEntry.isPending) && (isEditing ? 'Save Changes' : 'Save as Draft')}
+            {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
           </Button>
         </div>
       </div>

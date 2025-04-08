@@ -89,13 +89,29 @@ function JournalEntryDetail() {
   
   // Create a map of account IDs to account details for quick lookup
   const accountsMap = React.useMemo(() => {
-    if (!accountsData || !accountsData.accounts) return {};
+    if (!accountsData) return {};
     
-    // Cast to any to avoid TS errors as we don't know the exact shape of accountsData
-    const accounts = (accountsData as any).accounts || [];
+    // Check if accountsData has accounts property directly or as part of a nested object
+    let accounts = [];
+    if (Array.isArray(accountsData)) {
+      accounts = accountsData;
+    } else if (accountsData && typeof accountsData === 'object') {
+      // Try to extract accounts from different possible structures
+      if (Array.isArray(accountsData.accounts)) {
+        accounts = accountsData.accounts;
+      } else if (accountsData.data && Array.isArray(accountsData.data.accounts)) {
+        accounts = accountsData.data.accounts;
+      } else if (accountsData.data && Array.isArray(accountsData.data)) {
+        accounts = accountsData.data;
+      }
+    }
+    
+    console.log("DEBUG - AccountsMap - Accounts array:", accounts);
     
     return accounts.reduce((acc: {[key: string]: any}, account: any) => {
-      acc[account.id] = account;
+      if (account && account.id) {
+        acc[account.id] = account;
+      }
       return acc;
     }, {});
   }, [accountsData]);
@@ -328,6 +344,7 @@ function JournalEntryDetail() {
   
   // Handle edit button click
   const handleEdit = () => {
+    console.log("Edit button clicked for entry ID:", entryId);
     navigate(`/journal-entries/edit/${entryId}`);
   };
   
