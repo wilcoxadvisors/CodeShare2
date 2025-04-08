@@ -11,7 +11,7 @@ import { AccountType } from "@shared/schema";
 // Define interface for account
 interface Account {
   id: number;
-  code: string;
+  accountCode: string;  // Use accountCode to match the server schema
   name: string;
   entityId: number;
   type: AccountType;
@@ -116,8 +116,14 @@ function NewJournalEntry() {
     // Map to ensure all required fields
     accounts = activeAccounts.map((account: any) => {
       const mappedAccount = {
-        ...account,
-        // Ensure required fields have values if they are null/undefined in the API response
+        id: account.id,
+        accountCode: account.accountCode, // Make sure this uses accountCode, not code
+        name: account.name,
+        entityId: account.entityId || 0,
+        type: account.type,
+        description: account.description || null,
+        active: account.active !== false, // Default to true if not specified
+        // Optional fields with defaults
         createdAt: account.createdAt ? new Date(account.createdAt) : new Date(),
         subtype: account.subtype || null,
         isSubledger: account.isSubledger || false,

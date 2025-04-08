@@ -6,7 +6,7 @@ import { JournalEntryStatus, AccountType } from '@shared/schema';
 // Define local Account interface compatible with the component needs
 interface Account {
   id: number;
-  code: string;
+  accountCode: string;  // Use accountCode to match the server schema
   name: string;
   entityId: number;
   type: AccountType;
@@ -90,7 +90,8 @@ interface JournalLine {
 const FormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   reference: z.string().min(3, "Reference must be at least 3 characters"),
-  description: z.string().optional(),
+  referenceNumber: z.string().optional(), // Additional reference field to match server schema
+  description: z.string().min(1, "Description is required"),  // Make description required to match server validation
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
   supDocId: z.string().optional(),
   reversalDate: z.string().optional(),
@@ -159,6 +160,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
+    referenceNumber: existingEntry?.referenceNumber || '',  // Use referenceNumber to match server schema
     date: existingEntry?.date ? new Date(existingEntry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     description: existingEntry?.description || '',
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
@@ -363,15 +365,23 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       return;
     }
     
-    // Format data for submission
-    const formattedLines = validLines.map(line => ({
-      accountId: parseInt(line.accountId),
-      entityCode: line.entityCode || defaultEntityCode,
-      description: line.description,
-      debit: line.debit || '0',
-      credit: line.credit || '0',
-      entityId
-    }));
+    // Format data for submission - convert debit/credit format to type/amount format
+    const formattedLines = validLines.map(line => {
+      // Calculate amount and determine type
+      const debitValue = parseFloat(line.debit) || 0;
+      const creditValue = parseFloat(line.credit) || 0;
+      
+      // Convert our UI format (debit/credit fields) to API format (type and amount)
+      return {
+        accountId: parseInt(line.accountId),
+        entityCode: line.entityCode || defaultEntityCode,
+        description: line.description,
+        // Determine line type and amount based on which field has a value
+        type: debitValue > 0 ? 'debit' : 'credit',
+        amount: debitValue > 0 ? debitValue : creditValue,
+        entityId
+      };
+    });
     
     // Use passed clientId or get from accounts as fallback
     const resolvedClientId = clientId || (accounts.length > 0 ? accounts[0].clientId : null);
@@ -706,10 +716,10 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                           .map(account => {
                             // Debug log for account options
                             {/* eslint-disable-next-line no-console */}
-                            (() => console.log('DEBUG Account Select - rendering account option:', account.code, account.name))();
+                            (() => console.log('DEBUG Account Select - rendering account option:', account.accountCode, account.name))();
                             return (
                               <SelectItem key={account.id} value={account.id.toString()}>
-                                {account.code} - {account.name}
+                                {account.accountCode} - {account.name}
                               </SelectItem>
                             );
                           })
