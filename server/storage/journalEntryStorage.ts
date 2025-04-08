@@ -745,7 +745,6 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             type: reversedType,
             amount: line.amount,
             description: line.description || null,
-            locationId: line.locationId,
             reconciled: false // New reversal line is not reconciled
           };
           

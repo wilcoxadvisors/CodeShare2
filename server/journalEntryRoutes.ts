@@ -129,7 +129,7 @@ export function registerJournalEntryRoutes(app: Express) {
     try {
       console.log('Raw Query Params:', req.query); // Log raw query params
       
-      const { startDate: startDateStr, endDate: endDateStr, accountId: accountIdStr, entityId: entityIdStr, locationId: locationIdStr, descriptionText, minAmount: minAmountStr, maxAmount: maxAmountStr } = req.query;
+      const { startDate: startDateStr, endDate: endDateStr, accountId: accountIdStr, entityId: entityIdStr, descriptionText, minAmount: minAmountStr, maxAmount: maxAmountStr } = req.query;
       
       const filters: ListJournalEntriesFilters = {};
       const errors: string[] = [];
@@ -158,16 +158,11 @@ export function registerJournalEntryRoutes(app: Express) {
           if (!isNaN(parsedId) && parsedId > 0) filters.accountId = parsedId;
           else errors.push(`Invalid account ID format: ${accountIdStr}. Must be a positive integer.`);
       }
-      // Repeat similar parsing/validation for entityIdStr and locationIdStr...
+      // Parse and validate entityId
        if (entityIdStr && typeof entityIdStr === 'string') {
           const parsedId = parseInt(entityIdStr, 10);
           if (!isNaN(parsedId) && parsedId > 0) filters.entityId = parsedId;
           else errors.push(`Invalid entity ID format: ${entityIdStr}. Must be a positive integer.`);
-      }
-      if (locationIdStr && typeof locationIdStr === 'string') {
-          const parsedId = parseInt(locationIdStr, 10);
-          if (!isNaN(parsedId) && parsedId > 0) filters.locationId = parsedId;
-          else errors.push(`Invalid location ID format: ${locationIdStr}. Must be a positive integer.`);
       }
       
       
@@ -475,7 +470,6 @@ export function registerJournalEntryRoutes(app: Express) {
           message: "Amount must be a positive number"
         }),
         description: z.string().nullable().optional(),
-        locationId: z.number().nullable().optional(),
         fsliBucket: z.string().nullable().optional(),
         internalReportingBucket: z.string().nullable().optional(),
         itemId: z.number().nullable().optional(),
@@ -588,7 +582,6 @@ export function registerJournalEntryRoutes(app: Express) {
           message: "Amount must be a positive number"
         }).optional(),
         description: z.string().nullable().optional(),
-        locationId: z.number().nullable().optional(),
         fsliBucket: z.string().nullable().optional(),
         internalReportingBucket: z.string().nullable().optional(),
         itemId: z.number().nullable().optional(),

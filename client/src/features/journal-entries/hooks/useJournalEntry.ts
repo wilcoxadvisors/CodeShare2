@@ -13,7 +13,6 @@ export interface JournalLine {
   description: string;
   debit: string;
   credit: string;
-  locationId?: string;
 }
 
 // Define journal entry interface
@@ -52,7 +51,6 @@ export function useJournalEntry() {
         description: '',
         debit: '',
         credit: '',
-        locationId: '',
       }
     ]
   }), [currentEntity]);
@@ -162,7 +160,6 @@ export function useJournalEntry() {
         description: '',
         debit: '',
         credit: '',
-        locationId: '',
       }
     ];
   }, []);
