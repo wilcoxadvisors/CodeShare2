@@ -58,9 +58,42 @@ function JournalEntries() {
     isLoading,
     error
   } = useQuery({
-    queryKey: currentEntity?.id ? [`/api/entities/${currentEntity.id}/journal-entries`] : null,
+    queryKey: currentEntity?.id ? [`/api/entities/${currentEntity.id}/journal-entries`] : [],
     enabled: !!currentEntity?.id
   });
+  
+  // Calculate total debit/credit for each journal entry by using the lines data
+  const entriesWithTotals = React.useMemo(() => {
+    if (!data) return [];
+    
+    // Handle different response structures
+    const entries = Array.isArray(data) ? data : (data as any).entries || [];
+    
+    // Map through entries to enhance them with totals data
+    return entries.map((entry: any) => {
+      // If entry already has totals, use them
+      if (entry.totalDebit !== undefined && entry.totalCredit !== undefined) {
+        return entry;
+      }
+      
+      // Otherwise, calculate totals from lines if available
+      if (entry.lines && Array.isArray(entry.lines)) {
+        const totals = entry.lines.reduce((acc: any, line: any) => {
+          if (line.type === 'debit') {
+            acc.totalDebit += parseFloat(line.amount || 0);
+          } else if (line.type === 'credit') {
+            acc.totalCredit += parseFloat(line.amount || 0);
+          }
+          return acc;
+        }, { totalDebit: 0, totalCredit: 0 });
+        
+        return { ...entry, ...totals };
+      }
+      
+      // If no lines data available, return entry as is
+      return entry;
+    });
+  }, [data]);
   
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {
@@ -79,22 +112,20 @@ function JournalEntries() {
   
   // Filter and search journal entries
   const filteredEntries = React.useMemo(() => {
-    if (!data) return [];
+    if (!entriesWithTotals.length) return [];
     
-    // Handle different response structures
-    const entries = Array.isArray(data) ? data : (data.entries || []);
-    
-    return entries.filter((entry: any) => {
+    return entriesWithTotals.filter((entry: any) => {
       const matchesSearch = searchTerm === '' || 
         entry.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.referenceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         `${entry.id}`.includes(searchTerm);
       
       const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
       
       return matchesSearch && matchesStatus;
     });
-  }, [data, searchTerm, filterStatus]);
+  }, [entriesWithTotals, searchTerm, filterStatus]);
   
   // Pagination
   const totalPages = Math.ceil((filteredEntries?.length || 0) / pageSize);
@@ -234,7 +265,8 @@ function JournalEntries() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
+                      <TableHead>Journal ID</TableHead>
+                      <TableHead>Database ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Description</TableHead>
@@ -251,14 +283,19 @@ function JournalEntries() {
                         className="cursor-pointer hover:bg-gray-50"
                         onClick={() => handleRowClick(entry.id)}
                       >
-                        <TableCell className="font-medium">#{entry.id}</TableCell>
+                        <TableCell className="font-medium">
+                          {entry.displayId || `JE-${new Date(entry.date).getFullYear()}-${entry.id.toString().padStart(4, '0')}`}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {entry.id}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-gray-400" />
                             {formatDate(entry.date)}
                           </div>
                         </TableCell>
-                        <TableCell>{entry.reference || '-'}</TableCell>
+                        <TableCell>{entry.referenceNumber || entry.reference || '-'}</TableCell>
                         <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
                         <TableCell>{entry.journalType || 'JE'}</TableCell>
                         <TableCell>{getStatusBadge(entry.status)}</TableCell>
