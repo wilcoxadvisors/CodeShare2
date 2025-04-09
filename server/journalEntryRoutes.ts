@@ -45,7 +45,7 @@ export function registerJournalEntryRoutes(app: Express) {
     
     try {
       console.log('DETAILED DEBUGGING - CREATE JOURNAL ENTRY');
-      console.log('Request body: ', JSON.stringify(req.body));
+      console.log('DEBUG BE Route: Received req.body:', JSON.stringify(req.body, null, 2));
       console.log('Request headers: ', JSON.stringify(req.headers));
       console.log('User ID from session: ', user.id);
       
@@ -93,6 +93,7 @@ export function registerJournalEntryRoutes(app: Express) {
       // Create journal entry with lines
       console.log('Calling journalEntryStorage.createJournalEntry with clientId:', journalEntryData.clientId);
       console.log('Calling journalEntryStorage.createJournalEntry with createdById:', journalEntryData.createdBy);
+      console.log('DEBUG BE Route: Data passed to storage:', JSON.stringify(journalEntryData, null, 2));
       
       const journalEntry = await journalEntryStorage.createJournalEntry(
         journalEntryData.clientId,
