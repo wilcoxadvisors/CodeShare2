@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
-import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
 import { z } from 'zod';
 import { validateForm } from '@/lib/validation';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { 
   Form,
   FormControl,
@@ -868,62 +882,113 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {lines.map((line, index) => (
               <tr key={index}>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Select 
-                    value={line.accountId} 
-                    onValueChange={(value) => handleLineChange(index, 'accountId', value)}
-                  >
-                    <SelectTrigger className={fieldErrors[`line_${index}_accountId`] ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select Account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Debug accounts being rendered */}
-                      <>{console.log('DEBUG Account Select - rendering accounts dropdown, available accounts:', accounts.length)}</>
-                      
-                      {accounts.length === 0 ? (
-                        // If no accounts available, show a placeholder item
-                        <SelectItem value="no-accounts" disabled>
-                          No accounts available
-                        </SelectItem>
-                      ) : (
-                        // If accounts are available, render them
-                        accounts
-                          .filter(account => account.active)
-                          .map(account => {
-                            // Debug log for account options
-                            {/* eslint-disable-next-line no-console */}
-                            (() => console.log('DEBUG Account Select - rendering account option:', account.accountCode, account.name))();
-                            return (
-                              <SelectItem key={account.id} value={account.id.toString()}>
-                                {account.accountCode} - {account.name}
-                              </SelectItem>
-                            );
-                          })
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    {/* Combobox for searchable account dropdown */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={`w-full justify-between ${fieldErrors[`line_${index}_accountId`] ? 'border-red-500' : ''}`}
+                        >
+                          {line.accountId && accounts.some(account => account.id.toString() === line.accountId)
+                            ? `${accounts.find(account => account.id.toString() === line.accountId)?.accountCode} - ${accounts.find(account => account.id.toString() === line.accountId)?.name}`
+                            : "Select account..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search account..." className="h-9" />
+                          <CommandEmpty>No account found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[300px] overflow-auto">
+                              {/* Create groups by account type */}
+                              {Array.from(new Set(accounts.filter(account => account.active).map(a => a.type))).sort().map(accountType => (
+                                <CommandGroup key={accountType} heading={accountType}>
+                                  {accounts
+                                    .filter(account => account.active && account.type === accountType)
+                                    .sort((a, b) => a.accountCode.localeCompare(b.accountCode))
+                                    .map(account => (
+                                      <CommandItem
+                                        key={account.id}
+                                        value={`${account.accountCode} ${account.name}`}
+                                        onSelect={() => {
+                                          handleLineChange(index, 'accountId', account.id.toString());
+                                        }}
+                                        className="cursor-pointer"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            line.accountId === account.id.toString() ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <span className="font-medium">{account.accountCode}</span> - {account.name}
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              ))}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   {fieldErrors[`line_${index}_accountId`] && (
                     <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_accountId`]}</p>
                   )}
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Select 
-                    value={line.entityCode} 
-                    onValueChange={(value) => handleLineChange(index, 'entityCode', value)}
-                  >
-                    <SelectTrigger className={fieldErrors[`line_${index}_entityCode`] ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select Entity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {entities
-                        .filter(entity => entity.active)
-                        .map(entity => (
-                        <SelectItem key={entity.id} value={entity.code}>
-                          {entity.code} - {entity.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    {/* Combobox for searchable entity dropdown */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={`w-full justify-between ${fieldErrors[`line_${index}_entityCode`] ? 'border-red-500' : ''}`}
+                        >
+                          {line.entityCode && entities.some(entity => entity.code === line.entityCode)
+                            ? `${line.entityCode} - ${entities.find(entity => entity.code === line.entityCode)?.name}`
+                            : "Select entity..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search entity..." className="h-9" />
+                          <CommandEmpty>No entity found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[200px] overflow-auto">
+                              {entities
+                                .filter(entity => entity.active)
+                                .sort((a, b) => a.code.localeCompare(b.code))
+                                .map(entity => (
+                                  <CommandItem
+                                    key={entity.id}
+                                    value={`${entity.code} ${entity.name}`}
+                                    onSelect={() => {
+                                      handleLineChange(index, 'entityCode', entity.code);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        line.entityCode === entity.code ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="font-medium">{entity.code}</span> - {entity.name}
+                                  </CommandItem>
+                                ))}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   {fieldErrors[`line_${index}_entityCode`] && (
                     <p className="text-red-500 text-sm mt-1">{fieldErrors[`line_${index}_entityCode`]}</p>
                   )}
