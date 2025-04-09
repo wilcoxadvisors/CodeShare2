@@ -147,6 +147,16 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   console.log('DEBUG JournalEntryForm - clientId:', clientId);
   console.log('DEBUG JournalEntryForm - entityId:', entityId);
   
+  // Debug logs for existingEntry
+  console.log('DEBUG JournalEntryForm - existingEntry:', existingEntry ? 'YES' : 'NO');
+  if (existingEntry) {
+    console.log('DEBUG JournalEntryForm - existingEntry ID:', existingEntry.id);
+    console.log('DEBUG JournalEntryForm - existingEntry status:', existingEntry.status);
+    console.log('DEBUG JournalEntryForm - existingEntry lines count:', existingEntry.lines?.length || 0);
+    console.log('DEBUG JournalEntryForm - existingEntry first line format:', 
+      existingEntry.lines?.[0] ? JSON.stringify(existingEntry.lines[0], null, 2) : 'No lines');
+  }
+  
   // Log the structure of account items, which helps diagnose render issues
   if (accounts?.length > 0) {
     console.log('DEBUG JournalEntryForm - account item structure:', 
@@ -290,7 +300,10 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
-      console.log('Journal entry update data:', JSON.stringify(data));
+      console.log('DEBUG: Journal entry update - ID:', existingEntry?.id);
+      console.log('DEBUG: Journal entry update - Status:', existingEntry?.status);
+      console.log('DEBUG: Journal entry update data:', JSON.stringify(data, null, 2));
+      
       return await apiRequest(
         `/api/journal-entries/${existingEntry?.id}`,
         {
@@ -299,7 +312,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         }
       );
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log('DEBUG: Journal entry update success response:', JSON.stringify(response, null, 2));
       toast({
         title: "Journal entry updated",
         description: "The journal entry has been updated successfully.",
@@ -309,9 +323,15 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       onSubmit();
     },
     onError: (error: any) => {
+      console.log('DEBUG: Journal entry update error:', error);
+      console.log('DEBUG: Journal entry update error response:', error.response?.data);
+      console.log('DEBUG: Journal entry update error status:', error.response?.status);
+      
       // Similar error handling as in createEntry
       if (error.response?.data?.errors) {
         const apiErrors = error.response.data.errors;
+        console.log('DEBUG: Journal entry update API errors:', JSON.stringify(apiErrors, null, 2));
+        
         const formattedErrors: Record<string, string> = {};
         
         apiErrors.forEach((err: any) => {
@@ -330,6 +350,15 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         
         setFieldErrors(formattedErrors);
         setFormError("Please correct the errors in the form.");
+      } else if (error.response?.data?.message) {
+        console.log('DEBUG: Journal entry update error message:', error.response.data.message);
+        
+        toast({
+          title: "Error",
+          description: error.response.data.message,
+          variant: "destructive",
+        });
+        setFormError(error.response.data.message);
       } else {
         toast({
           title: "Error",

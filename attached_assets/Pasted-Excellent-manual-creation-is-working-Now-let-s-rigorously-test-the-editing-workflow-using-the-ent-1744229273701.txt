@@ -1,0 +1,39 @@
+Excellent, manual creation is working. Now, let's rigorously test the editing workflow using the entry we just created (ID 86).
+
+Objective: Verify that an existing draft journal entry can be loaded, modified, saved, and that attempting to edit a posted entry is correctly blocked.
+
+Steps:
+
+Navigate & Load Data:
+
+Programmatically (or by guiding the user) navigate to the edit page for journal entry ID 86 (e.g., /journal-entries/86). This should load client/src/features/journal-entries/pages/NewJournalEntry.tsx in edit mode.
+Trace the useEditJournalEntry hook in client/src/features/journal-entries/hooks/useEditJournalEntry.ts:
+Confirm it fetches data from /api/journal-entries/86.
+Log the raw API response and the processedEntry after line format conversion (type/amount to debit/credit). Verify the conversion is correct and the form receives data in debit/credit format.
+Verify the form (JournalEntryForm.tsx) populates correctly with the fetched data (Date: 2025-04-08, Description: "Test Create JE - Manual", Ref: "Manual001", and the two lines with accounts 7890/7893 and amounts 150).
+Modify Data:
+
+Change the Description to: Test Edit JE - Manual Updated.
+Change the Debit amount on the first line (Account 7890) from 150 to 175.
+Change the Credit amount on the second line (Account 7893) from 150 to 175.
+Observe: Confirm the fields update. Do the Totals update to Debit 175.00, Credit 175.00, and Status "Balanced"? Check the console.
+Save Changes:
+
+Click the 'Save Journal Entry' (or 'Update') button.
+Inspect the API call:
+Browser Network Tab: Find the PUT request to /api/journal-entries/86. Record the Request Payload (confirm lines are transformed back to type/amount format with amounts 175) and the Response Status Code and Response Body.
+Browser Console: Check the DEBUG: API Payload to be sent: log. Does it show the updated description and line amounts (175)? Note any errors/logs from the updateEntry mutation.
+Server Console: Check logs for the PUT request. Did backend validation (updateJournalEntrySchema) pass? Did the database update (journalEntryStorage.updateJournalEntryWithLines) succeed?
+Verify Backend Restriction (POSTED status):
+
+Post the Entry: Use the UI (if available) or simulate an API call (POST /api/journal-entries/86/post) to change the status of entry 86 from 'draft' to 'posted'. Confirm this succeeds (e.g., 200 OK response).
+Attempt to Edit Again: Navigate back to the edit page for entry 86 (/journal-entries/86).
+Try to change the Description again (e.g., to Test Edit JE - Attempt Post-Save).
+Click 'Save Journal Entry'.
+Observe: The save should fail because the entry is posted. Verify:
+The API call (PUT /api/journal-entries/86) returns an error status (likely 400 Bad Request).
+The API response body contains an error message indicating posted entries cannot be updated (check journalEntryRoutes.ts logic).
+The frontend UI displays an error toast/message to the user.
+Check server logs for confirmation of the failed attempt and the reason.
+Report: Detail the outcome of each step, focusing on the API payload/response during the save attempt (Step 3) and the results of trying to edit the posted entry (Step 4)."
+
