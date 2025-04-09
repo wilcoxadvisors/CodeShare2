@@ -90,15 +90,24 @@ export function registerJournalEntryRoutes(app: Express) {
         return res.status(400).json({ message: "Journal entry must have at least one line" });
       }
       
-      // Create journal entry with lines
-      console.log('Calling journalEntryStorage.createJournalEntry with clientId:', journalEntryData.clientId);
-      console.log('Calling journalEntryStorage.createJournalEntry with createdById:', journalEntryData.createdBy);
-      console.log('DEBUG BE Route: Data passed to storage:', JSON.stringify(journalEntryData, null, 2));
+      // Check if the status is 'posted' - special handling required
+      const isPostedEntry = journalEntryData.status === 'posted';
       
+      // If the status is 'posted', temporarily set it to 'draft' for creation
+      const modifiedEntryData = { 
+        ...journalEntryData,
+        status: isPostedEntry ? 'draft' : journalEntryData.status 
+      };
+      
+      console.log('Calling journalEntryStorage.createJournalEntry with clientId:', modifiedEntryData.clientId);
+      console.log('Calling journalEntryStorage.createJournalEntry with createdById:', modifiedEntryData.createdBy);
+      console.log('DEBUG BE Route: Data passed to storage:', JSON.stringify(modifiedEntryData, null, 2));
+      
+      // Create the journal entry with 'draft' status if it was originally 'posted'
       const journalEntry = await journalEntryStorage.createJournalEntry(
-        journalEntryData.clientId,
-        journalEntryData.createdBy,
-        journalEntryData
+        modifiedEntryData.clientId,
+        modifiedEntryData.createdBy,
+        modifiedEntryData
       );
       
       // Add lines to the journal entry
@@ -106,8 +115,28 @@ export function registerJournalEntryRoutes(app: Express) {
         for (const line of lines) {
           await journalEntryStorage.createJournalEntryLine({
             ...line,
-            journalEntryId: journalEntry.id
+            journalEntryId: journalEntry.id,
+            // Ensure amount is a string as required by the storage layer
+            amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount
           });
+        }
+      }
+      
+      // If the original status was 'posted', now update the entry to 'posted'
+      if (isPostedEntry) {
+        console.log('Updating entry status to posted after adding lines');
+        await journalEntryStorage.updateJournalEntry(journalEntry.id, { 
+          status: 'posted', 
+          postedBy: journalEntryData.createdBy,
+          postedAt: new Date()
+        });
+        
+        // Get the updated entry to return
+        const updatedEntry = await journalEntryStorage.getJournalEntry(journalEntry.id);
+        if (updatedEntry) {
+          journalEntry.status = updatedEntry.status;
+          journalEntry.postedBy = updatedEntry.postedBy;
+          journalEntry.postedAt = updatedEntry.postedAt;
         }
       }
       
