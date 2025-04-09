@@ -650,14 +650,28 @@ function ChartOfAccounts() {
   // Custom hook for updating an account
   const useUpdateAccount = () => {
     return useMutation({
-      mutationFn: async (data: AccountData & { clientId: number, id: number }) => {
+      mutationFn: async (data: AccountData & { clientId: number, id: number, hasTransactions?: boolean }) => {
         console.log("DEBUG: useUpdateAccount - Mutate called with:", JSON.stringify(data, null, 2));
+        
+        // SECURITY: Filter out accountCode and type fields before sending to server
+        // This ensures these restricted fields can never be sent even if they somehow
+        // made it into the data object
+        const { accountCode, type, ...filteredData } = data;
+        
+        // Only include these fields if explicitly requested via the hasTransactions flag
+        // This way we never accidentally send these fields when they shouldn't be updated
+        const dataToSend = data.hasTransactions === false 
+          ? { ...filteredData, accountCode, type } // Only include when explicitly allowed
+          : filteredData; // Otherwise exclude them
+        
+        console.log("DEBUG: useUpdateAccount - Filtered data to send:", JSON.stringify(dataToSend, null, 2));
+        
         try {
           const response = await apiRequest(
             `/api/clients/${data.clientId}/accounts/${data.id}`, 
             {
               method: 'PUT',
-              data
+              data: dataToSend
             }
           );
           console.log("DEBUG: useUpdateAccount - API response:", response);
@@ -972,9 +986,15 @@ function ChartOfAccounts() {
                 // Critical debug log as requested
                 console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(updateData, null, 2));
                 
+                // Add hasTransactions flag to ensure our mutation function handles it properly
+                const updateDataWithFlags = {
+                  ...updateData,
+                  hasTransactions // Pass the transactions flag to our mutation function
+                };
+                
                 // Cast to any to bypass TypeScript's requirement for all AccountData fields
                 // This is safe because we know the server only processes the fields we send
-                updateAccount.mutate(updateData as any);
+                updateAccount.mutate(updateDataWithFlags as any);
               })
               .catch(txCheckError => {
                 console.error('DEBUG CoA Update: Error checking if account has transactions:', txCheckError);
@@ -1024,9 +1044,15 @@ function ChartOfAccounts() {
                 // Critical debug log as requested
                 console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(safeUpdateData, null, 2));
                 
+                // Add hasTransactions flag = true as a safe fallback
+                const safeUpdateDataWithFlags = {
+                  ...safeUpdateData,
+                  hasTransactions: true // Assume account has transactions to be safe in error case
+                };
+                
                 // Cast to any to bypass TypeScript's requirement for all AccountData fields
                 // This is safe because we know the server only processes the fields we send
-                updateAccount.mutate(safeUpdateData as any);
+                updateAccount.mutate(safeUpdateDataWithFlags as any);
               });
           })
           .catch(error => {
