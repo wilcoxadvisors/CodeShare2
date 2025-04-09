@@ -125,12 +125,40 @@ export function registerJournalEntryRoutes(app: Express) {
             continue;
           }
           
-          // Make sure the line has an amount (either debit or credit)
-          const debitValue = typeof line.debit === 'string' ? parseFloat(line.debit) : (line.debit || 0);
-          const creditValue = typeof line.credit === 'string' ? parseFloat(line.credit) : (line.credit || 0);
+          // If the line already has type and amount fields, use them directly
+          if (line.type && line.amount) {
+            console.log('DEBUG: Line already has type and amount:', line.type, line.amount);
+            
+            // Create the journal entry line
+            await journalEntryStorage.createJournalEntryLine({
+              journalEntryId: journalEntry.id,
+              accountId: parseInt(line.accountId.toString()),
+              type: line.type,
+              amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount,
+              description: line.description || '',
+              entityCode: line.entityCode || ''
+            });
+            
+            continue;
+          }
+          
+          // If we got here, we need to check for debit/credit fields and convert
+          console.log('DEBUG: Checking for debit/credit fields');
+          
+          // Parse debit/credit values, handling string inputs properly
+          // Using any type since the line can have debit/credit fields from UI
+          const anyLine = line as any;
+          
+          const debitValue = anyLine.debit !== undefined && anyLine.debit !== null ? 
+            (typeof anyLine.debit === 'string' ? parseFloat(anyLine.debit) : anyLine.debit) : 0;
+            
+          const creditValue = anyLine.credit !== undefined && anyLine.credit !== null ? 
+            (typeof anyLine.credit === 'string' ? parseFloat(anyLine.credit) : anyLine.credit) : 0;
+          
+          console.log('DEBUG: Debit value:', debitValue, 'Credit value:', creditValue);
           
           if (debitValue === 0 && creditValue === 0) {
-            console.log('DEBUG: Line has zero amount, skipping:', JSON.stringify(line));
+            console.log('DEBUG: Line has zero amount, skipping');
             continue;
           }
           
@@ -140,6 +168,7 @@ export function registerJournalEntryRoutes(app: Express) {
           
           console.log('DEBUG: Adding line with', type, 'amount', amount, 'to account', line.accountId);
           
+          // Create the journal entry line
           await journalEntryStorage.createJournalEntryLine({
             journalEntryId: journalEntry.id,
             accountId: parseInt(line.accountId.toString()),
