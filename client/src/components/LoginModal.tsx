@@ -43,6 +43,7 @@ export default function LoginModal() {
       return;
     }
     
+    // Use SPA-style login via the auth context
     const success = await login(formData.username, formData.password);
     
     if (success) {
@@ -51,6 +52,7 @@ export default function LoginModal() {
         description: "Logged in successfully",
         variant: "default"
       });
+      // Close the modal and navigate via SPA navigation
       setShowLoginModal(false);
       setLocation('/dashboard');
     } else {

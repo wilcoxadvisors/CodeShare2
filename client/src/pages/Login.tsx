@@ -62,6 +62,7 @@ function Login() {
     console.log('🔑 Password length:', formData.password.length);
     
     try {
+      // Use the login function from the AuthContext
       const success = await login(formData.username, formData.password);
       
       console.log('🔑 Login result:', success ? 'Success' : 'Failed');
@@ -73,11 +74,8 @@ function Login() {
           variant: "default"
         });
         
-        // Add a forced redirect after a short delay
-        setTimeout(() => {
-          console.log('🔑 Forcing redirect to dashboard...');
-          window.location.href = '/dashboard';
-        }, 500);
+        // Use the SPA navigation instead of page refresh
+        setLocation('/dashboard');
       } else {
         toast({
           title: "Authentication Error",

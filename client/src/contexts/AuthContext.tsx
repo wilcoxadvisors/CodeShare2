@@ -42,35 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔒 Debug session ID found:', debugSessionID);
         }
         
-        // Use fetch with credentials explicitly included
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-          credentials: 'include' // This is crucial for session cookies
-        });
-        
-        console.log('🔒 Auth check response status:', response.status);
-        
-        if (response.ok) {
+        try {
+          // Use apiRequest for consistent SPA handling
+          const response = await apiRequest('/api/auth/me');
           const data = await response.json();
+          
           console.log('🔒 User authenticated:', data);
           setUser(data.user);
           
-          // If we're on the login page and already authenticated, redirect to dashboard
+          // If we're on the login page and already authenticated, SPA navigation to dashboard
           if (window.location.pathname === '/login') {
-            console.log('🔒 Already authenticated, redirecting to dashboard...');
-            window.location.href = '/dashboard';
+            console.log('🔒 Already authenticated, navigating to dashboard...');
+            // Using SPA navigation instead of full page refresh
+            window.history.pushState({}, '', '/dashboard');
+            window.dispatchEvent(new PopStateEvent('popstate'));
           }
-        } else {
-          // Check response body for error details
-          try {
-            const errorData = await response.text();
-            console.log('🔒 Auth check error response:', errorData);
-          } catch (e) {
-            console.log('🔒 Could not read error response');
-          }
+        } catch (error) {
+          // Handle authentication failure
+          console.log('🔒 Auth check failed:', error);
           
           // Check if we're on the home page, which allows guest access
           const isHomePage = window.location.pathname === '/';
@@ -88,10 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: 'guest'
             });
           } else if (!isLoginPage) {
-            // For other pages (except login), redirect to login
-            console.log('🔒 Not authenticated, redirecting to login...');
+            // For other pages (except login), SPA navigate to login
+            console.log('🔒 Not authenticated, navigating to login...');
             setUser(null);
-            window.location.href = '/login';
+            // Using SPA navigation instead of full page refresh
+            window.history.pushState({}, '', '/login');
+            window.dispatchEvent(new PopStateEvent('popstate'));
           } else {
             // On login page, just set user to null
             setUser(null);
@@ -102,10 +93,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('🔒 Failed to check authentication status:', error);
         setUser(null);
         
-        // On error, redirect to login page if not already there
+        // On error, navigate to login page if not already there
         if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-          console.log('🔒 Auth check error, redirecting to login...');
-          window.location.href = '/login';
+          console.log('🔒 Auth check error, navigating to login...');
+          // Using SPA navigation instead of full page refresh
+          window.history.pushState({}, '', '/login');
+          window.dispatchEvent(new PopStateEvent('popstate'));
         }
       } finally {
         setIsLoading(false);
@@ -120,69 +113,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log('🔐 Login attempt with:', username);
       
-      // Use fetch directly with credentials included to properly handle session cookies
-      const response = await fetch('/api/auth/login', {
+      // Use apiRequest with JSON approach instead of form submission for SPA-friendly login
+      const response = await apiRequest('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-        credentials: 'include' // This is crucial for session cookies
+        data: { username, password },
       });
       
-      // Log response status
-      console.log('🔐 Login response status:', response.status);
-      
-      // Log only essential headers without iterating through the Headers object
-      const cookieHeader = response.headers.get('set-cookie');
-      console.log('🔐 Set-Cookie header:', cookieHeader || 'none');
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🔐 Login response error:', errorText);
-        throw new Error(`Login failed with status ${response.status}`);
-      }
-      
+      // Get JSON response
       const data = await response.json();
-      console.log('🔐 Login successful, user data:', data);
-      console.log('🔐 Session ID from response:', data.sessionID);
+      console.log('🔐 Login response:', data);
       
-      // Store the session ID in localStorage for debug purposes
-      localStorage.setItem('debug_sessionID', data.sessionID || 'unknown');
+      // Immediately fetch user data to confirm login worked
+      const meResponse = await apiRequest('/api/auth/me');
+      const userData = await meResponse.json();
       
-      // Set the user state
-      setUser(data.user);
+      console.log('🔐 Auth check after login:', userData);
       
-      // Verify session after login with detailed logs
-      setTimeout(async () => {
-        try {
-          console.log('🔐 Verifying session after login...');
-          const sessionCheck = await fetch('/api/auth/me', {
-            credentials: 'include'
-          });
-          
-          console.log('🔐 Session check status:', sessionCheck.status);
-          
-          if (sessionCheck.ok) {
-            const sessionData = await sessionCheck.json();
-            console.log('🔐 Session check successful:', sessionData);
-            
-            // If the session check returns a different user than what we set, update it
-            if (sessionData.user && sessionData.user.id !== user?.id) {
-              console.log('🔐 Updating user data from session check');
-              setUser(sessionData.user);
-            }
-          } else {
-            console.error('🔐 Session check failed with status:', sessionCheck.status);
-            const errorText = await sessionCheck.text();
-            console.error('🔐 Session check error details:', errorText);
-          }
-        } catch (err) {
-          console.error('🔐 Session check error:', err);
-        }
-      }, 500);
-      
-      return true;
+      if (userData && userData.user) {
+        // Set user from the authenticated session
+        setUser(userData.user);
+        console.log('🔐 Login successful, user:', userData.user);
+        return true;
+      } else {
+        console.error('🔐 Login succeeded but session verification failed');
+        return false;
+      }
     } catch (error) {
       console.error('🔐 Login failed:', error);
       return false;
@@ -194,16 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      // Use fetch directly with credentials included to properly handle session cookies
-      const response = await fetch('/api/auth/logout', {
+      // Use apiRequest for consistent SPA handling
+      await apiRequest('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include' // This is crucial for session cookies
       });
       
-      if (!response.ok) {
-        throw new Error('Logout failed');
-      }
-      
+      // Clear the user state
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
