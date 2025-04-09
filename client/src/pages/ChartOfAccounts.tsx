@@ -877,65 +877,141 @@ function ChartOfAccounts() {
           .then((originalAccountData: any) => {
             console.log('DEBUG CoA Update: Original account data:', JSON.stringify(originalAccountData, null, 2));
             
-            // Create a base update object with required fields
-            const baseUpdateData = {
-              id: submitData.id as number,
-              clientId: clientIdToUse,
-            };
-            
-            // Only include fields that were actually changed
-            const changedFields: Record<string, any> = {};
-            
-            // Check each field to see if it was modified
-            if (submitData.name !== originalAccountData.name) {
-              changedFields.name = submitData.name;
-            }
-            
-            if (submitData.active !== originalAccountData.active) {
-              changedFields.active = submitData.active;
-            }
-            
-            if (submitData.description !== originalAccountData.description) {
-              changedFields.description = submitData.description;
-            }
-            
-            if (submitData.parentId !== originalAccountData.parentId) {
-              changedFields.parentId = submitData.parentId;
-            }
-            
-            // These fields are more restrictive, only include them if they were changed
-            // and the account doesn't have transactions
-            if (submitData.accountCode !== originalAccountData.accountCode) {
-              changedFields.accountCode = submitData.accountCode;
-            }
-            
-            if (submitData.type !== originalAccountData.type) {
-              changedFields.type = submitData.type;
-            }
-            
-            if (submitData.subtype !== originalAccountData.subtype) {
-              changedFields.subtype = submitData.subtype;
-            }
-            
-            if (submitData.isSubledger !== originalAccountData.isSubledger) {
-              changedFields.isSubledger = submitData.isSubledger;
-            }
-            
-            if (submitData.subledgerType !== originalAccountData.subledgerType) {
-              changedFields.subledgerType = submitData.subledgerType;
-            }
-            
-            // Combine base fields with changed fields
-            const updateData = {
-              ...baseUpdateData,
-              ...changedFields
-            };
-            
-            // Add detailed logging for debugging the account update payload
-            console.log('DEBUG CoA Update: Changed fields only:', JSON.stringify(changedFields, null, 2));
-            console.log('DEBUG CoA Update: Final payload sent to API:', JSON.stringify(updateData, null, 2));
-            
-            updateAccount.mutate(updateData);
+            // First check if the account has transactions
+            apiRequest(`/api/clients/${clientIdToUse}/accounts/transactions-check/${submitData.id}`)
+              .then((transactionCheckResult: any) => {
+                console.log('DEBUG CoA Update: Transaction check result:', JSON.stringify(transactionCheckResult, null, 2));
+                
+                const hasTransactions = transactionCheckResult && transactionCheckResult.hasTransactions;
+                
+                // Create a base update object with required fields
+                const baseUpdateData = {
+                  id: submitData.id as number,
+                  clientId: clientIdToUse,
+                };
+                
+                // Only include fields that were actually changed
+                const changedFields: Record<string, any> = {};
+                
+                // Check each field to see if it was modified
+                if (submitData.name !== originalAccountData.name) {
+                  changedFields.name = submitData.name;
+                }
+                
+                if (submitData.active !== originalAccountData.active) {
+                  changedFields.active = submitData.active;
+                }
+                
+                if (submitData.description !== originalAccountData.description) {
+                  changedFields.description = submitData.description;
+                }
+                
+                if (submitData.parentId !== originalAccountData.parentId) {
+                  changedFields.parentId = submitData.parentId;
+                }
+                
+                // These fields are more restrictive, only include them if:
+                // 1. They were actually changed
+                // 2. The account doesn't have transactions
+                if (submitData.accountCode !== originalAccountData.accountCode) {
+                  if (!hasTransactions) {
+                    changedFields.accountCode = submitData.accountCode;
+                  } else {
+                    console.log('DEBUG CoA Update: Skipping accountCode update - account has transactions');
+                    toast({
+                      title: "Account Code Not Updated",
+                      description: "Account Code can't be changed because this account has transactions.",
+                    });
+                  }
+                }
+                
+                if (submitData.type !== originalAccountData.type) {
+                  if (!hasTransactions) {
+                    changedFields.type = submitData.type;
+                  } else {
+                    console.log('DEBUG CoA Update: Skipping type update - account has transactions');
+                    toast({
+                      title: "Account Type Not Updated",
+                      description: "Account Type can't be changed because this account has transactions.",
+                    });
+                  }
+                }
+                
+                if (submitData.subtype !== originalAccountData.subtype) {
+                  changedFields.subtype = submitData.subtype;
+                }
+                
+                if (submitData.isSubledger !== originalAccountData.isSubledger) {
+                  changedFields.isSubledger = submitData.isSubledger;
+                }
+                
+                if (submitData.subledgerType !== originalAccountData.subledgerType) {
+                  changedFields.subledgerType = submitData.subledgerType;
+                }
+                
+                // Combine base fields with changed fields
+                const updateData = {
+                  ...baseUpdateData,
+                  ...changedFields
+                };
+                
+                // Add detailed logging for debugging the account update payload
+                console.log('DEBUG CoA Update: Changed fields only:', JSON.stringify(changedFields, null, 2));
+                console.log('DEBUG CoA Update: Final payload sent to API:', JSON.stringify(updateData, null, 2));
+                
+                if (Object.keys(changedFields).length === 0) {
+                  console.log('DEBUG CoA Update: No fields have changed, skipping update');
+                  toast({
+                    title: "No Changes",
+                    description: "No fields have been changed to update.",
+                  });
+                  setShowAccountForm(false);
+                  return;
+                }
+                
+                // Ensure necessary fields are included for TypeScript
+                const finalUpdateData: AccountData & { clientId: number, id: number } = {
+                  // Include the required fields for the type
+                  id: submitData.id as number,
+                  clientId: clientIdToUse,
+                  accountCode: originalAccountData.accountCode,
+                  name: originalAccountData.name,
+                  type: originalAccountData.type as AccountType,
+                  subtype: originalAccountData.subtype || "",
+                  isSubledger: originalAccountData.isSubledger || false,
+                  subledgerType: originalAccountData.subledgerType || "",
+                  active: originalAccountData.active,
+                  description: originalAccountData.description || "",
+                  parentId: originalAccountData.parentId,
+                  // Then override with the changed fields
+                  ...changedFields
+                };
+                
+                updateAccount.mutate(finalUpdateData);
+              })
+              .catch(txCheckError => {
+                console.error('DEBUG CoA Update: Error checking if account has transactions:', txCheckError);
+                // Even if the transaction check fails, try to do the update with the non-restricted fields
+                const safeUpdateData: AccountData & { clientId: number, id: number } = {
+                  // Required fields from the interface
+                  id: submitData.id as number,
+                  clientId: clientIdToUse,
+                  accountCode: originalAccountData.accountCode,
+                  name: submitData.name,
+                  type: originalAccountData.type as AccountType,
+                  subtype: submitData.subtype,
+                  isSubledger: submitData.isSubledger,
+                  subledgerType: submitData.subledgerType,
+                  active: submitData.active,
+                  description: submitData.description,
+                  parentId: submitData.parentId
+                  // Intentionally use original accountCode and type to be safe
+                };
+                
+                console.log('DEBUG CoA Update: Using safe update data due to transaction check error:', 
+                           JSON.stringify(safeUpdateData, null, 2));
+                updateAccount.mutate(safeUpdateData);
+              });
           })
           .catch(error => {
             console.error('DEBUG CoA Update: Error fetching original account data:', error);
