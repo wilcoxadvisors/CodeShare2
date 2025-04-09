@@ -909,24 +909,52 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                                   {accounts
                                     .filter(account => account.active && account.type === accountType)
                                     .sort((a, b) => a.accountCode.localeCompare(b.accountCode))
-                                    .map(account => (
-                                      <CommandItem
-                                        key={account.id}
-                                        value={`${account.accountCode} ${account.name}`}
-                                        onSelect={() => {
-                                          handleLineChange(index, 'accountId', account.id.toString());
-                                        }}
-                                        className="cursor-pointer"
-                                      >
-                                        <Check
+                                    .map(account => {
+                                      // Determine if this is a parent account (has children accounts)
+                                      const isParent = accounts.some(childAccount => 
+                                        childAccount.parentId === account.id
+                                      );
+                                      
+                                      // Determine nesting level by checking if it has a parent
+                                      const hasParent = account.parentId !== null && account.parentId !== undefined;
+                                      
+                                      return (
+                                        <CommandItem
+                                          key={account.id}
+                                          value={`${account.accountCode} ${account.name}`}
+                                          onSelect={() => {
+                                            // Only allow selection of non-parent accounts
+                                            if (!isParent) {
+                                              handleLineChange(index, 'accountId', account.id.toString());
+                                            }
+                                          }}
                                           className={cn(
-                                            "mr-2 h-4 w-4",
-                                            line.accountId === account.id.toString() ? "opacity-100" : "opacity-0"
+                                            "cursor-pointer",
+                                            isParent ? "font-semibold opacity-70" : "",
+                                            hasParent ? "pl-6" : ""
                                           )}
-                                        />
-                                        <span className="font-medium">{account.accountCode}</span> - {account.name}
-                                      </CommandItem>
-                                    ))}
+                                          disabled={isParent}
+                                        >
+                                          {isParent ? (
+                                            <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" />
+                                          ) : hasParent ? (
+                                            <span className="w-4 h-4 inline-block mr-2"></span>
+                                          ) : (
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                line.accountId === account.id.toString() ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                          )}
+                                          <span className={cn(
+                                            isParent ? "font-medium" : hasParent ? "" : "font-medium"
+                                          )}>
+                                            {account.accountCode}
+                                          </span> - {account.name}
+                                        </CommandItem>
+                                      );
+                                    })}
                                 </CommandGroup>
                               ))}
                             </CommandList>
