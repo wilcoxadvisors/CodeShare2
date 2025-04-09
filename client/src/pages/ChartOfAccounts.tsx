@@ -916,28 +916,22 @@ function ChartOfAccounts() {
                 // These fields are more restrictive, only include them if:
                 // 1. They were actually changed
                 // 2. The account doesn't have transactions
-                if (submitData.accountCode !== originalAccountData.accountCode) {
-                  if (!hasTransactions) {
-                    changedFields.accountCode = submitData.accountCode;
-                  } else {
-                    console.log('DEBUG CoA Update: Skipping accountCode update - account has transactions');
-                    toast({
-                      title: "Account Code Not Updated",
-                      description: "Account Code can't be changed because this account has transactions.",
-                    });
-                  }
-                }
                 
-                if (submitData.type !== originalAccountData.type) {
-                  if (!hasTransactions) {
-                    changedFields.type = submitData.type;
-                  } else {
-                    console.log('DEBUG CoA Update: Skipping type update - account has transactions');
-                    toast({
-                      title: "Account Type Not Updated",
-                      description: "Account Type can't be changed because this account has transactions.",
-                    });
+                // CRITICAL: Accounts with transactions can NEVER update accountCode or type
+                // Even if they somehow appear to have changed (which they shouldn't when fields are disabled)
+                if (!hasTransactions) {
+                  // Only check if these changed if the account doesn't have transactions
+                  if (submitData.accountCode !== originalAccountData.accountCode) {
+                    changedFields.accountCode = submitData.accountCode;
                   }
+                  
+                  if (submitData.type !== originalAccountData.type) {
+                    changedFields.type = submitData.type;
+                  }
+                } else {
+                  // For accounts with transactions, NEVER include accountCode and type in the update
+                  // Not only should we exclude them when they change, we should ensure they're NEVER in the payload
+                  console.log('DEBUG CoA Update: Account has transactions - EXCLUDING accountCode and type from update payload');
                 }
                 
                 if (submitData.subtype !== originalAccountData.subtype) {
@@ -977,7 +971,10 @@ function ChartOfAccounts() {
                 
                 // Critical debug log as requested
                 console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(updateData, null, 2));
-                updateAccount.mutate(updateData as AccountData & { clientId: number, id: number });
+                
+                // Cast to any to bypass TypeScript's requirement for all AccountData fields
+                // This is safe because we know the server only processes the fields we send
+                updateAccount.mutate(updateData as any);
               })
               .catch(txCheckError => {
                 console.error('DEBUG CoA Update: Error checking if account has transactions:', txCheckError);
@@ -1026,7 +1023,10 @@ function ChartOfAccounts() {
                            JSON.stringify(safeUpdateData, null, 2));
                 // Critical debug log as requested
                 console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(safeUpdateData, null, 2));
-                updateAccount.mutate(safeUpdateData as AccountData & { clientId: number, id: number });
+                
+                // Cast to any to bypass TypeScript's requirement for all AccountData fields
+                // This is safe because we know the server only processes the fields we send
+                updateAccount.mutate(safeUpdateData as any);
               });
           })
           .catch(error => {
