@@ -929,11 +929,58 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                               {accounts
                                 .filter(account => account.active)
                                 // Sort accounts by code while preserving parent-child relationships
+                                // Create a hierarchical display order to ensure parent-child relationships
+                                // are maintained and children appear directly under their parents
                                 .sort((a, b) => {
-                                  // First sort by account code (numeric order)
+                                  // First check if these are the same account types
+                                  if (a.type !== b.type) {
+                                    return a.type.localeCompare(b.type);
+                                  }
+                                  
+                                  // Get parent status
+                                  const aIsParent = accounts.some(acc => acc.parentId === a.id);
+                                  const bIsParent = accounts.some(acc => acc.parentId === b.id);
+                                  
+                                  // Get parent IDs (0 if no parent)
+                                  const aParentId = a.parentId || 0;
+                                  const bParentId = b.parentId || 0;
+                                  
+                                  // Case 1: Same parent (including both being top level with parentId=0)
+                                  if (aParentId === bParentId) {
+                                    // First numeric sort by account code
+                                    const aCode = parseInt(a.accountCode.replace(/\D/g, '')) || 0;
+                                    const bCode = parseInt(b.accountCode.replace(/\D/g, '')) || 0;
+                                    return aCode - bCode;
+                                  }
+                                  
+                                  // Case 2: Different parents
+                                  
+                                  // If one is a direct child of the other, the parent should come first
+                                  if (aParentId === b.id) return 1;  // B is A's parent, so B comes first
+                                  if (bParentId === a.id) return -1; // A is B's parent, so A comes first
+                                  
+                                  // If they're siblings with different parents, sort by parent account code
+                                  if (aParentId > 0 && bParentId > 0) {
+                                    const aParent = accounts.find(acc => acc.id === aParentId);
+                                    const bParent = accounts.find(acc => acc.id === bParentId);
+                                    if (aParent && bParent) {
+                                      // If the parents are different, sort by parent code
+                                      if (aParent.id !== bParent.id) {
+                                        const aParentCode = parseInt(aParent.accountCode.replace(/\D/g, '')) || 0;
+                                        const bParentCode = parseInt(bParent.accountCode.replace(/\D/g, '')) || 0;
+                                        return aParentCode - bParentCode;
+                                      }
+                                    }
+                                  }
+                                  
+                                  // If one is top level and the other isn't, top level comes first
+                                  if (aParentId === 0 && bParentId !== 0) return -1;
+                                  if (aParentId !== 0 && bParentId === 0) return 1;
+                                  
+                                  // Fallback to account code
                                   const aCode = parseInt(a.accountCode.replace(/\D/g, '')) || 0;
                                   const bCode = parseInt(b.accountCode.replace(/\D/g, '')) || 0;
-                                  return aCode - bCode; // Numeric comparison for account codes
+                                  return aCode - bCode;
                                 })
                                 .map((account) => {
                                   // Determine if this is a parent account (has children accounts)
