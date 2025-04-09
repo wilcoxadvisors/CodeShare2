@@ -93,6 +93,8 @@ function ChartOfAccounts() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string, accountCode: string} | null>(null);
+  // Track if the account has transactions - this affects which fields can be edited
+  const [accountHasTransactions, setAccountHasTransactions] = useState<boolean>(false);
   const [showInactiveAccounts, setShowInactiveAccounts] = useState(true);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
@@ -883,6 +885,7 @@ function ChartOfAccounts() {
                 console.log('DEBUG CoA Update: Transaction check result:', JSON.stringify(transactionCheckResult, null, 2));
                 
                 const hasTransactions = transactionCheckResult && transactionCheckResult.hasTransactions;
+                setAccountHasTransactions(hasTransactions);
                 
                 // Create a base update object with required fields
                 const baseUpdateData = {
@@ -2583,6 +2586,23 @@ function ChartOfAccounts() {
             <DialogTitle>{isEditMode ? "Edit Account" : "Create New Account"}</DialogTitle>
           </DialogHeader>
           
+          {isEditMode && accountHasTransactions && (
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-4">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-800">
+                    This account has transactions
+                  </h3>
+                  <p className="mt-1 text-sm text-amber-700">
+                    Account Code and Account Type cannot be modified for accounts with transaction history.
+                    Other fields can still be updated.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit}>
             <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
               <TabsList className="grid w-full grid-cols-2">
@@ -2598,6 +2618,7 @@ function ChartOfAccounts() {
                       <Select 
                         value={accountData.type} 
                         onValueChange={(value) => handleSelectChange("type", value)}
+                        disabled={isEditMode && accountHasTransactions}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
@@ -2610,6 +2631,11 @@ function ChartOfAccounts() {
                           <SelectItem value={AccountType.EXPENSE}>Expense</SelectItem>
                         </SelectContent>
                       </Select>
+                      {isEditMode && accountHasTransactions && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Cannot change account type for accounts with transactions.
+                        </p>
+                      )}
                       {accountCodePrefix && (
                         <p className="text-xs text-gray-500 mt-1">
                           Type prefix: {accountCodePrefix}xxx
@@ -2686,7 +2712,13 @@ function ChartOfAccounts() {
                         value={accountData.accountCode}
                         onChange={handleCodeManualChange}
                         required
+                        disabled={isEditMode && accountHasTransactions}
                       />
+                      {isEditMode && accountHasTransactions && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Cannot change account code for accounts with transactions.
+                        </p>
+                      )}
                       {accountCodePrefix && (
                         <p className="text-xs text-gray-500 mt-1">
                           {accountCodePrefix && !accountData.accountCode.startsWith(accountCodePrefix) && 
