@@ -170,6 +170,8 @@ const FormSchema = z.object({
  * @param props - The component props
  */
 function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
+  // Properly initialize the hook at the component level, not in the event handler
+  const { postJournalEntry } = useJournalEntry();
   console.log('DEBUG JournalEntryForm - received accounts:', accounts);
   console.log('DEBUG JournalEntryForm - accounts length:', accounts?.length || 0);
   console.log('DEBUG JournalEntryForm - accounts first item:', accounts?.length > 0 ? accounts[0] : 'no accounts');
@@ -228,8 +230,17 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
-    const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-    const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+    // First remove commas from numeric values
+    const totalDebit = lines.reduce((sum, line) => {
+      const debitValue = parseFloat(unformatNumber(line.debit)) || 0;
+      return sum + debitValue;
+    }, 0);
+    
+    const totalCredit = lines.reduce((sum, line) => {
+      const creditValue = parseFloat(unformatNumber(line.credit)) || 0;
+      return sum + creditValue;
+    }, 0);
+    
     const difference = Math.abs(totalDebit - totalCredit);
     const isBalanced = difference < 0.001;
     
@@ -244,8 +255,14 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     
     return uniqueEntityCodes.map(code => {
       const entityLines = lines.filter(line => line.entityCode === code);
-      const entityDebit = entityLines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-      const entityCredit = entityLines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+      const entityDebit = entityLines.reduce((sum, line) => {
+        const debitValue = parseFloat(unformatNumber(line.debit)) || 0;
+        return sum + debitValue;
+      }, 0);
+      const entityCredit = entityLines.reduce((sum, line) => {
+        const creditValue = parseFloat(unformatNumber(line.credit)) || 0;
+        return sum + creditValue;
+      }, 0);
       const entityDifference = Math.abs(entityDebit - entityCredit);
       const entityBalanced = entityDifference < 0.001;
       
@@ -445,9 +462,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     
     // Format data for submission - convert debit/credit format to type/amount format
     const formattedLines = validLines.map(line => {
-      // Calculate amount and determine type
-      const debitValue = parseFloat(line.debit) || 0;
-      const creditValue = parseFloat(line.credit) || 0;
+      // Calculate amount and determine type - first remove any commas
+      const debitValueStr = unformatNumber(line.debit);
+      const creditValueStr = unformatNumber(line.credit);
+      
+      // Parse as floats
+      const debitValue = parseFloat(debitValueStr) || 0;
+      const creditValue = parseFloat(creditValueStr) || 0;
       
       // Convert our UI format (debit/credit fields) to API format (type and amount)
       return {
@@ -502,20 +523,52 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     }
   };
   
+  // Function to format number with thousands separators
+  const formatNumberWithSeparator = (value: string) => {
+    // Remove all commas first
+    const numWithoutCommas = value.replace(/,/g, '');
+    
+    // Check if it's a valid number format
+    if (numWithoutCommas === '' || /^\d*\.?\d{0,2}$/.test(numWithoutCommas)) {
+      // If it has a decimal part
+      if (numWithoutCommas.includes('.')) {
+        const [wholePart, decimalPart] = numWithoutCommas.split('.');
+        // Format whole part with commas and add back decimal part
+        return wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + decimalPart;
+      } else {
+        // Format number without decimal part
+        return numWithoutCommas.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+    }
+    
+    // If not a valid number format, return as is
+    return value;
+  };
+  
+  // Function to unformat number (remove commas) for processing
+  const unformatNumber = (value: string) => {
+    return value.replace(/,/g, '');
+  };
+
   // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
     // For debit/credit fields, apply special handling
     if (field === 'debit' || field === 'credit') {
+      // Remove commas for validation
+      const numericValue = unformatNumber(value);
+      
       // Only process valid numeric inputs or empty string
-      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-        // Immediately update the UI for responsiveness without debouncing
+      if (numericValue === '' || /^\d*\.?\d{0,2}$/.test(numericValue)) {
         const updatedLines = [...lines];
         
+        // Format the value with commas for display
+        const formattedValue = numericValue === '' ? '' : formatNumberWithSeparator(numericValue);
+        
         // Set the current field value
-        updatedLines[index] = { ...updatedLines[index], [field]: value };
+        updatedLines[index] = { ...updatedLines[index], [field]: formattedValue };
         
         // Clear the opposite field if this field has a value > 0
-        if (parseFloat(value) > 0) {
+        if (parseFloat(numericValue) > 0) {
           const oppositeField = field === 'debit' ? 'credit' : 'debit';
           updatedLines[index][oppositeField] = '';
         }
@@ -553,16 +606,23 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   // Create a debounced version of line change handler for numeric fields (debit/credit)
   const handleDebouncedLineChange = useDebouncedCallback((index: number, field: string, value: string) => {
+    // Remove commas for processing
+    const numericValue = unformatNumber(value);
+    
     const updatedLines = [...lines];
-    updatedLines[index] = { ...updatedLines[index], [field]: value };
+    
+    // Format the value with commas for display
+    const formattedValue = numericValue === '' ? '' : formatNumberWithSeparator(numericValue);
+    
+    updatedLines[index] = { ...updatedLines[index], [field]: formattedValue };
     
     // If setting debit and it's positive, clear credit
-    if (field === 'debit' && parseFloat(value) > 0) {
+    if (field === 'debit' && parseFloat(numericValue) > 0) {
       updatedLines[index].credit = '';
     }
     
     // If setting credit and it's positive, clear debit
-    if (field === 'credit' && parseFloat(value) > 0) {
+    if (field === 'credit' && parseFloat(numericValue) > 0) {
       updatedLines[index].debit = '';
     }
     
@@ -877,21 +937,20 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                     inputMode="decimal"
                     value={line.debit}
                     onChange={(e) => {
-                      // Only allow valid numeric input
-                      const value = e.target.value.replace(/[^0-9.]/g, '');
-                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-                        handleLineChange(index, 'debit', value);
-                      }
+                      // Only handle the value without commas
+                      const rawValue = unformatNumber(e.target.value);
+                      handleLineChange(index, 'debit', rawValue);
                     }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places on blur (don't use commas in the value)
+                      // Format to 2 decimal places with thousands separators on blur
                       if (e.target.value) {
-                        const numValue = parseFloat(e.target.value);
+                        const numValueStr = unformatNumber(e.target.value);
+                        const numValue = parseFloat(numValueStr);
+                        
                         if (!isNaN(numValue)) {
-                          // Just show the plain number with 2 decimal places
-                          const plainValue = numValue.toFixed(2);
-                          e.target.value = plainValue;
-                          handleLineChange(index, 'debit', plainValue);
+                          // Format with 2 decimal places and thousands separators
+                          const formattedValue = formatNumberWithSeparator(numValue.toFixed(2));
+                          handleLineChange(index, 'debit', formattedValue);
                         }
                       }
                     }}
@@ -910,21 +969,20 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                     inputMode="decimal"
                     value={line.credit}
                     onChange={(e) => {
-                      // Only allow valid numeric input
-                      const value = e.target.value.replace(/[^0-9.]/g, '');
-                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-                        handleLineChange(index, 'credit', value);
-                      }
+                      // Only handle the value without commas
+                      const rawValue = unformatNumber(e.target.value);
+                      handleLineChange(index, 'credit', rawValue);
                     }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places on blur (don't use commas in the value)
+                      // Format to 2 decimal places with thousands separators on blur
                       if (e.target.value) {
-                        const numValue = parseFloat(e.target.value);
+                        const numValueStr = unformatNumber(e.target.value);
+                        const numValue = parseFloat(numValueStr);
+                        
                         if (!isNaN(numValue)) {
-                          // Just show the plain number with 2 decimal places
-                          const plainValue = numValue.toFixed(2);
-                          e.target.value = plainValue;
-                          handleLineChange(index, 'credit', plainValue);
+                          // Format with 2 decimal places and thousands separators
+                          const formattedValue = formatNumberWithSeparator(numValue.toFixed(2));
+                          handleLineChange(index, 'credit', formattedValue);
                         }
                       }
                     }}
@@ -1072,11 +1130,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             <Button
               variant="default"
               onClick={() => {
-                // Use the properly imported hook
-                const { postJournalEntry } = useJournalEntry();
-                
                 if (existingEntry && existingEntry.id) {
-                  // Use postJournalEntry for existing entries that are already saved
+                  // Use postJournalEntry from the properly imported hook at component level
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
                   // For new entries, create with POSTED status 
