@@ -280,7 +280,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     const initialState: ExpandedState = {};
     accounts.forEach(account => {
       if (account.isSubledger === false && account.parentId === null) {
-        initialState[account.id] = true; // Expand all parent accounts by default
+        initialState[account.id] = false; // Start with all parent accounts collapsed
       }
     });
     return initialState;
@@ -924,12 +924,14 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                               {accounts
                                 .filter(account => account.active)
                                 .sort((a, b) => {
-                                  // First sort by account type
-                                  if (a.type !== b.type) {
-                                    return a.type.localeCompare(b.type);
+                                  // First sort by account code (numeric order)
+                                  const aCode = parseInt(a.accountCode.replace(/\D/g, '')) || 0;
+                                  const bCode = parseInt(b.accountCode.replace(/\D/g, '')) || 0;
+                                  if (aCode !== bCode) {
+                                    return aCode - bCode; // Numeric comparison for account codes
                                   }
-                                  // Then by account code
-                                  return a.accountCode.localeCompare(b.accountCode);
+                                  // Then by account type if codes are the same
+                                  return a.type.localeCompare(b.type);
                                 })
                                 .map((account) => {
                                   // Determine if this is a parent account (has children accounts)
