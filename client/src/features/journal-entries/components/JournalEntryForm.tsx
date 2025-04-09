@@ -1149,8 +1149,44 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
                   console.log('DEBUG: Creating new entry with POSTED status');
-                  // For new entries, create with POSTED status 
-                  handleSubmit(false); // false = not draft (POSTED)
+                  
+                  // Force status to be "posted" for this direct API submission
+                  const validLines = lines.filter(line => 
+                    line.accountId || parseFloat(unformatNumber(line.debit)) > 0 || parseFloat(unformatNumber(line.credit)) > 0
+                  );
+                  
+                  const formattedLines = validLines.map(line => {
+                    const debitValueStr = unformatNumber(line.debit);
+                    const creditValueStr = unformatNumber(line.credit);
+                    const debitValue = parseFloat(debitValueStr) || 0;
+                    const creditValue = parseFloat(creditValueStr) || 0;
+                    
+                    return {
+                      accountId: parseInt(line.accountId),
+                      entityCode: line.entityCode || defaultEntityCode,
+                      description: line.description,
+                      type: debitValue > 0 ? 'debit' : 'credit',
+                      amount: debitValue > 0 ? debitValue : creditValue,
+                      entityId
+                    };
+                  });
+                  
+                  const resolvedClientId = clientId || (accounts.length > 0 ? accounts[0].clientId : null);
+                  
+                  // Create the API payload with POSTED status explicitly set
+                  const entryData = {
+                    ...journalData,
+                    clientId: resolvedClientId,
+                    entityId,
+                    status: JournalEntryStatus.POSTED, // Explicitly set status to POSTED
+                    createdBy: user?.id,
+                    lines: formattedLines
+                  };
+                  
+                  console.log('DEBUG: Direct post API payload:', JSON.stringify(entryData, null, 2));
+                  
+                  // Call the API directly to create a posted entry
+                  createEntry.mutate(entryData);
                 }
               }}
               className="bg-green-600 hover:bg-green-700 relative"
