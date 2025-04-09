@@ -649,14 +649,30 @@ function ChartOfAccounts() {
   const useUpdateAccount = () => {
     return useMutation({
       mutationFn: async (data: AccountData & { clientId: number, id: number }) => {
-        console.log("DEBUG: useUpdateAccount - Mutate called with:", data);
-        return await apiRequest(
-          `/api/clients/${data.clientId}/accounts/${data.id}`, 
-          {
-            method: 'PUT',
-            data
+        console.log("DEBUG: useUpdateAccount - Mutate called with:", JSON.stringify(data, null, 2));
+        try {
+          const response = await apiRequest(
+            `/api/clients/${data.clientId}/accounts/${data.id}`, 
+            {
+              method: 'PUT',
+              data
+            }
+          );
+          console.log("DEBUG: useUpdateAccount - API response:", response);
+          return response;
+        } catch (error: any) {
+          console.error("DEBUG: useUpdateAccount - API error response:", error);
+          // Log the response body if available
+          if (error.response) {
+            try {
+              const errorBody = await error.response.text();
+              console.error("DEBUG: useUpdateAccount - Error response body:", errorBody);
+            } catch (e) {
+              console.error("DEBUG: useUpdateAccount - Could not read error response body");
+            }
           }
-        );
+          throw error;
+        }
       },
       onSuccess: (data) => {
         console.log("DEBUG: useUpdateAccount - onSuccess triggered", data);
@@ -855,21 +871,80 @@ function ChartOfAccounts() {
     try {
       if (isEditMode && submitData.id !== null) {
         // For edit mode, ensure we have a valid ID and it's not null
-        // Create a new object with only the properties expected by the updateAccount mutation
-        const updateData = {
-          id: submitData.id as number, // Type assertion since we've verified it's not null
-          clientId: clientIdToUse,
-          accountCode: submitData.accountCode,
-          name: submitData.name,
-          type: submitData.type,
-          subtype: submitData.subtype,
-          isSubledger: submitData.isSubledger,
-          subledgerType: submitData.subledgerType,
-          active: submitData.active,
-          description: submitData.description,
-          parentId: submitData.parentId
-        };
-        updateAccount.mutate(updateData);
+        
+        // Fetch the original account data to compare what actually changed
+        apiRequest(`/api/clients/${clientIdToUse}/accounts/${submitData.id}`)
+          .then((originalAccountData: any) => {
+            console.log('DEBUG CoA Update: Original account data:', JSON.stringify(originalAccountData, null, 2));
+            
+            // Create a base update object with required fields
+            const baseUpdateData = {
+              id: submitData.id as number,
+              clientId: clientIdToUse,
+            };
+            
+            // Only include fields that were actually changed
+            const changedFields: Record<string, any> = {};
+            
+            // Check each field to see if it was modified
+            if (submitData.name !== originalAccountData.name) {
+              changedFields.name = submitData.name;
+            }
+            
+            if (submitData.active !== originalAccountData.active) {
+              changedFields.active = submitData.active;
+            }
+            
+            if (submitData.description !== originalAccountData.description) {
+              changedFields.description = submitData.description;
+            }
+            
+            if (submitData.parentId !== originalAccountData.parentId) {
+              changedFields.parentId = submitData.parentId;
+            }
+            
+            // These fields are more restrictive, only include them if they were changed
+            // and the account doesn't have transactions
+            if (submitData.accountCode !== originalAccountData.accountCode) {
+              changedFields.accountCode = submitData.accountCode;
+            }
+            
+            if (submitData.type !== originalAccountData.type) {
+              changedFields.type = submitData.type;
+            }
+            
+            if (submitData.subtype !== originalAccountData.subtype) {
+              changedFields.subtype = submitData.subtype;
+            }
+            
+            if (submitData.isSubledger !== originalAccountData.isSubledger) {
+              changedFields.isSubledger = submitData.isSubledger;
+            }
+            
+            if (submitData.subledgerType !== originalAccountData.subledgerType) {
+              changedFields.subledgerType = submitData.subledgerType;
+            }
+            
+            // Combine base fields with changed fields
+            const updateData = {
+              ...baseUpdateData,
+              ...changedFields
+            };
+            
+            // Add detailed logging for debugging the account update payload
+            console.log('DEBUG CoA Update: Changed fields only:', JSON.stringify(changedFields, null, 2));
+            console.log('DEBUG CoA Update: Final payload sent to API:', JSON.stringify(updateData, null, 2));
+            
+            updateAccount.mutate(updateData);
+          })
+          .catch(error => {
+            console.error('DEBUG CoA Update: Error fetching original account data:', error);
+            toast({
+              title: "Error",
+              description: "Could not fetch original account data to determine changes",
+              variant: "destructive"
+            });
+          });
       } else {
         // For create mode
         console.log("VERIFICATION TEST - handleSubmit - Creating new account with data:", JSON.stringify({
