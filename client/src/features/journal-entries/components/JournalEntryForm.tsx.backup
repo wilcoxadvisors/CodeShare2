@@ -991,121 +991,76 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                           <CommandEmpty>No account found.</CommandEmpty>
                           <CommandGroup>
                             <CommandList className="max-h-[300px] overflow-auto">
-                              {(() => {
-                                // Step 1: Get active accounts
-                                const activeAccounts = accounts.filter(account => account.active);
-                                
-                                // Step 2: First organize accounts by type
-                                const typeOrder: Record<string, number> = {
-                                  'asset': 1,
-                                  'assets': 1,
-                                  'liability': 2,
-                                  'liabilities': 2,
-                                  'equity': 3,
-                                  'revenue': 4,
-                                  'expense': 5,
-                                  'expenses': 5
-                                };
-                                
-                                // Step 3: Create a tree structure to maintain the hierarchy
-                                type AccountNode = {
-                                  account: Account;
-                                  children: AccountNode[];
-                                };
-                                
-                                // Step 4: Group accounts by type
-                                const accountsByType: Record<string, Account[]> = {};
-                                
-                                activeAccounts.forEach(account => {
-                                  const type = account.type.toLowerCase();
-                                  if (!accountsByType[type]) {
-                                    accountsByType[type] = [];
+                              {accounts
+                                .filter(account => account.active)
+                                // Sort accounts by code while preserving parent-child relationships
+                                // Create a hierarchical display order to ensure parent-child relationships
+                                // are maintained and children appear directly under their parents
+                                .sort((a, b) => {
+                                  // First sort by account type following standard accounting order
+                                  if (a.type !== b.type) {
+                                    // Use a specific accounting order: Assets, Liabilities, Equity, Revenue, Expenses
+                                    const typeOrder = {
+                                      'asset': 1,
+                                      'assets': 1,
+                                      'liability': 2,
+                                      'liabilities': 2,
+                                      'equity': 3,
+                                      'revenue': 4,
+                                      'expense': 5,
+                                      'expenses': 5
+                                    };
+                                    // Get type values and convert to lowercase for consistent comparison
+                                    const aTypeKey = a.type.toLowerCase();
+                                    const bTypeKey = b.type.toLowerCase();
+                                    return (typeOrder[aTypeKey] || 99) - (typeOrder[bTypeKey] || 99);
                                   }
-                                  accountsByType[type].push(account);
-                                });
-                                
-                                // Step 5: For each type, build hierarchical trees
-                                const forestByType: Record<string, AccountNode[]> = {};
-                                
-                                Object.keys(accountsByType).forEach(type => {
-                                  const accountsOfType = accountsByType[type];
                                   
-                                  // Create lookup maps
-                                  const accountMap = new Map<number, Account>();
-                                  const nodeMap = new Map<number, AccountNode>();
+                                  // Get parent status
+                                  const aIsParent = accounts.some(acc => acc.parentId === a.id);
+                                  const bIsParent = accounts.some(acc => acc.parentId === b.id);
                                   
-                                  // Fill the maps
-                                  accountsOfType.forEach(account => {
-                                    accountMap.set(account.id, account);
-                                    nodeMap.set(account.id, { 
-                                      account, 
-                                      children: [] 
-                                    });
-                                  });
+                                  // Get parent IDs (0 if no parent)
+                                  const aParentId = a.parentId || 0;
+                                  const bParentId = b.parentId || 0;
                                   
-                                  // Build the forest (multiple trees)
-                                  const forest: AccountNode[] = [];
+                                  // Case 1: Same parent (including both being top level with parentId=0)
+                                  if (aParentId === bParentId) {
+                                    // First numeric sort by account code
+                                    const aCode = parseInt(a.accountCode.replace(/\D/g, '')) || 0;
+                                    const bCode = parseInt(b.accountCode.replace(/\D/g, '')) || 0;
+                                    return aCode - bCode;
+                                  }
                                   
-                                  // Connect parents to children
-                                  accountsOfType.forEach(account => {
-                                    const node = nodeMap.get(account.id)!;
-                                    
-                                    if (account.parentId && nodeMap.has(account.parentId)) {
-                                      // This is a child node, add it to its parent
-                                      const parentNode = nodeMap.get(account.parentId)!;
-                                      parentNode.children.push(node);
-                                    } else {
-                                      // This is a root node (no parent or parent not in this type)
-                                      forest.push(node);
+                                  // Case 2: Different parents
+                                  
+                                  // If one is a direct child of the other, the parent should come first
+                                  if (aParentId === b.id) return 1;  // B is A's parent, so B comes first
+                                  if (bParentId === a.id) return -1; // A is B's parent, so A comes first
+                                  
+                                  // If they're siblings with different parents, sort by parent account code
+                                  if (aParentId > 0 && bParentId > 0) {
+                                    const aParent = accounts.find(acc => acc.id === aParentId);
+                                    const bParent = accounts.find(acc => acc.id === bParentId);
+                                    if (aParent && bParent) {
+                                      // If the parents are different, sort by parent code
+                                      if (aParent.id !== bParent.id) {
+                                        const aParentCode = parseInt(aParent.accountCode.replace(/\D/g, '')) || 0;
+                                        const bParentCode = parseInt(bParent.accountCode.replace(/\D/g, '')) || 0;
+                                        return aParentCode - bParentCode;
+                                      }
                                     }
-                                  });
+                                  }
                                   
-                                  // Sort each level by account code
-                                  const sortByCode = (nodes: AccountNode[]) => {
-                                    nodes.sort((a, b) => {
-                                      const aCode = parseInt(a.account.accountCode.replace(/\D/g, '')) || 0;
-                                      const bCode = parseInt(b.account.accountCode.replace(/\D/g, '')) || 0;
-                                      return aCode - bCode;
-                                    });
-                                    
-                                    // Sort children recursively
-                                    nodes.forEach(node => {
-                                      sortByCode(node.children);
-                                    });
-                                  };
+                                  // If one is top level and the other isn't, top level comes first
+                                  if (aParentId === 0 && bParentId !== 0) return -1;
+                                  if (aParentId !== 0 && bParentId === 0) return 1;
                                   
-                                  // Sort the forest
-                                  sortByCode(forest);
-                                  forestByType[type] = forest;
-                                });
-                                
-                                // Step 6: Flatten the forest into a display list while maintaining hierarchy
-                                const flattenedAccounts: Account[] = [];
-                                
-                                // Helper to flatten a tree into the list
-                                const flattenTree = (node: AccountNode) => {
-                                  flattenedAccounts.push(node.account);
-                                  node.children.forEach(child => flattenTree(child));
-                                };
-                                
-                                // Process each type in the correct order
-                                Object.keys(typeOrder)
-                                  .sort((a, b) => typeOrder[a] - typeOrder[b])
-                                  .forEach(type => {
-                                    if (forestByType[type]) {
-                                      forestByType[type].forEach(rootNode => flattenTree(rootNode));
-                                    }
-                                  });
-                                
-                                // Handle any other types not in the predefined order
-                                Object.keys(forestByType)
-                                  .filter(type => !(type in typeOrder))
-                                  .forEach(type => {
-                                    forestByType[type].forEach(rootNode => flattenTree(rootNode));
-                                  });
-                                
-                                return flattenedAccounts;
-                              })()
+                                  // Fallback to account code
+                                  const aCode = parseInt(a.accountCode.replace(/\D/g, '')) || 0;
+                                  const bCode = parseInt(b.accountCode.replace(/\D/g, '')) || 0;
+                                  return aCode - bCode;
+                                })
                                 .map((account) => {
                                   // Determine if this is a parent account (has children accounts)
                                   const isParent = accounts.some(childAccount => 

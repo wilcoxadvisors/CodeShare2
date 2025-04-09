@@ -1,0 +1,1 @@
+{"message":"Unauthorized request: missing access token. To generate a token, go to https://toptal.com/developers/hastebin/documentation and follow the instructions."}
