@@ -1,0 +1,25 @@
+Excellent, the journal entry list page is fixed. Now, let's focus on resolving the issues within the journal entry form itself (client/src/features/journal-entries/components/JournalEntryForm.tsx).
+
+Objective: Correct the action buttons, fix the buggy debit/credit input fields, and ensure proper decimal formatting.
+
+Tasks:
+
+Fix Action Buttons (#1):
+
+Currently, there are two 'Save as Draft' buttons. Please remove one of them.
+Ensure one 'Save as Draft' button remains functional for saving changes without changing the status (especially important during editing).
+Add a 'Post' button.
+Conditional Rendering: This 'Post' button should only be visible/enabled when the journal entry's status is 'draft' or 'approved'. (You can access the entry's status from the data passed to the form).
+Action: When clicked, this button should trigger the POST /api/journal-entries/:id/post API endpoint. You might need to create a new mutation hook in useJournalEntry.ts for this action or adapt the existing save logic.
+Fix Debit/Credit Input Bug (#2, #6):
+
+Users report that numbers sometimes disappear randomly while typing into the Debit and Credit fields. This needs to be fixed for reliable data entry.
+Investigate: Examine the Input components and their onChange handlers used for the Debit and Credit fields within the lines array mapping in JournalEntryForm.tsx.
+Debug: Trace the state updates for these fields. Add temporary console.log statements within the onChange handler for these inputs to see the event value and the state before and after the update. Is the state being updated correctly? Is there any debouncing, async state update, or re-rendering issue causing the input value to be temporarily incorrect? Is any formatting function interfering during typing?
+Solution: Modify the input handling logic or state update mechanism to ensure smooth and predictable number input.
+Ensure Two-Decimal Formatting (#6):
+
+The Debit and Credit fields sometimes show more than two decimal places.
+Input Display: Modify the Input components or their onChange/onBlur handlers to ensure that the displayed value is always formatted to two decimal places (e.g., using parseFloat(value).toFixed(2) appropriately, perhaps on blur or when the state updates).
+Totals Display: Double-check that the displayed 'Totals' (Debit and Credit sum) at the bottom of the form are also consistently formatted to two decimal places using .toFixed(2).
+Report: Confirm the changes made for the buttons, the fix implemented for the input bug (and whether it resolved the random deletion issue), and that decimal formatting is now consistently applied.

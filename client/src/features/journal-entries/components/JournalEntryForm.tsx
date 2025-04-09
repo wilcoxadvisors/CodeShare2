@@ -455,14 +455,18 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
-    // For debit/credit fields, use the debounced version
+    // For debit/credit fields, format value and use the improved handler
     if (field === 'debit' || field === 'credit') {
-      handleDebouncedLineChange(index, field, value);
-      
-      // Immediately update the UI for responsiveness, but calculations will be debounced
-      const updatedLines = [...lines];
-      updatedLines[index] = { ...updatedLines[index], [field]: value };
-      setLines(updatedLines);
+      // Only process numeric input, decimal point, or empty string
+      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+        // Format to 2 decimal places only on blur, not during typing
+        handleDebouncedLineChange(index, field, value);
+        
+        // Immediately update the UI for responsiveness
+        const updatedLines = [...lines];
+        updatedLines[index] = { ...updatedLines[index], [field]: value };
+        setLines(updatedLines);
+      }
     } else {
       // For non-numeric fields, update immediately
       const updatedLines = [...lines];
@@ -806,6 +810,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                     step="0.01"
                     value={line.debit}
                     onChange={(e) => handleLineChange(index, 'debit', e.target.value)}
+                    onBlur={(e) => {
+                      // Format to 2 decimal places on blur
+                      if (e.target.value) {
+                        const formatted = parseFloat(e.target.value).toFixed(2);
+                        handleLineChange(index, 'debit', formatted);
+                      }
+                    }}
                     placeholder="0.00"
                     className={fieldErrors[`line_${index}_debit`] ? 'border-red-500' : ''}
                   />
@@ -820,6 +831,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                     step="0.01"
                     value={line.credit}
                     onChange={(e) => handleLineChange(index, 'credit', e.target.value)}
+                    onBlur={(e) => {
+                      // Format to 2 decimal places on blur
+                      if (e.target.value) {
+                        const formatted = parseFloat(e.target.value).toFixed(2);
+                        handleLineChange(index, 'credit', formatted);
+                      }
+                    }}
                     placeholder="0.00"
                     className={fieldErrors[`line_${index}_credit`] ? 'border-red-500' : ''}
                   />
@@ -945,7 +963,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           Cancel
         </Button>
         
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          {/* Save as Draft button - saves with 'draft' status */}
           <Button
             onClick={() => handleSubmit(true)}
             disabled={createEntry.isPending || updateEntry.isPending}
@@ -958,6 +977,24 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
           </Button>
           
+          {/* Post button - only visible when status is draft */}
+          {existingEntry && existingEntry.status === 'draft' && (
+            <Button
+              variant="default"
+              onClick={() => {
+                const { postJournalEntry } = require('@/features/journal-entries/hooks/useJournalEntry').useJournalEntry();
+                postJournalEntry.mutate(existingEntry.id);
+              }}
+              className="bg-amber-600 hover:bg-amber-700 relative"
+              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
+              title={!isBalanced ? "Journal entry must be balanced before posting" : ""}
+            >
+              <FileUp className="mr-2 h-4 w-4 inline" />
+              Post Entry
+            </Button>
+          )}
+          
+          {/* The Save Changes button - for editing entries */}
           <Button
             variant="default"
             className={`${isBalanced ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400'} relative`}
@@ -971,8 +1008,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
               <CheckCircle2 className="mr-2 h-4 w-4 inline" />
             )}
-            {!(createEntry.isPending || updateEntry.isPending) && (isEditing ? 'Save Changes' : 'Save as Draft')}
-            {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
+            {!(createEntry.isPending || updateEntry.isPending) && 'Save Changes'}
+            {(createEntry.isPending || updateEntry.isPending) && 'Saving...'} 
           </Button>
         </div>
       </div>

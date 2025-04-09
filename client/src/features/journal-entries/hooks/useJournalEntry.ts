@@ -169,6 +169,41 @@ export function useJournalEntry() {
     return lines.filter((_, i) => i !== index);
   }, []);
   
+  // Post journal entry 
+  const postJournalEntry = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/journal-entries/${id}/post`, {
+        method: 'POST'
+      });
+    },
+    onSuccess: (data, id) => {
+      toast({
+        title: 'Success',
+        description: 'Journal entry posted successfully',
+      });
+      
+      // Invalidate journal entry and journal entries queries
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/journal-entries/${id}`]
+      });
+      
+      if (currentEntity?.id) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
+        });
+      }
+      
+      return data.journalEntry;
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Failed to post journal entry: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
+
   // Helper for calculating totals
   const calculateTotals = useCallback((lines: JournalLine[]) => {
     const totals = lines.reduce((acc, line) => {
@@ -289,6 +324,7 @@ export function useJournalEntry() {
     createJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
+    postJournalEntry,
     addNewLine,
     removeLine,
     calculateTotals,
