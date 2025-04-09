@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
-import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +79,11 @@ interface EntityBalance {
   credit: number;
   difference: number;
   balanced: boolean;
+}
+
+// Interface to track expanded/collapsed account states
+interface ExpandedState {
+  [accountId: number]: boolean;
 }
 
 interface JournalEntryFormProps {
@@ -269,6 +274,19 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   );
   
   const [supportingDoc, setSupportingDoc] = useState<File | null>(null);
+  
+  // Track expanded/collapsed state of parent accounts
+  const initializeExpandedState = () => {
+    const initialState: ExpandedState = {};
+    accounts.forEach(account => {
+      if (account.isSubledger === false && account.parentId === null) {
+        initialState[account.id] = true; // Expand all parent accounts by default
+      }
+    });
+    return initialState;
+  };
+  
+  const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>(initializeExpandedState);
   
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
@@ -927,21 +945,29 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                                       key={account.id}
                                       value={`${account.accountCode} ${account.name}`}
                                       onSelect={() => {
-                                        // Only allow selection of non-parent accounts
-                                        if (!isParent) {
+                                        // For parent accounts, toggle expand/collapse
+                                        if (isParent) {
+                                          setExpandedAccounts(prev => ({
+                                            ...prev,
+                                            [account.id]: !prev[account.id]
+                                          }));
+                                        } else {
+                                          // For regular accounts, select them
                                           handleLineChange(index, 'accountId', account.id.toString());
                                         }
                                       }}
                                       className={cn(
                                         "cursor-pointer",
                                         isParent ? "font-semibold opacity-70" : "",
+                                        hasParent && !expandedAccounts[account.parentId || 0] ? "hidden" : "",
                                         hasParent ? "pl-6" : "",
                                         account.type ? `account-type-${account.type.toLowerCase().replace(/\s+/g, '-')}` : ""
                                       )}
-                                      disabled={isParent}
                                     >
                                       {isParent ? (
-                                        <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        expandedAccounts[account.id] ? 
+                                          <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" /> : 
+                                          <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
                                       ) : hasParent ? (
                                         <span className="w-4 h-4 inline-block mr-2"></span>
                                       ) : (
