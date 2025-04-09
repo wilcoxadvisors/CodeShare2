@@ -546,6 +546,8 @@ export function registerAccountRoutes(app: Express) {
   
   // Update an account
   app.put("/api/clients/:clientId/accounts/:id", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    console.log('CRITICAL DEBUG: BE Received req.body:', JSON.stringify(req.body, null, 2));
+    
     const clientId = parseInt(req.params.clientId);
     const accountId = parseInt(req.params.id);
     
@@ -610,6 +612,9 @@ export function registerAccountRoutes(app: Express) {
       ...updateData,
       type: updateData.type ? (updateData.type as AccountType) : undefined
     };
+    
+    // Add debug log for the data being processed
+    console.log('CRITICAL DEBUG: BE Data to Storage:', JSON.stringify(updateDataWithCorrectType, null, 2));
     
     // Check if account has transactions
     const hasTransactions = await storage.accounts.accountHasTransactions(accountId);

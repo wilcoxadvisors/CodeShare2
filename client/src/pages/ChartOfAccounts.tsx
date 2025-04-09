@@ -972,47 +972,67 @@ function ChartOfAccounts() {
                   return;
                 }
                 
-                // Ensure necessary fields are included for TypeScript
-                const finalUpdateData: AccountData & { clientId: number, id: number } = {
-                  // Include the required fields for the type
+                // Only include the ID and client ID, plus the changed fields
+                // This ensures we don't send restricted fields (accountCode, type) for accounts with transactions
+                // We need to cast this to any first to satisfy TypeScript, since we're intentionally not 
+                // including all required AccountData fields but they'll be provided during PATCH handling
+                const finalUpdateData = {
+                  // Include only the required fields for identification
                   id: submitData.id as number,
                   clientId: clientIdToUse,
-                  accountCode: originalAccountData.accountCode,
-                  name: originalAccountData.name,
-                  type: originalAccountData.type as AccountType,
-                  subtype: originalAccountData.subtype || "",
-                  isSubledger: originalAccountData.isSubledger || false,
-                  subledgerType: originalAccountData.subledgerType || "",
-                  active: originalAccountData.active,
-                  description: originalAccountData.description || "",
-                  parentId: originalAccountData.parentId,
-                  // Then override with the changed fields
+                  // Include only the fields that were changed
                   ...changedFields
-                };
+                } as AccountData & { clientId: number, id: number };
                 
+                // Critical debug log as requested
+                console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(finalUpdateData, null, 2));
                 updateAccount.mutate(finalUpdateData);
               })
               .catch(txCheckError => {
                 console.error('DEBUG CoA Update: Error checking if account has transactions:', txCheckError);
                 // Even if the transaction check fails, try to do the update with the non-restricted fields
-                const safeUpdateData: AccountData & { clientId: number, id: number } = {
-                  // Required fields from the interface
+                // Create a safer version of changedFields by filtering out restricted fields
+                // even though we don't know for sure if the account has transactions
+                const safeChangedFields: Record<string, any> = {};
+                
+                // Include only non-restricted fields in the safe update
+                if (submitData.name !== originalAccountData.name) {
+                  safeChangedFields.name = submitData.name;
+                }
+                if (submitData.active !== originalAccountData.active) {
+                  safeChangedFields.active = submitData.active;
+                }
+                if (submitData.description !== originalAccountData.description) {
+                  safeChangedFields.description = submitData.description;
+                }
+                if (submitData.parentId !== originalAccountData.parentId) {
+                  safeChangedFields.parentId = submitData.parentId;
+                }
+                if (submitData.subtype !== originalAccountData.subtype) {
+                  safeChangedFields.subtype = submitData.subtype;
+                }
+                if (submitData.isSubledger !== originalAccountData.isSubledger) {
+                  safeChangedFields.isSubledger = submitData.isSubledger;
+                }
+                if (submitData.subledgerType !== originalAccountData.subledgerType) {
+                  safeChangedFields.subledgerType = submitData.subledgerType;
+                }
+                
+                // Safe update data includes only the base identification plus changed fields
+                // Using the same type casting approach to avoid TypeScript errors with missing required fields
+                const safeUpdateData = {
+                  // Include only the required fields for identification
                   id: submitData.id as number,
                   clientId: clientIdToUse,
-                  accountCode: originalAccountData.accountCode,
-                  name: submitData.name,
-                  type: originalAccountData.type as AccountType,
-                  subtype: submitData.subtype,
-                  isSubledger: submitData.isSubledger,
-                  subledgerType: submitData.subledgerType,
-                  active: submitData.active,
-                  description: submitData.description,
-                  parentId: submitData.parentId
-                  // Intentionally use original accountCode and type to be safe
-                };
+                  // Include only non-restricted fields that changed
+                  ...safeChangedFields
+                } as AccountData & { clientId: number, id: number };
+                // Note: accountCode and type are intentionally omitted to be safe
                 
                 console.log('DEBUG CoA Update: Using safe update data due to transaction check error:', 
                            JSON.stringify(safeUpdateData, null, 2));
+                // Critical debug log as requested
+                console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(safeUpdateData, null, 2));
                 updateAccount.mutate(safeUpdateData);
               });
           })
