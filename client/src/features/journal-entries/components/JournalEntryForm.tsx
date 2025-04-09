@@ -317,6 +317,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const createEntry = useMutation({
     mutationFn: async (data: any) => {
       console.log('Journal entry submission data:', JSON.stringify(data));
+      // Ensure the status is properly set in the mutation data
+      console.log('DEBUG: Creating entry with status:', data.status);
       return await apiRequest(
         `/api/journal-entries`,
         {
@@ -445,19 +447,25 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   });
 
   const handleSubmit = (saveAsDraft: boolean = true) => {
+    console.log('DEBUG: handleSubmit called with saveAsDraft =', saveAsDraft);
+    
     // Clear previous errors
     setFormError(null);
     setFieldErrors({});
     
     // Prepare data for validation - only keep lines with account or debit/credit values
     const validLines = lines.filter(line => 
-      line.accountId || parseFloat(line.debit) > 0 || parseFloat(line.credit) > 0
+      line.accountId || parseFloat(unformatNumber(line.debit)) > 0 || parseFloat(unformatNumber(line.credit)) > 0
     );
     
     const formData = {
       ...journalData,
-      lines: validLines
+      lines: validLines,
+      // Set the appropriate status based on saveAsDraft
+      status: saveAsDraft ? JournalEntryStatus.DRAFT : JournalEntryStatus.POSTED
     };
+    
+    console.log('DEBUG: Form data with status:', formData.status);
     
     // Only validate fully if we're not saving as draft
     if (!saveAsDraft) {
@@ -1133,10 +1141,14 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             <Button
               variant="default"
               onClick={() => {
+                console.log('DEBUG: Post button clicked, user is admin');
+                console.log('DEBUG: existingEntry:', existingEntry);
                 if (existingEntry && existingEntry.id) {
+                  console.log('DEBUG: Posting existing entry with ID:', existingEntry.id);
                   // Use postJournalEntry from the properly imported hook at component level
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
+                  console.log('DEBUG: Creating new entry with POSTED status');
                   // For new entries, create with POSTED status 
                   handleSubmit(false); // false = not draft (POSTED)
                 }

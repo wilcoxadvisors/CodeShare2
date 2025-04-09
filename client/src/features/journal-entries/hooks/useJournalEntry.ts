@@ -58,12 +58,14 @@ export function useJournalEntry() {
   // API hooks for journal entry CRUD operations
   const createJournalEntry = useMutation({
     mutationFn: async (journalEntry: JournalEntry) => {
+      console.log('DEBUG: Creating journal entry:', JSON.stringify(journalEntry, null, 2));
       return await apiRequest('/api/journal-entries', {
         method: 'POST',
         data: journalEntry
       });
     },
     onSuccess: (data) => {
+      console.log('DEBUG: Create success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry created successfully',
@@ -76,7 +78,7 @@ export function useJournalEntry() {
         });
       }
       
-      return data.journalEntry;
+      return data.entry; // Changed from data.journalEntry to data.entry to match server response
     },
     onError: (error: any) => {
       toast({
@@ -89,12 +91,15 @@ export function useJournalEntry() {
   
   const updateJournalEntry = useMutation({
     mutationFn: async ({ id, journalEntry }: { id: number, journalEntry: JournalEntry }) => {
+      console.log('DEBUG: Updating journal entry with ID:', id);
+      console.log('DEBUG: Update data:', JSON.stringify(journalEntry, null, 2));
       return await apiRequest(`/api/journal-entries/${id}`, {
         method: 'PUT',
         data: journalEntry
       });
     },
     onSuccess: (data, variables) => {
+      console.log('DEBUG: Update success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry updated successfully',
@@ -111,7 +116,7 @@ export function useJournalEntry() {
         });
       }
       
-      return data.journalEntry;
+      return data.entry; // Changed from data.journalEntry to data.entry to match server response
     },
     onError: (error: any) => {
       toast({
@@ -172,11 +177,13 @@ export function useJournalEntry() {
   // Post journal entry 
   const postJournalEntry = useMutation({
     mutationFn: async (id: number) => {
+      console.log('DEBUG: Posting journal entry with ID:', id);
       return await apiRequest(`/api/journal-entries/${id}/post`, {
         method: 'POST'
       });
     },
     onSuccess: (data, id) => {
+      console.log('DEBUG: Post success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry posted successfully',
@@ -193,7 +200,7 @@ export function useJournalEntry() {
         });
       }
       
-      return data.journalEntry;
+      return data.entry; // Changed from data.journalEntry to data.entry to match server response
     },
     onError: (error: any) => {
       toast({
