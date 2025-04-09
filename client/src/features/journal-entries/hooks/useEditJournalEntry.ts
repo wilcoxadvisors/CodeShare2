@@ -52,6 +52,21 @@ export function useEditJournalEntry() {
   // Convert server format lines (type/amount) to client format (debit/credit) if needed
   let processedEntry = journalEntry;
   
+  // Helper function to format numbers with commas and 2 decimal places
+  const formatNumberWithSeparator = (value: string | number): string => {
+    if (!value && value !== 0) return '';
+    
+    // Convert to number then to string with 2 decimal places
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return '';
+    
+    // Format with 2 decimal places
+    const withDecimals = numValue.toFixed(2);
+    
+    // Add thousand separators
+    return withDecimals.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  
   if (journalEntry && journalEntry.lines && Array.isArray(journalEntry.lines)) {
     console.log("useEditJournalEntry - Journal entry lines count:", journalEntry.lines.length);
     
@@ -74,12 +89,15 @@ export function useEditJournalEntry() {
           console.log(`useEditJournalEntry - Converting line ${index + 1} of ${journalEntry.lines.length}:`, 
             JSON.stringify(line, null, 2));
           
+          // Format the amount with commas and 2 decimal places
+          const formattedAmount = formatNumberWithSeparator(line.amount || 0);
+          
           const convertedLine = {
             accountId: line.accountId.toString(),
             entityCode: line.entityCode || '',
             description: line.description || '',
-            debit: line.type === 'debit' ? (line.amount ? line.amount.toString() : '0') : '0',
-            credit: line.type === 'credit' ? (line.amount ? line.amount.toString() : '0') : '0',
+            debit: line.type === 'debit' ? formattedAmount : '0.00',
+            credit: line.type === 'credit' ? formattedAmount : '0.00',
           };
           
           console.log(`useEditJournalEntry - Line ${index + 1} converted from type='${line.type}', amount=${line.amount} to:`, 
@@ -96,12 +114,12 @@ export function useEditJournalEntry() {
         };
       } else {
         // Even if not in server format, ensure accountId is a string 
-        // for proper form field binding and comparison
+        // and format debit/credit values properly
         const normalizedLines = journalEntry.lines.map(line => ({
           ...line,
           accountId: line.accountId ? line.accountId.toString() : '',
-          debit: line.debit ? line.debit.toString() : '0',
-          credit: line.credit ? line.credit.toString() : '0',
+          debit: formatNumberWithSeparator(line.debit || 0),
+          credit: formatNumberWithSeparator(line.credit || 0),
         }));
         
         processedEntry = {
