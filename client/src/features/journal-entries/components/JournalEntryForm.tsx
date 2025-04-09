@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
+import { useJournalEntry } from '../hooks/useJournalEntry';
 
 // Define local Account interface compatible with the component needs
 interface Account {
@@ -112,24 +113,52 @@ const FormSchema = z.object({
     message: "Journal entry must have at least one debit and one credit line"
   })
   .refine(lines => {
-    // Check if debits equal credits
+    // Check if debits equal credits - only for submissions, not during editing
+    // This makes the form more forgiving while the user is still editing
     const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
     const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+    
+    // If one of the sides is zero, then we're clearly still in the process of filling out the form
+    if (totalDebit === 0 || totalCredit === 0) {
+      return true; // Don't validate in mid-editing
+    }
+    
     return Math.abs(totalDebit - totalCredit) < 0.001;
   }, {
     message: "Total debits must equal total credits"
   })
   .refine(lines => {
     // Check if debits equal credits for each entity code (intercompany validation)
+    // Make this more forgiving during editing
     const entityCodesArray = lines.map(line => line.entityCode);
     const uniqueEntityCodes = entityCodesArray.filter((code, index) => entityCodesArray.indexOf(code) === index);
     
-    return uniqueEntityCodes.every(entityCode => {
+    // If we only have one entity code, no need for intercompany validation
+    if (uniqueEntityCodes.length <= 1) {
+      return true;
+    }
+    
+    // Check if any entity has both debits and credits with significant values
+    const entitiesWithBalances = uniqueEntityCodes.map(entityCode => {
       const entityLines = lines.filter(line => line.entityCode === entityCode);
       const entityDebit = entityLines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
       const entityCredit = entityLines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
-      return Math.abs(entityDebit - entityCredit) < 0.001;
+      
+      return {
+        entityCode,
+        hasDebitAndCredit: entityDebit > 0 && entityCredit > 0,
+        isBalanced: Math.abs(entityDebit - entityCredit) < 0.001
+      };
     });
+    
+    // If any entity has both debits and credits, it should be balanced
+    const entitiesRequiringBalance = entitiesWithBalances.filter(e => e.hasDebitAndCredit);
+    
+    if (entitiesRequiringBalance.length === 0) {
+      return true; // Still in editing mode, no need to validate
+    }
+    
+    return entitiesRequiringBalance.every(e => e.isBalanced);
   }, {
     message: "Debits must equal credits for each entity (intercompany balancing)"
   })
@@ -385,13 +414,33 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       lines: validLines
     };
     
-    // Validate form data
-    const validation = validateForm(formData, FormSchema);
-    
-    if (!validation.valid) {
-      setFieldErrors(validation.errors || {});
-      setFormError("Please correct the errors in the form.");
-      return;
+    // Only validate fully if we're not saving as draft
+    if (!saveAsDraft) {
+      // Full validation for posting
+      const validation = validateForm(formData, FormSchema);
+      
+      if (!validation.valid) {
+        setFieldErrors(validation.errors || {});
+        setFormError("Please correct the errors in the form before posting.");
+        return;
+      }
+    } else {
+      // Lighter validation for drafts - just check required fields
+      if (!journalData.date || !journalData.description) {
+        const errors: Record<string, string> = {};
+        if (!journalData.date) errors['date'] = 'Date is required';
+        if (!journalData.description) errors['description'] = 'Description is required';
+        
+        setFieldErrors(errors);
+        setFormError("Please fill in the required basic information.");
+        return;
+      }
+      
+      // Ensure there's at least one line with an account
+      if (validLines.length === 0 || !validLines.some(line => line.accountId)) {
+        setFormError("Please add at least one valid line with an account.");
+        return;
+      }
     }
     
     // Format data for submission - convert debit/credit format to type/amount format
@@ -835,17 +884,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                       }
                     }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places with thousand separators on blur
+                      // Format to 2 decimal places on blur (don't use commas in the value)
                       if (e.target.value) {
                         const numValue = parseFloat(e.target.value);
                         if (!isNaN(numValue)) {
-                          const formatted = numValue.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          });
-                          // Store as plain number for calculations but display formatted
+                          // Just show the plain number with 2 decimal places
                           const plainValue = numValue.toFixed(2);
-                          e.target.value = formatted;
+                          e.target.value = plainValue;
                           handleLineChange(index, 'debit', plainValue);
                         }
                       }
@@ -872,17 +917,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                       }
                     }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places with thousand separators on blur
+                      // Format to 2 decimal places on blur (don't use commas in the value)
                       if (e.target.value) {
                         const numValue = parseFloat(e.target.value);
                         if (!isNaN(numValue)) {
-                          const formatted = numValue.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          });
-                          // Store as plain number for calculations but display formatted
+                          // Just show the plain number with 2 decimal places
                           const plainValue = numValue.toFixed(2);
-                          e.target.value = formatted;
+                          e.target.value = plainValue;
                           handleLineChange(index, 'credit', plainValue);
                         }
                       }
@@ -1031,9 +1072,11 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             <Button
               variant="default"
               onClick={() => {
+                // Use the properly imported hook
+                const { postJournalEntry } = useJournalEntry();
+                
                 if (existingEntry && existingEntry.id) {
                   // Use postJournalEntry for existing entries that are already saved
-                  const { postJournalEntry } = require('@/features/journal-entries/hooks/useJournalEntry').useJournalEntry();
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
                   // For new entries, create with POSTED status 
