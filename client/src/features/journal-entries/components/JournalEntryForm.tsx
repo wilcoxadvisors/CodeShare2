@@ -3,23 +3,6 @@ import { useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
-
-// Define local Account interface compatible with the component needs
-interface Account {
-  id: number;
-  accountCode: string;  // Use accountCode to match the server schema
-  name: string;
-  entityId: number;
-  type: AccountType;
-  description: string | null;
-  active: boolean;
-  createdAt?: Date;
-  subtype?: string | null;
-  isSubledger?: boolean;
-  subledgerType?: string | null;
-  parentId?: number | null;
-  [key: string]: any;
-}
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +24,23 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
+
+// Define local Account interface compatible with the component needs
+interface Account {
+  id: number;
+  accountCode: string;  // Use accountCode to match the server schema
+  name: string;
+  entityId: number;
+  type: AccountType;
+  description: string | null;
+  active: boolean;
+  createdAt?: Date;
+  subtype?: string | null;
+  isSubledger?: boolean;
+  subledgerType?: string | null;
+  parentId?: number | null;
+  [key: string]: any;
+}
 
 interface Location {
   id: number;
@@ -172,6 +172,34 @@ const FormSchema = z.object({
 function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   // Properly initialize the hook at the component level, not in the event handler
   const { postJournalEntry } = useJournalEntry();
+  
+  // Helper function definitions - declaring before they're used
+  // Function to unformat number (remove commas) for processing
+  const unformatNumber = (value: string) => {
+    return value?.replace(/,/g, '') || '';
+  };
+  
+  // Function to format number with thousands separators
+  const formatNumberWithSeparator = (value: string) => {
+    // Remove all commas first
+    const numWithoutCommas = value.replace(/,/g, '');
+    
+    // Check if it's a valid number format
+    if (numWithoutCommas === '' || /^\d*\.?\d{0,2}$/.test(numWithoutCommas)) {
+      // If it has a decimal part
+      if (numWithoutCommas.includes('.')) {
+        const [wholePart, decimalPart] = numWithoutCommas.split('.');
+        // Format whole part with commas and add back decimal part
+        return wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + decimalPart;
+      } else {
+        // Format number without decimal part
+        return numWithoutCommas.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+    }
+    
+    // If not a valid number format, return as is
+    return value;
+  };
   console.log('DEBUG JournalEntryForm - received accounts:', accounts);
   console.log('DEBUG JournalEntryForm - accounts length:', accounts?.length || 0);
   console.log('DEBUG JournalEntryForm - accounts first item:', accounts?.length > 0 ? accounts[0] : 'no accounts');
@@ -523,32 +551,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     }
   };
   
-  // Function to format number with thousands separators
-  const formatNumberWithSeparator = (value: string) => {
-    // Remove all commas first
-    const numWithoutCommas = value.replace(/,/g, '');
-    
-    // Check if it's a valid number format
-    if (numWithoutCommas === '' || /^\d*\.?\d{0,2}$/.test(numWithoutCommas)) {
-      // If it has a decimal part
-      if (numWithoutCommas.includes('.')) {
-        const [wholePart, decimalPart] = numWithoutCommas.split('.');
-        // Format whole part with commas and add back decimal part
-        return wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + decimalPart;
-      } else {
-        // Format number without decimal part
-        return numWithoutCommas.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      }
-    }
-    
-    // If not a valid number format, return as is
-    return value;
-  };
-  
-  // Function to unformat number (remove commas) for processing
-  const unformatNumber = (value: string) => {
-    return value.replace(/,/g, '');
-  };
+  // These functions are now defined at the top of the component
 
   // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
