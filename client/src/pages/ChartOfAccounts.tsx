@@ -972,21 +972,12 @@ function ChartOfAccounts() {
                   return;
                 }
                 
-                // Only include the ID and client ID, plus the changed fields
-                // This ensures we don't send restricted fields (accountCode, type) for accounts with transactions
-                // We need to cast this to any first to satisfy TypeScript, since we're intentionally not 
-                // including all required AccountData fields but they'll be provided during PATCH handling
-                const finalUpdateData = {
-                  // Include only the required fields for identification
-                  id: submitData.id as number,
-                  clientId: clientIdToUse,
-                  // Include only the fields that were changed
-                  ...changedFields
-                } as AccountData & { clientId: number, id: number };
+                // Use the previously constructed updateData which properly merges baseUpdateData with changedFields
+                // and ensures consistency between what we log and what we actually send
                 
                 // Critical debug log as requested
-                console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(finalUpdateData, null, 2));
-                updateAccount.mutate(finalUpdateData);
+                console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(updateData, null, 2));
+                updateAccount.mutate(updateData as AccountData & { clientId: number, id: number });
               })
               .catch(txCheckError => {
                 console.error('DEBUG CoA Update: Error checking if account has transactions:', txCheckError);
@@ -1018,22 +1009,24 @@ function ChartOfAccounts() {
                   safeChangedFields.subledgerType = submitData.subledgerType;
                 }
                 
-                // Safe update data includes only the base identification plus changed fields
-                // Using the same type casting approach to avoid TypeScript errors with missing required fields
-                const safeUpdateData = {
-                  // Include only the required fields for identification
+                // Create a base update object with required fields (the same as used in the success path)
+                const baseUpdateData = {
                   id: submitData.id as number,
                   clientId: clientIdToUse,
-                  // Include only non-restricted fields that changed
+                };
+                
+                // Combine base fields with changed fields
+                const safeUpdateData = {
+                  ...baseUpdateData,
                   ...safeChangedFields
-                } as AccountData & { clientId: number, id: number };
+                };
                 // Note: accountCode and type are intentionally omitted to be safe
                 
                 console.log('DEBUG CoA Update: Using safe update data due to transaction check error:', 
                            JSON.stringify(safeUpdateData, null, 2));
                 // Critical debug log as requested
                 console.log('CRITICAL DEBUG: Final FE Payload Sent:', JSON.stringify(safeUpdateData, null, 2));
-                updateAccount.mutate(safeUpdateData);
+                updateAccount.mutate(safeUpdateData as AccountData & { clientId: number, id: number });
               });
           })
           .catch(error => {
