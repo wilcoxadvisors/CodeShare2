@@ -112,14 +112,47 @@ export function registerJournalEntryRoutes(app: Express) {
       
       // Add lines to the journal entry
       if (lines && lines.length > 0) {
+        console.log('DEBUG: Adding lines to journal entry', journalEntry.id);
+        console.log('DEBUG: Number of lines to add:', lines.length);
+        console.log('DEBUG: First line sample:', JSON.stringify(lines[0]));
+
         for (const line of lines) {
+          console.log('DEBUG: Processing line:', JSON.stringify(line));
+          
+          // Make sure the line has an accountId
+          if (!line.accountId) {
+            console.log('DEBUG: Line missing accountId, skipping:', JSON.stringify(line));
+            continue;
+          }
+          
+          // Make sure the line has an amount (either debit or credit)
+          const debitValue = typeof line.debit === 'string' ? parseFloat(line.debit) : (line.debit || 0);
+          const creditValue = typeof line.credit === 'string' ? parseFloat(line.credit) : (line.credit || 0);
+          
+          if (debitValue === 0 && creditValue === 0) {
+            console.log('DEBUG: Line has zero amount, skipping:', JSON.stringify(line));
+            continue;
+          }
+          
+          // Determine the type and amount based on debit/credit values
+          const type = debitValue > 0 ? 'debit' : 'credit';
+          const amount = debitValue > 0 ? debitValue : creditValue;
+          
+          console.log('DEBUG: Adding line with', type, 'amount', amount, 'to account', line.accountId);
+          
           await journalEntryStorage.createJournalEntryLine({
-            ...line,
             journalEntryId: journalEntry.id,
-            // Ensure amount is a string as required by the storage layer
-            amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount
+            accountId: parseInt(line.accountId.toString()),
+            type,
+            amount: amount.toString(),
+            description: line.description || '',
+            entityCode: line.entityCode || ''
           });
         }
+        
+        console.log('DEBUG: Finished adding lines to journal entry', journalEntry.id);
+      } else {
+        console.log('DEBUG: No lines to add to journal entry', journalEntry.id);
       }
       
       // If the original status was 'posted', now update the entry to 'posted'
