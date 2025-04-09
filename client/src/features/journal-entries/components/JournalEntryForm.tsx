@@ -822,16 +822,32 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Using a text input with pattern validation for better formatting control */}
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={line.debit}
-                    onChange={(e) => handleLineChange(index, 'debit', e.target.value)}
+                    onChange={(e) => {
+                      // Only allow valid numeric input
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                        handleLineChange(index, 'debit', value);
+                      }
+                    }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places on blur
+                      // Format to 2 decimal places with thousand separators on blur
                       if (e.target.value) {
-                        const formatted = parseFloat(e.target.value).toFixed(2);
-                        handleLineChange(index, 'debit', formatted);
+                        const numValue = parseFloat(e.target.value);
+                        if (!isNaN(numValue)) {
+                          const formatted = numValue.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          });
+                          // Store as plain number for calculations but display formatted
+                          const plainValue = numValue.toFixed(2);
+                          e.target.value = formatted;
+                          handleLineChange(index, 'debit', plainValue);
+                        }
                       }
                     }}
                     placeholder="0.00"
@@ -843,16 +859,32 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Using a text input with pattern validation for better formatting control */}
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={line.credit}
-                    onChange={(e) => handleLineChange(index, 'credit', e.target.value)}
+                    onChange={(e) => {
+                      // Only allow valid numeric input
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                        handleLineChange(index, 'credit', value);
+                      }
+                    }}
                     onBlur={(e) => {
-                      // Format to 2 decimal places on blur
+                      // Format to 2 decimal places with thousand separators on blur
                       if (e.target.value) {
-                        const formatted = parseFloat(e.target.value).toFixed(2);
-                        handleLineChange(index, 'credit', formatted);
+                        const numValue = parseFloat(e.target.value);
+                        if (!isNaN(numValue)) {
+                          const formatted = numValue.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          });
+                          // Store as plain number for calculations but display formatted
+                          const plainValue = numValue.toFixed(2);
+                          e.target.value = formatted;
+                          handleLineChange(index, 'credit', plainValue);
+                        }
                       }
                     }}
                     placeholder="0.00"
@@ -994,18 +1026,18 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
           </Button>
           
-          {/* Post button - only for admin users */}
+          {/* Post/Submit button based on role */}
           {user?.role === 'admin' ? (
             <Button
               variant="default"
               onClick={() => {
                 if (existingEntry && existingEntry.id) {
-                  // Use postJournalEntry for existing entries
+                  // Use postJournalEntry for existing entries that are already saved
                   const { postJournalEntry } = require('@/features/journal-entries/hooks/useJournalEntry').useJournalEntry();
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
-                  // For new entries, create and post in one step
-                  handleSubmit(false);
+                  // For new entries, create with POSTED status 
+                  handleSubmit(false); // false = not draft (POSTED)
                 }
               }}
               className="bg-green-600 hover:bg-green-700 relative"
@@ -1022,10 +1054,21 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
               {(createEntry.isPending || updateEntry.isPending) && 'Posting...'}
             </Button>
           ) : (
-            /* Submit button - for non-admin users */
+            /* Submit for Approval button - for non-admin users */
             <Button
               variant="default"
-              onClick={() => handleSubmit(true)}
+              onClick={() => {
+                // For non-admin users, submit for approval (changes status to "pending_approval")
+                const entryData = { 
+                  ...journalData,
+                  status: JournalEntryStatus.PENDING_APPROVAL 
+                };
+                if (existingEntry && existingEntry.id) {
+                  updateEntry.mutate({ ...entryData, id: existingEntry.id });
+                } else {
+                  createEntry.mutate(entryData);
+                }
+              }}
               className="bg-blue-600 hover:bg-blue-700 relative"
               disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
               title={!isBalanced ? "Journal entry must be balanced before submitting" : ""}
@@ -1036,7 +1079,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
               {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
                 <CheckCircle2 className="mr-2 h-4 w-4 inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) && 'Submit'}
+              {!(createEntry.isPending || updateEntry.isPending) && 'Submit for Approval'}
               {(createEntry.isPending || updateEntry.isPending) && 'Submitting...'}
             </Button>
           )}
