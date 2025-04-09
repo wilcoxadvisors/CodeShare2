@@ -933,9 +933,14 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                               // Update search query
                               setSearchQuery(value);
                               
+                              // When search is cleared, collapse all accounts except for default expanded ones
+                              if (!value.trim()) {
+                                // Reset to initial expanded state (all collapsed)
+                                setExpandedAccounts({});
+                              }
                               // When searching, automatically expand all parent accounts 
                               // that have matching children
-                              if (value.trim()) {
+                              else {
                                 // Find all matching accounts (case insensitive search)
                                 const lowerQuery = value.toLowerCase();
                                 const matchingAccounts = accounts.filter(account => 
@@ -980,7 +985,12 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                             {searchQuery && (
                               <button
                                 type="button"
-                                onClick={() => setSearchQuery("")}
+                                onClick={() => {
+                                  // Clear search query
+                                  setSearchQuery("");
+                                  // Reset expanded accounts state to collapse everything
+                                  setExpandedAccounts({});
+                                }}
                                 className="absolute right-2 top-2.5 h-4 w-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
                                 aria-label="Clear search"
                               >
