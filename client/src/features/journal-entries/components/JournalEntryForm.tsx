@@ -455,17 +455,34 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   
   // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
-    // For debit/credit fields, format value and use the improved handler
+    // For debit/credit fields, apply special handling
     if (field === 'debit' || field === 'credit') {
-      // Only process numeric input, decimal point, or empty string
-      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        // Format to 2 decimal places only on blur, not during typing
-        handleDebouncedLineChange(index, field, value);
-        
-        // Immediately update the UI for responsiveness
+      // Only process valid numeric inputs or empty string
+      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+        // Immediately update the UI for responsiveness without debouncing
         const updatedLines = [...lines];
+        
+        // Set the current field value
         updatedLines[index] = { ...updatedLines[index], [field]: value };
+        
+        // Clear the opposite field if this field has a value > 0
+        if (parseFloat(value) > 0) {
+          const oppositeField = field === 'debit' ? 'credit' : 'debit';
+          updatedLines[index][oppositeField] = '';
+        }
+        
+        // Update lines state directly, no debounce
         setLines(updatedLines);
+        
+        // Clear field error when user changes the value
+        const errorKey = `line_${index}_${field}`;
+        if (fieldErrors[errorKey]) {
+          setFieldErrors(prev => {
+            const updated = { ...prev };
+            delete updated[errorKey];
+            return updated;
+          });
+        }
       }
     } else {
       // For non-numeric fields, update immediately
@@ -963,8 +980,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           Cancel
         </Button>
         
-        <div className="grid grid-cols-3 gap-2">
-          {/* Save as Draft button - saves with 'draft' status */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Save as Draft button - for all users */}
           <Button
             onClick={() => handleSubmit(true)}
             disabled={createEntry.isPending || updateEntry.isPending}
@@ -977,40 +994,52 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
           </Button>
           
-          {/* Post button - only visible when status is draft */}
-          {existingEntry && existingEntry.status === 'draft' && (
+          {/* Post button - only for admin users */}
+          {user?.role === 'admin' ? (
             <Button
               variant="default"
               onClick={() => {
-                const { postJournalEntry } = require('@/features/journal-entries/hooks/useJournalEntry').useJournalEntry();
-                postJournalEntry.mutate(existingEntry.id);
+                if (existingEntry && existingEntry.id) {
+                  // Use postJournalEntry for existing entries
+                  const { postJournalEntry } = require('@/features/journal-entries/hooks/useJournalEntry').useJournalEntry();
+                  postJournalEntry.mutate(existingEntry.id);
+                } else {
+                  // For new entries, create and post in one step
+                  handleSubmit(false);
+                }
               }}
-              className="bg-amber-600 hover:bg-amber-700 relative"
+              className="bg-green-600 hover:bg-green-700 relative"
               disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
               title={!isBalanced ? "Journal entry must be balanced before posting" : ""}
             >
-              <FileUp className="mr-2 h-4 w-4 inline" />
-              Post Entry
+              {(createEntry.isPending || updateEntry.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+              )}
+              {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
+                <CheckCircle2 className="mr-2 h-4 w-4 inline" />
+              )}
+              {!(createEntry.isPending || updateEntry.isPending) && 'Post Entry'}
+              {(createEntry.isPending || updateEntry.isPending) && 'Posting...'}
+            </Button>
+          ) : (
+            /* Submit button - for non-admin users */
+            <Button
+              variant="default"
+              onClick={() => handleSubmit(true)}
+              className="bg-blue-600 hover:bg-blue-700 relative"
+              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
+              title={!isBalanced ? "Journal entry must be balanced before submitting" : ""}
+            >
+              {(createEntry.isPending || updateEntry.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+              )}
+              {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
+                <CheckCircle2 className="mr-2 h-4 w-4 inline" />
+              )}
+              {!(createEntry.isPending || updateEntry.isPending) && 'Submit'}
+              {(createEntry.isPending || updateEntry.isPending) && 'Submitting...'}
             </Button>
           )}
-          
-          {/* The Save Changes button - for editing entries */}
-          <Button
-            variant="default"
-            className={`${isBalanced ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400'} relative`}
-            onClick={() => handleSubmit(false)}
-            disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
-            title={!isBalanced ? "Journal entry must be balanced before posting" : ""}
-          >
-            {(createEntry.isPending || updateEntry.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
-            )}
-            {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
-              <CheckCircle2 className="mr-2 h-4 w-4 inline" />
-            )}
-            {!(createEntry.isPending || updateEntry.isPending) && 'Save Changes'}
-            {(createEntry.isPending || updateEntry.isPending) && 'Saving...'} 
-          </Button>
         </div>
       </div>
     </div>
