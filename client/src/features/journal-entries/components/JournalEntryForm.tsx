@@ -903,61 +903,66 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                           <CommandEmpty>No account found.</CommandEmpty>
                           <CommandGroup>
                             <CommandList className="max-h-[300px] overflow-auto">
-                              {Array.from(new Set(accounts.filter(account => account.active).map(a => a.type))).sort().map(accountType => (
-                                <CommandGroup key={accountType} heading={accountType}>
-                                {accounts
-                                  .filter(account => account.active && account.type === accountType)
-                                  .sort((a, b) => a.accountCode.localeCompare(b.accountCode))
-                                  .map(account => {
-                                    // Determine if this is a parent account (has children accounts)
-                                    const isParent = accounts.some(childAccount => 
-                                      childAccount.parentId === account.id
-                                    );
-                                    
-                                    // Determine nesting level by checking if it has a parent
-                                    const hasParent = account.parentId !== null && account.parentId !== undefined;
-                                    
-                                    const searchStr = `${account.accountCode} ${account.name}`.toLowerCase();
-                                    
-                                    return (
-                                      <CommandItem
-                                        key={account.id}
-                                        value={searchStr}
-                                        onSelect={() => {
-                                          // Only allow selection of non-parent accounts
-                                          if (!isParent) {
-                                            handleLineChange(index, 'accountId', account.id.toString());
-                                          }
-                                        }}
-                                        className={cn(
-                                          "cursor-pointer",
-                                          isParent ? "font-semibold opacity-70" : "",
-                                          hasParent ? "pl-6" : ""
-                                        )}
-                                        disabled={isParent}
-                                      >
-                                        {isParent ? (
-                                          <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        ) : hasParent ? (
-                                          <span className="w-4 h-4 inline-block mr-2"></span>
-                                        ) : (
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              line.accountId === account.id.toString() ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                        )}
-                                        <span className={cn(
-                                          isParent ? "font-medium" : hasParent ? "" : "font-medium"
-                                        )}>
-                                          {account.accountCode}
-                                        </span> - {account.name}
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
-                              ))}
+                              {accounts
+                                .filter(account => account.active)
+                                .sort((a, b) => {
+                                  // First sort by account type
+                                  if (a.type !== b.type) {
+                                    return a.type.localeCompare(b.type);
+                                  }
+                                  // Then by account code
+                                  return a.accountCode.localeCompare(b.accountCode);
+                                })
+                                .map((account) => {
+                                  // Determine if this is a parent account (has children accounts)
+                                  const isParent = accounts.some(childAccount => 
+                                    childAccount.parentId === account.id
+                                  );
+                                  
+                                  // Determine nesting level by checking if it has a parent
+                                  const hasParent = account.parentId !== null && account.parentId !== undefined;
+                                  
+                                  return (
+                                    <CommandItem
+                                      key={account.id}
+                                      value={`${account.accountCode} ${account.name}`}
+                                      onSelect={() => {
+                                        // Only allow selection of non-parent accounts
+                                        if (!isParent) {
+                                          handleLineChange(index, 'accountId', account.id.toString());
+                                        }
+                                      }}
+                                      className={cn(
+                                        "cursor-pointer",
+                                        isParent ? "font-semibold opacity-70" : "",
+                                        hasParent ? "pl-6" : "",
+                                        account.type ? `account-type-${account.type.toLowerCase().replace(/\s+/g, '-')}` : ""
+                                      )}
+                                      disabled={isParent}
+                                    >
+                                      {isParent ? (
+                                        <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
+                                      ) : hasParent ? (
+                                        <span className="w-4 h-4 inline-block mr-2"></span>
+                                      ) : (
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            line.accountId === account.id.toString() ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                      )}
+                                      <span className={cn(
+                                        isParent ? "font-medium" : hasParent ? "" : "font-medium"
+                                      )}>
+                                        {account.accountCode}
+                                      </span> - {account.name}
+                                      {!hasParent && account.type && (
+                                        <span className="ml-2 text-xs text-gray-500">{account.type}</span>
+                                      )}
+                                    </CommandItem>
+                                  );
+                                })}
                             </CommandList>
                           </CommandGroup>
                         </Command>
@@ -997,7 +1002,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                                 .map(entity => (
                                   <CommandItem
                                     key={entity.id}
-                                    value={`${entity.code} ${entity.name}`.toLowerCase()}
+                                    value={`${entity.code} ${entity.name}`}
                                     onSelect={() => {
                                       handleLineChange(index, 'entityCode', entity.code);
                                     }}
