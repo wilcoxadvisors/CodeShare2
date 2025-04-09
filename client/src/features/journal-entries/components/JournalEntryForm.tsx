@@ -287,6 +287,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   };
   
   const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>(initializeExpandedState);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
@@ -903,9 +904,10 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                   <div>
                     {/* Combobox for searchable account dropdown */}
                     <Popover onOpenChange={(open) => {
-                        // Reset expanded state when dropdown is closed
+                        // Reset expanded state and search query when dropdown is closed
                         if (!open) {
                           setExpandedAccounts(initializeExpandedState());
+                          setSearchQuery(""); // Clear search query
                         }
                       }}>
                       <PopoverTrigger asChild>
@@ -922,7 +924,57 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                       </PopoverTrigger>
                       <PopoverContent className="w-[400px] p-0">
                         <Command>
-                          <CommandInput placeholder="Search account..." className="h-9" />
+                          <CommandInput 
+                            placeholder="Search account..." 
+                            className="h-9"
+                            onValueChange={(value) => {
+                              // Update search query
+                              setSearchQuery(value);
+                              
+                              // When searching, automatically expand all parent accounts 
+                              // that have matching children
+                              if (value.trim()) {
+                                // Find all matching accounts (case insensitive search)
+                                const lowerQuery = value.toLowerCase();
+                                const matchingAccounts = accounts.filter(account => 
+                                  `${account.accountCode} ${account.name}`.toLowerCase().includes(lowerQuery)
+                                );
+                                
+                                // Get IDs of parent accounts whose children match the query
+                                const parentIdsToExpand = new Set<number>();
+                                
+                                // Find parents that need to be expanded
+                                matchingAccounts.forEach(account => {
+                                  if (account.parentId) {
+                                    parentIdsToExpand.add(account.parentId);
+                                    
+                                    // Also try to find grandparents (for deep hierarchies)
+                                    let currentParentId = account.parentId;
+                                    while (currentParentId) {
+                                      const parent = accounts.find(a => a.id === currentParentId);
+                                      if (parent?.parentId) {
+                                        parentIdsToExpand.add(parent.parentId);
+                                        currentParentId = parent.parentId;
+                                      } else {
+                                        break;
+                                      }
+                                    }
+                                  }
+                                });
+                                
+                                // Expand these parents if they're not already expanded
+                                if (parentIdsToExpand.size > 0) {
+                                  setExpandedAccounts(prev => {
+                                    const newState = { ...prev };
+                                    parentIdsToExpand.forEach(id => {
+                                      newState[id] = true;
+                                    });
+                                    return newState;
+                                  });
+                                }
+                              }
+                            }}
+                          />
                           <CommandEmpty>No account found.</CommandEmpty>
                           <CommandGroup>
                             <CommandList className="max-h-[300px] overflow-auto">
@@ -1036,8 +1088,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                                       className={cn(
                                         "cursor-pointer",
                                         isParent ? "font-semibold opacity-70" : "",
-                                        // Hide child accounts when parent is collapsed
-                                        hasParent && !expandedAccounts[account.parentId || 0] ? "hidden" : "",
+                                        // Hide child accounts when parent is collapsed, but not when searching
+                                        hasParent && !expandedAccounts[account.parentId || 0] && !searchQuery ? "hidden" : "",
                                         // Add left padding for child accounts
                                         hasParent ? "pl-6" : "", 
                                         // Apply account type styling if available
