@@ -204,7 +204,7 @@ export const journalEntries = pgTable("journal_entries", {
   referenceNumber: text("reference_number"),
   description: text("description"),
   isSystemGenerated: boolean("is_system_generated").notNull().default(false),
-  status: text("status", { enum: ['draft', 'posted', 'void'] }).notNull().default('draft'),
+  status: text("status", { enum: ['draft', 'posted', 'void', 'pending_approval', 'approved', 'rejected'] }).notNull().default('draft'),
   // Additional fields for journal type and documentation
   journalType: text("journal_type", { enum: ['JE', 'AJ', 'SJ', 'CL'] }).notNull().default('JE'), // JE=General Journal, AJ=Adjusting Journal, SJ=Statistical Journal, CL=Closing Journal
   supDocId: text("sup_doc_id"), // Supporting document ID/reference
