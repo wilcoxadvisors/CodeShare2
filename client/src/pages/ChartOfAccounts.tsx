@@ -1825,8 +1825,11 @@ function ChartOfAccounts() {
         }
         
         // Check for ParentCode changes - handle both camelCase and PascalCase field names
-        const importedParentCode = importedAccount.parentCode || importedAccount.ParentCode;
-        const existingParentCode = existingAccount.parentCode || null;
+        const importedParentCode = importedAccount.ParentCode;
+        // Get parent code indirectly since it's not directly on the AccountTreeNode type
+        // Use the existing parentId reference from above
+        const existingParentAccount = existingParentId ? allAccounts.find(a => a.id === existingParentId) : null;
+        const existingParentCode = existingParentAccount ? existingParentAccount.accountCode : null;
         
         // Special handling for null/undefined comparison
         const bothParentCodesNull = (importedParentCode === null || importedParentCode === undefined) && 
@@ -3003,8 +3006,14 @@ function ChartOfAccounts() {
                                               key={id}
                                               value={`${accountCode} ${name}`}
                                               onSelect={() => {
-                                                // Toggle expansion for parent accounts
-                                                if (isParent) {
+                                                // For parent accounts, first check if this was a click on the chevron area
+                                                const wasClickOnChevron = 
+                                                  isParent && 
+                                                  window.event && 
+                                                  (window.event as MouseEvent).offsetX < 24;
+                                                
+                                                // If clicking on chevron area, just toggle expansion
+                                                if (wasClickOnChevron) {
                                                   setParentAccountExpandedNodes(prev => {
                                                     const newState = { ...prev };
                                                     if (newState[id]) {
@@ -3015,11 +3024,19 @@ function ChartOfAccounts() {
                                                     return newState;
                                                   });
                                                 } else {
-                                                  // Select account as parent
+                                                  // Otherwise, select the account as parent (even if it has children)
                                                   setAccountData(prev => ({
                                                     ...prev,
                                                     parentId: id
                                                   }));
+                                                  
+                                                  // If this is a parent account, also expand it to show its children
+                                                  if (isParent) {
+                                                    setParentAccountExpandedNodes(prev => ({
+                                                      ...prev,
+                                                      [id]: true
+                                                    }));
+                                                  }
                                                 }
                                               }}
                                               className={cn(
