@@ -2328,14 +2328,15 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
               disabled={createEntry.isPending || updateEntry.isPending || !isBalanced || isUploading}
               title={!isBalanced ? "Journal entry must be balanced before submitting" : isUploading ? "Please wait while files are uploading" : ""}
             >
-              {(createEntry.isPending || updateEntry.isPending) && (
+              {(createEntry.isPending || updateEntry.isPending || isUploading) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
+              {!(createEntry.isPending || updateEntry.isPending || isUploading) && isBalanced && (
                 <CheckCircle2 className="mr-2 h-4 w-4 inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) && 'Submit for Approval'}
+              {!(createEntry.isPending || updateEntry.isPending || isUploading) && 'Submit for Approval'}
               {(createEntry.isPending || updateEntry.isPending) && 'Submitting...'}
+              {isUploading && 'Uploading Files...'}
             </Button>
           )}
         </div>
