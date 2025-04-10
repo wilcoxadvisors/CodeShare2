@@ -592,7 +592,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     ]
   );
   
-  const [supportingDoc, setSupportingDoc] = useState<File | null>(null);
+  // Removed supportingDoc state as we're using the AttachmentSection component now
   
   // Track expanded/collapsed state of parent accounts
   const initializeExpandedState = () => {
@@ -1045,34 +1045,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     setFieldErrors(updatedErrors);
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "The file size cannot exceed 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Only JPEG, PNG, and PDF files are supported.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setSupportingDoc(file);
-    }
-  };
+  // Removed handleFileChange function as we're using the AttachmentSection component now
   
   return (
     <div>
@@ -1748,34 +1721,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         </table>
       </div>
 
-      <div className="mt-4">
-        <Label htmlFor="file-upload">Supporting Documents</Label>
-        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-          <div className="space-y-1 text-center">
-            <FileUp className="mx-auto h-12 w-12 text-gray-400" />
-            <div className="flex text-sm text-gray-600">
-              <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
-                <span>Upload a file</span>
-                <input 
-                  id="file-upload" 
-                  name="file-upload" 
-                  type="file"
-                  onChange={handleFileChange}
-                  className="sr-only" 
-                  accept="image/jpeg,image/png,application/pdf"
-                />
-              </label>
-              <p className="pl-1">or drag and drop</p>
-            </div>
-            <p className="text-xs text-gray-500">
-              PNG, JPG, PDF up to 10MB
-            </p>
-            {supportingDoc && (
-              <p className="text-sm text-primary-600">{supportingDoc.name}</p>
-            )}
-          </div>
-        </div>
-      </div>
+
       
       {/* Attachment Section Conditional Rendering */}
       {(!isEditing || (isEditing && existingEntry?.id && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
