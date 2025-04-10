@@ -23,10 +23,24 @@ import { AccountType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Edit, Trash2, Download, Upload, Plus, FileSpreadsheet, 
-  FileText, Info, AlertTriangle, ChevronRight, ChevronDown, ChevronLeft
+  FileText, Info, AlertTriangle, ChevronRight, ChevronDown, ChevronLeft, X
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 // Account hierarchy interface matching backend AccountTreeNode
 interface AccountTreeNode {
@@ -100,6 +114,10 @@ function ChartOfAccounts() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [importData, setImportData] = useState<Array<Record<string, any>>>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  
+  // Parent account dropdown states
+  const [parentAccountSearchQuery, setParentAccountSearchQuery] = useState("");
+  const [parentAccountExpandedNodes, setParentAccountExpandedNodes] = useState<Record<number, boolean>>({});
   const [changesPreview, setChangesPreview] = useState<{
     additions: Array<Record<string, any>>;
     modifications: Array<{
@@ -2792,31 +2810,258 @@ function ChartOfAccounts() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="parentId">Parent Account</Label>
-                    <Select
-                      value={accountData.parentId?.toString() || "none"}
-                      onValueChange={(value) => {
-                        const parentId = value === "none" ? null : parseInt(value, 10);
-                        setAccountData(prev => ({
-                          ...prev,
-                          parentId
-                        }));
-                      }}
-                    >
-                      <SelectTrigger id="parentId">
-                        <SelectValue placeholder="Select a parent account (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Parent (Top Level)</SelectItem>
-                        {allFlattenedAccounts
-                          .filter(account => account.id !== accountData.id) // Prevent selecting self as parent
-                          .map((account: AccountTreeNode) => (
-                            <SelectItem key={account.id} value={account.id.toString()}>
-                              {account.accountCode} - {account.name}
-                            </SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
+                    <Popover onOpenChange={(open) => {
+                      // Reset expanded state and search query when dropdown is closed
+                      if (!open) {
+                        setParentAccountExpandedNodes({});
+                        setParentAccountSearchQuery("");
+                      }
+                    }}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between"
+                          id="parentId"
+                        >
+                          {accountData.parentId && allAccounts.some(account => account.id === accountData.parentId)
+                            ? `${allAccounts.find(account => account.id === accountData.parentId)?.accountCode} - ${allAccounts.find(account => account.id === accountData.parentId)?.name}`
+                            : "Select a parent account (optional)"}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <div className="relative">
+                            <CommandInput 
+                              placeholder="Search accounts..." 
+                              className="h-9 pr-8" 
+                              value={parentAccountSearchQuery}
+                              onValueChange={(value) => {
+                                // Update search query
+                                setParentAccountSearchQuery(value);
+                                
+                                // When search is cleared, collapse all accounts
+                                if (!value.trim()) {
+                                  setParentAccountExpandedNodes({});
+                                }
+                                // When searching, automatically expand all parent accounts 
+                                // that have matching children
+                                else {
+                                  // Find all matching accounts (case insensitive search)
+                                  const lowerQuery = value.toLowerCase();
+                                  const matchingAccounts = allAccounts
+                                    .filter(account => account.active) // Only show active accounts
+                                    .filter(account => account.id !== accountData.id) // Prevent selecting self
+                                    .filter(account => 
+                                      `${account.accountCode} ${account.name}`.toLowerCase().includes(lowerQuery)
+                                    );
+                                  
+                                  // Get IDs of parent accounts whose children match the query
+                                  const parentIdsToExpand = new Set<number>();
+                                  
+                                  // Find parents that need to be expanded
+                                  matchingAccounts.forEach(account => {
+                                    if (account.parentId) {
+                                      parentIdsToExpand.add(account.parentId);
+                                      
+                                      // Also try to find grandparents (for deep hierarchies)
+                                      let currentParentId = account.parentId;
+                                      while (currentParentId) {
+                                        const parent = allAccounts.find(a => a.id === currentParentId);
+                                        if (parent?.parentId) {
+                                          parentIdsToExpand.add(parent.parentId);
+                                          currentParentId = parent.parentId;
+                                        } else {
+                                          break;
+                                        }
+                                      }
+                                    }
+                                  });
+                                  
+                                  // Expand these parents if they're not already expanded
+                                  if (parentIdsToExpand.size > 0) {
+                                    setParentAccountExpandedNodes(prev => {
+                                      const newState = { ...prev };
+                                      parentIdsToExpand.forEach(id => {
+                                        newState[id] = true;
+                                      });
+                                      return newState;
+                                    });
+                                  }
+                                }
+                              }}
+                            />
+                            {parentAccountSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setParentAccountSearchQuery("");
+                                  setParentAccountExpandedNodes({});
+                                }}
+                                className="absolute right-2 top-2.5 h-4 w-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+                                aria-label="Clear search"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <CommandEmpty>No account found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[300px] overflow-auto">
+                              <CommandItem
+                                key="none"
+                                value="No Parent (Top Level)"
+                                onSelect={() => {
+                                  setAccountData(prev => ({
+                                    ...prev,
+                                    parentId: null
+                                  }));
+                                }}
+                              >
+                                <span className="font-medium">No Parent (Top Level)</span>
+                              </CommandItem>
+                              
+                              {(() => {
+                                // Step 1: Get active accounts and filter out self
+                                const activeFilteredAccounts = allAccounts.filter(account => 
+                                  account.active && account.id !== accountData.id
+                                );
+                                
+                                // Step 2: Organize accounts by type
+                                const typeOrder: Record<string, number> = {
+                                  'asset': 1,
+                                  'assets': 1,
+                                  'liability': 2,
+                                  'liabilities': 2,
+                                  'equity': 3,
+                                  'revenue': 4,
+                                  'expense': 5,
+                                  'expenses': 5
+                                };
+                                
+                                // Step 3: Group accounts by type
+                                const accountsByType: Record<string, AccountTreeNode[]> = {};
+                                
+                                activeFilteredAccounts.forEach(account => {
+                                  const type = account.type.toLowerCase();
+                                  if (!accountsByType[type]) {
+                                    accountsByType[type] = [];
+                                  }
+                                  accountsByType[type].push(account);
+                                });
+                                
+                                // Step 4: Build hierarchical trees for each type
+                                const accountsWithParentInfo = activeFilteredAccounts.map(account => {
+                                  const hasParent = account.parentId !== null;
+                                  const hasChildren = account.children && account.children.length > 0;
+                                  
+                                  return {
+                                    ...account,
+                                    hasParent,
+                                    hasChildren,
+                                    isParent: hasChildren,
+                                    // A node should be visible if:
+                                    // 1. It has no parent (root node)
+                                    // 2. Its parent is expanded
+                                    // 3. We're searching and it matches the search or its children do
+                                    isVisible: 
+                                      !hasParent || 
+                                      !!parentAccountExpandedNodes[account.parentId || 0] ||
+                                      !!parentAccountSearchQuery
+                                  };
+                                });
+                                
+                                // Step 5: Render accounts by type for better organization
+                                return Object.keys(accountsByType)
+                                  .sort((a, b) => (typeOrder[a] || 99) - (typeOrder[b] || 99))
+                                  .map(type => {
+                                    // For each type, return its accounts in hierarchical order
+                                    const accountsOfType = accountsWithParentInfo.filter(a => 
+                                      a.type.toLowerCase() === type &&
+                                      (
+                                        // If we're searching, show all matching accounts
+                                        parentAccountSearchQuery ? 
+                                        `${a.accountCode} ${a.name}`.toLowerCase().includes(parentAccountSearchQuery.toLowerCase()) : 
+                                        // Otherwise only show top-level ones initially
+                                        !a.parentId || parentAccountExpandedNodes[a.parentId]
+                                      )
+                                    );
+                                    
+                                    if (accountsOfType.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={type} className="account-type-group">
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 uppercase">
+                                          {type}
+                                        </div>
+                                        {accountsOfType.map(account => {
+                                          const { id, accountCode, name, hasParent, hasChildren, isParent } = account;
+                                          
+                                          return (
+                                            <CommandItem
+                                              key={id}
+                                              value={`${accountCode} ${name}`}
+                                              onSelect={() => {
+                                                // Toggle expansion for parent accounts
+                                                if (isParent) {
+                                                  setParentAccountExpandedNodes(prev => {
+                                                    const newState = { ...prev };
+                                                    if (newState[id]) {
+                                                      delete newState[id];
+                                                    } else {
+                                                      newState[id] = true;
+                                                    }
+                                                    return newState;
+                                                  });
+                                                } else {
+                                                  // Select account as parent
+                                                  setAccountData(prev => ({
+                                                    ...prev,
+                                                    parentId: id
+                                                  }));
+                                                }
+                                              }}
+                                              className={cn(
+                                                "account-item flex items-center",
+                                                // Hide child accounts if parent is collapsed (unless searching)
+                                                hasParent && !parentAccountExpandedNodes[account.parentId || 0] && !parentAccountSearchQuery ? "hidden" : "",
+                                                // Add left padding for child accounts
+                                                hasParent ? "pl-6" : "", 
+                                                // Apply account type styling if available
+                                                type ? `account-type-${type.toLowerCase().replace(/\s+/g, '-')}` : ""
+                                              )}
+                                            >
+                                              {/* Show expand/collapse arrow for parent accounts */}
+                                              {isParent ? (
+                                                parentAccountExpandedNodes[id] ? 
+                                                  <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" /> : 
+                                                  <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
+                                              ) : hasParent ? (
+                                                <span className="w-4 h-4 inline-block mr-2"></span>
+                                              ) : (
+                                                <span className="w-4 h-4 inline-block mr-2"></span>
+                                              )}
+                                              
+                                              <span className="font-mono text-xs opacity-70 mr-2">{accountCode}</span>
+                                              <span className={cn(
+                                                isParent ? "font-medium" : "",
+                                                accountData.parentId === id ? "font-bold" : ""
+                                              )}>
+                                                {name}
+                                              </span>
+                                            </CommandItem>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  }).filter(Boolean); // Filter out null entries
+                              })()}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <div className="text-xs text-gray-500 mt-1">
                       Selecting a parent will place this account under it in the hierarchy
                     </div>
