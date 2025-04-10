@@ -616,6 +616,21 @@ function JournalEntryDetail() {
     // Conditionally show buttons based on status
     const actionButtons = [];
     
+    // For draft status - add delete button
+    if (status === 'draft') {
+      actionButtons.push(
+        <Button 
+          key="delete"
+          variant="outline" 
+          onClick={() => setShowDeleteDialog(true)}
+          className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete Entry
+        </Button>
+      );
+    }
+    
     // Only admin/supervisor/accounting can reverse posted journals
     if (status === 'posted' && (isAdmin || user?.role === 'supervisor' || user?.role === 'accounting')) {
       actionButtons.push(
