@@ -1,0 +1,125 @@
+✅ Correct Business Logic (Explicitly Defined):
+1. Posted Entries
+Never allow deletion of a posted entry explicitly.
+
+Allow only:
+
+Void action (Admin only, with reason explicitly required).
+
+Reverse action (creates a reversal entry explicitly in draft).
+
+2. Draft Entries
+Allow explicit deletion.
+
+If the draft entry is a reversal (explicitly linked to a posted entry):
+
+Still explicitly allow deletion (draft reversal entries explicitly can be deleted without impacting posted entries).
+
+📍 Issue You're Currently Facing:
+Your error explicitly stated:
+
+csharp
+Copy
+Edit
+Error: Cannot delete journal entry: it is referenced by posted entry #97
+Here, the backend explicitly prevents deleting draft reversal entries linked to a posted entry.
+
+However, a draft reversal entry should explicitly be deletable—because the original posted entry is unaffected by deleting the draft reversal entry.
+
+The issue explicitly lies in your backend's overly strict logic, where it's explicitly checking for referencing entries without properly differentiating between their statuses (posted vs. draft).
+
+🔨 Corrected Backend Logic (Explicitly Recommended):
+You explicitly need to adjust your deletion logic (deleteJournalEntry) in:
+
+server/storage/journalEntryStorage.ts
+
+Here's the correct implementation explicitly reflecting proper accounting system rules:
+
+typescript
+Copy
+Edit
+async deleteJournalEntry(id: number) {
+  // Explicitly fetch the entry to delete
+  const entryToDelete = await this.db.query.journal_entries.findFirst({
+    where: eq(journal_entries.id, id),
+  });
+
+  if (!entryToDelete) {
+    throw new Error(`Journal entry ${id} not found.`);
+  }
+
+  // Explicitly block deletion of POSTED entries
+  if (entryToDelete.status === 'posted') {
+    throw new Error(`Cannot delete a posted journal entry (#${id}). Explicitly void or reverse instead.`);
+  }
+
+  // Explicitly check if this entry has a POSTED reversal entry referencing it
+  const referencingPostedReversalEntry = await this.db.query.journal_entries.findFirst({
+    where: and(
+      eq(journal_entries.reversal_of_id, id),
+      eq(journal_entries.status, 'posted')
+    ),
+  });
+
+  if (referencingPostedReversalEntry) {
+    throw new Error(`Cannot delete journal entry: explicitly referenced by posted reversal entry #${referencingPostedReversalEntry.id}`);
+  }
+
+  // Explicitly allow deletion of DRAFT reversal entries or regular draft entries
+  await this.db.transaction(async (trx) => {
+    // Delete any referencing DRAFT reversal entries explicitly
+    const referencingDraftReversalEntry = await trx.query.journal_entries.findFirst({
+      where: and(
+        eq(journal_entries.reversal_of_id, id),
+        ne(journal_entries.status, 'posted')
+      ),
+    });
+
+    if (referencingDraftReversalEntry) {
+      await trx.delete(journal_entry_lines)
+        .where(eq(journal_entry_lines.journal_entry_id, referencingDraftReversalEntry.id));
+      await trx.delete(journal_entries)
+        .where(eq(journal_entries.id, referencingDraftReversalEntry.id));
+    }
+
+    // Explicitly delete attachments, lines, and the entry itself
+    await trx.delete(journal_entry_files)
+      .where(eq(journal_entry_files.journal_entry_id, id));
+
+    await trx.delete(journal_entry_lines)
+      .where(eq(journal_entry_lines.journal_entry_id, id));
+
+    await trx.delete(journal_entries)
+      .where(eq(journal_entries.id, id));
+  });
+}
+🧑‍💻 What This Corrected Logic Explicitly Does:
+Never allows explicit deletion of a posted entry.
+
+Explicitly blocks deletion if a posted reversal entry exists referencing the entry.
+
+Explicitly allows deletion of draft reversal entries, even when referencing a posted entry.
+
+Explicitly cleans up draft reversal entries when deleting the entry they reference.
+
+🚩 Why Your Current Logic Failed Explicitly:
+Your current backend logic did this:
+
+Explicitly checked if any entry references the entry being deleted.
+
+Did not explicitly differentiate based on the status (posted vs. draft).
+
+This explicitly caused your backend to incorrectly block deletion of a draft reversal entry referencing a posted entry.
+
+🎯 Immediate Next Steps (Explicitly):
+Replace your current deletion logic explicitly with the corrected snippet above.
+
+Restart your backend explicitly.
+
+Retest your deletion scenario explicitly:
+
+Try explicitly deleting a draft reversal entry again.
+
+Verify explicitly the deletion succeeds.
+
+Ensure explicitly posted entries remain explicitly blocked from deletion.

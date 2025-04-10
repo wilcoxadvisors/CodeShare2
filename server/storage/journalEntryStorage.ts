@@ -420,51 +420,53 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async deleteJournalEntry(id: number): Promise<boolean> {
     console.log(`Deleting journal entry ${id}`);
     try {
-      // Check if entry exists
-      const existingEntry = await this.getJournalEntry(id);
-      if (!existingEntry) {
+      // Get the entry to delete
+      const entryToDelete = await this.getJournalEntry(id);
+      if (!entryToDelete) {
         return false;
       }
       
-      // If the entry is posted, we cannot delete it
-      if (existingEntry.status === JournalEntryStatus.POSTED) {
-        throw new Error(`Cannot delete a posted journal entry. Use void instead.`);
+      // Block deletion of POSTED entries
+      if (entryToDelete.status === JournalEntryStatus.POSTED) {
+        throw new Error(`Cannot delete a posted journal entry (#${id}). Use void instead.`);
       }
       
-      // Check if this entry is referenced by other entries (through reversedByEntryId)
-      const referencingEntries = await db.select({ id: journalEntries.id })
-        .from(journalEntries)
-        .where(eq(journalEntries.reversedByEntryId, id));
-        
-      if (referencingEntries.length > 0) {
-        // For any entry that references this one through reversedByEntryId, update the reference
-        for (const entry of referencingEntries) {
-          const referencingEntry = await this.getJournalEntry(entry.id);
-          
-          // Whether posted or not, if we're deleting a draft entry, we need to update
-          // the referencing entry to clear its reference
-          await db.update(journalEntries)
-            .set({
-              reversedEntryId: null,
-              isReversal: true, // Keep this as true since it's still a reversal
-              updatedAt: new Date()
-            })
-            .where(eq(journalEntries.id, entry.id));
-            
-          console.log(`Updated referencing entry ${entry.id} to remove reference to deleted entry ${id}`);
-        }
-      }
+      // Allow deletion of draft entries (whether they're reversals or not)
       
-      // If this entry references another entry (as a reversal)
-      if (existingEntry.reversedEntryId) {
-        // Always allow deleting a draft reversal entry, but update the original entry to remove the reference
+      // If this is a DRAFT entry that references a POSTED entry (as a reversal):
+      // We should still allow its deletion and update the original entry
+      if (entryToDelete.reversedEntryId && entryToDelete.isReversal) {
+        // Update the original entry to remove the reference to this reversal
         await db.update(journalEntries)
           .set({
             isReversed: false,
             reversedByEntryId: null,
             updatedAt: new Date()
           })
-          .where(eq(journalEntries.id, existingEntry.reversedEntryId));
+          .where(eq(journalEntries.id, entryToDelete.reversedEntryId));
+          
+        console.log(`Updated original entry ${entryToDelete.reversedEntryId} to remove reference to deleted reversal ${id}`);
+      }
+      
+      // Check if any other entries reference this one (through reversedByEntryId)
+      const referencingEntries = await db.select({
+          id: journalEntries.id,
+          status: journalEntries.status
+        })
+        .from(journalEntries)
+        .where(eq(journalEntries.reversedByEntryId, id));
+      
+      // Update all referencing entries to clear their references
+      for (const entry of referencingEntries) {
+        await db.update(journalEntries)
+          .set({
+            reversedEntryId: null,
+            isReversal: true, // Keep this as true since it's still a reversal
+            updatedAt: new Date()
+          })
+          .where(eq(journalEntries.id, entry.id));
+          
+        console.log(`Updated referencing entry ${entry.id} to remove reference to deleted entry ${id}`);
       }
       
       // Delete associated lines first to maintain referential integrity
@@ -476,7 +478,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .where(eq(journalEntryFiles.journalEntryId, id));
       
       // Delete the journal entry
-      const result = await db.delete(journalEntries)
+      await db.delete(journalEntries)
         .where(eq(journalEntries.id, id));
       
       return true;
