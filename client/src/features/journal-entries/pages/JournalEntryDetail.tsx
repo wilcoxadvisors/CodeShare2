@@ -498,9 +498,10 @@ function JournalEntryDetail() {
           </Badge>
         );
       case 'voided':
+      case 'void': // Handle both 'voided' and 'void' for backward compatibility
         return (
           <Badge variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1">
-            <X className="h-3 w-3" />
+            <XCircle className="h-3 w-3" />
             Voided
           </Badge>
         );

@@ -1184,6 +1184,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const handleSubmit = (saveAsDraft: boolean = true) => {
     console.log('DEBUG: handleSubmit called with saveAsDraft =', saveAsDraft);
     
+    // Verify and log attachment status for debugging
+    logAttachmentStatus();
+    
     // Clear previous errors
     setFormError(null);
     setFieldErrors({});
@@ -1384,6 +1387,27 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       });
     }
   }, 300); // 300ms debounce delay
+  
+  // Utility function for testing file attachments - logs state of pending files
+  const logAttachmentStatus = () => {
+    console.log('ATTACHMENT DEBUG: Current state of file attachments');
+    console.log('- Pending files count:', pendingFiles?.length || 0);
+    console.log('- Pending files metadata count:', pendingFilesMetadata?.length || 0);
+    console.log('- Upload ref exists:', !!uploadPendingFilesRef.current);
+    console.log('- Is editing entry:', isEditing);
+    console.log('- Has existing entry ID:', !!existingEntry?.id);
+    
+    // Log each pending file if any
+    if (pendingFiles?.length) {
+      console.log('- Pending files:', pendingFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })));
+    }
+    
+    return true;
+  };
   
   const addLine = () => {
     setLines([...lines, { accountId: '', entityCode: defaultEntityCode, description: '', debit: '', credit: '' }]);
