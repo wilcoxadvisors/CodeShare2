@@ -546,6 +546,21 @@ function JournalEntryDetail() {
       });
       setVoidReason('');
       setShowVoidDialog(false);
+      
+      // Explicitly invalidate the query cache for this specific journal entry
+      if (entryId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/journal-entries/${entryId}`] 
+        });
+      }
+      
+      // Also invalidate any list queries that may include this entry
+      if (currentEntity?.id) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
+        });
+      }
+      
       refetch();
     },
     onError: (error: any) => {
