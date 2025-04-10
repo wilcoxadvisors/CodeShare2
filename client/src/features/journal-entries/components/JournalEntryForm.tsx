@@ -819,6 +819,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const [isEditing] = useState(!!existingEntry);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
@@ -999,11 +1000,17 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         try {
           console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`);
           
+          // EXPLICITLY set loading state for file uploads
+          setIsUploading(true);
+          
           // EXPLICITLY use the function from the AttachmentSection via ref to upload files
           // EXPLICITLY await this to ensure files are uploaded before proceeding
           await uploadPendingFilesRef.current(newJournalEntryId);
           
           console.log('DEBUG: Uploaded pending files successfully to new journal entry');
+          
+          // EXPLICITLY invalidate the journal entry query to refresh attachments
+          queryClient.invalidateQueries({ queryKey: [`/api/journal-entries/${newJournalEntryId}`] });
           
           toast({
             title: "Files attached",
@@ -1016,6 +1023,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
+        } finally {
+          // EXPLICITLY clear loading state
+          setIsUploading(false);
         }
       }
       
@@ -1153,11 +1163,17 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         try {
           console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to updated journal entry ${entryId}`);
           
+          // EXPLICITLY set loading state for file uploads
+          setIsUploading(true);
+          
           // EXPLICITLY use the function from the AttachmentSection via ref to upload files
           // EXPLICITLY await this to ensure files are uploaded before proceeding
           await uploadPendingFilesRef.current(entryId);
           
           console.log('DEBUG: Uploaded pending files to existing entry successfully');
+          
+          // EXPLICITLY invalidate the journal entry query to refresh attachments
+          queryClient.invalidateQueries({ queryKey: [`/api/journal-entries/${entryId}`] });
           
           toast({
             title: "Files attached",
@@ -1170,6 +1186,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry updated, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
+        } finally {
+          // EXPLICITLY clear loading state
+          setIsUploading(false);
         }
       } else {
         console.log('DEBUG: No pending files to upload or missing ref/journalEntryId', {

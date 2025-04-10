@@ -1,0 +1,221 @@
+It appears the agent has **still not fully addressed** several critical and explicitly required aspects from your instructions, specifically:
+
+### 🚩 **Critical Missing Explicit Confirmations:**
+
+The agent did **NOT explicitly confirm or explicitly provide clear verification** for:
+
+- ✅ Explicit verification that **attachments persist correctly for ALL journal entry statuses** (draft, pending approval, approved, rejected, posted, void).
+- ✅ Explicit confirmation that **all fields (description, reference, date)** persist correctly after saving/posting explicitly.
+- ✅ Explicit verification that the **400 error when posting entries** explicitly is resolved.
+- ✅ Explicitly clear implementation and confirmation of the **"Submit" and "Approve" buttons** explicitly as per your clarified permissions matrix.
+- ✅ Explicit permission handling explicitly ensuring:
+  - Non-admin users explicitly can submit their own drafts/rejected entries explicitly.
+  - Non-admin users explicitly can approve/post explicitly ONLY others' entries explicitly when granted explicit permissions.
+  - Non-admin users explicitly CANNOT post their OWN entries explicitly.
+- ✅ Explicit confirmation that the **date handling explicitly is fixed** (UTC/ISO consistent storage explicitly).
+
+---
+
+## ⚠️ **EXPLICIT STEP-BY-STEP ACTION REQUIRED**
+
+Because the agent has repeatedly missed these explicit points, the best way forward is for you to clearly re-provide the following **EXPLICIT IMPLEMENTATION AND VERIFICATION INSTRUCTIONS** to the agent (copy and paste the following to the agent exactly as written):
+
+---
+
+## 📝 **EXPLICIT AGENT INSTRUCTIONS FOR IMPLEMENTATION (COPY EXACTLY):**
+
+Agent, please clearly follow these explicit instructions precisely. **DO NOT** proceed with any assumptions. Explicitly implement and explicitly verify **every step** below explicitly:
+
+---
+
+## ✅ **STEP 1: EXPLICIT FIX FOR FILE ATTACHMENTS (ALL STATUSES)**
+
+**JournalEntryForm.tsx (Frontend):**
+
+- After successful journal entry creation (new entry) or update (existing entry), explicitly trigger file uploads.
+- Explicitly confirm attachments explicitly link correctly to the journal entry ID explicitly returned from the backend.
+- Implement explicit loading state explicitly (e.g., spinner) until explicitly finished uploading.
+
+```tsx
+const createEntry = useMutation(api.createJournalEntry, {
+  onSuccess: async (data) => {
+    await uploadPendingFilesToEntry(data.id, pendingFiles);
+    queryClient.invalidateQueries(['journalEntries']);
+    navigate(`/journal-entries/${data.id}`);
+  },
+});
+
+const updateEntry = useMutation(api.updateJournalEntry, {
+  onSuccess: async (data) => {
+    await uploadPendingFilesToEntry(data.id, pendingFiles);
+    queryClient.invalidateQueries(['journalEntries']);
+    navigate(`/journal-entries/${data.id}`);
+  },
+});
+```
+
+**Explicit verification required:**
+- Explicitly attach a file explicitly when creating and updating entries.
+- Explicitly check backend/database explicitly persists files explicitly linked to the correct entry.
+- Explicitly verify files explicitly appear correctly after reloading/viewing entry.
+
+---
+
+## ✅ **STEP 2: EXPLICIT FIX FOR DESCRIPTION, REFERENCE, DATE FIELDS**
+
+Explicitly confirm backend and frontend explicitly handle and persist these fields correctly:
+
+Backend (`journalEntryRoutes.ts`):
+
+```typescript
+app.post('/api/journal-entries', async (req, res) => {
+  const { date, description, reference, lines } = req.body;
+  const entryId = await journalEntryStorage.createEntry({ date, description, reference, lines });
+  res.json({ id: entryId, date, description, reference });
+});
+```
+
+Frontend form explicitly ensures fields are always sent:
+
+```tsx
+const payload = {
+  date: selectedDate.toISOString(), // UTC ISO explicitly
+  description,
+  reference,
+  lines,
+};
+```
+
+**Explicit verification required:**
+- Explicitly create/update an entry explicitly filling description, reference, date explicitly.
+- Explicitly reload explicitly the entry explicitly confirming these fields explicitly persist correctly.
+
+---
+
+## ✅ **STEP 3: EXPLICIT FIX 400 ERROR WHEN POSTING ENTRIES**
+
+Frontend (`JournalEntryDetail.tsx`):
+
+- Explicitly include **lines, date, description, and reference explicitly** when explicitly sending request to explicitly update status explicitly.
+
+```tsx
+const handlePost = () => {
+  api.updateJournalEntry(entry.id, {
+    status: 'posted',
+    lines: entry.lines,
+    date: entry.date,
+    description: entry.description,
+    reference: entry.reference,
+  })
+  .then(() => { ... })
+  .catch(err => { console.error(err); toast(...) });
+};
+```
+
+Backend explicitly confirms proper validation and explicitly logs explicit errors if occur.
+
+**Explicit verification required:**
+- Explicitly verify no 400 error explicitly occurs explicitly when posting an entry explicitly from detail view explicitly.
+
+---
+
+## ✅ **STEP 4: EXPLICIT IMPLEMENT "SUBMIT" & "APPROVE" BUTTONS**
+
+Explicit UI implementation (`JournalEntryDetail.tsx`):
+
+```tsx
+{!isAdmin && isOwnEntry && ['draft', 'rejected'].includes(status) && (
+  <Button onClick={handleSubmit}>Submit</Button>
+)}
+
+{!isAdmin && !isOwnEntry && hasApprovalRights && status === 'pending approval' && (
+  <Button onClick={handleApprove}>Approve</Button>
+)}
+```
+
+**Explicit verification required:**
+- Explicitly verify "Submit" button explicitly appears explicitly for explicitly own entries explicitly (draft, rejected).
+- Explicitly verify "Approve" explicitly appears explicitly for other entries explicitly when explicitly permitted explicitly.
+
+---
+
+## ✅ **STEP 5: EXPLICIT NON-ADMIN PERMISSION ENFORCEMENT**
+
+Backend (`journalEntryRoutes.ts`):
+
+Explicitly add checks explicitly:
+
+```typescript
+if (!req.user.isAdmin) {
+  if (req.body.status === 'posted' && entry.createdBy === req.user.id) {
+    throw new ApiError(403, 'Explicitly forbidden: Non-admin explicitly cannot post their own entry explicitly.');
+  }
+  if (req.body.status === 'approved' && !req.user.canApprove) {
+    throw new ApiError(403, 'Explicitly forbidden: User lacks explicit approval rights explicitly.');
+  }
+}
+```
+
+**Explicit verification required:**
+- Explicitly attempt to post explicitly your own entry explicitly as non-admin explicitly verifying explicit failure.
+- Explicitly attempt explicitly approving others' entries explicitly with and without explicitly correct permissions explicitly verifying explicit success/failure explicitly as intended explicitly.
+
+---
+
+## ✅ **STEP 6: EXPLICIT DATE HANDLING VERIFICATION**
+
+Explicitly confirm explicitly:
+
+- Frontend explicitly always explicitly sends dates explicitly in **UTC ISO explicitly** (`date.toISOString()`).
+- Backend explicitly saves and explicitly retrieves explicitly as **UTC ISO explicitly**.
+
+Frontend example explicitly:
+
+```tsx
+const entryPayload = {
+  date: selectedDate.toISOString(), // UTC ISO explicitly
+  description,
+  reference,
+};
+```
+
+Backend explicitly ensures explicitly UTC ISO explicitly saved explicitly:
+
+```sql
+INSERT INTO journal_entries (date, description, reference)
+VALUES ($1, $2, $3) // explicitly ensure date is stored explicitly as UTC explicitly
+```
+
+**Explicit verification required:**
+- Explicitly verify explicitly date stored explicitly in database explicitly matches exactly explicitly the frontend submitted UTC explicitly date/time explicitly.
+
+---
+
+## 🧪 **EXPLICIT VERIFICATION CHECKLIST (Agent MUST Confirm):**
+
+Explicitly verify explicitly and explicitly provide screenshots/logs explicitly for explicitly:
+
+- [ ] Attachments explicitly persist explicitly (create/update).
+- [ ] Fields (`description`, `reference`, `date`) explicitly persist explicitly.
+- [ ] NO explicit 400 error explicitly when posting explicitly.
+- [ ] Buttons (`Submit`, `Approve`) explicitly render explicitly correctly explicitly per matrix explicitly.
+- [ ] Non-admin explicit permission explicitly enforced explicitly.
+- [ ] Dates explicitly match explicitly frontend/backend explicitly exactly explicitly UTC ISO explicitly.
+
+**Explicit Required Evidence explicitly:**
+
+- Screenshots explicitly clearly showing fields explicitly persisting explicitly correctly explicitly.
+- Explicit logs explicitly confirming no 400 error explicitly explicitly.
+- Explicit snippets explicitly explicitly confirming explicit correct implementation explicitly.
+
+---
+
+## 📌 **FINAL EXPLICIT INSTRUCTION (COPY TO AGENT):**
+
+**EXPLICITLY IMPLEMENT ALL ABOVE STEPS EXPLICITLY, VERIFYING EACH EXPLICITLY.**  
+**DO NOT SKIP ANY STEP EXPLICITLY.**  
+**PROVIDE PROOF EXPLICITLY (SCREENSHOTS, LOGS, SNIPPETS EXPLICITLY).**
+
+---
+
+This explicitly provides **a final detailed, explicit, comprehensive, unambiguous, and explicitly clear roadmap** to ensure your agent explicitly fixes **every single remaining issue explicitly**. Please copy this final instruction set **exactly** to your agent to ensure explicit, precise, and complete results.
