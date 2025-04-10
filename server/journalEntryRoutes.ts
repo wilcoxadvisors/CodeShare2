@@ -17,6 +17,7 @@ import { parse, isValid } from 'date-fns';
 import { journalEntryStorage } from './storage/journalEntryStorage';
 import multer from 'multer';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -1240,10 +1241,12 @@ export function registerJournalEntryRoutes(app: Express) {
    */
   app.post('/api/journal-entries/:id/files', 
     isAuthenticated, 
-    upload.single('file'), 
+    upload.array('files', 10), // Changed to support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
       const id = parseInt(req.params.id);
       const user = req.user as { id: number };
+      
+      console.log('DEBUG Attach BE: Received req.files:', req.files);
       
       if (isNaN(id)) {
         throwBadRequest('Invalid journal entry ID provided');
@@ -1256,27 +1259,41 @@ export function registerJournalEntryRoutes(app: Express) {
         throwNotFound('Journal Entry');
       }
       
-      // Check if a file was uploaded
-      if (!req.file) {
-        return res.status(400).json({ message: 'No file was uploaded' });
+      // Check if files were uploaded
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ message: 'No files were uploaded' });
       }
       
       try {
-        // Add uploadedBy to the file data
-        const fileData = {
-          ...req.file,
-          uploadedBy: user.id
-        };
+        const savedFiles = [];
         
-        // Save the file to the journal entry
-        const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
+        // Process each file individually
+        for (const file of req.files) {
+          console.log('DEBUG Attach BE: Processing file:', file.originalname, 'size:', file.size);
+          
+          // Add uploadedBy to the file data
+          const fileData = {
+            ...file,
+            uploadedBy: user.id
+          };
+          
+          console.log('DEBUG Attach BE: Data to storage:', {
+            filename: fileData.originalname,
+            mimetype: fileData.mimetype,
+            size: fileData.size 
+          });
+          
+          // Save the file to the journal entry
+          const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
+          savedFiles.push(savedFile);
+        }
         
         res.status(201).json({
-          message: 'File uploaded successfully',
-          file: savedFile
+          message: 'Files uploaded successfully',
+          files: savedFiles
         });
       } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error('Error uploading files:', error);
         throw error;
       }
     })
@@ -1287,6 +1304,8 @@ export function registerJournalEntryRoutes(app: Express) {
    */
   app.get('/api/journal-entries/:id/files', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
+    
+    console.log('DEBUG Attach BE: Get files for journal entry ID:', id);
     
     if (isNaN(id)) {
       throwBadRequest('Invalid journal entry ID provided');
@@ -1301,6 +1320,8 @@ export function registerJournalEntryRoutes(app: Express) {
     
     // Get the files for this journal entry
     const files = await journalEntryStorage.getJournalEntryFiles(id);
+    
+    console.log('DEBUG Attach BE: Files retrieved for entry', req.params.id, ':', files);
     
     res.json(files);
   }));

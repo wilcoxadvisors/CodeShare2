@@ -796,8 +796,13 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     console.log(`Getting files for journal entry ${journalEntryId}`);
     try {
       // Query the database for files related to the journalEntryId
-      return await db.select()
+      const queryResult = await db.select()
         .from(journalEntryFiles)
+        .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
+        .orderBy(desc(journalEntryFiles.uploadedAt));
+      
+      console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', queryResult);
+      return queryResult
         .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
         .orderBy(desc(journalEntryFiles.uploadedAt));
     } catch (e) {
