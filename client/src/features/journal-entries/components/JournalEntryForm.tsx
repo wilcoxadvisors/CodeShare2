@@ -528,7 +528,41 @@ function AttachmentSection({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) {
-        uploadFileMutation.mutate(acceptedFiles);
+        // Check for duplicate files
+        let duplicatesFound = false;
+        const uniqueFiles = acceptedFiles.filter(newFile => {
+          // Compare with existing attachments from server
+          const isDuplicateWithExisting = attachments && attachments.some(existingFile => 
+            existingFile.filename === newFile.name && existingFile.size === newFile.size
+          );
+          
+          // Compare with pending files
+          const isDuplicateWithPending = pendingFiles.some(pendingFile => 
+            pendingFile.name === newFile.name && pendingFile.size === newFile.size
+          );
+          
+          // If duplicate found, mark it
+          if (isDuplicateWithExisting || isDuplicateWithPending) {
+            duplicatesFound = true;
+            return false;
+          }
+          
+          return true;
+        });
+        
+        // Notify user about any duplicates
+        if (duplicatesFound) {
+          toast({
+            title: "Duplicate files detected",
+            description: "Some files were skipped as they appear to be duplicates of existing attachments.",
+            variant: "warning"
+          });
+        }
+        
+        // Only upload unique files
+        if (uniqueFiles.length > 0) {
+          uploadFileMutation.mutate(uniqueFiles);
+        }
       }
     },
     accept: {
