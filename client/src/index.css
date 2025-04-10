@@ -10,4 +10,30 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full transition-colors;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Hide scrollbar in sidebar but still allow scrolling */
+  .sidebar-scroll::-webkit-scrollbar {
+    @apply w-1;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20;
+  }
 }

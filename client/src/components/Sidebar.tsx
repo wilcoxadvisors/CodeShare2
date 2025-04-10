@@ -55,7 +55,7 @@ function Sidebar() {
           <h1 className="text-xl font-bold text-white">Wilcox Advisors</h1>
         </div>
         
-        <div className="flex flex-col flex-grow overflow-y-auto">
+        <div className="flex flex-col flex-grow overflow-y-auto sidebar-scroll">
           <nav className="flex-1 px-3 py-4 space-y-1.5">
             <NavItem 
               path="/dashboard" 
