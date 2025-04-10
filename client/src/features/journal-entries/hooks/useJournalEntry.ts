@@ -90,12 +90,53 @@ export function useJournalEntry() {
   });
   
   const updateJournalEntry = useMutation({
-    mutationFn: async ({ id, journalEntry }: { id: number, journalEntry: JournalEntry }) => {
+    mutationFn: async (data: any) => {
+      // Check if we're being called with the old format ({ id, journalEntry }) or the new format
+      // where data is a flat object with id and other properties
+      console.log('DEBUG: updateJournalEntry called with data:', JSON.stringify(data, null, 2));
+      
+      let id: number;
+      let payload: any;
+      
+      if (data.id && data.journalEntry) {
+        // Old format
+        id = data.id;
+        payload = data.journalEntry;
+      } else if (data.id) {
+        // New format - data is flat with all properties including id
+        id = data.id;
+        payload = { ...data };
+        delete payload.id; // Remove id from the payload since it's in the URL
+      } else {
+        throw new Error('Invalid parameters - missing id');
+      }
+      
+      // EXPLICITLY ensure all required fields are included - date, description, reference
+      if (payload.status === 'posted') {
+        console.log('DEBUG: Posting journal entry - ensuring all required fields are included');
+        
+        // Make sure the payload has all required fields for posting
+        if (!payload.date) {
+          // If no date provided, use the original entry date or today
+          payload.date = new Date().toISOString().split('T')[0];
+        }
+        
+        // Format date in ISO 8601 UTC to avoid timezone issues
+        if (payload.date) {
+          const date = new Date(payload.date);
+          payload.date = date.toISOString().split('T')[0];
+        }
+        
+        // Debugging logs to verify the payload
+        console.log('DEBUG: Update payload:', JSON.stringify(payload, null, 2));
+      }
+      
       console.log('DEBUG: Updating journal entry with ID:', id);
-      console.log('DEBUG: Update data:', JSON.stringify(journalEntry, null, 2));
+      console.log('DEBUG: Update data:', JSON.stringify(payload, null, 2));
+      
       return await apiRequest(`/api/journal-entries/${id}`, {
         method: 'PUT',
-        data: journalEntry
+        data: payload
       });
     },
     onSuccess: (data, variables) => {

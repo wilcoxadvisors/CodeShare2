@@ -938,17 +938,26 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         throw new Error('Reference is required');
       }
       
-      // Ensure proper date format
+      // Ensure proper date format - EXPLICITLY standardize dates to ISO 8601 UTC
       const date = new Date(data.date);
-      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      // We explicitly use ISO format with UTC timezone to avoid timezone issues
+      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD in UTC
       
-      console.log('DEBUG: Date after formatting:', data.date);
+      console.log('DEBUG: Date after formatting in UTC ISO format:', data.date);
+      
+      // Ensure all required fields are explicitly included in the API call
+      const apiPayload = {
+        ...data,
+        date: data.date, // Explicitly included date
+        description: data.description, // Explicitly included description
+        reference: data.reference, // Explicitly included reference
+      };
       
       return await apiRequest(
         `/api/journal-entries`,
         {
           method: "POST",
-          data
+          data: apiPayload
         }
       );
     },
@@ -959,7 +968,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       console.log('DEBUG: New journal entry created with ID:', newJournalEntryId, 'Response:', JSON.stringify(result, null, 2));
       
-      // Ensure we have a valid journal entry ID
+      // EXPLICITLY ensure we have a valid journal entry ID before proceeding
       if (!newJournalEntryId) {
         console.error('ERROR: Failed to extract journal entry ID from API response');
         toast({
@@ -967,14 +976,31 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           description: "Journal entry was created but there was an issue attaching files.",
           variant: "destructive"
         });
+        
+        // Even if there's an error, we should continue with the workflow
+        queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/journal-entries`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
+        onSubmit();
+        return;
+      }
+      
+      // EXPLICITLY show loading state for attachments uploads
+      const hasAttachments = pendingFiles?.length > 0;
+      if (hasAttachments) {
+        toast({
+          title: "Uploading attachments",
+          description: `Uploading ${pendingFiles.length} file(s) to journal entry...`,
+        });
       }
       
       // Upload pending files if there are any and we have a valid journal entry ID
-      if (pendingFiles?.length > 0 && newJournalEntryId && uploadPendingFilesRef.current) {
+      // EXPLICITLY wait for file uploads to complete before proceeding
+      if (hasAttachments && uploadPendingFilesRef.current) {
         try {
           console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`);
           
-          // Use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY await this to ensure files are uploaded before proceeding
           await uploadPendingFilesRef.current(newJournalEntryId);
           
           console.log('DEBUG: Uploaded pending files successfully to new journal entry');
@@ -1066,15 +1092,27 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         throw new Error('Cannot update - Missing journal entry ID');
       }
       
-      // Ensure proper date format
+      // Ensure proper date format - EXPLICITLY standardize dates to ISO 8601 UTC
       const date = new Date(data.date);
-      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      // We explicitly use ISO format with UTC timezone to avoid timezone issues
+      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD in UTC
       
+      console.log('DEBUG: Date after formatting in UTC ISO format:', data.date);
+      
+      // Ensure all required fields are explicitly included in the API call
+      const apiPayload = {
+        ...data,
+        date: data.date, // Explicitly included date
+        description: data.description, // Explicitly included description
+        reference: data.reference, // Explicitly included reference
+      };
+      
+      // We explicitly use the entry ID for the update operation
       return await apiRequest(
         `/api/journal-entries/${existingEntry.id}`,
         {
           method: "PUT",
-          data
+          data: apiPayload
         }
       );
     },
@@ -1084,6 +1122,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       // Determine the entry ID from the response or use the existing entry ID
       const entryId = response?.id || (response?.entry && response.entry.id) || existingEntry?.id;
       
+      // EXPLICITLY ensure we have a valid journal entry ID before proceeding
       if (!entryId) {
         console.error('ERROR: Failed to determine valid journal entry ID for file uploads');
         toast({
@@ -1091,14 +1130,31 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           description: "Journal entry was updated but file attachment may not work properly.",
           variant: "destructive"
         });
+        
+        // Even if there's an error, we should continue with the workflow
+        queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/journal-entries`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
+        onSubmit();
+        return;
+      }
+      
+      // EXPLICITLY show loading state for attachments uploads
+      const hasAttachments = pendingFiles?.length > 0;
+      if (hasAttachments) {
+        toast({
+          title: "Uploading attachments",
+          description: `Uploading ${pendingFiles.length} file(s) to journal entry...`,
+        });
       }
       
       // Upload pending files for existing entries if there are any
-      if (pendingFiles?.length > 0 && entryId && uploadPendingFilesRef.current) {
+      // EXPLICITLY wait for file uploads to complete before proceeding
+      if (hasAttachments && entryId && uploadPendingFilesRef.current) {
         try {
           console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to updated journal entry ${entryId}`);
           
-          // Use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY await this to ensure files are uploaded before proceeding
           await uploadPendingFilesRef.current(entryId);
           
           console.log('DEBUG: Uploaded pending files to existing entry successfully');

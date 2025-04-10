@@ -664,19 +664,38 @@ function JournalEntryDetail() {
       
       console.log('Posting journal entry with formatted lines:', formattedLines);
       
-      // Update the status to posted with formatted lines
-      updateJournalEntry.mutate({
+      // EXPLICITLY include all required fields from the original journal entry
+      // to ensure they're preserved when posting
+      const updatePayload = {
         id: entryId,
         status: 'posted',
-        lines: formattedLines
-      }, {
+        lines: formattedLines,
+        // EXPLICITLY include these critical fields to avoid data loss
+        date: journalEntry.date,
+        description: journalEntry.description,
+        reference: journalEntry.reference,
+        // Include other important fields
+        journalType: journalEntry.journalType || 'JE',
+        entityId: journalEntry.entityId,
+        clientId: journalEntry.clientId
+      };
+      
+      // Log the complete payload for debugging
+      console.log('DEBUG: Complete posting payload:', JSON.stringify(updatePayload, null, 2));
+      
+      // Update the status to posted with formatted lines and all required fields
+      updateJournalEntry.mutate(updatePayload, {
         onSuccess: () => {
           toast({
             title: "Journal Entry Posted",
             description: "The journal entry has been posted successfully.",
           });
+          
+          // Refresh the entry to show its updated status
+          refetch();
         },
         onError: (error: any) => {
+          console.error('Error posting journal entry:', error);
           toast({
             title: "Error",
             description: `Failed to post journal entry: ${error.message}`,
