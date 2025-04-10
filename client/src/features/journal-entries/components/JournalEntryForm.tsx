@@ -356,7 +356,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: true,
-    disabled: !journalEntryId || uploadFileMutation.isPending
+    disabled: uploadFileMutation.isPending
   });
   
   return (
@@ -374,12 +374,12 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
           className={cn(
             "border border-dashed rounded-md p-6 cursor-pointer transition-colors",
             isDragActive ? "border-primary bg-primary/5" : "border-gray-300",
-            !journalEntryId && "opacity-50 cursor-not-allowed"
+            uploadFileMutation.isPending && "opacity-50 cursor-not-allowed"
           )}
         >
           <input {...getInputProps()} />
           
-          {!journalEntryId ? (
+          {false ? ( /* We're now using tempJournalEntryId so this condition is always false */
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-2">Save the journal entry as draft first to enable file uploads</p>
               <Button variant="outline" size="sm" disabled className="pointer-events-none">
