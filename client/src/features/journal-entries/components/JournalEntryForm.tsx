@@ -228,6 +228,8 @@ interface AttachmentSectionProps {
     mimeType: string;
     addedAt: Date;
   }>>>;
+  // Reference to the function to upload files to a specific journal entry
+  onUploadToEntryRef?: React.MutableRefObject<((entryId: number) => Promise<void>) | null>;
 }
 
 function AttachmentSection({ 
@@ -235,7 +237,8 @@ function AttachmentSection({
   pendingFiles, 
   setPendingFiles, 
   pendingFilesMetadata, 
-  setPendingFilesMetadata 
+  setPendingFilesMetadata,
+  onUploadToEntryRef
 }: AttachmentSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -291,7 +294,71 @@ function AttachmentSection({
     enabled: isExistingEntry, // Only fetch if we have a numeric journalEntryId
   });
   
-  // Upload file mutation
+  // Function to upload pending files to a specific journal entry ID
+  // This function will be exposed to parent components via the ref
+  const uploadPendingFilesToEntry = async (entryId: number) => {
+    if (!pendingFiles || pendingFiles.length === 0) {
+      return; // No files to upload
+    }
+    
+    try {
+      // Create a FormData object for the upload
+      const formData = new FormData();
+      pendingFiles.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      console.log(`DEBUG AttachmentSection: Uploading ${pendingFiles.length} pending files to journal entry ${entryId}`);
+      
+      // Use axios for the file upload with progress tracking
+      const axios = (await import('axios')).default;
+      const response = await axios.post(`/api/journal-entries/${entryId}/files`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent: any) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+      
+      console.log('DEBUG AttachmentSection: Upload to new entry successful:', response.data);
+      
+      // Clear the pending files after successful upload
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+      
+      // Reset the progress bar
+      setUploadProgress(0);
+      
+      // Invalidate the files query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', entryId] });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to upload pending files to entry:', error);
+      throw error;
+    } finally {
+      setUploadProgress(0);
+    }
+  };
+  
+  // If a ref was provided, assign the upload function to it
+  // This allows the parent component to call this function
+  React.useEffect(() => {
+    if (onUploadToEntryRef) {
+      onUploadToEntryRef.current = uploadPendingFilesToEntry;
+    }
+    
+    // Cleanup when component unmounts
+    return () => {
+      if (onUploadToEntryRef) {
+        onUploadToEntryRef.current = null;
+      }
+    };
+  }, [onUploadToEntryRef, pendingFiles, setPendingFiles, setPendingFilesMetadata]);
+  
+  // Upload file mutation for direct uploads via the UI
   const uploadFileMutation = useMutation({
     mutationFn: async (files: File[]) => {
       if (isExistingEntry) {
@@ -660,6 +727,10 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     addedAt: Date;
   }[]>([]);
   
+  // Ref to hold the function to upload pending files to a specific journal entry
+  // This will be passed to and set by the AttachmentSection component
+  const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
+  
   // Helper function definitions - declaring before they're used
   // Function to unformat number (remove commas) for processing
   const unformatNumber = (value: string) => {
@@ -835,38 +906,18 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       console.log('DEBUG: New journal entry created with ID:', newJournalEntryId);
       
-      // Upload pending files if there are any
-      if (pendingFiles && pendingFiles.length > 0) {
+      // Upload pending files if there are any and we have a valid journal entry ID
+      if (pendingFiles?.length > 0 && newJournalEntryId && uploadPendingFilesRef.current) {
         try {
-          // Create a FormData object to upload the files
-          const formData = new FormData();
-          pendingFiles.forEach(file => {
-            formData.append('files', file);
-          });
+          // Use the function from the AttachmentSection via ref to upload files
+          await uploadPendingFilesRef.current(newJournalEntryId);
           
-          console.log('DEBUG: Uploading pending files to new journal entry:', pendingFiles.length);
-          
-          // Use axios to upload the files to the new journal entry
-          const axios = (await import('axios')).default;
-          const uploadResponse = await axios.post(`/api/journal-entries/${newJournalEntryId}/files`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            },
-            onUploadProgress: (progressEvent: any) => {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              setUploadProgress(percentCompleted);
-            }
-          });
-          
-          console.log('DEBUG: Uploaded pending files successfully:', uploadResponse.data);
+          console.log('DEBUG: Uploaded pending files successfully to new journal entry');
           
           toast({
             title: "Files attached",
             description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
           });
-          
-          // Invalidate the files query for the new journal entry
-          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', newJournalEntryId] });
         } catch (fileError) {
           console.error('Failed to upload pending files:', fileError);
           toast({
@@ -874,9 +925,6 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
-        } finally {
-          // Reset upload progress
-          setUploadProgress(0);
         }
       }
       
@@ -949,41 +997,17 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       console.log('DEBUG: Journal entry update success response:', JSON.stringify(response, null, 2));
       
       // Upload pending files for existing entries if there are any
-      if (pendingFiles && pendingFiles.length > 0 && existingEntry?.id) {
+      if (pendingFiles?.length > 0 && existingEntry?.id && uploadPendingFilesRef.current) {
         try {
-          // Create a FormData object to upload the files
-          const formData = new FormData();
-          pendingFiles.forEach(file => {
-            formData.append('files', file);
-          });
+          // Use the function from the AttachmentSection via ref to upload files
+          await uploadPendingFilesRef.current(existingEntry.id);
           
-          console.log('DEBUG: Uploading pending files to existing journal entry:', pendingFiles.length);
-          
-          // Use axios to upload the files to the existing journal entry
-          const axios = (await import('axios')).default;
-          const uploadResponse = await axios.post(`/api/journal-entries/${existingEntry.id}/files`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            },
-            onUploadProgress: (progressEvent: any) => {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              setUploadProgress(percentCompleted);
-            }
-          });
-          
-          console.log('DEBUG: Uploaded pending files to existing entry successfully:', uploadResponse.data);
+          console.log('DEBUG: Uploaded pending files to existing entry successfully');
           
           toast({
             title: "Files attached",
             description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
           });
-          
-          // Clear pending files after successful upload
-          setPendingFiles([]);
-          setPendingFilesMetadata([]);
-          
-          // Refresh the files list
-          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', existingEntry.id] });
         } catch (fileError) {
           console.error('Failed to upload pending files:', fileError);
           toast({
@@ -991,9 +1015,6 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry updated, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
-        } finally {
-          // Reset upload progress
-          setUploadProgress(0);
         }
       }
       
