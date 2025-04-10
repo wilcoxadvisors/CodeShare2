@@ -2230,14 +2230,15 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           {/* Save as Draft button - for all users */}
           <Button
             onClick={() => handleSubmit(true)}
-            disabled={createEntry.isPending || updateEntry.isPending}
+            disabled={createEntry.isPending || updateEntry.isPending || isUploading}
             className="relative"
           >
-            {(createEntry.isPending || updateEntry.isPending) && (
+            {(createEntry.isPending || updateEntry.isPending || isUploading) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
             )}
-            {!(createEntry.isPending || updateEntry.isPending) && 'Save as Draft'}
+            {!(createEntry.isPending || updateEntry.isPending || isUploading) && 'Save as Draft'}
             {(createEntry.isPending || updateEntry.isPending) && 'Saving...'}
+            {isUploading && 'Uploading Files...'}
           </Button>
           
           {/* Post/Submit button based on role */}
@@ -2294,17 +2295,18 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                 }
               }}
               className="bg-green-600 hover:bg-green-700 relative"
-              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
-              title={!isBalanced ? "Journal entry must be balanced before posting" : ""}
+              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced || isUploading}
+              title={!isBalanced ? "Journal entry must be balanced before posting" : isUploading ? "Please wait while files are uploading" : ""}
             >
-              {(createEntry.isPending || updateEntry.isPending) && (
+              {(createEntry.isPending || updateEntry.isPending || isUploading) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) && isBalanced && (
+              {!(createEntry.isPending || updateEntry.isPending || isUploading) && isBalanced && (
                 <CheckCircle2 className="mr-2 h-4 w-4 inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) && 'Post Entry'}
+              {!(createEntry.isPending || updateEntry.isPending || isUploading) && 'Post Entry'}
               {(createEntry.isPending || updateEntry.isPending) && 'Posting...'}
+              {isUploading && 'Uploading Files...'}
             </Button>
           ) : (
             /* Submit for Approval button - for non-admin users */
@@ -2323,8 +2325,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                 }
               }}
               className="bg-blue-600 hover:bg-blue-700 relative"
-              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced}
-              title={!isBalanced ? "Journal entry must be balanced before submitting" : ""}
+              disabled={createEntry.isPending || updateEntry.isPending || !isBalanced || isUploading}
+              title={!isBalanced ? "Journal entry must be balanced before submitting" : isUploading ? "Please wait while files are uploading" : ""}
             >
               {(createEntry.isPending || updateEntry.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
