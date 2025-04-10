@@ -616,8 +616,22 @@ function JournalEntryDetail() {
     // Conditionally show buttons based on status
     const actionButtons = [];
     
-    // For draft status - add delete button
+    // For draft status - add post and delete buttons
     if (status === 'draft') {
+      // Add Post Entry button
+      actionButtons.push(
+        <Button 
+          key="post"
+          variant="outline" 
+          onClick={handlePostEntry}
+          className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 mr-2"
+        >
+          <Check className="mr-2 h-4 w-4" />
+          Post Entry
+        </Button>
+      );
+      
+      // Add Delete button
       actionButtons.push(
         <Button 
           key="delete"
@@ -1065,116 +1079,8 @@ function JournalEntryDetail() {
           </CardContent>
         </Card>
         
-        {/* File Attachments */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Paperclip className="h-5 w-5 mr-2" />
-              Supporting Documents
-            </CardTitle>
-            <CardDescription>
-              Attached files and supporting documentation for this journal entry
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Drag and drop file upload component */}
-            <div 
-              {...getRootProps()} 
-              className={`mb-4 border-2 border-dashed rounded-md p-6 transition-colors ${
-                isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-              } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <input {...getInputProps()} disabled={uploading} />
-              
-              <div className="flex flex-col items-center justify-center text-center">
-                {uploading ? (
-                  <div className="w-full">
-                    <span className="text-sm mb-2 block">Uploading... {uploadProgress}%</span>
-                    <Progress value={uploadProgress} className="w-full h-2" />
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-10 w-10 mb-2 text-gray-400" />
-                    <h3 className="text-sm font-medium mb-1">
-                      {isDragActive ? 'Drop files here' : 'Drag and drop files here or click to browse'}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Supports PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, and CSV (max 10MB per file)
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            {/* Rejected files list */}
-            {rejectedFiles.length > 0 && (
-              <div className="bg-red-50 p-3 rounded-md mb-4">
-                <p className="text-sm font-medium text-red-800 mb-1">The following files were rejected:</p>
-                <ul className="text-xs text-red-700 list-disc ml-4">
-                  {rejectedFiles.map((file, index) => (
-                    <li key={index}>
-                      {file.file.name} - {file.errors[0]?.message || 'Invalid file type or size'}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {/* File list */}
-            {journalEntry.files && journalEntry.files.length > 0 ? (
-              <div className="space-y-2">
-                {journalEntry.files.map((file) => (
-                  <div 
-                    key={file.id} 
-                    className="flex items-center justify-between p-2 border rounded-md hover:bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      {/* File icon based on mime type */}
-                      {getFileIcon(file.mimeType)}
-                      
-                      {/* File name and details */}
-                      <div className="truncate max-w-[200px]">
-                        <p className="text-sm font-medium">{file.originalname || file.filename}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(file.size)}
-                          {file.uploadedAt && `, added ${formatDate(file.uploadedAt)}`}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-1">
-                      {/* Download button */}
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleFileDownload(file.id)}
-                        className="text-blue-500 hover:text-blue-700"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      
-                      {/* Delete button */}
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleFileDelete(file.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-6 text-gray-500 border rounded-md border-dashed">
-                <FileText className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-sm">No supporting documents attached</p>
-                <p className="text-xs mt-1">Upload files to provide documentation for this journal entry</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* File attachments are now handled in the JournalEntryForm component, 
+        not in the detail view per the design requirements */}
       </div>
       
       {/* Delete Dialog */}
