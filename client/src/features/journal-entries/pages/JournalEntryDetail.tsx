@@ -597,6 +597,46 @@ function JournalEntryDetail() {
     }
   };
   
+  // Handle post entry button click
+  const handlePostEntry = () => {
+    // Check if the entry is balanced before posting
+    const { totalDebit, totalCredit } = calculateTotals();
+    const difference = Math.abs(totalDebit - totalCredit);
+    const isBalanced = Math.abs(difference) < 0.01; // Allow for tiny rounding errors
+    
+    if (!isBalanced) {
+      toast({
+        title: "Cannot Post Unbalanced Entry",
+        description: "Journal entry debits and credits must be equal before posting.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Confirm before posting
+    if (window.confirm('Are you sure you want to post this journal entry? Once posted, it cannot be edited or deleted.')) {
+      // Update the status to posted
+      updateJournalEntry.mutate({
+        id: entryId,
+        status: 'posted'
+      }, {
+        onSuccess: () => {
+          toast({
+            title: "Journal Entry Posted",
+            description: "The journal entry has been posted successfully.",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: `Failed to post journal entry: ${error.message}`,
+            variant: "destructive",
+          });
+        }
+      });
+    }
+  };
+  
   // Render action buttons based on status
   const renderActionButtons = () => {
     // If journal entry is not loaded or doesn't have a status, return empty div
