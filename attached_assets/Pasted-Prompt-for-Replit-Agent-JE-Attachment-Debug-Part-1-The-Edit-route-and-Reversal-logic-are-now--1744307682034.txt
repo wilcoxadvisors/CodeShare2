@@ -1,0 +1,42 @@
+Prompt for Replit Agent (JE Attachment Debug - Part 1):
+
+"The Edit route and Reversal logic are now confirmed fixed. However, the user tested the File Attachment feature (Issue #7, Checkpoint 68c54be1) and reported multiple critical failures: only the last file is saved during multi-upload, the file list doesn't display, download/delete don't work, and files disappear after posting. We need to add detailed logging to debug the core multi-file upload and list display flow.
+
+Tasks:
+
+Verify/Add Backend Upload & Storage Logging:
+
+Go to server/journalEntryRoutes.ts, find POST /api/journal-entries/:id/files.
+Add/Ensure Logging:
+Log req.files received from multer: console.log('DEBUG Attach BE: Received req.files:', req.files);
+Inside the file processing loop (iterating req.files), log the file being processed and data sent to storage: console.log('DEBUG Attach BE: Processing file:', file.originalname, ' Data to storage:', dataForStorage);
+Check for and log any errors during file moving/saving (e.g., fs.rename if used).
+Go to server/storage/journalEntryStorage.ts, find createJournalEntryFile.
+Add/Ensure Logging: Log data received and DB insert result: console.log('DEBUG Attach Storage: createJournalEntryFile called with:', fileData); and console.log('DEBUG Attach Storage: Insert result:', insertResult);
+Verify/Add Backend File List Retrieval Logging:
+
+Go to server/journalEntryRoutes.ts, find GET /api/journal-entries/:id/files.
+Add/Ensure Logging: Log result from storage before sending response: console.log('DEBUG Attach BE: Files retrieved for entry', req.params.id, ':', files);
+Go to server/storage/journalEntryStorage.ts, find getJournalEntryFiles.
+Add/Ensure Logging: Log the result of the DB query: console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', queryResult);
+Verify/Add Frontend File List Fetching Logging:
+
+Go to client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Find the useQuery hook for attachments (useGetAttachments?).
+Add/Ensure Logging: Log the data returned by the hook: console.log('DEBUG Attach FE: Data from useGetAttachments:', data);
+Verify/Add Frontend List Rendering Logging:
+
+In JournalEntryDetail.tsx, find the JSX mapping over the fetched file list (filesData?.files.map(...)).
+Add/Ensure Logging: Inside the map, log each file being rendered: console.log('DEBUG Attach FE: Rendering file list item:', file);
+Re-run Test:
+
+Ask the user to go to an existing journal entry (e.g., a draft one accessed via the now-working edit route), upload two different allowed files (e.g., PDF, JPG) using drag-drop or the button.
+Then, ask the user to reload the page.
+Report Findings:
+
+Provide the output of all the DEBUG logs (Backend Upload, Backend List, Frontend Fetch, Frontend Render) from this test.
+Did the backend log show both files being received and processed/saved?
+Did the backend log show both files being retrieved when listing?
+Did the frontend log show both files being received from the API after the page reload?
+Did the frontend log show it attempting to render both file list items?
+This detailed trace will help us find where the multi-file upload or list display is breaking down."
