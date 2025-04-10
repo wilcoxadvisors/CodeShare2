@@ -750,6 +750,10 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             type: reversedType,
             amount: line.amount,
             description: line.description || null,
+            entityCode: line.entityCode || null, // Include entityCode from original line
+            fsliBucket: line.fsliBucket || null, // Copy reporting fields as well
+            internalReportingBucket: line.internalReportingBucket || null,
+            item: line.item || null,
             reconciled: false // New reversal line is not reconciled
           };
           
