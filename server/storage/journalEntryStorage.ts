@@ -426,7 +426,12 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return false;
       }
       
-      // Check if this entry is referenced by other entries (through reversalByEntryId)
+      // If the entry is posted, we cannot delete it
+      if (existingEntry.status === JournalEntryStatus.POSTED) {
+        throw new Error(`Cannot delete a posted journal entry. Use void instead.`);
+      }
+      
+      // Check if this entry is referenced by other entries (through reversedByEntryId)
       const referencingEntries = await db.select({ id: journalEntries.id })
         .from(journalEntries)
         .where(eq(journalEntries.reversedByEntryId, id));
@@ -452,8 +457,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         }
       }
       
-      // If this entry references another entry (as a reversal), clear the reference on the original entry
+      // If this entry references another entry (as a reversal)
       if (existingEntry.reversedEntryId) {
+        // Always allow deleting a draft reversal entry, but update the original entry to remove the reference
         await db.update(journalEntries)
           .set({
             isReversed: false,
