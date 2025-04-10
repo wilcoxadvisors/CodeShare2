@@ -74,7 +74,9 @@ function JournalEntryDetail() {
   
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [voidReason, setVoidReason] = useState('');
   
   // Get client ID for accounts query - use entity's clientId
   const clientId = currentEntity?.clientId;
@@ -530,9 +532,11 @@ function JournalEntryDetail() {
   const voidEntry = useMutation({
     mutationFn: async () => {
       if (!entryId) throw new Error('Journal entry ID is required');
+      if (!voidReason.trim()) throw new Error('Void reason is required');
       
       return await apiRequest(`/api/journal-entries/${entryId}/void`, {
-        method: 'POST'
+        method: 'POST',
+        data: { reason: voidReason }
       });
     },
     onSuccess: () => {
@@ -540,6 +544,8 @@ function JournalEntryDetail() {
         title: 'Success',
         description: 'Journal entry voided',
       });
+      setVoidReason('');
+      setShowVoidDialog(false);
       refetch();
     },
     onError: (error: any) => {
@@ -638,9 +644,9 @@ function JournalEntryDetail() {
           </Button>
         )}
         
-        {(status === 'posted' || status === 'approved') && isAdmin && (
+        {(status === 'posted') && isAdmin && (
           <Button
-            onClick={() => voidEntry.mutate()}
+            onClick={() => setShowVoidDialog(true)}
             size="sm"
             variant="outline"
             className="bg-purple-100 text-purple-800 hover:bg-purple-200"

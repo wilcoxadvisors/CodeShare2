@@ -764,16 +764,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         
         console.log(`Updated original entry ${originalEntry.id} to link to reversal ${reversalEntry.id}`);
         
-        // Auto-post the reversal entry
-        await tx.update(journalEntries)
-          .set({
-            status: 'posted' as const,  // Use const assertion to ensure correct type
-            postedBy: options.createdBy,
-            postedAt: new Date()
-          })
-          .where(eq(journalEntries.id, reversalEntry.id));
-          
-        console.log(`Auto-posted reversal entry ${reversalEntry.id}`);
+        // Leave the reversal entry in draft status - removed auto-posting
+        // This ensures the user must manually review and post the reversal
+        console.log(`Reversal entry ${reversalEntry.id} created in draft status`);
       });
       
       // Return the completed reversal entry with lines
