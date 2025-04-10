@@ -1323,7 +1323,8 @@ export function registerJournalEntryRoutes(app: Express) {
     
     console.log('DEBUG Attach BE: Files retrieved for entry', req.params.id, ':', files);
     
-    res.json(files);
+    // Always return an array (even if empty) to avoid "attachments.map is not a function" error
+    res.json(files || []);
   }));
   
   /**
