@@ -615,12 +615,59 @@ function JournalEntryDetail() {
     
     // Confirm before posting
     if (window.confirm('Are you sure you want to post this journal entry? Once posted, it cannot be edited or deleted.')) {
-      // Update the status to posted - we need to include the existing journal entry's lines
-      // to avoid the "lines: Required" error from the server
+      // Make sure we have journal entry data
+      if (!journalEntry || !journalEntry.lines) {
+        toast({
+          title: "Error",
+          description: "Journal entry data is missing. Please reload the page and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Create an array to hold the formatted line data
+      const formattedLines = [];
+      
+      // Process each line to ensure correct format
+      for (const line of journalEntry.lines) {
+        if (isClientFormatLine(line)) {
+          // Check if it's a debit or credit line
+          if (parseFloat(line.debit) > 0) {
+            formattedLines.push({
+              type: 'debit',
+              amount: line.debit,
+              accountId: Number(line.accountId),
+              entityCode: line.entityCode || null,
+              description: line.description || null
+            });
+          } else if (parseFloat(line.credit) > 0) {
+            formattedLines.push({
+              type: 'credit',
+              amount: line.credit,
+              accountId: Number(line.accountId),
+              entityCode: line.entityCode || null,
+              description: line.description || null
+            });
+          }
+        } else if (isServerFormatLine(line)) {
+          // Already in server format, just ensure amount is a string
+          formattedLines.push({
+            type: line.type,
+            amount: line.amount.toString(),
+            accountId: line.accountId,
+            entityCode: line.entityCode || null,
+            description: line.description || null
+          });
+        }
+      }
+      
+      console.log('Posting journal entry with formatted lines:', formattedLines);
+      
+      // Update the status to posted with formatted lines
       updateJournalEntry.mutate({
         id: entryId,
         status: 'posted',
-        lines: journalEntry.lines || []
+        lines: formattedLines
       }, {
         onSuccess: () => {
           toast({
