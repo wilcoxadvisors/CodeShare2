@@ -214,6 +214,17 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<{
+    id: number;
+    filename: string;
+    size: number;
+    mimeType: string; 
+    addedAt: Date;
+  }[]>([]);
+  
+  // Determine if we have a numeric journal entry ID (real entry) or not
+  const isExistingEntry = typeof journalEntryId === 'number';
   
   // Helper function to format bytes into readable format
   const formatBytes = (bytes: number, decimals: number = 2): string => {
@@ -243,7 +254,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
     }
   };
   
-  // Fetch attachments for this journal entry
+  // Fetch attachments for this journal entry (only for existing entries)
   const { 
     data: attachments = [], 
     isLoading: isLoadingAttachments,
@@ -252,51 +263,95 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
   } = useQuery<JournalEntryFile[]>({
     queryKey: ['journalEntryAttachments', journalEntryId],
     queryFn: async () => {
-      if (!journalEntryId) return [];
+      if (!isExistingEntry) return [];
       const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
         method: 'GET'
       });
       console.log('DEBUG AttachmentSection: Fetched attachments:', response);
       return response as unknown as JournalEntryFile[];
     },
-    enabled: !!journalEntryId, // Only fetch if we have a journalEntryId
+    enabled: isExistingEntry, // Only fetch if we have a numeric journalEntryId
   });
   
   // Upload file mutation
   const uploadFileMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      if (!journalEntryId) {
-        throw new Error('Journal entry must be saved first');
+      if (isExistingEntry) {
+        // For existing entries, upload directly to server
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        
+        console.log('DEBUG AttachmentSection: Uploading files to server:', files);
+        
+        // Using axios directly for upload to handle progress
+        const axios = (await import('axios')).default;
+        const response = await axios.post(`/api/journal-entries/${journalEntryId}/files`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent: any) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        });
+        
+        return response.data;
+      } else {
+        // For new entries, store files in state temporarily
+        console.log('DEBUG AttachmentSection: Storing files temporarily:', files);
+        
+        // Create metadata for the pending files
+        const newFilesMetadata = files.map((file, index) => ({
+          id: Date.now() + index, // Generate a temporary ID
+          filename: file.name,
+          size: file.size,
+          mimeType: file.type,
+          addedAt: new Date()
+        }));
+        
+        // Add the files to our pending files state
+        setPendingFiles(prevFiles => [...prevFiles, ...files]);
+        setPendingFilesMetadata(prevMetadata => [...prevMetadata, ...newFilesMetadata]);
+        
+        // Simulate progress for better UX
+        const intervalId = setInterval(() => {
+          setUploadProgress(progress => {
+            if (progress >= 100) {
+              clearInterval(intervalId);
+              return 100;
+            }
+            return progress + 10;
+          });
+        }, 50);
+        
+        // Clear progress after "upload" is complete
+        setTimeout(() => {
+          clearInterval(intervalId);
+          setUploadProgress(100);
+          // Short delay to show 100% before resetting
+          setTimeout(() => setUploadProgress(0), 300);
+        }, 600);
+        
+        return { success: true, tempFiles: newFilesMetadata };
       }
-      
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-      
-      console.log('DEBUG AttachmentSection: Uploading files:', files);
-      
-      // Using axios directly for upload to handle progress
-      const axios = (await import('axios')).default;
-      const response = await axios.post(`/api/journal-entries/${journalEntryId}/files`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent: any) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      });
-      
-      return response.data;
     },
-    onSuccess: () => {
-      toast({
-        title: 'Files uploaded',
-        description: 'Files were successfully uploaded.',
-      });
+    onSuccess: (data) => {
       setUploadProgress(0);
-      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+      
+      if (isExistingEntry) {
+        toast({
+          title: 'Files uploaded',
+          description: 'Files were successfully uploaded to the journal entry.',
+        });
+        queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+      } else {
+        toast({
+          title: 'Files staged',
+          description: 'Files will be attached when the journal entry is saved.',
+        });
+      }
     },
     onError: (error: any) => {
       console.error('File upload error:', error);
@@ -309,10 +364,24 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
     }
   });
   
-  // Delete file mutation
+  // Delete pending file (for new entries)
+  const deletePendingFile = (id: number) => {
+    const fileIndex = pendingFilesMetadata.findIndex(file => file.id === id);
+    if (fileIndex !== -1) {
+      setPendingFilesMetadata(prev => prev.filter(file => file.id !== id));
+      setPendingFiles(prev => prev.filter((_, index) => index !== fileIndex));
+      
+      toast({
+        title: 'File removed',
+        description: 'File was removed from pending uploads.',
+      });
+    }
+  };
+  
+  // Delete file mutation (for existing entries)
   const deleteFileMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      if (!journalEntryId) return null;
+      if (!isExistingEntry) return null;
       
       return await apiRequest(`/api/journal-entries/${journalEntryId}/files/${fileId}`, {
         method: 'DELETE'
@@ -417,7 +486,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : isAttachmentsError ? (
+          ) : isAttachmentsError && isExistingEntry ? (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
@@ -425,7 +494,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
                 {(attachmentsError as Error)?.message || 'Failed to load attachments'}
               </AlertDescription>
             </Alert>
-          ) : !attachments || attachments.length === 0 ? (
+          ) : (!attachments || attachments.length === 0) && pendingFilesMetadata.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No files attached yet</p>
           ) : (
             <ScrollArea className="h-[200px] rounded-md border">
@@ -434,11 +503,52 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
                   <TableRow>
                     <TableHead className="w-[40%]">Filename</TableHead>
                     <TableHead className="w-[15%]">Size</TableHead>
-                    <TableHead className="w-[25%]">Uploaded</TableHead>
+                    <TableHead className="w-[25%]">Status</TableHead>
                     <TableHead className="w-[20%]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Pending files (for new entries) */}
+                  {pendingFilesMetadata.map((file) => (
+                    <TableRow key={`pending-${file.id}`}>
+                      <TableCell className="flex items-center">
+                        {getFileIcon(file.mimeType)}
+                        <span className="ml-2 truncate max-w-[150px]" title={file.filename}>
+                          {file.filename}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatBytes(file.size)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">Pending</span>
+                          {new Date(file.addedAt).toLocaleTimeString()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => deletePendingFile(file.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Remove</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {/* Existing files (for saved entries) */}
                   {attachments.map((file: JournalEntryFile) => (
                     <TableRow key={file.id}>
                       <TableCell className="flex items-center">
@@ -446,7 +556,12 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
                         <span className="ml-2 truncate max-w-[150px]" title={file.filename}>{file.filename}</span>
                       </TableCell>
                       <TableCell>{formatBytes(file.size)}</TableCell>
-                      <TableCell>{new Date(file.uploadedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <span className="text-green-500 bg-green-50 text-xs px-2 py-1 rounded-full font-medium mr-2">Uploaded</span>
+                          {new Date(file.uploadedAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <TooltipProvider>
@@ -685,11 +800,56 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         }
       );
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      // Get the newly created journal entry ID from the response
+      const newJournalEntryId = result.id;
+      
+      console.log('DEBUG: New journal entry created with ID:', newJournalEntryId);
+      
+      // Upload pending files if there are any
+      if (pendingFiles && pendingFiles.length > 0) {
+        try {
+          // Create a FormData object to upload the files
+          const formData = new FormData();
+          pendingFiles.forEach(file => {
+            formData.append('files', file);
+          });
+          
+          console.log('DEBUG: Uploading pending files to new journal entry:', pendingFiles.length);
+          
+          // Use axios to upload the files to the new journal entry
+          const axios = (await import('axios')).default;
+          await axios.post(`/api/journal-entries/${newJournalEntryId}/files`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          
+          console.log('DEBUG: Uploaded pending files successfully');
+          
+          toast({
+            title: "Files attached",
+            description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+          });
+        } catch (fileError) {
+          console.error('Failed to upload pending files:', fileError);
+          toast({
+            title: "Note about files",
+            description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       toast({
         title: "Journal entry created",
         description: "The journal entry has been created successfully.",
       });
+      
+      // Clear pending files after successful upload or if there were none
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+      
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/journal-entries`] });
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
       onSubmit();
@@ -746,12 +906,56 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         }
       );
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       console.log('DEBUG: Journal entry update success response:', JSON.stringify(response, null, 2));
+      
+      // Upload pending files for existing entries if there are any
+      if (pendingFiles && pendingFiles.length > 0 && existingEntry?.id) {
+        try {
+          // Create a FormData object to upload the files
+          const formData = new FormData();
+          pendingFiles.forEach(file => {
+            formData.append('files', file);
+          });
+          
+          console.log('DEBUG: Uploading pending files to existing journal entry:', pendingFiles.length);
+          
+          // Use axios to upload the files to the existing journal entry
+          const axios = (await import('axios')).default;
+          await axios.post(`/api/journal-entries/${existingEntry.id}/files`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          
+          console.log('DEBUG: Uploaded pending files to existing entry successfully');
+          
+          toast({
+            title: "Files attached",
+            description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+          });
+          
+          // Clear pending files after successful upload
+          setPendingFiles([]);
+          setPendingFilesMetadata([]);
+          
+          // Refresh the files list
+          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', existingEntry.id] });
+        } catch (fileError) {
+          console.error('Failed to upload pending files:', fileError);
+          toast({
+            title: "Note about files",
+            description: "Journal entry updated, but some files could not be attached. Please try uploading them again.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       toast({
         title: "Journal entry updated",
         description: "The journal entry has been updated successfully.",
       });
+      
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/journal-entries`] });
       queryClient.invalidateQueries({ queryKey: [`/api/entities/${entityId}/general-ledger`] });
       onSubmit();
