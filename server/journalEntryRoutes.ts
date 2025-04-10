@@ -39,6 +39,30 @@ export function registerJournalEntryRoutes(app: Express) {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB file size limit
     },
+    fileFilter: (req, file, cb) => {
+      // Accept all common file types
+      const allowedMimeTypes = [
+        // Images
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        // Documents
+        'application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        // Text
+        'text/plain', 'text/csv',
+        // Archives
+        'application/zip', 'application/x-rar-compressed'
+      ];
+      
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`File type ${file.mimetype} is not supported`), false);
+      }
+    }
   });
   /**
    * Create a journal entry with lines
@@ -304,7 +328,7 @@ export function registerJournalEntryRoutes(app: Express) {
   }));
   
   /**
-   * Get a specific journal entry with its lines
+   * Get a specific journal entry with its lines and files
    */
   app.get('/api/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
@@ -322,10 +346,14 @@ export function registerJournalEntryRoutes(app: Express) {
     // Get lines and attach them to the journal entry
     const lines = await journalEntryStorage.getJournalEntryLines(id);
     
-    // Return the journal entry with lines
+    // Get attached files for this journal entry
+    const files = await journalEntryStorage.getJournalEntryFiles(id);
+    
+    // Return the journal entry with lines and files
     res.json({
       ...journalEntry,
-      lines
+      lines,
+      files
     });
   }));
   
@@ -1205,5 +1233,118 @@ export function registerJournalEntryRoutes(app: Express) {
       // Void entries cannot be modified
       return res.status(400).json({ message: 'Voided journal entries cannot be modified' });
     }
+  }));
+
+  /**
+   * Upload a file attachment to a journal entry
+   */
+  app.post('/api/journal-entries/:id/files', 
+    isAuthenticated, 
+    upload.single('file'), 
+    asyncHandler(async (req: Request, res: Response) => {
+      const id = parseInt(req.params.id);
+      const user = req.user as { id: number };
+      
+      if (isNaN(id)) {
+        throwBadRequest('Invalid journal entry ID provided');
+      }
+      
+      // Get the existing entry to check its status
+      const journalEntry = await journalEntryStorage.getJournalEntry(id);
+      
+      if (!journalEntry) {
+        throwNotFound('Journal Entry');
+      }
+      
+      // Check if a file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file was uploaded' });
+      }
+      
+      try {
+        // Add uploadedBy to the file data
+        const fileData = {
+          ...req.file,
+          uploadedBy: user.id
+        };
+        
+        // Save the file to the journal entry
+        const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
+        
+        res.status(201).json({
+          message: 'File uploaded successfully',
+          file: savedFile
+        });
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        throw error;
+      }
+    })
+  );
+  
+  /**
+   * Get all files attached to a journal entry
+   */
+  app.get('/api/journal-entries/:id/files', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Check that the journal entry exists
+    const journalEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Get the files for this journal entry
+    const files = await journalEntryStorage.getJournalEntryFiles(id);
+    
+    res.json(files);
+  }));
+  
+  /**
+   * Serve a specific file from a journal entry
+   */
+  app.get('/api/journal-entries/:journalEntryId/files/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Check that the journal entry exists
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Get all files for this journal entry
+    const files = await journalEntryStorage.getJournalEntryFiles(journalEntryId);
+    
+    // Find the requested file
+    const file = files.find(f => f.id === fileId);
+    
+    if (!file) {
+      throwNotFound('File');
+    }
+    
+    // Check if file exists on disk
+    const filePath = path.join(process.cwd(), file.path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found on server' });
+    }
+    
+    // Serve the file
+    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    
+    // Stream the file to the response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
   }));
 }
