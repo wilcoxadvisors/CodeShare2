@@ -257,7 +257,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
         method: 'GET'
       });
       console.log('DEBUG AttachmentSection: Fetched attachments:', response);
-      return response as JournalEntryFile[];
+      return response as unknown as JournalEntryFile[];
     },
     enabled: !!journalEntryId, // Only fetch if we have a journalEntryId
   });
@@ -511,6 +511,11 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
 function JournalEntryForm({ entityId, clientId, accounts, locations = [], entities = [], onSubmit, onCancel, existingEntry }: JournalEntryFormProps) {
   // Properly initialize the hook at the component level, not in the event handler
   const { postJournalEntry } = useJournalEntry();
+  
+  // Generate a temporary UUID for new entries to use with attachments before saving
+  const [tempJournalEntryId] = useState(uuidv4());
+  // This ID is used for both existing entries and new entries with temporary IDs
+  const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
   
   // Helper function definitions - declaring before they're used
   // Function to unformat number (remove commas) for processing
@@ -1726,7 +1731,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       {/* Attachment Section Conditional Rendering */}
       {(!isEditing || (isEditing && existingEntry?.id && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
-        <AttachmentSection journalEntryId={existingEntry?.id ?? null} />
+        <AttachmentSection journalEntryId={effectiveJournalEntryId} />
       ) : null}
         
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
