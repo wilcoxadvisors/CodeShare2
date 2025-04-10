@@ -1,0 +1,159 @@
+🚩 Critical Journal Entry Fixes & Verification Steps
+Files to explicitly focus on:
+
+Frontend:
+
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+
+client/src/features/journal-entries/hooks/useJournalEntry.ts
+
+client/src/features/journal-entries/pages/JournalEntries.tsx
+
+Backend:
+
+server/journalEntryRoutes.ts
+
+server/storage/journalEntryStorage.ts
+
+✅ Step-by-Step Explicit Instructions for Agent:
+1. Saving Attachments for New Journal Entries
+Frontend (JournalEntryForm.tsx):
+
+Ensure files explicitly attach immediately on new entry creation (use a temporary client-side storage if entry ID isn't generated yet).
+
+On initial save (POST), explicitly ensure frontend sends attachments to backend for permanent storage.
+
+Backend (journalEntryRoutes.ts):
+
+Explicitly confirm endpoint (POST /api/journal-entries) correctly handles and stores attachments received at the initial save.
+
+Files must explicitly move from temporary client storage to permanent server-side storage upon entry creation.
+
+2. Files Not Saving with Posted Entries
+Explicitly confirm attachment upload and saving logic is identical for all draft entries before posting:
+
+Entries should explicitly allow adding attachments while still in draft status.
+
+Upon posting (PUT request to update status), explicitly ensure attachments already uploaded are preserved correctly.
+
+Backend Verification:
+
+Verify explicitly backend endpoint (PUT /api/journal-entries/:id) maintains file references when updating status to posted.
+
+3. Missing Fields (Description & Reference)
+Frontend (JournalEntryForm.tsx):
+
+Explicitly ensure description and reference fields are included in the payload sent to backend during:
+
+Initial save (POST)
+
+Updates (PUT) including posting the entry.
+
+Backend (journalEntryRoutes.ts):
+
+Explicitly verify backend schema (createJournalEntrySchema and updateJournalEntrySchema) includes and saves:
+
+typescript
+Copy
+Edit
+description: z.string().optional(),
+reference: z.string().optional(),
+Explicitly confirm backend storage logic (journalEntryStorage.ts) properly persists description and reference in database.
+
+Frontend Display (JournalEntryDetail.tsx):
+
+Explicitly verify these fields (description, reference) appear visibly on detail views, especially for:
+
+Posted entries
+
+Voided entries
+
+Regular journal entry views (journal-entries/:id)
+
+4. Editing Journal Entries - Files Not Saving
+Frontend (JournalEntryForm.tsx):
+
+Explicitly verify frontend mutation explicitly uploads attachments upon editing (PUT request).
+
+Backend (journalEntryRoutes.ts):
+
+Confirm explicitly the backend explicitly accepts and updates file attachments upon edits.
+
+Explicitly test deletion, upload, and retrieval of attachments through editing flow.
+
+5. Reference & Description Visibility
+Frontend (JournalEntryDetail.tsx and JournalEntries.tsx):
+
+Ensure explicitly reference and description are explicitly displayed in:
+
+Main journal entries table (JournalEntries.tsx) clearly showing these fields.
+
+Journal entry detail view (JournalEntryDetail.tsx) clearly displaying these fields for all statuses (draft, posted, void).
+
+6. 🚩 Critical: Wrong Date Recorded for JE
+Frontend (JournalEntryForm.tsx):
+
+Explicitly verify the date selected by the user is correctly sent (formatted properly, e.g., ISO format) to backend:
+
+typescript
+Copy
+Edit
+payload: {
+  date: selectedDate.toISOString(),
+}
+Confirm no implicit timezone or date parsing errors occur.
+
+Backend (journalEntryRoutes.ts):
+
+Explicitly confirm date received from frontend is stored directly without unwanted transformations:
+
+typescript
+Copy
+Edit
+// explicitly ensure proper storage
+date: new Date(req.body.date),
+Explicitly verify timezone handling—dates should reflect exactly what's input by users.
+
+Journal Entry Storage (journalEntryStorage.ts):
+
+Verify explicitly the database schema correctly saves and retrieves dates:
+
+typescript
+Copy
+Edit
+date: timestamp('date').notNull(),
+🧪 Explicit Testing Steps for Verification:
+Attachments:
+
+Create new JE, attach files, explicitly save entry, confirm attachments persist.
+
+Post JE, confirm attachments remain.
+
+Edit JE, explicitly add/delete attachments, confirm changes persist after save.
+
+Fields (Reference & Description):
+
+Explicitly create entries with populated description and reference fields, save/post them, confirm fields persist and display clearly.
+
+Dates:
+
+Explicitly create JE with a known date, explicitly save it.
+
+Confirm date explicitly matches exactly when viewed in:
+
+JE detail view
+
+JE main list
+
+🚨 Final Explicit Confirmations Required:
+After applying these instructions, explicitly confirm by testing and providing screenshots or console logs:
+
+ Attachments explicitly saving correctly for all entries (new, edited, posted).
+
+ Fields (description, reference) explicitly visible and persistent for all entry statuses.
+
+ Journal entry dates explicitly correct and exactly matching user input.
+
+Report any explicitly remaining issues clearly.
