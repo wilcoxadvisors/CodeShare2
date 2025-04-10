@@ -147,7 +147,7 @@ Note:
 * **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **IN PROGRESS**
     * ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
     * ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
-    * ✅ Build frontend UI for manual JE creation (`ManualJournalEntry.tsx` in `components/forms/`) - Verified via test page.
+    * ✅ Build frontend UI for manual JE creation (`client/src/features/journal-entries/components/JournalEntryForm.tsx`) - Verified via test page.
     * ✅ Manual JE workflow functional: 
         * ✅ Create (Draft & Direct Post for Admin)
         * ✅ Edit (Draft)
@@ -158,6 +158,9 @@ Note:
     * ✅ JE List display fixed (Totals, Reference, ID)
     * ✅ JE Form UI fixed (Buttons, Input stability, Number formatting)
     * ✅ JE Edit route fixed (/journal-entries/edit/:id no longer 404)
+    * ✅ Refactored frontend components:
+        * ✅ `JournalEntryForm.tsx` - Core form component with line item management
+        * ✅ `JournalEntryDetail.tsx` - Page component handling data fetching, state management
     * 🔄 Implement/Fix File Attachment functionality (#7):
         * 🔄 Previous implementation failed user testing (multi-upload, list, download, delete, persistence all broken)
         * 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
