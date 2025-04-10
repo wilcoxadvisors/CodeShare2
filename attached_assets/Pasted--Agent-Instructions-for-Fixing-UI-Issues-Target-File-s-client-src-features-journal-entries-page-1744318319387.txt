@@ -1,0 +1,84 @@
+🎯 Agent Instructions for Fixing UI Issues
+Target File(s):
+
+client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+🚨 1. Voided Entry Detail Issues:
+a. Hide "Edit" Button if Entry is Voided
+
+Find the current conditional rendering logic of the "Edit" button in JournalEntryDetail.tsx.
+Update the logic explicitly to hide if the entry status is "voided" or "posted":
+
+tsx
+Copy
+Edit
+{journalEntry.status !== 'voided' && journalEntry.status !== 'posted' && (
+  <Button onClick={handleEditClick}>
+    Edit
+  </Button>
+)}
+b. Hide Attachment UI ("Supporting Documents") if Entry is Voided
+
+In JournalEntryDetail.tsx, remove or conditionally render the attachment upload UI explicitly. The attachment upload UI should only appear on the edit/create form—not on the detail view.
+
+Ensure explicitly no attachment UI in the detail view at all:
+
+Completely remove the AttachmentSection from the Detail View if present. It should only appear explicitly in the edit/create form.
+
+🚨 2. Posted Entry Detail Issues:
+a. Hide Attachment UI on Posted Entries
+
+In JournalEntryDetail.tsx, confirm explicitly no attachment UI rendering.
+Attachment UI should never explicitly appear on the detail view for any entry status, especially not on "posted" or "voided" entries.
+
+Remove any instances similar to:
+
+tsx
+Copy
+Edit
+<AttachmentSection journalEntryId={journalEntry.id} />
+from JournalEntryDetail.tsx. Ensure attachments can only explicitly be managed from within the Edit Form.
+
+🚨 3. Draft Entry Detail Issues:
+a. Restore "Post Entry" Button for Admins on Draft Entries
+
+In JournalEntryDetail.tsx, explicitly ensure the "Post Entry" button is visible for admins when viewing draft entries.
+
+Check your user permissions logic explicitly (isAdmin) and entry status, and add:
+
+tsx
+Copy
+Edit
+{isAdmin && journalEntry.status === 'draft' && (
+  <Button onClick={handlePostEntry}>
+    Post Entry
+  </Button>
+)}
+🚨 Explicit Checklist for Agent to Verify:
+✅ Voided Entries:
+
+ "Edit" button explicitly hidden.
+
+ Attachment UI explicitly hidden on detail view.
+
+✅ Posted Entries:
+
+ Attachment UI explicitly hidden on detail view.
+
+✅ Draft Entries (Detail View):
+
+ "Post Entry" button explicitly visible (for admin users).
+
+ Attachment UI explicitly hidden (should be in edit form only).
+
+📝 Additional Clarification:
+
+The AttachmentSection component (AttachmentSection) should only explicitly appear inside:
+
+JournalEntryForm.tsx (create and edit modes)
+
+Never explicitly render attachment UI in:
+
+JournalEntryDetail.tsx

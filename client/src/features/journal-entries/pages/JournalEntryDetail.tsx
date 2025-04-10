@@ -605,7 +605,7 @@ function JournalEntryDetail() {
     const status = journalEntry.status;
     const isAdmin = user?.role === 'admin';
     
-    // Define basic buttons (available for all status)
+    // Define basic buttons (not available for posted or voided entries)
     const basicButtons = (
       <Button variant="outline" onClick={() => navigate(`/journal-entries/edit/${entryId}`)}>
         <Edit className="mr-2 h-4 w-4" />
