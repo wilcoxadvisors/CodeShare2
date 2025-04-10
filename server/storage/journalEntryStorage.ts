@@ -437,23 +437,21 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .where(eq(journalEntries.reversedByEntryId, id));
         
       if (referencingEntries.length > 0) {
-        // If any entry references this one through reversedByEntryId, first clear the reference
-        // This is only safe for non-posted entries
+        // For any entry that references this one through reversedByEntryId, update the reference
         for (const entry of referencingEntries) {
           const referencingEntry = await this.getJournalEntry(entry.id);
-          if (referencingEntry && referencingEntry.status !== JournalEntryStatus.POSTED) {
-            // Update the referencing entry to remove the reference
-            await db.update(journalEntries)
-              .set({
-                reversedEntryId: null,
-                isReversal: false,
-                updatedAt: new Date()
-              })
-              .where(eq(journalEntries.id, entry.id));
-          } else {
-            // If any referencing entry is posted, we cannot delete this entry
-            throw new Error(`Cannot delete journal entry: it is referenced by posted entry #${entry.id}`);
-          }
+          
+          // Whether posted or not, if we're deleting a draft entry, we need to update
+          // the referencing entry to clear its reference
+          await db.update(journalEntries)
+            .set({
+              reversedEntryId: null,
+              isReversal: true, // Keep this as true since it's still a reversal
+              updatedAt: new Date()
+            })
+            .where(eq(journalEntries.id, entry.id));
+            
+          console.log(`Updated referencing entry ${entry.id} to remove reference to deleted entry ${id}`);
         }
       }
       
