@@ -305,6 +305,7 @@ function AttachmentSection({
   // This function will be exposed to parent components via the ref
   const uploadPendingFilesToEntry = async (entryId: number) => {
     if (!pendingFiles || pendingFiles.length === 0) {
+      console.log('DEBUG AttachmentSection: No pending files to upload');
       return; // No files to upload
     }
     
@@ -319,17 +320,44 @@ function AttachmentSection({
       
       // Use axios for the file upload with progress tracking
       const axios = (await import('axios')).default;
-      const response = await axios.post(`/api/journal-entries/${entryId}/files`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent: any) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      });
       
-      console.log('DEBUG AttachmentSection: Upload to new entry successful:', response.data);
+      // Make 3 attempts if needed
+      let attempts = 0;
+      let success = false;
+      let lastError;
+      let response;
+      
+      while (attempts < 3 && !success) {
+        try {
+          attempts++;
+          console.log(`DEBUG AttachmentSection: Upload attempt ${attempts} for entry ${entryId}`);
+          
+          // Wait a bit before retrying (except first attempt)
+          if (attempts > 1) {
+            await new Promise(r => setTimeout(r, 500));
+          }
+          
+          response = await axios.post(`/api/journal-entries/${entryId}/files`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress: (progressEvent: any) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
+            }
+          });
+          
+          success = true;
+          console.log('DEBUG AttachmentSection: Upload to entry successful:', response.data);
+        } catch (error) {
+          console.error(`DEBUG AttachmentSection: Upload attempt ${attempts} failed:`, error);
+          lastError = error;
+        }
+      }
+      
+      if (!success) {
+        throw lastError;
+      }
       
       // Clear the pending files after successful upload
       setPendingFiles([]);
@@ -341,7 +369,7 @@ function AttachmentSection({
       // Invalidate the files query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', entryId] });
       
-      return response.data;
+      return response?.data;
     } catch (error) {
       console.error('Failed to upload pending files to entry:', error);
       throw error;
@@ -898,6 +926,24 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       console.log('Journal entry submission data:', JSON.stringify(data));
       // Ensure the status is properly set in the mutation data
       console.log('DEBUG: Creating entry with status:', data.status);
+      
+      // Validate required fields explicitly
+      if (!data.date) {
+        throw new Error('Date is required');
+      }
+      if (!data.description) {
+        throw new Error('Description is required');
+      }
+      if (!data.reference) {
+        throw new Error('Reference is required');
+      }
+      
+      // Ensure proper date format
+      const date = new Date(data.date);
+      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      
+      console.log('DEBUG: Date after formatting:', data.date);
+      
       return await apiRequest(
         `/api/journal-entries`,
         {
@@ -913,9 +959,21 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       console.log('DEBUG: New journal entry created with ID:', newJournalEntryId, 'Response:', JSON.stringify(result, null, 2));
       
+      // Ensure we have a valid journal entry ID
+      if (!newJournalEntryId) {
+        console.error('ERROR: Failed to extract journal entry ID from API response');
+        toast({
+          title: "Warning",
+          description: "Journal entry was created but there was an issue attaching files.",
+          variant: "destructive"
+        });
+      }
+      
       // Upload pending files if there are any and we have a valid journal entry ID
       if (pendingFiles?.length > 0 && newJournalEntryId && uploadPendingFilesRef.current) {
         try {
+          console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`);
+          
           // Use the function from the AttachmentSection via ref to upload files
           await uploadPendingFilesRef.current(newJournalEntryId);
           
@@ -992,8 +1050,28 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       console.log('DEBUG: Journal entry update - Status:', existingEntry?.status);
       console.log('DEBUG: Journal entry update data:', JSON.stringify(data, null, 2));
       
+      // Validate required fields explicitly
+      if (!data.date) {
+        throw new Error('Date is required');
+      }
+      if (!data.description) {
+        throw new Error('Description is required');
+      }
+      if (!data.reference) {
+        throw new Error('Reference is required');
+      }
+      
+      // Ensure we have existing journal entry ID
+      if (!existingEntry?.id) {
+        throw new Error('Cannot update - Missing journal entry ID');
+      }
+      
+      // Ensure proper date format
+      const date = new Date(data.date);
+      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      
       return await apiRequest(
-        `/api/journal-entries/${existingEntry?.id}`,
+        `/api/journal-entries/${existingEntry.id}`,
         {
           method: "PUT",
           data
@@ -1003,11 +1081,25 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     onSuccess: async (response: JournalEntryResponse) => {
       console.log('DEBUG: Journal entry update success response:', JSON.stringify(response, null, 2));
       
+      // Determine the entry ID from the response or use the existing entry ID
+      const entryId = response?.id || (response?.entry && response.entry.id) || existingEntry?.id;
+      
+      if (!entryId) {
+        console.error('ERROR: Failed to determine valid journal entry ID for file uploads');
+        toast({
+          title: "Warning",
+          description: "Journal entry was updated but file attachment may not work properly.",
+          variant: "destructive"
+        });
+      }
+      
       // Upload pending files for existing entries if there are any
-      if (pendingFiles?.length > 0 && existingEntry?.id && uploadPendingFilesRef.current) {
+      if (pendingFiles?.length > 0 && entryId && uploadPendingFilesRef.current) {
         try {
+          console.log(`DEBUG: Attempting to upload ${pendingFiles.length} files to updated journal entry ${entryId}`);
+          
           // Use the function from the AttachmentSection via ref to upload files
-          await uploadPendingFilesRef.current(existingEntry.id);
+          await uploadPendingFilesRef.current(entryId);
           
           console.log('DEBUG: Uploaded pending files to existing entry successfully');
           
@@ -1023,6 +1115,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             variant: "destructive"
           });
         }
+      } else {
+        console.log('DEBUG: No pending files to upload or missing ref/journalEntryId', {
+          pendingFilesCount: pendingFiles?.length || 0,
+          hasEntryId: !!entryId,
+          existingEntryId: existingEntry?.id,
+          hasUploadRef: !!uploadPendingFilesRef.current
+        });
       }
       
       toast({
