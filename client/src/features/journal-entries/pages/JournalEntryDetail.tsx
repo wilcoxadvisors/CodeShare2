@@ -654,7 +654,7 @@ function JournalEntryDetail() {
           formattedLines.push({
             type: line.type,
             amount: line.amount.toString(),
-            accountId: line.accountId,
+            accountId: Number(line.accountId),
             entityCode: line.entityCode || null,
             description: line.description || null
           });
