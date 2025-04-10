@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
@@ -17,6 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
@@ -201,6 +203,304 @@ const FormSchema = z.object({
     message: "Debits must equal credits for each entity (intercompany balancing)"
   })
 });
+
+/**
+ * AttachmentSection Component
+ * Renders file upload, list, and management functionality for journal entries
+ * @param props - The component props
+ */
+function AttachmentSection({ journalEntryId }: { journalEntryId: number | null | undefined }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  
+  // Helper function to format bytes into readable format
+  const formatBytes = (bytes: number, decimals: number = 2): string => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
+  
+  // Helper function to get appropriate icon based on mimetype
+  const getFileIcon = (mimeType: string): React.ReactNode => {
+    if (mimeType.startsWith('image/')) {
+      return <FileImage className="h-4 w-4" />;
+    } else if (mimeType === 'application/pdf') {
+      return <FileText className="h-4 w-4" />;
+    } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+      return <FileSpreadsheet className="h-4 w-4" />;
+    } else if (mimeType.includes('zip') || mimeType.includes('compressed')) {
+      return <FileArchive className="h-4 w-4" />; 
+    } else {
+      return <FileText className="h-4 w-4" />;
+    }
+  };
+  
+  // Fetch attachments for this journal entry
+  const { 
+    data: attachments = [], 
+    isLoading: isLoadingAttachments,
+    isError: isAttachmentsError,
+    error: attachmentsError
+  } = useQuery<JournalEntryFile[]>({
+    queryKey: ['journalEntryAttachments', journalEntryId],
+    queryFn: async () => {
+      if (!journalEntryId) return [];
+      const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
+        method: 'GET'
+      });
+      console.log('DEBUG AttachmentSection: Fetched attachments:', response);
+      return response as JournalEntryFile[];
+    },
+    enabled: !!journalEntryId, // Only fetch if we have a journalEntryId
+  });
+  
+  // Upload file mutation
+  const uploadFileMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!journalEntryId) {
+        throw new Error('Journal entry must be saved first');
+      }
+      
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      console.log('DEBUG AttachmentSection: Uploading files:', files);
+      
+      // Using axios directly for upload to handle progress
+      const axios = (await import('axios')).default;
+      const response = await axios.post(`/api/journal-entries/${journalEntryId}/files`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent: any) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+      
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Files uploaded',
+        description: 'Files were successfully uploaded.',
+      });
+      setUploadProgress(0);
+      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+    },
+    onError: (error: any) => {
+      console.error('File upload error:', error);
+      toast({
+        title: 'Upload failed',
+        description: error.message || 'Failed to upload files. Please try again.',
+        variant: 'destructive',
+      });
+      setUploadProgress(0);
+    }
+  });
+  
+  // Delete file mutation
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      if (!journalEntryId) return null;
+      
+      return await apiRequest(`/api/journal-entries/${journalEntryId}/files/${fileId}`, {
+        method: 'DELETE'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'File deleted',
+        description: 'File was successfully deleted.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+    },
+    onError: (error: any) => {
+      console.error('File deletion error:', error);
+      toast({
+        title: 'Deletion failed',
+        description: error.message || 'Failed to delete file. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Dropzone configuration
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        uploadFileMutation.mutate(acceptedFiles);
+      }
+    },
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
+      'application/zip': ['.zip'],
+      'application/x-rar-compressed': ['.rar']
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: true,
+    disabled: !journalEntryId || uploadFileMutation.isPending
+  });
+  
+  return (
+    <Card className="mt-8">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center">
+          <Paperclip className="mr-2 h-4 w-4" />
+          Attachments
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Upload Area */}
+        <div
+          {...getRootProps()}
+          className={cn(
+            "border border-dashed rounded-md p-6 cursor-pointer transition-colors",
+            isDragActive ? "border-primary bg-primary/5" : "border-gray-300",
+            !journalEntryId && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <input {...getInputProps()} />
+          
+          {!journalEntryId ? (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">Save the journal entry as draft first to enable file uploads</p>
+              <Button variant="outline" size="sm" disabled className="pointer-events-none">
+                <FileUp className="mr-2 h-4 w-4" />
+                Upload Files
+              </Button>
+            </div>
+          ) : uploadFileMutation.isPending ? (
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Uploading files...</p>
+              <Progress value={uploadProgress} className="w-full mt-2" />
+            </div>
+          ) : isDragActive ? (
+            <div className="text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm">Drop the files here...</p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <FileUp className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">Drag and drop files here, or click to select files</p>
+              <p className="text-xs text-muted-foreground">
+                Supported formats: Images, PDFs, Documents, Spreadsheets, etc. (Max 10MB per file)
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Attachments List */}
+        <div className="mt-4">
+          <h4 className="text-sm font-medium mb-2">Attached Files</h4>
+          
+          {isLoadingAttachments ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : isAttachmentsError ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {(attachmentsError as Error)?.message || 'Failed to load attachments'}
+              </AlertDescription>
+            </Alert>
+          ) : !attachments || attachments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No files attached yet</p>
+          ) : (
+            <ScrollArea className="h-[200px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Filename</TableHead>
+                    <TableHead className="w-[15%]">Size</TableHead>
+                    <TableHead className="w-[25%]">Uploaded</TableHead>
+                    <TableHead className="w-[20%]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attachments.map((file: JournalEntryFile) => (
+                    <TableRow key={file.id}>
+                      <TableCell className="flex items-center">
+                        {getFileIcon(file.mimeType)}
+                        <span className="ml-2 truncate max-w-[150px]" title={file.filename}>{file.filename}</span>
+                      </TableCell>
+                      <TableCell>{formatBytes(file.size)}</TableCell>
+                      <TableCell>{new Date(file.uploadedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => window.open(file.path, '_blank')}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Download</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => deleteFileMutation.mutate(file.id)}
+                                  disabled={deleteFileMutation.isPending}
+                                >
+                                  {deleteFileMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * JournalEntryForm Component
@@ -1477,6 +1777,11 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         </div>
       </div>
       
+      {/* Attachment Section Conditional Rendering */}
+      {(!isEditing || (isEditing && existingEntry?.id && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
+        <AttachmentSection journalEntryId={existingEntry?.id ?? null} />
+      ) : null}
+        
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
         <Button
           variant="outline"

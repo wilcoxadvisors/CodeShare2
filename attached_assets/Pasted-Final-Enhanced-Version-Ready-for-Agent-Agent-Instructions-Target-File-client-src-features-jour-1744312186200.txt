@@ -1,0 +1,121 @@
+Final Enhanced Version (Ready for Agent):
+Agent Instructions:
+
+Target File:
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Goal:
+Implement a robust file attachment section allowing users to explicitly upload, view, download, and delete attachments for a journal entry. The section should only be visible when creating a new journal entry or editing an existing journal entry that is neither posted nor voided. The file upload functionality should only be enabled after the journal entry has been saved (i.e., it has a valid id).
+
+Explicit Implementation Steps:
+✅ Add Necessary Imports:
+(Use provided explicit import list.)
+
+✅ Identify Entry Mode, ID, and Status:
+Ensure explicit access within JournalEntryForm:
+
+isEditMode: boolean
+
+existingEntry: { id: number; status: string; } | null | undefined
+
+journalEntryId = existingEntry?.id
+
+✅ Conditional Rendering of AttachmentSection:
+Place after line items, before action buttons explicitly:
+
+tsx
+Copy
+Edit
+{/* Attachment Section Conditional Rendering */}
+{(!isEditMode || (isEditMode && journalEntryId && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
+    <AttachmentSection journalEntryId={journalEntryId ?? null} />
+) : null}
+✅ AttachmentSection Component:
+Define explicitly accepting prop:
+
+typescript
+Copy
+Edit
+journalEntryId: number | null | undefined
+Inside this component explicitly:
+
+Hooks:
+Initialize explicitly: useToast, useQueryClient
+
+Fetch Attachments (useQuery):
+Define explicitly interface: JournalEntryFile
+
+Query explicitly with:
+
+Key: ['journalEntryAttachments', journalEntryId]
+
+Function (queryFn): explicitly fetch from /api/journal-entries/${journalEntryId}/files
+
+Set enabled: !!journalEntryId
+
+Upload Mutation (useMutation):
+Explicitly POST files via FormData
+
+Explicit success/error handling (invalidate query, show toast explicitly)
+
+Delete Mutation (useMutation):
+Explicit DELETE via file ID
+
+Explicit success/error handling (invalidate query, show toast explicitly)
+
+Dropzone (useDropzone) Setup:
+Explicitly set:
+
+File types (accept)
+
+Max size explicitly (10MB)
+
+multiple: true
+
+disabled: !journalEntryId (crucial)
+
+✅ UI Rendering:
+Use Card, explicitly separated into two sections (CardContent):
+
+Dropzone Area:
+Explicit visual indication:
+
+Disabled state (!journalEntryId): message "Save as Draft first..." explicitly shown.
+
+Uploading/loading explicitly indicated by spinner (Loader2).
+
+Drag-and-drop states explicitly indicated (isDragActive).
+
+Attachments List Area:
+Explicit loading/error handling (Loader2, Alert)
+
+Table explicitly shows Filename, Size, Uploaded Date, Actions.
+
+Action buttons explicitly:
+
+Download: opens explicitly in new tab
+
+Delete: explicit mutation call
+
+✅ Helper Functions:
+Explicitly define or import:
+
+formatBytes(bytes): explicitly readable file size conversion
+
+getFileIcon(mimeType): explicit icon mapping based on MIME type
+
+Explicit Backend Requirements:
+Ensure these endpoints and considerations are explicitly implemented on the backend:
+
+Upload (POST /api/journal-entries/:id/files):
+Accept FormData, explicitly save files at /public/uploads/journal-entries/:id/, record metadata explicitly in DB.
+
+List (GET /api/journal-entries/:id/files):
+Explicitly return file metadata from DB.
+
+Delete (DELETE /api/journal-entries/:id/files/:fileId):
+Explicitly delete both file and DB record.
+
+Static file serving explicitly configured (/uploads directory) securely in server/index.ts.
+
+Explicit security measures for uploads/downloads (validation, preventing path traversal).
