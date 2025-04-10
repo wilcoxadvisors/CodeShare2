@@ -5,6 +5,7 @@ import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
   Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
