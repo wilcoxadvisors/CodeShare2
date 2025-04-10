@@ -534,8 +534,9 @@ function JournalEntryDetail() {
       if (!entryId) throw new Error('Journal entry ID is required');
       if (!voidReason.trim()) throw new Error('Void reason is required');
       
-      return await apiRequest(`/api/journal-entries/${entryId}/void`, {
-        method: 'POST',
+      // Use the DELETE endpoint with a reason parameter to void the entry
+      return await apiRequest(`/api/journal-entries/${entryId}`, {
+        method: 'DELETE',
         data: { reason: voidReason }
       });
     },
