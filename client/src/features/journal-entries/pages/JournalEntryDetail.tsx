@@ -713,6 +713,25 @@ function JournalEntryDetail() {
     
     const status = journalEntry.status;
     const isAdmin = user?.role === 'admin';
+    const isSupervisor = user?.role === 'supervisor';
+    const isAccounting = user?.role === 'accounting';
+    const hasApprovalRights = isAdmin || isSupervisor || isAccounting;
+    
+    // Check if the current user is the owner of the entry
+    const isOwnEntry = user?.id === journalEntry.createdBy;
+    
+    // Log for debugging permission matrix
+    console.log('DEBUG: Permission matrix:', {
+      entryId,
+      status,
+      isAdmin,
+      isSupervisor,
+      isAccounting,
+      hasApprovalRights,
+      isOwnEntry,
+      userId: user?.id,
+      createdBy: journalEntry.createdBy
+    });
     
     // Define basic buttons (not available for posted or voided entries)
     const basicButtons = (
@@ -725,22 +744,71 @@ function JournalEntryDetail() {
     // Conditionally show buttons based on status
     const actionButtons = [];
     
-    // For draft status - add post and delete buttons
+    // For draft status
     if (status === 'draft') {
-      // Add Post Entry button
-      actionButtons.push(
-        <Button 
-          key="post"
-          variant="outline" 
-          onClick={handlePostEntry}
-          className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 mr-2"
-        >
-          <Check className="mr-2 h-4 w-4" />
-          Post Entry
-        </Button>
-      );
+      // EXPLICITLY implement permission rules:
+      // - Admin users can post any entry
+      // - Non-admin users CANNOT post their own entries - they can only submit them
+      // - Non-admin users with approval rights CAN post entries owned by others
       
-      // Add Delete button
+      if (isAdmin || (!isOwnEntry && hasApprovalRights)) {
+        // Admin OR (Non-owner AND has approval rights) - Show Post button
+        actionButtons.push(
+          <Button 
+            key="post"
+            variant="outline" 
+            onClick={handlePostEntry}
+            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 mr-2"
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Post Entry
+          </Button>
+        );
+      } else if (isOwnEntry && !isAdmin) {
+        // EXPLICITLY add Submit button for non-admin users for their own drafts
+        // This submits the entry for approval
+        actionButtons.push(
+          <Button 
+            key="submit"
+            variant="outline" 
+            onClick={() => {
+              // Update status to pending_approval
+              updateJournalEntry.mutate({
+                id: entryId,
+                status: 'pending_approval',
+                // EXPLICITLY include these critical fields to avoid data loss
+                date: journalEntry.date,
+                description: journalEntry.description,
+                reference: journalEntry.reference,
+                journalType: journalEntry.journalType || 'JE',
+                entityId: journalEntry.entityId,
+                clientId: journalEntry.clientId
+              }, {
+                onSuccess: () => {
+                  toast({
+                    title: "Entry Submitted",
+                    description: "Journal entry has been submitted for approval.",
+                  });
+                  refetch();
+                },
+                onError: (error) => {
+                  toast({
+                    title: "Error",
+                    description: `Failed to submit journal entry: ${error.message}`,
+                    variant: "destructive",
+                  });
+                }
+              });
+            }}
+            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-2"
+          >
+            <SendHorizontal className="mr-2 h-4 w-4" />
+            Submit for Approval
+          </Button>
+        );
+      }
+      
+      // Add Delete button - available for all users for draft entries
       actionButtons.push(
         <Button 
           key="delete"
@@ -754,21 +822,112 @@ function JournalEntryDetail() {
       );
     }
     
-    // Only admin/supervisor/accounting can reverse posted journals
-    if (status === 'posted' && (isAdmin || user?.role === 'supervisor' || user?.role === 'accounting')) {
+    // For pending_approval status
+    if (status === 'pending_approval') {
+      // EXPLICITLY implement permission rules:
+      // - Only users with approval rights who are NOT the owner can approve
+      if (hasApprovalRights && !isOwnEntry) {
+        // Add Approve button
+        actionButtons.push(
+          <Button 
+            key="approve"
+            variant="outline" 
+            onClick={() => {
+              // Update status to approved
+              updateJournalEntry.mutate({
+                id: entryId,
+                status: 'approved',
+                // EXPLICITLY include these critical fields to avoid data loss
+                date: journalEntry.date,
+                description: journalEntry.description,
+                reference: journalEntry.reference,
+                journalType: journalEntry.journalType || 'JE',
+                entityId: journalEntry.entityId,
+                clientId: journalEntry.clientId
+              }, {
+                onSuccess: () => {
+                  toast({
+                    title: "Entry Approved",
+                    description: "Journal entry has been approved.",
+                  });
+                  refetch();
+                },
+                onError: (error) => {
+                  toast({
+                    title: "Error",
+                    description: `Failed to approve journal entry: ${error.message}`,
+                    variant: "destructive",
+                  });
+                }
+              });
+            }}
+            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 mr-2"
+          >
+            <CheckCheck className="mr-2 h-4 w-4" />
+            Approve
+          </Button>
+        );
+        
+        // Add Reject button
+        actionButtons.push(
+          <Button 
+            key="reject"
+            variant="outline" 
+            onClick={() => setShowRejectDialog(true)}
+            className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+          >
+            <X className="mr-2 h-4 w-4" />
+            Reject
+          </Button>
+        );
+      }
+    }
+    
+    // For approved status - users with approval rights can post
+    if (status === 'approved' && hasApprovalRights) {
+      actionButtons.push(
+        <Button 
+          key="post"
+          variant="outline" 
+          onClick={handlePostEntry}
+          className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 mr-2"
+        >
+          <Check className="mr-2 h-4 w-4" />
+          Post Entry
+        </Button>
+      );
+    }
+    
+    // For rejected status - the owner can resubmit
+    if (status === 'rejected' && isOwnEntry) {
+      actionButtons.push(
+        <Button 
+          key="resubmit"
+          variant="outline" 
+          onClick={() => navigate(`/journal-entries/edit/${entryId}`)}
+          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-2"
+        >
+          <Edit className="mr-2 h-4 w-4" />
+          Edit and Resubmit
+        </Button>
+      );
+    }
+    
+    // Only users with approval rights can reverse/void posted journals
+    if (status === 'posted' && hasApprovalRights) {
       actionButtons.push(
         <Button 
           key="reverse"
           variant="outline" 
           onClick={handleReverse}
-          className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+          className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 mr-2"
         >
           <RotateCcw className="mr-2 h-4 w-4" />
           Reverse
         </Button>
       );
       
-      // Only admin/supervisor/accounting can void posted journals
+      // Add void button
       actionButtons.push(
         <Button 
           key="void"
@@ -784,7 +943,9 @@ function JournalEntryDetail() {
     
     return (
       <div className="flex space-x-2">
-        {status !== 'posted' && status !== 'voided' && status !== 'void' ? basicButtons : null}
+        {/* Show edit button only for appropriate statuses and if not voided */}
+        {status !== 'posted' && status !== 'voided' && status !== 'void' && 
+         status !== 'pending_approval' && status !== 'approved' ? basicButtons : null}
         {actionButtons}
       </div>
     );

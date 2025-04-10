@@ -5,6 +5,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useEntity } from '@/contexts/EntityContext';
 import { JournalEntryStatus } from '@shared/schema';
 
+// Define API response interfaces
+interface ApiResponse {
+  success?: boolean;
+  message?: string;
+  [key: string]: any;
+}
+
+interface JournalEntryResponse extends ApiResponse {
+  entry?: {
+    id: number;
+    [key: string]: any;
+  };
+}
+
 // Define line item interface for journal entry lines
 export interface JournalLine {
   id?: number;
