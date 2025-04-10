@@ -802,9 +802,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .orderBy(desc(journalEntryFiles.uploadedAt));
       
       console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', queryResult);
-      return queryResult
-        .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
-        .orderBy(desc(journalEntryFiles.uploadedAt));
+      return queryResult;
     } catch (e) {
       throw handleDbError(e, `getting files for journal entry ${journalEntryId}`);
     }
