@@ -1,0 +1,110 @@
+Target File: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Goal: Add a file attachment section that allows users to upload, view, download, and delete files for a journal entry. This section should only be visible when creating a new entry or editing an existing entry that is not posted and not voided. The upload functionality within the section should only be enabled after the entry has been saved at least once (i.e., has an ID).
+
+Instructions for the Agent:
+
+Add Imports:
+
+Ensure these imports are present:
+TypeScript
+
+import React, { useState, useCallback, useMemo } from 'react'; // Added useState, useCallback
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDropzone } from 'react-dropzone';
+// UI Components (ensure these or equivalents are imported)
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress'; // Optional for upload progress
+// Icons
+import { Upload, Trash2, Download, FileText, Paperclip, Loader2, AlertCircle, Info, FileImage, FileSpreadsheet, FileArchive } from 'lucide-react'; // Added File variants
+// Other necessary hooks/utils
+import { useToast } from '@/hooks/use-toast';
+import { queryClient } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns'; // For formatting dates
+Identify Edit Mode, ID, and Status:
+
+Inside the JournalEntryForm component definition, ensure you have access to:
+isEditMode: boolean (likely from props or useEditJournalEntry hook)
+existingEntry: { id: number; status: string; ... } | null | undefined (the entry being edited, passed as a prop or from useEditJournalEntry)
+journalEntryId = existingEntry?.id
+Implement Conditional Rendering for the Section:
+
+Find a suitable location within the main form's JSX structure (e.g., after the lines table, before the main action buttons).
+Add the conditional block to render the AttachmentSection component:
+TypeScript
+
+{/* Attachment Section Conditional Rendering */}
+{(!isEditMode || (isEditMode && journalEntryId && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
+    // If in create mode OR in editable edit mode (not posted/voided), render the section
+    <AttachmentSection 
+        journalEntryId={journalEntryId} // Pass ID (will be undefined in create mode)
+    />
+) : (
+   // Render nothing if posted or voided
+   null 
+)}
+Define or Import AttachmentSection Component:
+
+Create this component (either within JournalEntryForm.tsx or in a separate file and import it). It should accept journalEntryId: number | undefined | null as a prop.
+Inside AttachmentSection:
+Hooks Setup: Initialize toast, queryClient.
+Fetch Attachments (useQuery):
+Define an interface JournalEntryFile matching the expected API response (id, filename, path, mimeType, size, uploadedAt, etc.).
+Use useQuery<JournalEntryFile[]>:
+Query Key: ['journalEntryAttachments', journalEntryId]
+Query Function (queryFn): async () => { if (!journalEntryId) return []; const res = await fetch(\/api/journal-entries/${journalEntryId}/files`); if (!res.ok) throw new Error('Failed to fetch attachments'); return res.json(); }`
+enabled: !!journalEntryId (Crucial: only fetch if ID exists).
+staleTime: (Optional) e.g., 300000 (5 mins).
+Get data: attachments = [], isLoading: isLoadingAttachments, error: attachmentsError from the hook result.
+Upload Mutation (useMutation):
+mutationFn: async (files: File[]) => { const formData = new FormData(); files.forEach(file => formData.append('files', file)); const res = await fetch(\/api/journal-entries/${journalEntryId}/files`, { method: 'POST', body: formData }); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Upload failed'); } return res.json(); }`
+onSuccess: Show success toast, queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] }).
+onError: Show error toast.
+Delete Mutation (useMutation):
+mutationFn: async (fileId: number) => { const res = await fetch(\/api/journal-entries/<span class="math-inline">{journalEntryId}/files/\{fileId}`, { method: 'DELETE' }); if (!res.ok && res.status !== 204) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Delete failed'); } return res; }`
+onSuccess: Show success toast, queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] }).
+onError: Show error toast.
+Dropzone Setup (useDropzone):
+onDrop: useCallback((acceptedFiles, rejectedFiles) => { if (rejectedFiles.length) { toast({ title: 'File Error', description: 'Some files rejected (type/size).', variant: 'destructive' }); } if (acceptedFiles.length) { uploadMutation.mutate(acceptedFiles); } }, [uploadMutation, toast]).
+accept: Define allowed types, e.g., {'application/pdf': ['.pdf'], 'image/*': ['.jpeg', '.png', '.gif', '.jpg'], 'text/csv': ['.csv'], 'application/vnd.ms-excel': ['.xls'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], ...}.
+maxSize: e.g., 10 * 1024 * 1024 (10MB).   
+multiple: true.
+disabled: !journalEntryId (Disable the dropzone if no ID).
+Render UI:
+Wrap everything in a Card or div. Add a CardHeader with <CardTitle>Attachments</CardTitle>.
+Dropzone Area:
+Use a div with {...getRootProps({ className: cn(...) })}. Apply conditional styling for isDragActive and importantly, add styles for the disabled state (!journalEntryId): opacity-50 cursor-not-allowed.
+Include <input {...getInputProps()} />.
+Inside the div, render conditionally:
+If !journalEntryId: Show the "Save as Draft first..." message with an <Info> icon.
+If uploadMutation.isPending: Show a <Loader2> spinner and "Uploading...".
+If isDragActive: Show "Drop files here...".
+Otherwise: Show the default "Drag 'n' drop..." message with an <Upload> icon.
+Attachment List Area (CardContent):
+If isLoadingAttachments: Show <Loader2 className="animate-spin" />.
+If attachmentsError: Show an error Alert.
+If attachments.length > 0: Render the Table:
+TableHead: Filename, Size, Uploaded, Actions.
+TableBody: Map attachments:
+Filename TableCell: Use an icon based on mimeType (FileText, FileImage, FileSpreadsheet, etc.) next to file.filename.
+Size TableCell: Format file.size (e.g., (file.size / 1024).toFixed(1) KB).
+Uploaded TableCell: Format file.uploadedAt (e.g., format(new Date(file.uploadedAt), 'PPp')).
+Actions TableCell:
+Download: <Button variant="ghost" size="icon" asChild><a href={file.path} download={file.filename}><Download className="h-4 w-4" /></a></Button> (Ensure file.path is the correct public URL, like /uploads/...). Wrap in TooltipProvider and Tooltip for usability.
+Delete: <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(file.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-red-600" /></Button>. Wrap in TooltipProvider and Tooltip.
+If attachments.length === 0 (and not loading/error): Show a simple message like "No attachments yet." (Only show this if journalEntryId exists).
+Helper Functions:
+
+Consider adding a helper function formatBytes(bytes, decimals = 2) to display file sizes nicely (KB, MB).
+Consider a helper getFileIcon(mimeType) to return the appropriate lucide-react icon component based on the file type.
+Backend Reminder: Remind the user implementing this that the corresponding backend changes are required:
+
+API route POST /api/journal-entries/:id/files must accept FormData and use upload.array('files', ...).
+API route GET /api/journal-entries/:id/files must return the list of files for that entry.
+API route DELETE /api/journal-entries/:id/files/:fileId must delete the specified file record and the physical file.
+Static file serving must be set up for the /uploads directory in server/index.ts.
