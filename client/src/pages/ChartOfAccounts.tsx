@@ -3006,37 +3006,18 @@ function ChartOfAccounts() {
                                               key={id}
                                               value={`${accountCode} ${name}`}
                                               onSelect={() => {
-                                                // For parent accounts, first check if this was a click on the chevron area
-                                                const wasClickOnChevron = 
-                                                  isParent && 
-                                                  window.event && 
-                                                  (window.event as MouseEvent).offsetX < 24;
+                                                // Always select the account as parent (even if it has children)
+                                                setAccountData(prev => ({
+                                                  ...prev,
+                                                  parentId: id
+                                                }));
                                                 
-                                                // If clicking on chevron area, just toggle expansion
-                                                if (wasClickOnChevron) {
-                                                  setParentAccountExpandedNodes(prev => {
-                                                    const newState = { ...prev };
-                                                    if (newState[id]) {
-                                                      delete newState[id];
-                                                    } else {
-                                                      newState[id] = true;
-                                                    }
-                                                    return newState;
-                                                  });
-                                                } else {
-                                                  // Otherwise, select the account as parent (even if it has children)
-                                                  setAccountData(prev => ({
+                                                // If this is a parent account, also expand it to show its children
+                                                if (isParent) {
+                                                  setParentAccountExpandedNodes(prev => ({
                                                     ...prev,
-                                                    parentId: id
+                                                    [id]: true
                                                   }));
-                                                  
-                                                  // If this is a parent account, also expand it to show its children
-                                                  if (isParent) {
-                                                    setParentAccountExpandedNodes(prev => ({
-                                                      ...prev,
-                                                      [id]: true
-                                                    }));
-                                                  }
                                                 }
                                               }}
                                               className={cn(
@@ -3051,9 +3032,26 @@ function ChartOfAccounts() {
                                             >
                                               {/* Show expand/collapse arrow for parent accounts */}
                                               {isParent ? (
-                                                parentAccountExpandedNodes[id] ? 
-                                                  <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" /> : 
-                                                  <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                <button
+                                                  type="button"
+                                                  className="mr-2 flex h-4 w-4 items-center justify-center rounded-sm hover:bg-accent hover:text-accent-foreground"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setParentAccountExpandedNodes(prev => {
+                                                      const newState = { ...prev };
+                                                      if (newState[id]) {
+                                                        delete newState[id];
+                                                      } else {
+                                                        newState[id] = true;
+                                                      }
+                                                      return newState;
+                                                    });
+                                                  }}
+                                                >
+                                                  {parentAccountExpandedNodes[id] ? 
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground" /> : 
+                                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                                </button>
                                               ) : hasParent ? (
                                                 <span className="w-4 h-4 inline-block mr-2"></span>
                                               ) : (
