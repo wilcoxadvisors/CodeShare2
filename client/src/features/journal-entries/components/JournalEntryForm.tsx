@@ -830,7 +830,8 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     },
     onSuccess: async (result) => {
       // Get the newly created journal entry ID from the response
-      const newJournalEntryId = result.id;
+      // The result might be wrapped in an object or be the entry itself
+      const newJournalEntryId = result.id || (result.entry && result.entry.id);
       
       console.log('DEBUG: New journal entry created with ID:', newJournalEntryId);
       
@@ -847,18 +848,25 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           
           // Use axios to upload the files to the new journal entry
           const axios = (await import('axios')).default;
-          await axios.post(`/api/journal-entries/${newJournalEntryId}/files`, formData, {
+          const uploadResponse = await axios.post(`/api/journal-entries/${newJournalEntryId}/files`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress: (progressEvent: any) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
             }
           });
           
-          console.log('DEBUG: Uploaded pending files successfully');
+          console.log('DEBUG: Uploaded pending files successfully:', uploadResponse.data);
           
           toast({
             title: "Files attached",
             description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
           });
+          
+          // Invalidate the files query for the new journal entry
+          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', newJournalEntryId] });
         } catch (fileError) {
           console.error('Failed to upload pending files:', fileError);
           toast({
@@ -866,6 +874,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
+        } finally {
+          // Reset upload progress
+          setUploadProgress(0);
         }
       }
       
@@ -950,13 +961,17 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           
           // Use axios to upload the files to the existing journal entry
           const axios = (await import('axios')).default;
-          await axios.post(`/api/journal-entries/${existingEntry.id}/files`, formData, {
+          const uploadResponse = await axios.post(`/api/journal-entries/${existingEntry.id}/files`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress: (progressEvent: any) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
             }
           });
           
-          console.log('DEBUG: Uploaded pending files to existing entry successfully');
+          console.log('DEBUG: Uploaded pending files to existing entry successfully:', uploadResponse.data);
           
           toast({
             title: "Files attached",
@@ -976,6 +991,9 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
             description: "Journal entry updated, but some files could not be attached. Please try uploading them again.",
             variant: "destructive"
           });
+        } finally {
+          // Reset upload progress
+          setUploadProgress(0);
         }
       }
       
