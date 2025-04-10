@@ -225,6 +225,17 @@ function JournalEntryDetail() {
     }).format(amount);
   };
   
+  // Format file size for display
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+  
   // Get badge color based on status
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1171,6 +1182,99 @@ function JournalEntryDetail() {
                 </TableRow>
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+        
+        {/* File Attachments */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Paperclip className="h-5 w-5 mr-2" />
+              Supporting Documents
+            </CardTitle>
+            <CardDescription>
+              Attached files and supporting documentation for this journal entry
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* File upload component */}
+            <div className="mb-4">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={uploading}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full border-dashed border-2 h-20 flex flex-col items-center justify-center"
+              >
+                {uploading ? (
+                  <>
+                    <span className="text-sm mb-1">Uploading... {uploadProgress}%</span>
+                    <Progress value={uploadProgress} className="w-3/4 h-2" />
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-5 w-5 mb-1 text-gray-500" />
+                    <span className="text-sm">Click to attach supporting document</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {/* File list */}
+            {journalEntry.files && journalEntry.files.length > 0 ? (
+              <div className="space-y-2">
+                {journalEntry.files.map((file) => (
+                  <div 
+                    key={file.id} 
+                    className="flex items-center justify-between p-2 border rounded-md hover:bg-gray-50"
+                  >
+                    <div className="flex items-center">
+                      {/* File icon based on mime type */}
+                      {file.mimeType?.includes('image') ? (
+                        <FileImage className="h-5 w-5 mr-2 text-blue-500" />
+                      ) : file.mimeType?.includes('pdf') ? (
+                        <FileText className="h-5 w-5 mr-2 text-red-500" />
+                      ) : file.mimeType?.includes('spreadsheet') || file.mimeType?.includes('excel') ? (
+                        <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
+                      ) : (
+                        <File className="h-5 w-5 mr-2 text-gray-500" />
+                      )}
+                      
+                      {/* File name and details */}
+                      <div className="truncate max-w-[200px]">
+                        <p className="text-sm font-medium">{file.originalname || file.filename}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatFileSize(file.size)}
+                          {file.uploadedAt && `, added ${formatDate(file.uploadedAt)}`}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Download button */}
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleFileDownload(file.id)}
+                      className="ml-2"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-6 text-gray-500 border rounded-md border-dashed">
+                <FileText className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">No supporting documents attached</p>
+                <p className="text-xs mt-1">Upload files to provide documentation for this journal entry</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
