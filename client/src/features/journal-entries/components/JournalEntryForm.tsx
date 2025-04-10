@@ -210,18 +210,36 @@ const FormSchema = z.object({
  * Renders file upload, list, and management functionality for journal entries
  * @param props - The component props
  */
-function AttachmentSection({ journalEntryId }: { journalEntryId: number | null | undefined }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<{
+interface AttachmentSectionProps {
+  journalEntryId: number | null | undefined;
+  pendingFiles: File[];
+  setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  pendingFilesMetadata: Array<{
     id: number;
     filename: string;
     size: number;
-    mimeType: string; 
+    mimeType: string;
     addedAt: Date;
-  }[]>([]);
+  }>;
+  setPendingFilesMetadata: React.Dispatch<React.SetStateAction<Array<{
+    id: number;
+    filename: string;
+    size: number;
+    mimeType: string;
+    addedAt: Date;
+  }>>>;
+}
+
+function AttachmentSection({ 
+  journalEntryId, 
+  pendingFiles, 
+  setPendingFiles, 
+  pendingFilesMetadata, 
+  setPendingFilesMetadata 
+}: AttachmentSectionProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === 'number';
@@ -549,7 +567,7 @@ function AttachmentSection({ journalEntryId }: { journalEntryId: number | null |
                   ))}
                   
                   {/* Existing files (for saved entries) */}
-                  {attachments.map((file: JournalEntryFile) => (
+                  {Array.isArray(attachments) && attachments.map((file: JournalEntryFile) => (
                     <TableRow key={file.id}>
                       <TableCell className="flex items-center">
                         {getFileIcon(file.mimeType)}
@@ -631,6 +649,16 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const [tempJournalEntryId] = useState(uuidv4());
   // This ID is used for both existing entries and new entries with temporary IDs
   const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
+  
+  // State for pending file attachments
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<{
+    id: number;
+    filename: string;
+    size: number;
+    mimeType: string;
+    addedAt: Date;
+  }[]>([]);
   
   // Helper function definitions - declaring before they're used
   // Function to unformat number (remove commas) for processing
@@ -1935,7 +1963,13 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       
       {/* Attachment Section Conditional Rendering */}
       {(!isEditing || (isEditing && existingEntry?.id && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) ? (
-        <AttachmentSection journalEntryId={effectiveJournalEntryId} />
+        <AttachmentSection 
+          journalEntryId={effectiveJournalEntryId}
+          pendingFiles={pendingFiles}
+          setPendingFiles={setPendingFiles}
+          pendingFilesMetadata={pendingFilesMetadata}
+          setPendingFilesMetadata={setPendingFilesMetadata}
+        />
       ) : null}
         
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
