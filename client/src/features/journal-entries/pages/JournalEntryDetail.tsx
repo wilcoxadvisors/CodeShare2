@@ -607,7 +607,7 @@ function JournalEntryDetail() {
     
     // Define basic buttons (available for all status)
     const basicButtons = (
-      <Button variant="outline" onClick={() => navigate(`/journal-entries/${entryId}/edit`)}>
+      <Button variant="outline" onClick={() => navigate(`/journal-entries/edit/${entryId}`)}>
         <Edit className="mr-2 h-4 w-4" />
         Edit
       </Button>
