@@ -1,0 +1,247 @@
+ [vite] connecting...
+ [vite] connected.
+ Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ 🔒 Checking authentication status...
+ 🔒 Debug session ID found: tP1jgDqVe-m_Eiapx0MN-ZucN7mshFYY
+api/auth/me:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
+ 🔒 Auth check failed: 
+ 🔒 Current path: /journal-entries Is home page: false
+ 🔒 Not authenticated, navigating to login...
+ DEBUG: Entities data updated - received 0 entities
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq)
+ NodeList(1)
+ ol_extension: addApp button toolbar disabled by user setting (tab_enabled)
+ 🔑 Attempting login with username: admin
+ 🔑 Password length: 11
+ 🔐 Login attempt with: admin
+ DEBUG: Entities data updated - received 0 entities
+ 🔐 Login response: Object
+ 🔐 Auth check after login: Object
+ 🔐 Login successful, user: Object
+ 🔑 Login result: Success
+ DEBUG: Entities data updated - received 0 entities
+ DEBUG: Client selection changed: null
+ DEBUG: Entities data updated - received 51 entities
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Client selection triggered - clientId: 250
+ DEBUG: Setting client context: 250 (GCW)
+ DEBUG: BEFORE client selection - Current state: Object
+ DEBUG: AFTER client selection initiated - clientId: 250, entityId: null
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Entities data updated - received 51 entities
+ DEBUG: After entities update, found 1 entities for selected client 250
+ DEBUG: Client selection changed: 250
+ DEBUG: Refetching entities for client: 250
+ DEBUG: Checking for auto-select of entity for client 250
+ DEBUG: Found 1 entities to potentially auto-select for client 250
+ DEBUG: Auto-selecting first entity for client 250: Object
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG: Client selection changed: 250
+ DEBUG: Refetching entities for client: 250
+ DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+ Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+ Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+ DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+ Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+ DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+ Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+ DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+ DEBUG: Full entities list length: 51
+ DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+ Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+ DEBUG - JournalEntryDetail - Data type: undefined
+ DEBUG - JournalEntryDetail - Data structure: undefined
+ DEBUG - JournalEntryDetail - Using journalEntry: undefined
+ DEBUG - AccountsMap - Accounts array: Array(76)
+ DEBUG - JournalEntryDetail - Data type: undefined
+ DEBUG - JournalEntryDetail - Data structure: undefined
+ DEBUG - JournalEntryDetail - Using journalEntry: undefined
+ DEBUG - JournalEntryDetail - Data type: object
+ DEBUG - JournalEntryDetail - Data structure: Object
+ DEBUG - JournalEntryDetail - Using journalEntry: Object
+ DEBUG - JournalEntryDetail - Data has journalEntry property: false
+ DEBUG - JournalEntryDetail - Data has id property: true
+ DEBUG - JournalEntryDetail - Data has lines property: true
+ DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+ DEBUG - JournalEntryDetail - First line properties: Array(17)
+ DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:415 DEBUG - JournalEntryDetail - Data structure: Object
+JournalEntryDetail.tsx:416 DEBUG - JournalEntryDetail - Using journalEntry: Object
+JournalEntryDetail.tsx:420 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:421 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:422 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:428 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:432 DEBUG - JournalEntryDetail - First line properties: Array(17)
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+GlobalContextSelector.tsx:272 Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+GlobalContextSelector.tsx:272 Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+GlobalContextSelector.tsx:272 Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+GlobalContextSelector.tsx:272 Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+GlobalContextSelector.tsx:272 Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+GlobalContextSelector.tsx:272 Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+JournalEntryDetail.tsx:351 DEBUG - AccountsMap - Accounts array: Array(76)
+JournalEntryDetail.tsx:414 DEBUG - JournalEntryDetail - Data type: undefined
+JournalEntryDetail.tsx:415 DEBUG - JournalEntryDetail - Data structure: undefined
+JournalEntryDetail.tsx:416 DEBUG - JournalEntryDetail - Using journalEntry: undefined
+JournalEntryDetail.tsx:414 DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:415 DEBUG - JournalEntryDetail - Data structure: Object
+JournalEntryDetail.tsx:416 DEBUG - JournalEntryDetail - Using journalEntry: Object
+JournalEntryDetail.tsx:420 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:421 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:422 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:414 DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:415 DEBUG - JournalEntryDetail - Data structure: Object
+JournalEntryDetail.tsx:416 DEBUG - JournalEntryDetail - Using journalEntry: Object
+JournalEntryDetail.tsx:420 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:421 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:422 DEBUG - JournalEntryDetail - Data has lines property: true
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 250 (GCW). Expanded: true
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 250. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 250 (GCW): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 235 (Admin Client). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 235. Length: 1 Array(1)
+GlobalContextSelector.tsx:272 Final result - Client 235 (Admin Client): Found 1 entities, 1 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 2 (OK). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 2. Length: 23 Array(23)
+GlobalContextSelector.tsx:272 Final result - Client 2 (OK): Found 23 entities, 23 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 73 (ONE1). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 73. Length: 4 Array(4)
+GlobalContextSelector.tsx:272 Final result - Client 73 (ONE1): Found 4 entities, 4 after search filter
+GlobalContextSelector.tsx:246 DEBUG: Rendering entities for Client 7 (Pepper). Expanded: false
+GlobalContextSelector.tsx:247 DEBUG: Full entities list length: 51
+GlobalContextSelector.tsx:258 DEBUG: Filtered list for Client 7. Length: 2 Array(2)
+GlobalContextSelector.tsx:272 Final result - Client 7 (Pepper): Found 2 entities, 2 after search filter
+api/journal-entries/101:1 
+            
+            
+           Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+useJournalEntry.ts:163 Error deleting journal entry: Error: 500: {"message":"Database error during deleting journal entry 101"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:27:3)
+    at async Object.mutationFn (useJournalEntry.ts:132:14)
+onError @ useJournalEntry.ts:163

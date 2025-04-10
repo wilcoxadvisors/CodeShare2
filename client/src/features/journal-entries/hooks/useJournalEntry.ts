@@ -147,17 +147,32 @@ export function useJournalEntry() {
       }
     },
     onError: (error: any) => {
-      // Check if it's a foreign key constraint error
+      // Check for different types of errors
       const errorMessage = error?.response?.data?.message || "";
+      
+      // Check if it's a foreign key constraint error
       const isForeignKeyError = 
         errorMessage.includes("foreign key constraint") || 
         errorMessage.includes("still referenced");
-        
+      
+      // Check if it's referenced by a posted entry
+      const referencedByPostedMatch = errorMessage.match(/referenced by posted entry #(\d+)/);
+      const referencedByPosted = !!referencedByPostedMatch;
+      const referencingEntryId = referencedByPostedMatch ? referencedByPostedMatch[1] : null;
+      
+      let description = '';
+      
+      if (referencedByPosted) {
+        description = `Cannot delete this journal entry because it is referenced by posted entry #${referencingEntryId}. You must use void instead of delete for entries in the audit trail.`;
+      } else if (isForeignKeyError) {
+        description = 'Cannot delete this journal entry because it is referenced by other entries in the system. Consider using void instead.';
+      } else {
+        description = `Failed to delete journal entry: ${errorMessage || error.message || 'Unknown error'}`;
+      }
+      
       toast({
         title: 'Error',
-        description: isForeignKeyError 
-          ? 'Cannot delete this journal entry because it is referenced by other entries in the system. Consider using void instead.' 
-          : `Failed to delete journal entry: ${error?.response?.data?.message || error.message || 'Unknown error'}`,
+        description,
         variant: 'destructive',
       });
       console.error('Error deleting journal entry:', error);
