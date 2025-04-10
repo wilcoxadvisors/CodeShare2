@@ -44,8 +44,8 @@ Note:
 * **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
-    * **Current Update:** Task B.1 (Chart of Accounts) is IN PROGRESS. Priority is to explicitly fix and verify the import/export functionality after recent refactoring, ensure manual journal entries work, and finalize UI/UX enhancements with documentation of edge cases. Need to ensure consistency and verify hierarchical CoA across multiple entities.
-    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Need to finalize and verify batch journal entry upload functionality and UI, and expand comprehensive automated testing covering all key edge cases.
+    * **Current Update:** Task B.1 (Chart of Accounts) is NEARLY COMPLETE. Fixed account update logic to allow name/active/parentId changes with transactions, while correctly blocking accountCode/type changes. Fixed UI to disable restricted fields when editing accounts with transactions. Still need to finalize UI/UX and ensure consistency across multiple entities.
+    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Manual JE workflow now functional with Create, Edit, Post, Void, and Reverse operations working correctly. The current focus is on implementing/fixing the File Attachment functionality for journal entries (#7 - multi-file, drag-drop, list, download, delete). After this is complete, we will verify batch journal entry upload functionality.
     * **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
         * **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
         * **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -109,8 +109,9 @@ Note:
 
 #### Next Immediate Task:
 - 📝 Review UI/UX verification document for content management components.
+- 📝 Focus on debugging and completing Journal Entry File Attachment functionality (#7).
 - 📝 Begin AI integration planning for blog content generation.
-- 📝 Move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
+- 📝 After Journal Entry File Attachments are complete, move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -126,7 +127,7 @@ Note:
 
 **Phase B: Core Accounting Module (IN PROGRESS)**
 
-* **(Task B.1)** Customizable Chart of Accounts (CoA): **IN PROGRESS**
+* **(Task B.1)** Customizable Chart of Accounts (CoA): **NEARLY COMPLETE**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`)
     * ✅ Implement backend CRUD API (`server/accountRoutes.ts`, `/accounts/tree`)
     * ✅ Basic CRUD API Testing
@@ -138,6 +139,8 @@ Note:
         * ✅ Added case sensitivity and whitespace validation checking during import
         * ✅ Fixed parent relationship validation with inactive parent detection
         * ✅ Improved toast notifications with categorized success/error messages
+    * ✅ Fixed account update logic to allow name/active/parentId changes with transactions, while correctly blocking accountCode/type changes
+    * ✅ Fixed UI to disable restricted fields (accountCode/type) when editing accounts with transactions
     * 🔄 Finalize UI/UX enhancements and document edge-case validations
     * 🔄 Ensure consistency and verify hierarchical CoA across multiple entities
     * ✅ Refactored Account storage logic to `server/storage/accountStorage.ts`.
@@ -145,6 +148,11 @@ Note:
     * ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
     * ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
     * ✅ Build frontend UI for manual JE creation (`ManualJournalEntry.tsx` in `components/forms/`) - Verified via test page.
+    * ✅ Manual JE workflow functional: Create (Draft/Post), Edit (Draft), Post, Void (Admin, w/ reason), Reverse (creates Draft)
+    * ✅ JE List display fixed (Totals, Reference, ID)
+    * ✅ JE Form UI fixed (Buttons, Input stability, Number formatting)
+    * ✅ JE Edit route fixed
+    * 🔄 Implement/Fix File Attachment functionality (#7 - multi-file, drag-drop, list, download, delete, persistence, type filter)
     * 🔄 Finalize and verify batch journal entry upload functionality and UI
     * 🔄 Expand comprehensive automated testing covering all key edge cases
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
@@ -213,7 +221,7 @@ Note:
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Focus on AI integration planning, then move to **Task B.3: Accounts Payable Backend Foundation**.
+* **Prioritize:** Focus on debugging/completing the Journal Entry File Attachment feature (#7), then move to **Task B.3: Accounts Payable Backend Foundation**.
 * **Maintain Structure:** Keep the client-specific accounting design consistent. Follow established patterns (e.g., modular storage).
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
