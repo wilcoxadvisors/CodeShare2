@@ -148,13 +148,24 @@ Note:
     * ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
     * ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
     * ✅ Build frontend UI for manual JE creation (`ManualJournalEntry.tsx` in `components/forms/`) - Verified via test page.
-    * ✅ Manual JE workflow functional: Create (Draft/Post), Edit (Draft), Post, Void (Admin, w/ reason), Reverse (creates Draft)
+    * ✅ Manual JE workflow functional: 
+        * ✅ Create (Draft & Direct Post for Admin)
+        * ✅ Edit (Draft)
+        * ✅ Post (from Draft/Approved)
+        * ✅ Void (Admin only, requires reason)
+        * ✅ Reverse (creates Draft, copies entityCode)
+        * ✅ UI updates correctly with state changes
     * ✅ JE List display fixed (Totals, Reference, ID)
     * ✅ JE Form UI fixed (Buttons, Input stability, Number formatting)
-    * ✅ JE Edit route fixed
-    * 🔄 Implement/Fix File Attachment functionality (#7 - multi-file, drag-drop, list, download, delete, persistence, type filter)
+    * ✅ JE Edit route fixed (/journal-entries/edit/:id no longer 404)
+    * 🔄 Implement/Fix File Attachment functionality (#7):
+        * 🔄 Previous implementation failed user testing (multi-upload, list, download, delete, persistence all broken)
+        * 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
+        * 🔄 UI location: Journal Entry Form (shown only in Edit mode)
+        * 🔄 Need systematic debugging (backend save/list, frontend fetch/render)
     * 🔄 Finalize and verify batch journal entry upload functionality and UI
     * 🔄 Expand comprehensive automated testing covering all key edge cases
+    * 🔄 Implement Automatic Accrual Reversal feature (deferred new request)
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
     * **(AI Link - Future):** Consider hooks for "JE learning".
 * **(Task B.3)** Accounting Modules: **NOT STARTED**
@@ -221,7 +232,7 @@ Note:
 
 ## 5. General Guidelines for Agent
 
-* **Prioritize:** Focus on debugging/completing the Journal Entry File Attachment feature (#7), then move to **Task B.3: Accounts Payable Backend Foundation**.
+* **Prioritize:** Debug and complete JE File Attachment feature (#7), then focus on JE Batch Upload / Testing (Task B.2). After the JE module is stable, proceed with **Task B.3: Accounts Payable Backend Foundation**.
 * **Maintain Structure:** Keep the client-specific accounting design consistent. Follow established patterns (e.g., modular storage).
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
