@@ -1347,4 +1347,37 @@ export function registerJournalEntryRoutes(app: Express) {
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
   }));
+  
+  /**
+   * DELETE /api/journal-entries/:journalEntryId/files/:fileId
+   * Delete a file attachment from a journal entry
+   */
+  app.delete('/api/journal-entries/:journalEntryId/files/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Check that the journal entry exists
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Check if user has permission to delete files
+    // For now, just check basic authentication which is handled by the isAuthenticated middleware
+    
+    // Delete the file
+    const result = await journalEntryStorage.deleteJournalEntryFile(fileId);
+    
+    if (!result) {
+      throwNotFound('File');
+    }
+    
+    // Return success
+    res.status(204).send();
+  }));
 }

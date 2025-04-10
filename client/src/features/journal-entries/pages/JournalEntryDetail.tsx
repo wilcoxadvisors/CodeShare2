@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,8 +69,11 @@ import {
   FilePlus,
   Paperclip,
   FileImage,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileCode,
+  FileArchive
 } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
 
 function JournalEntryDetail() {
   const { updateJournalEntry, deleteJournalEntry } = useJournalEntry();
@@ -91,22 +94,54 @@ function JournalEntryDetail() {
   // File upload state
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [rejectedFiles, setRejectedFiles] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  
+  // Allowed file extensions and mime types
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf', // PDF
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', // Images
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOC, DOCX
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLS, XLSX
+    'text/plain', // TXT
+    'text/csv' // CSV
+  ];
+  
+  const ALLOWED_FILE_EXTENSIONS = [
+    '.pdf', '.jpg', '.jpeg', '.png', '.gif', 
+    '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'
+  ];
+  
+  // Function to check if a file is valid
+  const isValidFile = (file: File): boolean => {
+    // Check file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      // For files where the browser might not detect the correct MIME type,
+      // also check the extension
+      const fileName = file.name.toLowerCase();
+      const extension = fileName.slice(fileName.lastIndexOf('.'));
+      if (!ALLOWED_FILE_EXTENSIONS.includes(extension)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  
   // File upload mutation
   const uploadFile = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (files: File[]) => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
       const formData = new FormData();
-      formData.append('file', file);
+      
+      // Add all files to the formData
+      files.forEach(file => {
+        formData.append('files', file);
+      });
       
       return await apiRequest(`/api/journal-entries/${entryId}/files`, {
         method: 'POST',
         data: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
         onUploadProgress: (progressEvent: any) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -120,13 +155,13 @@ function JournalEntryDetail() {
       setUploadProgress(0);
       toast({
         title: 'Success',
-        description: 'File uploaded successfully',
+        description: 'Files uploaded successfully',
       });
       // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      // Refresh the journal entry to show the new file
+      // Refresh the journal entry to show the new files
       refetch();
     },
     onError: (error: any) => {
@@ -134,21 +169,113 @@ function JournalEntryDetail() {
       setUploadProgress(0);
       toast({
         title: 'Error',
-        description: `Failed to upload file: ${error.message}`,
+        description: `Failed to upload files: ${error.message}`,
         variant: 'destructive',
       });
     }
   });
   
-  // Handle file input change
+  // File deletion mutation
+  const deleteFile = useMutation({
+    mutationFn: async (fileId: number) => {
+      if (!entryId) throw new Error('Journal entry ID is required');
+      
+      return await apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
+        method: 'DELETE'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'File deleted successfully',
+      });
+      // Refresh the journal entry to update the file list
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Failed to delete file: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Handle file input change from conventional file input
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
     
-    const file = files[0];
+    // Convert FileList to Array for easier manipulation
+    const filesArray = Array.from(fileList);
+    const validFiles = filesArray.filter(isValidFile);
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, or CSV files.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (validFiles.length !== filesArray.length) {
+      toast({
+        title: 'Warning',
+        description: 'Some files were skipped because they are not of supported types.',
+        variant: 'default',
+      });
+    }
+    
     setUploading(true);
-    uploadFile.mutate(file);
+    uploadFile.mutate(validFiles);
   };
+  
+  // Handle file drop using react-dropzone
+  const onDrop = useCallback((acceptedFiles: File[], rejected: any[]) => {
+    if (rejected.length > 0) {
+      setRejectedFiles(rejected);
+      toast({
+        title: 'Warning',
+        description: 'Some files were rejected because they are not of supported types.',
+        variant: 'default',
+      });
+    }
+    
+    if (acceptedFiles.length === 0) return;
+    
+    // Additional client-side validation
+    const validFiles = acceptedFiles.filter(isValidFile);
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, or CSV files.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setUploading(true);
+    uploadFile.mutate(validFiles);
+  }, [uploadFile]);
+  
+  // Setup for react-dropzone
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv']
+    },
+    maxSize: 10485760, // 10MB
+    multiple: true
+  });
   
   // Handle file download
   const handleFileDownload = (fileId: number) => {
@@ -156,6 +283,37 @@ function JournalEntryDetail() {
     
     // Open the file in a new tab/window
     window.open(`/api/journal-entries/${entryId}/files/${fileId}`, '_blank');
+  };
+  
+  // Handle file deletion
+  const handleFileDelete = (fileId: number) => {
+    if (!entryId) return;
+    
+    // Confirm before deleting
+    if (window.confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+      deleteFile.mutate(fileId);
+    }
+  };
+  
+  // Get file icon based on mime type
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) {
+      return <FileImage className="h-5 w-5 mr-2 text-blue-500" />;
+    } else if (mimeType.includes('pdf')) {
+      return <FileText className="h-5 w-5 mr-2 text-red-500" />;
+    } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) {
+      return <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />;
+    } else if (mimeType.includes('word') || mimeType.includes('doc')) {
+      return <FileText className="h-5 w-5 mr-2 text-blue-700" />;
+    } else if (mimeType.includes('text/plain') || mimeType.includes('txt')) {
+      return <FileText className="h-5 w-5 mr-2 text-gray-700" />;
+    } else if (mimeType.includes('zip') || mimeType.includes('archive')) {
+      return <FileArchive className="h-5 w-5 mr-2 text-yellow-600" />;
+    } else if (mimeType.includes('code') || mimeType.includes('json') || mimeType.includes('xml')) {
+      return <FileCode className="h-5 w-5 mr-2 text-purple-600" />;
+    } else {
+      return <File className="h-5 w-5 mr-2 text-gray-500" />;
+    }
   };
   
   // Get client ID for accounts query - use entity's clientId
