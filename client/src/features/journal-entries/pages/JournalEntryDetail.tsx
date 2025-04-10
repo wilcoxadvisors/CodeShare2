@@ -615,10 +615,12 @@ function JournalEntryDetail() {
     
     // Confirm before posting
     if (window.confirm('Are you sure you want to post this journal entry? Once posted, it cannot be edited or deleted.')) {
-      // Update the status to posted
+      // Update the status to posted - we need to include the existing journal entry's lines
+      // to avoid the "lines: Required" error from the server
       updateJournalEntry.mutate({
         id: entryId,
-        status: 'posted'
+        status: 'posted',
+        lines: journalEntry.lines || []
       }, {
         onSuccess: () => {
           toast({
