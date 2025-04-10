@@ -56,6 +56,7 @@ import {
   Trash2,
   Clock,
   CheckCircle2,
+  CheckCheck,
   XCircle,
   RotateCcw,
   Check,
@@ -71,7 +72,9 @@ import {
   FileImage,
   FileSpreadsheet,
   FileCode,
-  FileArchive
+  FileArchive,
+  SendHorizontal,
+  Eye
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
@@ -334,17 +337,20 @@ function JournalEntryDetail() {
     if (!accountsData) return {};
     
     // Check if accountsData has accounts property directly or as part of a nested object
-    let accounts = [];
+    let accounts: any[] = [];
     if (Array.isArray(accountsData)) {
       accounts = accountsData;
     } else if (accountsData && typeof accountsData === 'object') {
       // Try to extract accounts from different possible structures
-      if (Array.isArray(accountsData.accounts)) {
-        accounts = accountsData.accounts;
-      } else if (accountsData.data && Array.isArray(accountsData.data.accounts)) {
-        accounts = accountsData.data.accounts;
-      } else if (accountsData.data && Array.isArray(accountsData.data)) {
-        accounts = accountsData.data;
+      if ('accounts' in accountsData && Array.isArray((accountsData as any).accounts)) {
+        accounts = (accountsData as any).accounts;
+      } else if ('data' in accountsData && (accountsData as any).data) {
+        const data = (accountsData as any).data;
+        if ('accounts' in data && Array.isArray(data.accounts)) {
+          accounts = data.accounts;
+        } else if (Array.isArray(data)) {
+          accounts = data;
+        }
       }
     }
     
@@ -401,8 +407,16 @@ function JournalEntryDetail() {
     reference?: string;
     journalType?: string;
     status: string;
+    entityId?: number;
+    clientId?: number;
+    createdBy?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    postedBy?: number;
+    postedAt?: string;
     lines: JournalEntryLine[];
     files?: JournalEntryFile[];
+    voidReason?: string;
   }
   
   // API might return the journal entry directly or wrapped in a journalEntry property
