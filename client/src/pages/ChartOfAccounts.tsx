@@ -3032,26 +3032,28 @@ function ChartOfAccounts() {
                                             >
                                               {/* Show expand/collapse arrow for parent accounts */}
                                               {isParent ? (
-                                                <button
-                                                  type="button"
-                                                  className="mr-2 flex h-4 w-4 items-center justify-center rounded-sm hover:bg-accent hover:text-accent-foreground"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setParentAccountExpandedNodes(prev => {
-                                                      const newState = { ...prev };
-                                                      if (newState[id]) {
+                                                parentAccountExpandedNodes[id] ? 
+                                                  <ChevronDown
+                                                    className="mr-2 h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setParentAccountExpandedNodes(prev => {
+                                                        const newState = { ...prev };
                                                         delete newState[id];
-                                                      } else {
-                                                        newState[id] = true;
-                                                      }
-                                                      return newState;
-                                                    });
-                                                  }}
-                                                >
-                                                  {parentAccountExpandedNodes[id] ? 
-                                                    <ChevronDown className="h-4 w-4 text-muted-foreground" /> : 
-                                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                                </button>
+                                                        return newState;
+                                                      });
+                                                    }}
+                                                  /> : 
+                                                  <ChevronRight
+                                                    className="mr-2 h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" 
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setParentAccountExpandedNodes(prev => ({
+                                                        ...prev,
+                                                        [id]: true
+                                                      }));
+                                                    }}
+                                                  />
                                               ) : hasParent ? (
                                                 <span className="w-4 h-4 inline-block mr-2"></span>
                                               ) : (
