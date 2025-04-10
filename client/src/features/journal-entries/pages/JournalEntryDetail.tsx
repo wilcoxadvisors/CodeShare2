@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import {
   Table,
   TableBody,
@@ -59,7 +62,14 @@ import {
   X,
   AlertCircle,
   FileText,
-  Info
+  Info,
+  Upload,
+  Download,
+  File,
+  FilePlus,
+  Paperclip,
+  FileImage,
+  FileSpreadsheet
 } from 'lucide-react';
 
 function JournalEntryDetail() {
@@ -77,6 +87,11 @@ function JournalEntryDetail() {
   const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [voidReason, setVoidReason] = useState('');
+  
+  // File upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get client ID for accounts query - use entity's clientId
   const clientId = currentEntity?.clientId;
@@ -143,6 +158,19 @@ function JournalEntryDetail() {
   });
   
   // Define type for a journal entry
+  // Interface for file attachments
+  interface JournalEntryFile {
+    id: number;
+    journalEntryId: number;
+    filename: string;
+    originalname?: string;
+    path: string;
+    mimeType: string;
+    size: number;
+    uploadedBy?: number;
+    uploadedAt?: string;
+  }
+  
   interface JournalEntry {
     id: number;
     date: string;
@@ -151,6 +179,7 @@ function JournalEntryDetail() {
     journalType?: string;
     status: string;
     lines: JournalEntryLine[];
+    files?: JournalEntryFile[];
   }
   
   // API might return the journal entry directly or wrapped in a journalEntry property
@@ -528,6 +557,90 @@ function JournalEntryDetail() {
       });
     }
   });
+  
+  // File upload mutation
+  const uploadFile = useMutation({
+    mutationFn: async (file: File) => {
+      if (!entryId) throw new Error('Journal entry ID is required');
+
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Use regular fetch to track progress
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percentComplete);
+          }
+        });
+        
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch (e) {
+              resolve({ success: true });
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+        
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error occurred during upload'));
+        });
+        
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload was aborted'));
+        });
+        
+        xhr.open('POST', `/api/journal-entries/${entryId}/files`);
+        xhr.send(formData);
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'File uploaded successfully',
+      });
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Failed to upload file: ${error.message}`,
+        variant: 'destructive',
+      });
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  });
+  
+  // Function to handle file input change
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadFile.mutate(file);
+    }
+  };
+  
+  // Function to handle file download
+  const handleFileDownload = (fileId: number) => {
+    if (!entryId) return;
+    window.open(`/api/journal-entries/${entryId}/files/${fileId}`, '_blank');
+  };
   
   const voidEntry = useMutation({
     mutationFn: async () => {
