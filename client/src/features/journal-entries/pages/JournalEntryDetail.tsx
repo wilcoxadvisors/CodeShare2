@@ -557,6 +557,50 @@ function JournalEntryDetail() {
     }
   });
   
+  // Mutation for reversing a journal entry
+  const reverseEntry = useMutation({
+    mutationFn: async () => {
+      if (!entryId) throw new Error('Journal entry ID is required');
+      
+      return await apiRequest(`/api/journal-entries/${entryId}/reverse`, {
+        method: 'POST',
+        data: { 
+          date: new Date().toISOString().split('T')[0], // Today's date
+          description: `Reversal of journal entry #${entryId}`,
+          createdBy: user?.id
+        }
+      });
+    },
+    onSuccess: (data) => {
+      let reversalId;
+      if (data && typeof data === 'object') {
+        reversalId = data.id || data.journalEntryId || data.entryId;
+      }
+      
+      toast({
+        title: 'Success',
+        description: reversalId 
+          ? `Reversal entry created with ID: ${reversalId}` 
+          : 'Reversal entry created successfully',
+      });
+      refetch();
+      
+      // If we have a reversal ID, navigate to it after a short delay
+      if (reversalId) {
+        setTimeout(() => {
+          navigate(`/journal-entries/${reversalId}`);
+        }, 1500);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Failed to reverse journal entry: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
+  
   // Determine which action buttons to show based on status
   const renderActionButtons = () => {
     if (!journalEntry) return null;
@@ -645,16 +689,29 @@ function JournalEntryDetail() {
         )}
         
         {(status === 'posted') && isAdmin && (
-          <Button
-            onClick={() => setShowVoidDialog(true)}
-            size="sm"
-            variant="outline"
-            className="bg-purple-100 text-purple-800 hover:bg-purple-200"
-            disabled={voidEntry.isPending}
-          >
-            <X className="mr-2 h-4 w-4" />
-            Void
-          </Button>
+          <>
+            <Button
+              onClick={() => setShowVoidDialog(true)}
+              size="sm"
+              variant="outline"
+              className="bg-purple-100 text-purple-800 hover:bg-purple-200"
+              disabled={voidEntry.isPending}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Void
+            </Button>
+            
+            <Button
+              onClick={() => reverseEntry.mutate()}
+              size="sm"
+              variant="outline"
+              className="bg-orange-100 text-orange-800 hover:bg-orange-200"
+              disabled={reverseEntry.isPending}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reverse
+            </Button>
+          </>
         )}
       </div>
     );
@@ -1034,6 +1091,39 @@ function JournalEntryDetail() {
               disabled={!rejectReason.trim() || rejectEntry.isPending}
             >
               Reject Entry
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Void Dialog */}
+      <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Void Journal Entry</DialogTitle>
+            <DialogDescription>
+              Please provide a required reason for voiding this journal entry. 
+              Once voided, a journal entry cannot be restored.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Reason for voiding (required)"
+              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => voidEntry.mutate()} 
+              disabled={!voidReason.trim() || voidEntry.isPending}
+            >
+              Void Entry
             </Button>
           </DialogFooter>
         </DialogContent>
