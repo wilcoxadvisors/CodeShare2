@@ -1,0 +1,56 @@
+Okay, all previous Journal Entry UI issues are resolved. The final task is to implement the ability to attach supporting documents to journal entries (Issue #7).
+
+Requirements:
+
+Allow uploading multiple files at once.
+Implement a drag-and-drop UI for uploads.
+Allow users to delete previously uploaded attachments.
+Restrict allowed file types to: PDF, JPG, JPEG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, CSV.
+Objective: Implement backend API/storage and frontend UI for multi-file attachments with type restrictions and delete functionality.
+
+Backend Tasks:
+
+Storage Logic (server/storage/journalEntryStorage.ts):
+
+Implement createJournalEntryFile: Handle actual file storage (e.g., save to ./public/uploads/journal-entries/:journalEntryId/ on disk, ensure directory exists) and insert metadata (path, filename, mimeType, size, uploadedBy, journalEntryId) into the journalEntryFiles table.
+Implement getJournalEntryFiles: Query and return file records for a journalEntryId.
+Implement deleteJournalEntryFile: Delete the file record from the database and the actual file from disk storage.
+API Routes (server/journalEntryRoutes.ts):
+
+Create POST /api/journal-entries/:id/files:
+Use multer configured for multiple files (upload.array('attachments', 10)) and disk storage (saving to a temporary location or directly to the final path if feasible).
+Implement a fileFilter in multer options to restrict based on allowed extensions/MIME types.
+Iterate through req.files, call journalEntryStorage.createJournalEntryFile for each valid file (moving file from temp location if needed).
+Return an array of the created file records.
+Create GET /api/journal-entries/:id/files:
+Call journalEntryStorage.getJournalEntryFiles and return the list.
+Create DELETE /api/journal-entry-files/:fileId:
+Call journalEntryStorage.deleteJournalEntryFile.
+Return success (204) or error.
+Create GET /api/journal-entry-files/:fileId/download:
+Find the file record using fileId.
+Use res.download(filePath, filename) to send the file from disk storage with the correct headers.
+Frontend Tasks:
+
+UI Elements (JournalEntryDetail.tsx likely):
+
+Add a "File Attachments" section.
+Implement a drag-and-drop zone component (you might need a library like react-dropzone or build custom). Show visual feedback on drag over. Also include a fallback file input button.
+Display a list of currently attached files, showing filename (as a download link), file type icon, size, and a "Delete" button for each.
+Upload Logic:
+
+Handle file selection/drop (multiple files).
+Client-side filtering: Check file types against the allowed list before uploading for better UX.
+Use FormData to append multiple files under 'attachments'.
+Create/use useUploadAttachments mutation hook calling POST /api/journal-entries/:id/files.
+Show upload progress if possible. Handle success (refresh file list) and errors (toast).
+Display & Download Logic:
+
+Use useGetAttachments query hook calling GET /api/journal-entries/:id/files.
+Render the file list. Filenames should link to the download route (e.g., /api/journal-entry-files/:fileId/download).
+Delete Logic:
+
+Implement the "Delete" button action.
+Create/use useDeleteAttachment mutation hook calling DELETE /api/journal-entry-files/:fileId.
+Handle success (refresh file list) and errors.
+Report: Confirm implementation of backend (storage, routes, multer, filter), frontend (drag-drop UI, list, delete), and hooks."
