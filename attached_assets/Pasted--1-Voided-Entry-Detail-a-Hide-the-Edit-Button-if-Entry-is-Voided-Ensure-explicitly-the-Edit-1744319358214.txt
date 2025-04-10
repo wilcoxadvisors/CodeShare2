@@ -1,0 +1,90 @@
+🚩 1. Voided Entry Detail:
+a. Hide the "Edit" Button if Entry is Voided
+
+Ensure explicitly the "Edit" button is not visible for entries with status "voided" or "posted":
+
+tsx
+Copy
+Edit
+// JournalEntryDetail.tsx
+{journalEntry.status !== 'voided' && journalEntry.status !== 'posted' && (
+  <Button onClick={handleEditClick}>Edit</Button>
+)}
+b. Hide the Attachment Upload UI ("Supporting Documents") if Entry is Voided
+
+Explicitly remove ALL attachment UI code from JournalEntryDetail.tsx.
+Attachments should explicitly ONLY appear within the JournalEntryForm.tsx.
+
+tsx
+Copy
+Edit
+// REMOVE COMPLETELY from JournalEntryDetail.tsx (if still present):
+<AttachmentSection journalEntryId={journalEntry.id} />
+🚩 2. Posted Entry Detail:
+a. Ensure Attachment Upload UI is Hidden
+
+As above, explicitly confirm JournalEntryDetail.tsx does not include any <AttachmentSection> or "Supporting Documents" upload code.
+
+🚩 3. Draft Entry Detail View (for Admins):
+a. Explicitly Confirm "Post Entry" Button Visibility
+
+The "Post Entry" button must explicitly appear for admin users when the entry status is "draft":
+
+tsx
+Copy
+Edit
+// JournalEntryDetail.tsx
+{isAdmin && journalEntry.status === 'draft' && (
+  <Button onClick={handlePostEntry}>Post Entry</Button>
+)}
+Ensure explicitly this button triggers posting the entry successfully.
+
+Ensure explicitly this action correctly sends the full lines array (with numeric accountId) to the backend.
+
+b. Explicitly Hide Attachment Upload UI
+
+Again, explicitly confirm no attachment UI in detail view for draft entries.
+Attachments only explicitly managed from JournalEntryForm.tsx.
+
+🚩 4. Explicitly Verify "Post Entry" Functionality (Critical)
+Ensure the posting logic explicitly sends correctly formatted data to the backend.
+Double-check explicitly the lines formatting:
+
+Example Correct Formatting:
+
+tsx
+Copy
+Edit
+await updateEntryMutation.mutateAsync({
+  id: journalEntry.id,
+  status: 'posted',
+  lines: journalEntry.lines.map((line) => ({
+    ...line,
+    accountId: Number(line.accountId), // explicit numeric conversion
+    debit: line.debit,
+    credit: line.credit,
+  })),
+});
+Explicitly confirm backend accepts this format without errors.
+
+✅ Explicit Final Checklist for the Agent:
+Please explicitly verify and clearly confirm each of the following:
+
+✅ Voided Entries Detail View:
+ "Edit" button explicitly hidden.
+
+ Attachment UI explicitly hidden.
+
+✅ Posted Entries Detail View:
+ Attachment UI explicitly hidden.
+
+✅ Draft Entries Detail View (Admins):
+ "Post Entry" button explicitly visible.
+
+ Attachment UI explicitly hidden.
+
+✅ Posting Draft Entries (Critical Check):
+ Explicitly confirm posting draft entry works without errors.
+
+ Explicitly confirm backend receives correctly formatted lines array.
+

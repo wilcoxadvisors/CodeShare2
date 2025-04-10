@@ -764,7 +764,7 @@ function JournalEntryDetail() {
     
     return (
       <div className="flex space-x-2">
-        {status !== 'posted' && status !== 'voided' ? basicButtons : null}
+        {status !== 'posted' && status !== 'voided' && status !== 'void' ? basicButtons : null}
         {actionButtons}
       </div>
     );
