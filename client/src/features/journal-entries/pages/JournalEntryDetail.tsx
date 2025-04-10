@@ -92,6 +92,71 @@ function JournalEntryDetail() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File upload mutation
+  const uploadFile = useMutation({
+    mutationFn: async (file: File) => {
+      if (!entryId) throw new Error('Journal entry ID is required');
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      return await apiRequest(`/api/journal-entries/${entryId}/files`, {
+        method: 'POST',
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        }
+      });
+    },
+    onSuccess: (response) => {
+      setUploading(false);
+      setUploadProgress(0);
+      toast({
+        title: 'Success',
+        description: 'File uploaded successfully',
+      });
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      // Refresh the journal entry to show the new file
+      refetch();
+    },
+    onError: (error: any) => {
+      setUploading(false);
+      setUploadProgress(0);
+      toast({
+        title: 'Error',
+        description: `Failed to upload file: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Handle file input change
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    setUploading(true);
+    uploadFile.mutate(file);
+  };
+  
+  // Handle file download
+  const handleFileDownload = (fileId: number) => {
+    if (!entryId) return;
+    
+    // Open the file in a new tab/window
+    window.open(`/api/journal-entries/${entryId}/files/${fileId}`, '_blank');
+  };
   
   // Get client ID for accounts query - use entity's clientId
   const clientId = currentEntity?.clientId;
@@ -568,90 +633,6 @@ function JournalEntryDetail() {
       });
     }
   });
-  
-  // File upload mutation
-  const uploadFile = useMutation({
-    mutationFn: async (file: File) => {
-      if (!entryId) throw new Error('Journal entry ID is required');
-
-      setUploading(true);
-      setUploadProgress(0);
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      // Use regular fetch to track progress
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percentComplete);
-          }
-        });
-        
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
-            } catch (e) {
-              resolve({ success: true });
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        });
-        
-        xhr.addEventListener('error', () => {
-          reject(new Error('Network error occurred during upload'));
-        });
-        
-        xhr.addEventListener('abort', () => {
-          reject(new Error('Upload was aborted'));
-        });
-        
-        xhr.open('POST', `/api/journal-entries/${entryId}/files`);
-        xhr.send(formData);
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'File uploaded successfully',
-      });
-      setUploading(false);
-      setUploadProgress(0);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: `Failed to upload file: ${error.message}`,
-        variant: 'destructive',
-      });
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  });
-  
-  // Function to handle file input change
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      uploadFile.mutate(file);
-    }
-  };
-  
-  // Function to handle file download
-  const handleFileDownload = (fileId: number) => {
-    if (!entryId) return;
-    window.open(`/api/journal-entries/${entryId}/files/${fileId}`, '_blank');
-  };
   
   const voidEntry = useMutation({
     mutationFn: async () => {
@@ -1182,6 +1163,99 @@ function JournalEntryDetail() {
                 </TableRow>
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+        
+        {/* File Attachments */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Paperclip className="h-5 w-5 mr-2" />
+              Supporting Documents
+            </CardTitle>
+            <CardDescription>
+              Attached files and supporting documentation for this journal entry
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* File upload component */}
+            <div className="mb-4">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={uploading}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full border-dashed border-2 h-20 flex flex-col items-center justify-center"
+              >
+                {uploading ? (
+                  <>
+                    <span className="text-sm mb-1">Uploading... {uploadProgress}%</span>
+                    <Progress value={uploadProgress} className="w-3/4 h-2" />
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-5 w-5 mb-1 text-gray-500" />
+                    <span className="text-sm">Click to attach supporting document</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {/* File list */}
+            {journalEntry.files && journalEntry.files.length > 0 ? (
+              <div className="space-y-2">
+                {journalEntry.files.map((file) => (
+                  <div 
+                    key={file.id} 
+                    className="flex items-center justify-between p-2 border rounded-md hover:bg-gray-50"
+                  >
+                    <div className="flex items-center">
+                      {/* File icon based on mime type */}
+                      {file.mimeType?.includes('image') ? (
+                        <FileImage className="h-5 w-5 mr-2 text-blue-500" />
+                      ) : file.mimeType?.includes('pdf') ? (
+                        <FileText className="h-5 w-5 mr-2 text-red-500" />
+                      ) : file.mimeType?.includes('spreadsheet') || file.mimeType?.includes('excel') ? (
+                        <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
+                      ) : (
+                        <File className="h-5 w-5 mr-2 text-gray-500" />
+                      )}
+                      
+                      {/* File name and details */}
+                      <div className="truncate max-w-[200px]">
+                        <p className="text-sm font-medium">{file.originalname || file.filename}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatFileSize(file.size)}
+                          {file.uploadedAt && `, added ${formatDate(file.uploadedAt)}`}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Download button */}
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleFileDownload(file.id)}
+                      className="ml-2"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-6 text-gray-500 border rounded-md border-dashed">
+                <FileText className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">No supporting documents attached</p>
+                <p className="text-xs mt-1">Upload files to provide documentation for this journal entry</p>
+              </div>
+            )}
           </CardContent>
         </Card>
         
