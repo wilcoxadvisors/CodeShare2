@@ -1,9 +1,12 @@
 import {
   journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
   journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
+  journalEntryFiles, 
   accounts, Account, AccountType,
   entities, clients
 } from "../../shared/schema";
+import * as fs from 'fs';
+import * as path from 'path';
 import { db } from "../db";
 import { eq, and, desc, asc, gte, lte, sql, count, inArray, like, isNull, or } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
@@ -786,16 +789,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
     console.log(`Getting files for journal entry ${journalEntryId}`);
     try {
-      // This is a placeholder implementation
-      // In a real implementation, you would query the database for files related to the journalEntryId
-      // For example:
-      // return await db.select()
-      //   .from(journalEntryFiles)
-      //   .where(eq(journalEntryFiles.journalEntryId, journalEntryId));
-      
-      // Since there's no journalEntryFiles table defined in schema.ts yet,
-      // we return an empty array for now
-      return [];
+      // Query the database for files related to the journalEntryId
+      return await db.select()
+        .from(journalEntryFiles)
+        .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
+        .orderBy(desc(journalEntryFiles.uploadedAt));
     } catch (e) {
       throw handleDbError(e, `getting files for journal entry ${journalEntryId}`);
     }
@@ -804,33 +802,40 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async createJournalEntryFile(journalEntryId: number, file: any): Promise<any> {
     console.log(`Creating file for journal entry ${journalEntryId}`);
     try {
-      // This is a placeholder implementation
-      // In a real implementation, you would insert the file into the database
-      // For example:
-      // const [journalEntryFile] = await db.insert(journalEntryFiles)
-      //   .values({
-      //     journalEntryId,
-      //     filename: file.filename || `file-${Date.now()}`,
-      //     contentType: file.contentType || 'application/octet-stream',
-      //     size: file.size || 0,
-      //     data: file.data || null,
-      //     uploadedBy: file.uploadedBy || null
-      //   })
-      //   .returning();
-      // return journalEntryFile;
+      // Ensure the journal entry exists
+      const journalEntry = await this.getJournalEntry(journalEntryId);
+      if (!journalEntry) {
+        throw new ApiError(404, `Journal entry with ID ${journalEntryId} not found`);
+      }
+
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join('public', 'uploads', 'journal-entries', journalEntryId.toString());
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Generate a unique filename to avoid collisions
+      const uniqueFilename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const filePath = path.join(uploadsDir, uniqueFilename);
       
-      // Since there's no journalEntryFiles table defined in schema.ts yet,
-      // we return a mock file object
-      return {
-        id: Date.now(),
-        journalEntryId,
-        filename: file.filename || `file-${Date.now()}`,
-        contentType: file.contentType || 'application/octet-stream',
-        size: file.size || 0,
-        data: file.data || null,
-        createdAt: new Date(),
-        uploadedBy: file.uploadedBy || null
-      };
+      // Save the file to disk
+      if (file.buffer) {
+        fs.writeFileSync(filePath, file.buffer);
+      }
+      
+      // Create a database record
+      const [journalEntryFile] = await db.insert(journalEntryFiles)
+        .values({
+          journalEntryId,
+          filename: file.originalname,
+          path: `/uploads/journal-entries/${journalEntryId}/${uniqueFilename}`,
+          mimeType: file.mimetype || 'application/octet-stream',
+          size: file.size || 0,
+          uploadedBy: file.uploadedBy
+        })
+        .returning();
+      
+      return journalEntryFile;
     } catch (e) {
       throw handleDbError(e, `creating file for journal entry ${journalEntryId}`);
     }

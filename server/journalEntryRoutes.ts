@@ -15,6 +15,8 @@ import {
 } from '../shared/validation';
 import { parse, isValid } from 'date-fns';
 import { journalEntryStorage } from './storage/journalEntryStorage';
+import multer from 'multer';
+import * as path from 'path';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -31,6 +33,13 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
  * Register journal entry routes
  */
 export function registerJournalEntryRoutes(app: Express) {
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB file size limit
+    },
+  });
   /**
    * Create a journal entry with lines
    */
