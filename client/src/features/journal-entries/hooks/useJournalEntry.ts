@@ -147,11 +147,20 @@ export function useJournalEntry() {
       }
     },
     onError: (error: any) => {
+      // Check if it's a foreign key constraint error
+      const errorMessage = error?.response?.data?.message || "";
+      const isForeignKeyError = 
+        errorMessage.includes("foreign key constraint") || 
+        errorMessage.includes("still referenced");
+        
       toast({
         title: 'Error',
-        description: `Failed to delete journal entry: ${error.message}`,
+        description: isForeignKeyError 
+          ? 'Cannot delete this journal entry because it is referenced by other entries in the system. Consider using void instead.' 
+          : `Failed to delete journal entry: ${error?.response?.data?.message || error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
+      console.error('Error deleting journal entry:', error);
     }
   });
   

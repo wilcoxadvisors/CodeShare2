@@ -426,9 +426,50 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return false;
       }
       
+      // Check if this entry is referenced by other entries (through reversalByEntryId)
+      const referencingEntries = await db.select({ id: journalEntries.id })
+        .from(journalEntries)
+        .where(eq(journalEntries.reversedByEntryId, id));
+        
+      if (referencingEntries.length > 0) {
+        // If any entry references this one through reversedByEntryId, first clear the reference
+        // This is only safe for non-posted entries
+        for (const entry of referencingEntries) {
+          const referencingEntry = await this.getJournalEntry(entry.id);
+          if (referencingEntry && referencingEntry.status !== JournalEntryStatus.POSTED) {
+            // Update the referencing entry to remove the reference
+            await db.update(journalEntries)
+              .set({
+                reversedEntryId: null,
+                isReversal: false,
+                updatedAt: new Date()
+              })
+              .where(eq(journalEntries.id, entry.id));
+          } else {
+            // If any referencing entry is posted, we cannot delete this entry
+            throw new Error(`Cannot delete journal entry: it is referenced by posted entry #${entry.id}`);
+          }
+        }
+      }
+      
+      // If this entry references another entry (as a reversal), clear the reference on the original entry
+      if (existingEntry.reversedEntryId) {
+        await db.update(journalEntries)
+          .set({
+            isReversed: false,
+            reversedByEntryId: null,
+            updatedAt: new Date()
+          })
+          .where(eq(journalEntries.id, existingEntry.reversedEntryId));
+      }
+      
       // Delete associated lines first to maintain referential integrity
       await db.delete(journalEntryLines)
         .where(eq(journalEntryLines.journalEntryId, id));
+      
+      // Delete journal entry files if any
+      await db.delete(journalEntryFiles)
+        .where(eq(journalEntryFiles.journalEntryId, id));
       
       // Delete the journal entry
       const result = await db.delete(journalEntries)
