@@ -497,337 +497,50 @@ function JournalEntryDetail() {
             Posted
           </Badge>
         );
-      case 'void':
       case 'voided':
         return (
           <Badge variant="outline" className="bg-purple-100 text-purple-800 flex items-center gap-1">
             <X className="h-3 w-3" />
-            Void
+            Voided
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Info className="h-3 w-3" />
+          <Badge variant="outline" className="bg-gray-100 text-gray-800">
             {status}
           </Badge>
         );
     }
   };
   
-  // Define types for line formats
-  type ClientFormatLine = {
-    debit: string;
-    credit: string;
-    accountId: string | number;
-    entityCode?: string;
-    description?: string;
-  };
-  
-  type ServerFormatLine = {
-    type: 'debit' | 'credit';
-    amount: string | number;
-    accountId: string | number;
-    entityCode?: string;
-    description?: string;
-  };
-  
-  // A type guard to check if a line is in client format
-  function isClientFormatLine(line: any): line is ClientFormatLine {
-    return 'debit' in line && 'credit' in line;
-  }
-  
-  // A type guard to check if a line is in server format
-  function isServerFormatLine(line: any): line is ServerFormatLine {
-    return 'type' in line && 'amount' in line;
-  };
-  
-  // Union type for both formats
-  type JournalEntryLine = ClientFormatLine | ServerFormatLine;
-  
-  // Type for totals
-  type Totals = {
-    totalDebit: number;
-    totalCredit: number;
-  };
-  
-  // Calculate totals - handling both client format (debit/credit) and server format (type/amount)
-  const calculateTotals = (): Totals => {
-    if (!journalEntry?.lines) return { totalDebit: 0, totalCredit: 0 };
-    
-    return (journalEntry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
-      // Check which format the line data is in and handle accordingly
-      if (isClientFormatLine(line)) {
-        // Client format (debit/credit)
-        const debit = parseFloat(line.debit) || 0;
-        const credit = parseFloat(line.credit) || 0;
-        
-        return {
-          totalDebit: acc.totalDebit + debit,
-          totalCredit: acc.totalCredit + credit
-        };
-      } else if (isServerFormatLine(line)) {
-        // Server format (type/amount)
-        const amount = parseFloat(line.amount.toString()) || 0;
-        if (line.type === 'debit') {
-          return {
-            totalDebit: acc.totalDebit + amount,
-            totalCredit: acc.totalCredit
-          };
-        } else if (line.type === 'credit') {
-          return {
-            totalDebit: acc.totalDebit,
-            totalCredit: acc.totalCredit + amount
-          };
-        }
-      }
-      
-      // Default case if neither format is detected
-      return acc;
-    }, { totalDebit: 0, totalCredit: 0 });
-  };
-  
-  // Type definition for entity balance
-  type EntityBalance = {
-    entityCode: string;
-    totalDebit: number;
-    totalCredit: number;
-    difference: number;
-    isBalanced: boolean;
-  };
-  
-  // Calculate entity balances - handling both client format (debit/credit) and server format (type/amount)
-  const calculateEntityBalances = (): EntityBalance[] => {
-    if (!journalEntry?.lines) return [];
-    
-    // Get unique entity codes
-    const entityCodes = Array.from(
-      new Set((journalEntry.lines as JournalEntryLine[]).map(line => line.entityCode))
-    );
-    
-    // Calculate balance for each entity
-    return entityCodes.map(code => {
-      if (!code) return null;
-      
-      const entityLines = (journalEntry.lines as JournalEntryLine[]).filter(line => line.entityCode === code);
-      const { totalDebit, totalCredit } = entityLines.reduce((acc: Totals, line: JournalEntryLine) => {
-        // Check which format the line data is in and handle accordingly
-        if (isClientFormatLine(line)) {
-          // Client format (debit/credit)
-          const debit = parseFloat(line.debit) || 0;
-          const credit = parseFloat(line.credit) || 0;
-          
-          return {
-            totalDebit: acc.totalDebit + debit,
-            totalCredit: acc.totalCredit + credit
-          };
-        } else if (isServerFormatLine(line)) {
-          // Server format (type/amount)
-          const amount = parseFloat(line.amount.toString()) || 0;
-          if (line.type === 'debit') {
-            return {
-              totalDebit: acc.totalDebit + amount,
-              totalCredit: acc.totalCredit
-            };
-          } else if (line.type === 'credit') {
-            return {
-              totalDebit: acc.totalDebit,
-              totalCredit: acc.totalCredit + amount
-            };
-          }
-        }
-        
-        // Default case if neither format is detected
-        return acc;
-      }, { totalDebit: 0, totalCredit: 0 });
-      
-      const difference = Math.abs(totalDebit - totalCredit);
-      const isBalanced = difference < 0.001;
-      
-      return {
-        entityCode: code,
-        totalDebit,
-        totalCredit,
-        difference,
-        isBalanced
-      };
-    }).filter(Boolean) as EntityBalance[];
-  };
-  
-  // Handle edit button click
-  const handleEdit = () => {
-    console.log("Edit button clicked for entry ID:", entryId);
-    navigate(`/journal-entries/edit/${entryId}`);
-  };
-  
-  // Handle delete button click
-  const handleDelete = () => {
-    setShowDeleteDialog(true);
-  };
-  
-  // Handle confirm delete
-  const handleConfirmDelete = async () => {
-    if (!entryId) return;
-    
-    try {
-      await deleteJournalEntry.mutateAsync(entryId);
-      toast({
-        title: 'Success',
-        description: 'Journal entry deleted successfully',
-      });
-      navigate('/journal-entries');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: `Failed to delete journal entry: ${error.message}`,
-        variant: 'destructive',
-      });
-    } finally {
-      setShowDeleteDialog(false);
-    }
-  };
-  
-  // Handle back button click
+  // Function to handle the back button
   const handleBack = () => {
     navigate('/journal-entries');
   };
   
-  // Handle workflow status changes
-  const submitForApproval = useMutation({
-    mutationFn: async () => {
-      if (!entryId) throw new Error('Journal entry ID is required');
-      
-      return await apiRequest(`/api/journal-entries/${entryId}/submit`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Journal entry submitted for approval',
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: `Failed to submit journal entry: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  });
-  
-  const approveEntry = useMutation({
-    mutationFn: async () => {
-      if (!entryId) throw new Error('Journal entry ID is required');
-      
-      return await apiRequest(`/api/journal-entries/${entryId}/approve`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Journal entry approved',
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: `Failed to approve journal entry: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  });
-  
-  const rejectEntry = useMutation({
-    mutationFn: async () => {
-      if (!entryId) throw new Error('Journal entry ID is required');
-      
-      return await apiRequest(`/api/journal-entries/${entryId}/reject`, {
-        method: 'POST',
-        data: { rejectionReason: rejectReason }
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Journal entry rejected',
-      });
-      setRejectReason('');
-      setShowRejectDialog(false);
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: `Failed to reject journal entry: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  });
-  
-  const postEntry = useMutation({
-    mutationFn: async () => {
-      if (!entryId) throw new Error('Journal entry ID is required');
-      
-      return await apiRequest(`/api/journal-entries/${entryId}/post`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Journal entry posted',
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: `Failed to post journal entry: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  });
-  
+  // Function to void a journal entry
   const voidEntry = useMutation({
     mutationFn: async () => {
       if (!entryId) throw new Error('Journal entry ID is required');
-      if (!voidReason.trim()) throw new Error('Void reason is required');
       
-      // Use the DELETE endpoint with a reason parameter to void the entry
       return await apiRequest(`/api/journal-entries/${entryId}`, {
         method: 'DELETE',
-        data: { reason: voidReason }
+        data: {
+          voidReason: voidReason
+        }
       });
     },
     onSuccess: () => {
+      setShowVoidDialog(false);
       toast({
         title: 'Success',
-        description: 'Journal entry voided',
+        description: 'Journal entry has been voided',
       });
-      setVoidReason('');
-      setShowVoidDialog(false);
-      
-      // Explicitly invalidate the query cache for this specific journal entry
-      if (entryId) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/journal-entries/${entryId}`] 
-        });
-      }
-      
-      // Also invalidate any list queries that may include this entry
-      if (currentEntity?.id) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
-        });
-      }
-      
+      // Navigate back to list or refresh this entry
       refetch();
     },
     onError: (error: any) => {
+      setShowVoidDialog(false);
       toast({
         title: 'Error',
         description: `Failed to void journal entry: ${error.message}`,
@@ -836,39 +549,31 @@ function JournalEntryDetail() {
     }
   });
   
-  // Mutation for reversing a journal entry
+  // Function to reverse a journal entry
   const reverseEntry = useMutation({
     mutationFn: async () => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
       return await apiRequest(`/api/journal-entries/${entryId}/reverse`, {
         method: 'POST',
-        data: { 
-          date: new Date().toISOString().split('T')[0], // Today's date
-          description: `Reversal of journal entry #${entryId}`,
-          createdBy: user?.id
+        data: {
+          // Add any customization for the reversal entry
+          description: `Reversal of Journal Entry #${entryId}`
         }
       });
     },
-    onSuccess: (data) => {
-      let reversalId;
-      if (data && typeof data === 'object') {
-        reversalId = data.id || data.journalEntryId || data.entryId;
-      }
-      
+    onSuccess: (response) => {
       toast({
         title: 'Success',
-        description: reversalId 
-          ? `Reversal entry created with ID: ${reversalId}` 
-          : 'Reversal entry created successfully',
+        description: 'Journal entry has been reversed',
       });
-      refetch();
       
-      // If we have a reversal ID, navigate to it after a short delay
-      if (reversalId) {
-        setTimeout(() => {
-          navigate(`/journal-entries/${reversalId}`);
-        }, 1500);
+      // Navigate to the new reversed entry if ID is provided in response
+      if (response && response.id) {
+        navigate(`/journal-entries/${response.id}`);
+      } else {
+        // Otherwise, go back to list
+        navigate('/journal-entries');
       }
     },
     onError: (error: any) => {
@@ -880,168 +585,130 @@ function JournalEntryDetail() {
     }
   });
   
-  // Determine which action buttons to show based on status
+  // Handle void button click
+  const handleVoid = () => {
+    voidEntry.mutate();
+  };
+  
+  // Handle reverse button click
+  const handleReverse = () => {
+    if (window.confirm('Are you sure you want to reverse this journal entry? This will create a new entry with opposite debits and credits.')) {
+      reverseEntry.mutate();
+    }
+  };
+  
+  // Render action buttons based on status
   const renderActionButtons = () => {
-    if (!journalEntry) return null;
+    // If journal entry is not loaded or doesn't have a status, return empty div
+    if (!journalEntry) return <div></div>;
     
     const status = journalEntry.status;
     const isAdmin = user?.role === 'admin';
     
-    // Get totals for validation
-    const { totalDebit, totalCredit } = calculateTotals();
-    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
-    const entityBalances = calculateEntityBalances();
-    const entitiesBalanced = entityBalances.every(balance => balance?.isBalanced);
+    // Define basic buttons (available for all status)
+    const basicButtons = (
+      <Button variant="outline" onClick={() => navigate(`/journal-entries/${entryId}/edit`)}>
+        <Edit className="mr-2 h-4 w-4" />
+        Edit
+      </Button>
+    );
+    
+    // Conditionally show buttons based on status
+    const actionButtons = [];
+    
+    // Only admin/supervisor/accounting can reverse posted journals
+    if (status === 'posted' && (isAdmin || user?.role === 'supervisor' || user?.role === 'accounting')) {
+      actionButtons.push(
+        <Button 
+          key="reverse"
+          variant="outline" 
+          onClick={handleReverse}
+          className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
+        >
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Reverse
+        </Button>
+      );
+      
+      // Only admin/supervisor/accounting can void posted journals
+      actionButtons.push(
+        <Button 
+          key="void"
+          variant="outline" 
+          onClick={() => setShowVoidDialog(true)}
+          className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+        >
+          <X className="mr-2 h-4 w-4" />
+          Void
+        </Button>
+      );
+    }
     
     return (
-      <div className="flex flex-wrap gap-2">
-        {status === 'draft' && (
-          <>
-            <Button 
-              onClick={handleEdit}
-              size="sm"
-              variant="outline"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            
-            <Button 
-              onClick={() => submitForApproval.mutate()}
-              size="sm"
-              variant="outline"
-              disabled={!isBalanced || !entitiesBalanced || submitForApproval.isPending}
-            >
-              <Clock className="mr-2 h-4 w-4" />
-              Submit for Approval
-            </Button>
-            
-            <Button 
-              onClick={handleDelete}
-              size="sm"
-              variant="destructive"
-              disabled={deleteJournalEntry.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
-          </>
-        )}
-        
-        {status === 'pending_approval' && isAdmin && (
-          <>
-            <Button
-              onClick={() => approveEntry.mutate()}
-              size="sm"
-              variant="outline"
-              className="bg-green-100 text-green-800 hover:bg-green-200"
-              disabled={approveEntry.isPending}
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Approve
-            </Button>
-            
-            <Button
-              onClick={() => setShowRejectDialog(true)}
-              size="sm"
-              variant="outline"
-              className="bg-red-100 text-red-800 hover:bg-red-200"
-              disabled={rejectEntry.isPending}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Reject
-            </Button>
-          </>
-        )}
-        
-        {(status === 'draft' || status === 'approved') && isAdmin && (
-          <Button
-            onClick={() => postEntry.mutate()}
-            size="sm"
-            variant="outline"
-            className="bg-blue-100 text-blue-800 hover:bg-blue-200"
-            disabled={postEntry.isPending}
-          >
-            <Check className="mr-2 h-4 w-4" />
-            Post
-          </Button>
-        )}
-        
-        {(status === 'posted') && isAdmin && (
-          <>
-            <Button
-              onClick={() => setShowVoidDialog(true)}
-              size="sm"
-              variant="outline"
-              className="bg-purple-100 text-purple-800 hover:bg-purple-200"
-              disabled={voidEntry.isPending}
-            >
-              <X className="mr-2 h-4 w-4" />
-              Void
-            </Button>
-            
-            <Button
-              onClick={() => reverseEntry.mutate()}
-              size="sm"
-              variant="outline"
-              className="bg-orange-100 text-orange-800 hover:bg-orange-200"
-              disabled={reverseEntry.isPending}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Reverse
-            </Button>
-          </>
-        )}
+      <div className="flex space-x-2">
+        {status !== 'posted' && status !== 'voided' ? basicButtons : null}
+        {actionButtons}
       </div>
     );
   };
   
-  if (isLoading) {
+  // Loading state
+  if (isLoading || !journalEntry) {
     return (
       <div className="py-6">
         <PageHeader
-          title="Journal Entry Details"
-          description="Loading journal entry details..."
+          title="Loading Journal Entry..."
+          description="Please wait while we load the journal entry details."
         >
           <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
         </PageHeader>
-        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Loading journal entry details...</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="animate-pulse space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+            </div>
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
         </div>
       </div>
     );
   }
   
+  // Error state
   if (error) {
     return (
       <div className="py-6">
         <PageHeader
-          title="Journal Entry Details"
-          description="Error loading journal entry"
+          title="Error Loading Journal Entry"
+          description="There was an error loading the journal entry details."
         >
           <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
         </PageHeader>
-        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="bg-red-50 p-4 rounded-md">
-                <p className="text-red-800">Error loading journal entry</p>
-                <p className="text-red-600 text-sm">{(error as Error).message}</p>
-              </div>
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="flex items-center text-red-800">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Error Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-700">{(error as Error).message}</p>
+              <Button 
+                variant="outline" 
+                onClick={() => refetch()}
+                className="mt-4"
+              >
+                Try Again
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -1049,34 +716,134 @@ function JournalEntryDetail() {
     );
   }
   
-  if (!journalEntry) {
-    return (
-      <div className="py-6">
-        <PageHeader
-          title="Journal Entry Details"
-          description="Journal entry not found"
-        >
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-        </PageHeader>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Journal entry not found</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+  // Type guard to check if the line is in client format (debit/credit)
+  type ClientFormatLine = {
+    debit: string;
+    credit: string;
+    accountId: string | number;
+    entityCode?: string;
+    description?: string;
+  };
+  
+  // Type guard to check if the line is in server format (type/amount)
+  type ServerFormatLine = {
+    type: 'debit' | 'credit';
+    amount: string | number;
+    accountId: string | number;
+    entityCode?: string;
+    description?: string;
+  };
+  
+  function isClientFormatLine(line: any): line is ClientFormatLine {
+    return line && 
+           (typeof line.debit !== 'undefined' || typeof line.credit !== 'undefined') &&
+           typeof line.accountId !== 'undefined';
   }
+  
+  function isServerFormatLine(line: any): line is ServerFormatLine {
+    return line && 
+           typeof line.type !== 'undefined' &&
+           typeof line.amount !== 'undefined' &&
+           typeof line.accountId !== 'undefined';
+  }
+  
+  type JournalEntryLine = ClientFormatLine | ServerFormatLine;
+  
+  // Calculate totals for the journal entry
+  type Totals = {
+    totalDebit: number;
+    totalCredit: number;
+  };
+  
+  const calculateTotals = (): Totals => {
+    if (!journalEntry || !journalEntry.lines) {
+      return { totalDebit: 0, totalCredit: 0 };
+    }
+    
+    return (journalEntry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
+      // Add to totals based on line format
+      if (isClientFormatLine(line)) {
+        // Client format
+        acc.totalDebit += parseFloat(line.debit) || 0;
+        acc.totalCredit += parseFloat(line.credit) || 0;
+      } else if (isServerFormatLine(line)) {
+        // Server format
+        const amount = parseFloat(line.amount.toString()) || 0;
+        if (line.type === 'debit') {
+          acc.totalDebit += amount;
+        } else if (line.type === 'credit') {
+          acc.totalCredit += amount;
+        }
+      }
+      
+      return acc;
+    }, { totalDebit: 0, totalCredit: 0 });
+  };
+  
+  // Calculate entity-specific balances
+  type EntityBalance = {
+    entityCode: string;
+    totalDebit: number;
+    totalCredit: number;
+    difference: number;
+    isBalanced: boolean;
+  };
+  
+  const calculateEntityBalances = (): EntityBalance[] => {
+    if (!journalEntry || !journalEntry.lines) {
+      return [];
+    }
+    
+    // Group lines by entity code
+    const entities: {[key: string]: JournalEntryLine[]} = {};
+    
+    journalEntry.lines.forEach((line: JournalEntryLine) => {
+      const entityCode = line.entityCode || 'No Entity';
+      
+      if (!entities[entityCode]) {
+        entities[entityCode] = [];
+      }
+      
+      entities[entityCode].push(line);
+    });
+    
+    // Calculate totals for each entity
+    return Object.entries(entities).map(([entityCode, entityLines]) => {
+      const { totalDebit, totalCredit } = entityLines.reduce((acc: Totals, line: JournalEntryLine) => {
+        if (isClientFormatLine(line)) {
+          // Client format
+          acc.totalDebit += parseFloat(line.debit) || 0;
+          acc.totalCredit += parseFloat(line.credit) || 0;
+        } else if (isServerFormatLine(line)) {
+          // Server format
+          const amount = parseFloat(line.amount.toString()) || 0;
+          if (line.type === 'debit') {
+            acc.totalDebit += amount;
+          } else if (line.type === 'credit') {
+            acc.totalCredit += amount;
+          }
+        }
+        
+        return acc;
+      }, { totalDebit: 0, totalCredit: 0 });
+      
+      const difference = Math.abs(totalDebit - totalCredit);
+      const isBalanced = Math.abs(difference) < 0.01; // Allow for tiny rounding errors
+      
+      return {
+        entityCode,
+        totalDebit,
+        totalCredit,
+        difference,
+        isBalanced
+      };
+    });
+  };
   
   const { totalDebit, totalCredit } = calculateTotals();
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
+  const difference = Math.abs(totalDebit - totalCredit);
+  const isBalanced = Math.abs(difference) < 0.01; // Allow for tiny rounding errors
+  
   const entityBalances = calculateEntityBalances();
   
   return (
@@ -1098,43 +865,43 @@ function JournalEntryDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Status</CardTitle>
+            <CardHeader>
+              <CardTitle>Status</CardTitle>
+              <CardDescription>Current state of the journal entry</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col space-y-3">
-                <div className="flex items-center space-x-2">
-                  {getStatusBadge(journalEntry.status)}
-                  {!isBalanced && (
-                    <Badge variant="outline" className="bg-red-100 text-red-800">
-                      Unbalanced
-                    </Badge>
-                  )}
-                </div>
-                
-                {/* Workflow visualization */}
-                <div className="pt-2">
-                  <p className="text-xs text-gray-500 mb-2">Workflow Status</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs mt-1">Draft</span>
-                    </div>
-                    <div className={`h-0.5 w-12 ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs mt-1">Approval</span>
-                    </div>
-                    <div className={`h-0.5 w-12 ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs mt-1">Approved</span>
-                    </div>
-                    <div className={`h-0.5 w-12 ${journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'posted' ? 'bg-blue-500' : journalEntry.status === 'voided' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
-                      <span className="text-xs mt-1">Posted</span>
-                    </div>
+              <div className="flex items-center space-x-2">
+                {getStatusBadge(journalEntry.status)}
+                {!isBalanced && (
+                  <Badge variant="outline" className="bg-red-100 text-red-800">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Unbalanced
+                  </Badge>
+                )}
+              </div>
+              
+              {/* Status timeline */}
+              <div className="mt-4">
+                <p className="text-sm text-gray-500 mb-2">Progress</p>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-xs mt-1">Draft</span>
+                  </div>
+                  <div className={`h-0.5 w-12 ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className="flex flex-col items-center">
+                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-xs mt-1">Approval</span>
+                  </div>
+                  <div className={`h-0.5 w-12 ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className="flex flex-col items-center">
+                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-xs mt-1">Approved</span>
+                  </div>
+                  <div className={`h-0.5 w-12 ${journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className="flex flex-col items-center">
+                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'posted' ? 'bg-blue-500' : journalEntry.status === 'voided' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-xs mt-1">Posted</span>
                   </div>
                 </div>
               </div>
@@ -1142,118 +909,75 @@ function JournalEntryDetail() {
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Details</CardTitle>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>Basic information about this entry</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Date:</span>
-                  <span>{formatDate(journalEntry.date)}</span>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">Date</Label>
+                  <p className="font-medium">{formatDate(journalEntry.date)}</p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Reference Number:</span>
-                  <span>{journalEntry.referenceNumber || '-'}</span>
+                <div>
+                  <Label className="text-xs text-gray-500">Reference</Label>
+                  <p className="font-medium">{journalEntry.reference || 'None'}</p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Journal ID:</span>
-                  <span>{journalEntry.id || '-'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Type:</span>
-                  <span>{journalEntry.journalType || 'JE'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Description:</span>
-                  <span className="text-right">{journalEntry.description || '-'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Entity:</span>
-                  <span>{currentEntity?.code || '-'}</span>
+                <div>
+                  <Label className="text-xs text-gray-500">Journal Type</Label>
+                  <p className="font-medium">{journalEntry.journalType || 'Manual'}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Totals</CardTitle>
+            <CardHeader>
+              <CardTitle>Balance</CardTitle>
+              <CardDescription>Summary of debits and credits</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Debit:</span>
-                  <span>{formatCurrency(totalDebit)}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Total Debits</span>
+                  <span className={`font-medium ${!isBalanced ? 'text-red-600' : ''}`}>
+                    {formatCurrency(totalDebit)}
+                  </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Credit:</span>
-                  <span>{formatCurrency(totalCredit)}</span>
+                <div className="flex justify-between">
+                  <span className="text-sm">Total Credits</span>
+                  <span className={`font-medium ${!isBalanced ? 'text-red-600' : ''}`}>
+                    {formatCurrency(totalCredit)}
+                  </span>
                 </div>
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-gray-500">Difference:</span>
-                  <span className={isBalanced ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(Math.abs(totalDebit - totalCredit))}
-                    {isBalanced && ' (Balanced)'}
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-sm font-semibold">Difference</span>
+                  <span className={`font-semibold ${!isBalanced ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(difference)} {isBalanced ? '✓' : '!'}
                   </span>
                 </div>
               </div>
+              
+              {/* Entity balances (for multi-entity journals) */}
+              {entityBalances.length > 1 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold mb-2">Entity Balances</h4>
+                  <div className="space-y-2 text-xs">
+                    {entityBalances.map((balance: EntityBalance, index: number) => (
+                      <div key={index} className="flex justify-between items-center">
+                        <span>{balance.entityCode}</span>
+                        <span className={!balance.isBalanced ? 'text-red-600' : 'text-green-600'}>
+                          {balance.isBalanced ? 'Balanced' : `Unbalanced (${formatCurrency(balance.difference)})`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
-        
-        {/* Entity Balances */}
-        {entityBalances.length > 1 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Entity Balances</CardTitle>
-              <CardDescription>
-                Balance per entity for intercompany transactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Entity Code</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead className="text-right">Difference</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entityBalances.map((balance: EntityBalance, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{balance.entityCode}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(balance.totalDebit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(balance.totalCredit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(balance.difference)}
-                      </TableCell>
-                      <TableCell>
-                        {balance.isBalanced ? (
-                          <div className="flex items-center text-green-600">
-                            <CheckCircle2 className="mr-1 h-4 w-4" />
-                            <span>Balanced</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center text-red-600">
-                            <AlertCircle className="mr-1 h-4 w-4" />
-                            <span>Unbalanced</span>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
         
         {/* Journal Entry Lines */}
         <Card>
@@ -1308,7 +1032,9 @@ function JournalEntryDetail() {
                     </TableRow>
                   );
                 })}
-                <TableRow className="bg-gray-50 font-bold">
+                
+                {/* Totals row */}
+                <TableRow className="font-bold bg-gray-50">
                   <TableCell colSpan={3} className="text-right">
                     Totals
                   </TableCell>
@@ -1336,127 +1062,48 @@ function JournalEntryDetail() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* File upload component */}
-            <div className="mb-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={uploading}
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="w-full border-dashed border-2 h-20 flex flex-col items-center justify-center"
-              >
+            {/* Drag and drop file upload component */}
+            <div 
+              {...getRootProps()} 
+              className={`mb-4 border-2 border-dashed rounded-md p-6 transition-colors ${
+                isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <input {...getInputProps()} disabled={uploading} />
+              
+              <div className="flex flex-col items-center justify-center text-center">
                 {uploading ? (
-                  <>
-                    <span className="text-sm mb-1">Uploading... {uploadProgress}%</span>
-                    <Progress value={uploadProgress} className="w-3/4 h-2" />
-                  </>
+                  <div className="w-full">
+                    <span className="text-sm mb-2 block">Uploading... {uploadProgress}%</span>
+                    <Progress value={uploadProgress} className="w-full h-2" />
+                  </div>
                 ) : (
                   <>
-                    <Upload className="h-5 w-5 mb-1 text-gray-500" />
-                    <span className="text-sm">Click to attach supporting document</span>
+                    <Upload className="h-10 w-10 mb-2 text-gray-400" />
+                    <h3 className="text-sm font-medium mb-1">
+                      {isDragActive ? 'Drop files here' : 'Drag and drop files here or click to browse'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Supports PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, and CSV (max 10MB per file)
+                    </p>
                   </>
                 )}
-              </Button>
+              </div>
             </div>
             
-            {/* File list */}
-            {journalEntry.files && journalEntry.files.length > 0 ? (
-              <div className="space-y-2">
-                {journalEntry.files.map((file) => (
-                  <div 
-                    key={file.id} 
-                    className="flex items-center justify-between p-2 border rounded-md hover:bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      {/* File icon based on mime type */}
-                      {file.mimeType?.includes('image') ? (
-                        <FileImage className="h-5 w-5 mr-2 text-blue-500" />
-                      ) : file.mimeType?.includes('pdf') ? (
-                        <FileText className="h-5 w-5 mr-2 text-red-500" />
-                      ) : file.mimeType?.includes('spreadsheet') || file.mimeType?.includes('excel') ? (
-                        <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
-                      ) : (
-                        <File className="h-5 w-5 mr-2 text-gray-500" />
-                      )}
-                      
-                      {/* File name and details */}
-                      <div className="truncate max-w-[200px]">
-                        <p className="text-sm font-medium">{file.originalname || file.filename}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(file.size)}
-                          {file.uploadedAt && `, added ${formatDate(file.uploadedAt)}`}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Download button */}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleFileDownload(file.id)}
-                      className="ml-2"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-6 text-gray-500 border rounded-md border-dashed">
-                <FileText className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-sm">No supporting documents attached</p>
-                <p className="text-xs mt-1">Upload files to provide documentation for this journal entry</p>
+            {/* Rejected files list */}
+            {rejectedFiles.length > 0 && (
+              <div className="bg-red-50 p-3 rounded-md mb-4">
+                <p className="text-sm font-medium text-red-800 mb-1">The following files were rejected:</p>
+                <ul className="text-xs text-red-700 list-disc ml-4">
+                  {rejectedFiles.map((file, index) => (
+                    <li key={index}>
+                      {file.file.name} - {file.errors[0]?.message || 'Invalid file type or size'}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-          </CardContent>
-        </Card>
-        
-        {/* File Attachments */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Paperclip className="h-5 w-5 mr-2" />
-              Supporting Documents
-            </CardTitle>
-            <CardDescription>
-              Attached files and supporting documentation for this journal entry
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* File upload component */}
-            <div className="mb-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={uploading}
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="w-full border-dashed border-2 h-20 flex flex-col items-center justify-center"
-              >
-                {uploading ? (
-                  <>
-                    <span className="text-sm mb-1">Uploading... {uploadProgress}%</span>
-                    <Progress value={uploadProgress} className="w-3/4 h-2" />
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-5 w-5 mb-1 text-gray-500" />
-                    <span className="text-sm">Click to attach supporting document</span>
-                  </>
-                )}
-              </Button>
-            </div>
             
             {/* File list */}
             {journalEntry.files && journalEntry.files.length > 0 ? (
@@ -1468,15 +1115,7 @@ function JournalEntryDetail() {
                   >
                     <div className="flex items-center">
                       {/* File icon based on mime type */}
-                      {file.mimeType?.includes('image') ? (
-                        <FileImage className="h-5 w-5 mr-2 text-blue-500" />
-                      ) : file.mimeType?.includes('pdf') ? (
-                        <FileText className="h-5 w-5 mr-2 text-red-500" />
-                      ) : file.mimeType?.includes('spreadsheet') || file.mimeType?.includes('excel') ? (
-                        <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
-                      ) : (
-                        <File className="h-5 w-5 mr-2 text-gray-500" />
-                      )}
+                      {getFileIcon(file.mimeType)}
                       
                       {/* File name and details */}
                       <div className="truncate max-w-[200px]">
@@ -1488,15 +1127,27 @@ function JournalEntryDetail() {
                       </div>
                     </div>
                     
-                    {/* Download button */}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleFileDownload(file.id)}
-                      className="ml-2"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <div className="flex space-x-1">
+                      {/* Download button */}
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleFileDownload(file.id)}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Delete button */}
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleFileDelete(file.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1511,72 +1162,25 @@ function JournalEntryDetail() {
         </Card>
       </div>
       
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the journal entry. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Reject Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Journal Entry</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this journal entry.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Reason for rejection"
-              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="default" 
-              onClick={() => rejectEntry.mutate()}
-              disabled={!rejectReason.trim() || rejectEntry.isPending}
-            >
-              Reject Entry
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
       {/* Void Dialog */}
       <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Void Journal Entry</DialogTitle>
             <DialogDescription>
-              Please provide a required reason for voiding this journal entry. 
-              Once voided, a journal entry cannot be restored.
+              Voiding a journal entry will mark it as invalid but preserve the entry for audit purposes. 
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <textarea
+            <Label htmlFor="voidReason" className="mb-2 block">Reason for voiding</Label>
+            <Input
+              id="voidReason"
               value={voidReason}
               onChange={(e) => setVoidReason(e.target.value)}
-              placeholder="Reason for voiding (required)"
-              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Enter reason for voiding this entry"
+              className="w-full"
+              required
             />
           </div>
           <DialogFooter>
@@ -1584,9 +1188,9 @@ function JournalEntryDetail() {
               Cancel
             </Button>
             <Button 
-              variant="destructive"
-              onClick={() => voidEntry.mutate()} 
-              disabled={!voidReason.trim() || voidEntry.isPending}
+              variant="destructive" 
+              onClick={handleVoid}
+              disabled={!voidReason}
             >
               Void Entry
             </Button>
