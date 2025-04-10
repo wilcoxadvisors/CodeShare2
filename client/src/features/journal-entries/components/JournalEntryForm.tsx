@@ -49,6 +49,13 @@ import {
   FormMessage
 } from '@/components/ui/form';
 
+// Define API response interface types for better type safety
+interface JournalEntryResponse {
+  id?: number;
+  entry?: { id: number };
+  [key: string]: any;
+}
+
 // Define local Account interface compatible with the component needs
 interface Account {
   id: number;
@@ -899,12 +906,12 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         }
       );
     },
-    onSuccess: async (result) => {
+    onSuccess: async (result: JournalEntryResponse) => {
       // Get the newly created journal entry ID from the response
       // The result might be wrapped in an object or be the entry itself
-      const newJournalEntryId = result.id || (result.entry && result.entry.id);
+      const newJournalEntryId = result?.id || (result?.entry && result.entry.id);
       
-      console.log('DEBUG: New journal entry created with ID:', newJournalEntryId);
+      console.log('DEBUG: New journal entry created with ID:', newJournalEntryId, 'Response:', JSON.stringify(result, null, 2));
       
       // Upload pending files if there are any and we have a valid journal entry ID
       if (pendingFiles?.length > 0 && newJournalEntryId && uploadPendingFilesRef.current) {
@@ -993,7 +1000,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         }
       );
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response: JournalEntryResponse) => {
       console.log('DEBUG: Journal entry update success response:', JSON.stringify(response, null, 2));
       
       // Upload pending files for existing entries if there are any
@@ -2008,6 +2015,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
           setPendingFiles={setPendingFiles}
           pendingFilesMetadata={pendingFilesMetadata}
           setPendingFilesMetadata={setPendingFilesMetadata}
+          onUploadToEntryRef={uploadPendingFilesRef}
         />
       ) : null}
         
