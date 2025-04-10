@@ -460,26 +460,56 @@ function AttachmentSection({
     onSuccess: (data) => {
       setUploadProgress(0);
       
-      if (isExistingEntry) {
-        toast({
-          title: 'Files uploaded',
-          description: 'Files were successfully uploaded to the journal entry.',
-        });
-        queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
-      } else {
-        toast({
-          title: 'Files staged',
-          description: 'Files will be attached when the journal entry is saved.',
-        });
+      // Check for multi-status response (some files uploaded, some skipped)
+      if (data.skipped && data.files) {
+        if (isExistingEntry) {
+          toast({
+            title: 'Partial upload',
+            description: `${data.files.length} files uploaded, ${data.skipped.length} duplicate files skipped.`,
+          });
+          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+        } else {
+          toast({
+            title: 'Files partially staged',
+            description: `${data.files.length} files staged, ${data.skipped.length} duplicate files skipped.`,
+          });
+        }
+      } 
+      // Normal success response - all files uploaded
+      else {
+        if (isExistingEntry) {
+          toast({
+            title: 'Files uploaded',
+            description: 'Files were successfully uploaded to the journal entry.',
+          });
+          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+        } else {
+          toast({
+            title: 'Files staged',
+            description: 'Files will be attached when the journal entry is saved.',
+          });
+        }
       }
     },
     onError: (error: any) => {
       console.error('File upload error:', error);
-      toast({
-        title: 'Upload failed',
-        description: error.message || 'Failed to upload files. Please try again.',
-        variant: 'destructive',
-      });
+      
+      // Special handling for status code 409 (Conflict - all duplicates)
+      if (error.response?.status === 409) {
+        const skippedCount = error.response?.data?.skipped?.length || 0;
+        toast({
+          title: 'Duplicate files',
+          description: `All ${skippedCount} files were already attached to this entry.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Upload failed',
+          description: error.message || 'Failed to upload files. Please try again.',
+          variant: 'destructive',
+        });
+      }
+      
       setUploadProgress(0);
     }
   });
@@ -555,7 +585,7 @@ function AttachmentSection({
           toast({
             title: "Duplicate files detected",
             description: "Some files were skipped as they appear to be duplicates of existing attachments.",
-            variant: "warning"
+            variant: "destructive"
           });
         }
         

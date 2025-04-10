@@ -1266,32 +1266,65 @@ export function registerJournalEntryRoutes(app: Express) {
       
       try {
         const savedFiles = [];
+        const skippedFiles = [];
         
         // Process each file individually
         for (const file of req.files) {
           console.log('DEBUG Attach BE: Processing file:', file.originalname, 'size:', file.size);
           
-          // Add uploadedBy to the file data
-          const fileData = {
-            ...file,
-            uploadedBy: user.id
-          };
-          
-          console.log('DEBUG Attach BE: Data to storage:', {
-            filename: fileData.originalname,
-            mimetype: fileData.mimetype,
-            size: fileData.size 
-          });
-          
-          // Save the file to the journal entry
-          const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
-          savedFiles.push(savedFile);
+          try {
+            // Add uploadedBy to the file data
+            const fileData = {
+              ...file,
+              uploadedBy: user.id
+            };
+            
+            console.log('DEBUG Attach BE: Data to storage:', {
+              filename: fileData.originalname,
+              mimetype: fileData.mimetype,
+              size: fileData.size 
+            });
+            
+            // Save the file to the journal entry
+            const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
+            savedFiles.push(savedFile);
+          } catch (fileError: any) {
+            // Check if it's a duplicate file error (409 Conflict)
+            if (fileError.status === 409) {
+              console.log(`DEBUG Attach BE: Skipping duplicate file: ${file.originalname}`);
+              skippedFiles.push({
+                filename: file.originalname,
+                reason: 'duplicate'
+              });
+            } else {
+              // For other errors, rethrow to be caught by the outer catch
+              throw fileError;
+            }
+          }
         }
         
-        res.status(201).json({
-          message: 'Files uploaded successfully',
-          files: savedFiles
-        });
+        // If we have both saved and skipped files, return a 207 Multi-Status response
+        if (savedFiles.length > 0 && skippedFiles.length > 0) {
+          res.status(207).json({
+            message: 'Some files uploaded, some skipped as duplicates',
+            files: savedFiles,
+            skipped: skippedFiles
+          });
+        } 
+        // If all files were skipped, return a 409 Conflict
+        else if (savedFiles.length === 0 && skippedFiles.length > 0) {
+          res.status(409).json({
+            message: 'All files were skipped as duplicates',
+            skipped: skippedFiles
+          });
+        }
+        // If all files were saved, return a 201 Created
+        else {
+          res.status(201).json({
+            message: 'Files uploaded successfully',
+            files: savedFiles
+          });
+        }
       } catch (error) {
         console.error('Error uploading files:', error);
         throw error;

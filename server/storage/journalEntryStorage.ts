@@ -864,6 +864,23 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(404, `Journal entry with ID ${journalEntryId} not found`);
       }
 
+      // Get existing files for this journal entry to check for duplicates
+      const existingFiles = await db.select()
+        .from(journalEntryFiles)
+        .where(eq(journalEntryFiles.journalEntryId, journalEntryId));
+      
+      // Check if this file already exists (by name and size)
+      const isDuplicate = existingFiles.some(existingFile => 
+        existingFile.filename === file.originalname && 
+        existingFile.size === file.size
+      );
+      
+      // If it's a duplicate, return a specific error
+      if (isDuplicate) {
+        console.log(`Duplicate file detected: ${file.originalname}`);
+        throw new ApiError(409, `A file with the same name and size already exists for this journal entry`);
+      }
+
       // Create uploads directory if it doesn't exist
       const uploadsDir = path.join('public', 'uploads', 'journal-entries', journalEntryId.toString());
       if (!fs.existsSync(uploadsDir)) {
@@ -871,12 +888,22 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       }
 
       // Generate a unique filename to avoid collisions
-      const uniqueFilename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const timestamp = Date.now();
+      const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uniqueFilename = `${timestamp}-${sanitizedName}`;
       const filePath = path.join(uploadsDir, uniqueFilename);
       
-      // Save the file to disk
-      if (file.buffer) {
+      // Ensure the file is valid before saving
+      if (!file.buffer) {
+        throw new ApiError(400, 'Invalid file data: No buffer found');
+      }
+      
+      // Save the file to disk with error handling
+      try {
         fs.writeFileSync(filePath, file.buffer);
+      } catch (fsError) {
+        console.error('Failed to write file to disk:', fsError);
+        throw new ApiError(500, 'Failed to save file to disk');
       }
       
       // Create a database record
