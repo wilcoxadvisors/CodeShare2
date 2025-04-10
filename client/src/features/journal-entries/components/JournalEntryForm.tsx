@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
-import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import { format } from 'date-fns';
+import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
+  Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
@@ -79,6 +86,18 @@ interface EntityBalance {
   credit: number;
   difference: number;
   balanced: boolean;
+}
+
+// Interface for journal entry file attachments
+interface JournalEntryFile {
+  id: number;
+  journalEntryId: number;
+  filename: string;
+  path: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: number;
+  uploadedAt: Date;
 }
 
 // Interface to track expanded/collapsed account states

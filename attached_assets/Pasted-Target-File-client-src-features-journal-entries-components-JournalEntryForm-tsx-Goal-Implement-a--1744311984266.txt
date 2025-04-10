@@ -1,0 +1,86 @@
+Target File:
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Goal:
+Implement a robust file attachment section allowing users to explicitly upload, view, download, and delete attachments. This section is only visible when creating a new journal entry or editing an existing journal entry that is neither posted nor voided. The upload functionality must explicitly be disabled until the entry has been initially saved (and has a valid id).
+
+Implementation Steps (explicit):
+Ensure Necessary Imports: (as originally listed explicitly)
+
+Identify Mode, ID, and Status explicitly:
+
+isEditMode: boolean
+
+existingEntry: { id: number; status: string; } | null | undefined
+
+journalEntryId = existingEntry?.id
+
+Conditional Rendering explicitly:
+
+tsx
+Copy
+Edit
+{(!isEditMode || (isEditMode && journalEntryId && existingEntry?.status !== 'posted' && existingEntry?.status !== 'voided')) && (
+    <AttachmentSection journalEntryId={journalEntryId ?? null} />
+)}
+Define the AttachmentSection component explicitly:
+
+Accept explicitly journalEntryId: number | null.
+
+Explicitly handle null IDs by disabling uploads and showing a helpful message ("Save as Draft first...").
+
+React Query Hooks explicitly:
+
+Fetch attachments (useQuery) explicitly only if journalEntryId exists.
+
+Explicit upload/delete mutations with clear error handling and toast notifications.
+
+Dropzone Setup explicitly:
+
+Explicit file type definitions (accept) and explicit size limits (maxSize).
+
+Disable dropzone explicitly (disabled) if no valid journalEntryId.
+
+UI Rendering explicitly:
+
+Provide clear, explicit visual feedback for each state:
+
+Loading (Loader2)
+
+Errors (Alert with explicit messages)
+
+Empty states explicitly ("No attachments yet.")
+
+Upload progress explicitly shown (optional but recommended)
+
+Attachment Table explicitly:
+
+Columns explicitly named: Filename, Size (KB/MB), Uploaded Date (formatted), Actions (Download/Delete).
+
+Explicit icons based on file types for enhanced usability.
+
+Functional download links explicitly verified to match backend paths.
+
+Helper Functions explicitly recommended:
+
+formatBytes(bytes) explicitly for readable file sizes.
+
+getFileIcon(mimeType) explicitly to determine icons by file type.
+
+Backend Reminder explicitly detailed:
+
+Implement explicitly secure backend endpoints:
+
+POST /api/journal-entries/:id/files (handle FormData, multer upload.array())
+
+GET /api/journal-entries/:id/files (return attachments explicitly from DB)
+
+DELETE /api/journal-entries/:id/files/:fileId (explicitly delete DB entry and physical file)
+
+Set up explicit static file serving for /uploads securely in server/index.ts
+
+Security Considerations explicitly stated:
+
+Explicitly validate all uploads for type, size, and security (prevent directory traversal explicitly).
+
+Explicitly serve/download files securely.
