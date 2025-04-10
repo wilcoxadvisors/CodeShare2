@@ -89,6 +89,8 @@ export interface IJournalEntryStorage {
   // Journal Entry File operations
   getJournalEntryFiles(journalEntryId: number): Promise<any[]>;
   createJournalEntryFile(journalEntryId: number, file: any): Promise<any>;
+  getJournalEntryFile(fileId: number): Promise<any>;
+  deleteJournalEntryFile(fileId: number): Promise<boolean>;
   
   // Batch operation
   createBatchJournalEntries(
@@ -838,6 +840,50 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       return journalEntryFile;
     } catch (e) {
       throw handleDbError(e, `creating file for journal entry ${journalEntryId}`);
+    }
+  }
+
+  async getJournalEntryFile(fileId: number): Promise<any> {
+    console.log(`Getting file with ID ${fileId}`);
+    try {
+      // Query the database for the specific file
+      const [file] = await db.select()
+        .from(journalEntryFiles)
+        .where(eq(journalEntryFiles.id, fileId))
+        .limit(1);
+      
+      if (!file) {
+        throw new ApiError(404, `File with ID ${fileId} not found`);
+      }
+      
+      return file;
+    } catch (e) {
+      throw handleDbError(e, `getting file with ID ${fileId}`);
+    }
+  }
+  
+  async deleteJournalEntryFile(fileId: number): Promise<boolean> {
+    console.log(`Deleting file with ID ${fileId}`);
+    try {
+      // First get the file details to know the file path
+      const file = await this.getJournalEntryFile(fileId);
+      if (!file) {
+        return false;
+      }
+      
+      // Delete the physical file from the file system if it exists
+      const filePath = path.join('public', file.path);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Delete the file record from the database
+      await db.delete(journalEntryFiles)
+        .where(eq(journalEntryFiles.id, fileId));
+      
+      return true;
+    } catch (e) {
+      throw handleDbError(e, `deleting file with ID ${fileId}`);
     }
   }
   
