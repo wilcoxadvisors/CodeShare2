@@ -787,6 +787,44 @@ function JournalEntryDetail() {
             variant="outline" 
             onClick={() => {
               // Update status to pending_approval
+              // Format lines to ensure proper data structure
+              const formattedLines = [];
+              if (journalEntry.lines) {
+                for (const line of journalEntry.lines) {
+                  if (isClientFormatLine(line)) {
+                    // Check if it's a debit or credit line
+                    if (parseFloat(line.debit) > 0) {
+                      formattedLines.push({
+                        type: 'debit',
+                        amount: line.debit,
+                        accountId: Number(line.accountId),
+                        entityCode: line.entityCode || null,
+                        description: line.description || null
+                      });
+                    } else if (parseFloat(line.credit) > 0) {
+                      formattedLines.push({
+                        type: 'credit',
+                        amount: line.credit,
+                        accountId: Number(line.accountId),
+                        entityCode: line.entityCode || null,
+                        description: line.description || null
+                      });
+                    }
+                  } else if (isServerFormatLine(line)) {
+                    // Already in server format, just ensure amount is a string
+                    formattedLines.push({
+                      type: line.type,
+                      amount: line.amount.toString(),
+                      accountId: Number(line.accountId),
+                      entityCode: line.entityCode || null,
+                      description: line.description || null
+                    });
+                  }
+                }
+              }
+              
+              console.log('DEBUG: Submitting journal entry with formatted lines:', formattedLines);
+              
               updateJournalEntry.mutate({
                 id: entryId,
                 status: 'pending_approval',
@@ -796,7 +834,9 @@ function JournalEntryDetail() {
                 reference: journalEntry.reference,
                 journalType: journalEntry.journalType || 'JE',
                 entityId: journalEntry.entityId,
-                clientId: journalEntry.clientId
+                clientId: journalEntry.clientId,
+                // EXPLICITLY include lines to ensure complete data preservation
+                lines: formattedLines
               }, {
                 onSuccess: () => {
                   toast({
@@ -848,6 +888,44 @@ function JournalEntryDetail() {
             variant="outline" 
             onClick={() => {
               // Update status to approved
+              // Format lines to ensure proper data structure
+              const formattedLines = [];
+              if (journalEntry.lines) {
+                for (const line of journalEntry.lines) {
+                  if (isClientFormatLine(line)) {
+                    // Check if it's a debit or credit line
+                    if (parseFloat(line.debit) > 0) {
+                      formattedLines.push({
+                        type: 'debit',
+                        amount: line.debit,
+                        accountId: Number(line.accountId),
+                        entityCode: line.entityCode || null,
+                        description: line.description || null
+                      });
+                    } else if (parseFloat(line.credit) > 0) {
+                      formattedLines.push({
+                        type: 'credit',
+                        amount: line.credit,
+                        accountId: Number(line.accountId),
+                        entityCode: line.entityCode || null,
+                        description: line.description || null
+                      });
+                    }
+                  } else if (isServerFormatLine(line)) {
+                    // Already in server format, just ensure amount is a string
+                    formattedLines.push({
+                      type: line.type,
+                      amount: line.amount.toString(),
+                      accountId: Number(line.accountId),
+                      entityCode: line.entityCode || null,
+                      description: line.description || null
+                    });
+                  }
+                }
+              }
+              
+              console.log('DEBUG: Approving journal entry with formatted lines:', formattedLines);
+              
               updateJournalEntry.mutate({
                 id: entryId,
                 status: 'approved',
@@ -857,7 +935,9 @@ function JournalEntryDetail() {
                 reference: journalEntry.reference,
                 journalType: journalEntry.journalType || 'JE',
                 entityId: journalEntry.entityId,
-                clientId: journalEntry.clientId
+                clientId: journalEntry.clientId,
+                // EXPLICITLY include lines to ensure complete data preservation
+                lines: formattedLines
               }, {
                 onSuccess: () => {
                   toast({
