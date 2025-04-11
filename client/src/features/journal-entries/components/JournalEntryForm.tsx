@@ -292,11 +292,27 @@ function AttachmentSection({
     queryKey: ['journalEntryAttachments', journalEntryId],
     queryFn: async () => {
       if (!isExistingEntry) return [];
-      const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
-        method: 'GET'
-      });
-      console.log('DEBUG AttachmentSection: Fetched attachments:', response);
-      return response as unknown as JournalEntryFile[];
+      
+      try {
+        const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
+          method: 'GET'
+        });
+        
+        console.log('DEBUG AttachmentSection: Fetched attachments:', response);
+        
+        // Extract the files array from the response properly
+        if (response && Array.isArray(response.files)) {
+          return response.files;
+        } else if (Array.isArray(response)) {
+          return response;
+        } else {
+          console.warn('Unexpected attachments response format:', response);
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching attachments:', error);
+        return [];
+      }
     },
     enabled: isExistingEntry, // Only fetch if we have a numeric journalEntryId
   });
@@ -562,12 +578,14 @@ function AttachmentSection({
         let duplicatesFound = false;
         const uniqueFiles = acceptedFiles.filter(newFile => {
           // Compare with existing attachments from server
-          const isDuplicateWithExisting = attachments && attachments.some(existingFile => 
-            existingFile.filename === newFile.name && existingFile.size === newFile.size
-          );
+          const isDuplicateWithExisting = Array.isArray(attachments) && attachments.length > 0 && 
+            attachments.some(existingFile => 
+              existingFile.filename === newFile.name && existingFile.size === newFile.size
+            );
           
           // Compare with pending files
-          const isDuplicateWithPending = pendingFiles.some(pendingFile => 
+          const isDuplicateWithPending = Array.isArray(pendingFiles) && pendingFiles.length > 0 && 
+            pendingFiles.some(pendingFile => 
             pendingFile.name === newFile.name && pendingFile.size === newFile.size
           );
           
@@ -678,7 +696,7 @@ function AttachmentSection({
                 {(attachmentsError as Error)?.message || 'Failed to load attachments'}
               </AlertDescription>
             </Alert>
-          ) : (!attachments || attachments.length === 0) && pendingFilesMetadata.length === 0 ? (
+          ) : (!Array.isArray(attachments) || attachments.length === 0) && pendingFilesMetadata.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No files attached yet</p>
           ) : (
             <ScrollArea className="h-[200px] rounded-md border">
