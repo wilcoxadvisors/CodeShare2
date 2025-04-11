@@ -43,10 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         try {
-          // Use apiRequest for consistent SPA handling
-          const response = await apiRequest('/api/auth/me');
-          const data = await response.json();
+          // Use standard fetch for consistency with login method
+          const response = await fetch('/api/auth/me', {
+            credentials: 'include'
+          });
           
+          if (!response.ok) {
+            throw new Error(`Auth check failed with status ${response.status}`);
+          }
+          
+          const data = await response.json();
           console.log('🔒 User authenticated:', data);
           setUser(data.user);
           
@@ -113,20 +119,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log('🔐 Login attempt with:', username);
       
-      // Use apiRequest with JSON approach instead of form submission for SPA-friendly login
-      const response = await apiRequest('/api/auth/login', {
+      // Use standard fetch here to avoid double JSON parsing issues
+      const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',
-        data: { username, password },
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include'
       });
       
-      // Get JSON response
-      const data = await response.json();
-      console.log('🔐 Login response:', data);
+      if (!loginResponse.ok) {
+        console.error('🔐 Login response was not OK:', loginResponse.status);
+        return false;
+      }
+      
+      // Try to parse the login response, but don't require it for success
+      try {
+        const loginData = await loginResponse.json();
+        console.log('🔐 Login response:', loginData);
+      } catch (parseError) {
+        console.warn('🔐 Could not parse login response JSON, but continuing:', parseError);
+        // Continue even if parsing fails, as long as status was 200 OK
+      }
       
       // Immediately fetch user data to confirm login worked
-      const meResponse = await apiRequest('/api/auth/me');
-      const userData = await meResponse.json();
+      const meResponse = await fetch('/api/auth/me', {
+        credentials: 'include'
+      });
       
+      if (!meResponse.ok) {
+        console.error('🔐 Session verification failed:', meResponse.status);
+        return false;
+      }
+      
+      const userData = await meResponse.json();
       console.log('🔐 Auth check after login:', userData);
       
       if (userData && userData.user) {
@@ -149,10 +176,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      // Use apiRequest for consistent SPA handling
-      await apiRequest('/api/auth/logout', {
+      // Use standard fetch to be consistent with login method
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
+        credentials: 'include'
       });
+      
+      // Log the result but clear user state regardless of success
+      if (!response.ok) {
+        console.error('Logout response was not OK:', response.status);
+      }
       
       // Clear the user state
       setUser(null);
