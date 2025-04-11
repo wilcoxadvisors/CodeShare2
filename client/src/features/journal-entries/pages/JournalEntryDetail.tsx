@@ -303,7 +303,7 @@ function JournalEntryDetail() {
     }
     
     // Use the properly formatted URL that matches backend route
-    window.open(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, '_blank');
+    window.open(`/api/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
   };
   
   // Handle file deletion
@@ -1500,16 +1500,6 @@ function JournalEntryDetail() {
                         <Download className="h-4 w-4 mr-1" />
                         Download
                       </Button>
-                      {journalEntry.status === 'draft' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => handleFileDelete(file.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}

@@ -773,7 +773,7 @@ function AttachmentSection({
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => window.open(file.path, '_blank')}
+                                  onClick={() => window.open(`/api/journal-entries/${journalEntryId}/files/${file.id}/download`, '_blank')}
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
