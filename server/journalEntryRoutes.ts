@@ -1364,6 +1364,48 @@ export function registerJournalEntryRoutes(app: Express) {
    * Serve a specific file from a journal entry
    */
   app.get('/api/journal-entries/:journalEntryId/files/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Same handler for direct file access
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Check that the journal entry exists
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    // Get all files for this journal entry
+    const files = await journalEntryStorage.getJournalEntryFiles(journalEntryId);
+    
+    // Find the requested file
+    const file = files.find(f => f.id === fileId);
+    
+    if (!file) {
+      throwNotFound('File');
+    }
+    
+    // Check if file exists on disk
+    const filePath = path.join(process.cwd(), file.path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found on server' });
+    }
+    
+    // Serve the file
+    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    
+    // Stream the file to the response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  }));
+
+  // Special download endpoint to make it clearer
+  app.get('/api/journal-entries/:journalEntryId/files/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const journalEntryId = parseInt(req.params.journalEntryId);
     const fileId = parseInt(req.params.fileId);
     
