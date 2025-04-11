@@ -849,7 +849,7 @@ function JournalEntryDetail() {
                 // EXPLICITLY include these critical fields to avoid data loss
                 date: journalEntry.date,
                 description: journalEntry.description,
-                reference: journalEntry.reference,
+                referenceNumber: journalEntry.referenceNumber,
                 journalType: journalEntry.journalType || 'JE',
                 entityId: journalEntry.entityId,
                 clientId: journalEntry.clientId,
@@ -950,7 +950,7 @@ function JournalEntryDetail() {
                 // EXPLICITLY include these critical fields to avoid data loss
                 date: journalEntry.date,
                 description: journalEntry.description,
-                reference: journalEntry.reference,
+                referenceNumber: journalEntry.referenceNumber,
                 journalType: journalEntry.journalType || 'JE',
                 entityId: journalEntry.entityId,
                 clientId: journalEntry.clientId,
