@@ -1,0 +1,27 @@
+# Financial Management Platform Environment Variables - EXAMPLE FILE
+# This is an example file. Copy this to .envrc and modify with your own values.
+# After editing, run 'direnv allow' to load the environment variables.
+
+# Environment
+export NODE_ENV=development
+
+# Database Configuration
+export DATABASE_URL="postgresql://username:password@localhost:5432/financial_db"
+export PGDATABASE="financial_db"
+export PGHOST="localhost"
+export PGPORT="5432"
+export PGUSER="username"
+export PGPASSWORD="password"
+
+# AI Integration Keys
+export XAI_API_KEY="your-xai-api-key"
+
+# Session Secret (for cookie encryption)
+export SESSION_SECRET="generate-a-random-secret-string"
+
+# Email Configuration
+export EMAIL_USER="your-email@example.com"
+export EMAIL_PASSWORD="your-email-app-password"
+export NOTIFICATION_EMAIL="notifications@example.com"
+
+# Note: After editing this file, run `direnv allow` to reload the environment variables
