@@ -24,39 +24,55 @@ export async function apiRequest(
     data?: unknown;
     onUploadProgress?: (progressEvent: any) => void;
   },
-): Promise<ApiResponse> {
+): Promise<any> {
   const method = options?.method || 'GET';
   const data = options?.data;
   
   // Handle file uploads with FormData differently
   const isFormData = data instanceof FormData;
   
-  const res = await fetch(url, {
+  const response = await fetch(url, {
     method,
     headers: isFormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
-  
-  // Create a custom response object that extends the Response object
-  // instead of trying to modify the original Response object
-  const customResponse: ApiResponse = Object.create(
-    Object.getPrototypeOf(res),
-    Object.getOwnPropertyDescriptors(res)
-  );
-  
-  // Parse the JSON response if it's not a file download
-  if (res.headers.get('content-type')?.includes('application/json')) {
-    const jsonData = await res.clone().json();
-    // Copy JSON properties to our custom response object
-    Object.keys(jsonData).forEach(key => {
-      customResponse[key] = jsonData[key];
-    });
+  // Get response data
+  let responseData;
+  try {
+    // Parse the JSON response if it's not a file download
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      responseData = await response.text();
+    }
+  } catch (error) {
+    console.warn('Failed to parse response data:', error);
+    responseData = {};
   }
-  
-  return customResponse;
+
+  // Create a completely new object with the response properties we need
+  const formattedResponse = {
+    status: response.status,
+    ok: response.ok,
+    statusText: response.statusText,
+    // Manually extract key headers instead of using entries() which has TS compatibility issues
+    headers: {
+      'content-type': response.headers.get('content-type'),
+      'content-length': response.headers.get('content-length')
+    },
+    ...responseData // Spread any properties from the JSON body
+  };
+
+  if (!response.ok) {
+    // Check if we need to throw with custom error message
+    await throwIfResNotOk(response);
+    // If throwIfResNotOk doesn't throw, throw our formatted response
+    throw formattedResponse;
+  }
+
+  return formattedResponse;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -65,16 +81,35 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const response = await fetch(queryKey[0] as string, {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (unauthorizedBehavior === "returnNull" && response.status === 401) {
       return null;
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
+    // Process the response
+    let responseData;
+    try {
+      // Only attempt to parse JSON if we have a response with content
+      if (response.headers.get('content-type')?.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        responseData = null;
+      }
+    } catch (error) {
+      console.warn('Failed to parse response data in queryFn:', error);
+      responseData = null;
+    }
+
+    // Check for errors
+    if (!response.ok) {
+      await throwIfResNotOk(response);
+    }
+
+    // Return the parsed data
+    return responseData;
   };
 
 export const queryClient = new QueryClient({
