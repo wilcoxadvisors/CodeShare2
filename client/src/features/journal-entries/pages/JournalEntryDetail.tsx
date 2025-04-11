@@ -291,18 +291,8 @@ function JournalEntryDetail() {
   const handleFileDownload = (fileId: number) => {
     if (!entryId) return;
     
-    // Construct the full route including entity ID
-    const entityId = currentEntity?.id; // Get current entity ID from context
-    if (!entityId) {
-      toast({
-        title: "Error",
-        description: "Entity ID is required to download files",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Use the properly formatted URL that matches backend route
+    // Use the dedicated download endpoint with the /download suffix
+    // This ensures proper content disposition headers are set for attachment download
     window.open(`/api/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
   };
   
