@@ -422,7 +422,7 @@ function JournalEntryDetail() {
     id: number;
     date: string;
     description?: string;
-    reference?: string;
+    referenceNumber?: string; // Changed from reference to match database schema
     journalType?: string;
     status: string;
     entityId?: number;
@@ -1336,7 +1336,7 @@ function JournalEntryDetail() {
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Reference</Label>
-                  <p className="font-medium">{journalEntry.reference || 'None'}</p>
+                  <p className="font-medium">{journalEntry.referenceNumber || 'None'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Journal Type</Label>
