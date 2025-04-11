@@ -135,6 +135,10 @@ function JournalEntryDetail() {
     mutationFn: async (files: File[]) => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
+      // Get the current entity ID
+      const entityId = currentEntity?.id;
+      if (!entityId) throw new Error('Entity ID is required to upload files');
+      
       const formData = new FormData();
       
       // Add all files to the formData
@@ -142,7 +146,7 @@ function JournalEntryDetail() {
         formData.append('files', file);
       });
       
-      return await apiRequest(`/api/journal-entries/${entryId}/files`, {
+      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/files`, {
         method: 'POST',
         data: formData,
         onUploadProgress: (progressEvent: any) => {
@@ -183,7 +187,10 @@ function JournalEntryDetail() {
     mutationFn: async (fileId: number) => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
-      return await apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
+      const entityId = currentEntity?.id;
+      if (!entityId) throw new Error('Entity ID is required to delete files');
+      
+      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, {
         method: 'DELETE'
       });
     },
@@ -284,8 +291,19 @@ function JournalEntryDetail() {
   const handleFileDownload = (fileId: number) => {
     if (!entryId) return;
     
-    // Open the file in a new tab/window
-    window.open(`/api/journal-entries/${entryId}/files/${fileId}`, '_blank');
+    // Construct the full route including entity ID
+    const entityId = currentEntity?.id; // Get current entity ID from context
+    if (!entityId) {
+      toast({
+        title: "Error",
+        description: "Entity ID is required to download files",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Use the properly formatted URL that matches backend route
+    window.open(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, '_blank');
   };
   
   // Handle file deletion
