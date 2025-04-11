@@ -1,0 +1,16 @@
+# Python dependencies for ML Service
+# Financial Management Platform
+
+# Web framework
+flask>=2.0.0
+gunicorn>=20.1.0
+
+# Data processing
+numpy>=1.20.0
+pandas>=1.3.0
+
+# Machine learning
+scikit-learn>=1.0.0
+
+# Time Series Forecasting
+prophet>=1.1.0
