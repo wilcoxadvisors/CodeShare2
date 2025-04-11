@@ -40,14 +40,23 @@ export async function apiRequest(
 
   await throwIfResNotOk(res);
   
+  // Create a custom response object that extends the Response object
+  // instead of trying to modify the original Response object
+  const customResponse: ApiResponse = Object.create(
+    Object.getPrototypeOf(res),
+    Object.getOwnPropertyDescriptors(res)
+  );
+  
   // Parse the JSON response if it's not a file download
   if (res.headers.get('content-type')?.includes('application/json')) {
-    const jsonData = await res.json();
-    // Enhance the response with the parsed JSON data
-    Object.assign(res, jsonData);
+    const jsonData = await res.clone().json();
+    // Copy JSON properties to our custom response object
+    Object.keys(jsonData).forEach(key => {
+      customResponse[key] = jsonData[key];
+    });
   }
   
-  return res as ApiResponse;
+  return customResponse;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
