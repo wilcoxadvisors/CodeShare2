@@ -1447,8 +1447,58 @@ function JournalEntryDetail() {
           </CardContent>
         </Card>
         
-        {/* File attachments are now handled in the JournalEntryForm component, 
-        not in the detail view per the design requirements */}
+        {/* File Attachments Section */}
+        {journalEntry.files && journalEntry.files.length > 0 && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Paperclip className="h-5 w-5 mr-2" />
+                Attachments
+              </CardTitle>
+              <CardDescription>
+                Files attached to this journal entry
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {journalEntry.files.map((file, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-3 border rounded-md"
+                  >
+                    <div className="flex items-center">
+                      {getFileIcon(file.mimeType)}
+                      <div>
+                        <p className="font-medium">{file.originalname || file.filename}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleFileDownload(file.id)}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                      {journalEntry.status === 'draft' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleFileDelete(file.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       {/* Delete Dialog */}

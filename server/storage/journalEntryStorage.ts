@@ -178,9 +178,16 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         // Fetch lines and return them separately
         const lines = await this.getJournalEntryLines(id);
         
-        // Return entry with lines as a non-database property (to avoid type issues)
-        const result = { ...entry } as JournalEntry & { lines: JournalEntryLine[] };
+        // Fetch files for this journal entry
+        const files = await this.getJournalEntryFiles(id);
+        
+        // Return entry with lines and files as non-database properties (to avoid type issues)
+        const result = { ...entry } as JournalEntry & { 
+          lines: JournalEntryLine[],
+          files: any[]
+        };
         result.lines = lines || [];
+        result.files = files || [];
         return result;
       }
       
