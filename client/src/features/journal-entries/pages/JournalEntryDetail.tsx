@@ -1313,6 +1313,10 @@ function JournalEntryDetail() {
                   <p className="font-medium">{formatDate(journalEntry.date)}</p>
                 </div>
                 <div>
+                  <Label className="text-xs text-gray-500">Description</Label>
+                  <p className="font-medium">{journalEntry.description || 'None'}</p>
+                </div>
+                <div>
                   <Label className="text-xs text-gray-500">Reference</Label>
                   <p className="font-medium">{journalEntry.reference || 'None'}</p>
                 </div>
