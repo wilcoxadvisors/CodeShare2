@@ -65,3 +65,5 @@ The application leverages advanced Big Data and Machine Learning technologies to
   - Visual explanations of complex model decisions
 
 This ML stack provides a robust foundation for processing large volumes of financial data, generating accurate forecasts, detecting anomalies, and delivering explainable insights to users.
+
+XGBoost anomaly model saved at models/anomaly/, SHAP API /ai/anomalies/:entity.
