@@ -1380,34 +1380,61 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('Journal Entry');
     }
     
-    // Get all files for this journal entry
-    const files = await journalEntryStorage.getJournalEntryFiles(journalEntryId);
-    
-    // Find the requested file
-    const file = files.find(f => f.id === fileId);
+    // Get the file metadata
+    const file = await journalEntryStorage.getJournalEntryFile(fileId);
     
     if (!file) {
       throwNotFound('File');
     }
     
-    // Check if file exists on disk
-    // Handle both relative and absolute paths
-    // If the path starts with /, it is a relative path from public directory
-    const filePath = file.path.startsWith("/") 
-      ? path.join(process.cwd(), "public", file.path) 
-      : file.path;
+    // Get the file storage implementation
+    const fileStorage = getFileStorage();
     
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "File not found on server" });
-    }
-    
-    // Serve the file
+    // Set response headers
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${file.filename}"`);
     
-    // Stream the file to the response
-    const fileStream = fs.createReadStream(file.path);
-    fileStream.pipe(res);
+    try {
+      // If the file is stored in the blob storage
+      if (file.storageKey) {
+        console.log(`Serving file from blob storage with key: ${file.storageKey}`);
+        // Get the file content from blob storage
+        const fileBuffer = await fileStorage.load(file.storageKey);
+        
+        // Send the file content
+        return res.send(fileBuffer);
+      } 
+      // Handle legacy filesystem storage for backward compatibility
+      else if (file.path) {
+        console.log(`Serving legacy file from filesystem: ${file.path}`);
+        // Handle both relative and absolute paths
+        // If the path starts with /, it is a relative path from public directory
+        const filePath = file.path.startsWith("/") 
+          ? path.join(process.cwd(), "public", file.path) 
+          : file.path;
+        
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ message: "File not found on server" });
+        }
+        
+        // Stream the file to the response
+        const fileStream = fs.createReadStream(file.path);
+        return fileStream.pipe(res);
+      }
+      // If neither storageKey nor path is provided
+      else if (file.data) {
+        console.log(`Serving file from legacy data field`);
+        // For backward compatibility: some files might have data directly in the metadata
+        const fileBuffer = Buffer.from(file.data, 'base64');
+        return res.send(fileBuffer);
+      }
+      else {
+        return res.status(404).json({ message: "File content not found" });
+      }
+    } catch (error) {
+      console.error(`Error serving file: ${error}`);
+      return res.status(500).json({ message: "Error serving file" });
+    }
   }));
 
   // Special download endpoint to make it clearer
@@ -1426,11 +1453,8 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('Journal Entry');
     }
     
-    // Get all files for this journal entry
-    const files = await journalEntryStorage.getJournalEntryFiles(journalEntryId);
-    
-    // Find the requested file
-    const file = files.find(f => f.id === fileId);
+    // Get file metadata directly using a more efficient method
+    const file = await journalEntryStorage.getJournalEntryFile(fileId);
     
     if (!file) {
       throwNotFound('File');
@@ -1439,7 +1463,7 @@ export function registerJournalEntryRoutes(app: Express) {
     // Get the file storage implementation
     const fileStorage = getFileStorage();
     
-    // Set headers for file download
+    // Set headers for file download - force attachment
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
