@@ -1,0 +1,45 @@
+Replit-Agent Prompt — Task 4: XGBoost anomaly model + SHAP explainability
+Branch: feature/spark–mllib-dask-switch
+Prereq: PR for Task 3 merged and CI green.
+Goal: Train an XGBoost model on journal-entry features, produce SHAP explanations, and expose two new API routes.
+
+File work-list
+
+Action	Path	Details
+ADD	ml/train_anomaly_xgb.py	CLI args: --sample (use 1 k rows)
+Reads Parquet from data/raw/journal_entries.
+• build Dask DataFrame → train dask_xgboost.XGBClassifier on features [account_code, month, debit_credit_flag, amount_abs].
+• Save model + feature list under models/anomaly/xgb.model (joblib.dump).
+ADD	ml/shap_explain.py	Loads the XGB model, computes SHAP values for last 100 rows of a given entity (env var or --entity). Print JSON: {"entity":123,"top_features":[{"name":"amount_abs","value":0.28},…]}
+ADD	scripts/train_anomaly.sh	bash<br>#!/usr/bin/env bash<br>python3 ml/train_anomaly_xgb.py "$@"<br> (chmod +x)
+MODIFY	backend/routes/ai.js	1) GET /ai/forecasts/:entity → return the stored ARIMA parquet as JSON list of {date,value}.
+2) GET /ai/anomalies/:entity → shell python3 ml/shap_explain.py --entity <id> and pipe stdout to response.
+Add basic error handling (500 on failure).
+ADD	test/anomaly_train.test.ts	Jest execs bash scripts/train_anomaly.sh --sample and asserts exit 0.
+MODIFY	.github/workflows/ci.yml	New job anomaly-test — run the train script with --sample. Needs Python deps.
+MODIFY	docs/ARCHITECTURE.md	Append bullet: “XGBoost anomaly model saved at models/anomaly/, SHAP API /ai/anomalies/:entity.”
+Acceptance criteria
+Running bash scripts/train_anomaly.sh --sample locally exits 0 and writes models/anomaly/xgb.model.
+
+python3 ml/shap_explain.py --entity 1 | jq .top_features outputs ≥1 feature.
+
+New Jest test passes (npm test).
+
+CI now has backend-test, etl-test, forecast-test, anomaly-test — all green.
+
+eslint, prettier, ts-prune still clean in CI.
+
+Commit label: feat(ml): XGBoost anomaly + SHAP API
+
+Guard-rails & tips
+Keep total diff ≤ 200 LoC.
+
+Spark not needed here; XGBoost + Dask run on CPU in local mode.
+
+For shelling Python from Node, use child_process.execFileSync with timeout.
+
+Remember to chmod +x shell scripts.
+
+If Parquet path absent (CI dry-run), fall back to synthetic DataFrame of 1 k random rows.
+
+Agent, begin Task 4 now. Reply “Done ✅ Task 4” when the PR is open and CI is green.
