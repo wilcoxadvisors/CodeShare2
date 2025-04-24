@@ -300,6 +300,13 @@ export const journalEntryLinesRelations = relations(journalEntryLines, ({ one })
   }),
 }));
 
+// Journal Entry File Blobs (for storing binary file content)
+export const journalEntryFileBlobs = pgTable("journal_entry_file_blobs", {
+  id: serial("id").primaryKey(),
+  data: text("data", { length: "max" }).notNull(), // Binary data stored as base64 text
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
 // Journal Entry Files (supporting documents)
 export const journalEntryFiles = pgTable("journal_entry_files", {
   id: serial("id").primaryKey(),
@@ -309,10 +316,11 @@ export const journalEntryFiles = pgTable("journal_entry_files", {
   path: text("path"),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
-  // Adding binary data column to store the file content
-  data: text("data", { length: "max" }),
+  // Reference to the blob storage
+  storageKey: integer("storage_key").references(() => journalEntryFileBlobs.id),
   uploadedBy: integer("uploaded_by").references(() => users.id).notNull(),
-  uploadedAt: timestamp("uploaded_at").defaultNow().notNull()
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at") // For soft deletion
 });
 
 // Fixed Assets
