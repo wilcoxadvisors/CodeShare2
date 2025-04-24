@@ -1390,9 +1390,14 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Check if file exists on disk
-    // File path is now stored as the full path in the database
-    if (!fs.existsSync(file.path)) {
-      return res.status(404).json({ message: 'File not found on server' });
+    // Handle both relative and absolute paths
+    // If the path starts with /, it is a relative path from public directory
+    const filePath = file.path.startsWith("/") 
+      ? path.join(process.cwd(), "public", file.path) 
+      : file.path;
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: "File not found on server" });
     }
     
     // Serve the file
@@ -1431,9 +1436,14 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Check if file exists on disk
-    // File path is now stored as the full path in the database
-    if (!fs.existsSync(file.path)) {
-      return res.status(404).json({ message: 'File not found on server' });
+    // Handle both relative and absolute paths
+    // If the path starts with /, it is a relative path from public directory
+    const filePath = file.path.startsWith("/") 
+      ? path.join(process.cwd(), "public", file.path) 
+      : file.path;
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: "File not found on server" });
     }
     
     // Serve the file
@@ -1441,7 +1451,7 @@ export function registerJournalEntryRoutes(app: Express) {
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
     // Stream the file to the response
-    const fileStream = fs.createReadStream(filePath);
+    const fileStream = fs.createReadStream(file.path);
     fileStream.pipe(res);
   }));
   
