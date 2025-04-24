@@ -81,9 +81,6 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         return await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
           method: 'POST',
           data: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
         });
       }
     },

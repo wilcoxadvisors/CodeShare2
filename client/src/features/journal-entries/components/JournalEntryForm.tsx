@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { JournalEntryStatus, AccountType } from '@shared/schema';
 import { useJournalEntry } from '../hooks/useJournalEntry';
+import { useJournalEntryFiles, useUploadJournalEntryFile, useDeleteJournalEntryFile } from '../hooks/attachmentQueries';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -288,34 +289,7 @@ function AttachmentSection({
     isLoading: isLoadingAttachments,
     isError: isAttachmentsError,
     error: attachmentsError
-  } = useQuery<JournalEntryFile[]>({
-    queryKey: ['journalEntryAttachments', journalEntryId],
-    queryFn: async () => {
-      if (!isExistingEntry) return [];
-      
-      try {
-        const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
-          method: 'GET'
-        });
-        
-        console.log('DEBUG AttachmentSection: Fetched attachments:', response);
-        
-        // Extract the files array from the response properly
-        if (response && Array.isArray(response.files)) {
-          return response.files;
-        } else if (Array.isArray(response)) {
-          return response;
-        } else {
-          console.warn('Unexpected attachments response format:', response);
-          return [];
-        }
-      } catch (error) {
-        console.error('Error fetching attachments:', error);
-        return [];
-      }
-    },
-    enabled: isExistingEntry, // Only fetch if we have a numeric journalEntryId
-  });
+  } = useJournalEntryFiles(isExistingEntry ? journalEntryId as number : undefined);
   
   // Function to upload pending files to a specific journal entry ID
   // This function will be exposed to parent components via the ref
