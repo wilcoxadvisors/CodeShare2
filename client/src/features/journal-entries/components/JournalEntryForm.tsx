@@ -383,126 +383,52 @@ function AttachmentSection({
     };
   }, [onUploadToEntryRef, pendingFiles, setPendingFiles, setPendingFilesMetadata]);
   
-  // Upload file mutation for direct uploads via the UI
-  const uploadFileMutation = useMutation({
-    mutationFn: async (files: File[]) => {
-      if (isExistingEntry) {
-        // For existing entries, upload directly to server
-        const formData = new FormData();
-        files.forEach(file => {
-          formData.append('files', file);
-        });
-        
-        console.log('DEBUG AttachmentSection: Uploading files to server:', files);
-        
-        // Using axios directly for upload to handle progress
-        const axios = (await import('axios')).default;
-        const response = await axios.post(`/api/journal-entries/${journalEntryId}/files`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          onUploadProgress: (progressEvent: any) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-          }
-        });
-        
-        return response.data;
-      } else {
-        // For new entries, store files in state temporarily
-        console.log('DEBUG AttachmentSection: Storing files temporarily:', files);
-        
-        // Create metadata for the pending files
-        const newFilesMetadata = files.map((file, index) => ({
-          id: Date.now() + index, // Generate a temporary ID
-          filename: file.name,
-          size: file.size,
-          mimeType: file.type,
-          addedAt: new Date()
-        }));
-        
-        // Add the files to our pending files state
-        setPendingFiles(prevFiles => [...prevFiles, ...files]);
-        setPendingFilesMetadata(prevMetadata => [...prevMetadata, ...newFilesMetadata]);
-        
-        // Simulate progress for better UX
-        const intervalId = setInterval(() => {
-          setUploadProgress(progress => {
-            if (progress >= 100) {
-              clearInterval(intervalId);
-              return 100;
-            }
-            return progress + 10;
-          });
-        }, 50);
-        
-        // Clear progress after "upload" is complete
-        setTimeout(() => {
+  // Upload file hook for direct uploads via the UI
+  const uploadFileMutation = useUploadJournalEntryFile(isExistingEntry ? journalEntryId as number : undefined);
+  
+  // Handle local file uploads for new entries (not saved yet)
+  const handleLocalFileUpload = (files: File[]) => {
+    // For new entries, store files in state temporarily
+    console.log('DEBUG AttachmentSection: Storing files temporarily:', files);
+    
+    // Create metadata for the pending files
+    const newFilesMetadata = files.map((file, index) => ({
+      id: Date.now() + index, // Generate a temporary ID
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type,
+      addedAt: new Date()
+    }));
+    
+    // Add the files to our pending files state
+    setPendingFiles(prevFiles => [...prevFiles, ...files]);
+    setPendingFilesMetadata(prevMetadata => [...prevMetadata, ...newFilesMetadata]);
+    
+    // Simulate progress for better UX
+    const intervalId = setInterval(() => {
+      setUploadProgress(progress => {
+        if (progress >= 100) {
           clearInterval(intervalId);
-          setUploadProgress(100);
-          // Short delay to show 100% before resetting
-          setTimeout(() => setUploadProgress(0), 300);
-        }, 600);
-        
-        return { success: true, tempFiles: newFilesMetadata };
-      }
-    },
-    onSuccess: (data) => {
-      setUploadProgress(0);
-      
-      // Check for multi-status response (some files uploaded, some skipped)
-      if (data.skipped && data.files) {
-        if (isExistingEntry) {
-          toast({
-            title: 'Partial upload',
-            description: `${data.files.length} files uploaded, ${data.skipped.length} duplicate files skipped.`,
-          });
-          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
-        } else {
-          toast({
-            title: 'Files partially staged',
-            description: `${data.files.length} files staged, ${data.skipped.length} duplicate files skipped.`,
-          });
+          return 100;
         }
-      } 
-      // Normal success response - all files uploaded
-      else {
-        if (isExistingEntry) {
-          toast({
-            title: 'Files uploaded',
-            description: 'Files were successfully uploaded to the journal entry.',
-          });
-          queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
-        } else {
-          toast({
-            title: 'Files staged',
-            description: 'Files will be attached when the journal entry is saved.',
-          });
-        }
-      }
-    },
-    onError: (error: any) => {
-      console.error('File upload error:', error);
+        return progress + 10;
+      });
+    }, 50);
+    
+    // Clear progress after "upload" is complete
+    setTimeout(() => {
+      clearInterval(intervalId);
+      setUploadProgress(100);
+      // Short delay to show 100% before resetting
+      setTimeout(() => setUploadProgress(0), 300);
       
-      // Special handling for status code 409 (Conflict - all duplicates)
-      if (error.response?.status === 409) {
-        const skippedCount = error.response?.data?.skipped?.length || 0;
-        toast({
-          title: 'Duplicate files',
-          description: `All ${skippedCount} files were already attached to this entry.`,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Upload failed',
-          description: error.message || 'Failed to upload files. Please try again.',
-          variant: 'destructive',
-        });
-      }
-      
-      setUploadProgress(0);
-    }
-  });
+      // Show success toast
+      toast({
+        title: 'Files staged',
+        description: 'Files will be attached when the journal entry is saved.',
+      });
+    }, 600);
+  };
   
   // Delete pending file (for new entries)
   const deletePendingFile = (id: number) => {
@@ -518,31 +444,8 @@ function AttachmentSection({
     }
   };
   
-  // Delete file mutation (for existing entries)
-  const deleteFileMutation = useMutation({
-    mutationFn: async (fileId: number) => {
-      if (!isExistingEntry) return null;
-      
-      return await apiRequest(`/api/journal-entries/${journalEntryId}/files/${fileId}`, {
-        method: 'DELETE'
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: 'File deleted',
-        description: 'File was successfully deleted.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
-    },
-    onError: (error: any) => {
-      console.error('File deletion error:', error);
-      toast({
-        title: 'Deletion failed',
-        description: error.message || 'Failed to delete file. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  });
+  // Delete file hook (for existing entries)
+  const deleteFileMutation = useDeleteJournalEntryFile();
   
   // Dropzone configuration
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -581,9 +484,18 @@ function AttachmentSection({
           });
         }
         
-        // Only upload unique files
+        // Only upload unique files if we have any
         if (uniqueFiles.length > 0) {
-          uploadFileMutation.mutate(uniqueFiles);
+          if (isExistingEntry) {
+            // For existing entries, use the upload hook
+            uploadFileMutation.mutate({
+              files: uniqueFiles,
+              onProgress: setUploadProgress
+            });
+          } else {
+            // For new entries, use our local handler
+            handleLocalFileUpload(uniqueFiles);
+          }
         }
       }
     },
@@ -765,7 +677,10 @@ function AttachmentSection({
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  onClick={() => deleteFileMutation.mutate(file.id)}
+                                  onClick={() => deleteFileMutation.mutate({
+                                    journalEntryId: journalEntryId as number,
+                                    fileId: file.id
+                                  })}
                                   disabled={deleteFileMutation.isPending}
                                 >
                                   {deleteFileMutation.isPending ? (
