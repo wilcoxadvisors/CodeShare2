@@ -305,9 +305,12 @@ export const journalEntryFiles = pgTable("journal_entry_files", {
   id: serial("id").primaryKey(),
   journalEntryId: integer("journal_entry_id").references(() => journalEntries.id).notNull(),
   filename: text("filename").notNull(),
-  path: text("path").notNull(),
+  // path is kept for backward compatibility but will be null for DB-stored files
+  path: text("path"),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
+  // Adding binary data column to store the file content
+  data: text("data", { length: "max" }),
   uploadedBy: integer("uploaded_by").references(() => users.id).notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull()
 });
