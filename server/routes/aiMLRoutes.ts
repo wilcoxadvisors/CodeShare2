@@ -10,15 +10,15 @@ import { Express, Request, Response } from 'express';
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { isAuthenticated } from '../middleware/auth';
-import asyncHandler from 'express-async-handler';
+import { authenticateUser } from '../authMiddleware';
+import { asyncHandler } from '../errorHandling';
 
 export function registerAIMLRoutes(app: Express) {
   /**
    * Get forecast data for a specific entity
    * Uses ARIMA models trained with Spark MLlib
    */
-  app.get('/api/ai/forecasts/:entity', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  app.get('/api/ai/forecasts/:entity', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
     try {
       const entityId = req.params.entity;
       const modelDir = path.join(process.cwd(), 'models', 'forecast', entityId);
@@ -65,7 +65,7 @@ export function registerAIMLRoutes(app: Express) {
    * Get anomaly detection explanations for a specific entity
    * Uses XGBoost models with SHAP value explanations
    */
-  app.get('/api/ai/anomalies/:entity', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  app.get('/api/ai/anomalies/:entity', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
     try {
       const entityId = req.params.entity;
       const modelPath = path.join(process.cwd(), 'models', 'anomaly', 'xgb.model');

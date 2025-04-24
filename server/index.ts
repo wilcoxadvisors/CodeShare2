@@ -10,6 +10,7 @@ import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
 import blogRoutes from "./routes/blogRoutes";
 import contentRoutes from "./routes/contentRoutes";
+import { registerAIMLRoutes } from "./routes/aiMLRoutes";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
 
@@ -136,6 +137,11 @@ app.use((req, res, next) => {
     log('Registering content routes...');
     app.use('/api/content', contentRoutes);
     log('✅ Content routes registered');
+    
+    // Register AI ML routes
+    log('Registering AI ML routes...');
+    registerAIMLRoutes(app);
+    log('✅ AI ML routes registered');
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
