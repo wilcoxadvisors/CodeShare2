@@ -69,6 +69,20 @@ export function registerJournalEntryRoutes(app: Express) {
     );
   };
   
+  // Configure rate limiting for file uploads
+  // 50 files per user per 10-minute window
+  const uploadLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,  // 10 minutes
+    max: 50,                   // 50 requests per window
+    standardHeaders: true,     // Return rate limit info in the RateLimit-* headers
+    message: { message: 'Too many file uploads. Please try again later.' },
+    keyGenerator: (req) => {
+      // Use user ID or IP address as the rate limit key
+      const user = req.user as { id: number } | undefined;
+      return user?.id?.toString() || req.ip || 'unknown';
+    }
+  });
+  
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -78,9 +92,8 @@ export function registerJournalEntryRoutes(app: Express) {
       if (isAllowedFileType(file.mimetype)) {
         cb(null, true);
       } else {
+        // Don't throw an error here, we'll handle it in the route
         cb(null, false);
-        // Don't throw an error here, let the route handler return a proper response
-        // Instead, we'll check for files in the route handler
       }
     }
   });
@@ -1259,8 +1272,9 @@ export function registerJournalEntryRoutes(app: Express) {
    * Upload a file attachment to a journal entry
    */
   app.post('/api/journal-entries/:id/files', 
-    isAuthenticated, 
-    upload.array('files', 10), // Changed to support multiple files with a limit of 10
+    isAuthenticated,
+    uploadLimiter, // Added rate limiting - 50 files per user per 10 minutes
+    upload.array('files', 10), // Support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
       const id = parseInt(req.params.id);
       const user = req.user as { id: number };
@@ -1300,12 +1314,40 @@ export function registerJournalEntryRoutes(app: Express) {
         return res.status(400).json({ message: 'No files were uploaded' });
       }
       
-      // Validate file size limits
+      // Check if any files were rejected due to mime type validation
+      if (req.body.files && req.files.length < req.body.files.length) {
+        // Some files were rejected by the multer filter
+        return res.status(400).json({ 
+          message: 'One or more files were rejected due to unsupported file types. Supported types include PDF, Office documents, emails (.msg, .eml), images, and text files.'
+        });
+      }
+      
+      // Validate file types and sizes
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
       for (const file of req.files as Express.Multer.File[]) {
+        // Double check file size
         if (file.size > MAX_FILE_SIZE) {
           return res.status(400).json({ 
             message: `File ${file.originalname} exceeds maximum size limit of 10MB` 
+          });
+        }
+        
+        // Double check file type
+        if (!isAllowedFileType(file.mimetype)) {
+          // Log the attempt
+          await auditLogStorage.createAuditLog({
+            action: 'journal_file_upload_rejected',
+            performedBy: user.id,
+            details: JSON.stringify({
+              journalEntryId: id,
+              filename: file.originalname,
+              mimeType: file.mimetype,
+              reason: 'Unsupported file type'
+            })
+          });
+          
+          return res.status(400).json({
+            message: `File type ${file.mimetype} is not supported. Supported types include PDF, Office documents, emails (.msg, .eml), images, and text files.`
           });
         }
       }
