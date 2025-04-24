@@ -30,7 +30,50 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
+    - name: Run linting
+      run: |
+        npm run lint --if-present
+        npm run prettier --if-present
+        npx ts-prune
+    
     - name: Run tests
       run: npm test
       env:
         NODE_ENV: test
+  
+  etl-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install ML dependencies
+      run: pip install -r backend/requirements.ml.txt
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/etl_export.sh
+        chmod +x run-etl-je.sh
+    
+    - name: Run ETL in dry-run mode
+      run: ./run-etl-je.sh --dry-run
+      env:
+        PGHOST: localhost
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        PGDATABASE: test
+        PGPORT: 5432
