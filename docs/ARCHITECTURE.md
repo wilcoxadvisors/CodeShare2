@@ -38,6 +38,13 @@ The application follows a modern web architecture with:
 - **Import/Export**: Support for common financial data formats
 - **Webhook Support**: Real-time notifications
 
+## File Attachments
+
+- **Storage**: PostgreSQL database blob storage for secure file management
+- **Upload endpoint**: 50 files / 10 min per user; accepted MIME list includes PDF, Office, Outlook .msg, RFC-822 .eml, text/, images
+- **Security**: File type whitelisting, size limits (10MB), and role-based access controls
+- **Audit Logging**: Comprehensive tracking of all file operations (upload, view, download, delete)
+
 ## Big-Data ML
 
 The application leverages advanced Big Data and Machine Learning technologies to provide predictive analytics and deep insights:

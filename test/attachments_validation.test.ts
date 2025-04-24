@@ -29,11 +29,11 @@ async function runTests() {
   try {
     console.log('Starting validation tests...');
     
-    // Create test files
+    // Create test files with proper MIME type information
     const msgFile = createTestFile('test.msg', 'Outlook message content');
-    const emlFile = createTestFile('test.eml', 'Email message content');
-    const exeFile = createTestFile('test.exe', 'Executable content');
-    const smallFile = createTestFile('small.txt', 'Small text file');
+    const emlFile = createTestFile('test.eml', 'From: sender@example.com\nTo: recipient@example.com\nSubject: Test Email\n\nThis is a test email message content.');
+    const exeFile = createTestFile('test.exe', 'MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xFF\xFF'); // EXE header
+    const smallFile = createTestFile('small.txt', 'Small text file content for testing');
     
     console.log('Created test files');
     
@@ -78,22 +78,42 @@ async function runTests() {
     // TEST 4: Rate limit test - upload 51 files, the 51st should be rejected
     console.log('TEST 4: Rate limit test (51 uploads)');
     try {
-      // We'll only test with a few uploads rather than doing all 51
+      // Actual test with 51 uploads - the 51st should be rejected with 429
       const uploadPromises = [];
+      const lastUploadPromise = { response: '', isRateLimited: false };
       
-      // Upload files 1-5 (to simulate multiple uploads without hitting actual limits)
-      for (let i = 1; i <= 5; i++) {
-        console.log(`Uploading file ${i}`);
+      // Upload files 1-50 (within limit)
+      for (let i = 1; i <= 50; i++) {
+        console.log(`Uploading file ${i}/51`);
         uploadPromises.push(execPromise(`curl -X POST -u ${auth} -F "files=@${smallFile}" http://localhost:5000/api/journal-entries/1/files`));
       }
       
       // Wait for all uploads to complete
-      const results = await Promise.all(uploadPromises);
-      console.log(`Completed ${results.length} uploads`);
+      await Promise.all(uploadPromises);
+      console.log(`Completed 50/51 uploads`);
       
-      // For a real test, we would upload 51 files and verify the 51st gets a 429
-      // Here we're just simulating the concept
-      console.log('✅ TEST 4 PASSED (Simulated): Rate limit test');
+      // Try the 51st upload - should be rate limited
+      console.log(`Attempting upload 51/51 (should be rate limited)`);
+      try {
+        const result = await execPromise(`curl -X POST -u ${auth} -F "files=@${smallFile}" http://localhost:5000/api/journal-entries/1/files -v`);
+        lastUploadPromise.response = result.stdout;
+        console.log('Upload 51 response:', result.stdout);
+      } catch (error: any) {
+        // Check if it's a 429 response
+        lastUploadPromise.response = error.stdout || '';
+        lastUploadPromise.isRateLimited = error.stdout.includes('429');
+        console.log('Upload 51 error response:', error.stdout);
+      }
+      
+      // Verify the 51st upload was rejected with a 429 response
+      assert.ok(
+        lastUploadPromise.isRateLimited || 
+        lastUploadPromise.response.includes('429') || 
+        lastUploadPromise.response.includes('Too many file uploads'),
+        'The 51st upload should be rate limited with a 429 response'
+      );
+      
+      console.log('✅ TEST 4 PASSED: Rate limit test - 51st upload was properly rate limited');
     } catch (error) {
       console.error('❌ TEST 4 FAILED: Rate limit test', error);
     }
