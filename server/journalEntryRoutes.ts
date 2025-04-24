@@ -1435,6 +1435,18 @@ export function registerJournalEntryRoutes(app: Express) {
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${file.filename}"`);
     
+    // Log file view for audit purposes (async, don't await to improve response time)
+    auditLogStorage.createAuditLog({
+      action: 'journal_file_viewed',
+      performedBy: (req.user as any).id,
+      details: JSON.stringify({
+        journalEntryId,
+        fileId,
+        filename: file.filename,
+        inline: true
+      })
+    }).catch(err => console.error('Error creating audit log for file view:', err));
+    
     try {
       // If the file is stored in the blob storage
       if (file.storageKey) {
@@ -1508,6 +1520,18 @@ export function registerJournalEntryRoutes(app: Express) {
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
+    // Log file download for audit purposes (async, don't await to improve response time)
+    auditLogStorage.createAuditLog({
+      action: 'journal_file_downloaded',
+      performedBy: (req.user as any).id,
+      details: JSON.stringify({
+        journalEntryId,
+        fileId,
+        filename: file.filename,
+        inline: false
+      })
+    }).catch(err => console.error('Error creating audit log for file download:', err));
+    
     try {
       // Check if the file has a storageKey (uses the blob storage)
       if (file.storageKey) {
@@ -1567,12 +1591,50 @@ export function registerJournalEntryRoutes(app: Express) {
     // Check if user has permission to delete files
     // For now, just check basic authentication which is handled by the isAuthenticated middleware
     
+    // Get the file metadata before deleting to include in the audit log
+    const file = await journalEntryStorage.getJournalEntryFile(fileId);
+    
+    if (!file) {
+      throwNotFound('File');
+    }
+    
+    // Check if journal entry status allows file deletions (only draft or pending_approval)
+    const allowedStatuses = ['draft', 'pending_approval'];
+    if (!allowedStatuses.includes(journalEntry.status)) {
+      // Log the attempt for audit purposes
+      await auditLogStorage.createAuditLog({
+        action: 'journal_file_delete_denied',
+        performedBy: (req.user as any).id,
+        details: JSON.stringify({
+          journalEntryId,
+          fileId,
+          status: journalEntry.status,
+          reason: 'Journal entry status does not allow file deletions'
+        })
+      });
+      
+      throwForbidden(`Cannot delete files from journal entries with status: ${journalEntry.status}. Only entries in draft or pending_approval status can have files removed.`);
+    }
+    
     // Delete the file
     const result = await journalEntryStorage.deleteJournalEntryFile(fileId);
     
     if (!result) {
       throwNotFound('File');
     }
+    
+    // Log the deletion for audit purposes
+    await auditLogStorage.createAuditLog({
+      action: 'journal_file_deleted',
+      performedBy: (req.user as any).id,
+      details: JSON.stringify({
+        journalEntryId,
+        fileId,
+        filename: file.filename,
+        size: file.size,
+        mimeType: file.mimeType
+      })
+    });
     
     // Return success
     res.status(204).send();
