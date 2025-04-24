@@ -1,7 +1,7 @@
 import {
   journalEntries, JournalEntry, InsertJournalEntry, JournalEntryStatus,
   journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
-  journalEntryFiles, 
+  journalEntryFiles, journalEntryFileBlobs,
   accounts, Account, AccountType,
   entities, clients
 } from "../../shared/schema";
@@ -13,6 +13,7 @@ import { ApiError } from "../errorHandling";
 import { format, parseISO } from "date-fns";
 import { ListJournalEntriesFilters } from "../../shared/validation";
 import { AccountStorage } from "./accountStorage"; // Import the AccountStorage class
+import { getFileStorage } from './fileStorage'; // Import the file storage factory
 
 // Helper function to handle database errors consistently
 function handleDbError(error: unknown, operation: string): Error {
@@ -865,6 +866,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async createJournalEntryFile(journalEntryId: number, file: any): Promise<any> {
     console.log(`Creating file for journal entry ${journalEntryId}`);
     try {
+      // Get the file storage implementation
+      const fileStorage = getFileStorage();
+      
       // Ensure the journal entry exists
       const journalEntry = await this.getJournalEntry(journalEntryId);
       if (!journalEntry) {
@@ -893,10 +897,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(400, 'Invalid file data: No buffer found');
       }
       
-      // Convert buffer to base64 string for database storage
-      const fileData = file.buffer.toString('base64');
+      // Store the file data in the blob storage
+      const storageKey = await fileStorage.save(file.buffer);
+      console.log(`File content saved with storage key: ${storageKey}`);
       
-      // Create a database record with file data stored directly in the database
+      // Create a database record with a reference to the blob storage
       const [journalEntryFile] = await db.insert(journalEntryFiles)
         .values({
           journalEntryId,
@@ -904,12 +909,12 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           path: null, // No physical path needed for DB-stored files
           mimeType: file.mimetype || 'application/octet-stream',
           size: file.size || 0,
-          data: fileData, // Store the file data in the database
+          storageKey: storageKey as number, // Reference to the blob storage
           uploadedBy: file.uploadedBy
         })
         .returning();
       
-      console.log(`File stored in database for journal entry ${journalEntryId}`);
+      console.log(`File metadata stored in database for journal entry ${journalEntryId}`);
       
       return journalEntryFile;
     } catch (e) {
@@ -939,10 +944,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async deleteJournalEntryFile(fileId: number): Promise<boolean> {
     console.log(`Deleting file with ID ${fileId}`);
     try {
-      // First get the file details to know the file path
+      // Get the file storage implementation
+      const fileStorage = getFileStorage();
+      
+      // First get the file details
       const file = await this.getJournalEntryFile(fileId);
       if (!file) {
         return false;
+      }
+      
+      // If we have a storageKey, delete from blob storage
+      if (file.storageKey) {
+        try {
+          await fileStorage.delete(file.storageKey);
+          console.log(`Deleted file from blob storage with key: ${file.storageKey}`);
+        } catch (error) {
+          console.error(`Error deleting from blob storage: ${error}`);
+          // Continue with deletion of metadata even if blob deletion fails
+        }
       }
       
       // For backward compatibility with filesystem-stored files

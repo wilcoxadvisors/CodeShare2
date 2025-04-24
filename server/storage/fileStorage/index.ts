@@ -1,4 +1,4 @@
-import { IFileStorage } from './IFileStorage';
+import type { IFileStorage } from './IFileStorage';
 import { DbFileStorage } from './DbFileStorage';
 
 /**
@@ -12,6 +12,6 @@ export function getFileStorage(): IFileStorage {
   return new DbFileStorage();
 }
 
-// Export the interface and implementations for use elsewhere
-export { IFileStorage } from './IFileStorage';
+// Export the implementations for use elsewhere
+export type { IFileStorage } from './IFileStorage';
 export { DbFileStorage } from './DbFileStorage';

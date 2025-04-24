@@ -15,6 +15,7 @@ import {
 } from '../shared/validation';
 import { parse, isValid } from 'date-fns';
 import { journalEntryStorage } from './storage/journalEntryStorage';
+import { getFileStorage } from './storage/fileStorage';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -1435,34 +1436,48 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('File');
     }
     
+    // Get the file storage implementation
+    const fileStorage = getFileStorage();
+    
     // Set headers for file download
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
-    // Check if the file is stored in the database (has data field)
-    if (file.data) {
-      console.log(`Serving file ${file.filename} from database`);
-      // Decode base64 data and send it as the response
-      const buffer = Buffer.from(file.data, 'base64');
-      return res.send(buffer);
-    }
-    
-    // Legacy support for file system stored files
-    // Handle both relative and absolute paths
-    // If the path starts with /, it is a relative path from public directory
-    if (file.path) {
-      const filePath = file.path.startsWith("/") 
-        ? path.join(process.cwd(), "public", file.path) 
-        : file.path;
-      
-      if (fs.existsSync(filePath)) {
-        console.log(`Serving file ${file.filename} from filesystem: ${filePath}`);
-        return fs.createReadStream(filePath).pipe(res);
+    try {
+      // Check if the file has a storageKey (uses the blob storage)
+      if (file.storageKey) {
+        console.log(`Serving file ${file.filename} from blob storage with key ${file.storageKey}`);
+        const buffer = await fileStorage.load(file.storageKey);
+        return res.send(buffer);
       }
+      
+      // Legacy: Check if the file has data stored directly in the file record
+      if (file.data) {
+        console.log(`Serving file ${file.filename} from direct database storage`);
+        const buffer = Buffer.from(file.data, 'base64');
+        return res.send(buffer);
+      }
+      
+      // Legacy support for file system stored files
+      // Handle both relative and absolute paths
+      // If the path starts with /, it is a relative path from public directory
+      if (file.path) {
+        const filePath = file.path.startsWith("/") 
+          ? path.join(process.cwd(), "public", file.path) 
+          : file.path;
+        
+        if (fs.existsSync(filePath)) {
+          console.log(`Serving file ${file.filename} from filesystem: ${filePath}`);
+          return fs.createReadStream(filePath).pipe(res);
+        }
+      }
+      
+      // If we get here, the file is not found in any storage location
+      return res.status(404).json({ message: "File not found on server" });
+    } catch (error) {
+      console.error(`Error serving file: ${error}`);
+      return res.status(500).json({ message: "Error serving file" });
     }
-    
-    // If we get here, the file is not found either in DB or filesystem
-    return res.status(404).json({ message: "File not found on server" });
   }));
   
   /**
