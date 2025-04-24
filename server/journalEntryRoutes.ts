@@ -1,5 +1,5 @@
 import { Express, Request, Response } from 'express';
-import { asyncHandler, throwNotFound, throwBadRequest } from './errorHandling';
+import { asyncHandler, throwNotFound, throwBadRequest, throwForbidden } from './errorHandling';
 import { 
   insertJournalEntrySchema, 
   insertJournalEntryLineSchema,
@@ -16,6 +16,7 @@ import {
 import { parse, isValid } from 'date-fns';
 import { journalEntryStorage } from './storage/journalEntryStorage';
 import { getFileStorage } from './storage/fileStorage';
+import { auditLogStorage } from './storage/auditLogStorage';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -1260,9 +1261,36 @@ export function registerJournalEntryRoutes(app: Express) {
         throwNotFound('Journal Entry');
       }
       
+      // Check if journal entry status allows file attachments (only draft or pending_approval)
+      const allowedStatuses = ['draft', 'pending_approval'];
+      if (!allowedStatuses.includes(journalEntry.status)) {
+        // Log the attempt for audit purposes
+        await auditLogStorage.createAuditLog({
+          action: 'journal_file_upload_denied',
+          performedBy: user.id,
+          details: JSON.stringify({
+            journalEntryId: id,
+            status: journalEntry.status,
+            reason: 'Journal entry status does not allow file uploads'
+          })
+        });
+        
+        throwForbidden(`Cannot upload files to journal entries with status: ${journalEntry.status}. Only entries in draft or pending_approval status can have files added.`);
+      }
+      
       // Check if files were uploaded
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
         return res.status(400).json({ message: 'No files were uploaded' });
+      }
+      
+      // Validate file size limits
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      for (const file of req.files as Express.Multer.File[]) {
+        if (file.size > MAX_FILE_SIZE) {
+          return res.status(400).json({ 
+            message: `File ${file.originalname} exceeds maximum size limit of 10MB` 
+          });
+        }
       }
       
       try {
@@ -1289,6 +1317,19 @@ export function registerJournalEntryRoutes(app: Express) {
             // Save the file to the journal entry
             const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
             savedFiles.push(savedFile);
+            
+            // Log the successful file upload for audit purposes
+            await auditLogStorage.createAuditLog({
+              action: 'journal_file_uploaded',
+              performedBy: user.id,
+              details: JSON.stringify({
+                journalEntryId: id,
+                fileId: savedFile.id,
+                filename: savedFile.filename,
+                size: savedFile.size,
+                mimeType: savedFile.mimeType
+              })
+            });
           } catch (fileError: any) {
             // Check if it's a duplicate file error (409 Conflict)
             if (fileError.status === 409) {
