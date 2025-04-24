@@ -1390,8 +1390,8 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Check if file exists on disk
-    const filePath = path.join(process.cwd(), file.path);
-    if (!fs.existsSync(filePath)) {
+    // File path is now stored as the full path in the database
+    if (!fs.existsSync(file.path)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
     
@@ -1400,7 +1400,7 @@ export function registerJournalEntryRoutes(app: Express) {
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
     // Stream the file to the response
-    const fileStream = fs.createReadStream(filePath);
+    const fileStream = fs.createReadStream(file.path);
     fileStream.pipe(res);
   }));
 
@@ -1431,8 +1431,8 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Check if file exists on disk
-    const filePath = path.join(process.cwd(), file.path);
-    if (!fs.existsSync(filePath)) {
+    // File path is now stored as the full path in the database
+    if (!fs.existsSync(file.path)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
     
