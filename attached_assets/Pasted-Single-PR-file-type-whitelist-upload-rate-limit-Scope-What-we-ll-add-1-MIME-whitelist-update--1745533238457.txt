@@ -1,0 +1,59 @@
+Single PR: file-type whitelist + upload rate-limit
+
+Scope	What we’ll add
+1. MIME whitelist update	• Allow application/vnd.ms-outlook (.msg) and message/rfc822 (.eml)
+• Keep other allowed types + regex catch-alls (/^application\/vnd\./, /^text\//, `/^image/(png
+2. Validation helper	Replace simple ALLOWED_TYPES.includes() with a small function that handles both string and RegExp entries.
+3. Upload rate-limit	50 files per user per 10-minute window via express-rate-limit on the upload route.
+4. Tests	Supertest suite:
+a. upload dummy .msg → 200 OK
+b. upload dummy .exe (application/x-msdownload) → 400
+c. loop 51 small uploads → 51st ⇒ 429
+5. CI	New job attachment-validation-test after existing attachment jobs.
+Copy-paste prompt for the Replit agent
+shell
+Copy
+Edit
+# Branch: feature/je-files-mime-and-ratelimit
+
+# Goal: 1) broaden MIME whitelist (.msg/.eml)  2) add per-user upload rate-limit
+
+# Steps
+# 1. In server/journalEntryRoutes.ts (or shared validation util):
+#    const ALLOWED_TYPES = [
+#      'application/pdf',
+#      'application/vnd.ms-outlook',      // .msg
+#      'message/rfc822',                  // .eml
+#      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+#      'application/vnd.ms-excel',
+#      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+#      'application/msword',
+#      /^application\/vnd\./,             // any other Office MIME
+#      /^text\//,                         // txt, csv, md, etc.
+#      /^image\/(png|jpe?g|gif)$/         // common images
+#    ];
+#
+#    const isAllowed = ALLOWED_TYPES.some(t =>
+#      typeof t === 'string' ? t === file.mimetype : t.test(file.mimetype)
+#    );
+#    if (!isAllowed) return res.status(400).json({ message:'Unsupported file type' });
+#
+# 2. Add express-rate-limit:
+#    import rateLimit from 'express-rate-limit';
+#    const uploadLimiter = rateLimit({ windowMs: 10*60*1000, max: 50, standardHeaders: true });
+#    app.post('/api/journal-entries/:id/files',
+#             authenticateUser,
+#             uploadLimiter,
+#             upload.single('file'),
+#             asyncHandler(async … ) );
+#
+# 3. Tests (test/attachments_validation.test.ts):
+#    • upload .msg  => 200
+#    • upload .exe  => 400
+#    • loop 51 uploads => last gets 429
+#
+# 4. CI: add job attachment-validation-test in .github/workflows/ci.yml
+#
+# Diff budget ≤ 180 LoC.
+# Reply “Done ✅ validation” when PR is open and CI is green.
+Kick that off and we’ll have type-safe uploads and a throttle in place. After the PR merges we can tackle the ACL micro-task.

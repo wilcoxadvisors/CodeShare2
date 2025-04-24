@@ -20,6 +20,7 @@ import { auditLogStorage } from './storage/auditLogStorage';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
+import rateLimit from 'express-rate-limit';
 
 // Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -37,33 +38,49 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
  */
 export function registerJournalEntryRoutes(app: Express) {
   // Configure multer for file uploads
+  // Define allowed MIME types for file uploads
+  const ALLOWED_TYPES = [
+    // Images
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    // Documents
+    'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Email formats
+    'application/vnd.ms-outlook',      // .msg
+    'message/rfc822',                  // .eml
+    // Text
+    'text/plain', 'text/csv',
+    // Archives
+    'application/zip', 'application/x-rar-compressed',
+    // Regex patterns for broader matching
+    /^application\/vnd\./,             // any other Office MIME
+    /^text\//,                         // txt, csv, md, etc.
+    /^image\/(png|jpe?g|gif)$/         // common images
+  ];
+  
+  // Helper function to check if a file type is allowed
+  const isAllowedFileType = (mimetype: string): boolean => {
+    return ALLOWED_TYPES.some(type => 
+      typeof type === 'string' ? type === mimetype : type.test(mimetype)
+    );
+  };
+  
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB file size limit
     },
     fileFilter: (req, file, cb) => {
-      // Accept all common file types
-      const allowedMimeTypes = [
-        // Images
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        // Documents
-        'application/pdf', 'application/msword', 
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        // Text
-        'text/plain', 'text/csv',
-        // Archives
-        'application/zip', 'application/x-rar-compressed'
-      ];
-      
-      if (allowedMimeTypes.includes(file.mimetype)) {
+      if (isAllowedFileType(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error(`File type ${file.mimetype} is not supported`), false);
+        cb(null, false);
+        // Don't throw an error here, let the route handler return a proper response
+        // Instead, we'll check for files in the route handler
       }
     }
   });
