@@ -3,6 +3,7 @@ import * as schema from '@shared/schema';
 import { updateJunctionTableSchema } from './migrations/update-junction-table-schema';
 import { addClientEntityRelationship } from './migrations/add-client-entity-relationship';
 import { addSoftDeletionAndAuditLogs } from './migrations/add-soft-deletion-and-audit-logs';
+import { runMigration as addJeFileBlobs } from './migrations/20250425_add_je_file_blobs';
 
 // Database schema migration utility
 
@@ -906,6 +907,9 @@ export async function migrateTables() {
     
     // Apply soft deletion and audit logs migration
     await addSoftDeletionAndAuditLogs();
+    
+    // Run journal entry file blobs migration (20250425)
+    await addJeFileBlobs();
     
     console.log("Database migration completed successfully!");
     return true;
