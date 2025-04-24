@@ -887,43 +887,29 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         console.log(`Duplicate file detected: ${file.originalname}`);
         throw new ApiError(409, `A file with the same name and size already exists for this journal entry`);
       }
-
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join('public', 'uploads', 'journal-entries', journalEntryId.toString());
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      // Generate a unique filename to avoid collisions
-      const timestamp = Date.now();
-      const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const uniqueFilename = `${timestamp}-${sanitizedName}`;
-      const filePath = path.join(uploadsDir, uniqueFilename);
       
       // Ensure the file is valid before saving
       if (!file.buffer) {
         throw new ApiError(400, 'Invalid file data: No buffer found');
       }
       
-      // Save the file to disk with error handling
-      try {
-        fs.writeFileSync(filePath, file.buffer);
-      } catch (fsError) {
-        console.error('Failed to write file to disk:', fsError);
-        throw new ApiError(500, 'Failed to save file to disk');
-      }
+      // Convert buffer to base64 string for database storage
+      const fileData = file.buffer.toString('base64');
       
-      // Create a database record with the full path from process.cwd()
+      // Create a database record with file data stored directly in the database
       const [journalEntryFile] = await db.insert(journalEntryFiles)
         .values({
           journalEntryId,
           filename: file.originalname,
-          path: filePath, // Store the actual full path where the file is saved
+          path: null, // No physical path needed for DB-stored files
           mimeType: file.mimetype || 'application/octet-stream',
           size: file.size || 0,
+          data: fileData, // Store the file data in the database
           uploadedBy: file.uploadedBy
         })
         .returning();
+      
+      console.log(`File stored in database for journal entry ${journalEntryId}`);
       
       return journalEntryFile;
     } catch (e) {
@@ -959,16 +945,18 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return false;
       }
       
-      // Delete the physical file from the file system if it exists
-      // File path is now stored directly, so we can use it directly
-      if (fs.existsSync(file.path)) {
+      // For backward compatibility with filesystem-stored files
+      // Delete the physical file from the file system if path exists and the file exists on disk
+      if (file.path && fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);
+        console.log(`Deleted file from filesystem: ${file.path}`);
       }
       
       // Delete the file record from the database
       await db.delete(journalEntryFiles)
         .where(eq(journalEntryFiles.id, fileId));
       
+      console.log(`Deleted file record from database: ${fileId}`);
       return true;
     } catch (e) {
       throw handleDbError(e, `deleting file with ID ${fileId}`);
