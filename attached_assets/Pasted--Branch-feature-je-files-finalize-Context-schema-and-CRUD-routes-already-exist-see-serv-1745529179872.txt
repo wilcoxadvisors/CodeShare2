@@ -1,0 +1,56 @@
+# Branch: feature/je-files-finalize
+# Context
+#   • schema and CRUD routes already exist (see server/journalEntryRoutes.ts lines 1242-1479)
+#   • DbFileStorage lives in server/storage/journalEntryStorage.ts (lines 848-975)
+#   • React drop-zone + list UI in JournalEntryForm.tsx but not wired to React-Query
+#
+# Goal
+#   1. Complete upload → list → delete flow in the *front-end*
+#   2. Harden server-side validation & status checks
+#   3. Add minimal audit-trail entries
+#   4. Ship Jest + RTL tests and a CI job
+#
+# ----------  TASK LIST  ----------
+#
+# Task 1 – React-Query hooks  (≤60 LoC)
+#   • ADD client/src/features/journal-entries/hooks/attachmentQueries.ts
+#       - useJournalEntryFiles(journalEntryId)
+#       - useUploadJournalEntryFile(journalEntryId)
+#       - useDeleteJournalEntryFile()
+#
+# Task 2 – Wire hooks into UI  (≤60 LoC)
+#   • MODIFY client/src/features/journal-entries/components/JournalEntryForm.tsx
+#       - replace local supportingDoc state with new hooks
+#       - on successful upload invalidate list
+#       - pass files + onDelete to <SupportingDocuments>
+#
+# Task 3 – Server validation hardening  (≤40 LoC)
+#   • MODIFY server/journalEntryRoutes.ts
+#       - in POST /files:
+#           * reject if req.file.mimetype not in ALLOWED_TYPES
+#           * if je.status NOT IN ('draft','pending_approval') return 403
+#       - in DELETE /files/:fileId:
+#           * same status check
+#
+# Task 4 – Audit trail  (≤20 LoC)
+#   • MODIFY server/storage/auditLogStorage.ts
+#       - add log( userId, 'journal_file_uploaded', { journalEntryId, fileId } )
+#       - log( userId, 'journal_file_deleted',  { journalEntryId, fileId } )
+#
+# Task 5 – Tests  (≤80 LoC)
+#   • ADD test/attachments_api.test.ts  (Supertest: upload → list → delete)
+#   • ADD test/attachments_ui.test.ts   (RTL: select file → list renders → click delete)
+#
+# Task 6 – CI  (≤10 LoC)
+#   • MODIFY .github/workflows/ci.yml
+#       - add job attachment-test (runs the two new jest suites)
+#
+# ----------  ACCEPTANCE  ----------
+#   • npm test → all suites green
+#   • curl POST /files with a 12 MB file returns 400 (size limit)
+#   • Uploading to a POSTED entry returns 403
+#   • UI shows file in list, allows trash-icon delete, badge count updates
+#   • ESLint / Prettier / ts-prune clean in CI
+#
+# Diff budget: ≤200 lines total
+# Reply “Done ✅ JE-Files-Finalize” when PR is open and CI is green.
