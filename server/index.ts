@@ -13,6 +13,8 @@ import contentRoutes from "./routes/contentRoutes";
 import { registerAIMLRoutes } from "./routes/aiMLRoutes";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
+import * as fs from 'fs';
+import * as path from 'path';
 
 const app = express();
 app.use(express.json({
@@ -92,6 +94,20 @@ app.use((req, res, next) => {
     log('Starting entity IDs monitoring...');
     startEntityIdsMonitoring();
     log('✅ Entity IDs usage monitoring initialized');
+    
+    // Ensure uploads directories exist
+    log('Creating uploads directories...');
+    const uploadsBaseDir = path.join(process.cwd(), 'public', 'uploads');
+    const journalEntriesDir = path.join(uploadsBaseDir, 'journal-entries');
+    
+    // Create directories with recursive option
+    if (!fs.existsSync(uploadsBaseDir)) {
+      fs.mkdirSync(uploadsBaseDir, { recursive: true });
+    }
+    if (!fs.existsSync(journalEntriesDir)) {
+      fs.mkdirSync(journalEntriesDir, { recursive: true });
+    }
+    log('✅ Uploads directories created');
     
     // Register API routes
     log('Registering API routes...');

@@ -1451,7 +1451,7 @@ export function registerJournalEntryRoutes(app: Express) {
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
     // Stream the file to the response
-    const fileStream = fs.createReadStream(file.path);
+    const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
   }));
   
