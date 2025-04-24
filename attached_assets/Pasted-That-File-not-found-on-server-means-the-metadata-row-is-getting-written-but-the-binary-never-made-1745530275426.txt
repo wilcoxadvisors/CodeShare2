@@ -1,0 +1,61 @@
+That “File not found on server” means the metadata row is getting written, but the binary never made it to the location that the download route expects. The culprit is almost always in the createJournalEntryFile → path handling.
+
+What’s happening
+Multer puts the upload in req.file.buffer (we’re using storage: memoryStorage()).
+
+journalEntryStorage.createJournalEntryFile() assumes a path like
+uploads/journal-entry-files/<journalEntryId>/<uuid>_<filename> and writes that path into the DB—but the helper that actually calls fs.writeFileSync(dest, buffer) is missing.
+
+When you hit GET /files/:fileId/download, the route tries fs.existsSync(path) and returns 404 ➜ “File not found on server”.
+
+Quick fix (so you can verify end-to-end)
+ts
+Copy
+Edit
+// server/storage/journalEntryStorage.ts  (inside createJournalEntryFile)
+
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuid } from 'uuid';
+
+async createJournalEntryFile(journalEntryId:number, file:Express.Multer.File, userId:number) {
+  const destDir = path.join(process.cwd(), 'uploads', 'journal-entry-files', String(journalEntryId));
+  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive:true });
+
+  const uniqueName = `${uuid()}_${file.originalname}`;
+  const destPath  = path.join(destDir, uniqueName);
+
+  // ⬇️  WRITE the buffer to disk  ‼
+  fs.writeFileSync(destPath, file.buffer);
+
+  // then insert row
+  const [row] = await db.insert(journalEntryFiles).values({
+      journalEntryId,
+      filename: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      path: destPath,
+      uploadedBy: userId,
+  }).returning();
+  return row;
+}
+Make sure the column is named path in the schema (you already have it).
+
+Delete route tweak
+ts
+Copy
+Edit
+// journalEntryStorage.deleteJournalEntryFile
+const fileRec = await db.query.journalEntryFiles.findFirst({ where: eq(id, fileId) });
+if (fileRec && fs.existsSync(fileRec.path)) fs.unlinkSync(fileRec.path);
+await db.update(journalEntryFiles).set({ deletedAt: new Date() }).where(eq(id, fileId));
+Next steps for the agent
+Unit-test:
+
+upload → fs.existsSync(destPath) === true
+
+delete → file no longer on disk.
+
+Docker / Replit: add /uploads to .gitignore and Dockerfile RUN mkdir -p /app/uploads.
+
+Config flag for future B2: wrap the disk write behind if (process.env.FILE_BACKEND === 'db') … so the swap requires only an env-var change.

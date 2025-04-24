@@ -913,12 +913,12 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(500, 'Failed to save file to disk');
       }
       
-      // Create a database record
+      // Create a database record with the full path from process.cwd()
       const [journalEntryFile] = await db.insert(journalEntryFiles)
         .values({
           journalEntryId,
           filename: file.originalname,
-          path: `/uploads/journal-entries/${journalEntryId}/${uniqueFilename}`,
+          path: filePath, // Store the actual full path where the file is saved
           mimeType: file.mimetype || 'application/octet-stream',
           size: file.size || 0,
           uploadedBy: file.uploadedBy
@@ -960,9 +960,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       }
       
       // Delete the physical file from the file system if it exists
-      const filePath = path.join('public', file.path);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      // File path is now stored directly, so we can use it directly
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
       }
       
       // Delete the file record from the database
