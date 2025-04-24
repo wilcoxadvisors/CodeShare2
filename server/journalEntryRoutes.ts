@@ -1435,24 +1435,34 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound('File');
     }
     
-    // Check if file exists on disk
-    // Handle both relative and absolute paths
-    // If the path starts with /, it is a relative path from public directory
-    const filePath = file.path.startsWith("/") 
-      ? path.join(process.cwd(), "public", file.path) 
-      : file.path;
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "File not found on server" });
-    }
-    
-    // Serve the file
+    // Set headers for file download
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
-    // Stream the file to the response
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // Check if the file is stored in the database (has data field)
+    if (file.data) {
+      console.log(`Serving file ${file.filename} from database`);
+      // Decode base64 data and send it as the response
+      const buffer = Buffer.from(file.data, 'base64');
+      return res.send(buffer);
+    }
+    
+    // Legacy support for file system stored files
+    // Handle both relative and absolute paths
+    // If the path starts with /, it is a relative path from public directory
+    if (file.path) {
+      const filePath = file.path.startsWith("/") 
+        ? path.join(process.cwd(), "public", file.path) 
+        : file.path;
+      
+      if (fs.existsSync(filePath)) {
+        console.log(`Serving file ${file.filename} from filesystem: ${filePath}`);
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
+    
+    // If we get here, the file is not found either in DB or filesystem
+    return res.status(404).json({ message: "File not found on server" });
   }));
   
   /**
