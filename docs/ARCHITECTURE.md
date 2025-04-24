@@ -44,6 +44,8 @@ The application leverages advanced Big Data and Machine Learning technologies to
 
 - **Spark MLlib**: Apache Spark's machine learning library (v3.5.1) for distributed machine learning on large datasets
   - Time series forecasting with ARIMA models
+    - ARIMA model artifacts stored under models/forecast/{entity_id}
+    - Per-entity forecasting for granular financial predictions
   - Classification and clustering algorithms
   - Feature engineering at scale
 
