@@ -184,6 +184,43 @@ Note:
     * 📝 Ensure integration with CoA and GL.
     * 📝 Design/implement GAAP/IFRS financial statements with footnotes.
 
+🔹 **Task B.4 – Dimensions & Smart Events (BACKLOG, SPECS READY)**  
+   *Objective*: replicate Sage Intacct-style multi-dimensional tagging and
+   event-driven automation without expanding the CoA.
+
+   **Scope of MVP**
+
+   1. **Dimensions Framework**  
+      • Core tables (`dimensions`, `dimension_values`, `tx_dimension_link`).  
+      • System dimensions: Department, Location, Class, Customer, Vendor,
+        Employee, Project, Item.  
+      • User-defined dimension creation UI (admin-only).  
+      • Validation rules: required vs optional, active vs inactive.  
+
+   2. **Smart Rules (validation layer)**  
+      • JSON-based rule engine to block invalid dimension/GL combos.  
+      • Example rule stub:  
+        ```json
+        { "account": "6000", "location": ["LON", "NYC"], "allow": false }
+        ```
+
+   3. **Smart Events (event layer)**  
+      • Trigger types: `onCreate`, `onUpdate` for JE, AP, AR objects.  
+      • Condition builder (simple expression parser).  
+      • Actions: `email`, `fieldUpdate`, `webhook`.  
+      • Async dispatcher queue (BullMQ).  
+
+   4. **AI Hooks**  
+      • Every Smart Event emits an **EventBridge** message (`ai.ingest.*`) so the
+        ML service can learn patterns and surface anomalies in real-time.  
+
+   **Exit Criteria**
+
+   - Tag ≥ 90 % of new JE records with at least one dimension.  
+   - Rule engine blocks invalid department-location pairs (unit tests).  
+   - Example Smart Event: send Slack alert when `amount > $10k & location=INTL`.  
+   - Cypress E2E: create JE → trigger event → verify webhook fired.
+
 **Phase C: Website Content Management (NEARLY COMPLETE)**
 
 * **(Task C.1)** ✅ Authentication & Backend: Authentication middleware verified and fixed, with proper user access control.
@@ -240,6 +277,30 @@ Note:
     * 🔄 Improve NLP capabilities for financial queries
     * 🔄 Develop explainable AI insights for financial data
 
+🔹 **Task F.4 – AI-Powered Ledger & Copilot (SPEC DRAFTED)**  
+   - **Anomaly Detection Service**  
+     • Online IsolationForest scoring for every posted JE.  
+     • Flags surfaced in `AIInsightsWidget` ✔ (streaming channel already done).  
+
+   - **Sage-style Copilot MVP**  
+     • `/api/ai/qna` endpoint (LLM via OpenAI - gpt-4o3).  
+     • Natural-language query → SQL translation layer (pgvector + RAG over schema docs).  
+
+   - **Auto Reconciliation Pilot**  
+     • Bank feed stub (Plaid sandbox) → auto-match to JE lines.  
+     • Success metric: ≥ 80 % auto-match on sample data set.  
+
+🔹 **Task F.5 – AP/AR Automation Enhancements**  
+   - Invoice OCR ingestion micro-service (Tesseract + AWS Textract fallback).  
+   - Rules-based approval flow re-using Smart Events engine (see B.4).  
+   - Dunning scheduler integrated with EventBridge.
+
+🔹 **Task F.6 – Real-Time Dashboards & ML Streaming KPIs**  
+   - Pre-built widgets (cash burn, AR aging, anomaly counts).  
+   - Drill-down to dimension-filtered transaction lists.
+
+(All F.4-F.6 tasks rely on the Dimensions framework from Task B.4.)
+
 **Phase G: Future Enhancements**
 
 * **(Task G.1)** ✅ Implement Client Edit/Deactivate (Done).
@@ -256,6 +317,9 @@ Note:
 ## 5. General Guidelines for Agent
 
 * **Prioritize:** Debug and complete JE File Attachment feature (#7), then focus on JE Batch Upload / Testing (Task B.2). After the JE module is stable, proceed with **Task B.3: Accounts Payable Backend Foundation**.
+* **Dimensions-Aware Thinking**: when creating new tables, APIs, or tests,
+  always ask "does this need dimension tags or Smart Event hooks?"  Add them
+  early to avoid refactors.
 * **Maintain Structure:** Keep the client-specific accounting design consistent. Follow established patterns (e.g., modular storage).
 * **Test Thoroughly:** Ensure functionality works. Write/run automated tests (unit, integration, API).
 * **Log When Needed:** Use `console.log("DEBUG Component: Action:", value)` for tracing complex logic.
@@ -324,3 +388,16 @@ Throughout every task explicitly:
 * Continuous refactoring explicitly evident in PRs/code changes.
 * All new and existing modules clearly documented explicitly.
 * Regular execution of unused code detection scripts (ts-prune, knip).
+
+## 📚  Appendix – Dimensions & Smart Events Glossary
+
+| Term | Definition |
+|------|------------|
+| **Dimension** | Categorical attribute (e.g., Department, Location) attached to any transaction for multi-axis reporting. |
+| **Smart Rule** | Validation rule that restricts which dimension combinations are allowed on specific GL accounts. |
+| **Smart Event** | No-code automation: *Trigger* + *Condition* + *Action* (email, webhook, field update). |
+| **AI EventBridge** | Internal pub/sub topic (`ai.ingest.*`) that streams Smart Event payloads to the ML service for continual learning. |
+| **Copilot** | Chat-style assistant that answers NL questions and triggers tasks inside the app. |
+| **Anomaly Score** | 0-1 value generated by IsolationForest; > 0.8 surfaces as a high-risk flag in the UI. |
+
+(Keep this glossary alphabetised as new terms emerge.)
