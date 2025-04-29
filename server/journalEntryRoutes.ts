@@ -6,6 +6,7 @@ import {
   JournalEntryStatus
 } from '../shared/schema';
 import { ZodError, z } from 'zod';
+import { db } from './db';
 import { 
   formatZodError, 
   createJournalEntrySchema, 
@@ -1651,7 +1652,19 @@ export function registerJournalEntryRoutes(app: Express) {
     // User must either:
     // 1. Be the creator of the journal entry, OR
     // 2. Have the JE_FILES_ADMIN role
-    const user = req.user as { id: number, roles?: string[] };
+    // Cast the user to the correct type with roles
+    // The user object might not have roles directly attached, so we need to fetch them
+    const userId = (req.user as any).id;
+    const userRoles = await db.execute(
+      `SELECT role_code FROM user_roles WHERE user_id = $1`,
+      [userId]
+    );
+    
+    const roles = userRoles.rows.map(row => row.role_code);
+    const user = { 
+      id: userId, 
+      roles 
+    };
     
     const canDelete = 
       user.id === journalEntry.createdBy || 

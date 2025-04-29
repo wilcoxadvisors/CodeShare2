@@ -850,14 +850,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
     console.log(`Getting files for journal entry ${journalEntryId}`);
     try {
-      // Query the database for files related to the journalEntryId
-      const queryResult = await db.select()
-        .from(journalEntryFiles)
-        .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
-        .orderBy(desc(journalEntryFiles.uploadedAt));
+      // Use a simple select query with specific fields to avoid schema mismatches
+      const files = await db.select({
+        id: journalEntryFiles.id,
+        journalEntryId: journalEntryFiles.journalEntryId,
+        filename: journalEntryFiles.filename,
+        path: journalEntryFiles.path,
+        mimeType: journalEntryFiles.mimeType,
+        size: journalEntryFiles.size,
+        storageKey: journalEntryFiles.storageKey,
+        uploadedBy: journalEntryFiles.uploadedBy,
+        uploadedAt: journalEntryFiles.uploadedAt
+      })
+      .from(journalEntryFiles)
+      .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
+      .orderBy(desc(journalEntryFiles.uploadedAt));
       
-      console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', queryResult);
-      return queryResult;
+      console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', files);
+      return files;
     } catch (e) {
       throw handleDbError(e, `getting files for journal entry ${journalEntryId}`);
     }
@@ -925,17 +935,19 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async getJournalEntryFile(fileId: number): Promise<any> {
     console.log(`Getting file with ID ${fileId}`);
     try {
-      // Query the database for the specific file
-      const [file] = await db.select()
-        .from(journalEntryFiles)
-        .where(eq(journalEntryFiles.id, fileId))
-        .limit(1);
+      // Use a raw SQL query to avoid schema mismatches
+      const result = await db.execute(`
+        SELECT id, journal_entry_id, filename, path, mime_type, size, storage_key, uploaded_by, uploaded_at
+        FROM journal_entry_files
+        WHERE id = $1
+        LIMIT 1
+      `, [fileId]);
       
-      if (!file) {
+      if (result.rows.length === 0) {
         throw new ApiError(404, `File with ID ${fileId} not found`);
       }
       
-      return file;
+      return result.rows[0];
     } catch (e) {
       throw handleDbError(e, `getting file with ID ${fileId}`);
     }
