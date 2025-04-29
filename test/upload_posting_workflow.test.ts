@@ -12,6 +12,11 @@ import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as assert from 'assert';
+import { fileURLToPath } from 'url';
+
+// Get directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Promisify exec for async/await use
 const execPromise = promisify(exec);
