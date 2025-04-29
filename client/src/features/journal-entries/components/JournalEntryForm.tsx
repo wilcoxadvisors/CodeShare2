@@ -947,13 +947,21 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
         throw new Error('Reference is required');
       }
       
-      // Ensure proper date format - EXPLICITLY standardize dates to ISO 8601 UTC
-      const date = new Date(data.date);
-      // We explicitly use ISO format with UTC timezone to avoid timezone issues
-      data.date = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD in UTC
+      // Keep the exact calendar date as selected without timezone conversion
+      // This prevents the date from shifting to the previous day in negative UTC offsets
+      if (data.date && typeof data.date === "string" && data.date.includes("T")) {
+        // If the date is already in ISO format, just take the date part
+        data.date = data.date.split("T")[0];
+      } else if (data.date) {
+        // Otherwise format as YYYY-MM-DD without timezone conversion
+        const date = new Date(data.date);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        data.date = `${year}-${month}-${day}`; // Format as YYYY-MM-DD in local timezone
+      }
       
-      console.log('DEBUG: Date after formatting in UTC ISO format:', data.date);
-      
+      console.log("DEBUG: Date after formatting in local timezone:", data.date);
       // Ensure all required fields are explicitly included in the API call
       const apiPayload = {
         ...data,
