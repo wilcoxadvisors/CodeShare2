@@ -9,7 +9,9 @@ on:
       - 'server/storage/fileStorage/**'
       - 'test/attachments_validation.test.ts'
       - 'test/attachments_acl.test.ts'
+      - 'test/upload_posting_workflow.test.ts'
       - 'server/migrations/20250430_add_je_files_admin_role.ts'
+      - 'server/migrations/20250429_add_deleted_at_to_journal_entry_files.ts'
   pull_request:
     branches: [ main, develop ]
     paths:
@@ -18,7 +20,9 @@ on:
       - 'server/storage/fileStorage/**'
       - 'test/attachments_validation.test.ts'
       - 'test/attachments_acl.test.ts'
+      - 'test/upload_posting_workflow.test.ts'
       - 'server/migrations/20250430_add_je_files_admin_role.ts'
+      - 'server/migrations/20250429_add_deleted_at_to_journal_entry_files.ts'
 
 jobs:
   attachment-validation-test:
@@ -73,5 +77,6 @@ jobs:
         run: |
           npx ts-node test/attachments_validation.test.ts
           npx ts-node test/attachments_acl.test.ts
+          npx ts-node test/upload_posting_workflow.test.ts
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db

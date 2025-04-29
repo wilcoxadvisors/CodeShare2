@@ -5,6 +5,7 @@ import { addClientEntityRelationship } from './migrations/add-client-entity-rela
 import { addSoftDeletionAndAuditLogs } from './migrations/add-soft-deletion-and-audit-logs';
 import { runMigration as addJeFileBlobs } from './migrations/20250425_add_je_file_blobs';
 import { migrateAddJeFilesAdminRole } from './migrations/20250430_add_je_files_admin_role';
+import { up as addDeletedAtToJournalEntryFiles } from './migrations/20250429_add_deleted_at_to_journal_entry_files';
 
 // Database schema migration utility
 
@@ -911,6 +912,9 @@ export async function migrateTables() {
     
     // Run journal entry file blobs migration (20250425)
     await addJeFileBlobs();
+    
+    // Run migration to add deleted_at column to journal_entry_files (20250429)
+    await addDeletedAtToJournalEntryFiles(drizzleDb);
     
     // Run JE_FILES_ADMIN role migration (20250430)
     await migrateAddJeFilesAdminRole();
