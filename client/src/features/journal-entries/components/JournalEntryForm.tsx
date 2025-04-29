@@ -8,7 +8,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
-  Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive, Lock } from 'lucide-react';
+  Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive, Lock, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -285,10 +285,15 @@ function AttachmentSection({
       return <FileImage className="h-4 w-4" />;
     } else if (mimeType === 'application/pdf') {
       return <FileText className="h-4 w-4" />;
-    } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+    } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) {
       return <FileSpreadsheet className="h-4 w-4" />;
     } else if (mimeType.includes('zip') || mimeType.includes('compressed')) {
       return <FileArchive className="h-4 w-4" />; 
+    } else if (mimeType.includes('word') || mimeType.includes('doc')) {
+      return <FileText className="h-4 w-4 text-blue-600" />;
+    } else if (mimeType === 'message/rfc822' || mimeType.includes('outlook')) {
+      // Handle email file formats (.eml, .msg)
+      return <SendHorizontal className="h-4 w-4 text-blue-500" />;
     } else {
       return <FileText className="h-4 w-4" />;
     }
@@ -511,14 +516,23 @@ function AttachmentSection({
       }
     },
     accept: {
+      // Images
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+      // PDF
       'application/pdf': ['.pdf'],
+      // Word documents
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
+      // Excel spreadsheets
+      'application/vnd.ms-excel': ['.xls', '.csv'],  // Some browsers send Excel MIME for CSV
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      // Text files
       'text/plain': ['.txt'],
       'text/csv': ['.csv'],
+      // Email formats
+      'message/rfc822': ['.eml'],  // RFC-822 email format
+      'application/vnd.ms-outlook': ['.msg'],  // Outlook messages
+      // Archives
       'application/zip': ['.zip'],
       'application/x-rar-compressed': ['.rar']
     },
@@ -579,7 +593,7 @@ function AttachmentSection({
               <FileUp className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground mb-2">Drag and drop files here, or click to select files</p>
               <p className="text-xs text-muted-foreground">
-                Supported formats: Images, PDFs, Documents, Spreadsheets, etc. (Max 10MB per file)
+                Supported formats: PDF, Word (.doc/.docx), Excel (.xls/.xlsx), CSV, Images, Email (.eml), etc. (Max 10MB per file)
               </p>
             </div>
           )}

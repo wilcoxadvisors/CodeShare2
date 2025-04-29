@@ -322,6 +322,9 @@ function JournalEntryDetail() {
       return <FileArchive className="h-5 w-5 mr-2 text-yellow-600" />;
     } else if (mimeType.includes('code') || mimeType.includes('json') || mimeType.includes('xml')) {
       return <FileCode className="h-5 w-5 mr-2 text-purple-600" />;
+    } else if (mimeType === 'message/rfc822' || mimeType.includes('outlook')) {
+      // Handle email file formats (.eml, .msg)
+      return <SendHorizontal className="h-5 w-5 mr-2 text-blue-500" />;
     } else {
       return <File className="h-5 w-5 mr-2 text-gray-500" />;
     }
