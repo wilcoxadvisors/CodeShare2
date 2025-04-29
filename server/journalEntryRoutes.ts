@@ -1648,7 +1648,29 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     // Check if user has permission to delete files
-    // For now, just check basic authentication which is handled by the isAuthenticated middleware
+    // User must either:
+    // 1. Be the creator of the journal entry, OR
+    // 2. Have the JE_FILES_ADMIN role
+    const user = req.user as { id: number, roles?: string[] };
+    
+    const canDelete = 
+      user.id === journalEntry.createdBy || 
+      (user.roles && user.roles.includes('JE_FILES_ADMIN'));
+    
+    if (!canDelete) {
+      // Log the denied attempt in audit log
+      await auditLogStorage.createAuditLog({
+        action: 'journal_file_delete_denied',
+        performedBy: user.id,
+        details: JSON.stringify({
+          journalEntryId,
+          fileId,
+          reason: 'User is not the creator of the journal entry and does not have JE_FILES_ADMIN role'
+        })
+      });
+      
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to delete this file' });
+    }
     
     // Get the file metadata before deleting to include in the audit log
     const file = await journalEntryStorage.getJournalEntryFile(fileId);

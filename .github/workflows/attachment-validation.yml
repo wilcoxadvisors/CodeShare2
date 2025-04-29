@@ -8,6 +8,8 @@ on:
       - 'server/storage/journalEntryStorage.ts'
       - 'server/storage/fileStorage/**'
       - 'test/attachments_validation.test.ts'
+      - 'test/attachments_acl.test.ts'
+      - 'server/migrations/20250430_add_je_files_admin_role.ts'
   pull_request:
     branches: [ main, develop ]
     paths:
@@ -15,6 +17,8 @@ on:
       - 'server/storage/journalEntryStorage.ts'
       - 'server/storage/fileStorage/**'
       - 'test/attachments_validation.test.ts'
+      - 'test/attachments_acl.test.ts'
+      - 'server/migrations/20250430_add_je_files_admin_role.ts'
 
 jobs:
   attachment-validation-test:
@@ -68,5 +72,6 @@ jobs:
       - name: Run attachment validation tests
         run: |
           npx ts-node test/attachments_validation.test.ts
+          npx ts-node test/attachments_acl.test.ts
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
