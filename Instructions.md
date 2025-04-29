@@ -192,7 +192,7 @@ Note:
 
    1. **Dimensions Framework**  
       • Core tables (`dimensions`, `dimension_values`, `tx_dimension_link`).  
-      • System dimensions: Department, Location, Class, Customer, Vendor,
+      • Pre-seeded dimensions (implemented exactly the same as any custom dimension): Department, Location, Class, Customer, Vendor,
         Employee, Project, Item.  
       • User-defined dimension creation UI (admin-only).  
       • Validation rules: required vs optional, active vs inactive.  
@@ -439,7 +439,7 @@ Throughout every task explicitly:
 
 | Term | Definition |
 |------|------------|
-| **Dimension** | Categorical attribute (e.g., Department, Location) attached to any transaction for multi-axis reporting. |
+| **Dimension** | Categorical attribute (e.g., Department, Location) attached to any transaction for multi-axis reporting. Every dimension is stored in the same table; the eight 'standard' values are simply pre-loaded examples that admins can rename, disable or delete. |
 | **Smart Rule** | Validation rule that restricts which dimension combinations are allowed on specific GL accounts. |
 | **Smart Event** | No-code automation: *Trigger* + *Condition* + *Action* (email, webhook, field update). |
 | **AI EventBridge** | Internal pub/sub topic (`ai.ingest.*`) that streams Smart Event payloads to the ML service for continual learning. |
