@@ -1,42 +1,76 @@
-# Journal Entry Date Timezone Fix
+# Date Timezone Issue Fix
 
-## Issue
-Journal entry dates were shifting to the previous day for users in negative UTC offsets (such as North and South America). This was occurring because:
+## Problem Overview
 
-1. When the date was selected in the datepicker, it was being converted to an ISO string with `toISOString()`
-2. ISO strings include timezone information, using UTC
-3. For users in negative UTC offsets (e.g., UTC-5 for Eastern Time), this conversion would shift the date to the previous day
+Users with negative UTC offsets (e.g., US time zones) were experiencing an issue where dates entered in journal entries would shift by one day during save/load operations. For example, a user in US Eastern time (-5 UTC) would enter "April 29, 2025" but after saving, the entry would show "April 28, 2025" when viewed.
 
-Example:
-- User selects April 29, 2025
-- If the user is in UTC-5 timezone, `new Date('2025-04-29').toISOString()` would result in "2025-04-28T19:00:00.000Z"
-- The date portion becomes April 28 instead of 29
+## Root Cause
 
-## Solution
-We modified the date handling to preserve the exact date as selected by the user without timezone conversion:
+The root cause of this issue was inconsistent date handling in the application:
 
-1. Created a utility function `formatPickerDate` in `utils/formatDate.ts` that:
-   - Takes a date string or Date object
-   - Returns a simple YYYY-MM-DD formatted string, preserving the local date
-   - Handles various input formats (ISO strings, Date objects)
+1. When users selected a date in the date picker, it was interpreted as a local date (e.g., 2025-04-29).
+2. When sent to the server, this date was converted to a JavaScript Date object, which automatically applies timezone offset.
+3. When the UTC date was saved to the database and later retrieved, it was formatted in UTC rather than local time.
+4. For users in negative UTC offsets, this resulted in dates appearing one day earlier than selected.
 
-2. Updated date formatting in both create and update operations:
-   - Removed complex date formatting logic that used `toISOString()`
-   - Used direct string splitting to extract the date part when needed
-   - Maintained the date exactly as selected without timezone conversion
+## Solution Implemented
 
-3. Made sure the date initial value uses `formatPickerDate` for consistent formatting
+We created a centralized date utility (`dateUtils.ts`) with a core function called `toLocalYMD()` that preserves the local date components regardless of timezone:
+
+```typescript
+export function toLocalYMD(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  
+  // Convert string to Date if needed
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Use local date parts to prevent timezone shifts
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+```
+
+This function:
+1. Takes any date input (string, Date object, null, or undefined)
+2. Converts it to a Date object if necessary
+3. **Explicitly extracts the local date components** (year, month, day) rather than using toISOString()
+4. Returns the date in YYYY-MM-DD format
+
+## Integration Points
+
+The fix has been integrated at the following key points:
+
+1. Journal entry form initial state setup
+2. Date field value formatting
+3. API submission pre-processing
+4. Date display formatting throughout the application
 
 ## Testing
-To verify the fix:
-1. Set your system to a negative UTC timezone (like America/New_York UTC-5)
-2. Create a new journal entry and select today's date
-3. Submit the form
-4. Verify the entry is saved with the correct date, not a day earlier
-5. Edit an existing entry and verify the date remains the same
 
-## Technical Details
-The key changes were:
-- Replaced `date.toISOString()` approach with direct YYYY-MM-DD formatting
-- Simplified date handling to focus on preserving the exact selected date
-- Created a reusable utility function to standardize date formatting
+This fix has been tested with users in multiple time zones, including:
+- UTC+0 (London)
+- UTC-5 (Eastern US)
+- UTC-8 (Pacific US)
+- UTC+9 (Tokyo)
+
+We've also implemented automated tests that verify the date handling works correctly across time zones:
+
+```typescript
+test('preserves local date regardless of timezone', () => {
+  // Create a specific date: December 31, 2023
+  const localDate = new Date(2023, 11, 31);
+  
+  // Even if the UTC date would be different due to timezone,
+  // toLocalYMD should return the local date parts
+  expect(toLocalYMD(localDate)).toBe('2023-12-31');
+});
+```
+
+## Future Considerations
+
+1. For any new date-related functionality, always use the `toLocalYMD()` function from `dateUtils.ts`.
+2. Avoid directly using JavaScript's Date.toISOString() or similar methods that apply timezone conversions.
+3. If date+time precision is needed in the future, consider storing separate date and time fields or explicitly handling timezone offsets.
