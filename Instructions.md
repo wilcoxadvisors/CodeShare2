@@ -221,6 +221,17 @@ Note:
    - Example Smart Event: send Slack alert when `amount > $10k & location=INTL`.  
    - Cypress E2E: create JE → trigger event → verify webhook fired.
 
+🔹 **Task B.5 – AP/AR Automation (DESIGN IN-PROGRESS)**  
+   • OCR ingest micro-service for vendor invoices  
+   • Rules-based approvals (reuse Smart Events engine)  
+   • Automated dunning & payment matching  
+   • Success KPI: 50 % reduction in manual AP touch-points
+
+🔹 **Task B.6 – Fixed Assets Mini-Module (BACKLOG)**  
+   • Asset master table, depreciation schedules (GAAP + Tax)  
+   • Auto-post monthly depreciation JEs  
+   • Disposal / partial-disposal workflow
+
 **Phase C: Website Content Management (NEARLY COMPLETE)**
 
 * **(Task C.1)** ✅ Authentication & Backend: Authentication middleware verified and fixed, with proper user access control.
@@ -242,6 +253,10 @@ Note:
 **Phase D: Reporting (Standard & Custom) & Data Collection**
 
 * **(Task D.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
+   • **Real-Time Dashboards (D.1.a)**  
+     – 200 pre-built widgets, drill-down to dimension-tagged data  
+     – DashboardBuilder.tsx MVP (drag-drop, role-based view)  
+     – Websocket-fed live KPI cards
 * **(Task D.2)** Custom Reporting:
     * Define backend API capabilities for fetching data with flexible filters.
     * Build a frontend UI for custom report building.
@@ -257,6 +272,11 @@ Note:
 * **(Task E.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
 * **(Task E.2)** Automate JE Creation: From fetched API data (AI assistance).
     * **(AI Assistance):** Explore Plaid, document analysis. Odoo/Sage Intacct inspiration.
+
+🔹 **Task E.3 – Universal Data Flows & Connectors (SPEC READY)**  
+   • Pre-built connectors: Salesforce, Bill.com, ADP  
+   • Connector SDK (`connectors/`) for custom integrations  
+   • Real-time sync pub/sub using EventBridge → triggers Smart Events
 
 **Phase F: AI/ML & Predictive Forecasting (PARTIALLY IMPLEMENTED)**
 
