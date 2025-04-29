@@ -1265,16 +1265,26 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       line.accountId || parseFloat(unformatNumber(line.debit)) > 0 || parseFloat(unformatNumber(line.credit)) > 0
     );
     
+    // Check if we need special handling for file attachments
+    const hasPendingAttachments = pendingFiles.length > 0;
+    console.log('DEBUG: Pending attachments:', pendingFiles.length);
+    
+    // Determine the initial status - if we're posting with files, start as draft
+    const initialStatus = (!saveAsDraft && hasPendingAttachments) 
+      ? JournalEntryStatus.DRAFT // Create as draft initially if posting with attachments
+      : (saveAsDraft ? JournalEntryStatus.DRAFT : JournalEntryStatus.POSTED);
+    
     const formData = {
       ...journalData,
       lines: validLines,
-      // Set the appropriate status based on saveAsDraft
-      status: saveAsDraft ? JournalEntryStatus.DRAFT : JournalEntryStatus.POSTED
+      // Set the appropriate status based on our decision logic
+      status: initialStatus
     };
     
-    console.log('DEBUG: Form data with status:', formData.status);
+    console.log('DEBUG: Form data with initial status:', formData.status);
+    console.log('DEBUG: Will post after uploads complete:', !saveAsDraft && hasPendingAttachments);
     
-    // Only validate fully if we're not saving as draft
+    // Only validate fully if we're not saving as draft (final intended state)
     if (!saveAsDraft) {
       // Full validation for posting
       const validation = validateForm(formData, FormSchema);
@@ -1337,7 +1347,7 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
       ...journalData,
       clientId: resolvedClientId,
       entityId,
-      status: saveAsDraft ? JournalEntryStatus.DRAFT : JournalEntryStatus.POSTED,
+      status: initialStatus, // Use our determined initial status
       createdBy: user?.id,
       lines: formattedLines
     };
@@ -1346,9 +1356,101 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
     console.log('DEBUG: API Payload to be sent:', JSON.stringify(entryData, null, 2));
     
     if (isEditing) {
+      // For existing entries, no need for special attachment handling
       updateEntry.mutate(entryData);
     } else {
-      createEntry.mutate(entryData);
+      // For new entries
+      // If we have pending attachments AND we want to post (not save as draft)
+      if (hasPendingAttachments && !saveAsDraft) {
+        // First create as draft
+        setIsUploading(true);
+        createEntry.mutate(entryData, {
+          onSuccess: async (result) => {
+            // Extract the new entry ID
+            const newEntryId = result?.id || (result?.entry && result.entry.id);
+            
+            if (!newEntryId) {
+              toast({
+                title: "Error",
+                description: "Failed to extract entry ID from server response",
+                variant: "destructive"
+              });
+              onSubmit(); // Still call onSubmit to navigate away
+              return;
+            }
+            
+            console.log('DEBUG: Created draft entry, now uploading files to ID:', newEntryId);
+            
+            // Show a toast to inform user
+            toast({
+              title: "Uploading attachments",
+              description: `Uploading ${pendingFiles.length} file(s) before posting...`,
+            });
+            
+            try {
+              // Upload the pending files
+              if (uploadPendingFilesRef.current) {
+                await uploadPendingFilesRef.current(newEntryId);
+                console.log('DEBUG: File uploads complete, now updating status to POSTED');
+                
+                // Update the entry status to POSTED after successful upload
+                updateEntry.mutate({
+                  ...entryData,
+                  id: newEntryId,
+                  status: JournalEntryStatus.POSTED
+                }, {
+                  onSuccess: () => {
+                    toast({
+                      title: "Success",
+                      description: "Journal entry posted with attachments",
+                    });
+                    onSubmit(); // Navigate away
+                  },
+                  onError: (error) => {
+                    console.error('Failed to update entry status to POSTED:', error);
+                    toast({
+                      title: "Warning",
+                      description: "Files uploaded but entry remained in draft state. You can post it manually.",
+                      variant: "destructive"
+                    });
+                    onSubmit(); // Still navigate away
+                  }
+                });
+              } else {
+                console.error('uploadPendingFilesRef.current is not defined');
+                toast({
+                  title: "Warning",
+                  description: "Entry created but could not upload files. You may need to attach them manually.",
+                  variant: "destructive"
+                });
+                onSubmit(); // Still navigate away
+              }
+            } catch (error) {
+              console.error('Failed to upload files:', error);
+              toast({
+                title: "Warning",
+                description: "Entry created as draft but file upload failed. Please try posting it manually.",
+                variant: "destructive"
+              });
+              onSubmit(); // Still navigate away
+            } finally {
+              setIsUploading(false);
+            }
+          },
+          onError: (error) => {
+            console.error('Failed to create journal entry:', error);
+            setIsUploading(false);
+            toast({
+              title: "Error",
+              description: "Failed to create journal entry",
+              variant: "destructive"
+            });
+          }
+        });
+      } else {
+        // Standard flow - no pending attachments or just saving as draft
+        createEntry.mutate(entryData);
+      }
     }
   };
   
