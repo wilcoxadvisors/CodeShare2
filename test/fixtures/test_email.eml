@@ -1,0 +1,10 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Test Email Attachment for Journal Entry
+Date: Mon, 29 Apr 2025 10:00:00 -0700
+
+This is a test email attachment for the accounting system.
+It demonstrates support for .eml files in journal entry attachments.
+
+Best regards,
+Accounting Team

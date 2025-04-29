@@ -263,7 +263,7 @@ function JournalEntryDetail() {
     if (validFiles.length === 0) {
       toast({
         title: 'Error',
-        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, or CSV files.',
+        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, CSV, EML, or MSG files.',
         variant: 'destructive',
       });
       return;
@@ -277,14 +277,22 @@ function JournalEntryDetail() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
+      // Images
       'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
+      // PDF
       'application/pdf': ['.pdf'],
+      // Word documents
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
+      // Excel spreadsheets
+      'application/vnd.ms-excel': ['.xls', '.csv'],  // Some browsers send Excel MIME for CSV
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      // Text files
       'text/plain': ['.txt'],
-      'text/csv': ['.csv']
+      'text/csv': ['.csv'],
+      // Email formats
+      'message/rfc822': ['.eml'],  // RFC-822 email format
+      'application/vnd.ms-outlook': ['.msg']  // Outlook messages
     },
     maxSize: 10485760, // 10MB
     multiple: true
