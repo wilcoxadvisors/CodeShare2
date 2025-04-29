@@ -4,6 +4,7 @@ import { updateJunctionTableSchema } from './migrations/update-junction-table-sc
 import { addClientEntityRelationship } from './migrations/add-client-entity-relationship';
 import { addSoftDeletionAndAuditLogs } from './migrations/add-soft-deletion-and-audit-logs';
 import { runMigration as addJeFileBlobs } from './migrations/20250425_add_je_file_blobs';
+import { migrateAddJeFilesAdminRole } from './migrations/20250430_add_je_files_admin_role';
 
 // Database schema migration utility
 
@@ -910,6 +911,9 @@ export async function migrateTables() {
     
     // Run journal entry file blobs migration (20250425)
     await addJeFileBlobs();
+    
+    // Run JE_FILES_ADMIN role migration (20250430)
+    await migrateAddJeFilesAdminRole();
     
     console.log("Database migration completed successfully!");
     return true;
