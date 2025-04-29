@@ -107,12 +107,15 @@ function JournalEntryDetail() {
     'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOC, DOCX
     'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLS, XLSX
     'text/plain', // TXT
-    'text/csv' // CSV
+    'text/csv', // CSV
+    'message/rfc822', // EML
+    'application/vnd.ms-outlook' // MSG
   ];
   
   const ALLOWED_FILE_EXTENSIONS = [
     '.pdf', '.jpg', '.jpeg', '.png', '.gif', 
-    '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'
+    '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv',
+    '.eml', '.msg'
   ];
   
   // Function to check if a file is valid
@@ -223,7 +226,7 @@ function JournalEntryDetail() {
     if (validFiles.length === 0) {
       toast({
         title: 'Error',
-        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, or CSV files.',
+        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, CSV, EML, or MSG files.',
         variant: 'destructive',
       });
       return;
