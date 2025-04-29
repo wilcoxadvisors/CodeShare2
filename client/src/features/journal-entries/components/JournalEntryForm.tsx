@@ -7,7 +7,7 @@ import { useJournalEntryFiles, useUploadJournalEntryFile, useDeleteJournalEntryF
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { formatPickerDate } from '@/utils/formatDate';
+import { toLocalYMD, formatDisplayDate } from '@/utils/dateUtils';
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
   Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive, Lock, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -833,12 +833,12 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || '',  // Use referenceNumber to match server schema
-    date: existingEntry?.date ? formatPickerDate(existingEntry.date) : formatPickerDate(new Date()),
+    date: existingEntry?.date ? toLocalYMD(existingEntry.date) : toLocalYMD(new Date()),
     description: existingEntry?.description || '',
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || 'JE',
     supDocId: existingEntry?.supDocId || '',
-    reversalDate: existingEntry?.reversalDate ? formatPickerDate(existingEntry.reversalDate) : '',
+    reversalDate: existingEntry?.reversalDate ? toLocalYMD(existingEntry.reversalDate) : '',
   });
   
   // Get default entity code from entities list based on current entityId
