@@ -1,0 +1,59 @@
+What just happened & why
+
+
+Step	Status	Why it failed
+1. You logged-in (admin)	✅	/api/auth/login → session cookie set
+2. You created JE 118 with status = posted	✅	/api/journal-entries returned 201
+3. UI immediately tried to upload 2 files to that new entry	🚫 403	Upload route checks:
+ts\nif (entry.status !== 'draft' && entry.status !== 'pending_approval') {\n return res.status(403) // <-- you hit this guard\n}
+So the backend is doing exactly what we told it to: only “draft” or “pending approval” entries may accept new or replacement attachments.
+Because JE 118 is already posted, the guard returned 403 Forbidden and the React retry loop kept trying (that’s the 3 failed attempts you see).
+
+Two quick fixes
+
+Option	What to change	When it makes sense
+A. Disable the drop-zone when an entry becomes posted (UI-only)	In AttachmentSection / JournalEntryForm we already derive isDisabled – just make sure we pass it down to the Dropzone and hide the “Upload” button.	Keep current security model • safest
+B. Allow uploads to posted entries	Remove the status check (or expand it to include posted) and record an audit log line (action: 'upload_after_post').	If your business workflow truly needs late attachments (e.g. audit docs)
+Let’s apply Option A (most teams prefer it)
+Frontend tweak
+
+tsx
+Copy
+Edit
+// AttachmentSection.tsx
+const disabled =
+  journalEntry?.status !== 'draft' &&
+  journalEntry?.status !== 'pending_approval';
+
+<Dropzone
+  disabled={disabled}
+  /* ...rest */
+>
+  {disabled && (
+     <p className="text-muted-foreground text-sm">
+       Files can’t be added once the entry is posted.
+     </p>
+  )}
+</Dropzone>
+UX polish
+While uploadMutation.isError && error?.response?.status === 403 show a toast:
+
+“Entry is posted — attachments are locked. Create a reversal or new draft if you need to add files.”
+
+No backend change needed; the guard is already in place.
+
+Side-note: duplicate reference numbers
+Earlier you mentioned reference numbers should be unique. Right now we generate the reference value (JE-YYYY-####) in the front-end. If two people press “Post” simultaneously the DB can still get a duplicate.
+Add a unique index if you want absolute safety:
+
+sql
+Copy
+Edit
+CREATE UNIQUE INDEX journal_entries_reference_unique
+ON journal_entries(client_id, reference);
+Next actions
+ Patch the Dropzone/UI disabling as above
+
+ (Optional) add the unique DB index for reference
+
+ Retest: create a draft entry → upload succeeds → change status to posted → drop-zone is locked.

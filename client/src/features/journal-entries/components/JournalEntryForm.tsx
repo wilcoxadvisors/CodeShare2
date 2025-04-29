@@ -8,7 +8,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
-  Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive } from 'lucide-react';
+  Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -254,6 +254,17 @@ function AttachmentSection({
   
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === 'number';
+  
+  // Fetch the journal entry to check its status
+  const { data: journalEntry } = useQuery({
+    queryKey: isExistingEntry ? [`/api/journal-entries/${journalEntryId}`] : ['temp-entry'],
+    enabled: isExistingEntry,
+  });
+  
+  // Determine if attachments are disabled based on entry status
+  const isAttachmentsDisabled = journalEntry && 
+    journalEntry.status !== 'draft' && 
+    journalEntry.status !== 'pending_approval';
   
   // Helper function to format bytes into readable format
   const formatBytes = (bytes: number, decimals: number = 2): string => {
@@ -513,7 +524,7 @@ function AttachmentSection({
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: true,
-    disabled: uploadFileMutation.isPending
+    disabled: uploadFileMutation.isPending || isAttachmentsDisabled
   });
   
   return (
@@ -554,6 +565,14 @@ function AttachmentSection({
             <div className="text-center">
               <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-sm">Drop the files here...</p>
+            </div>
+          ) : isAttachmentsDisabled ? (
+            <div className="text-center">
+              <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">Files can't be added once the entry is posted</p>
+              <p className="text-xs text-muted-foreground">
+                Create a reversal or new draft if you need to add files
+              </p>
             </div>
           ) : (
             <div className="text-center">
@@ -681,7 +700,7 @@ function AttachmentSection({
                                     journalEntryId: journalEntryId as number,
                                     fileId: file.id
                                   })}
-                                  disabled={deleteFileMutation.isPending}
+                                  disabled={deleteFileMutation.isPending || isAttachmentsDisabled}
                                 >
                                   {deleteFileMutation.isPending ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -691,7 +710,11 @@ function AttachmentSection({
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Delete</p>
+                                {isAttachmentsDisabled ? (
+                                  <p>Delete not allowed for posted entries</p>
+                                ) : (
+                                  <p>Delete</p>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
