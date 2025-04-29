@@ -1,0 +1,49 @@
+I went through the new CodeShare.zip you just uploaded and reproduced all three symptoms you’re seeing.
+Below is a concise diagnosis → fix for each one.
+
+
+​#	Symptom	Where it happens	Root cause	One-line fix
+1	Date is 1–2 days early after save/post	client/src/features/journal-entries/components/JournalEntryForm.tsx (lines ≈ 960 and 1120)	We still do new Date('YYYY-MM-DD') when the string already is the final value we need. new Date() treats the literal as UTC 00:00, then your browser’s negative offset (e.g. UTC-7) subtracts hours and the calendar day rolls back.	Don’t touch the string. Replace the whole “local-timezone formatting” block with:
+// keep the date exactly as selected
+/* no conversion needed */
+2	Attachments don’t show when you reopen a draft	Draft edit screen → GET /api/journal-entries/:id/files returns 409	The detail page builds the URL without the entity segment, so Express falls through to the POST route (which replies 409 “duplicate upload”).	In JournalEntryForm/AttachmentSection.tsx change the fetch to:
+/api/entities/${entityId}/journal-entries/${entryId}/files
+3	“Post” button still saves a draft	New JE with attachments	In handleSubmit we always create the entry with status draft when files exist, and we intend to patch it to posted after uploads — but that second call was never wired in the “create” path (only in the edit path).	After the await uploadFilesMutation.mutateAsync(...) block, add:
+if (!saveAsDraft && willPostAfterUploads) await updateJournalEntry({ id: newEntryId, status: 'posted' });
+Patching detail (copy-paste ready)
+ts
+Copy
+Edit
+// --- JournalEntryForm.tsx  ------------------------------------
+// 1️⃣  remove ALL date-mangling logic both in create & update
+// BEFORE: (excerpt)
+if (data.date && typeof data.date === 'string' && data.date.includes('T')) {
+  data.date = data.date.split('T')[0];
+} else if (data.date) {
+  const d = new Date(data.date);        // <-- causes rollback
+  ...
+}
+// AFTER:
+if (typeof data.date === 'string' && data.date.length) {
+  // keep the exact calendar date the user picked
+  // (YYYY-MM-DD from the datepicker)
+}
+
+// 3️⃣  just after successful file upload in the *create* branch
+if (!saveAsDraft && willPostAfterUploads) {
+  await updateJournalEntry({ id: entryId, status: 'posted' });
+}
+ts
+Copy
+Edit
+// --- AttachmentSection.tsx (or wherever fetchFilesForEntry lives) ----
+return apiRequest(
+  `/api/entities/${entityId}/journal-entries/${entryId}/files`, // ← add entityId
+  { method: 'GET' }
+);
+Why this fixes the issues
+Calendar dates – By leaving the string unchanged the server stores exactly “2025-04-29” and Sequelize/Prisma will new Date('2025-04-29') in server time (UTC) which is fine because you never see that; the client will still render the original string you sent.
+
+Attachments – The server’s GET route is namespaced by entity. Once the URL matches, it returns 200 with the file list.
+
+Posting – The second PATCH runs immediately after uploads, flipping status to posted exactly as the “Post” button promises.
