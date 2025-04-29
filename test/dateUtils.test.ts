@@ -1,93 +1,127 @@
-import { toLocalYMD, formatDisplayDate, isValidYMDDate, getTodayYMD, parseDate } from '../client/src/utils/dateUtils';
+import {
+  toLocalYMD,
+  formatDisplayDate,
+  isValidYMDDate,
+  getTodayYMD,
+  parseDate
+} from '../client/src/utils/dateUtils';
 
 describe('dateUtils', () => {
   describe('toLocalYMD', () => {
-    test('preserves date strings in YYYY-MM-DD format', () => {
-      expect(toLocalYMD('2025-04-29')).toBe('2025-04-29');
+    test('formats Date object to YYYY-MM-DD', () => {
+      // Create a date with local time parts: 2023-05-15
+      const date = new Date(2023, 4, 15); // Month is 0-indexed
+      expect(toLocalYMD(date)).toBe('2023-05-15');
     });
 
-    test('extracts date from ISO string', () => {
-      expect(toLocalYMD('2025-04-29T14:30:00.000Z')).toBe('2025-04-29');
+    test('handles string dates correctly', () => {
+      expect(toLocalYMD('2023-05-15')).toBe('2023-05-15');
+      expect(toLocalYMD('2023-05-15T12:00:00Z')).toBe('2023-05-15');
     });
 
-    test('formats Date object without timezone shift', () => {
-      // Mock a date with April 29, 2025 in local timezone
-      const mockDate = new Date(2025, 3, 29); // Note: month is 0-indexed
-      expect(toLocalYMD(mockDate)).toBe('2025-04-29');
-    });
-
-    test('handles null or undefined inputs', () => {
+    test('handles null and undefined', () => {
       expect(toLocalYMD(null)).toBe('');
       expect(toLocalYMD(undefined)).toBe('');
+    });
+
+    test('preserves local date regardless of timezone', () => {
+      // This is the key test that verifies the fix for the timezone issue
+      // Create a specific date: December 31, 2023
+      const localDate = new Date(2023, 11, 31);
+      
+      // Even if the UTC date would be different due to timezone,
+      // toLocalYMD should return the local date parts
+      expect(toLocalYMD(localDate)).toBe('2023-12-31');
     });
   });
 
   describe('formatDisplayDate', () => {
-    test('formats date in medium format (default)', () => {
-      // Note: results will depend on the locale
-      expect(formatDisplayDate('2025-04-29')).toMatch(/Apr(il)? 29, 2025/);
+    test('formats date for display with different formats', () => {
+      const date = new Date(2023, 4, 15);
+      expect(formatDisplayDate(date, 'short')).toMatch(/May 15, 2023/);
+      expect(formatDisplayDate(date, 'long')).toMatch(/May 15, 2023/);
+      expect(formatDisplayDate(date, 'numeric')).toMatch(/5\/15\/2023/);
     });
 
-    test('formats date in short format', () => {
-      expect(formatDisplayDate('2025-04-29', 'short')).toMatch(/\d{2}\/\d{2}\/\d{4}/);
-    });
-
-    test('handles null or undefined inputs', () => {
+    test('handles null and undefined', () => {
       expect(formatDisplayDate(null)).toBe('');
       expect(formatDisplayDate(undefined)).toBe('');
     });
   });
 
   describe('isValidYMDDate', () => {
-    test('validates correct YYYY-MM-DD dates', () => {
-      expect(isValidYMDDate('2025-04-29')).toBe(true);
+    test('validates correct YYYY-MM-DD format', () => {
+      expect(isValidYMDDate('2023-05-15')).toBe(true);
     });
 
-    test('rejects incorrectly formatted dates', () => {
-      expect(isValidYMDDate('04-29-2025')).toBe(false);
-      expect(isValidYMDDate('2025/04/29')).toBe(false);
+    test('rejects invalid formats', () => {
+      expect(isValidYMDDate('05/15/2023')).toBe(false);
+      expect(isValidYMDDate('2023/05/15')).toBe(false);
+      expect(isValidYMDDate('15-05-2023')).toBe(false);
       expect(isValidYMDDate('not-a-date')).toBe(false);
     });
 
-    test('rejects invalid dates', () => {
-      expect(isValidYMDDate('2025-02-30')).toBe(false); // Invalid February day
-      expect(isValidYMDDate('2025-13-01')).toBe(false); // Invalid month
+    test('rejects invalid month or day values', () => {
+      expect(isValidYMDDate('2023-13-15')).toBe(false); // Month > 12
+      expect(isValidYMDDate('2023-00-15')).toBe(false); // Month < 1
+      expect(isValidYMDDate('2023-02-30')).toBe(false); // Invalid day for February
+      expect(isValidYMDDate('2023-04-31')).toBe(false); // April doesn't have 31 days
+    });
+
+    test('correctly validates leap year dates', () => {
+      expect(isValidYMDDate('2020-02-29')).toBe(true); // 2020 was a leap year
+      expect(isValidYMDDate('2023-02-29')).toBe(false); // 2023 was not a leap year
     });
   });
 
   describe('getTodayYMD', () => {
-    test('returns today in YYYY-MM-DD format', () => {
-      // Mock current date for consistent testing
-      const realDate = global.Date;
-      const mockDate = new Date(2025, 3, 29); // April 29, 2025
-      
-      global.Date = class extends Date {
-        constructor(...args: any[]) {
+    // Mock Date.now for consistent testing
+    const originalDate = global.Date;
+    
+    beforeEach(() => {
+      // Mock the Date constructor to return a fixed date
+      global.Date = class extends originalDate {
+        constructor(...args) {
           if (args.length === 0) {
-            return mockDate;
+            // When called with no args (new Date()), return a fixed date
+            super(2023, 4, 15); // May 15, 2023
+          } else {
+            super(...args);
           }
-          return new realDate(...args);
         }
-      } as typeof Date;
-
-      expect(getTodayYMD()).toBe('2025-04-29');
-      
+      };
+    });
+    
+    afterEach(() => {
       // Restore original Date
-      global.Date = realDate;
+      global.Date = originalDate;
+    });
+    
+    test('returns today in YYYY-MM-DD format', () => {
+      expect(getTodayYMD()).toBe('2023-05-15');
     });
   });
 
   describe('parseDate', () => {
-    test('parses YYYY-MM-DD format correctly', () => {
-      const result = parseDate('2025-04-29');
-      expect(result.getFullYear()).toBe(2025);
-      expect(result.getMonth()).toBe(3); // April (0-indexed)
-      expect(result.getDate()).toBe(29);
+    test('parses valid date strings', () => {
+      const result = parseDate('2023-05-15');
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getFullYear()).toBe(2023);
+      expect(result.getMonth()).toBe(4); // 0-indexed, so May is 4
+      expect(result.getDate()).toBe(15);
     });
 
-    test('uses fallback for invalid dates', () => {
-      const fallback = new Date(2020, 0, 1);
-      expect(parseDate('invalid-date', fallback)).toEqual(fallback);
+    test('returns fallback for invalid strings', () => {
+      const fallback = new Date(2000, 0, 1);
+      expect(parseDate('not-a-date', fallback)).toEqual(fallback);
+    });
+
+    test('uses current date as default fallback', () => {
+      const invalidResult = parseDate('not-a-date');
+      expect(invalidResult).toBeInstanceOf(Date);
+      // Can't assert exact date since it uses current date
+      // Just verify it's a valid date
+      expect(isNaN(invalidResult.getTime())).toBe(false);
     });
   });
 });

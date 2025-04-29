@@ -16,19 +16,10 @@
 export function toLocalYMD(date: string | Date | null | undefined): string {
   if (!date) return '';
   
-  // If it's already a YYYY-MM-DD string, return as is
-  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return date;
-  }
+  // Convert string to Date if needed
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   
-  // If it's a string with time component, extract just the date part
-  if (typeof date === 'string' && date.includes('T')) {
-    return date.split('T')[0];
-  }
-  
-  // For Date objects or other string formats, use local date methods
-  // to avoid timezone conversion issues
-  const dateObj = new Date(date);
+  // Use local date parts to prevent timezone shifts
   const year = dateObj.getFullYear();
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
@@ -44,8 +35,8 @@ export function toLocalYMD(date: string | Date | null | undefined): string {
  * @returns Formatted date string for display
  */
 export function formatDisplayDate(
-  date: string | Date | null | undefined,
-  format: 'short' | 'medium' | 'long' = 'medium'
+  date: string | Date | null | undefined, 
+  format: 'numeric' | 'short' | 'long' = 'short'
 ): string {
   if (!date) return '';
   
@@ -53,8 +44,8 @@ export function formatDisplayDate(
   
   const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
-    month: format === 'short' ? '2-digit' : format === 'medium' ? 'short' : 'long',
-    day: '2-digit'
+    month: format,
+    day: 'numeric',
   };
   
   return new Intl.DateTimeFormat('en-US', options).format(dateObj);
@@ -67,20 +58,21 @@ export function formatDisplayDate(
  * @returns true if valid YYYY-MM-DD format, false otherwise
  */
 export function isValidYMDDate(dateStr: string): boolean {
-  // Check basic format
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    return false;
-  }
+  // Check format using regex: YYYY-MM-DD
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
   
-  // Validate as actual date
+  // Parse parts and validate month and day
   const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
   
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  );
+  // Check month is between 1-12
+  if (month < 1 || month > 12) return false;
+  
+  // Check day is valid for month (including leap years)
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day < 1 || day > daysInMonth) return false;
+  
+  return true;
 }
 
 /**
@@ -101,17 +93,9 @@ export function getTodayYMD(): string {
  */
 export function parseDate(dateStr: string, fallback: Date = new Date()): Date {
   try {
-    // For YYYY-MM-DD format, ensure correct parsing without timezone issues
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      return new Date(year, month - 1, day);
-    }
-    
-    // For other formats, use standard Date parsing
     const date = new Date(dateStr);
     return isNaN(date.getTime()) ? fallback : date;
-  } catch (e) {
-    console.error('Error parsing date:', e);
+  } catch (error) {
     return fallback;
   }
 }

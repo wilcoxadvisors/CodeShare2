@@ -1,15 +1,18 @@
-// Import commands.ts using ES2015 syntax:
+// Support file for e2e tests
 import './commands';
 
-// Alternatively you can use CommonJS syntax:
-// require('./commands')
+// Configure global behavior for all tests
+beforeEach(() => {
+  // Clear any existing cookies/session data before each test
+  cy.clearCookies();
+  cy.clearLocalStorage();
+});
 
-// Add global configuration or overrides here
+// Type definitions for custom commands
 declare global {
   namespace Cypress {
     interface Chainable {
-      login(username: string, password: string): Chainable<void>;
-      attachFile(fileName: string): Chainable<void>;
+      // Add type definitions for custom commands here
     }
   }
 }
