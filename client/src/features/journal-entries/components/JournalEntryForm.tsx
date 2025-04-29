@@ -7,6 +7,7 @@ import { useJournalEntryFiles, useUploadJournalEntryFile, useDeleteJournalEntryF
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
+import { formatPickerDate } from '@/utils/formatDate';
 import { X, Plus, FileUp, AlertCircle, Loader2, CheckCircle2, Check, ChevronDown, ChevronRight, ChevronUp, 
   Upload, Trash2, Download, FileText, Paperclip, Info, FileImage, FileSpreadsheet, FileArchive, Lock, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
