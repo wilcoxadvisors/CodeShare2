@@ -321,6 +321,16 @@ Note:
 
 (All F.4-F.6 tasks rely on the Dimensions framework from Task B.4.)
 
+🔹 **Task F.7 – AI-Powered General Ledger**  
+   • IsolationForest anomaly scoring on each posted JE (stream → `ai.anomaly`)  
+   • Continuous consolidations with ML-based FX anomaly checks  
+   • Auto-reconciliation runner (bank feeds)
+
+🔹 **Task F.8 – Sage-style Copilot**  
+   • `/api/copilot/ask` – NLQ → SQL using pgvector + GPT-4o3  
+   • Chat thread UI (`CopilotDrawer.tsx`) with task automation hooks  
+   • Contextual suggestions: late invoices, budget overruns, etc.
+
 **Phase G: Future Enhancements**
 
 * **(Task G.1)** ✅ Implement Client Edit/Deactivate (Done).
@@ -330,9 +340,25 @@ Note:
 * **(Task G.5)** AI-driven proactive website health monitoring and autonomous code updates.
 * **(Task G.6)** XAI integration to enhance explainability and transparency in the accounting system.
 
+🔹 **Task G.7 – Forms & Operational Flows**  
+   • Low-code form builder UI (+ approvals engine)  
+   • Mobile-friendly submission & audit trail
+
+🔹 **Task G.8 – Project & Resource Management**  
+   • Project master, budgeting, time & expense capture  
+   • AI-driven resource allocation recommender
+
 **Phase H: Future-Proofing (Long Term)**
 
 * **(Task H.1)** Explore Blockchain & IoT integrations.
+
+🔹 **Task H.2 – Multi-Entity Real-Time Consolidations**  
+   • Currency conversion service, inter-company elimination rules  
+   • Shared CoA & dimensions across entities
+
+🔹 **Task H.3 – Enterprise-Grade Security Enhancements**  
+   • SOC-2 controls tracking module  
+   • Role-based access overhaul, MFA enforcement, anomaly-login alerts
 
 ## 5. General Guidelines for Agent
 
