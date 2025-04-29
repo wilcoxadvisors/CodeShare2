@@ -2349,50 +2349,15 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
                   // Use postJournalEntry from the properly imported hook at component level
                   postJournalEntry.mutate(existingEntry.id);
                 } else {
-                  console.log('DEBUG: Creating new entry with POSTED status');
+                  console.log('DEBUG: Creating new entry using handleSubmit with saveAsDraft=false');
                   
-                  // Force status to be "posted" for this direct API submission
-                  const validLines = lines.filter(line => 
-                    line.accountId || parseFloat(unformatNumber(line.debit)) > 0 || parseFloat(unformatNumber(line.credit)) > 0
-                  );
-                  
-                  const formattedLines = validLines.map(line => {
-                    const debitValueStr = unformatNumber(line.debit);
-                    const creditValueStr = unformatNumber(line.credit);
-                    const debitValue = parseFloat(debitValueStr) || 0;
-                    const creditValue = parseFloat(creditValueStr) || 0;
-                    
-                    return {
-                      accountId: parseInt(line.accountId),
-                      entityCode: line.entityCode || defaultEntityCode,
-                      description: line.description,
-                      type: debitValue > 0 ? 'debit' : 'credit',
-                      amount: debitValue > 0 ? debitValue : creditValue,
-                      entityId
-                    };
-                  });
-                  
-                  const resolvedClientId = clientId || (accounts.length > 0 ? accounts[0].clientId : null);
-                  
-                  // Create the API payload with POSTED status explicitly set
-                  const entryData = {
-                    ...journalData,
-                    clientId: resolvedClientId,
-                    entityId,
-                    status: JournalEntryStatus.POSTED, // Explicitly set status to POSTED
-                    createdBy: user?.id,
-                    lines: formattedLines
-                  };
-                  
-                  console.log('DEBUG: Direct post API payload:', JSON.stringify(entryData, null, 2));
-                  
-                  // Call the API directly to create a posted entry
-                  createEntry.mutate(entryData);
+                  // Call handleSubmit with saveAsDraft=false which will handle the two-phase workflow for pending files
+                  handleSubmit(false);
                 }
               }}
               className="bg-green-600 hover:bg-green-700 relative"
               disabled={createEntry.isPending || updateEntry.isPending || !isBalanced || isUploading}
-              title={!isBalanced ? "Journal entry must be balanced before posting" : isUploading ? "Please wait while files are uploading" : ""}
+              title={!isBalanced ? "Journal entry must be balanced before posting" : isUploading ? "Please wait while files are uploading" : pendingFiles.length > 0 ? "Entry will be created as draft first to allow file uploads" : ""}
             >
               {(createEntry.isPending || updateEntry.isPending || isUploading) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
