@@ -171,6 +171,12 @@ Note:
     * 🔄 Implement Automatic Accrual Reversal feature (deferred new request)
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
     * **(AI Link - Future):** Consider hooks for "JE learning".
+    * **✅ Date & Attachment Reliability Guards (2025-04-29)**  
+      Added Cypress E2E test `cypress/e2e/journalEntry.spec.cy.ts` plus Jest unit tests for
+      `dateUtils.ts` and `fileUtils.ts`.  These prevent regressions in
+      • timezone-safe date handling, and  
+      • multi-file attachment CRUD (upload / download / delete).  
+      Test run script: `./run-tests.sh`.
 * **(Task B.3)** Accounting Modules: **NOT STARTED**
     * 📝 **Next explicit priority after completion of B.1 and B.2:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
     * 📝 Implement Accounts Receivable (AR) module.

@@ -1,0 +1,100 @@
+Below is a surgical-patch plan you can drop into instructions.md without deleting a single line of the existing file.
+Everything is written as insert-only blocks, grouped by where they should appear, so you (or the next agent) can copy/paste the chunks in the right spots.
+
+1. ▸ “Current Development Status → Phase 3 (Core Accounting Features)”
+append this bullet to the Task B.2 subsection
+
+javascript
+Copy
+Edit
+- **✅ Date & Attachment Reliability Guards (2025-04-29)**  
+  Added Cypress E2E test `cypress/e2e/journalEntry.spec.cy.ts` plus Jest unit tests for
+  `dateUtils.ts` and `fileUtils.ts`.  These prevent regressions in
+  • timezone-safe date handling, and  
+  • multi-file attachment CRUD (upload / download / delete).  
+  Test run script: `./run-tests.sh`.
+2. ▸ “Current Development Status → Phase 3 (Core Accounting Features)”
+immediately after the bullet you just added
+
+markdown
+Copy
+Edit
+- **✅ Centralised Utility Modules (2025-04-29)**
+  - `client/src/utils/dateUtils.ts` ⇢ `toLocalYMD`, `parseISOToLocal`, `isValidYMD`.
+  - `client/src/features/journal-entries/utils/fileUtils.ts` ⇢ `buildFileFetchUrl`,
+    `allowedMimeTypes`, `humanFileSize`.
+  - Re-wired **JournalEntryForm** to consume these helpers, eliminating duplicate
+    inline logic.
+3. ▸ “Current Development Status → Phase 4 (Website Content Management)”
+append to the checklist of completed tasks
+
+javascript
+Copy
+Edit
+✅ **AI/ML Service Hardening (Python micro-service) – 2025-04-29**  
+   • Up-versioned `python_service/ml_service.py` to expose `/predict/cash-flow` and  
+     `/anomaly/check` endpoints with Prophet & IsolationForest.  
+   • Added unit-test harness (`pytest` in `python_service/tests/`) ensuring model
+     serialisation & round-trip JSON schemas stay stable.
+4. ▸ “Phase F: AI/ML & Predictive Forecasting”
+replace the existing line “(PARTIALLY IMPLEMENTED)” with:
+
+(IN PROGRESS – Core services live, UX wiring remains)
+
+then insert these two bullets right under Task F.2
+
+pgsql
+Copy
+Edit
+✅ Exposed real-time insight channel via **Server-Sent Events** at
+   `GET /api/ai/stream/insights`.  
+✅ Front-end probe component `AIInsightsWidget.tsx` renders streaming tips on
+   Journal-Entry and Dashboard pages (feature-flagged behind `env.VITE_AI_STREAM`).
+5. ▸ “General Guidelines for Agent → Test Thoroughly”
+append
+
+markdown
+Copy
+Edit
+• **E2E baseline:** run `npm run cypress:open` before hand-offs.  
+• **Unit baseline:** `NODE_OPTIONS=--experimental-vm-modules npx jest`.  
+• **ML baseline:** `cd python_service && pytest`.
+6. ▸ “Code Quality & Cleanup Strategy”
+add at the end
+
+yaml
+Copy
+Edit
+Automated Security Scan:
+  Tooling: `npm audit --production`, `pip-audit`.
+  Action: block PRs introducing high-severity vulns; document medium-severity items.
+
+Performance Budget:
+  Lighthouse score ≥ 90 on Dashboard; API P95 latency ≤ 300 ms for core JE routes.
+7. ▸ New Appendix – “📄 Changelog (rolling)”
+append to the very bottom of instructions.md
+
+yaml
+Copy
+Edit
+---
+
+## 📄 Rolling Changelog (UTC)
+
+### 2025-04-29
+• Fixed off-by-one-day issue in JE dates (local → ISO)  
+• Enabled .msg & .eml attachments + bulk actions  
+• Introduced central date/file util modules  
+• Bootstrapped Cypress + Jest + PyTest suites  
+• Upgraded ML service with streaming insights
+
+### 2025-04-06
+… (previous entry) …
+(The new appendix keeps past notes intact while giving future agents a single place to jot incremental changes.)
+
+How to apply
+Open instructions.md.
+
+Locate each SECTION header above and paste the corresponding “insert-only” block right after the line indicated.
+
+Save. Done — no existing wording is removed, so historical context is preserved.
