@@ -833,12 +833,12 @@ function JournalEntryForm({ entityId, clientId, accounts, locations = [], entiti
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || '',  // Use referenceNumber to match server schema
-    date: existingEntry?.date ? new Date(existingEntry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: existingEntry?.date ? formatPickerDate(existingEntry.date) : formatPickerDate(new Date()),
     description: existingEntry?.description || '',
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || 'JE',
     supDocId: existingEntry?.supDocId || '',
-    reversalDate: existingEntry?.reversalDate ? new Date(existingEntry.reversalDate).toISOString().split('T')[0] : '',
+    reversalDate: existingEntry?.reversalDate ? formatPickerDate(existingEntry.reversalDate) : '',
   });
   
   // Get default entity code from entities list based on current entityId
