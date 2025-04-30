@@ -6,6 +6,7 @@
 * **High-Level Goal:** Build a best-in-class, scalable SaaS accounting platform, inspired by Odoo's open-source backend logic where applicable.
 * **Phased Approach:** Manual First -> API Automation -> AI/ML Enhancements -> Full Automation & ERP Features.
 * **Target Audience:** Small, medium, and large businesses.
+* **Infrastructure Strategy:** Infrastructure explicitly selected for scalability, affordability, and state-of-the-art AI/ML integration aligned with Wilcox Advisors' aggressive growth and forecasting-heavy data strategy.
 * **Tech Stack (Explicitly Updated for Optimized Performance and Scalability):**
   * **Frontend**: React (Vite, TypeScript, TanStack Query, Shadcn UI, recharts)
   * **Backend**: Node.js (Express, TypeScript), BullMQ (Job Queue)
@@ -131,7 +132,7 @@ Note:
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
-**Phase A: Stabilize Core Setup Flow (COMPLETED)**
+### Phase A: Stabilize Core Setup Flow (COMPLETED)
 
 * **(Task A.1)** ✅ Fix Final DB Save & Dashboard Update
 * **(Task A.2)** ✅ Fix Stepper Initialization
@@ -141,7 +142,7 @@ Note:
 * **Additional Completed Tasks:**
     * ✅ Dashboard Client Actions: View Details, Edit Client, Deactivate Client.
 
-**Phase B: Core Accounting Module (IN PROGRESS)**
+### Phase B: Core Accounting Module (IN PROGRESS)
 
 * **(Task B.1)** Customizable Chart of Accounts (CoA): **NEARLY COMPLETE**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`)
@@ -302,7 +303,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
    • Auto-post monthly depreciation JEs  
    • Disposal / partial-disposal workflow
 
-**Phase C: Website Content Management (NEARLY COMPLETE)**
+### Phase C: Website Content Management (NEARLY COMPLETE)
 
 * **(Task C.1)** ✅ Authentication & Backend: Authentication middleware verified and fixed, with proper user access control.
 * **(Task C.2)** ✅ Content Schema & Storage: Homepage content schema and storage methods created and verified.
@@ -320,7 +321,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
     * 🔄 Design AI content draft generation process
     * 🔄 Create admin review workflow for AI-generated content
 
-**Phase D: Reporting (Standard & Custom) & Data Collection**
+### Phase D: Reporting (Standard & Custom) & Data Collection
 
 * **(Task D.1)** Standard Reporting: Finalize/optimize backend logic (`consolidation-group-methods.ts`) for TB, IS, BS, CF reports. Build reliable frontend display components.
    • **Real-Time Dashboards (D.1.a)**  
@@ -337,7 +338,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
     * Prioritize state-of-the-art, innovative, customer-focused, easy-to-use solutions.
     * Create a great design (trustworthy, trendy, fun).
 
-**Phase E: API Integrations & Automation**
+### Phase E: API Integrations & Automation
 
 * **(Task E.1)** Implement Integrations: Connect to Plaid, Stripe, Gusto, Ramp/Concur etc.
 * **(Task E.2)** Automate JE Creation: From fetched API data (AI assistance).
@@ -348,7 +349,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
    • Connector SDK (`connectors/`) for custom integrations  
    • Real-time sync pub/sub using EventBridge → triggers Smart Events
 
-**Phase F: AI/ML & Predictive Forecasting (PARTIALLY IMPLEMENTED)**
+### Phase F: AI/ML & Predictive Forecasting (PARTIALLY IMPLEMENTED)
 
 * **(Task F.1) ✅ Python Service Integration:** 
     * ✅ Implemented `python_service/ml_service.py` with:
@@ -402,7 +403,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
    • Chat thread UI (`CopilotDrawer.tsx`) with task automation hooks  
    • Contextual suggestions: late invoices, budget overruns, etc.
 
-**Phase G: Future Enhancements**
+### Phase G: Future Enhancements
 
 * **(Task G.1)** ✅ Implement Client Edit/Deactivate (Done).
 * **(Task G.2)** Comprehensive Testing: Expand unit, integration, E2E tests.
@@ -419,7 +420,7 @@ Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) i
    • Project master, budgeting, time & expense capture  
    • AI-driven resource allocation recommender
 
-**Phase H: Future-Proofing (Long Term)**
+### Phase H: Future-Proofing (Long Term)
 
 * **(Task H.1)** Explore Blockchain & IoT integrations.
 
