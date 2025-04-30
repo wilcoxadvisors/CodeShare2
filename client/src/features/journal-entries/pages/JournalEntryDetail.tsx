@@ -149,16 +149,23 @@ function JournalEntryDetail() {
         formData.append('files', file);
       });
       
-      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/files`, {
-        method: 'POST',
-        data: formData,
-        onUploadProgress: (progressEvent: any) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
+      // Use axios for progress tracking
+      const axios = (await import('axios')).default;
+      
+      const response = await axios.post(
+        `/api/entities/${entityId}/journal-entries/${entryId}/files`,
+        formData,
+        {
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
+            }
           }
         }
-      });
+      );
+      
+      return response.data;
     },
     onSuccess: (response) => {
       setUploading(false);
