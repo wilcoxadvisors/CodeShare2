@@ -63,9 +63,6 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
           `/api/journal-entries/${journalEntryId}/files`, 
           formData,
           {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
