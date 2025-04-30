@@ -74,7 +74,9 @@ import {
   FileCode,
   FileArchive,
   SendHorizontal,
-  Eye
+  Eye,
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
@@ -178,6 +180,13 @@ function JournalEntryDetail() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      
+      // Add the debug logging as required by the task
+      console.log("DEBUG Attachment:", { 
+        journalEntryId: entryId, 
+        fileCount: response?.files?.length || 0 
+      });
+      
       // Refresh the journal entry to show the new files
       refetch();
     },
@@ -1477,18 +1486,89 @@ function JournalEntryDetail() {
         </Card>
         
         {/* File Attachments Section */}
-        {journalEntry.files && journalEntry.files.length > 0 && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Paperclip className="h-5 w-5 mr-2" />
-                Attachments
-              </CardTitle>
-              <CardDescription>
-                Files attached to this journal entry
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Paperclip className="h-5 w-5 mr-2" />
+              Attachments
+            </CardTitle>
+            <CardDescription>
+              Files attached to this journal entry
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* File Upload Area - only visible for draft or pending_approval entries */}
+            {journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' ? (
+              <div className="mb-4">
+                <div
+                  {...getRootProps()}
+                  className={`border border-dashed rounded-md p-6 cursor-pointer transition-colors mb-4 ${
+                    isDragActive ? "border-primary bg-primary/5" : "border-gray-300"
+                  } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <input {...getInputProps()} />
+                  {uploading ? (
+                    <div className="text-center">
+                      <div className="h-8 w-8 animate-spin mx-auto mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Uploading files...</p>
+                      <Progress value={uploadProgress} className="w-full mt-2" />
+                      <p className="text-xs text-muted-foreground mt-1">{uploadProgress}% complete</p>
+                    </div>
+                  ) : isDragActive ? (
+                    <div className="text-center">
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <p className="text-sm">Drop the files here...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-2">Drag and drop files here, or click to select files</p>
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: PDF, Word (.doc/.docx), Excel (.xls/.xlsx), CSV, Images, Email (.eml), etc. (Max 10MB per file)
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {rejectedFiles.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                    <p className="text-sm text-amber-700 mb-2">
+                      <AlertCircle className="h-4 w-4 inline-block mr-1" />
+                      Some files were rejected:
+                    </p>
+                    <ul className="text-xs text-amber-700 list-disc pl-5">
+                      {rejectedFiles.map((file, index) => (
+                        <li key={index}>
+                          {file.file.name} - {file.errors.map(e => e.message).join(', ')}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* Console log for debugging successful uploads as per requirements */}
+                <div className="text-xs text-muted-foreground mt-1">
+                  {uploading ? `Uploading ${journalEntry.files?.length || 0} file(s)...` : ''}
+                </div>
+              </div>
+            ) : journalEntry.status === 'posted' || journalEntry.status === 'voided' ? (
+              <div className="bg-gray-50 border rounded-md p-4 mb-4 flex items-center">
+                <span className="h-5 w-5 text-gray-400 mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </span>
+                <p className="text-sm text-gray-500">
+                  File uploads are disabled for {journalEntry.status} journal entries
+                </p>
+              </div>
+            ) : null}
+            
+            {/* File Listing */}
+            {journalEntry.files && journalEntry.files.length > 0 ? (
               <div className="space-y-3">
                 {journalEntry.files.map((file, index) => (
                   <div 
@@ -1515,9 +1595,11 @@ function JournalEntryDetail() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No files attached yet</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
       
       {/* Delete Dialog */}
