@@ -48,6 +48,33 @@ Note:
 * **ERP Evolution:** The long-term goal is to expand the feature set so the platform can be sold and used as a standalone ERP system directly by client finance teams.
 * **Future-Proofing:** Considerations for Blockchain audits and IoT expense tracking are planned for later phases.
 
+### Entitlements-by-Plan + Role-Based Access *(Design – implementation deferred)*
+
+| Layer | Purpose |
+|-------|---------|
+| **Plan** (Basic / Pro / Enterprise) | Enables or disables big feature groups (e.g., Batch JE Upload, Custom Reports). |
+| **Service Style** (Self / Assisted / Outsourced) | Governs how much work the client vs. Wilcox staff perform. |
+| **Role** (Client Staff, Reviewer, Wilcox Accountant, Admin) | Fine-grained permissions within a plan & service style. |
+
+**Data tables**
+
+```sql
+plans(id, code, name);
+entitlements(id, plan_id, feature_key, is_enabled);
+clients(id, service_type, plan_id);
+users(id, client_id, role);
+```
+
+**Helper**
+
+```ts
+import { can } from "@/server/authz/entitlements";
+// Example:
+if (!can(user, "je:batchUpload")) return res.status(403);
+```
+
+Status: Architecture approved, development scheduled for a post-MVP phase (Phase G / H). No code required now, but new features should be designed service-style-agnostic to avoid refactors.
+
 ## 2.1 Explicit AI/ML Technology Rationale:
 
 * Explicit choice of Spark MLlib, Dask, and XGBoost ensures scalable, efficient processing for large-scale forecasting (1TB+ datasets).
@@ -144,6 +171,17 @@ Note:
 
 ### Phase B: Core Accounting Module (IN PROGRESS)
 
+#### UI / Navigation
+
+**Client Portal Tabs**
+
+- Dashboard  
+- Journal Entries  
+- Reports  
+- **Dimensions** – global per-client master data (Admin = CRUD, Staff = read-only)  
+- Smart Rules  *(validation builder – future)*  
+- Smart Events *(automation builder – future)*
+
 * **(Task B.1)** Customizable Chart of Accounts (CoA): **NEARLY COMPLETE**
     * ✅ Design/Finalize hierarchical schema (`shared/schema.ts`)
     * ✅ Implement backend CRUD API (`server/accountRoutes.ts`, `/accounts/tree`)
@@ -183,7 +221,15 @@ Note:
         * 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
         * 🔄 UI location: Journal Entry Form (shown only in Edit mode)
         * 🔄 Need systematic debugging (backend save/list, frontend fetch/render)
-    * 🔄 Finalize and verify batch journal entry upload functionality and UI
+        
+* **(Task B.2.1)** Dimensions & Smart Rules *(MUST precede Batch JE Upload)*
+    * Create client-level master-data tables: **dimensions**, **dimension_values**, **tx_dimension_link**
+    * Seed system dimensions: **Department, Location, Customer, Vendor, Employee, Project, Class, Item**
+    * Add an **Admin-only "Dimensions" tab** in the dashboard; client portal gets a read-only clone later
+    * Deliver a **Smart Rules MVP** (JSON validation) that plugs into the existing JE validator
+    * **Batch Journal Entry Upload** will attach `dimensionTags[]` only after this scaffold is live
+
+    * 🔄 After File Attachments, complete Dimensions & Smart Rules (B.2.1), then implement Batch JE Upload
     * 🔄 Expand comprehensive automated testing covering all key edge cases
     * 🔄 Implement Automatic Accrual Reversal feature (deferred new request)
     * ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
