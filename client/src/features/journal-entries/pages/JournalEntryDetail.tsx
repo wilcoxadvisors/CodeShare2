@@ -1542,7 +1542,7 @@ function JournalEntryDetail() {
                     <ul className="text-xs text-amber-700 list-disc pl-5">
                       {rejectedFiles.map((file, index) => (
                         <li key={index}>
-                          {file.file.name} - {file.errors.map(e => e.message).join(', ')}
+                          {file.file.name} - {file.errors.map((e: {message: string}) => e.message).join(', ')}
                         </li>
                       ))}
                     </ul>
