@@ -641,9 +641,17 @@ function AttachmentSection({
                       </TableCell>
                       <TableCell>{formatBytes(file.size)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center">
-                          <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">Pending</span>
-                          {new Date(file.addedAt).toLocaleTimeString()}
+                        <div className="flex flex-col space-y-1">
+                          <div className="flex items-center">
+                            <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">Pending</span>
+                            {new Date(file.addedAt).toLocaleTimeString()}
+                          </div>
+                          {uploadFileMutation.isPending && (
+                            <div className="w-full">
+                              <Progress value={uploadProgress} className="h-1" />
+                              <span className="text-xs text-muted-foreground">{uploadProgress}%</span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
