@@ -5,6 +5,9 @@
  * 1. Creator of journal entry can delete attachments
  * 2. Users with JE_FILES_ADMIN role can delete attachments
  * 3. Other users cannot delete attachments (403 Forbidden)
+ * 
+ * Important: This test is intended to be run with the server already started.
+ * Run with --detectOpenHandles --runInBand flags.
  */
 import { exec } from 'child_process';
 import { promisify } from 'util';
