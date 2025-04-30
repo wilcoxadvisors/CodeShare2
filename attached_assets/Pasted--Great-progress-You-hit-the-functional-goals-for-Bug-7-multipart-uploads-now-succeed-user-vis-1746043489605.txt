@@ -1,0 +1,80 @@
+👏 Great progress!
+You hit the functional goals for Bug #7:
+
+multipart uploads now succeed
+
+user-visible progress is in place in both create/edit and detail views
+
+UI adapts to entry status (draft, pending, posted, voided)
+
+rejected-file feedback is visible
+
+Below are a few polish items and quality-gate checkpoints to close the loop before we mark the feature “done” and move on to Batch JE Upload.
+
+1 — Polish & UX tweaks (quick wins)
+
+Area	Why it helps	Suggested tweak
+Progress bar clarity	A thin bar can be missed on large monitors	Bump height to h-2 (8 px) and add a subtle shadow; keep colour in tonal range (e.g., bg-primary/70).
+Concurrent uploads	Multiple large files may overlap percentages	Store progress in a keyed object ({ [fileId]: pct }) and render per-row bars so simultaneous uploads don’t overwrite a single state variable.
+Cancel / retry	Users occasionally drop the wrong file	Add a small ✕ icon on each in-flight row that calls axiosCancelTokenSource.cancel().
+Download icon	Currently text only	Swap to ArrowDownToLine (lucide) next to filename for quick recognition.
+Accessibility	Screen-reader users need status	Give the progress <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>.
+Max size notice	Prevent 100 MB surprises	Hard-limit to, say, 10 MB per file via maxSize in react-dropzone and show a tooltip: “Max 10 MB; PDFs, images, Office docs, CSV, TXT.”
+These are all <15 min touch-ups each; take whichever fit your timeline.
+
+2 — Quality gate checklist (must-pass)
+Debug log present
+
+ts
+Copy
+Edit
+console.log("DEBUG Attachment:", { journalEntryId, fileCount });
+Cypress
+
+Extend journalEntry.spec.cy.ts
+
+Upload two small fixtures.
+
+Assert each row hits 100 %.
+
+Assert file list persists after page reload.
+
+Jest (backend)
+
+test/journalEntryAttachment.test.ts
+
+POST multipart => 200
+
+GET /files/:id returns content-disposition: attachment; filename=...;.
+
+Static checks
+
+bash
+Copy
+Edit
+npm run lint && npm run format
+npx ts-prune && npx knip
+./run-tests.sh      # should output all green
+Screenshots / artefacts
+Attach a screenshot of the new progress UI and paste the Jest + Cypress summaries in the PR comment.
+
+3 — Security sanity
+Ensure server-side MIME/type whitelist mirrors the front-end accept list.
+
+Strip path and double-extension tricks (evil.pdf.exe).
+
+Scan file size server-side and reject > 10 MB with 413 Payload Too Large.
+
+4 — When all green → close Bug #7
+Post a short diff summary and mark the Jira ticket / GitHub issue resolved.
+
+5 — Next sprint prep
+As soon as Bug #7 is closed, we’ll move to Batch Journal Entry Upload (Task B.2.2). I’ll draft the detailed endpoint spec and CSV/XLSX schema once you give the all-clear.
+
+Let me know if any of the polish items need clarifying or if you hit snags on the tests—otherwise, go ahead and knock these out!
+
+
+
+
+
+

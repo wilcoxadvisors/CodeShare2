@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
@@ -98,9 +99,12 @@ function JournalEntryDetail() {
   
   // File upload state
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0); // Global progress (legacy)
+  const [uploadProgressMap, setUploadProgressMap] = useState<Record<string, number>>({}); // Per-file progress
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]); // Currently uploading files
   const [rejectedFiles, setRejectedFiles] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cancelTokenSourceRef = useRef<any>(null);
   
   // Allowed file extensions and mime types
   const ALLOWED_FILE_TYPES = [
@@ -135,6 +139,21 @@ function JournalEntryDetail() {
     return true;
   };
   
+  // Function to cancel ongoing uploads
+  const cancelUpload = useCallback(() => {
+    if (cancelTokenSourceRef.current) {
+      cancelTokenSourceRef.current.cancel('Upload cancelled by user');
+      setUploading(false);
+      setUploadProgress(0);
+      setUploadProgressMap({});
+      setUploadingFiles([]);
+      toast({
+        title: 'Cancelled',
+        description: 'File upload cancelled',
+      });
+    }
+  }, []);
+
   // File upload mutation
   const uploadFile = useMutation({
     mutationFn: async (files: File[]) => {
@@ -144,6 +163,22 @@ function JournalEntryDetail() {
       const entityId = currentEntity?.id;
       if (!entityId) throw new Error('Entity ID is required to upload files');
       
+      // Create a new cancel token source
+      const CancelToken = axios.CancelToken;
+      const source = CancelToken.source();
+      cancelTokenSourceRef.current = source;
+      
+      // Set up the uploading state with the files being uploaded
+      setUploadingFiles(files);
+      
+      // Initialize progress for each file
+      const initialProgress = files.reduce((acc, file) => {
+        acc[file.name] = 0;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      setUploadProgressMap(initialProgress);
+      
       const formData = new FormData();
       
       // Add all files to the formData
@@ -151,17 +186,24 @@ function JournalEntryDetail() {
         formData.append('files', file);
       });
       
-      // Use axios for progress tracking
-      const axios = (await import('axios')).default;
-      
       const response = await axios.post(
         `/api/entities/${entityId}/journal-entries/${entryId}/files`,
         formData,
         {
+          cancelToken: source.token,
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              
+              // Update the global progress state (legacy)
               setUploadProgress(percentCompleted);
+              
+              // Update the per-file progress assuming equal distribution
+              const newProgressMap = { ...initialProgress };
+              files.forEach(file => {
+                newProgressMap[file.name] = percentCompleted;
+              });
+              setUploadProgressMap(newProgressMap);
             }
           }
         }
@@ -172,6 +214,8 @@ function JournalEntryDetail() {
     onSuccess: (response) => {
       setUploading(false);
       setUploadProgress(0);
+      setUploadProgressMap({});
+      setUploadingFiles([]);
       toast({
         title: 'Success',
         description: 'Files uploaded successfully',
@@ -191,13 +235,20 @@ function JournalEntryDetail() {
       refetch();
     },
     onError: (error: any) => {
+      if (axios.isCancel(error)) {
+        console.log('Upload cancelled:', error.message);
+      } else {
+        toast({
+          title: 'Error',
+          description: `Failed to upload files: ${error.message}`,
+          variant: 'destructive',
+        });
+      }
+      
       setUploading(false);
       setUploadProgress(0);
-      toast({
-        title: 'Error',
-        description: `Failed to upload files: ${error.message}`,
-        variant: 'destructive',
-      });
+      setUploadProgressMap({});
+      setUploadingFiles([]);
     }
   });
   
@@ -1500,39 +1551,70 @@ function JournalEntryDetail() {
             {/* File Upload Area - only visible for draft or pending_approval entries */}
             {journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' ? (
               <div className="mb-4">
-                <div
-                  {...getRootProps()}
-                  className={`border border-dashed rounded-md p-6 cursor-pointer transition-colors mb-4 ${
-                    isDragActive ? "border-primary bg-primary/5" : "border-gray-300"
-                  } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <input {...getInputProps()} />
-                  {uploading ? (
-                    <div className="text-center">
-                      <div className="h-8 w-8 animate-spin mx-auto mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-                        </svg>
+                {!uploading && (
+                  <div
+                    {...getRootProps()}
+                    className={`border border-dashed rounded-md p-6 cursor-pointer transition-colors mb-4 ${
+                      isDragActive ? "border-primary bg-primary/5" : "border-gray-300"
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    {isDragActive ? (
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                        <p className="text-sm">Drop the files here...</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">Uploading files...</p>
-                      <Progress value={uploadProgress} className="w-full mt-2" />
-                      <p className="text-xs text-muted-foreground mt-1">{uploadProgress}% complete</p>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-2">Drag and drop files here, or click to select files</p>
+                        <p className="text-xs text-muted-foreground">
+                          Supported formats: PDF, Word (.doc/.docx), Excel (.xls/.xlsx), CSV, Images, Email (.eml), etc. (Max 10MB per file)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {uploading && uploadingFiles.length > 0 && (
+                  <div className="border rounded-md p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium">Uploading Files</h3>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={cancelUpload}
+                        className="h-8 px-2 text-destructive"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
                     </div>
-                  ) : isDragActive ? (
-                    <div className="text-center">
-                      <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <p className="text-sm">Drop the files here...</p>
+                    
+                    {/* Per-file progress indicators */}
+                    <div className="space-y-3">
+                      {uploadingFiles.map((file, index) => (
+                        <div key={file.name} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              {getFileIcon(file.type || 'application/octet-stream')}
+                              <span className="text-sm font-medium">{file.name}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{uploadProgressMap[file.name] || 0}%</span>
+                          </div>
+                          <Progress 
+                            value={uploadProgressMap[file.name] || 0} 
+                            className="w-full h-2 shadow-sm bg-primary/20" 
+                            role="progressbar"
+                            aria-valuenow={uploadProgressMap[file.name] || 0}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-2">Drag and drop files here, or click to select files</p>
-                      <p className="text-xs text-muted-foreground">
-                        Supported formats: PDF, Word (.doc/.docx), Excel (.xls/.xlsx), CSV, Images, Email (.eml), etc. (Max 10MB per file)
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 {rejectedFiles.length > 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
                     <p className="text-sm text-amber-700 mb-2">
