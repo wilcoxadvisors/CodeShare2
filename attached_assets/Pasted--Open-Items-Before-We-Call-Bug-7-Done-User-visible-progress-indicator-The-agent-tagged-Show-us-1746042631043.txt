@@ -1,0 +1,95 @@
+🚧 Open Items Before We Call Bug #7 “Done”
+User-visible progress indicator
+The agent tagged “Show users the progress…” but hasn’t pushed the UI code yet.
+
+Frontend:
+
+Expose the existing onUploadProgress ratio (progressEvent.loaded / progressEvent.total) to state.
+
+Add a small <LinearProgress> (Shadcn UI) or percentage chip next to each file in both JournalEntryForm and JournalEntryDetail.
+
+Edge cases: zero-byte files, network drop, >1 simultaneous uploads.
+
+Cypress / Jest regression tests (brief still outstanding)
+
+Cypress: Extend cypress/e2e/journalEntry.spec.cy.ts to:
+
+Drag-drop two files (e.g., sample1.pdf, sample2.xlsx).
+
+Wait for each progress bar to hit 100 %.
+
+Assert the file rows render with correct names and are downloadable.
+
+Jest: Integration test already drafted in my prior brief—ensure it’s committed.
+
+Explicit debug logging
+
+ts
+Copy
+Edit
+console.log("DEBUG Attachment:", { journalEntryId, fileCount: files.length });
+Confirm this exists after a successful upload; it’s a contract for future troubleshooting.
+
+Quality Gate
+Builder must run:
+
+bash
+Copy
+Edit
+npm run lint && npm run format
+ts-prune && knip
+./run-tests.sh
+and paste the green summary in their status reply.
+
+📋 Next Directive for Builder Agent (copy/paste)
+markdown
+Copy
+Edit
+### Sprint B.2.1b – Finish JE Attachment UX & Tests
+
+1. **Progress Indicator**
+   * Add visual upload progress (<LinearProgress> or % text) in:
+     - JournalEntryForm.tsx (edit mode)
+     - JournalEntryDetail.tsx
+   * Show per-file progress; remove indicator once “uploaded”.
+
+2. **Regression Tests**
+   * Cypress: multi-file happy path (upload → progress 100 % → list renders).
+   * Jest (backend): multipart fixture upload + GET download stream.
+
+3. **Debug Log**
+   * Ensure `console.log("DEBUG Attachment:", { journalEntryId, fileCount })` fires after successful upload.
+
+4. **Quality Gate**
+   ```bash
+   npm run lint && npm run format
+   ts-prune && knip
+   ./run-tests.sh
+Commit only when all pass; attach test summary screenshot.
+
+Status Reply
+
+✅ Progress UI screenshot
+
+✅ Test summaries (Jest & Cypress)
+
+✅ Diff link (<10-line summary)
+
+yaml
+Copy
+Edit
+
+---
+
+### 🛣 Once Bug #7 is fully closed
+
+- **Begin Batch JE Upload (Task B.2.2)**  
+  *Endpoint spec, CSV/XLSX parser, row-level error map, dimension-tag placeholder.*  
+- **Kick-off Dimensions & Smart Events scaffold (Task B.4)**.
+
+Let me know if you’d like deeper UI wireframes for the progress bar or additional acceptance criteria before the Builder proceeds.
+
+
+
+
+
