@@ -1,0 +1,96 @@
+🛠️ Builder Agent Work Order — Revise instructions.md
+Scope: Edit CodeShare/instructions.md only.
+Goal: Capture the latest architectural decisions so future tasks reference a single source of truth.
+
+1 — Insert “Dimensions First” Step (Phase B)
+Add immediately after the current Task B.2 (Journal Entries) section:
+
+markdown
+Copy
+Edit
+#### B.2.1  Dimensions & Smart Rules  *(MUST precede Batch JE Upload)*
+
+- Create client-level master-data tables: **dimensions**, **dimension_values**, **tx_dimension_link**.  
+- Seed system dimensions: **Department, Location, Customer, Vendor, Employee, Project, Class, Item**.  
+- Add an **Admin-only “Dimensions” tab** in the dashboard; client portal gets a read-only clone later.  
+- Deliver a **Smart Rules MVP** (JSON validation) that plugs into the existing JE validator.  
+- **Batch Journal Entry Upload** will attach `dimensionTags[]` only after this scaffold is live.
+Replace any line that said “implement Batch JE Upload right after File Attachments” with:
+
+“After File Attachments, complete Dimensions & Smart Rules (B.2.1), then implement Batch JE Upload.”
+
+2 — Add UI Navigation Note
+Under the existing UI / Navigation section, append:
+
+markdown
+Copy
+Edit
+**Client Portal Tabs**
+
+- Dashboard  
+- Journal Entries  
+- Reports  
+- **Dimensions** – global per-client master data (Admin = CRUD, Staff = read-only)  
+- Smart Rules  *(validation builder – future)*  
+- Smart Events *(automation builder – future)*
+3 — NEW Section: “Entitlements-by-Plan & Role Access” (design only)
+Append near the end of Business Model & Permissions:
+
+markdown
+Copy
+Edit
+### Entitlements-by-Plan + Role-Based Access  *(Design – implementation deferred)*
+
+| Layer | Purpose |
+|-------|---------|
+| **Plan** (Basic / Pro / Enterprise) | Enables or disables big feature groups (e.g., Batch JE Upload, Custom Reports). |
+| **Service Style** (Self / Assisted / Outsourced) | Governs how much work the client vs. Wilcox staff perform. |
+| **Role** (Client Staff, Reviewer, Wilcox Accountant, Admin) | Fine-grained permissions within a plan & service style. |
+
+**Data tables**
+
+```sql
+plans(id, code, name);
+entitlements(id, plan_id, feature_key, is_enabled);
+clients(id, service_type, plan_id);
+users(id, client_id, role);
+Helper
+
+ts
+Copy
+Edit
+import { can } from "@/server/authz/entitlements";
+// Example:
+if (!can(user, "je:batchUpload")) return res.status(403);
+Status: Architecture approved, development scheduled for a post-MVP phase (Phase G / H). No code required now, but new features should be designed service-style-agnostic to avoid refactors.
+
+yaml
+Copy
+Edit
+
+---
+
+### 4 — Housekeeping
+
+1. **Run** any markdown linter/formatter (`npm run lint:md` or equivalent) to keep style consistent.  
+2. **Commit message**:
+
+docs: update instructions.md — Dimensions-first sequencing + Entitlements design
+
+yaml
+Copy
+Edit
+
+---
+
+### ✅ Completion Checklist
+
+- [ ] Dimensions-first sequencing documented (B.2.1).  
+- [ ] UI navigation updated with **Dimensions** tab.  
+- [ ] Entitlements-by-Plan section added (clearly marked “design / deferred”).  
+- [ ] Old “Batch before Dimensions” wording removed.  
+- [ ] Single commit pushed with message above.
+
+---
+
+> *No application code, tests, or schema files should be modified in this task—only `instructions.md`.*
