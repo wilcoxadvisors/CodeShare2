@@ -50,7 +50,7 @@ Note:
 - **ERP Evolution:** The long-term goal is to expand the feature set so the platform can be sold and used as a standalone ERP system directly by client finance teams.
 - **Future-Proofing:** Considerations for Blockchain audits and IoT expense tracking are planned for later phases.
 
-### Entitlements-by-Plan + Role-Based Access _(Design – implementation deferred)_
+### Entitlements-by-Plan + Role-Based Access Control (RBAC) _(Implementation Priority after Dimensions)_
 
 | Layer                                                       | Purpose                                                                         |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -58,16 +58,67 @@ Note:
 | **Service Style** (Self / Assisted / Outsourced)            | Governs how much work the client vs. Wilcox staff perform.                      |
 | **Role** (Client Staff, Reviewer, Wilcox Accountant, Admin) | Fine-grained permissions within a plan & service style.                         |
 
-**Data tables**
+**Data Schema** (in `shared/schema.ts`):
 
-```sql
-plans(id, code, name);
-entitlements(id, plan_id, feature_key, is_enabled);
-clients(id, service_type, plan_id);
-users(id, client_id, role);
+```ts
+export const plans = pgTable('plans', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const features = pgTable('features', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category').notNull(),
+  isActive: boolean('is_active').notNull().default(true)
+});
+
+export const entitlements = pgTable('entitlements', {
+  id: serial('id').primaryKey(),
+  planId: integer('plan_id').references(() => plans.id).notNull(),
+  featureId: integer('feature_id').references(() => features.id).notNull(),
+  isEnabled: boolean('is_enabled').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const roles = pgTable('roles', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  isSystem: boolean('is_system').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true)
+});
+
+export const permissions = pgTable('permissions', {
+  id: serial('id').primaryKey(),
+  roleId: integer('role_id').references(() => roles.id).notNull(),
+  featureId: integer('feature_id').references(() => features.id).notNull(),
+  accessLevel: text('access_level').notNull(), // 'none', 'read', 'write', 'admin'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
 ```
 
-**Helper**
+**Implementation Plan**:
+
+1. First implement Dimensions framework (Task B.2.1)
+2. Then implement Entitlements & RBAC:
+   - Create seed data for plans, features, roles
+   - Implement permission checks in API routes
+   - Build admin UI for managing entitlements
+   - Add client plan selection to onboarding
+3. Future enhancement: custom role creation
+
+**Middleware Helper**:
 
 ```ts
 import { can } from "@/server/authz/entitlements";
@@ -226,15 +277,26 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     - 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
     - 🔄 UI location: Journal Entry Form (shown only in Edit mode)
     - 🔄 Need systematic debugging (backend save/list, frontend fetch/render)
-* **(Task B.2.1)** Dimensions & Smart Rules _(MUST precede Batch JE Upload)_
+* **(Task B.2.1)** Dimensions & Smart Rules _(MUST PRECEDE BATCH JE UPLOAD)_
 
-  - Create client-level master-data tables: **dimensions**, **dimension_values**, **tx_dimension_link**
+  - Create client-level master-data tables in `shared/schema.ts`:
+    - **dimensions**: (id, entityId, code, name, description, isActive, isRequired, allowCustomValues)
+    - **dimension_values**: (id, dimensionId, code, name, description, isActive)
+    - **tx_dimension_link**: (id, journalEntryLineId, dimensionId, dimensionValueId)
   - Seed system dimensions: **Department, Location, Customer, Vendor, Employee, Project, Class, Item**
-  - Add an **Admin-only "Dimensions" tab** in the dashboard; client portal gets a read-only clone later
-  - Deliver a **Smart Rules MVP** (JSON validation) that plugs into the existing JE validator
-  - **Batch Journal Entry Upload** will attach `dimensionTags[]` only after this scaffold is live
-
-  - 🔄 After File Attachments, complete Dimensions & Smart Rules (B.2.1), then implement Batch JE Upload
+  - Add **Admin-only "Dimensions" management tab** in dashboard with:
+    - List/Create/Edit/Deactivate dimensions
+    - List/Create/Edit/Deactivate dimension values
+    - Assign default dimension values to accounts
+  - Build **Client Portal read-only Dimensions tab** for reference
+  - Implement a **Smart Rules MVP** (JSON validation):
+    - Required dimensions by account type
+    - Dimension-value constraints by account
+    - Validation hooks that plug into existing JE validator
+  - Implementation sequence:
+    1. ✅ Fix File Attachments (Bug #7) - first priority
+    2. 🔄 Complete Dimensions & Smart Rules (B.2.1) - second priority
+    3. 🔄 Implement Batch JE Upload - third priority (depends on Dimensions)
   - 🔄 Expand comprehensive automated testing covering all key edge cases
   - 🔄 Implement Automatic Accrual Reversal feature (deferred new request)
   - ✅ Refactored Journal Entry storage logic to `server/storage/journalEntryStorage.ts`.
