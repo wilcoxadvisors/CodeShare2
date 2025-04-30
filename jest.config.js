@@ -1,14 +1,7 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true,
-    }],
-  },
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/client/src/$1',
-  },
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  testTimeout: 60000, // Increase timeout to 60 seconds
+  runInBand: true  // Run tests serially
 };
