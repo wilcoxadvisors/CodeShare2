@@ -89,7 +89,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     * **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
 * **Phase 3 (Core Accounting Features):** IN PROGRESS.
     * **Current Update:** Task B.1 (Chart of Accounts) is NEARLY COMPLETE. Fixed account update logic to allow name/active/parentId changes with transactions, while correctly blocking accountCode/type changes. Fixed UI to disable restricted fields when editing accounts with transactions. Still need to finalize UI/UX and ensure consistency across multiple entities.
-    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Manual JE workflow now functional with Create, Edit, Post, Void, and Reverse operations working correctly. The current focus is on implementing/fixing the File Attachment functionality for journal entries (#7 - multi-file, drag-drop, list, download, delete). After this is complete, we will verify batch journal entry upload functionality.
+    * **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Manual JE workflow now functional with Create, Edit, Post, Void, and Reverse operations working correctly. The current focus is on implementing/fixing the File Attachment functionality for journal entries (#7 - multi-file, drag-drop, list, download, delete). After this is complete, we will implement Dimensions & Smart Rules (B.2.1), and then proceed to Batch Journal Entry upload functionality.
     * **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
         * **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
         * **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -130,7 +130,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     
     * **🎯 Immediate Next Steps:**
         * Begin AI integration planning for automated blog content generation.
-        * Begin implementing the accounting module, focusing on batch journal entry uploads.
+        * Begin implementing the accounting module, focusing first on file attachments, then Dimensions & Smart Rules (B.2.1), and finally batch journal entry uploads.
         * Plan for analytics dashboard to track website content performance.
 
 ### Verification Status (COMPLETED):
@@ -155,7 +155,8 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 - 📝 Review UI/UX verification document for content management components.
 - 📝 Focus on debugging and completing Journal Entry File Attachment functionality (#7).
 - 📝 Begin AI integration planning for blog content generation.
-- 📝 After Journal Entry File Attachments are complete, move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
+- 📝 After Journal Entry File Attachments are complete, implement **Task B.2.1: Dimensions & Smart Rules** and then proceed to Batch Journal Entry uploads.
+- 📝 After the Journal Entry feature set is complete, move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
 
@@ -243,7 +244,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 
 ### 🚀 Post-MVP JE Enhancement Directions (Prioritized)
 
-Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) is ready:
+Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.2.1) is ready:
 
 1. **Batch Journal-Entry Upload**
    * Endpoint: `POST /api/journal-entries/batch`
@@ -495,8 +496,9 @@ Explicit upfront costs documented:
 
 **Explicit Priority Order:**
 1. Complete debugging of JE File Attachment Bug (#7).
-2. Implement batch JE uploads (endpoint `POST /api/journal-entries/batch`, CSV/XLSX support, explicit validation).
-3. Begin Dimensions & Smart Events implementation as per detailed spec in Task B.4.
+2. Implement Dimensions & Smart Rules (Task B.2.1).
+3. Only after B.2.1 is complete, implement Batch Journal Entry uploads (endpoint `POST /api/journal-entries/batch`, CSV/XLSX support, explicit validation).
+4. Begin expanding Dimensions & Smart Events implementation as per detailed spec in Task B.4.
 
 **Explicit Standards to Follow:**
 * Modularize code explicitly, remove unused logic regularly (`npx ts-prune`, `npx knip`).
