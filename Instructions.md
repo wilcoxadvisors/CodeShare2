@@ -153,6 +153,8 @@ Note:
         * ✅ Edit (Draft)
         * ✅ Post (from Draft/Approved)
         * ✅ Void (Admin only, requires reason)
+    * 🔄 Complete File Attachment mechanism
+        * Fix File Attachment bug (#7)
         * ✅ Reverse (creates Draft, copies entityCode)
         * ✅ UI updates correctly with state changes
     * ✅ JE List display fixed (Totals, Reference, ID)
@@ -177,6 +179,46 @@ Note:
       • timezone-safe date handling, and  
       • multi-file attachment CRUD (upload / download / delete).  
       Test run script: `./run-tests.sh`.
+
+#### Post-MVP JE Enhancement Directions (Prioritized)
+
+Once the File-Attachment bug (#7) is fixed and Dimensions framework (Task B.4) is ready:
+
+1. **Batch Journal-Entry Upload**
+   * Endpoint: `POST /api/journal-entries/batch`
+   * Accept CSV/XLSX with validation (debit=credit, Smart Rules)
+   * Map imported rows to dimension tags; return row-level error array
+
+2. **Attachment Re-use**
+   * Consolidate drag-drop zone for both single JEs and batch uploads
+   * Add "Attach file to every JE in batch" toggle
+
+3. **Dimension Chips in Line Grid**
+   * Show dimension values as removable chips next to each line
+   * Persist to `tx_dimension_link` table
+
+4. **Bulk-Paste / Keyboard Shortcuts**
+   * Excel-style paste (`Ctrl+V`) and Tab navigation in JE grid
+
+5. **Accrual Auto-Reversal**
+   * "Accrual" flag → schedule reversing JE on user-selected date
+
+6. **Lifecycle & EventBridge Hooks**
+   * Publish `je.lifecycle.created` and `je.lifecycle.approved` events
+   * Enable Smart Events to react to these hooks
+
+7. **Performance / UX Polish**
+   * Virtualised rows (1,000+ lines)
+   * Consistent error toasts from Smart Rules engine
+
+8. **i18n Currency & Separators**
+   * Honor tenant locale for symbols and thousand/decimal separators
+
+9. **Docs & Tests**
+   * Swagger/OpenAPI update
+   * Cypress flow: upload → validate → post batch
+   * Jest unit tests for file parser edge-cases
+
 * **(Task B.3)** Accounting Modules: **NOT STARTED**
     * 📝 **Next explicit priority after completion of B.1 and B.2:** Implement Accounts Payable (AP) backend foundation (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
     * 📝 Implement Accounts Receivable (AR) module.
