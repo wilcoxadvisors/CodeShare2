@@ -10,7 +10,7 @@ TEST_TYPE=${1:-"all"}
 
 if [ "$TEST_TYPE" = "unit" ] || [ "$TEST_TYPE" = "all" ]; then
   echo "\n📋 Running unit tests..."
-  npx jest test/*.test.ts
+  npx jest --config=jest.config.mjs test/*.test.ts
 fi
 
 if [ "$TEST_TYPE" = "e2e" ] || [ "$TEST_TYPE" = "all" ]; then
