@@ -1296,7 +1296,8 @@ export function registerJournalEntryRoutes(app: Express) {
       // Check if journal entry status allows file attachments (only draft or pending_approval)
       // Bug fix: This permission check was preventing edits to files on entries in draft status
       const allowedStatuses = ['draft', 'pending_approval'];
-      if (!allowedStatuses.includes(journalEntry.status)) {
+      const status = (journalEntry.status ?? '').toLowerCase();
+      if (!allowedStatuses.includes(status)) {
         // Log the attempt for audit purposes
         await auditLogStorage.createAuditLog({
           action: 'journal_file_upload_denied',
@@ -1696,7 +1697,8 @@ export function registerJournalEntryRoutes(app: Express) {
     // Check if journal entry status allows file deletions (only draft or pending_approval)
     // Bug fix: This permission check was preventing edits to files on entries in draft status
     const allowedStatuses = ['draft', 'pending_approval'];
-    if (!allowedStatuses.includes(journalEntry.status)) {
+    const status = (journalEntry.status ?? '').toLowerCase();
+    if (!allowedStatuses.includes(status)) {
       // Log the attempt for audit purposes
       await auditLogStorage.createAuditLog({
         action: 'journal_file_delete_denied',
