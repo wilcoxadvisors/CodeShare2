@@ -1,5 +1,9 @@
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
+## Recent Changelog:
+- **2025-05-01**: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
+- **2025-04-29**: Added Date & Attachment Reliability Guards; documented multi-file attachment CRUD test coverage
+
 ## 1. Project Overview & Goal
 
 - **Project:** Wilcox Advisors Accounting System
