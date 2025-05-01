@@ -1,0 +1,101 @@
+1 Date looks fine in the payload/DB but shifts on screen
+Why it happens
+We finally stopped converting the date before it leaves the browser. ✅
+
+The API now echoes the same YYYY-MM-DD string back. ✅
+
+But the UI components that display the date still run
+
+ts
+Copy
+Edit
+new Date(serverValue)            // ← turns “2025-05-01” into a UTC-midnight Date
+.toLocaleDateString(...)
+When the user’s timezone is behind UTC, midnight UTC is “the day before”, so the label shows 2024-04-30 even though the value in state is still 2025-05-01.
+
+Quick fix – a one-liner utility
+src/utils/dateUtils.ts
+
+ts
+Copy
+Edit
+/**    NEVER create a Date object for a plain YYYY-MM-DD string   */
+export function ymdToDisplay(s: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;        // fallback
+  const [y, m, d] = s.split('-').map(Number);
+  return `${m}/${d}/${y}`;  // or whatever display format you like
+}
+Replace every call site that formats the entry date
+diff
+Copy
+Edit
+- {formatDisplayDate(entry.date, 'short')}
++ {ymdToDisplay(entry.date)}
+Files that currently format the date:
+
+features/journal-entries/pages/JournalEntryDetail.tsx
+
+features/journal-entries/components/JournalEntryTable.tsx
+
+any place you see formatDisplayDate( or new Date(entry.date).
+
+Now the UI prints the literal day that is stored, independent of the viewer’s timezone.
+
+2 Delete button visible but does nothing in edit view
+What’s wrong
+Visibility – the flag is based on location.endsWith('/edit') but useLocation() from wouter returns an array [pathname, navigate], not [locationObj, navigate].
+We accidentally assigned navigate to location.
+
+Action – after a successful delete request we never update React-Query’s cache, so the component keeps rendering the now-deleted file.
+
+Fix 2 a – correct the “edit-mode” flag
+JournalEntryDetail.tsx
+
+diff
+Copy
+Edit
+- const [location, navigate] = useLocation();
+- const isInEditMode = location.endsWith('/edit');
++ const [pathname] = useLocation();          // ← pathname is a string
++ const isInEditMode = pathname.endsWith('/edit');
+Fix 2 b – actually remove the file after the API call
+Inside the same component (or in the hook that owns the mutation):
+
+ts
+Copy
+Edit
+const queryClient = useQueryClient();
+
+const deleteFile = useMutation(
+  (fileId: number) => apiRequest(`/api/journal-entries/${id}/files/${fileId}`, { method: 'DELETE' }),
+  {
+    onSuccess: () => {
+      // 1. drop it from the detail query cache
+      queryClient.setQueryData(['journalEntry', id], (old: any) => ({
+        ...old,
+        files: old.files.filter((f: any) => f.id !== fileId),
+      }));
+      // 2. toast / snackbar if you like
+    },
+  }
+);
+…and wire the button:
+
+tsx
+Copy
+Edit
+{isInEditMode && (
+  <Button size="sm" variant="destructive" onClick={() => deleteFile.mutate(file.id)}>
+    Delete
+  </Button>
+)}
+Now the button only appears in /edit and, once clicked, the file disappears from the list immediately after the server confirms deletion.
+
+Smoke-test checklist
+Scenario	Expected
+Create draft with 2025-05-01, reload, view	UI shows 2025-05-01
+Edit draft → save	UI still shows 2025-05-01
+Draft → Post	date still 2025-05-01
+Edit view – click Delete on an attachment	Button disappears, file row disappears, no 404 on reload
+
+Give these patches a whirl – if anything still misbehaves, tell me which step of the checklist fails and we’ll zero in on it.

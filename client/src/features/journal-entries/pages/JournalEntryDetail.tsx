@@ -83,9 +83,9 @@ import { useDropzone } from 'react-dropzone';
 
 function JournalEntryDetail() {
   const { updateJournalEntry, deleteJournalEntry } = useJournalEntry();
-  const [location, navigate] = useLocation();
+  const [pathname, navigate] = useLocation();
   const [match, params] = useRoute('/journal-entries/:id');
-  const isInEditMode = location.endsWith('/edit'); // Check if we're in edit mode
+  const isInEditMode = pathname.endsWith('/edit'); // Check if we're in edit mode
   const entryId = params?.id ? parseInt(params.id) : null;
   
   const { currentEntity } = useEntity();

@@ -5,6 +5,19 @@
  * throughout the application, with a focus on preventing timezone issues.
  */
 
+/**    
+ * NEVER create a Date object for a plain YYYY-MM-DD string
+ * Safely converts a YYYY-MM-DD string to display format without timezone shifts
+ *
+ * @param s Date string in YYYY-MM-DD format
+ * @returns Formatted date string for display (MM/DD/YYYY)
+ */
+export function ymdToDisplay(s: string): string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // fallback
+  const [y, m, d] = s.split('-').map(Number);
+  return `${m}/${d}/${y}`;  // US format MM/DD/YYYY
+}
+
 /**
  * Gets today's date in YYYY-MM-DD format without timezone shifts
  * 
