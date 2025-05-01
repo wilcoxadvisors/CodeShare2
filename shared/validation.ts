@@ -92,19 +92,14 @@ export const journalEntryLineSchema = z.object({
  */
 export const createJournalEntrySchema = z.object({
   // Accept only YYYY-MM-DD strings to avoid timezone issues
-  date: z.preprocess((arg) => {
-    // Handle only Date objects, let string validation happen directly
-    if (arg instanceof Date) {
-      return format(arg, 'yyyy-MM-dd');
-    }
-    return arg;
-  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
     .refine((val) => {
-      // Additional date validation to ensure it's a valid date
+      // Additional date validation to ensure it's a valid date (without creating Date objects)
       const [year, month, day] = val.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-    }, { message: "Invalid date" })),
+      // Simple validation for days in month and leap years
+      const daysInMonth = [0, 31, 28 + (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 1 : 0), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month];
+    }, { message: "Invalid date" }),
   clientId: z.number().int().positive({ message: "Client ID is required" }),
   entityId: z.number().int().positive({ message: "Entity ID is required" }),
   createdBy: z.number().int().positive({ message: "Creator ID is required" }),
@@ -176,14 +171,7 @@ export const createJournalEntrySchema = z.object({
  */
 export const updateJournalEntrySchema = z.object({
   // Accept only YYYY-MM-DD strings to avoid timezone issues
-  date: z.preprocess((arg) => {
-    // Handle only Date objects, let string validation happen directly
-    if (arg instanceof Date) {
-      return format(arg, 'yyyy-MM-dd');
-    }
-    return arg;
-  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
-     .optional()),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(),
   clientId: z.number().int().positive().optional(),
   entityId: z.number().int().positive().optional().nullable(),
   createdBy: z.number().int().positive().optional(),
@@ -369,22 +357,8 @@ export const listJournalEntriesFiltersSchema = z.object({
     (val) => val === undefined ? undefined : (typeof val === 'string' ? parseInt(val, 10) : val),
     z.number().int().positive().optional()
   ),
-  startDate: z.preprocess((arg) => {
-    if (arg === undefined) return undefined;
-    // Handle only Date objects, let string validation happen directly
-    if (arg instanceof Date) {
-      return format(arg, 'yyyy-MM-dd');
-    }
-    return arg;
-  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Start date must be in YYYY-MM-DD format" }).optional()),
-  endDate: z.preprocess((arg) => {
-    if (arg === undefined) return undefined;
-    // Handle only Date objects, let string validation happen directly
-    if (arg instanceof Date) {
-      return format(arg, 'yyyy-MM-dd');
-    }
-    return arg;
-  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "End date must be in YYYY-MM-DD format" }).optional()),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Start date must be in YYYY-MM-DD format" }).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "End date must be in YYYY-MM-DD format" }).optional(),
   status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   referenceNumber: optionalString.nullable(),
