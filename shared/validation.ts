@@ -255,19 +255,14 @@ export const enhancedFixedAssetSchema = schema.insertFixedAssetSchema.extend({
  */
 export const singleJournalEntrySchema = z.object({
   // Accept only YYYY-MM-DD strings to avoid timezone issues
-  date: z.preprocess((arg) => {
-    // Handle only Date objects, let string validation happen directly
-    if (arg instanceof Date) {
-      return format(arg, 'yyyy-MM-dd');
-    }
-    return arg;
-  }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
-     .refine((val) => {
-       // Additional date validation to ensure it's a valid date
-       const [year, month, day] = val.split('-').map(Number);
-       const date = new Date(year, month - 1, day);
-       return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-     }, { message: "Invalid date" })),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
+    .refine((val) => {
+      // Additional date validation to ensure it's a valid date (without creating Date objects)
+      const [year, month, day] = val.split('-').map(Number);
+      // Simple validation for days in month and leap years
+      const daysInMonth = [0, 31, 28 + (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 1 : 0), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month];
+    }, { message: "Invalid date" }),
   description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
   referenceNumber: optionalString.nullable(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
