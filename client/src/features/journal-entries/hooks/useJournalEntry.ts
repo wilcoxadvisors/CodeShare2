@@ -121,10 +121,19 @@ export function useJournalEntry() {
           payload.date = new Date().toISOString().split('T')[0];
         }
         
-        // Format date in ISO 8601 UTC to avoid timezone issues
+        // Bug fix #3: Fix for date posting 1-day early when status changes (draft → posted)
+        // Do not convert string date to Date object as it causes timezone issues
         if (payload.date) {
-          const date = new Date(payload.date);
-          payload.date = date.toISOString().split('T')[0];
+          // If the date is already in YYYY-MM-DD format, keep it as is
+          if (/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
+            console.log('DEBUG: Date is already in YYYY-MM-DD format, keeping as is:', payload.date);
+            // No conversion needed - leave the date string as is
+          } else {
+            // Only if it's not in YYYY-MM-DD format, convert it carefully
+            console.log('DEBUG: Converting date to YYYY-MM-DD format:', payload.date);
+            const parts = payload.date.split('T')[0].split('-');
+            payload.date = parts.join('-'); // This preserves the original date without timezone shifts
+          }
         }
         
         // Debugging logs to verify the payload

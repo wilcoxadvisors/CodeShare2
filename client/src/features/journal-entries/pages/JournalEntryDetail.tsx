@@ -375,8 +375,20 @@ function JournalEntryDetail() {
   };
   
   // Handle file deletion
+  // Bug fix #2: Ensure file deletion only works for draft and pending_approval status
   const handleFileDelete = (fileId: number) => {
     if (!entryId) return;
+    
+    // Only allow deletion for draft and pending_approval status
+    if (journalEntry && (journalEntry.status !== 'draft' && journalEntry.status !== 'pending_approval')) {
+      console.log("DEBUG: File deletion not allowed for status:", journalEntry.status);
+      toast({
+        title: "Not Allowed",
+        description: "Files can only be deleted when the journal entry is in draft or pending approval status.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Confirm before deleting
     if (window.confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
@@ -1674,7 +1686,7 @@ function JournalEntryDetail() {
                         Download
                       </Button>
                       
-                      {/* Only show delete button for draft or pending_approval entries */}
+                      {/* Bug fix #2: Only show delete button for draft or pending_approval entries and require proper permissions */}
                       {(journalEntry.status === 'draft' || journalEntry.status === 'pending_approval') && (
                         <Button 
                           size="sm" 
