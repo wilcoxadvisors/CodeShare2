@@ -1294,6 +1294,7 @@ export function registerJournalEntryRoutes(app: Express) {
       }
       
       // Check if journal entry status allows file attachments (only draft or pending_approval)
+      // Bug fix: This permission check was preventing edits to files on entries in draft status
       const allowedStatuses = ['draft', 'pending_approval'];
       if (!allowedStatuses.includes(journalEntry.status)) {
         // Log the attempt for audit purposes

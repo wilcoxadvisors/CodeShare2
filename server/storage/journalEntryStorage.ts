@@ -335,8 +335,14 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       }
       
       // Prepare data for insert
+      // Ensure date is a properly formatted string (YYYY-MM-DD) to avoid timezone issues
+      const formattedDate = typeof entryData.date === 'string' 
+        ? entryData.date // Already a string, keep as is
+        : format(new Date(entryData.date), 'yyyy-MM-dd'); // Format to YYYY-MM-DD
+        
       const insertData = {
         ...entryData,
+        date: formattedDate, // Use consistent date format
         clientId,
         createdBy: createdById,
         status: entryData.status || 'draft' // Default to draft if not specified
@@ -362,9 +368,19 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return undefined;
       }
       
+      // Format date if provided to ensure consistent format
+      let updatedEntryData = { ...entryData };
+      if (entryData.date !== undefined) {
+        const formattedDate = typeof entryData.date === 'string'
+          ? entryData.date // Already a string, keep as is
+          : format(new Date(entryData.date), 'yyyy-MM-dd'); // Format to YYYY-MM-DD
+          
+        updatedEntryData.date = formattedDate;
+      }
+      
       // Update the journal entry
       const [updatedEntry] = await db.update(journalEntries)
-        .set(entryData)
+        .set(updatedEntryData)
         .where(eq(journalEntries.id, id))
         .returning();
       
