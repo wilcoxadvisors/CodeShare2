@@ -83,8 +83,9 @@ import { useDropzone } from 'react-dropzone';
 
 function JournalEntryDetail() {
   const { updateJournalEntry, deleteJournalEntry } = useJournalEntry();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [match, params] = useRoute('/journal-entries/:id');
+  const isInEditMode = location.endsWith('/edit'); // Check if we're in edit mode
   const entryId = params?.id ? parseInt(params.id) : null;
   
   const { currentEntity } = useEntity();
@@ -1686,8 +1687,8 @@ function JournalEntryDetail() {
                         Download
                       </Button>
                       
-                      {/* Bug fix #2: Only show delete button for draft or pending_approval entries and require proper permissions */}
-                      {(journalEntry.status === 'draft' || journalEntry.status === 'pending_approval') && (
+                      {/* Bug fix #2: Only show delete button in edit mode and only for draft or pending_approval entries */}
+                      {isInEditMode && (journalEntry.status === 'draft' || journalEntry.status === 'pending_approval') && (
                         <Button 
                           size="sm" 
                           variant="outline"
