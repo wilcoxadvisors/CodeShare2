@@ -136,6 +136,15 @@ export function useEditJournalEntry() {
     console.log("useEditJournalEntry - No lines found in journal entry");
   }
   
+  // Ensure we return files if they exist in the journal entry
+  // Bug fix #1 - ensure files are preserved when editing a journal entry
+  if (processedEntry) {
+    processedEntry = {
+      ...processedEntry,
+      files: processedEntry.files ?? [] // Preserve files array
+    };
+  }
+
   return {
     journalEntry: processedEntry,
     isLoading,

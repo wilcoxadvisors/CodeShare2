@@ -966,7 +966,10 @@ function JournalEntryForm({
   const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
 
   // State for pending file attachments
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  // Bug fix #1: hydrate with existing files when editing
+  const [pendingFiles, setPendingFiles] = useState<File[]>(
+    existingEntry?.files ?? []
+  );
   const [pendingFilesMetadata, setPendingFilesMetadata] = useState<
     {
       id: number;
@@ -975,7 +978,18 @@ function JournalEntryForm({
       mimeType: string;
       addedAt: Date;
     }[]
-  >([]);
+  >(
+    // Convert existing files to metadata format if available
+    existingEntry?.files 
+      ? existingEntry.files.map(file => ({
+          id: file.id,
+          filename: file.filename || file.originalname || "Unknown filename",
+          size: file.size || 0,
+          mimeType: file.mimeType || "application/octet-stream",
+          addedAt: new Date(file.uploadedAt || Date.now())
+        }))
+      : []
+  );
 
   // Ref to hold the function to upload pending files to a specific journal entry
   // This will be passed to and set by the AttachmentSection component
