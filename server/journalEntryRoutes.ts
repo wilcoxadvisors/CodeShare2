@@ -14,7 +14,7 @@ import {
   listJournalEntriesFiltersSchema,
   ListJournalEntriesFilters 
 } from '../shared/validation';
-import { parse, isValid } from 'date-fns';
+// No longer using date-fns for date parsing
 import { journalEntryStorage } from './storage/journalEntryStorage';
 import { getFileStorage } from './storage/fileStorage';
 import { auditLogStorage } from './storage/auditLogStorage';
@@ -293,22 +293,22 @@ export function registerJournalEntryRoutes(app: Express) {
       const filters: ListJournalEntriesFilters = {};
       const errors: string[] = [];
       
-      // Parse/Validate Dates (Using date-fns)
+      // Validate Dates (using regex for YYYY-MM-DD format)
       if (startDateStr && typeof startDateStr === 'string') {
-          const parsedDate = parse(startDateStr, 'yyyy-MM-dd', new Date());
-          if (isValid(parsedDate)) {
-               filters.startDate = parsedDate;
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (dateRegex.test(startDateStr)) {
+               filters.startDate = startDateStr;
           } else {
                errors.push(`Invalid start date format: ${startDateStr}. Use YYYY-MM-DD.`);
           }
       }
       if (endDateStr && typeof endDateStr === 'string') {
-          const parsedDate = parse(endDateStr, 'yyyy-MM-dd', new Date());
-           if (isValid(parsedDate)) {
-               filters.endDate = parsedDate;
-           } else {
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (dateRegex.test(endDateStr)) {
+               filters.endDate = endDateStr;
+          } else {
                errors.push(`Invalid end date format: ${endDateStr}. Use YYYY-MM-DD.`);
-           }
+          }
       }
       
       // Parse/Validate Integers

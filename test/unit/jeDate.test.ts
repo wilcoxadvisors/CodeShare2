@@ -33,6 +33,7 @@ describe('Journal Entry Date Handling', () => {
       await db.delete(journalEntries).where(eq(journalEntries.id, createdJournalEntryId));
     }
     server.close();
+    await db.end?.(); // Close database connections to avoid open handles
   });
 
   test('Should store and retrieve journal entry date in YYYY-MM-DD format', async () => {

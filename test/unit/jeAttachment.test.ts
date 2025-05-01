@@ -113,6 +113,7 @@ describe('Journal Entry File Permissions', () => {
     }
     
     server.close();
+    await db.end?.(); // Close database connections to avoid open handles
   });
 
   test('Should allow file upload and deletion for draft journal entries', async () => {
