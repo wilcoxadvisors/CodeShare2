@@ -1,95 +1,98 @@
 # Manual Verification Steps
 
-This document provides step-by-step instructions to verify the fixes for:
-1. Journal entry date format/timezone issues
-2. File attachment permissions for journal entries in different statuses
+This document outlines manual verification steps to confirm that the fixes for journal entry date timezone issues and file attachment permissions are working correctly.
 
-## Date Format Fix Verification
+## Date Timezone Fix Verification
 
-### Expected Behavior
-- All dates should now be stored as DATE type (without time components)
-- Dates should be displayed consistently in YYYY-MM-DD format regardless of browser timezone
-- No "off-by-one day" issues when editing existing journal entries
+1. **Create Journal Entry with Specific Date**
+   - Login as an admin user
+   - Navigate to Journal Entries
+   - Create a new Journal Entry
+   - Set the date to May 1, 2025 (05/01/2025)
+   - Fill in other required fields and save as draft
+   - **Expected Result**: Date should be displayed as May 1, 2025
 
-### Test Case 1: Create Journal Entry with Date
-1. Log in as an admin user
-2. Navigate to Journal Entries
-3. Click "Create New" button
-4. Set a specific date (e.g., "2025-05-15")
-5. Fill in other required fields and add at least one debit and one credit line
-6. Save as draft
-7. Expected result: The journal entry should show the exact date you entered (2025-05-15)
+2. **Verify Date in List View**
+   - Navigate to Journal Entries list
+   - Find the entry created in step 1
+   - **Expected Result**: Date should be displayed as May 1, 2025, not April 30 or May 2
 
-### Test Case 2: Edit Existing Journal Entry
-1. Find the journal entry you just created
-2. Click the "Edit" button
-3. Do not change the date, just make some other minor change
-4. Save the entry
-5. Expected result: The date should remain unchanged (2025-05-15)
+3. **Update Journal Entry**
+   - Edit the journal entry created in step 1
+   - Change the description but not the date
+   - Save the entry
+   - **Expected Result**: Date should remain May 1, 2025
 
-### Test Case 3: Database Verification
-Run this SQL to verify date format consistency:
+4. **Filter by Date Range**
+   - Navigate to Journal Entries list
+   - Use the date filter to search for entries between Apr 30, 2025 and May 2, 2025
+   - **Expected Result**: The entry created in step 1 should appear in the results
 
-```sql
-SELECT 
-    id, 
-    date,
-    -- Extract useful date components for verification
-    EXTRACT(YEAR FROM date::date) AS year,
-    EXTRACT(MONTH FROM date::date) AS month,
-    EXTRACT(DAY FROM date::date) AS day,
-    status
-FROM 
-    journal_entries
-ORDER BY 
-    date DESC
-LIMIT 10;
-```
+## File Attachment Permissions Verification
 
-The date column should now show only date components without time (e.g., "2025-05-15").
+1. **Upload File to Draft Journal Entry**
+   - Create a new Journal Entry with status "draft"
+   - Attach a PDF file using the file upload feature
+   - **Expected Result**: File should upload successfully and appear in the attachments list
 
-## Journal Entry File Permissions Fix
+2. **Delete File from Draft Journal Entry**
+   - Select the file uploaded in step 1
+   - Click the delete button
+   - **Expected Result**: File should be deleted successfully
 
-### Expected Behavior
-- File attachments can be uploaded to journal entries in 'draft' status
-- File attachments can be uploaded to journal entries in 'pending_approval' status
-- File attachments can be deleted from journal entries in 'draft' status
-- File attachments can be deleted from journal entries in 'pending_approval' status
-- File operations are not available for entries in 'posted', 'approved', 'rejected', or 'voided' status
+3. **Upload File to Pending Approval Journal Entry**
+   - Create a new Journal Entry with status "pending_approval" (or change an existing draft to pending_approval)
+   - Attempt to attach a PDF file
+   - **Expected Result**: File should upload successfully and appear in the attachments list
 
-### Test Case 1: Uploading and Deleting Files in Draft Status
-1. Create a new journal entry in "draft" status
-2. Upload a file attachment (PDF or image)
-3. Verify the file appears in the attachments list
-4. Delete the file
-5. Expected result: File should be deleted successfully
+4. **Delete File from Pending Approval Journal Entry**
+   - Select the file uploaded in step 3
+   - Click the delete button
+   - **Expected Result**: File should be deleted successfully
 
-### Test Case 2: Uploading and Deleting Files in Pending Approval Status
-1. Create a journal entry and submit it for approval (status changes to "pending_approval")
-2. Upload a file attachment
-3. Verify the file appears in the attachments list
-4. Delete the file
-5. Expected result: File should be deleted successfully
+5. **Verify Upload Blocked for Posted Journal Entry**
+   - Create a new Journal Entry with status "posted" (or change an existing entry to posted)
+   - Attempt to attach a PDF file
+   - **Expected Result**: Upload should be blocked with appropriate error message
 
-### Test Case 3: Verifying File Controls for Posted Entries
-1. Find or create a journal entry in "posted" status
-2. Verify the file upload area is not visible
-3. If files exist, verify the delete button is not visible
-4. Expected result: No file upload or delete functionality should be visible
+## Database Verification
 
-## Cross-Browser Testing
+1. **Check Column Type**
+   - Run the following SQL query:
+     ```sql
+     SELECT column_name, data_type, pg_catalog.col_description(
+         (table_schema || '.' || table_name)::regclass::oid, 
+         ordinal_position
+     ) as column_comment
+     FROM information_schema.columns
+     WHERE table_name = 'journal_entries' AND column_name = 'date';
+     ```
+   - **Expected Result**: data_type should be "date" (not timestamp or timestamp with time zone)
 
-If possible, verify both fixes (date format and file permissions) across:
-- Chrome
-- Firefox
-- Safari
-- Edge
+2. **Verify Date Storage Format**
+   - Create a journal entry with the application
+   - Run the following SQL query:
+     ```sql
+     SELECT id, date, status FROM journal_entries ORDER BY id DESC LIMIT 5;
+     ```
+   - **Expected Result**: Dates should be stored in YYYY-MM-DD format without time component
+
+## Edge Case Testing
+
+1. **Cross-day Timezone Testing**
+   - Create a journal entry at 11:00 PM in your local timezone
+   - **Expected Result**: Date should be stored and displayed as the current day, not shifted to the next day
+
+2. **Multi-Browser Testing**
+   - Test the date handling in different browsers (Chrome, Firefox, Safari)
+   - **Expected Result**: Consistent date display across all browsers
 
 ## Regression Testing
 
-Ensure other journal entry operations still work correctly:
-1. Creating journal entries with multiple lines
-2. Editing existing journal entries
-3. Posting journal entries
-4. Reversing journal entries
-5. Searching and filtering journal entries by date
+1. **Existing Journal Entries**
+   - View several existing journal entries created before the fix
+   - **Expected Result**: Dates should display correctly without timezone shifts
+
+2. **Batch Operations**
+   - Perform batch operations on journal entries (if applicable)
+   - **Expected Result**: Dates should be maintained correctly during batch operations

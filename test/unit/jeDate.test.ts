@@ -10,7 +10,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import { db } from '../../server/db';
 import { journalEntries } from '../../shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // Mock user ID for authentication
 const TEST_USER_ID = 1;
@@ -127,7 +127,7 @@ describe('Journal Entry Date Handling', () => {
     expect(filteredRes.status).toBe(200);
     
     // If our test entry exists, it should be in the results
-    const found = filteredRes.body.find((entry: any) => entry.id === createdJournalEntryId);
+    const found = filteredRes.body.find((entry: { id: number }) => entry.id === createdJournalEntryId);
     expect(found).toBeTruthy();
   });
 });
