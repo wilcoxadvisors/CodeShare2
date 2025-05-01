@@ -23,16 +23,21 @@ export async function apiRequest(
     method?: string;
     data?: unknown;
     onUploadProgress?: (progressEvent: any) => void;
+    isFormData?: boolean; // Bug fix #7: Explicit flag to handle FormData properly
   },
 ): Promise<any> {
   const method = options?.method || 'GET';
   const data = options?.data;
   
   // Handle file uploads with FormData differently
-  const isFormData = data instanceof FormData;
+  // Bug fix #7: Check both instanceof FormData and explicit isFormData flag
+  const isFormData = data instanceof FormData || options?.isFormData === true;
+  console.log("DEBUG apiRequest: isFormData:", isFormData, "data type:", typeof data);
   
   const response = await fetch(url, {
     method,
+    // Bug fix #7: For FormData, don't set Content-Type header at all
+    // Let the browser set it automatically with the correct boundary
     headers: isFormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",

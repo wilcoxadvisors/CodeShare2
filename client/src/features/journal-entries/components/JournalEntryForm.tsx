@@ -451,14 +451,18 @@ function AttachmentSection({
             `/api/journal-entries/${entryId}/files`,
             formData,
             {
+              // Bug fix #7: Do NOT set Content-Type header when using FormData
+              // Let the browser set this automatically with boundary parameter
               headers: {
-                "Content-Type": "multipart/form-data",
+                // Explicitly remove content type - let browser handle it
+                "Content-Type": undefined,
               },
               onUploadProgress: (progressEvent: any) => {
                 const percentCompleted = Math.round(
                   (progressEvent.loaded * 100) / progressEvent.total,
                 );
                 setUploadProgress(percentCompleted);
+                console.log("DEBUG AttachmentSection: Upload progress:", percentCompleted, "%");
               },
             },
           );

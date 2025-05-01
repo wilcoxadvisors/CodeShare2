@@ -59,10 +59,19 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       if (onProgress) {
         const axios = (await import('axios')).default;
         
+        // Bug fix #7: Do NOT set Content-Type header when using FormData
+        // Let the browser automatically set the correct multipart boundary parameter
+        console.log("DEBUG: Uploading file with progress tracking");
         const response = await axios.post(
           `/api/journal-entries/${journalEntryId}/files`, 
           formData,
           {
+            // Important: Don't manually set Content-Type when using FormData
+            // The browser needs to set this automatically with the boundary parameter
+            headers: {
+              // Explicitly remove content type - let browser handle it
+              'Content-Type': undefined
+            },
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -75,9 +84,14 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         return response.data;
       } else {
         // Use standard apiRequest if no progress tracking is needed
+        console.log("DEBUG: Uploading file without progress tracking");
+        
+        // Bug fix #7: Make sure apiRequest properly handles FormData
         return await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
           method: 'POST',
           data: formData,
+          // Important: Ensure apiRequest doesn't set Content-Type for FormData
+          isFormData: true
         });
       }
     },
