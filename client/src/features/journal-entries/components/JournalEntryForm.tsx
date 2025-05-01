@@ -1701,8 +1701,12 @@ function JournalEntryForm({
       return;
     }
 
+    // Format date as YYYY-MM-DD string before sending to server
+    const formattedDate = journalData.date ? format(new Date(journalData.date), 'yyyy-MM-dd') : '';
+    
     const entryData = {
       ...journalData,
+      date: formattedDate, // Use formatted date string to avoid timezone issues
       clientId: resolvedClientId,
       entityId,
       status: initialStatus, // Use our determined initial status
@@ -3022,8 +3026,12 @@ function JournalEntryForm({
               variant="default"
               onClick={() => {
                 // For non-admin users, submit for approval (changes status to "pending_approval")
+                // Format date as YYYY-MM-DD string for consistency
+                const formattedDate = journalData.date ? format(new Date(journalData.date), 'yyyy-MM-dd') : '';
+                
                 const entryData = {
                   ...journalData,
+                  date: formattedDate,
                   status: JournalEntryStatus.PENDING_APPROVAL,
                 };
                 if (existingEntry && existingEntry.id) {
