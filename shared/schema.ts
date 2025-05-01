@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, serial, integer, boolean, timestamp, numeric, uuid, json, uniqueIndex, primaryKey, index, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -200,7 +200,7 @@ export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").notNull().references(() => clients.id),
   entityId: integer("entity_id").notNull().references(() => entities.id),
-  date: text("date").notNull(), // Store as plain YYYY-MM-DD string without timezone to avoid TZ shifts
+  date: date("date").notNull(), // Use actual DATE type to avoid timezone shifts
   referenceNumber: text("reference_number"),
   description: text("description"),
   isSystemGenerated: boolean("is_system_generated").notNull().default(false),

@@ -91,24 +91,13 @@ export const journalEntryLineSchema = z.object({
  * Schema for Creating a Journal Entry
  */
 export const createJournalEntrySchema = z.object({
-  // Updated to handle dates as YYYY-MM-DD strings to avoid timezone issues
+  // Accept only YYYY-MM-DD strings to avoid timezone issues
   date: z.preprocess((arg) => {
-    if (typeof arg === "string") {
-      // Validate string format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
-        return arg; // Return as is if already in correct format
-      }
-      
-      // Otherwise try to format it
-      const date = new Date(arg);
-      if (!isNaN(date.getTime())) {
-        return format(date, 'yyyy-MM-dd');
-      }
-      return undefined;
-    } else if (arg instanceof Date) {
+    // Handle only Date objects, let string validation happen directly
+    if (arg instanceof Date) {
       return format(arg, 'yyyy-MM-dd');
     }
-    return undefined;
+    return arg;
   }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
     .refine((val) => {
       // Additional date validation to ensure it's a valid date
@@ -186,24 +175,13 @@ export const createJournalEntrySchema = z.object({
  * Schema for Updating a Journal Entry
  */
 export const updateJournalEntrySchema = z.object({
-  // Updated to handle dates as YYYY-MM-DD strings consistently with createJournalEntrySchema
+  // Accept only YYYY-MM-DD strings to avoid timezone issues
   date: z.preprocess((arg) => {
-    if (typeof arg === "string") {
-      // Validate string format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
-        return arg; // Return as is if already in correct format
-      }
-      
-      // Otherwise try to format it
-      const date = new Date(arg);
-      if (!isNaN(date.getTime())) {
-        return format(date, 'yyyy-MM-dd');
-      }
-      return undefined;
-    } else if (arg instanceof Date) {
+    // Handle only Date objects, let string validation happen directly
+    if (arg instanceof Date) {
       return format(arg, 'yyyy-MM-dd');
     }
-    return undefined;
+    return arg;
   }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
      .optional()),
   clientId: z.number().int().positive().optional(),
@@ -288,24 +266,13 @@ export const enhancedFixedAssetSchema = schema.insertFixedAssetSchema.extend({
  * Schema for batch journal entry uploads
  */
 export const singleJournalEntrySchema = z.object({
-  // Updated to handle dates as YYYY-MM-DD strings consistently with other schemas
+  // Accept only YYYY-MM-DD strings to avoid timezone issues
   date: z.preprocess((arg) => {
-    if (typeof arg === "string") {
-      // Validate string format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
-        return arg; // Return as is if already in correct format
-      }
-      
-      // Otherwise try to format it
-      const date = new Date(arg);
-      if (!isNaN(date.getTime())) {
-        return format(date, 'yyyy-MM-dd');
-      }
-      return undefined;
-    } else if (arg instanceof Date) {
+    // Handle only Date objects, let string validation happen directly
+    if (arg instanceof Date) {
       return format(arg, 'yyyy-MM-dd');
     }
-    return undefined;
+    return arg;
   }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
      .refine((val) => {
        // Additional date validation to ensure it's a valid date
@@ -404,39 +371,19 @@ export const listJournalEntriesFiltersSchema = z.object({
   ),
   startDate: z.preprocess((arg) => {
     if (arg === undefined) return undefined;
-    if (typeof arg === "string") {
-      // Validate string format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
-        return arg; // Return as is if already in correct format
-      }
-      
-      // Otherwise try to format it
-      const date = new Date(arg);
-      if (!isNaN(date.getTime())) {
-        return format(date, 'yyyy-MM-dd');
-      }
-    } else if (arg instanceof Date) {
+    // Handle only Date objects, let string validation happen directly
+    if (arg instanceof Date) {
       return format(arg, 'yyyy-MM-dd');
     }
-    return undefined;
+    return arg;
   }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Start date must be in YYYY-MM-DD format" }).optional()),
   endDate: z.preprocess((arg) => {
     if (arg === undefined) return undefined;
-    if (typeof arg === "string") {
-      // Validate string format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) {
-        return arg; // Return as is if already in correct format
-      }
-      
-      // Otherwise try to format it
-      const date = new Date(arg);
-      if (!isNaN(date.getTime())) {
-        return format(date, 'yyyy-MM-dd');
-      }
-    } else if (arg instanceof Date) {
+    // Handle only Date objects, let string validation happen directly
+    if (arg instanceof Date) {
       return format(arg, 'yyyy-MM-dd');
     }
-    return undefined;
+    return arg;
   }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "End date must be in YYYY-MM-DD format" }).optional()),
   status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
