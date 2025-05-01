@@ -200,7 +200,7 @@ export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").notNull().references(() => clients.id),
   entityId: integer("entity_id").notNull().references(() => entities.id),
-  date: timestamp("date", { mode: 'date' }).notNull(),
+  date: text("date").notNull(), // Store as plain YYYY-MM-DD string without timezone
   referenceNumber: text("reference_number"),
   description: text("description"),
   isSystemGenerated: boolean("is_system_generated").notNull().default(false),
@@ -606,7 +606,7 @@ export const insertReversalJournalEntrySchema = createInsertSchema(journalEntrie
 }).extend({
   reversedEntryId: z.number(), // Original entry ID being reversed
   isReversal: z.boolean().default(true), // Mark as reversal entry
-  date: z.date(), // Date for the reversal entry
+  date: z.string(), // Date for the reversal entry in YYYY-MM-DD format
   description: z.string().optional(), // Optional description override
   createdBy: z.number(), // Who created the reversal
 });
