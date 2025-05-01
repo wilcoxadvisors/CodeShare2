@@ -1,0 +1,65 @@
+It looks as if one last hop in the round-trip is still sneaking a time-zone conversion in behind the scenes.
+Below is the quickest way to pin down – and eliminate – the remaining culprit.
+
+1 Confirm the data that leaves the browser
+Open DevTools → Network and watch the request payload when you:
+
+pick 2025-05-01
+
+press Save as draft
+
+then immediately Post
+
+If the JSON body in both requests shows:
+
+json
+Copy
+Edit
+"date": "2025-05-01"
+…then the frontend is now clean and the shift is happening after the request hits the server.
+If it already shows 2024-04-30 or 2025-05-02, the frontend is still converting; grep once more for new Date( or valueAsDate in features/journal-entries/.
+
+2 Look at what comes back from the API
+In the same Network tab, inspect the response for the newly created/updated entry. If you see:
+
+json
+Copy
+Edit
+"date": "2025-04-30T22:00:00.000Z"
+or any ISO string with a T and Z, the backend is serialising a timestamp instead of a plain date.
+
+3 Fix the backend once and for all
+Layer	What to check	What it should be
+DB column	MySQL / Postgres / SQLite column type	DATE (not DATETIME, not TIMESTAMP)
+ORM	Sequelize   → DataTypes.DATEONLY
+Prisma     → Date @db.Date	stores/retrieves only YYYY-MM-DD
+Model/Entity	Do not run new Date(body.date)	assign the string directly
+Serializer	If you use class-transformer, zod etc.	field type string, no custom transformer
+
+ts
+Copy
+Edit
+// Express / Fastify controller
+const { date, ...rest } = req.body as { date: string };
+await JournalEntry.create({ ...rest, date });   // <- no Date(...)
+With that in place the API will always echo exactly the string the browser sent, so nothing downstream (cache, client, tests) can shift it.
+
+4 Quick regression check
+step	expected
+draft → edit → draft	same 2025-05-01
+draft → post	same 2025-05-01
+DB row	column date = 2025-05-01
+API GET	"date": "2025-05-01" (no T, no Z)
+
+If any of those still fails, let me know which line of the round-trip shows the wrong value and we’ll chase the next hop.
+
+Why this finally stops the drift
+A DATE column has no concept of hours/offsets – the DB never adds or subtracts time.
+
+The server sends and receives the literal YYYY-MM-DD string.
+
+The browser’s <input type="date"> already speaks that format, so no conversion is necessary anywhere.
+
+Once the backend is pinned to DATE-only, the calendar day can no longer move, no matter where the code runs or which time-zone the user sits in.
+
+Give it a spin and tell me what you see in the request/response bodies – we’ll nail any remaining wobble immediately.
