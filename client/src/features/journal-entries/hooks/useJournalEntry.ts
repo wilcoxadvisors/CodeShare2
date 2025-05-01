@@ -127,7 +127,7 @@ export function useJournalEntry() {
           // If the date is already in YYYY-MM-DD format, keep it as is
           if (/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
             console.log('DEBUG: Date is already in YYYY-MM-DD format, keeping as is:', payload.date);
-            // No conversion needed - leave the date string as is
+            // Already correct 'YYYY-MM-DD' – leave untouched
           } else {
             // Only if it's not in YYYY-MM-DD format, convert it carefully
             console.log('DEBUG: Converting date to YYYY-MM-DD format:', payload.date);

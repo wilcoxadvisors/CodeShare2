@@ -1,0 +1,81 @@
+Below is a surgical “no-more-time-zone-surprises” patch-set that finally stops the draft → post round-trip from nudging the calendar day.
+
+1 JournalEntryForm.tsx
+a) Never turn the string into a Date in state
+diff
+Copy
+Edit
+- date: existingEntry?.date
+-   ? toLocalYMD(existingEntry.date)
+-   : toLocalYMD(new Date()),
++ date: existingEntry?.date ??        // already “YYYY-MM-DD”
++       new Date().toISOString().slice(0, 10),   // first render only
+b) Use the raw <input type="date"> value
+diff
+Copy
+Edit
+<input
+  type="date"
+  name="date"
+- onChange={e =>
+-   setJournalData({ …journalData,
+-     date: e.target.valueAsDate?.toISOString().split('T')[0] || ''
+-   })}
++ onChange={e =>
++   setJournalData({ …journalData, date: e.currentTarget.value })}
+  value={journalData.date}
+/>
+2 dateUtils.ts
+Delete all helpers that do new Date(str) or format(new Date(str) …).
+Leave only helpers that either (a) receive a real Date object or (b) accept the already-formatted string and just pretty-print it for display-only:
+
+ts
+Copy
+Edit
+export function prettyYMD(dateYMD: string): string {
+  // view-only, no timezone maths
+  return dateYMD             // '2025-05-01'
+    ? dateYMD.replace(/-/g, '/')
+    : '';
+}
+3 useJournalEntry.ts
+a) Stop “helpfully” re-formatting before POST / PATCH
+diff
+Copy
+Edit
+- if (payload.date) {
+-   const parts = payload.date.split('T')[0].split('-');
+-   payload.date = parts.join('-');   // no-op but still string ops
+- }
++ // already correct 'YYYY-MM-DD' – leave untouched
+(Same change in any update mutation.)
+
+4 Server – make the column DATE, not TIMESTAMP**
+ORM	schema change
+Sequelize	type: DataTypes.DATEONLY
+Prisma	date Date @db.Date
+
+The field now arrives as pure text; just assign it:
+
+ts
+Copy
+Edit
+const { date, …rest } = req.body;
+await JournalEntry.create({ …rest, date });   // no new Date()
+5 Smoke-test matrix
+step	expected
+Create draft with 2025-05-01	detail view shows 2025-05-01
+Edit draft → Save as draft	stays 2025-05-01
+Post	still 2025-05-01
+DB row	date column = 2025-05-01
+
+If any of those shows 2025-04-30 / 2025-05-02 the bug is still somewhere that creates a Date from the string. Grep for new Date( in features/journal-entries/ – every remaining call should be legitimate (e.g. createdAt display).
+
+Why this works
+String stays string → browser never guesses a time-zone.
+
+Column is DATE → DB stores exactly the literal text.
+
+All conversions for pretty display use parseISO / format or simple string manipulation on the server-returned date, never on the value that gets POSTed.
+
+Apply the patch, run the 4-step smoke-test above, and the day-shift problem should be gone for good. Let me know if anything still wiggles!

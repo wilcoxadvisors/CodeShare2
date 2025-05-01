@@ -1084,16 +1084,13 @@ function JournalEntryForm({
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || "", // Use referenceNumber to match server schema
-    date: existingEntry?.date
-      ? existingEntry.date // Use the date string directly without conversion
-      : toLocalYMD(new Date()),
+    date: existingEntry?.date ?? // already "YYYY-MM-DD" 
+          new Date().toISOString().slice(0, 10), // first render only
     description: existingEntry?.description || "",
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || "JE",
     supDocId: existingEntry?.supDocId || "",
-    reversalDate: existingEntry?.reversalDate
-      ? existingEntry.reversalDate // Use the date string directly without conversion
-      : "",
+    reversalDate: existingEntry?.reversalDate ?? "", // already "YYYY-MM-DD" or empty
   });
 
   // Get default entity code from entities list based on current entityId
