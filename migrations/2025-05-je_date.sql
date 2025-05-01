@@ -1,43 +1,28 @@
--- Migration to fix date column format in journal_entries table
--- Convert timestamptz to DATE to avoid timezone issues
+-- Migration: Convert journal_entries.date column to DATE type
+-- This fixes timezone issues by using a consistent DATE type without time components
+-- Author: Replit Agent, May 1, 2025
 
--- First, check if the column is already the proper type
-DO $$
-DECLARE
-    column_type TEXT;
+-- First check if we need to perform the migration
+DO $$ 
 BEGIN
-    SELECT data_type INTO column_type
-    FROM information_schema.columns
-    WHERE table_name = 'journal_entries' AND column_name = 'date';
-    
-    IF column_type = 'date' THEN
-        RAISE NOTICE 'Column journal_entries.date is already type DATE. No migration needed.';
-    ELSIF column_type = 'text' THEN
-        RAISE NOTICE 'Column journal_entries.date is already type TEXT. No migration needed.';
+    -- Check the current data type of the date column
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'journal_entries' 
+        AND column_name = 'date' 
+        AND data_type = 'timestamp without time zone'
+    ) THEN
+        -- Alter the column to DATE type
+        ALTER TABLE journal_entries 
+        ALTER COLUMN date TYPE DATE 
+        USING date::DATE;
+        
+        RAISE NOTICE 'Successfully converted journal_entries.date column to DATE type';
     ELSE
-        -- Backup the data with timezone info preserved
-        RAISE NOTICE 'Creating backup of journal_entries dates...';
-        CREATE TEMPORARY TABLE IF NOT EXISTS journal_entries_date_backup AS
-        SELECT id, date AS original_date
-        FROM journal_entries;
-        
-        -- Alter the column to date type (will lose timezone information)
-        RAISE NOTICE 'Converting date column from % to DATE...', column_type;
-        ALTER TABLE journal_entries ALTER COLUMN date TYPE DATE
-        USING date::date;
-        
-        -- Log the backup for reference
-        RAISE NOTICE 'Migration completed. Date column converted to DATE type.';
+        RAISE NOTICE 'No migration needed - journal_entries.date column is already DATE type';
     END IF;
 END $$;
 
--- Verify the change
-SELECT 
-    table_name, 
-    column_name, 
-    data_type 
-FROM 
-    information_schema.columns 
-WHERE 
-    table_name = 'journal_entries' 
-    AND column_name = 'date';
+-- Add comment to the column for documentation purposes
+COMMENT ON COLUMN journal_entries.date IS 'Date of the journal entry (DATE type, without time component to avoid timezone issues)';

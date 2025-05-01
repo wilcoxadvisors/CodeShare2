@@ -779,15 +779,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       // Create a new journal entry for the reversal
       // First, determine the date for the reversal (using current date if not specified)
-      let dateValue: Date;
-      if (options.date) {
-        dateValue = typeof options.date === 'string' ? new Date(options.date) : options.date;
-      } else {
-        dateValue = new Date();
-      }
-      
-      // Format the date as YYYY-MM-DD string to avoid timezone issues
-      const formattedReversalDate = format(dateValue, 'yyyy-MM-dd');
+      // Always use consistent YYYY-MM-DD format to avoid timezone issues
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const formattedReversalDate = options.date ?? today;
       
       // Format the original entry date consistently
       const originalDateStr = format(new Date(originalEntry.date), 'yyyy-MM-dd');

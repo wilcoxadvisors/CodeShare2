@@ -1091,18 +1091,18 @@ export function registerJournalEntryRoutes(app: Express) {
     // Add any query parameters to filters
     const { startDate: startDateStr, endDate: endDateStr, status } = req.query;
     
-    // Parse dates if provided
+    // Use date strings directly to avoid timezone issues
     if (startDateStr && typeof startDateStr === 'string') {
-      const parsedDate = parse(startDateStr, 'yyyy-MM-dd', new Date());
-      if (isValid(parsedDate)) {
-        filters.startDate = parsedDate;
+      // Validate it's in YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(startDateStr)) {
+        filters.startDate = startDateStr;
       }
     }
     
     if (endDateStr && typeof endDateStr === 'string') {
-      const parsedDate = parse(endDateStr, 'yyyy-MM-dd', new Date());
-      if (isValid(parsedDate)) {
-        filters.endDate = parsedDate;
+      // Validate it's in YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+        filters.endDate = endDateStr;
       }
     }
     
