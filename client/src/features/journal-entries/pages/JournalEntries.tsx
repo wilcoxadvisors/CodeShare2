@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
+import { ymdToDisplay } from '@/utils/dateUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,10 +135,10 @@ function JournalEntries() {
     currentPage * pageSize
   );
   
-  // Format date for display
+  // Format date for display without timezone shifts
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
+    return ymdToDisplay(dateString);
   };
   
   // Get badge color based on status
