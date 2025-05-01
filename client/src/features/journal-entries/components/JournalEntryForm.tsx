@@ -17,7 +17,7 @@ import {
 import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
-import { toLocalYMD, formatDisplayDate, ymdToDisplay } from "@/utils/dateUtils";
+import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
 import {
   X,
   Plus,
@@ -811,7 +811,7 @@ function AttachmentSection({
                             <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">
                               Pending
                             </span>
-                            {new Date(file.addedAt).toLocaleTimeString()}
+                            {file.addedAt ? new Date(file.addedAt).toLocaleTimeString() : "Just now"}
                           </div>
                           {uploadFileMutation.isPending && (
                             <div className="w-full">
@@ -869,7 +869,7 @@ function AttachmentSection({
                             <span className="text-green-500 bg-green-50 text-xs px-2 py-1 rounded-full font-medium mr-2">
                               Uploaded
                             </span>
-                            {new Date(file.uploadedAt).toLocaleDateString()}
+                            {file.uploadedAt ? ymdToDisplay(file.uploadedAt.toString().substring(0, 10)) : "-"}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1085,7 +1085,7 @@ function JournalEntryForm({
     reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || "", // Use referenceNumber to match server schema
     date: existingEntry?.date ?? // already "YYYY-MM-DD" 
-          new Date().toISOString().slice(0, 10), // first render only
+          getTodayYMD(), // Use our timezone-safe utility instead of Date()
     description: existingEntry?.description || "",
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || "JE",
@@ -1196,8 +1196,11 @@ function JournalEntryForm({
   );
 
   function generateReference() {
-    const date = new Date();
-    const year = date.getFullYear();
+    // Use the current date in YYYY-MM-DD format
+    const today = getTodayYMD();
+    // Extract the year from the date string
+    const year = today.substring(0, 4);
+    // Generate a random number for uniqueness
     const randomNum = Math.floor(Math.random() * 1000)
       .toString()
       .padStart(4, "0");
