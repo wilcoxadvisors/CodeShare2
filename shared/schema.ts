@@ -200,7 +200,7 @@ export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").notNull().references(() => clients.id),
   entityId: integer("entity_id").notNull().references(() => entities.id),
-  date: text("date").notNull(), // Store as plain YYYY-MM-DD string without timezone
+  date: text("date").notNull(), // Store as plain YYYY-MM-DD string without timezone to avoid TZ shifts
   referenceNumber: text("reference_number"),
   description: text("description"),
   isSystemGenerated: boolean("is_system_generated").notNull().default(false),
