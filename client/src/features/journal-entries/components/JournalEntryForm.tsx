@@ -17,7 +17,7 @@ import {
 import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
-import { toLocalYMD, formatDisplayDate } from "@/utils/dateUtils";
+import { toLocalYMD, formatDisplayDate, ymdToDisplay } from "@/utils/dateUtils";
 import {
   X,
   Plus,

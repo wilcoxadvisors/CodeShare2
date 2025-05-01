@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { useJournalEntry, JournalEntry } from '@/features/journal-entries/hooks/useJournalEntry';
+import { ymdToDisplay } from '@/utils/dateUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -548,10 +549,10 @@ function JournalEntryDetail() {
     console.log("DEBUG - JournalEntryDetail - First line properties:", Object.keys(firstLine));
   }
   
-  // Format date for display
+  // Format date for display without timezone shifts
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
+    return ymdToDisplay(dateString);
   };
   
   // Format currency values consistently with 2 decimal places
