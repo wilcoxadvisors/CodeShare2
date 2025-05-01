@@ -399,11 +399,21 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return undefined;
       }
       
+      // Format date if provided to ensure consistent format
+      let updatedEntryData = { ...entryData };
+      if (entryData.date !== undefined) {
+        const formattedDate = typeof entryData.date === 'string'
+          ? entryData.date // Already a string, keep as is
+          : format(new Date(entryData.date), 'yyyy-MM-dd'); // Format to YYYY-MM-DD
+          
+        updatedEntryData.date = formattedDate;
+      }
+      
       // Start a transaction
       return await db.transaction(async (tx) => {
         // Update the journal entry
         const [updatedEntry] = await tx.update(journalEntries)
-          .set(entryData)
+          .set(updatedEntryData)
           .where(eq(journalEntries.id, id))
           .returning();
         
@@ -768,13 +778,18 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       console.log(`Found ${originalLines.length} lines to reverse`);
       
       // Create a new journal entry for the reversal
-      let reversalDate: Date;
+      // First, determine the date for the reversal (using current date if not specified)
+      let dateValue: Date;
       if (options.date) {
-        reversalDate = typeof options.date === 'string' ? new Date(options.date) : options.date;
+        dateValue = typeof options.date === 'string' ? new Date(options.date) : options.date;
       } else {
-        reversalDate = new Date();
+        dateValue = new Date();
       }
       
+      // Format the date as YYYY-MM-DD string to avoid timezone issues
+      const formattedReversalDate = format(dateValue, 'yyyy-MM-dd');
+      
+      // Format the original entry date consistently
       const originalDateStr = format(new Date(originalEntry.date), 'yyyy-MM-dd');
       
       // Add timestamp to make reference number unique and avoid collisions
@@ -786,7 +801,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       // Create a new entry data object for the reversal, explicitly selecting only the fields we need
       // This avoids potential issues with unknown fields or primary key conflicts
       const reversalEntryData = {
-        date: reversalDate,
+        date: formattedReversalDate, // Use formatted string date to avoid timezone issues
         clientId: originalEntry.clientId,
         entityId: originalEntry.entityId,
         referenceNumber: reversalReference,
