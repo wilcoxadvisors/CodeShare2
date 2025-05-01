@@ -1085,14 +1085,14 @@ function JournalEntryForm({
     reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || "", // Use referenceNumber to match server schema
     date: existingEntry?.date
-      ? toLocalYMD(existingEntry.date)
+      ? existingEntry.date // Use the date string directly without conversion
       : toLocalYMD(new Date()),
     description: existingEntry?.description || "",
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || "JE",
     supDocId: existingEntry?.supDocId || "",
     reversalDate: existingEntry?.reversalDate
-      ? toLocalYMD(existingEntry.reversalDate)
+      ? existingEntry.reversalDate // Use the date string directly without conversion
       : "",
   });
 

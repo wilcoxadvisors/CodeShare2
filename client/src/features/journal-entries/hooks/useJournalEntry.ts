@@ -131,8 +131,8 @@ export function useJournalEntry() {
           } else {
             // Only if it's not in YYYY-MM-DD format, convert it carefully
             console.log('DEBUG: Converting date to YYYY-MM-DD format:', payload.date);
-            const parts = payload.date.split('T')[0].split('-');
-            payload.date = parts.join('-'); // This preserves the original date without timezone shifts
+            // Just extract the date part without timezone conversion
+            payload.date = payload.date.split('T')[0]; // Extract just the YYYY-MM-DD part
           }
         }
         

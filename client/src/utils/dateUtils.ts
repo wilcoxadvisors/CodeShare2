@@ -16,7 +16,16 @@
 export function toLocalYMD(date: string | Date | null | undefined): string {
   if (!date) return '';
   
-  // Convert string to Date if needed
+  // If it's already a string in YYYY-MM-DD format, return it directly without conversion
+  if (typeof date === 'string') {
+    // Check if the string is already in YYYY-MM-DD format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRegex.test(date)) {
+      return date; // Already in the right format, no conversion needed
+    }
+  }
+  
+  // For other cases (Date object or string in different format)
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   
   // Use local date parts to prevent timezone shifts
@@ -40,6 +49,24 @@ export function formatDisplayDate(
 ): string {
   if (!date) return '';
   
+  // If it's already a string in YYYY-MM-DD format, parse it safely without timezone issues
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    // Parse the YYYY-MM-DD string to individual components
+    const [year, month, day] = date.split('-').map(Number);
+    
+    // Create options for Intl.DateTimeFormat
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: format,
+      day: 'numeric',
+    };
+    
+    // Use a UTC date to avoid timezone shifts, then format it
+    const utcDate = new Date(Date.UTC(year, month - 1, day));
+    return new Intl.DateTimeFormat('en-US', options).format(utcDate);
+  }
+  
+  // For other formats, use the regular approach
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   
   const options: Intl.DateTimeFormatOptions = {
