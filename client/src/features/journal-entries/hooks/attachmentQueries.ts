@@ -142,8 +142,23 @@ export function useDeleteJournalEntryFile() {
         description: 'File was successfully deleted.',
       });
       
+      // Immediately update UI by optimistically updating the cache
+      queryClient.setQueryData(
+        ['journalEntryAttachments', variables.journalEntryId],
+        (oldData: JournalEntryFile[] | undefined) => {
+          if (!oldData) return [];
+          // Filter out the deleted file
+          return oldData.filter(file => file.id !== variables.fileId);
+        }
+      );
+      
+      // Also invalidate both the attachments query and the journal entry itself
       queryClient.invalidateQueries({ 
         queryKey: ['journalEntryAttachments', variables.journalEntryId] 
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/journal-entries/${variables.journalEntryId}`] 
       });
     },
     onError: (error: any) => {

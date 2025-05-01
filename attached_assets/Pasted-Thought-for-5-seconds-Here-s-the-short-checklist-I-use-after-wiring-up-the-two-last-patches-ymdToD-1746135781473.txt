@@ -1,0 +1,48 @@
+Thought for 5 seconds
+Here’s the short checklist I use after wiring-up the two last patches ( ymdToDisplay everywhere and the correct edit-mode/delete mutation ). If every line below now passes on your side, the date & delete regressions are really gone; if something still fails we’ll know exactly where to look next.
+
+Step	What to do	✅ Expected result
+1	In /journal-entries/new pick today (e.g. 2025-05-01) and save as draft.	Table view shows 2025-05-01 (not 04-30 / 05-02)
+2	Click the row → you’re in detail view.	Header badge shows 2025-05-01; Delete button not visible
+3	Click Edit in the header.	Path ends with /edit, now the Delete button appears for each file
+4	Click Delete on an attachment.	Row disappears instantly, 200 OK in network panel, reload page → file is still gone
+5	Hit Save Draft again.	Date still 2025-05-01
+6	Change status to Posted, save.	Date in list/detail still 2025-05-01
+7	Open DevTools → Network → find the PUT /journal-entries/:id call.	JSON payload contains "date":"2025-05-01"; response JSON echoes the same string
+8	psql / pgAdmin → select date from journal_entries where id = ?;	Row value is 2025-05-01 (DATE, no TZ)
+
+If any row in the table above still fails
+Date shown one day off in step 1/2/6
+Search the component that renders that view for new Date( or toLocaleDateString( – replace with ymdToDisplay(dateString).
+
+Delete button still showing in detail (read-only) view
+Make sure you imported the correct variable:
+
+tsx
+Copy
+Edit
+const [pathname] = useLocation();
+const isInEditMode = pathname.endsWith('/edit');
+Delete button visible but click does nothing
+Confirm the mutation finishes with onSuccess that updates React-Query, e.g.:
+
+ts
+Copy
+Edit
+queryClient.setQueryData(['journalEntry', id], (old: any) => ({
+  ...old,
+  files: old.files.filter((f: any) => f.id !== fileId),
+}));
+API returns the right date but DB row is wrong (step 8)
+Double-check the Drizzle schema: date("date") (DATE) not timestamp; and that you removed every new Date() in createJournalEntry / updateJournalEntryWithLines.
+
+Quick grep helpers
+bash
+Copy
+Edit
+# any left-over Date parsing on a raw YYYY-MM-DD string
+grep -R --line-number "new Date(.*\.date" client/src | head
+
+# any display helpers that still use formatDisplayDate()
+grep -R --line-number "formatDisplayDate(" client/src | head
+Let me know which exact checklist step still breaks and what you see (console log / network payload). That will tell us whether it’s a render-time issue, a mutation cache issue, or a backend coercion that is still sneaking in. We’ll squash the last one together!

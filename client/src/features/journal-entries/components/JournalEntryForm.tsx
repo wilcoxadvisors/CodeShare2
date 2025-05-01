@@ -354,11 +354,10 @@ function AttachmentSection({
   });
 
   // Determine if attachments are disabled based on entry status
-  // Bug fix: This check was preventing edits to files while in draft mode
+  // We need to allow file management in draft and pending_approval modes
   const isAttachmentsDisabled =
     journalEntry &&
-    (journalEntry as { status?: string })?.status !== "draft" &&
-    (journalEntry as { status?: string })?.status !== "pending_approval";
+    !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
 
   // Helper function to format bytes into readable format
   const formatBytes = (bytes: number, decimals: number = 2): string => {
