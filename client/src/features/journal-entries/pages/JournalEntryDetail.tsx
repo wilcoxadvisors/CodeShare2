@@ -1673,6 +1673,19 @@ function JournalEntryDetail() {
                         <Download className="h-4 w-4 mr-1" />
                         Download
                       </Button>
+                      
+                      {/* Only show delete button for draft or pending_approval entries */}
+                      {(journalEntry.status === 'draft' || journalEntry.status === 'pending_approval') && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                          onClick={() => handleFileDelete(file.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
