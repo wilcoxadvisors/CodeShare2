@@ -1,0 +1,79 @@
+ymptom	Typical cause	Where to look / quick test
+Date “5/1” shows up in the DB/UI as 4/29 (-2 days)	Somewhere the value is still being run through new Date() (or Date.parse) after you pick it. In US time-zones that shifts to UTC (–05/–08) and back.	1️⃣ Open DevTools ➜ Network ➜ create request payload – does it already say "date":"2025-04-29"?
+• If yes ➜ the bug is in JournalEntryForm before the call.
+• If no ➜ intercept the response from POST /journal-entries – if the API already returns 04-29 then the server is re-parsing.
+Attachments list is empty in Edit view but files appear when you “View”	The Edit page is using journalEntry.files from the entry endpoint, while upload hit /journal-entries/:id/files and stores rows in je_files. If we don’t join those rows when we re-fetch after save, the array stays empty.	• Check GET /api/journal-entries/:id JSON – does it include a files array?
+• If not, the server SELECT needs a LEFT JOIN je_files … GROUP_JSON_AGG().
+• If yes, the client’s useEditJournalEntry probably drops the files field when it maps lines.
+
+Targeted patches
+1. Stop creating Date objects on the client
+diff
+Copy
+Edit
+// JournalEntryForm.tsx (save & submit handlers)
+- const formattedDate = format(new Date(journalData.date), 'yyyy-MM-dd');
+- data.date = formattedDate;
++ data.date = journalData.date;          // already ISO-ish (YYYY-MM-DD) string
+Do the same for reverse / update flows.
+
+2. Stop parsing on the server
+If you still have something like
+
+ts
+Copy
+Edit
+const parsed = new Date(body.date);          // ❌
+insert({ date: parsed });                    // becomes 2025-04-29
+replace with
+
+ts
+Copy
+Edit
+insert({ date: body.date });                 // string passes straight to DATE col
+(Drizzle can coerce a string 'YYYY-MM-DD' directly into a DATE column.)
+
+3. Make sure GET /journal-entries/:id returns files
+sql
+Copy
+Edit
+SELECT je.*,
+       COALESCE(
+         JSON_AGG(jef.*) FILTER (WHERE jef.id IS NOT NULL), '[]'
+       ) AS files
+FROM   journal_entries je
+LEFT JOIN je_files jef ON jef.journal_entry_id = je.id
+WHERE  je.id = $1
+GROUP  BY je.id;
+– or the equivalent Drizzle query.
+
+4. Preserve files in the frontend hook
+diff
+Copy
+Edit
+// useEditJournalEntry.ts
+const { data } = useQuery(...);
+return {
+   ...data,
+-  lines: transformLines(data.lines)
++  lines: transformLines(data.lines),
++  files: data.files ?? []        // keep attachments
+};
+5. Quick verification script
+js
+Copy
+Edit
+console.log('Payload date sent:', formData.date);
+fetch('/api/journal-entries', {...})
+  .then(r => r.json())
+  .then(j => console.log('Date returned from API:', j.date));
+You should see the exact same string both times.
+
+Next step
+Try the Network-tab check first – it will tell us immediately whether the shift happens before or after the request.
+
+If it’s already wrong in the payload, patch the form handlers.
+
+If it flips only in the response, patch the storage layer/join query.
+
+Let me know which side is still mutating the date and I’ll give the precise diff for that file.
