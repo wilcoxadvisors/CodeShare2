@@ -451,7 +451,7 @@ function AttachmentSection({
           }
 
           response = await axios.post(
-            `/api/entities/${entityId}/journal-entries/${entryId}/files`,
+            `/api/journal-entries/${entryId}/files`,
             formData,
             {
               // Bug fix #7: Do NOT set Content-Type header when using FormData
@@ -887,7 +887,7 @@ function AttachmentSection({
                                     className="h-8 w-8"
                                     onClick={() =>
                                       window.open(
-                                        `/api/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}/download`,
+                                        `/api/journal-entries/${journalEntryId}/files/${file.id}/download`,
                                         "_blank",
                                       )
                                     }
