@@ -407,6 +407,7 @@ function AttachmentSection({
     error: attachmentsError,
   } = useJournalEntryFiles(
     isExistingEntry ? (journalEntryId as number) : undefined,
+    entityId
   );
 
   // Function to upload pending files to a specific journal entry ID
@@ -531,6 +532,7 @@ function AttachmentSection({
   // Upload file hook for direct uploads via the UI
   const uploadFileMutation = useUploadJournalEntryFile(
     isExistingEntry ? (journalEntryId as number) : undefined,
+    entityId
   );
 
   // Handle local file uploads for new entries (not saved yet)

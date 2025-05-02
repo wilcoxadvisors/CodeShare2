@@ -19,19 +19,20 @@ export interface JournalEntryFile {
 /**
  * Hook to fetch files attached to a journal entry
  */
-export function useJournalEntryFiles(journalEntryId: number | undefined | null) {
+export function useJournalEntryFiles(journalEntryId: number | undefined | null, entityId?: number) {
   return useQuery<JournalEntryFile[]>({
     queryKey: ['journalEntryAttachments', journalEntryId],
     queryFn: async () => {
       if (!journalEntryId) return [];
+      if (!entityId) return [];
       
-      const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
+      const response = await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, {
         method: 'GET'
       });
       
       return response?.data || [];
     },
-    enabled: !!journalEntryId,
+    enabled: !!journalEntryId && !!entityId,
   });
 }
 
@@ -67,7 +68,7 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         // Let the browser automatically set the correct multipart boundary parameter
         console.log("DEBUG: Uploading file with progress tracking");
         const response = await axios.post(
-          `/api/journal-entries/${journalEntryId}/files`, 
+          `/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, 
           formData,
           {
             // Important: Don't manually set Content-Type when using FormData
