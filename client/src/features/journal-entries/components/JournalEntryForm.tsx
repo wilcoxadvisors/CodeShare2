@@ -21,7 +21,8 @@ import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/util
 import { 
   getJournalEntryUrl,
   getJournalEntryFilesBaseUrl,
-  getJournalEntryFileUrl
+  getJournalEntryFileUrl,
+  getJournalEntryFileDownloadUrl
 } from "@/api/urlHelpers";
 import {
   X,
@@ -362,11 +363,9 @@ function AttachmentSection({
   // Fetch the journal entry to check its status
   const { data: journalEntry } = useQuery({
     queryKey: isExistingEntry && clientId && entityId
-      ? [getJournalEntryUrl(clientId, entityId, journalEntryId)]
-      : isExistingEntry 
-        ? [`/api/journal-entries/${journalEntryId}`] 
-        : ["temp-entry"],
-    enabled: isExistingEntry,
+      ? [getJournalEntryUrl(clientId, entityId, journalEntryId as number)]
+      : ["temp-entry"],
+    enabled: isExistingEntry && !!clientId && !!entityId,
   });
 
   // Determine if attachments are disabled based on entry status
@@ -421,7 +420,7 @@ function AttachmentSection({
   } = useJournalEntryFiles(
     isExistingEntry ? (journalEntryId as number) : undefined,
     entityId,
-    clientId ? clientId : undefined // Convert null to undefined when needed
+    clientId as number // Cast to number since it's required by the hook
   );
 
   // Function to upload pending files to a specific journal entry ID
@@ -464,17 +463,13 @@ function AttachmentSection({
             await new Promise((r) => setTimeout(r, 500));
           }
 
-          // Determine the appropriate URL to use for the upload
-          let url;
-          if (clientId && entityId) {
-            // Use the new hierarchical URL pattern
-            url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
-            console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
-          } else {
-            // Fall back to legacy URL pattern
-            url = `/api/journal-entries/${entryId}/files`;
-            console.log("DEBUG AttachmentSection: Using legacy URL for upload:", url);
+          // Always use the hierarchical URL pattern for uploads
+          if (!clientId) {
+            throw new Error('Client ID is required for file uploads');
           }
+
+          const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
+          console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
           
           response = await axios.post(
             url,
@@ -559,7 +554,7 @@ function AttachmentSection({
   const uploadFileMutation = useUploadJournalEntryFile(
     isExistingEntry ? (journalEntryId as number) : undefined,
     entityId,
-    clientId // Pass client ID to enable hierarchical URL pattern
+    clientId as number // Cast to number since it's required by the hook
   );
 
   // Handle local file uploads for new entries (not saved yet)
@@ -914,20 +909,13 @@ function AttachmentSection({
                                     size="icon"
                                     className="h-8 w-8"
                                     onClick={() => {
-                                      // Use URL helper for consistent download URLs
-                                      let downloadUrl;
-                                      if (clientId && entityId) {
-                                        // Use hierarchical URL pattern with the correct helper function
-                                        downloadUrl = `${getJournalEntryFileUrl(
-                                          clientId, 
-                                          entityId, 
-                                          journalEntryId as number, 
-                                          file.id
-                                        )}/download`;
-                                      } else {
-                                        // Fall back to legacy URL
-                                        downloadUrl = `/api/journal-entries/${journalEntryId}/files/${file.id}/download`;
-                                      }
+                                      // Always use the hierarchical URL pattern with the dedicated helper
+                                      const downloadUrl = getJournalEntryFileDownloadUrl(
+                                        clientId as number, 
+                                        entityId as number, 
+                                        journalEntryId as number, 
+                                        file.id
+                                      );
                                       window.open(downloadUrl, "_blank");
                                     }}
                                   >
@@ -949,10 +937,9 @@ function AttachmentSection({
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() =>
                                       deleteFileMutation.mutate({
-                                        clientId,  // Add clientId for hierarchical URL pattern
-                                        entityId,
-                                        journalEntryId:
-                                          journalEntryId as number,
+                                        clientId: clientId as number,  // Required: clientId for hierarchical URL pattern
+                                        entityId: entityId as number,
+                                        journalEntryId: journalEntryId as number,
                                         fileId: file.id,
                                       })
                                     }
