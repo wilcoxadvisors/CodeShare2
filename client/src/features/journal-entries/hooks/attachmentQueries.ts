@@ -27,21 +27,14 @@ export interface JournalEntryFile {
 /**
  * Hook to fetch files attached to a journal entry
  */
-export function useJournalEntryFiles(journalEntryId: number | undefined | null, entityId?: number, clientId?: number) {
+export function useJournalEntryFiles(journalEntryId: number | undefined | null, entityId: number, clientId: number) {
   return useQuery<JournalEntryFile[]>({
     queryKey: ['journalEntryAttachments', journalEntryId],
     queryFn: async () => {
-      if (!journalEntryId) return [];
+      if (!journalEntryId || !entityId || !clientId) return [];
       
-      let url;
-      if (clientId && entityId) {
-        // Use the new hierarchical URL pattern if all IDs are available
-        url = getJournalEntryFilesBaseUrl(clientId, entityId, journalEntryId);
-      } else {
-        // Fall back to legacy URL pattern for backward compatibility
-        url = getLegacyJournalEntryFilesUrl(journalEntryId);
-        console.warn('Using legacy URL pattern for file attachments. Please provide clientId and entityId.');
-      }
+      // Always use the hierarchical URL pattern
+      const url = getJournalEntryFilesBaseUrl(clientId, entityId, journalEntryId);
       
       const response = await apiRequest(url, {
         method: 'GET'
@@ -49,14 +42,14 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
       
       return response?.data || [];
     },
-    enabled: !!journalEntryId,
+    enabled: !!(journalEntryId && entityId && clientId),
   });
 }
 
 /**
  * Hook to upload files to a journal entry
  */
-export function useUploadJournalEntryFile(journalEntryId: number | undefined | null, entityId?: number, clientId?: number) {
+export function useUploadJournalEntryFile(journalEntryId: number | undefined | null, entityId: number, clientId: number) {
   const { toast } = useToast();
   
   return useMutation({
@@ -77,16 +70,12 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         formData.append('files', file);
       });
       
-      // Determine the appropriate URL to use
-      let url;
-      if (clientId) {
-        // Use the new hierarchical URL pattern if clientId is available
-        url = getJournalEntryFilesBaseUrl(clientId, entityId, journalEntryId);
-      } else {
-        // Fall back to legacy URL pattern for backward compatibility
-        url = getLegacyJournalEntryFilesUrl(journalEntryId);
-        console.warn('Using legacy URL pattern for file uploads. Please provide clientId.');
+      if (!clientId) {
+        throw new Error('Client ID is required');
       }
+      
+      // Always use hierarchical URL pattern
+      const url = getJournalEntryFilesBaseUrl(clientId, entityId, journalEntryId);
       
       // Use axios for progress tracking if onProgress is provided
       if (onProgress) {
@@ -140,23 +129,10 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
           queryKey: ['journalEntryAttachments', journalEntryId] 
         });
         
-        // Invalidate both standard and entity-scoped journal entry endpoints
+        // Invalidate the hierarchical journal entry URL
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/journal-entries/${journalEntryId}`] 
+          queryKey: [getJournalEntryUrl(clientId, entityId, journalEntryId)] 
         });
-        
-        // Invalidate entity-scoped endpoints if clientId and entityId are provided
-        if (clientId && entityId) {
-          // New URL format
-          queryClient.invalidateQueries({ 
-            queryKey: [getJournalEntryUrl(clientId, entityId, journalEntryId)] 
-          });
-        } else if (entityId) {
-          // Legacy URL format
-          queryClient.invalidateQueries({ 
-            queryKey: [`/api/entities/${entityId}/journal-entries/${journalEntryId}`] 
-          });
-        }
       }
     },
     onError: (error: any) => {
@@ -183,21 +159,17 @@ export function useDeleteJournalEntryFile() {
       journalEntryId, 
       fileId 
     }: { 
-      clientId?: number,
+      clientId: number,
       entityId: number,
       journalEntryId: number, 
       fileId: number 
     }) => {
-      // Determine the appropriate URL to use
-      let url;
-      if (clientId) {
-        // Use the new hierarchical URL pattern if clientId is available
-        url = getJournalEntryFileUrl(clientId, entityId, journalEntryId, fileId);
-      } else {
-        // Fall back to legacy URL pattern for backward compatibility
-        url = getLegacyJournalEntryFileUrl(journalEntryId, fileId);
-        console.warn('Using legacy URL pattern for file deletion. Please provide clientId.');
+      if (!clientId) {
+        throw new Error('Client ID is required');
       }
+      
+      // Always use hierarchical URL pattern
+      const url = getJournalEntryFileUrl(clientId, entityId, journalEntryId, fileId);
       
       console.log("DEBUG: Deleting file using URL:", url);
       
@@ -221,30 +193,15 @@ export function useDeleteJournalEntryFile() {
         }
       );
       
-      // Also invalidate both the attachments query and the journal entry itself
+      // Invalidate the attachments query to refresh the list
       queryClient.invalidateQueries({ 
         queryKey: ['journalEntryAttachments', variables.journalEntryId] 
       });
       
-      // Invalidate journal entry endpoints with both old and new URL patterns
-      
-      // Legacy endpoint
+      // Invalidate the hierarchical journal entry URL
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/journal-entries/${variables.journalEntryId}`] 
+        queryKey: [getJournalEntryUrl(variables.clientId, variables.entityId, variables.journalEntryId)] 
       });
-      
-      // Invalidate entity-scoped endpoints
-      if (variables.clientId && variables.entityId) {
-        // New URL format with client hierarchy
-        queryClient.invalidateQueries({ 
-          queryKey: [getJournalEntryUrl(variables.clientId, variables.entityId, variables.journalEntryId)] 
-        });
-      } else if (variables.entityId) {
-        // Legacy entity-scoped format
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${variables.entityId}/journal-entries/${variables.journalEntryId}`] 
-        });
-      }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
