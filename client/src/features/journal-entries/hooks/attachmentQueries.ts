@@ -68,7 +68,7 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         // Let the browser automatically set the correct multipart boundary parameter
         console.log("DEBUG: Uploading file with progress tracking");
         const response = await axios.post(
-          `/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, 
+          `/api/journal-entries/${journalEntryId}/files`, 
           formData,
           {
             // Important: Don't manually set Content-Type when using FormData
@@ -92,7 +92,7 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         console.log("DEBUG: Uploading file without progress tracking");
         
         // Bug fix #7: Make sure apiRequest properly handles FormData
-        return await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, {
+        return await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
           method: 'POST',
           data: formData,
           // Important: Ensure apiRequest doesn't set Content-Type for FormData
@@ -152,7 +152,7 @@ export function useDeleteJournalEntryFile() {
       journalEntryId: number, 
       fileId: number 
     }) => {
-      return await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`, {
+      return await apiRequest(`/api/journal-entries/${journalEntryId}/files/${fileId}`, {
         method: 'DELETE'
       });
     },

@@ -259,11 +259,8 @@ function JournalEntryDetail() {
     mutationFn: async (fileId: number) => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
-      const entityId = currentEntity?.id;
-      if (!entityId) throw new Error('Entity ID is required to delete files');
-      
-      // Use the entity-scoped endpoint path as in backend routes
-      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, {
+      // Use the non-entity-scoped endpoint path for file operations
+      return await apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
         method: 'DELETE'
       });
     },
@@ -372,20 +369,9 @@ function JournalEntryDetail() {
   const handleFileDownload = (fileId: number) => {
     if (!entryId) return;
     
-    const entityId = currentEntity?.id;
-    if (!entityId) {
-      console.error("Entity ID is required for file download");
-      toast({
-        title: "Error",
-        description: "Unable to download file: Entity information is missing",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Use the entity-scoped endpoint with the /download suffix
+    // Use the non-entity-scoped endpoint with the /download suffix
     // This ensures proper content disposition headers are set for attachment download
-    window.open(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
+    window.open(`/api/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
   };
   
   // Handle file deletion
