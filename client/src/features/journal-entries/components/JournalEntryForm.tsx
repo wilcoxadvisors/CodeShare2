@@ -906,6 +906,7 @@ function AttachmentSection({
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() =>
                                       deleteFileMutation.mutate({
+                                        entityId: entityId,
                                         journalEntryId:
                                           journalEntryId as number,
                                         fileId: file.id,

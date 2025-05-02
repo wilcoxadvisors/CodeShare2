@@ -1,0 +1,83 @@
+🎯 What’s happening?
+The “✕ Delete” button works for files you just attached because they still live in the component’s pendingFiles array – clicking the icon just splices them out locally.
+
+Files that were already saved in the DB require a round-trip to the backend (DELETE …/files/:fileId).
+The click does fire a mutation, but the request is hitting the wrong URL, so the server returns 404, the mutation never resolves, and React-Query rolls back the optimistic update.
+You can see it if you watch the Network tab while you click the icon.
+
+🔍 Quick confirmation
+Open DevTools ▶ Network.
+
+Click the ✕ on a “saved” file.
+
+You’ll see something like
+
+bash
+Copy
+Edit
+DELETE /api/journal-entries/132/files/55   404
+(or maybe a CORS / 401, depending on auth).
+
+Now look at the backend route:
+
+ts
+Copy
+Edit
+// server/journalEntryRoutes.ts
+router.delete(
+  '/api/entities/:entityId/journal-entries/:entryId/files/:fileId',
+  deleteJournalEntryFile
+);
+Different path ➜ 404.
+
+🛠 Two-line fix in the frontend
+(You can change the backend instead; changing the FE is quicker and keeps the nice “scoped-to-entity” path the API already exposes.)
+
+1. attachmentQueries.ts
+diff
+Copy
+Edit
+- return apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
++ return apiRequest(
++   `/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`,
+    { method: 'DELETE' }
+  );
+Pass entityId into the mutation:
+
+ts
+Copy
+Edit
+export const useDeleteAttachment = () =>
+  useMutation({
+    mutationFn: ({ entityId, journalEntryId, fileId }: {
+      entityId: number;
+      journalEntryId: number;
+      fileId: number;
+    }) => deleteAttachment({ entityId, entryId: journalEntryId, fileId }),
+    …
+  });
+2. Wherever you call the mutation (JournalEntryDetail & JournalEntryForm)
+ts
+Copy
+Edit
+deleteFileMutation.mutate({
+  entityId: currentEntity!.id,   // from context
+  journalEntryId: entry.id,
+  fileId: file.id,
+});
+(If you have a shared AttachmentRow component just pass the entityId prop down once.)
+
+🧹 Optional niceties
+tweak	why / snippet
+Invalidate the files list after a successful delete	ts queryClient.invalidateQueries(['journalEntry', entryId]); so the detail pane refreshes the files array.
+Show an error toast when delete fails	onError:(err)=>toast({title:'Delete failed',description:err.message,variant:'destructive'})
+Guard against orphan files when an entry gets posted	Disable the delete icon when journalEntry.status === 'posted'.
+
+🚀 Test-drive
+Refresh ➜ open an entry that already has files.
+
+Click ✕; network call should now be 200.
+
+File disappears immediately (optimistic) and stays gone after refresh.
+
+Let me know if you’d rather align the backend route instead or need help wiring the toast/error handling.

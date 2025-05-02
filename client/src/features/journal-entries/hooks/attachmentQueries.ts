@@ -126,13 +126,15 @@ export function useDeleteJournalEntryFile() {
   
   return useMutation({
     mutationFn: async ({ 
+      entityId,
       journalEntryId, 
       fileId 
     }: { 
+      entityId: number,
       journalEntryId: number, 
       fileId: number 
     }) => {
-      return await apiRequest(`/api/journal-entries/${journalEntryId}/files/${fileId}`, {
+      return await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`, {
         method: 'DELETE'
       });
     },
