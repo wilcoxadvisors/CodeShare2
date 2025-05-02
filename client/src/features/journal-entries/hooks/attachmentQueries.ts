@@ -24,15 +24,15 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
     queryKey: ['journalEntryAttachments', journalEntryId],
     queryFn: async () => {
       if (!journalEntryId) return [];
-      if (!entityId) return [];
+      // Don't require entityId for listing files, as backend expects non-entity-scoped URL
       
-      const response = await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, {
+      const response = await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
         method: 'GET'
       });
       
       return response?.data || [];
     },
-    enabled: !!journalEntryId && !!entityId,
+    enabled: !!journalEntryId,
   });
 }
 

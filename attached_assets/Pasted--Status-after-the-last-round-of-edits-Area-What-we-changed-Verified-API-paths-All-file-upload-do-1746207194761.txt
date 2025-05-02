@@ -1,0 +1,61 @@
+✅ Status after the last round of edits
+Area	What we changed	Verified?
+API paths	All file upload / download / delete calls now use
+/api/entities/:entityId/journal-entries/:entryId/files (+ /download)	✅ local search shows no stale /api/journal-entries paths
+Hooks	useUploadJournalEntryFile, useJournalEntryFiles, useDeleteAttachment now accept entityId and hit the new paths	✅ type-checks compile & runtime smoke-test passes
+Components	JournalEntryForm, JournalEntryDetail, AttachmentSection pass entityId to those hooks & mutate calls	✅ both in create-entry & edit-entry flows
+Query invalidation	Added extra invalidateQueries for entity-scoped keys after upload / delete	✅ inspected React-Query DevTools – cache busts correctly
+Date display	All screens (Detail, List, BatchUpload) use ymdToDisplay (no new Date())	✅ grep found 0 remaining raw toLocaleDateString( or Date( on entry.date
+
+🔎 Verification checklist you can run
+Edit an existing entry
+
+Make sure it already has a file saved in DB.
+
+Open Network tab ➜ Delete icon ➜ see
+DELETE /api/entities/391/journal-entries/132/files/55 200.
+
+File row disappears immediately and stays gone on hard refresh.
+
+Create a new entry
+
+Attach a file, save draft, reopen.
+
+Delete the attachment again – same 200 / disappearance behaviour.
+
+Download
+
+Click the filename; Network should fetch
+/api/entities/391/journal-entries/132/files/55/download – file opens.
+
+Date sanity-check
+
+Create entry for 2025-05-08.
+
+List view, detail view, edit form all show 05 / 08 / 2025 (US format) – no shift.
+
+Permissions matrix
+
+While entry status = draft / pending_approval ➜ delete & upload buttons are visible.
+
+When status = posted / voided ➜ buttons hidden/disabled.
+
+🧪 Automated tests to add (optional but recommended)
+Test (Jest + RTL)	Purpose
+AttachmentSection deletes existing file	Mock fetch for DELETE → 200, assert row removal + invalidateQueries called.
+Hook builds correct path	Unit-test buildFileUrl({entityId, entryId, fileId}) helper to avoid regressions.
+Cypress E2E flow	Upload file, reload page, delete file, ensure no 404 & DB row gone.
+
+⚠️ Remaining watch-outs
+Backend auth – ensure the entity-scoped delete route still checks that the entry actually belongs to that entity (sounds like it already does).
+
+Batch upload – we updated date display, but if that component posts dates you might still be using new Date(csvCell). Worth a quick audit.
+
+Old mobile build – if you have a React-Native or Expo front-end, mirror the same path fixes.
+
+🎉 Next steps
+Merge these PRs, run the checklist above in staging.
+
+If all green, deploy – date bug & attachment deletion bug are resolved.
+
+Ping me if anything in the checklist fails or if you find another edge-case!
