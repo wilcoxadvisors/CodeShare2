@@ -304,6 +304,7 @@ const FormSchema = z.object({
  * @param props - The component props
  */
 interface AttachmentSectionProps {
+  entityId: number;
   journalEntryId: number | null | undefined;
   pendingFiles: File[];
   setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
@@ -332,6 +333,7 @@ interface AttachmentSectionProps {
 }
 
 function AttachmentSection({
+  entityId,
   journalEntryId,
   pendingFiles,
   setPendingFiles,
@@ -906,7 +908,7 @@ function AttachmentSection({
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() =>
                                       deleteFileMutation.mutate({
-                                        entityId: entityId,
+                                        entityId,
                                         journalEntryId:
                                           journalEntryId as number,
                                         fileId: file.id,

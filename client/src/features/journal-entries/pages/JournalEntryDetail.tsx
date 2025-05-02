@@ -262,8 +262,8 @@ function JournalEntryDetail() {
       const entityId = currentEntity?.id;
       if (!entityId) throw new Error('Entity ID is required to delete files');
       
-      // Use the same URL format as in attachmentQueries.ts for consistency
-      return await apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
+      // Use the entity-scoped endpoint path as in backend routes
+      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, {
         method: 'DELETE'
       });
     },
