@@ -38,7 +38,7 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null) 
 /**
  * Hook to upload files to a journal entry
  */
-export function useUploadJournalEntryFile(journalEntryId: number | undefined | null) {
+export function useUploadJournalEntryFile(journalEntryId: number | undefined | null, entityId?: number) {
   const { toast } = useToast();
   
   return useMutation({
@@ -48,6 +48,10 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
     }) => {
       if (!journalEntryId) {
         throw new Error('Journal entry ID is required');
+      }
+      
+      if (!entityId) {
+        throw new Error('Entity ID is required');
       }
       
       const formData = new FormData();
@@ -87,7 +91,7 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         console.log("DEBUG: Uploading file without progress tracking");
         
         // Bug fix #7: Make sure apiRequest properly handles FormData
-        return await apiRequest(`/api/journal-entries/${journalEntryId}/files`, {
+        return await apiRequest(`/api/entities/${entityId}/journal-entries/${journalEntryId}/files`, {
           method: 'POST',
           data: formData,
           // Important: Ensure apiRequest doesn't set Content-Type for FormData

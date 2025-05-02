@@ -450,7 +450,7 @@ function AttachmentSection({
           }
 
           response = await axios.post(
-            `/api/journal-entries/${entryId}/files`,
+            `/api/entities/${entityId}/journal-entries/${entryId}/files`,
             formData,
             {
               // Bug fix #7: Do NOT set Content-Type header when using FormData
@@ -885,7 +885,7 @@ function AttachmentSection({
                                     className="h-8 w-8"
                                     onClick={() =>
                                       window.open(
-                                        `/api/journal-entries/${journalEntryId}/files/${file.id}/download`,
+                                        `/api/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}/download`,
                                         "_blank",
                                       )
                                     }
@@ -2945,6 +2945,7 @@ function JournalEntryForm({
         existingEntry?.status !== "posted" &&
         existingEntry?.status !== "voided") ? (
         <AttachmentSection
+          entityId={entityId}
           journalEntryId={effectiveJournalEntryId}
           pendingFiles={pendingFiles}
           setPendingFiles={setPendingFiles}
