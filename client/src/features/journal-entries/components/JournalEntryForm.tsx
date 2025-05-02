@@ -154,11 +154,12 @@ interface JournalEntryFile {
   id: number;
   journalEntryId: number;
   filename: string;
+  originalname?: string;
   path: string;
   mimeType: string;
   size: number;
   uploadedBy: number;
-  uploadedAt: Date;
+  uploadedAt: string | Date;
 }
 
 // Interface to track expanded/collapsed account states
@@ -311,7 +312,7 @@ interface AttachmentSectionProps {
     filename: string;
     size: number;
     mimeType: string;
-    addedAt: Date;
+    addedAt: Date | number;
   }>;
   setPendingFilesMetadata: React.Dispatch<
     React.SetStateAction<
@@ -320,7 +321,7 @@ interface AttachmentSectionProps {
         filename: string;
         size: number;
         mimeType: string;
-        addedAt: Date;
+        addedAt: Date | number;
       }>
     >
   >;
@@ -984,12 +985,12 @@ function JournalEntryForm({
   >(
     // Convert existing files to metadata format if available
     existingEntry?.files 
-      ? existingEntry.files.map(file => ({
+      ? existingEntry.files.map((file: any) => ({
           id: file.id,
           filename: file.filename || file.originalname || "Unknown filename",
           size: file.size || 0,
           mimeType: file.mimeType || "application/octet-stream",
-          addedAt: file.uploadedAt ? new Date(file.uploadedAt) : Date.now()
+          addedAt: file.uploadedAt ? Date.parse(file.uploadedAt.toString()) : Date.now()
         }))
       : []
   );
