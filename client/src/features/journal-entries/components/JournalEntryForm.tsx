@@ -353,7 +353,8 @@ function AttachmentSection({
   
   // Get client ID from context
   const { selectedClientId } = useEntity();
-  const clientId = selectedClientId;
+  // Convert nullable selectedClientId to number or undefined
+  const clientId = typeof selectedClientId === 'number' ? selectedClientId : undefined;
 
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
@@ -420,7 +421,7 @@ function AttachmentSection({
   } = useJournalEntryFiles(
     isExistingEntry ? (journalEntryId as number) : undefined,
     entityId,
-    clientId // Pass clientId to enable hierarchical URL pattern
+    clientId ? clientId : undefined // Convert null to undefined when needed
   );
 
   // Function to upload pending files to a specific journal entry ID
@@ -557,7 +558,8 @@ function AttachmentSection({
   // Upload file hook for direct uploads via the UI
   const uploadFileMutation = useUploadJournalEntryFile(
     isExistingEntry ? (journalEntryId as number) : undefined,
-    entityId
+    entityId,
+    clientId // Pass client ID to enable hierarchical URL pattern
   );
 
   // Handle local file uploads for new entries (not saved yet)
@@ -622,6 +624,7 @@ function AttachmentSection({
   };
 
   // Delete file hook (for existing entries)
+  // Pass clientId and entityId to the hook for hierarchical URL pattern support
   const deleteFileMutation = useDeleteJournalEntryFile();
 
   // Dropzone configuration
@@ -910,12 +913,23 @@ function AttachmentSection({
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8"
-                                    onClick={() =>
-                                      window.open(
-                                        `/api/journal-entries/${journalEntryId}/files/${file.id}/download`,
-                                        "_blank",
-                                      )
-                                    }
+                                    onClick={() => {
+                                      // Use URL helper for consistent download URLs
+                                      let downloadUrl;
+                                      if (clientId && entityId) {
+                                        // Use hierarchical URL pattern with the correct helper function
+                                        downloadUrl = `${getJournalEntryFileUrl(
+                                          clientId, 
+                                          entityId, 
+                                          journalEntryId as number, 
+                                          file.id
+                                        )}/download`;
+                                      } else {
+                                        // Fall back to legacy URL
+                                        downloadUrl = `/api/journal-entries/${journalEntryId}/files/${file.id}/download`;
+                                      }
+                                      window.open(downloadUrl, "_blank");
+                                    }}
                                   >
                                     <Download className="h-4 w-4" />
                                   </Button>
@@ -935,6 +949,7 @@ function AttachmentSection({
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() =>
                                       deleteFileMutation.mutate({
+                                        clientId,  // Add clientId for hierarchical URL pattern
                                         entityId,
                                         journalEntryId:
                                           journalEntryId as number,
