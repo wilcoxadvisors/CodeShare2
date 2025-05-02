@@ -285,7 +285,7 @@ function JournalEntries() {
                         onClick={() => handleRowClick(entry.id)}
                       >
                         <TableCell className="font-medium">
-                          {entry.displayId || `JE-${new Date(entry.date).getFullYear()}-${entry.id.toString().padStart(4, '0')}`}
+                          {entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`}
                         </TableCell>
                         <TableCell className="font-medium">
                           {entry.id}
