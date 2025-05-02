@@ -38,7 +38,7 @@ export function useJournalEntry() {
   const defaultJournalEntry = useMemo(() => ({
     entityId: currentEntity?.id || 0,
     clientId: currentEntity?.clientId || 0,
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayYMD(), // Use safer date utility function
     description: '',
     reference: '',
     journalType: 'JE',
@@ -118,7 +118,7 @@ export function useJournalEntry() {
         // Make sure the payload has all required fields for posting
         if (!payload.date) {
           // If no date provided, use the original entry date or today
-          payload.date = new Date().toISOString().split('T')[0];
+          payload.date = getTodayYMD(); // Use safer date utility function
         }
         
         // Bug fix #3: Fix for date posting 1-day early when status changes (draft → posted)

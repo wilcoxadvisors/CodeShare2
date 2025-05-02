@@ -541,7 +541,7 @@ function AttachmentSection({
       filename: file.name,
       size: file.size,
       mimeType: file.type,
-      addedAt: new Date(),
+      addedAt: new Date(Date.now()), // Use Date.now() to avoid timezone issues
     }));
 
     // Add the files to our pending files state

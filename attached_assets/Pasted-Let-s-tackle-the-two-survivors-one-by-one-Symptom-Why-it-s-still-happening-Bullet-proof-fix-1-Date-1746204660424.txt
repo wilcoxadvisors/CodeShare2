@@ -1,0 +1,18 @@
+Let’s tackle the two survivors one-by-one
+#	Symptom	Why it’s still happening	Bullet-proof fix
+1	Dates are off by ± 1 day in some views (list view, picker default, maybe attachments)	Somewhere in the React tree we still run new Date("YYYY-MM-DD") or format(new Date(...)). The moment JS sees that ISO-ish string it assumes UTC midnight → the browser shifts it to local time.	Locate & replace the last offenders.
+Run:
+`grep -R --line-number --context=2 "new Date(" client/src/features
+
+| 2 | Delete button in Edit view doesn’t delete / is still hidden | Two small glitches:<br>1. isInEditMode is calculated after you overwrote const [, navigate] = useLocation() – the first element (location) was lost.<br>2. Detail view and attachment hook call different endpoints, so optimistic cache update never sees the success.<br>3. Permission guard in JournalEntryForm disables the attachment section if status isn’t exactly “draft”/“pending_approval”. | a. Fix the misplaced variable in JournalEntryDetail.tsx ts const [location] = useLocation(); const isInEditMode = location.pathname.endsWith('/edit'); b. Re-use one API path everywhere (I recommend the shorter one): ts /api/journal-entries/:id/files/:fileId Update both attachmentQueries.ts and JournalEntryDetail.tsx to that path. c. Simpler permission check (no negate double): ts const isAttachmentsDisabled = !["draft","pending_approval"] .includes(journalEntry?.status ?? ""); d. Optimistic cache update you already added looks good – just remember to invalidateQueries(['journalEntry', entryId]) as well so the detail pane pulls fresh files array after deletion. |
+
+Sanity checklist after patch
+Create an entry dated 2025-05-01 → refresh list/table → should read the same, no change with OS timezone switch.
+
+Open edit → the paperclip/file list shows the delete (✕) icons.
+
+Click delete → file disappears instantly (optimistic), backend confirms → no console error.
+
+Save / Post → navigate back, reopen → file is really gone, date still correct.
+
+Give those quick patches a spin; if any specific component is still drifting the date, ping me with its filename and we’ll zero-in on that one.
