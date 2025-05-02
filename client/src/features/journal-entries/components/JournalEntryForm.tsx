@@ -18,6 +18,11 @@ import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
+import { 
+  getJournalEntryUrl,
+  getJournalEntryFilesBaseUrl,
+  getJournalEntryFileUrl
+} from "@/api/urlHelpers";
 import {
   X,
   Plus,
@@ -73,6 +78,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEntity } from "@/contexts/EntityContext";
 import { useDebouncedCallback } from "@/hooks/useDebounce";
 import { z } from "zod";
 import { validateForm } from "@/lib/validation";
@@ -344,15 +350,21 @@ function AttachmentSection({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  
+  // Get client ID from context
+  const { selectedClientId } = useEntity();
+  const clientId = selectedClientId;
 
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
 
   // Fetch the journal entry to check its status
   const { data: journalEntry } = useQuery({
-    queryKey: isExistingEntry
-      ? [`/api/journal-entries/${journalEntryId}`]
-      : ["temp-entry"],
+    queryKey: isExistingEntry && clientId && entityId
+      ? [getJournalEntryUrl(clientId, entityId, journalEntryId)]
+      : isExistingEntry 
+        ? [`/api/journal-entries/${journalEntryId}`] 
+        : ["temp-entry"],
     enabled: isExistingEntry,
   });
 
@@ -407,7 +419,8 @@ function AttachmentSection({
     error: attachmentsError,
   } = useJournalEntryFiles(
     isExistingEntry ? (journalEntryId as number) : undefined,
-    entityId
+    entityId,
+    clientId // Pass clientId to enable hierarchical URL pattern
   );
 
   // Function to upload pending files to a specific journal entry ID
@@ -450,8 +463,20 @@ function AttachmentSection({
             await new Promise((r) => setTimeout(r, 500));
           }
 
+          // Determine the appropriate URL to use for the upload
+          let url;
+          if (clientId && entityId) {
+            // Use the new hierarchical URL pattern
+            url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
+            console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
+          } else {
+            // Fall back to legacy URL pattern
+            url = `/api/journal-entries/${entryId}/files`;
+            console.log("DEBUG AttachmentSection: Using legacy URL for upload:", url);
+          }
+          
           response = await axios.post(
-            `/api/journal-entries/${entryId}/files`,
+            url,
             formData,
             {
               // Bug fix #7: Do NOT set Content-Type header when using FormData
