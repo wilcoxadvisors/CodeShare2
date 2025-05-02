@@ -161,10 +161,6 @@ function JournalEntryDetail() {
     mutationFn: async (files: File[]) => {
       if (!entryId) throw new Error('Journal entry ID is required');
       
-      // Get the current entity ID
-      const entityId = currentEntity?.id;
-      if (!entityId) throw new Error('Entity ID is required to upload files');
-      
       // Create a new cancel token source
       const CancelToken = axios.CancelToken;
       const source = CancelToken.source();
@@ -189,7 +185,7 @@ function JournalEntryDetail() {
       });
       
       const response = await axios.post(
-        `/api/entities/${entityId}/journal-entries/${entryId}/files`,
+        `/api/journal-entries/${entryId}/files`,
         formData,
         {
           cancelToken: source.token,
