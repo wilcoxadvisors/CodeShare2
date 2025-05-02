@@ -372,9 +372,20 @@ function JournalEntryDetail() {
   const handleFileDownload = (fileId: number) => {
     if (!entryId) return;
     
-    // Use the dedicated download endpoint with the /download suffix
+    const entityId = currentEntity?.id;
+    if (!entityId) {
+      console.error("Entity ID is required for file download");
+      toast({
+        title: "Error",
+        description: "Unable to download file: Entity information is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Use the entity-scoped endpoint with the /download suffix
     // This ensures proper content disposition headers are set for attachment download
-    window.open(`/api/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
+    window.open(`/api/entities/${entityId}/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
   };
   
   // Handle file deletion

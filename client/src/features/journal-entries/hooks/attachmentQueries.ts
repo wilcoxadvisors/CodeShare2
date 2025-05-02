@@ -107,9 +107,22 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       });
       
       if (journalEntryId) {
+        // Invalidate the attachments query to refresh the list
         queryClient.invalidateQueries({ 
           queryKey: ['journalEntryAttachments', journalEntryId] 
         });
+        
+        // Invalidate both standard and entity-scoped journal entry endpoints
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/journal-entries/${journalEntryId}`] 
+        });
+        
+        // Invalidate entity-scoped endpoint if entityId is provided
+        if (entityId) {
+          queryClient.invalidateQueries({ 
+            queryKey: [`/api/entities/${entityId}/journal-entries/${journalEntryId}`] 
+          });
+        }
       }
     },
     onError: (error: any) => {
@@ -164,9 +177,17 @@ export function useDeleteJournalEntryFile() {
         queryKey: ['journalEntryAttachments', variables.journalEntryId] 
       });
       
+      // Also invalidate the journal entry detail
       queryClient.invalidateQueries({ 
         queryKey: [`/api/journal-entries/${variables.journalEntryId}`] 
       });
+      
+      // Invalidate entity-scoped journal entries endpoint if needed
+      if (variables.entityId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/entities/${variables.entityId}/journal-entries/${variables.journalEntryId}`] 
+        });
+      }
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
