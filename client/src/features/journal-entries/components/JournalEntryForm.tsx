@@ -541,7 +541,7 @@ function AttachmentSection({
       filename: file.name,
       size: file.size,
       mimeType: file.type,
-      addedAt: new Date(Date.now()), // Use Date.now() to avoid timezone issues
+      addedAt: Date.now(), // Use timestamp instead of Date object to avoid timezone issues
     }));
 
     // Add the files to our pending files state
@@ -810,7 +810,7 @@ function AttachmentSection({
                             <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">
                               Pending
                             </span>
-                            {file.addedAt ? new Date(file.addedAt).toLocaleTimeString() : "Just now"}
+                            {file.addedAt ? new Date(Number(file.addedAt)).toLocaleTimeString() : "Just now"}
                           </div>
                           {uploadFileMutation.isPending && (
                             <div className="w-full">
@@ -979,7 +979,7 @@ function JournalEntryForm({
       filename: string;
       size: number;
       mimeType: string;
-      addedAt: Date;
+      addedAt: Date | number;
     }[]
   >(
     // Convert existing files to metadata format if available
@@ -989,7 +989,7 @@ function JournalEntryForm({
           filename: file.filename || file.originalname || "Unknown filename",
           size: file.size || 0,
           mimeType: file.mimeType || "application/octet-stream",
-          addedAt: new Date(file.uploadedAt || Date.now())
+          addedAt: file.uploadedAt ? new Date(file.uploadedAt) : Date.now()
         }))
       : []
   );

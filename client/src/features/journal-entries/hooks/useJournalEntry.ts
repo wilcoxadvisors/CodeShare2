@@ -4,6 +4,7 @@ import { queryClient, apiRequest, ApiResponse } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useEntity } from '@/contexts/EntityContext';
 import { JournalEntryStatus } from '@shared/schema';
+import { getTodayYMD } from '@/utils/dateUtils';
 
 // Define line item interface for journal entry lines
 export interface JournalLine {
