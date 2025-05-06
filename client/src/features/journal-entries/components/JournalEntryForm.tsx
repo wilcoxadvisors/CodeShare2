@@ -2,8 +2,8 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
+  useMemo,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -14,36 +14,50 @@ import {
   useUploadJournalEntryFile,
   useDeleteJournalEntryFile,
 } from "../hooks/attachmentQueries";
-import { 
-  formatCurrency, 
-  formatNumberWithSeparator, 
-  safeParseAmount 
-} from "../utils/numberFormat";
-import { getDebit, getCredit } from "../utils/lineFormat";
+import {
+  ClientFormatLine,
+  ServerFormatLine,
+  JournalEntryLine,
+  isClientFormatLine,
+  isServerFormatLine,
+  getDebit,
+  getCredit,
+  safeParseAmount
+} from "../utils/lineFormat";
 import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
 import { 
-  ChevronDown, 
-  ChevronRight, 
-  X, 
-  Check, 
-  Loader2,
-  Info,
-  Plus,
-  FileText,
-  Trash2,
-} from "lucide-react";
+  getJournalEntriesBaseUrl, 
+  getJournalEntryUrl, 
+  getJournalEntryFilesBaseUrl,
+  getJournalEntryFileUrl,
+  getJournalEntryFileDownloadUrl
+} from "@/api/urlHelpers";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  X,
+  Plus,
+  FileUp,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Upload,
+  Trash2,
+  Download,
+  FileText,
+  Paperclip,
+  Info,
+  FileImage,
+  FileSpreadsheet,
+  FileArchive,
+  Lock,
+  SendHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,16 +73,32 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "@/hooks/use-toast";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useHookFormMask } from "use-mask-input";
-import { cn } from "@/lib/utils";
+import { useEntity } from "@/contexts/EntityContext";
+import { useDebouncedCallback } from "@/hooks/useDebounce";
+import { z } from "zod";
+import { validateForm } from "@/lib/validation";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -76,20 +106,26 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
+// Define API response interface types for better type safety
 interface JournalEntryResponse {
   id?: number;
   entry?: { id: number };
   [key: string]: any;
 }
 
+// Define local Account interface compatible with the component needs
 interface Account {
   id: number;
   accountCode: string; // Use accountCode to match the server schema
@@ -122,6 +158,7 @@ interface Entity {
   active: boolean;
 }
 
+// Interface for entity balance
 interface EntityBalance {
   entityCode: string;
   debit: number;
@@ -130,6 +167,7 @@ interface EntityBalance {
   balanced: boolean;
 }
 
+// Interface for journal entry file attachments
 interface JournalEntryFile {
   id: number;
   journalEntryId: number;
@@ -142,6 +180,7 @@ interface JournalEntryFile {
   uploadedAt: string | Date;
 }
 
+// Interface to track expanded/collapsed account states
 interface ExpandedState {
   [accountId: number]: boolean;
 }
@@ -165,6 +204,117 @@ interface JournalLine {
   debit: string;
   credit: string;
 }
+
+// Form validation schema
+const FormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  reference: z.string().min(3, "Reference must be at least 3 characters"),
+  referenceNumber: z.string().optional(), // Additional reference field to match server schema
+  description: z.string().min(1, "Description is required"), // Make description required to match server validation
+  journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
+  supDocId: z.string().optional(),
+  reversalDate: z.string().optional(),
+  lines: z
+    .array(
+      z.object({
+        accountId: z.string().min(1, "Account is required"),
+        entityCode: z
+          .string()
+          .min(1, "Entity code is required for intercompany support"),
+        description: z.string().optional(),
+        debit: z.string(),
+        credit: z.string(),
+      }),
+    )
+    .min(2, "Journal entry must have at least 2 lines")
+    .refine(
+      (lines) => {
+        // Check if there's at least one debit and one credit line
+        const hasDebit = lines.some((line) => getDebit(line) > 0);
+        const hasCredit = lines.some((line) => getCredit(line) > 0);
+        return hasDebit && hasCredit;
+      },
+      {
+        message:
+          "Journal entry must have at least one debit and one credit line",
+      },
+    )
+    .refine(
+      (lines) => {
+        // Check if debits equal credits - only for submissions, not during editing
+        // This makes the form more forgiving while the user is still editing
+        const totalDebit = lines.reduce(
+          (sum, line) => sum + getDebit(line),
+          0,
+        );
+        const totalCredit = lines.reduce(
+          (sum, line) => sum + getCredit(line),
+          0,
+        );
+
+        // If one of the sides is zero, then we're clearly still in the process of filling out the form
+        if (totalDebit === 0 || totalCredit === 0) {
+          return true; // Don't validate in mid-editing
+        }
+
+        return Math.abs(totalDebit - totalCredit) < 0.001;
+      },
+      {
+        message: "Total debits must equal total credits",
+      },
+    )
+    .refine(
+      (lines) => {
+        // Check if debits equal credits for each entity code (intercompany validation)
+        // Make this more forgiving during editing
+        const entityCodesArray = lines.map((line) => line.entityCode);
+        const uniqueEntityCodes = entityCodesArray.filter(
+          (code, index) => entityCodesArray.indexOf(code) === index,
+        );
+
+        // If we only have one entity code, no need for intercompany validation
+        if (uniqueEntityCodes.length <= 1) {
+          return true;
+        }
+
+        // Check if any entity has both debits and credits with significant values
+        const entitiesWithBalances = uniqueEntityCodes.map((entityCode) => {
+          const entityLines = lines.filter(
+            (line) => line.entityCode === entityCode,
+          );
+          const entityDebit = entityLines.reduce(
+            (sum, line) => sum + getDebit(line),
+            0,
+          );
+          const entityCredit = entityLines.reduce(
+            (sum, line) => sum + getCredit(line),
+            0,
+          );
+
+          return {
+            entityCode,
+            hasDebitAndCredit: entityDebit > 0 && entityCredit > 0,
+            isBalanced: Math.abs(entityDebit - entityCredit) < 0.001,
+          };
+        });
+
+        // If any entity has both debits and credits, it should be balanced
+        const entitiesRequiringBalance = entitiesWithBalances.filter(
+          (e) => e.hasDebitAndCredit,
+        );
+
+        if (entitiesRequiringBalance.length === 0) {
+          return true; // Still in editing mode, no need to validate
+        }
+
+        return entitiesRequiringBalance.every((e) => e.isBalanced);
+      },
+      {
+        message:
+          "Debits must equal credits for each entity (intercompany balancing)",
+      },
+    ),
+});
 
 /**
  * AttachmentSection Component
@@ -209,365 +359,633 @@ function AttachmentSection({
   setPendingFilesMetadata,
   onUploadToEntryRef,
 }: AttachmentSectionProps) {
-  // Get the clientId from parent component's props
-  const clientId = 1; // Default to 1 if not available
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   
-  const { data: attachments, isLoading, refetch } = useJournalEntryFiles(
-    journalEntryId,
+  // Get client ID from context
+  const { selectedClientId } = useEntity();
+  // Convert nullable selectedClientId to number or undefined
+  const clientId = typeof selectedClientId === 'number' ? selectedClientId : undefined;
+
+  // Determine if we have a numeric journal entry ID (real entry) or not
+  const isExistingEntry = typeof journalEntryId === "number";
+
+  // Fetch the journal entry to check its status
+  const { data: journalEntry } = useQuery({
+    queryKey: isExistingEntry && clientId && entityId
+      ? [getJournalEntryUrl(clientId, entityId, journalEntryId as number)]
+      : ["temp-entry"],
+    enabled: isExistingEntry && !!clientId && !!entityId,
+  });
+
+  // Determine if attachments are disabled based on entry status
+  // We need to allow file management in draft and pending_approval modes
+  const isAttachmentsDisabled =
+    journalEntry &&
+    !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+
+  // Helper function to format bytes into readable format
+  const formatBytes = (bytes: number, decimals: number = 2): string => {
+    if (bytes === 0) return "0 Bytes";
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  };
+
+  // Helper function to get appropriate icon based on mimetype
+  const getFileIcon = (mimeType: string): React.ReactNode => {
+    if (mimeType.startsWith("image/")) {
+      return <FileImage className="h-4 w-4" />;
+    } else if (mimeType === "application/pdf") {
+      return <FileText className="h-4 w-4" />;
+    } else if (
+      mimeType.includes("spreadsheet") ||
+      mimeType.includes("excel") ||
+      mimeType.includes("csv")
+    ) {
+      return <FileSpreadsheet className="h-4 w-4" />;
+    } else if (mimeType.includes("zip") || mimeType.includes("compressed")) {
+      return <FileArchive className="h-4 w-4" />;
+    } else if (mimeType.includes("word") || mimeType.includes("doc")) {
+      return <FileText className="h-4 w-4 text-blue-600" />;
+    } else if (mimeType === "message/rfc822" || mimeType.includes("outlook")) {
+      // Handle email file formats (.eml, .msg)
+      return <SendHorizontal className="h-4 w-4 text-blue-500" />;
+    } else {
+      return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  // Fetch attachments for this journal entry (only for existing entries)
+  const {
+    data: attachments = [],
+    isLoading: isLoadingAttachments,
+    isError: isAttachmentsError,
+    error: attachmentsError,
+  } = useJournalEntryFiles(
+    isExistingEntry ? (journalEntryId as number) : undefined,
     entityId,
-    clientId
+    clientId as number // Cast to number since it's required by the hook
   );
 
-  // File upload mutation
-  const uploadFiles = useUploadJournalEntryFile(journalEntryId, entityId, clientId);
-  const deleteFile = useDeleteJournalEntryFile();
+  // Function to upload pending files to a specific journal entry ID
+  // This function will be exposed to parent components via the ref
+  const uploadPendingFilesToEntry = async (entryId: number) => {
+    if (!pendingFiles || pendingFiles.length === 0) {
+      console.log("DEBUG AttachmentSection: No pending files to upload");
+      return; // No files to upload
+    }
 
-  // File upload state
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+    try {
+      // Create a FormData object for the upload
+      const formData = new FormData();
+      pendingFiles.forEach((file) => {
+        formData.append("files", file);
+      });
 
-  // Setup file dropzone for drag-and-drop
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      // Add new files to pending files list
-      setPendingFiles((prev) => [...prev, ...acceptedFiles]);
+      console.log(
+        `DEBUG AttachmentSection: Uploading ${pendingFiles.length} pending files to journal entry ${entryId}`,
+      );
 
-      // Create metadata entries
-      const newMetadataEntries = acceptedFiles.map((file) => ({
-        id: Date.now() + Math.floor(Math.random() * 1000), // Use a timestamp + random ID
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type,
-        addedAt: new Date(),
-      }));
+      // Use axios for the file upload with progress tracking
+      const axios = (await import("axios")).default;
 
-      setPendingFilesMetadata((prev) => [...prev, ...newMetadataEntries]);
-    },
-    [setPendingFiles, setPendingFilesMetadata],
+      // Make 3 attempts if needed
+      let attempts = 0;
+      let success = false;
+      let lastError;
+      let response;
+
+      while (attempts < 3 && !success) {
+        try {
+          attempts++;
+          console.log(
+            `DEBUG AttachmentSection: Upload attempt ${attempts} for entry ${entryId}`,
+          );
+
+          // Wait a bit before retrying (except first attempt)
+          if (attempts > 1) {
+            await new Promise((r) => setTimeout(r, 500));
+          }
+
+          // Always use the hierarchical URL pattern for uploads
+          if (!clientId) {
+            throw new Error('Client ID is required for file uploads');
+          }
+
+          const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
+          console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
+          
+          response = await axios.post(
+            url,
+            formData,
+            {
+              // Bug fix #7: Do NOT set Content-Type header when using FormData
+              // Let the browser set this automatically with boundary parameter
+              headers: {
+                // Explicitly remove content type - let browser handle it
+                "Content-Type": undefined,
+              },
+              onUploadProgress: (progressEvent: any) => {
+                const percentCompleted = Math.round(
+                  (progressEvent.loaded * 100) / progressEvent.total,
+                );
+                setUploadProgress(percentCompleted);
+                console.log("DEBUG AttachmentSection: Upload progress:", percentCompleted, "%");
+              },
+            },
+          );
+
+          success = true;
+          console.log(
+            "DEBUG AttachmentSection: Upload to entry successful:",
+            response.data,
+          );
+        } catch (error) {
+          console.error(
+            `DEBUG AttachmentSection: Upload attempt ${attempts} failed:`,
+            error,
+          );
+          lastError = error;
+        }
+      }
+
+      if (!success) {
+        throw lastError;
+      }
+
+      // Clear the pending files after successful upload
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+
+      // Reset the progress bar
+      setUploadProgress(0);
+
+      // Invalidate the files query to refresh the list
+      queryClient.invalidateQueries({
+        queryKey: ["journalEntryAttachments", entryId],
+      });
+
+      return response?.data;
+    } catch (error) {
+      console.error("Failed to upload pending files to entry:", error);
+      throw error;
+    } finally {
+      setUploadProgress(0);
+    }
+  };
+
+  // If a ref was provided, assign the upload function to it
+  // This allows the parent component to call this function
+  React.useEffect(() => {
+    if (onUploadToEntryRef) {
+      onUploadToEntryRef.current = uploadPendingFilesToEntry;
+    }
+
+    // Cleanup when component unmounts
+    return () => {
+      if (onUploadToEntryRef) {
+        onUploadToEntryRef.current = null;
+      }
+    };
+  }, [
+    onUploadToEntryRef,
+    pendingFiles,
+    setPendingFiles,
+    setPendingFilesMetadata,
+  ]);
+
+  // Upload file hook for direct uploads via the UI
+  const uploadFileMutation = useUploadJournalEntryFile(
+    isExistingEntry ? (journalEntryId as number) : undefined,
+    entityId,
+    clientId as number // Cast to number since it's required by the hook
   );
 
+  // Handle local file uploads for new entries (not saved yet)
+  const handleLocalFileUpload = (files: File[]) => {
+    // For new entries, store files in state temporarily
+    console.log("DEBUG AttachmentSection: Storing files temporarily:", files);
+
+    // Create metadata for the pending files
+    const newFilesMetadata = files.map((file, index) => ({
+      id: Date.now() + index, // Generate a temporary ID
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type,
+      addedAt: Date.now(), // Use timestamp instead of Date object to avoid timezone issues
+    }));
+
+    // Add the files to our pending files state
+    setPendingFiles((prevFiles) => [...prevFiles, ...files]);
+    setPendingFilesMetadata((prevMetadata) => [
+      ...prevMetadata,
+      ...newFilesMetadata,
+    ]);
+
+    // Simulate progress for better UX
+    const intervalId = setInterval(() => {
+      setUploadProgress((progress) => {
+        if (progress >= 100) {
+          clearInterval(intervalId);
+          return 100;
+        }
+        return progress + 10;
+      });
+    }, 50);
+
+    // Clear progress after "upload" is complete
+    setTimeout(() => {
+      clearInterval(intervalId);
+      setUploadProgress(100);
+      // Short delay to show 100% before resetting
+      setTimeout(() => setUploadProgress(0), 300);
+
+      // Show success toast
+      toast({
+        title: "Files staged",
+        description: "Files will be attached when the journal entry is saved.",
+      });
+    }, 600);
+  };
+
+  // Delete pending file (for new entries)
+  const deletePendingFile = (id: number) => {
+    const fileIndex = pendingFilesMetadata.findIndex((file) => file.id === id);
+    if (fileIndex !== -1) {
+      setPendingFilesMetadata((prev) => prev.filter((file) => file.id !== id));
+      setPendingFiles((prev) => prev.filter((_, index) => index !== fileIndex));
+
+      toast({
+        title: "File removed",
+        description: "File was removed from pending uploads.",
+      });
+    }
+  };
+
+  // Delete file hook (for existing entries)
+  // Pass clientId and entityId to the hook for hierarchical URL pattern support
+  const deleteFileMutation = useDeleteJournalEntryFile();
+
+  // Dropzone configuration
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        // Check for duplicate files
+        let duplicatesFound = false;
+        const uniqueFiles = acceptedFiles.filter((newFile) => {
+          // Compare with existing attachments from server
+          const isDuplicateWithExisting =
+            Array.isArray(attachments) &&
+            attachments.length > 0 &&
+            attachments.some(
+              (existingFile) =>
+                existingFile.filename === newFile.name &&
+                existingFile.size === newFile.size,
+            );
+
+          // Compare with pending files
+          const isDuplicateWithPending =
+            Array.isArray(pendingFiles) &&
+            pendingFiles.length > 0 &&
+            pendingFiles.some(
+              (pendingFile) =>
+                pendingFile.name === newFile.name &&
+                pendingFile.size === newFile.size,
+            );
+
+          // If duplicate found, mark it
+          if (isDuplicateWithExisting || isDuplicateWithPending) {
+            duplicatesFound = true;
+            return false;
+          }
+
+          return true;
+        });
+
+        // Notify user about any duplicates
+        if (duplicatesFound) {
+          toast({
+            title: "Duplicate files detected",
+            description:
+              "Some files were skipped as they appear to be duplicates of existing attachments.",
+            variant: "destructive",
+          });
+        }
+
+        // Only upload unique files if we have any
+        if (uniqueFiles.length > 0) {
+          if (isExistingEntry) {
+            // For existing entries, use the upload hook
+            uploadFileMutation.mutate({
+              files: uniqueFiles,
+              onProgress: setUploadProgress,
+            });
+          } else {
+            // For new entries, use our local handler
+            handleLocalFileUpload(uniqueFiles);
+          }
+        }
+      }
+    },
     accept: {
-      // Only accept common document types
+      // Images
+      "image/*": [".jpeg", ".jpg", ".png", ".gif", ".webp"],
+      // PDF
       "application/pdf": [".pdf"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/png": [".png"],
+      // Word documents
       "application/msword": [".doc"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-        ".docx",
-      ],
-      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+      // Excel spreadsheets
+      "application/vnd.ms-excel": [".xls", ".csv"], // Some browsers send Excel MIME for CSV
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
         ".xlsx",
       ],
+      // Text files
+      "text/plain": [".txt"],
       "text/csv": [".csv"],
+      // Email formats
+      "message/rfc822": [".eml"], // RFC-822 email format
+      "application/vnd.ms-outlook": [".msg"], // Outlook messages
+      // Archives
       "application/zip": [".zip"],
+      "application/x-rar-compressed": [".rar"],
     },
-    maxSize: 10 * 1024 * 1024, // 10MB max file size
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: true,
+    disabled:
+      Boolean(uploadFileMutation.isPending) || Boolean(isAttachmentsDisabled),
   });
 
-  // Handle file upload to an existing journal entry
-  const uploadFilesToEntry = async (entryId: number) => {
-    // Only proceed if there are pending files
-    if (pendingFiles.length === 0) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // If we have an entry ID, proceed with the upload
-      if (entryId) {
-        // Use the uploadFiles mutation with progress tracking
-        const response = await uploadFiles.mutateAsync({
-          files: pendingFiles,
-          onProgress: (progress) => {
-            setUploadProgress(progress);
-          }
-        });
-
-        if (response) {
-          toast({
-            title: "Files Uploaded",
-            description: `${pendingFiles.length} file(s) uploaded successfully`,
-          });
-
-          // Clear pending files after successful upload
-          setPendingFiles([]);
-          setPendingFilesMetadata([]);
-
-          // Refresh the attachments list
-          refetch();
-        }
-      }
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      toast({
-        title: "Upload Failed",
-        description: "There was an error uploading the files",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(100);
-    }
-  };
-
-  // Store upload function in ref for parent component to access
-  useEffect(() => {
-    if (onUploadToEntryRef) {
-      onUploadToEntryRef.current = uploadFilesToEntry;
-    }
-  }, [pendingFiles, entityId, onUploadToEntryRef]);
-
-  // Function to remove a file from pending uploads
-  const removePendingFile = (id: number) => {
-    const indexToRemove = pendingFilesMetadata.findIndex(
-      (meta) => meta.id === id,
-    );
-    if (indexToRemove !== -1) {
-      setPendingFiles((prev) => {
-        const newFiles = [...prev];
-        newFiles.splice(indexToRemove, 1);
-        return newFiles;
-      });
-
-      setPendingFilesMetadata((prev) => {
-        const newMetadata = [...prev];
-        newMetadata.splice(indexToRemove, 1);
-        return newMetadata;
-      });
-    }
-  };
-
-  // Function to delete an already uploaded file
-  const handleDeleteFile = async (fileId: number) => {
-    try {
-      await deleteFile.mutateAsync({
-        clientId,
-        entityId,
-        journalEntryId: journalEntryId as number,
-        fileId,
-      });
-
-      toast({
-        title: "File Deleted",
-        description: "The file has been deleted successfully",
-      });
-
-      // Refresh the attachments list
-      refetch();
-    } catch (error) {
-      console.error("Error deleting file:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the file",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper to format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " bytes";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else return (bytes / 1048576).toFixed(1) + " MB";
-  };
-
   return (
-    <div className="mt-8 border rounded-md p-4">
-      <h3 className="text-lg font-medium mb-4">Attachments</h3>
+    <Card className="mt-8">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center">
+          <Paperclip className="mr-2 h-4 w-4" />
+          Attachments
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Upload Area */}
+        <div
+          {...getRootProps()}
+          className={cn(
+            "border border-dashed rounded-md p-6 cursor-pointer transition-colors",
+            isDragActive ? "border-primary bg-primary/5" : "border-gray-300",
+            uploadFileMutation.isPending && "opacity-50 cursor-not-allowed",
+          )}
+        >
+          <input {...getInputProps()} />
 
-      {/* Drag and drop area */}
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors ${
-          isDragActive
-            ? "border-blue-400 bg-blue-50"
-            : "border-gray-300 hover:border-gray-400"
-        }`}
-      >
-        <input {...getInputProps()} />
-        {isDragActive ? (
-          <p className="text-blue-500">Drop the files here...</p>
-        ) : (
-          <div>
-            <FileText className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-            <p className="mb-1">
-              Drag and drop files here, or click to select files
-            </p>
-            <p className="text-xs text-gray-500">
-              (PDF, Word, Excel, CSV, JPG, PNG - Max 10MB)
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Pending files list */}
-      {pendingFilesMetadata.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">
-            Pending Uploads ({pendingFilesMetadata.length})
-          </h4>
-          <div className="border rounded-md divide-y">
-            {pendingFilesMetadata.map((file) => (
-              <div
-                key={file.id}
-                className="p-3 flex items-center justify-between"
+          {false /* We're now using tempJournalEntryId so this condition is always false */ ? (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Save the journal entry as draft first to enable file uploads
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="pointer-events-none"
               >
-                <div className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium truncate max-w-xs">
-                      {file.filename}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => removePendingFile(file.id)}
-                  className="text-red-500 hover:text-red-700"
-                  aria-label="Remove file"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
+                <FileUp className="mr-2 h-4 w-4" />
+                Upload Files
+              </Button>
+            </div>
+          ) : uploadFileMutation.isPending ? (
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Uploading files...
+              </p>
+              <Progress value={uploadProgress} className="w-full mt-2" />
+            </div>
+          ) : isDragActive ? (
+            <div className="text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm">Drop the files here...</p>
+            </div>
+          ) : isAttachmentsDisabled ? (
+            <div className="text-center">
+              <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Files can't be added once the entry is posted
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Create a reversal or new draft if you need to add files
+              </p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <FileUp className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Drag and drop files here, or click to select files
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Supported formats: PDF, Word (.doc/.docx), Excel (.xls/.xlsx),
+                CSV, Images, Email (.eml), etc. (Max 10MB per file)
+              </p>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Existing files list */}
-      {attachments && attachments.length > 0 && (
+        {/* Attachments List */}
         <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">
-            Attached Files ({attachments.length})
-          </h4>
-          <div className="border rounded-md divide-y">
-            {attachments.map((file: JournalEntryFile) => (
-              <div
-                key={file.id}
-                className="p-3 flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium truncate max-w-xs">
-                      {file.originalname || file.filename}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {formatFileSize(file.size)} •{" "}
-                      {new Date(file.uploadedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <a
-                    href={`/api/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-700"
-                    aria-label="View file"
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                    >
-                      View
-                    </Button>
-                  </a>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-xs text-red-500 hover:text-red-700"
-                      >
-                        Delete
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Confirm Deletion</DialogTitle>
-                        <DialogDescription>
-                          Are you sure you want to delete this file? This action
-                          cannot be undone.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const dialogElement =
-                              document.querySelector("[role=dialog]");
-                            if (dialogElement) {
-                              const closeButton =
-                                dialogElement.querySelector(
-                                  "button[aria-label=Close]",
-                                );
-                              if (closeButton instanceof HTMLElement) {
-                                closeButton.click();
-                              }
-                            }
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            handleDeleteFile(file.id);
-                            // Close dialog after delete action
-                            const dialogElement =
-                              document.querySelector("[role=dialog]");
-                            if (dialogElement) {
-                              const closeButton =
-                                dialogElement.querySelector(
-                                  "button[aria-label=Close]",
-                                );
-                              if (closeButton instanceof HTMLElement) {
-                                closeButton.click();
-                              }
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+          <h4 className="text-sm font-medium mb-2">Attached Files</h4>
 
-      {/* Loading and progress indicators */}
-      {isLoading && (
-        <div className="mt-4 flex items-center justify-center text-gray-500">
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          <span>Loading attachments...</span>
-        </div>
-      )}
+          {isLoadingAttachments ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : isAttachmentsError && isExistingEntry ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {(attachmentsError as Error)?.message ||
+                  "Failed to load attachments"}
+              </AlertDescription>
+            </Alert>
+          ) : (!Array.isArray(attachments) || attachments.length === 0) &&
+            pendingFilesMetadata.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No files attached yet
+            </p>
+          ) : (
+            <ScrollArea className="h-[200px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Filename</TableHead>
+                    <TableHead className="w-[15%]">Size</TableHead>
+                    <TableHead className="w-[25%]">Status</TableHead>
+                    <TableHead className="w-[20%]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* Pending files (for new entries) */}
+                  {pendingFilesMetadata.map((file) => (
+                    <TableRow key={`pending-${file.id}`}>
+                      <TableCell className="flex items-center">
+                        {getFileIcon(file.mimeType)}
+                        <span
+                          className="ml-2 truncate max-w-[150px]"
+                          title={file.filename}
+                        >
+                          {file.filename}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatBytes(file.size)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col space-y-1">
+                          <div className="flex items-center">
+                            <span className="text-amber-500 bg-amber-50 text-xs px-2 py-1 rounded-full font-medium mr-2">
+                              Pending
+                            </span>
+                            {file.addedAt ? new Date(Number(file.addedAt)).toLocaleTimeString() : "Just now"}
+                          </div>
+                          {uploadFileMutation.isPending && (
+                            <div className="w-full">
+                              <Progress
+                                value={uploadProgress}
+                                className="h-1"
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {uploadProgress}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => deletePendingFile(file.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Remove</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
 
-      {isUploading && (
-        <div className="mt-4">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-          <p className="text-xs text-center mt-1 text-gray-500">
-            Uploading files... {uploadProgress}%
-          </p>
+                  {/* Existing files (for saved entries) */}
+                  {Array.isArray(attachments) &&
+                    attachments.map((file: JournalEntryFile) => (
+                      <TableRow key={file.id}>
+                        <TableCell className="flex items-center">
+                          {getFileIcon(file.mimeType)}
+                          <span
+                            className="ml-2 truncate max-w-[150px]"
+                            title={file.filename}
+                          >
+                            {file.filename}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatBytes(file.size)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <span className="text-green-500 bg-green-50 text-xs px-2 py-1 rounded-full font-medium mr-2">
+                              Uploaded
+                            </span>
+                            {file.uploadedAt ? ymdToDisplay(file.uploadedAt.toString().substring(0, 10)) : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => {
+                                      // Always use the hierarchical URL pattern with the dedicated helper
+                                      const downloadUrl = getJournalEntryFileDownloadUrl(
+                                        clientId as number, 
+                                        entityId as number, 
+                                        journalEntryId as number, 
+                                        file.id
+                                      );
+                                      window.open(downloadUrl, "_blank");
+                                    }}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Download</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() =>
+                                      deleteFileMutation.mutate({
+                                        clientId: clientId as number,  // Required: clientId for hierarchical URL pattern
+                                        entityId: entityId as number,
+                                        journalEntryId: journalEntryId as number,
+                                        fileId: file.id,
+                                      })
+                                    }
+                                    disabled={
+                                      Boolean(deleteFileMutation.isPending) ||
+                                      Boolean(isAttachmentsDisabled)
+                                    }
+                                  >
+                                    {deleteFileMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {isAttachmentsDisabled ? (
+                                    <p>Delete not allowed for posted entries</p>
+                                  ) : (
+                                    <p>Delete</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -580,144 +998,224 @@ function JournalEntryForm({
   entityId,
   clientId,
   accounts,
+  locations = [],
+  entities = [],
   onSubmit,
   onCancel,
   existingEntry,
-  entities = [],
 }: JournalEntryFormProps) {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  // Post journal entry mutation
-  const postJournalEntry = useMutation({
-    mutationFn: async (entryId: number) => {
-      return await apiRequest(`/api/entities/${entityId}/journal-entries/${entryId}/post`, {
-        method: "POST",
+  // Get context client ID as fallback
+  const { selectedClientId } = useEntity();
+  const effectiveClientId = clientId ?? (typeof selectedClientId === 'number' ? selectedClientId : undefined);
+  
+  // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
+  const invalidateJournalEntryQueries = () => {
+    if (effectiveClientId) {
+      // Use hierarchical URL pattern when client ID is available
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntriesBaseUrl(effectiveClientId, entityId)],
       });
-    },
-    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/general-ledger`],
+      });
+      
+      // Invalidate journal entry files queries if we have a valid journal entry ID
+      if (existingEntry?.id && typeof existingEntry.id === 'number') {
+        // Invalidate the attachments query
+        queryClient.invalidateQueries({
+          queryKey: ['journalEntryAttachments', existingEntry.id],
+        });
+        
+        // Also invalidate using the URL pattern
+        queryClient.invalidateQueries({
+          queryKey: [getJournalEntryFilesBaseUrl(effectiveClientId, entityId, existingEntry.id)],
+        });
+      }
+    } else {
+      // Even without a client ID, we should use the hierarchical pattern by getting all possible keys
+      // This ensures we invalidate all queries that might match
+      
+      // First try to get all entities for this entity ID, regardless of client
       queryClient.invalidateQueries({
         queryKey: [`/api/entities/${entityId}/journal-entries`],
+        exact: false
       });
-      toast({
-        title: "Journal Entry Posted",
-        description: "The journal entry has been posted successfully",
+      
+      // Also invalidate any client-specific paths that might exist
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients`],
+        predicate: (query) => {
+          const queryKey = Array.isArray(query.queryKey) ? query.queryKey[0] : '';
+          return typeof queryKey === 'string' && 
+                 queryKey.includes(`/entities/${entityId}/journal-entries`);
+        }
       });
-      onSubmit();
-    },
-    onError: (error) => {
-      console.error("Error posting journal entry:", error);
-      toast({
-        title: "Posting Failed",
-        description: "There was an error posting the journal entry",
-        variant: "destructive",
+      
+      // Invalidate general ledger as well
+      queryClient.invalidateQueries({
+        queryKey: [`/api/entities/${entityId}/general-ledger`],
       });
-    },
-  });
+    }
+  };
+  
+  // Properly initialize the hook at the component level, not in the event handler
+  const { postJournalEntry } = useJournalEntry();
 
-  // State for form data
-  const [date, setDate] = useState(getTodayYMD());
-  const [description, setDescription] = useState("");
-  const [referenceNumber, setReferenceNumber] = useState("");
-  const [journalType, setJournalType] = useState("standard");
-  const [lines, setLines] = useState<JournalLine[]>([
-    { accountId: "", entityCode: "", description: "", debit: "", credit: "" },
-  ]);
-  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  // Generate a temporary UUID for new entries to use with attachments before saving
+  const [tempJournalEntryId] = useState(uuidv4());
+  // This ID is used for both existing entries and new entries with temporary IDs
+  const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
 
-  // State for attachment handling
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  // State for pending file attachments
+  // Bug fix #1: hydrate with existing files when editing
+  const [pendingFiles, setPendingFiles] = useState<File[]>(
+    existingEntry?.files ?? []
+  );
   const [pendingFilesMetadata, setPendingFilesMetadata] = useState<
-    Array<{
+    {
       id: number;
       filename: string;
       size: number;
       mimeType: string;
       addedAt: Date | number;
-    }>
-  >([]);
-  const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
+    }[]
+  >(
+    // Convert existing files to metadata format if available
+    existingEntry?.files 
+      ? existingEntry.files.map((file: any) => ({
+          id: file.id,
+          filename: file.filename || file.originalname || "Unknown filename",
+          size: file.size || 0,
+          mimeType: file.mimeType || "application/octet-stream",
+          addedAt: file.uploadedAt ? Date.parse(file.uploadedAt.toString()) : Date.now()
+        }))
+      : []
+  );
 
-  // Determine if editing mode
-  const isEditing = Boolean(existingEntry?.id);
-  const effectiveJournalEntryId = isEditing ? existingEntry.id : null;
+  // Ref to hold the function to upload pending files to a specific journal entry
+  // This will be passed to and set by the AttachmentSection component
+  const uploadPendingFilesRef = useRef<
+    ((entryId: number) => Promise<void>) | null
+  >(null);
 
-  // Create and update mutations
-  const createEntry = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(`/api/entities/${entityId}/journal-entries`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-    },
-    onSuccess: async (result: JournalEntryResponse) => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/journal-entries`],
-      });
-      toast({
-        title: "Journal Entry Created",
-        description: "The journal entry has been created successfully",
-      });
-      // If there are pending files, upload them now
-      if (pendingFiles.length > 0 && uploadPendingFilesRef.current) {
-        await uploadPendingFilesRef.current(result.entry?.id || result.id!);
-      }
-      onSubmit();
-    },
-    onError: (error) => {
-      console.error("Error creating journal entry:", error);
-      toast({
-        title: "Creation Failed",
-        description: "There was an error creating the journal entry",
-        variant: "destructive",
-      });
-    },
-  });
+  // Helper function definitions - declaring before they're used
+  // Using safeParseAmount from the shared utils file
 
-  const updateEntry = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(
-        `/api/entities/${entityId}/journal-entries/${existingEntry.id}`,
-        {
-          method: "PUT",
-          body: JSON.stringify(data),
-        },
-      );
-    },
-    onSuccess: async (response: JournalEntryResponse) => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/journal-entries`],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          `/api/entities/${entityId}/journal-entries/${existingEntry.id}`,
-        ],
-      });
-      toast({
-        title: "Journal Entry Updated",
-        description: "The journal entry has been updated successfully",
-      });
-      // If there are pending files, upload them now
-      if (pendingFiles.length > 0 && uploadPendingFilesRef.current) {
-        await uploadPendingFilesRef.current(
-          response.entry?.id || existingEntry.id,
+  // Function to format number with thousands separators
+  const formatNumberWithSeparator = (value: string) => {
+    // Remove all commas first
+    const numWithoutCommas = value.replace(/,/g, "");
+
+    // Check if it's a valid number format
+    if (numWithoutCommas === "" || /^\d*\.?\d{0,2}$/.test(numWithoutCommas)) {
+      // If it has a decimal part
+      if (numWithoutCommas.includes(".")) {
+        const [wholePart, decimalPart] = numWithoutCommas.split(".");
+        // Format whole part with commas and add back decimal part
+        return (
+          wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + decimalPart
         );
+      } else {
+        // Format number without decimal part
+        return numWithoutCommas.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       }
-      onSubmit();
-    },
-    onError: (error) => {
-      console.error("Error updating journal entry:", error);
-      toast({
-        title: "Update Failed",
-        description: "There was an error updating the journal entry",
-        variant: "destructive",
-      });
-    },
+    }
+
+    // If not a valid number format, return as is
+    return value;
+  };
+  console.log("DEBUG JournalEntryForm - received accounts:", accounts);
+  console.log(
+    "DEBUG JournalEntryForm - accounts length:",
+    accounts?.length || 0,
+  );
+  console.log(
+    "DEBUG JournalEntryForm - accounts first item:",
+    accounts?.length > 0 ? accounts[0] : "no accounts",
+  );
+  console.log("DEBUG JournalEntryForm - clientId:", clientId);
+  console.log("DEBUG JournalEntryForm - entityId:", entityId);
+
+  // Debug logs for existingEntry
+  console.log(
+    "DEBUG JournalEntryForm - existingEntry:",
+    existingEntry ? "YES" : "NO",
+  );
+  if (existingEntry) {
+    console.log("DEBUG JournalEntryForm - existingEntry ID:", existingEntry.id);
+    console.log(
+      "DEBUG JournalEntryForm - existingEntry status:",
+      existingEntry.status,
+    );
+    console.log(
+      "DEBUG JournalEntryForm - existingEntry lines count:",
+      existingEntry.lines?.length || 0,
+    );
+    console.log(
+      "DEBUG JournalEntryForm - existingEntry first line format:",
+      existingEntry.lines?.[0]
+        ? JSON.stringify(existingEntry.lines[0], null, 2)
+        : "No lines",
+    );
+  }
+
+  // Log the structure of account items, which helps diagnose render issues
+  if (accounts?.length > 0) {
+    console.log(
+      "DEBUG JournalEntryForm - account item structure:",
+      Object.keys(accounts[0])
+        .map((key) => `${key}: ${typeof accounts[0][key]}`)
+        .join(", "),
+    );
+  }
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isEditing] = useState(!!existingEntry);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  const [journalData, setJournalData] = useState({
+    reference: existingEntry?.reference || generateReference(),
+    referenceNumber: existingEntry?.referenceNumber || "", // Use referenceNumber to match server schema
+    date: existingEntry?.date ?? // already "YYYY-MM-DD" 
+          getTodayYMD(), // Use our timezone-safe utility instead of Date()
+    description: existingEntry?.description || "",
+    status: existingEntry?.status || JournalEntryStatus.DRAFT,
+    journalType: existingEntry?.journalType || "JE",
+    supDocId: existingEntry?.supDocId || "",
+    reversalDate: existingEntry?.reversalDate ?? "", // already "YYYY-MM-DD" or empty
   });
 
-  // Reference holder for the form
-  const formRef = useRef<HTMLFormElement>(null);
+  // Get default entity code from entities list based on current entityId
+  const defaultEntityCode = React.useMemo(() => {
+    if (entities && entities.length > 0) {
+      const currentEntity = entities.find((entity) => entity.id === entityId);
+      return currentEntity ? currentEntity.code : "";
+    }
+    return "";
+  }, [entities, entityId]);
+
+  const [lines, setLines] = useState<JournalLine[]>(
+    existingEntry?.lines || [
+      {
+        accountId: "",
+        entityCode: defaultEntityCode,
+        description: "",
+        debit: "",
+        credit: "",
+      },
+      {
+        accountId: "",
+        entityCode: defaultEntityCode,
+        description: "",
+        debit: "",
+        credit: "",
+      },
+    ],
+  );
+
+  // Removed supportingDoc state as we're using the AttachmentSection component now
 
   // Track expanded/collapsed state of parent accounts
   const initializeExpandedState = () => {
@@ -734,15 +1232,6 @@ function JournalEntryForm({
     initializeExpandedState,
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
-  
-  // Helper function to get account display label
-  const getAccountLabel = useCallback((accountId: string | undefined) => {
-    if (!accountId || !accounts.some(a => a.id.toString() === accountId)) {
-      return "Select account...";
-    }
-    const account = accounts.find(a => a.id.toString() === accountId);
-    return `${account?.accountCode} – ${account?.name}`;
-  }, [accounts]);
 
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
@@ -756,117 +1245,836 @@ function JournalEntryForm({
     }, 0);
 
     const difference = Math.abs(totalDebit - totalCredit);
-    const isBalanced = difference < 0.01; // Allow for small rounding differences
+    const isBalanced = difference < 0.001;
 
-    return {
-      totalDebit,
-      totalCredit,
-      difference,
-      isBalanced,
-    };
-  }, [lines]);
+    return { totalDebit, totalCredit, difference, isBalanced };
+  }, [lines]); // Only recalculate when lines change
 
-  // Create entity balances summary for intercompany validation
-  const entityBalances = useMemo(() => {
-    // Group lines by entity
-    const entityGroups: { [entityCode: string]: JournalLine[] } = {};
+  // Calculate entity balances for intercompany validation - memoized
+  const getEntityBalances = useCallback(() => {
+    // Get unique entity codes without using Set
+    const entityCodesArray = lines.map((line) => line.entityCode);
+    const uniqueEntityCodes = entityCodesArray.filter(
+      (code, index) => entityCodesArray.indexOf(code) === index,
+    );
 
-    lines.forEach((line) => {
-      // Skip lines without an entity code
-      if (!line.entityCode) return;
-
-      if (!entityGroups[line.entityCode]) {
-        entityGroups[line.entityCode] = [];
-      }
-      entityGroups[line.entityCode].push(line);
-    });
-
-    // Calculate balances for each entity
-    return Object.entries(entityGroups).map(([entityCode, entityLines]) => {
-      const { totalDebit, totalCredit } = entityLines.reduce((acc, line) => {
-        return {
-          totalDebit: acc.totalDebit + getDebit(line),
-          totalCredit: acc.totalCredit + getCredit(line),
-        };
-      }, { totalDebit: 0, totalCredit: 0 });
-
-      const difference = Math.abs(totalDebit - totalCredit);
-      const balanced = difference < 0.01; // Allow for small rounding differences
+    return uniqueEntityCodes.map((code) => {
+      const entityLines = lines.filter((line) => line.entityCode === code);
+      const entityDebit = entityLines.reduce((sum, line) => {
+        return sum + getDebit(line);
+      }, 0);
+      const entityCredit = entityLines.reduce((sum, line) => {
+        return sum + getCredit(line);
+      }, 0);
+      const entityDifference = Math.abs(entityDebit - entityCredit);
+      const entityBalanced = entityDifference < 0.001;
 
       return {
-        entityCode,
-        debit: totalDebit,
-        credit: totalCredit,
-        difference,
-        balanced,
+        entityCode: code,
+        debit: entityDebit,
+        credit: entityCredit,
+        difference: entityDifference,
+        balanced: entityBalanced,
       };
     });
-  }, [lines]);
+  }, [lines]); // Only recalculate when lines change
 
-  // Initialize form when editing an existing entry
-  useEffect(() => {
-    if (existingEntry) {
-      // Format date from ISO to YYYY-MM-DD
-      const formattedDate = existingEntry.date
-        ? toLocalYMD(new Date(existingEntry.date))
-        : getTodayYMD();
+  // Memoize entity balances result
+  const entityBalances = useMemo(
+    () => getEntityBalances(),
+    [getEntityBalances],
+  );
 
-      setDate(formattedDate);
-      setDescription(existingEntry.description || "");
-      setReferenceNumber(existingEntry.referenceNumber || "");
-      setJournalType(existingEntry.journalType || "standard");
-
-      // Format lines for the UI
-      if (existingEntry.lines && existingEntry.lines.length > 0) {
-        const formattedLines = existingEntry.lines.map((line: any) => {
-          // For backward compatibility, handle both type/amount and debit/credit formats
-          const debitAmount = getDebit(line);
-          const creditAmount = getCredit(line);
-
-          return {
-            id: line.id,
-            accountId: line.accountId?.toString() || "",
-            entityCode: line.entityCode || "", // Support for intercompany
-            description: line.description || "",
-            debit: debitAmount ? formatNumberWithSeparator(debitAmount.toFixed(2)) : "",
-            credit: creditAmount ? formatNumberWithSeparator(creditAmount.toFixed(2)) : "",
-          };
-        });
-
-        setLines(formattedLines);
-      } else {
-        // Initialize with an empty line if no lines exist
-        setLines([
-          {
-            accountId: "",
-            entityCode: "",
-            description: "",
-            debit: "",
-            credit: "",
-          },
-        ]);
-      }
-    }
-  }, [existingEntry]);
-
-  // Function to generate a reference number
   function generateReference() {
-    // Format: JE-YYYYMMDD-XXX where XXX is a random 3-digit number
-    const today = new Date();
-    const datePart = format(today, "yyyyMMdd");
-    const randomPart = Math.floor(Math.random() * 900) + 100; // 100-999
-
-    const reference = `JE-${datePart}-${randomPart}`;
-    setReferenceNumber(reference);
+    // Use the current date in YYYY-MM-DD format
+    const today = getTodayYMD();
+    // Extract the year from the date string
+    const year = today.substring(0, 4);
+    // Generate a random number for uniqueness
+    const randomNum = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(4, "0");
+    return `JE-${year}-${randomNum}`;
   }
 
-  // Add a new empty line
+  const createEntry = useMutation({
+    mutationFn: async (data: any) => {
+      console.log("Journal entry submission data:", JSON.stringify(data));
+      // Ensure the status is properly set in the mutation data
+      console.log("DEBUG: Creating entry with status:", data.status);
+
+      // Validate required fields explicitly
+      if (!data.date) {
+        throw new Error("Date is required");
+      }
+      if (!data.description) {
+        throw new Error("Description is required");
+      }
+      if (!data.reference) {
+        throw new Error("Reference is required");
+      }
+
+      // Keep the exact calendar date as selected
+      if (typeof data.date === "string" && data.date.length) {
+        // Keep the date exactly as selected - no conversion needed
+        if (data.date.includes("T")) {
+          // If it has a time component, just take the date part
+          data.date = data.date.split("T")[0];
+        }
+      }
+
+      console.log("DEBUG: Date preserved as selected:", data.date);
+      // Ensure all required fields are explicitly included in the API call
+      const apiPayload = {
+        ...data,
+        date: data.date, // Explicitly included date
+        description: data.description, // Explicitly included description
+        reference: data.reference, // Explicitly included reference
+      };
+
+      // Use the hierarchical URL pattern for creating journal entries
+      return await apiRequest(getJournalEntriesBaseUrl(clientId as number, entityId), {
+        method: "POST",
+        data: apiPayload,
+      });
+    },
+    onSuccess: async (result: JournalEntryResponse) => {
+      // Get the newly created journal entry ID from the response
+      // The result might be wrapped in an object or be the entry itself
+      const newJournalEntryId =
+        result?.id || (result?.entry && result.entry.id);
+
+      console.log(
+        "DEBUG: New journal entry created with ID:",
+        newJournalEntryId,
+        "Response:",
+        JSON.stringify(result, null, 2),
+      );
+
+      // EXPLICITLY ensure we have a valid journal entry ID before proceeding
+      if (!newJournalEntryId) {
+        console.error(
+          "ERROR: Failed to extract journal entry ID from API response",
+        );
+        toast({
+          title: "Warning",
+          description:
+            "Journal entry was created but there was an issue attaching files.",
+          variant: "destructive",
+        });
+
+        // Even if there's an error, we should continue with the workflow
+        invalidateJournalEntryQueries();
+        onSubmit();
+        return;
+      }
+
+      // EXPLICITLY show loading state for attachments uploads
+      const hasAttachments = pendingFiles?.length > 0;
+      if (hasAttachments) {
+        toast({
+          title: "Uploading attachments",
+          description: `Uploading ${pendingFiles.length} file(s) to journal entry...`,
+        });
+      }
+
+      // Upload pending files if there are any and we have a valid journal entry ID
+      // EXPLICITLY wait for file uploads to complete before proceeding
+      if (hasAttachments && uploadPendingFilesRef.current) {
+        try {
+          console.log(
+            `DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`,
+          );
+
+          // EXPLICITLY set loading state for file uploads
+          setIsUploading(true);
+
+          // EXPLICITLY use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY await this to ensure files are uploaded before proceeding
+          await uploadPendingFilesRef.current(newJournalEntryId);
+
+          console.log(
+            "DEBUG: Uploaded pending files successfully to new journal entry",
+          );
+
+          // EXPLICITLY invalidate the journal entry query to refresh attachments
+          queryClient.invalidateQueries({
+            queryKey: [getJournalEntryUrl(clientId as number, entityId, newJournalEntryId)],
+          });
+
+          toast({
+            title: "Files attached",
+            description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+          });
+        } catch (fileError) {
+          console.error("Failed to upload pending files:", fileError);
+          toast({
+            title: "Note about files",
+            description:
+              "Journal entry created, but some files could not be attached. Please try uploading them again.",
+            variant: "destructive",
+          });
+        } finally {
+          // EXPLICITLY clear loading state
+          setIsUploading(false);
+        }
+      }
+
+      toast({
+        title: "Journal entry created",
+        description: "The journal entry has been created successfully.",
+      });
+
+      // Clear pending files after successful upload or if there were none
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+
+      // Use our helper function to invalidate queries
+      invalidateJournalEntryQueries();
+      onSubmit();
+    },
+    onError: (error: any) => {
+      // Handle structured API errors
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+
+        // Format field errors from API
+        const formattedErrors: Record<string, string> = {};
+
+        apiErrors.forEach((err: any) => {
+          const path = err.path.split(".");
+
+          // Handle array paths like lines[0].accountId
+          if (path[0] === "lines" && path.length > 1) {
+            const match = path[1].match(/\[(\d+)\]/);
+            if (match) {
+              const lineIndex = parseInt(match[1]);
+              const fieldName = path[2] || "field";
+              formattedErrors[`line_${lineIndex}_${fieldName}`] = err.message;
+            }
+          } else {
+            formattedErrors[path[0]] = err.message;
+          }
+        });
+
+        setFieldErrors(formattedErrors);
+        setFormError("Please correct the errors in the form.");
+      } else {
+        // Generic error
+        toast({
+          title: "Error",
+          description: `Failed to create journal entry: ${error.message}`,
+          variant: "destructive",
+        });
+        setFormError(
+          error.message ||
+            "An error occurred while creating the journal entry.",
+        );
+      }
+    },
+  });
+
+  const updateEntry = useMutation({
+    mutationFn: async (data: any) => {
+      console.log("DEBUG: Journal entry update - ID:", existingEntry?.id);
+      console.log(
+        "DEBUG: Journal entry update - Status:",
+        existingEntry?.status,
+      );
+      console.log(
+        "DEBUG: Journal entry update data:",
+        JSON.stringify(data, null, 2),
+      );
+
+      // Validate required fields explicitly
+      if (!data.date) {
+        throw new Error("Date is required");
+      }
+      if (!data.description) {
+        throw new Error("Description is required");
+      }
+      if (!data.reference) {
+        throw new Error("Reference is required");
+      }
+      // Keep the exact calendar date as selected
+      if (typeof data.date === "string" && data.date.length) {
+        // Keep the date exactly as selected - no conversion needed
+        if (data.date.includes("T")) {
+          // If it has a time component, just take the date part
+          data.date = data.date.split("T")[0];
+        }
+      }
+
+      console.log("DEBUG: Date preserved as selected:", data.date);
+
+      // Ensure all required fields are explicitly included in the API call
+      const apiPayload = {
+        ...data,
+        date: data.date, // Explicitly included date
+        description: data.description, // Explicitly included description
+        reference: data.reference, // Explicitly included reference
+      };
+
+      // We explicitly use the hierarchical URL pattern for the update operation
+      return await apiRequest(getJournalEntryUrl(clientId as number, entityId, existingEntry.id), {
+        method: "PUT",
+        data: apiPayload,
+      });
+    },
+    onSuccess: async (response: JournalEntryResponse) => {
+      console.log(
+        "DEBUG: Journal entry update success response:",
+        JSON.stringify(response, null, 2),
+      );
+
+      // Determine the entry ID from the response or use the existing entry ID
+      const entryId =
+        response?.id ||
+        (response?.entry && response.entry.id) ||
+        existingEntry?.id;
+
+      // EXPLICITLY ensure we have a valid journal entry ID before proceeding
+      if (!entryId) {
+        console.error(
+          "ERROR: Failed to determine valid journal entry ID for file uploads",
+        );
+        toast({
+          title: "Warning",
+          description:
+            "Journal entry was updated but file attachment may not work properly.",
+          variant: "destructive",
+        });
+
+        // Even if there's an error, we should continue with the workflow
+        invalidateJournalEntryQueries();
+        onSubmit();
+        return;
+      }
+
+      // EXPLICITLY show loading state for attachments uploads
+      const hasAttachments = pendingFiles?.length > 0;
+      if (hasAttachments) {
+        toast({
+          title: "Uploading attachments",
+          description: `Uploading ${pendingFiles.length} file(s) to journal entry...`,
+        });
+      }
+
+      // Upload pending files for existing entries if there are any
+      // EXPLICITLY wait for file uploads to complete before proceeding
+      if (hasAttachments && entryId && uploadPendingFilesRef.current) {
+        try {
+          console.log(
+            `DEBUG: Attempting to upload ${pendingFiles.length} files to updated journal entry ${entryId}`,
+          );
+
+          // EXPLICITLY set loading state for file uploads
+          setIsUploading(true);
+
+          // EXPLICITLY use the function from the AttachmentSection via ref to upload files
+          // EXPLICITLY await this to ensure files are uploaded before proceeding
+          await uploadPendingFilesRef.current(entryId);
+
+          console.log(
+            "DEBUG: Uploaded pending files to existing entry successfully",
+          );
+
+          // EXPLICITLY invalidate the journal entry query to refresh attachments
+          queryClient.invalidateQueries({
+            queryKey: [getJournalEntryUrl(clientId as number, entityId, entryId)],
+          });
+
+          toast({
+            title: "Files attached",
+            description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+          });
+        } catch (fileError) {
+          console.error("Failed to upload pending files:", fileError);
+          toast({
+            title: "Note about files",
+            description:
+              "Journal entry updated, but some files could not be attached. Please try uploading them again.",
+            variant: "destructive",
+          });
+        } finally {
+          // EXPLICITLY clear loading state
+          setIsUploading(false);
+        }
+      } else {
+        console.log(
+          "DEBUG: No pending files to upload or missing ref/journalEntryId",
+          {
+            pendingFilesCount: pendingFiles?.length || 0,
+            hasEntryId: !!entryId,
+            existingEntryId: existingEntry?.id,
+            hasUploadRef: !!uploadPendingFilesRef.current,
+          },
+        );
+      }
+
+      toast({
+        title: "Journal entry updated",
+        description: "The journal entry has been updated successfully.",
+      });
+
+      // Use our helper function to invalidate queries with hierarchical URL patterns
+      invalidateJournalEntryQueries();
+      onSubmit();
+    },
+    onError: (error: any) => {
+      console.log("DEBUG: Journal entry update error:", error);
+      console.log(
+        "DEBUG: Journal entry update error response:",
+        error.response?.data,
+      );
+      console.log(
+        "DEBUG: Journal entry update error status:",
+        error.response?.status,
+      );
+
+      // Similar error handling as in createEntry
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        console.log(
+          "DEBUG: Journal entry update API errors:",
+          JSON.stringify(apiErrors, null, 2),
+        );
+
+        const formattedErrors: Record<string, string> = {};
+
+        apiErrors.forEach((err: any) => {
+          const path = err.path.split(".");
+          if (path[0] === "lines" && path.length > 1) {
+            const match = path[1].match(/\[(\d+)\]/);
+            if (match) {
+              const lineIndex = parseInt(match[1]);
+              const fieldName = path[2] || "field";
+              formattedErrors[`line_${lineIndex}_${fieldName}`] = err.message;
+            }
+          } else {
+            formattedErrors[path[0]] = err.message;
+          }
+        });
+
+        setFieldErrors(formattedErrors);
+        setFormError("Please correct the errors in the form.");
+      } else if (error.response?.data?.message) {
+        console.log(
+          "DEBUG: Journal entry update error message:",
+          error.response.data.message,
+        );
+
+        toast({
+          title: "Error",
+          description: error.response.data.message,
+          variant: "destructive",
+        });
+        setFormError(error.response.data.message);
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to update journal entry: ${error.message}`,
+          variant: "destructive",
+        });
+        setFormError(
+          error.message ||
+            "An error occurred while updating the journal entry.",
+        );
+      }
+    },
+  });
+
+  const handleSubmit = (saveAsDraft: boolean = true) => {
+    console.log("DEBUG: handleSubmit called with saveAsDraft =", saveAsDraft);
+
+    // Verify and log attachment status for debugging
+    logAttachmentStatus();
+
+    // Clear previous errors
+    setFormError(null);
+    setFieldErrors({});
+
+    // Prepare data for validation - only keep lines with account or debit/credit values
+    const validLines = lines.filter(
+      (line) =>
+        line.accountId ||
+        safeParseAmount(line.debit) > 0 ||
+        safeParseAmount(line.credit) > 0,
+    );
+
+    // Check if we need special handling for file attachments
+    const hasPendingAttachments = pendingFiles.length > 0;
+    console.log("DEBUG: Pending attachments:", pendingFiles.length);
+
+    // Determine the initial status - if we're posting with files, start as draft
+    const initialStatus =
+      !saveAsDraft && hasPendingAttachments
+        ? JournalEntryStatus.DRAFT // Create as draft initially if posting with attachments
+        : saveAsDraft
+          ? JournalEntryStatus.DRAFT
+          : JournalEntryStatus.POSTED;
+
+    const formData = {
+      ...journalData,
+      lines: validLines,
+      // Set the appropriate status based on our decision logic
+      status: initialStatus,
+    };
+
+    console.log("DEBUG: Form data with initial status:", formData.status);
+    console.log(
+      "DEBUG: Will post after uploads complete:",
+      !saveAsDraft && hasPendingAttachments,
+    );
+
+    // Only validate fully if we're not saving as draft (final intended state)
+    if (!saveAsDraft) {
+      // Full validation for posting
+      const validation = validateForm(formData, FormSchema);
+
+      if (!validation.valid) {
+        setFieldErrors(validation.errors || {});
+        setFormError("Please correct the errors in the form before posting.");
+        return;
+      }
+    } else {
+      // Lighter validation for drafts - just check required fields
+      if (!journalData.date || !journalData.description) {
+        const errors: Record<string, string> = {};
+        if (!journalData.date) errors["date"] = "Date is required";
+        if (!journalData.description)
+          errors["description"] = "Description is required";
+
+        setFieldErrors(errors);
+        setFormError("Please fill in the required basic information.");
+        return;
+      }
+
+      // Ensure there's at least one line with an account
+      if (
+        validLines.length === 0 ||
+        !validLines.some((line) => line.accountId)
+      ) {
+        setFormError("Please add at least one valid line with an account.");
+        return;
+      }
+    }
+
+    // Format data for submission - convert debit/credit format to type/amount format
+    const formattedLines = validLines
+      .filter(line => {
+        // Ensure line has an accountId and either a debit or credit value (not both)
+        const debitValue = safeParseAmount(line.debit);
+        const creditValue = safeParseAmount(line.credit);
+        return line.accountId && (debitValue > 0 || creditValue > 0);
+      })
+      .map((line) => {
+        // Calculate amount and determine type - use safeParseAmount to handle various formats
+        const debitValue = safeParseAmount(line.debit);
+        const creditValue = safeParseAmount(line.credit);
+
+        // Convert our UI format (debit/credit fields) to API format (type and amount)
+        return {
+          accountId: Number(line.accountId), // Ensure accountId is a number
+          entityCode: line.entityCode || defaultEntityCode,
+          description: line.description,
+          // Only include one of debit or credit based on which has a value
+          type: debitValue > 0 ? "debit" : "credit",
+          amount: debitValue > 0 ? debitValue : creditValue,
+        };
+      });
+
+    // Use passed clientId or get from accounts as fallback
+    const resolvedClientId =
+      clientId || (accounts.length > 0 ? accounts[0].clientId : null);
+
+    if (!resolvedClientId) {
+      setFormError(
+        "Error: Unable to determine client ID. Please refresh the page and try again.",
+      );
+      return;
+    }
+
+    // Use the date directly from the input - already in YYYY-MM-DD format
+    // No need to create a Date object which would cause timezone issues
+    
+    const entryData = {
+      ...journalData,
+      date: journalData.date, // Use direct date string from input - already in YYYY-MM-DD format
+      clientId: resolvedClientId,
+      entityId,
+      status: initialStatus, // Use our determined initial status
+      createdBy: user?.id,
+      lines: formattedLines,
+    };
+
+    // Debug logging for the API payload
+    console.log(
+      "DEBUG: API Payload to be sent:",
+      JSON.stringify(entryData, null, 2),
+    );
+
+    if (isEditing) {
+      // For existing entries, no need for special attachment handling
+      updateEntry.mutate(entryData);
+    } else {
+      // For new entries
+      // If we have pending attachments AND we want to post (not save as draft)
+      if (hasPendingAttachments && !saveAsDraft) {
+        // First create as draft
+        setIsUploading(true);
+        createEntry.mutate(entryData, {
+          onSuccess: async (result) => {
+            // Extract the new entry ID
+            const newEntryId = result?.id || (result?.entry && result.entry.id);
+
+            if (!newEntryId) {
+              toast({
+                title: "Error",
+                description: "Failed to extract entry ID from server response",
+                variant: "destructive",
+              });
+              onSubmit(); // Still call onSubmit to navigate away
+              return;
+            }
+
+            console.log(
+              "DEBUG: Created draft entry, now uploading files to ID:",
+              newEntryId,
+            );
+
+            // Show a toast to inform user
+            toast({
+              title: "Uploading attachments",
+              description: `Uploading ${pendingFiles.length} file(s) before posting...`,
+            });
+
+            try {
+              // Upload the pending files
+              if (uploadPendingFilesRef.current) {
+                await uploadPendingFilesRef.current(newEntryId);
+                console.log(
+                  "DEBUG: File uploads complete, now updating status to POSTED",
+                );
+
+                // Update the entry status to POSTED after successful upload
+                updateEntry.mutate(
+                  {
+                    ...entryData,
+                    id: newEntryId,
+                    status: JournalEntryStatus.POSTED,
+                  },
+                  {
+                    onSuccess: () => {
+                      toast({
+                        title: "Success",
+                        description: "Journal entry posted with attachments",
+                      });
+                      onSubmit(); // Navigate away
+                    },
+                    onError: (error) => {
+                      console.error(
+                        "Failed to update entry status to POSTED:",
+                        error,
+                      );
+                      toast({
+                        title: "Warning",
+                        description:
+                          "Files uploaded but entry remained in draft state. You can post it manually.",
+                        variant: "destructive",
+                      });
+                      onSubmit(); // Still navigate away
+                    },
+                  },
+                );
+              } else {
+                console.error("uploadPendingFilesRef.current is not defined");
+                toast({
+                  title: "Warning",
+                  description:
+                    "Entry created but could not upload files. You may need to attach them manually.",
+                  variant: "destructive",
+                });
+                onSubmit(); // Still navigate away
+              }
+            } catch (error) {
+              console.error("Failed to upload files:", error);
+              toast({
+                title: "Warning",
+                description:
+                  "Entry created as draft but file upload failed. Please try posting it manually.",
+                variant: "destructive",
+              });
+              onSubmit(); // Still navigate away
+            } finally {
+              setIsUploading(false);
+            }
+          },
+          onError: (error) => {
+            console.error("Failed to create journal entry:", error);
+            setIsUploading(false);
+            toast({
+              title: "Error",
+              description: "Failed to create journal entry",
+              variant: "destructive",
+            });
+          },
+        });
+      } else {
+        // Standard flow - no pending attachments or just saving as draft
+        createEntry.mutate(entryData);
+      }
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+    setJournalData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear field error when user changes the value
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
+  };
+
+  // These functions are now defined at the top of the component
+
+  // Regular handleLineChange for non-numeric fields
+  const handleLineChange = (index: number, field: string, value: string) => {
+    // For debit/credit fields, apply special handling
+    if (field === "debit" || field === "credit") {
+      // Handle various number formats with safeParseAmount
+      const numericValue = safeParseAmount(value).toString();
+
+      // Only process valid numeric inputs or empty string
+      if (numericValue === "" || /^\d*\.?\d{0,2}$/.test(numericValue)) {
+        const updatedLines = [...lines];
+
+        // Format the value with commas for display
+        const formattedValue =
+          numericValue === "" ? "" : formatNumberWithSeparator(numericValue);
+
+        // Set the current field value
+        updatedLines[index] = {
+          ...updatedLines[index],
+          [field]: formattedValue,
+        };
+
+        // Clear the opposite field if this field has a value > 0
+        if (parseFloat(numericValue) > 0) {
+          const oppositeField = field === "debit" ? "credit" : "debit";
+          updatedLines[index][oppositeField] = "";
+        }
+
+        // Update lines state directly, no debounce
+        setLines(updatedLines);
+
+        // Clear field error when user changes the value
+        const errorKey = `line_${index}_${field}`;
+        if (fieldErrors[errorKey]) {
+          setFieldErrors((prev) => {
+            const updated = { ...prev };
+            delete updated[errorKey];
+            return updated;
+          });
+        }
+      }
+    } else {
+      // For non-numeric fields, update immediately
+      const updatedLines = [...lines];
+      updatedLines[index] = { ...updatedLines[index], [field]: value };
+      setLines(updatedLines);
+
+      // Clear field error when user changes the value
+      const errorKey = `line_${index}_${field}`;
+      if (fieldErrors[errorKey]) {
+        setFieldErrors((prev) => {
+          const updated = { ...prev };
+          delete updated[errorKey];
+          return updated;
+        });
+      }
+    }
+  };
+
+  // Create a debounced version of line change handler for numeric fields (debit/credit)
+  const handleDebouncedLineChange = useDebouncedCallback(
+    (index: number, field: string, value: string) => {
+      // Handle various number formats with safeParseAmount
+      const numericValue = safeParseAmount(value).toString();
+
+      const updatedLines = [...lines];
+
+      // Format the value with commas for display
+      const formattedValue =
+        numericValue === "" ? "" : formatNumberWithSeparator(numericValue);
+
+      updatedLines[index] = { ...updatedLines[index], [field]: formattedValue };
+
+      // If setting debit and it's positive, clear credit
+      if (field === "debit" && parseFloat(numericValue) > 0) {
+        updatedLines[index].credit = "";
+      }
+
+      // If setting credit and it's positive, clear debit
+      if (field === "credit" && parseFloat(numericValue) > 0) {
+        updatedLines[index].debit = "";
+      }
+
+      setLines(updatedLines);
+
+      // Clear field error when user changes the value
+      const errorKey = `line_${index}_${field}`;
+      if (fieldErrors[errorKey]) {
+        setFieldErrors((prev) => {
+          const updated = { ...prev };
+          delete updated[errorKey];
+          return updated;
+        });
+      }
+    },
+    300,
+  ); // 300ms debounce delay
+
+  // Utility function for testing file attachments - logs state of pending files
+  const logAttachmentStatus = () => {
+    console.log("ATTACHMENT DEBUG: Current state of file attachments");
+    console.log("- Pending files count:", pendingFiles?.length || 0);
+    console.log(
+      "- Pending files metadata count:",
+      pendingFilesMetadata?.length || 0,
+    );
+    console.log("- Upload ref exists:", !!uploadPendingFilesRef.current);
+    console.log("- Is editing entry:", isEditing);
+    console.log("- Has existing entry ID:", !!existingEntry?.id);
+
+    // Log each pending file if any
+    if (pendingFiles?.length) {
+      console.log(
+        "- Pending files:",
+        pendingFiles.map((file) => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        })),
+      );
+    }
+
+    return true;
+  };
+
   const addLine = () => {
     setLines([
       ...lines,
       {
         accountId: "",
-        entityCode: "",
+        entityCode: defaultEntityCode,
         description: "",
         debit: "",
         credit: "",
@@ -874,798 +2082,1095 @@ function JournalEntryForm({
     ]);
   };
 
-  // Remove a line
   const removeLine = (index: number) => {
-    if (lines.length > 1) {
-      const updatedLines = [...lines];
-      updatedLines.splice(index, 1);
-      setLines(updatedLines);
-    } else {
+    if (lines.length <= 2) {
       toast({
-        title: "Cannot Remove Line",
-        description: "A journal entry must have at least one line",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle line field changes
-  const handleLineChange = (index: number, field: string, value: string) => {
-    const updatedLines = [...lines];
-    // Update the specific field of the line at the given index
-    (updatedLines[index] as any)[field] = value;
-
-    // Special handling for debit/credit fields to ensure only one can have a value
-    if (field === "debit" && value && updatedLines[index].credit) {
-      updatedLines[index].credit = "";
-    } else if (field === "credit" && value && updatedLines[index].debit) {
-      updatedLines[index].debit = "";
-    }
-
-    setLines(updatedLines);
-
-    // Clear any errors for this field
-    if (fieldErrors[`line_${index}_${field}`]) {
-      const newErrors = { ...fieldErrors };
-      delete newErrors[`line_${index}_${field}`];
-      setFieldErrors(newErrors);
-    }
-  };
-
-  // Process lines for submission - convert from UI format to API format
-  const processLinesForSubmission = (lines: JournalLine[]) => {
-    return lines.map((line) => {
-      // Determine amount and type based on debit/credit fields
-      let type: "debit" | "credit" = "debit";
-      let amount = 0;
-
-      if (line.debit && parseFloat(safeParseAmount(line.debit).toString()) > 0) {
-        type = "debit";
-        amount = parseFloat(safeParseAmount(line.debit).toString());
-      } else if (
-        line.credit &&
-        parseFloat(safeParseAmount(line.credit).toString()) > 0
-      ) {
-        type = "credit";
-        amount = parseFloat(safeParseAmount(line.credit).toString());
-      }
-
-      return {
-        id: line.id, // Include ID if it exists (for updates)
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode, // Include for intercompany support
-        description: line.description,
-        type,
-        amount,
-      };
-    });
-  };
-
-  // Validate form before submission
-  const validateForm = (): boolean => {
-    const errors: { [key: string]: string } = {};
-    let isValid = true;
-
-    // Validate header fields
-    if (!date) {
-      errors.date = "Date is required";
-      isValid = false;
-    }
-
-    if (!description) {
-      errors.description = "Description is required";
-      isValid = false;
-    }
-
-    if (!referenceNumber) {
-      errors.referenceNumber = "Reference number is required";
-      isValid = false;
-    }
-
-    // Validate each line
-    lines.forEach((line, index) => {
-      if (!line.accountId) {
-        errors[`line_${index}_accountId`] = "Account is required";
-        isValid = false;
-      }
-
-      if (!line.entityCode) {
-        errors[`line_${index}_entityCode`] = "Entity is required";
-        isValid = false;
-      }
-
-      if (!line.description) {
-        errors[`line_${index}_description`] = "Description is required";
-        isValid = false;
-      }
-
-      const hasDebit = line.debit && parseFloat(safeParseAmount(line.debit).toString()) > 0;
-      const hasCredit = line.credit && parseFloat(safeParseAmount(line.credit).toString()) > 0;
-
-      if (!hasDebit && !hasCredit) {
-        errors[`line_${index}_debit`] = "Amount is required";
-        errors[`line_${index}_credit`] = "Amount is required";
-        isValid = false;
-      } else if (hasDebit && hasCredit) {
-        errors[`line_${index}_debit`] = "Only one of debit/credit can have a value";
-        errors[`line_${index}_credit`] = "Only one of debit/credit can have a value";
-        isValid = false;
-      }
-    });
-
-    // Check if the journal entry is balanced
-    if (!isBalanced) {
-      setFormError("Journal entry must be balanced (Debits = Credits)");
-      isValid = false;
-    } else {
-      setFormError(null);
-    }
-
-    setFieldErrors(errors);
-    return isValid;
-  };
-
-  // Handle form submission
-  const handleSubmit = (isDraft = false) => {
-    // Validate the form (except for balance in draft mode)
-    const isValid = isDraft ? true : validateForm();
-    if (!isValid && !isDraft) {
-      toast({
-        title: "Validation Failed",
-        description: "Please correct the highlighted errors",
+        title: "Cannot remove line",
+        description: "Journal entries must have at least two lines.",
         variant: "destructive",
       });
       return;
     }
 
-    // If there's a balance error but it's a draft, it's okay
-    if (!isBalanced && isDraft) {
-      setFormError(null);
-    }
+    const updatedLines = [...lines];
+    updatedLines.splice(index, 1);
+    setLines(updatedLines);
 
-    // Check if any pending uploads are in process
-    const isUploading = false; // This would be set if uploads are happening
+    // Remove any errors associated with this line
+    const updatedErrors = { ...fieldErrors };
+    Object.keys(updatedErrors).forEach((key) => {
+      if (key.startsWith(`line_${index}_`)) {
+        delete updatedErrors[key];
+      }
 
-    // Prepare line data
-    const processedLines = processLinesForSubmission(lines);
+      // Reindex higher indexed errors
+      for (let i = index + 1; i < lines.length; i++) {
+        const oldKey = `line_${i}_`;
+        const newKey = `line_${i - 1}_`;
 
-    // Create the journal entry data
-    const journalData = {
-      date,
-      description,
-      referenceNumber,
-      journalType,
-      entityId,
-      clientId, // Include clientId if provided
-      status: isDraft ? "draft" : "pending",
-      lines: processedLines,
-    };
+        Object.keys(updatedErrors).forEach((errKey) => {
+          if (errKey.startsWith(oldKey)) {
+            const field = errKey.substring(oldKey.length);
+            updatedErrors[`${newKey}${field}`] = updatedErrors[errKey];
+            delete updatedErrors[errKey];
+          }
+        });
+      }
+    });
 
-    // Submit based on whether it's a new entry or an update
-    if (isEditing && existingEntry?.id) {
-      updateEntry.mutate(journalData);
-    } else {
-      createEntry.mutate(journalData);
-    }
+    setFieldErrors(updatedErrors);
   };
 
-  // List of journal types
-  const journalTypes = [
-    { value: "standard", label: "Standard" },
-    { value: "adjusting", label: "Adjusting" },
-    { value: "recurring", label: "Recurring" },
-    { value: "reversing", label: "Reversing" },
-    { value: "intercompany", label: "Intercompany" },
-  ];
+  // Removed handleFileChange function as we're using the AttachmentSection component now
 
-  // Building the UI
   return (
-    <div className="container mx-auto p-6 bg-white rounded-lg shadow-sm">
-      <h2 className="text-2xl font-bold mb-6">
-        {isEditing
-          ? `Edit Journal Entry ${existingEntry.referenceNumber}`
-          : "Create Journal Entry"}
-      </h2>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg leading-6 font-medium text-gray-900">
+          {isEditing ? "Edit Journal Entry" : "Manual Journal Entry"}
+        </h3>
 
-      <form ref={formRef} className="space-y-8">
-        {/* Status badge for existing entries */}
-        {isEditing && existingEntry?.status && (
-          <div className="mb-6">
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                existingEntry.status === "draft"
-                  ? "bg-gray-100 text-gray-800"
-                  : existingEntry.status === "pending"
-                  ? "bg-blue-100 text-blue-800"
-                  : existingEntry.status === "posted"
-                  ? "bg-green-100 text-green-800"
-                  : existingEntry.status === "rejected"
-                  ? "bg-red-100 text-red-800"
-                  : existingEntry.status === "voided"
-                  ? "bg-gray-100 text-gray-500"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {existingEntry.status.charAt(0).toUpperCase() +
-                existingEntry.status.slice(1)}
-            </span>
-          </div>
-        )}
+        {/* Balance status indicator */}
+        <div
+          className={`px-3 py-1 rounded-md inline-flex items-center text-sm
+          ${
+            isBalanced
+              ? "bg-green-100 text-green-800 border border-green-200"
+              : "bg-amber-100 text-amber-800 border border-amber-200"
+          }`}
+        >
+          {isBalanced ? (
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+          ) : (
+            <AlertCircle className="h-4 w-4 mr-1" />
+          )}
+          {isBalanced ? "Balanced" : `Unbalanced (${difference.toFixed(2)})`}
+        </div>
+      </div>
 
-        {/* Header fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div>
-            <Label htmlFor="date">Date</Label>
-            <div className="mt-1">
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  if (fieldErrors.date) {
-                    const newErrors = { ...fieldErrors };
-                    delete newErrors.date;
-                    setFieldErrors(newErrors);
-                  }
-                }}
-                className={fieldErrors.date ? "border-red-500" : ""}
-                disabled={
-                  isEditing &&
-                  (existingEntry?.status === "posted" ||
-                    existingEntry?.status === "voided")
-                }
-              />
-              {fieldErrors.date && (
-                <p className="text-red-500 text-sm mt-1">{fieldErrors.date}</p>
-              )}
-            </div>
-          </div>
+      {formError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
 
-          <div>
-            <Label htmlFor="reference">Reference Number</Label>
-            <div className="mt-1 flex">
-              <Input
-                id="reference"
-                value={referenceNumber}
-                onChange={(e) => {
-                  setReferenceNumber(e.target.value);
-                  if (fieldErrors.referenceNumber) {
-                    const newErrors = { ...fieldErrors };
-                    delete newErrors.referenceNumber;
-                    setFieldErrors(newErrors);
-                  }
-                }}
-                className={`flex-1 ${
-                  fieldErrors.referenceNumber ? "border-red-500" : ""
-                }`}
-                disabled={
-                  isEditing &&
-                  (existingEntry?.status === "posted" ||
-                    existingEntry?.status === "voided")
-                }
-              />
-              {!isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generateReference}
-                  className="ml-2"
-                >
-                  Generate
-                </Button>
-              )}
-            </div>
-            {fieldErrors.referenceNumber && (
-              <p className="text-red-500 text-sm mt-1">
-                {fieldErrors.referenceNumber}
-              </p>
+      {/* API Request status indicator */}
+      {(createEntry.isPending || updateEntry.isPending) && (
+        <Alert className="mb-4 bg-blue-50 border-blue-200">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertTitle>Processing</AlertTitle>
+          <AlertDescription>
+            {createEntry.isPending
+              ? "Creating journal entry..."
+              : "Updating journal entry..."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <Label htmlFor="reference">Journal ID</Label>
+          <div className="relative">
+            <Input
+              id="reference"
+              name="reference"
+              value={journalData.reference}
+              onChange={handleChange}
+              className={`mt-1 ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
+              readOnly
+            />
+            {fieldErrors.reference && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <AlertCircle
+                  className="h-5 w-5 text-red-500"
+                  aria-hidden="true"
+                />
+              </div>
             )}
           </div>
-
-          <div>
-            <Label htmlFor="journalType">Journal Type</Label>
-            <Select
-              value={journalType}
-              onValueChange={(value) => setJournalType(value)}
-              disabled={
-                isEditing &&
-                (existingEntry?.status === "posted" ||
-                  existingEntry?.status === "voided")
-              }
-            >
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Select journal type" />
-              </SelectTrigger>
-              <SelectContent>
-                {journalTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/*  Entity field is displayed for info only, as entityId is received from props */}
-          <div>
-            <Label>Entity</Label>
-            <Input
-              value={
-                entities.find((e) => e.id === entityId)?.name ||
-                `Entity ID: ${entityId}`
-              }
-              disabled
-              className="mt-1 bg-gray-50"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              if (fieldErrors.description) {
-                const newErrors = { ...fieldErrors };
-                delete newErrors.description;
-                setFieldErrors(newErrors);
-              }
-            }}
-            className={`mt-1 ${fieldErrors.description ? "border-red-500" : ""}`}
-            disabled={
-              isEditing &&
-              (existingEntry?.status === "posted" ||
-                existingEntry?.status === "voided")
-            }
-          />
-          {fieldErrors.description && (
-            <p className="text-red-500 text-sm mt-1">
-              {fieldErrors.description}
+          {fieldErrors.reference && (
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.reference}
             </p>
           )}
         </div>
 
-        {/* Form Error Alert */}
-        {formError && (
-          <Alert variant="destructive">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Journal Lines Table */}
-        <h3 className="text-lg font-semibold">Journal Lines</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Account
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Entity
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Debit
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Credit
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-white divide-y divide-gray-200">
-              {lines.map((line, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      {/* Account dropdown using Select */}
-                      <Select 
-                        value={line.accountId?.toString() ?? ''}
-                        onValueChange={v => handleLineChange(index, 'accountId', v)}
-                      >
-                        <SelectTrigger className={fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}>
-                          {getAccountLabel(line.accountId)}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.filter(a => a.active).map(a => (
-                            <SelectItem key={a.id} value={a.id.toString()}>
-                              {a.accountCode} – {a.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {fieldErrors[`line_${index}_accountId`] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldErrors[`line_${index}_accountId`]}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      {/* Entity dropdown using Select */}
-                      <Select 
-                        value={line.entityCode ?? ''}
-                        onValueChange={v => handleLineChange(index, 'entityCode', v)}
-                      >
-                        <SelectTrigger className={fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}>
-                          {line.entityCode && entities.some((entity) => entity.code === line.entityCode)
-                            ? `${line.entityCode} - ${entities.find((entity) => entity.code === line.entityCode)?.name}`
-                            : "Select entity..."}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {entities.filter(e => e.active).sort((a, b) => a.code.localeCompare(b.code)).map(entity => (
-                            <SelectItem key={entity.id} value={entity.code}>
-                              {entity.code} – {entity.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {fieldErrors[`line_${index}_entityCode`] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldErrors[`line_${index}_entityCode`]}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Input
-                      value={line.description}
-                      onChange={(e) =>
-                        handleLineChange(index, "description", e.target.value)
-                      }
-                      placeholder="Line description"
-                      className={
-                        fieldErrors[`line_${index}_description`]
-                          ? "border-red-500"
-                          : ""
-                      }
-                    />
-                    {fieldErrors[`line_${index}_description`] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldErrors[`line_${index}_description`]}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {/* Using a text input with pattern validation for better formatting control */}
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={line.debit}
-                      onChange={(e) => {
-                        // Use safeParseAmount for consistent number parsing
-                        const rawValue = safeParseAmount(e.target.value).toString();
-                        handleLineChange(index, "debit", rawValue);
-                      }}
-                      onBlur={(e) => {
-                        // Format to 2 decimal places with thousands separators on blur
-                        if (e.target.value) {
-                          const numValue = safeParseAmount(e.target.value);
-
-                          if (!isNaN(numValue)) {
-                            // Format with 2 decimal places and thousands separators
-                            const formattedValue = formatNumberWithSeparator(
-                              numValue.toFixed(2),
-                            );
-                            handleLineChange(index, "debit", formattedValue);
-                          }
-                        }
-                      }}
-                      placeholder="0.00"
-                      className={
-                        fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""
-                      }
-                    />
-                    {fieldErrors[`line_${index}_debit`] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldErrors[`line_${index}_debit`]}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {/* Using a text input with pattern validation for better formatting control */}
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={line.credit}
-                      onChange={(e) => {
-                        // Use safeParseAmount for consistent number parsing
-                        const rawValue = safeParseAmount(e.target.value).toString();
-                        handleLineChange(index, "credit", rawValue);
-                      }}
-                      onBlur={(e) => {
-                        // Format to 2 decimal places with thousands separators on blur
-                        if (e.target.value) {
-                          const numValue = safeParseAmount(e.target.value);
-
-                          if (!isNaN(numValue)) {
-                            // Format with 2 decimal places and thousands separators
-                            const formattedValue = formatNumberWithSeparator(
-                              numValue.toFixed(2),
-                            );
-                            handleLineChange(index, "credit", formattedValue);
-                          }
-                        }
-                      }}
-                      placeholder="0.00"
-                      className={
-                        fieldErrors[`line_${index}_credit`]
-                          ? "border-red-500"
-                          : ""
-                      }
-                    />
-                    {fieldErrors[`line_${index}_credit`] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldErrors[`line_${index}_credit`]}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      className="text-red-600 hover:text-red-900"
-                      onClick={() => removeLine(index)}
-                      aria-label="Remove line"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-
-            <tfoot>
-              <tr>
-                <td colSpan={6} className="px-6 py-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addLine}
-                    className="inline-flex items-center"
-                  >
-                    <Plus className="-ml-0.5 mr-2 h-4 w-4" />
-                    Add Line
-                  </Button>
-                </td>
-              </tr>
-
-              <tr className="bg-gray-50">
-                <td
-                  colSpan={3}
-                  className="px-6 py-4 text-right text-sm font-medium text-gray-900"
-                >
-                  Totals:
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {totalDebit.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {totalCredit.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
-                <td className="px-6 py-4"></td>
-              </tr>
-
-              <tr className="bg-gray-50">
-                <td
-                  colSpan={3}
-                  className="px-6 py-4 text-right text-sm font-medium text-gray-900"
-                >
-                  Difference:
-                </td>
-                <td
-                  colSpan={2}
-                  className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isBalanced ? "text-green-600" : "text-red-600"}`}
-                >
-                  {difference.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
-                <td className="px-6 py-4"></td>
-              </tr>
-
-              {/* Entity Balance Summary Section - Intercompany Validation */}
-              {entityBalances.length > 1 && (
-                <>
-                  <tr className="bg-gray-100">
-                    <td
-                      colSpan={6}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Entity Balance Summary (Intercompany)
-                    </td>
-                  </tr>
-                  {entityBalances.map((balance: EntityBalance) => (
-                    <tr key={balance.entityCode} className="bg-gray-50">
-                      <td
-                        colSpan={2}
-                        className="px-6 py-2 text-right text-xs font-medium text-gray-900"
-                      >
-                        Entity {balance.entityCode}:
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                        DR:{" "}
-                        {balance.debit.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                        CR:{" "}
-                        {balance.credit.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-                      <td
-                        colSpan={2}
-                        className={`px-6 py-2 whitespace-nowrap text-xs font-medium ${balance.balanced ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {balance.balanced
-                          ? "Balanced"
-                          : `Difference: ${balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                      </td>
-                    </tr>
-                  ))}
-                </>
-              )}
-            </tfoot>
-          </table>
+        <div>
+          <Label htmlFor="date">Date</Label>
+          <div className="relative">
+            <Input
+              id="date"
+              name="date"
+              type="date"
+              value={journalData.date}
+              onChange={handleChange}
+              className={`mt-1 ${fieldErrors.date ? "border-red-500 pr-10" : ""}`}
+            />
+            {fieldErrors.date && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <AlertCircle
+                  className="h-5 w-5 text-red-500"
+                  aria-hidden="true"
+                />
+              </div>
+            )}
+          </div>
+          {fieldErrors.date && (
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.date}
+            </p>
+          )}
         </div>
 
-        {/* Attachment Section Conditional Rendering */}
-        {!isEditing ||
-        (isEditing &&
-          existingEntry?.id &&
-          existingEntry?.status !== "posted" &&
-          existingEntry?.status !== "voided") ? (
-          <AttachmentSection
-            entityId={entityId}
-            journalEntryId={effectiveJournalEntryId}
-            pendingFiles={pendingFiles}
-            setPendingFiles={setPendingFiles}
-            pendingFilesMetadata={pendingFilesMetadata}
-            setPendingFilesMetadata={setPendingFilesMetadata}
-            onUploadToEntryRef={uploadPendingFilesRef}
+        <div>
+          <Label htmlFor="reference-number">Reference</Label>
+          <Input
+            id="reference-number"
+            name="referenceNumber"
+            value={journalData.referenceNumber}
+            onChange={handleChange}
+            placeholder="Invoice #, Check #, etc."
+            className="mt-1"
           />
-        ) : null}
+        </div>
+      </div>
 
-        <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
+      <div className="mb-4">
+        <Label htmlFor="description">Description</Label>
+        <div className="relative">
+          <Textarea
+            id="description"
+            name="description"
+            value={journalData.description}
+            onChange={handleChange}
+            rows={2}
+            placeholder="Enter a description for this journal entry"
+            className={`mt-1 ${fieldErrors.description ? "border-red-500 pr-10" : ""}`}
+          />
+          {fieldErrors.description && (
+            <div className="absolute top-3 right-3 pointer-events-none">
+              <AlertCircle
+                className="h-5 w-5 text-red-500"
+                aria-hidden="true"
+              />
+            </div>
+          )}
+        </div>
+        {fieldErrors.description && (
+          <p className="text-red-500 text-sm mt-1 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.description}
+          </p>
+        )}
+      </div>
+
+      <div className="overflow-x-auto mb-4">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Account
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Entity Code
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Description
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Debit
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Credit
+              </th>
+              <th scope="col" className="relative px-6 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody className="bg-white divide-y divide-gray-200">
+            {lines.map((line, index) => (
+              <tr key={index}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    {/* Combobox for searchable account dropdown */}
+                    <Popover
+                      onOpenChange={(open) => {
+                        // Reset expanded state and search query when dropdown is closed
+                        if (!open) {
+                          setExpandedAccounts(initializeExpandedState());
+                          setSearchQuery(""); // Clear search query
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={`w-full justify-between ${fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}`}
+                        >
+                          {line.accountId &&
+                          accounts.some(
+                            (account) =>
+                              account.id.toString() === line.accountId,
+                          )
+                            ? `${accounts.find((account) => account.id.toString() === line.accountId)?.accountCode} - ${accounts.find((account) => account.id.toString() === line.accountId)?.name}`
+                            : "Select account..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <div className="relative">
+                            <CommandInput
+                              placeholder="Search account..."
+                              className="h-9 pr-8"
+                              value={searchQuery}
+                              onValueChange={(value) => {
+                                // Update search query
+                                setSearchQuery(value);
+
+                                // When search is cleared, collapse all accounts except for default expanded ones
+                                if (!value.trim()) {
+                                  // Reset to initial expanded state (all collapsed)
+                                  setExpandedAccounts({});
+                                }
+                                // When searching, automatically expand all parent accounts
+                                // that have matching children
+                                else {
+                                  // Find all matching accounts (case insensitive search)
+                                  const lowerQuery = value.toLowerCase();
+                                  const matchingAccounts = accounts.filter(
+                                    (account) =>
+                                      `${account.accountCode} ${account.name}`
+                                        .toLowerCase()
+                                        .includes(lowerQuery),
+                                  );
+
+                                  // Get IDs of parent accounts whose children match the query
+                                  const parentIdsToExpand = new Set<number>();
+
+                                  // Find parents that need to be expanded
+                                  matchingAccounts.forEach((account) => {
+                                    if (account.parentId) {
+                                      parentIdsToExpand.add(account.parentId);
+
+                                      // Also try to find grandparents (for deep hierarchies)
+                                      let currentParentId = account.parentId;
+                                      while (currentParentId) {
+                                        const parent = accounts.find(
+                                          (a) => a.id === currentParentId,
+                                        );
+                                        if (parent?.parentId) {
+                                          parentIdsToExpand.add(
+                                            parent.parentId,
+                                          );
+                                          currentParentId = parent.parentId;
+                                        } else {
+                                          break;
+                                        }
+                                      }
+                                    }
+                                  });
+
+                                  // Expand these parents if they're not already expanded
+                                  if (parentIdsToExpand.size > 0) {
+                                    setExpandedAccounts((prev) => {
+                                      const newState = { ...prev };
+                                      parentIdsToExpand.forEach((id) => {
+                                        newState[id] = true;
+                                      });
+                                      return newState;
+                                    });
+                                  }
+                                }
+                              }}
+                            />
+                            {searchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Clear search query
+                                  setSearchQuery("");
+                                  // Reset expanded accounts state to collapse everything
+                                  setExpandedAccounts({});
+                                }}
+                                className="absolute right-2 top-2.5 h-4 w-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+                                aria-label="Clear search"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <CommandEmpty>No account found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[300px] overflow-auto">
+                              {(() => {
+                                // Step 1: Get active accounts
+                                const activeAccounts = accounts.filter(
+                                  (account) => account.active,
+                                );
+
+                                // Step 2: First organize accounts by type
+                                const typeOrder: Record<string, number> = {
+                                  asset: 1,
+                                  assets: 1,
+                                  liability: 2,
+                                  liabilities: 2,
+                                  equity: 3,
+                                  revenue: 4,
+                                  expense: 5,
+                                  expenses: 5,
+                                };
+
+                                // Step 3: Create a tree structure to maintain the hierarchy
+                                type AccountNode = {
+                                  account: Account;
+                                  children: AccountNode[];
+                                };
+
+                                // Step 4: Group accounts by type
+                                const accountsByType: Record<
+                                  string,
+                                  Account[]
+                                > = {};
+
+                                activeAccounts.forEach((account) => {
+                                  const type = account.type.toLowerCase();
+                                  if (!accountsByType[type]) {
+                                    accountsByType[type] = [];
+                                  }
+                                  accountsByType[type].push(account);
+                                });
+
+                                // Step 5: For each type, build hierarchical trees
+                                const forestByType: Record<
+                                  string,
+                                  AccountNode[]
+                                > = {};
+
+                                Object.keys(accountsByType).forEach((type) => {
+                                  const accountsOfType = accountsByType[type];
+
+                                  // Create lookup maps
+                                  const accountMap = new Map<number, Account>();
+                                  const nodeMap = new Map<
+                                    number,
+                                    AccountNode
+                                  >();
+
+                                  // Fill the maps
+                                  accountsOfType.forEach((account) => {
+                                    accountMap.set(account.id, account);
+                                    nodeMap.set(account.id, {
+                                      account,
+                                      children: [],
+                                    });
+                                  });
+
+                                  // Build the forest (multiple trees)
+                                  const forest: AccountNode[] = [];
+
+                                  // Connect parents to children
+                                  accountsOfType.forEach((account) => {
+                                    const node = nodeMap.get(account.id)!;
+
+                                    if (
+                                      account.parentId &&
+                                      nodeMap.has(account.parentId)
+                                    ) {
+                                      // This is a child node, add it to its parent
+                                      const parentNode = nodeMap.get(
+                                        account.parentId,
+                                      )!;
+                                      parentNode.children.push(node);
+                                    } else {
+                                      // This is a root node (no parent or parent not in this type)
+                                      forest.push(node);
+                                    }
+                                  });
+
+                                  // Sort each level by account code
+                                  const sortByCode = (nodes: AccountNode[]) => {
+                                    nodes.sort((a, b) => {
+                                      const aCode =
+                                        parseInt(
+                                          a.account.accountCode.replace(
+                                            /\D/g,
+                                            "",
+                                          ),
+                                        ) || 0;
+                                      const bCode =
+                                        parseInt(
+                                          b.account.accountCode.replace(
+                                            /\D/g,
+                                            "",
+                                          ),
+                                        ) || 0;
+                                      return aCode - bCode;
+                                    });
+
+                                    // Sort children recursively
+                                    nodes.forEach((node) => {
+                                      sortByCode(node.children);
+                                    });
+                                  };
+
+                                  // Sort the forest
+                                  sortByCode(forest);
+                                  forestByType[type] = forest;
+                                });
+
+                                // Step 6: Flatten the forest into a display list while maintaining hierarchy
+                                const flattenedAccounts: Account[] = [];
+
+                                // Helper to flatten a tree into the list
+                                const flattenTree = (node: AccountNode) => {
+                                  flattenedAccounts.push(node.account);
+                                  node.children.forEach((child) =>
+                                    flattenTree(child),
+                                  );
+                                };
+
+                                // Process each type in the correct order
+                                Object.keys(typeOrder)
+                                  .sort((a, b) => typeOrder[a] - typeOrder[b])
+                                  .forEach((type) => {
+                                    if (forestByType[type]) {
+                                      forestByType[type].forEach((rootNode) =>
+                                        flattenTree(rootNode),
+                                      );
+                                    }
+                                  });
+
+                                // Handle any other types not in the predefined order
+                                Object.keys(forestByType)
+                                  .filter((type) => !(type in typeOrder))
+                                  .forEach((type) => {
+                                    forestByType[type].forEach((rootNode) =>
+                                      flattenTree(rootNode),
+                                    );
+                                  });
+
+                                return flattenedAccounts;
+                              })().map((account) => {
+                                // Determine if this is a parent account (has children accounts)
+                                const isParent = accounts.some(
+                                  (childAccount) =>
+                                    childAccount.parentId === account.id,
+                                );
+
+                                // Determine nesting level by checking if it has a parent
+                                const hasParent =
+                                  account.parentId !== null &&
+                                  account.parentId !== undefined;
+
+                                return (
+                                  <CommandItem
+                                    key={account.id}
+                                    value={`${account.accountCode} ${account.name}`}
+                                    onSelect={() => {
+                                      // For parent accounts, toggle expand/collapse
+                                      if (isParent) {
+                                        setExpandedAccounts((prev) => {
+                                          if (prev[account.id]) {
+                                            // If collapsing, we need to recursively collapse all children
+                                            const newState = {
+                                              ...prev,
+                                              [account.id]: false,
+                                            };
+
+                                            // Find and collapse all child accounts
+                                            const collapseChildren = (
+                                              parentId: number,
+                                            ) => {
+                                              accounts.forEach(
+                                                (childAccount) => {
+                                                  if (
+                                                    childAccount.parentId ===
+                                                    parentId
+                                                  ) {
+                                                    // Collapse this child
+                                                    newState[childAccount.id] =
+                                                      false;
+
+                                                    // If this child is also a parent, collapse its children
+                                                    if (
+                                                      accounts.some(
+                                                        (acc) =>
+                                                          acc.parentId ===
+                                                          childAccount.id,
+                                                      )
+                                                    ) {
+                                                      collapseChildren(
+                                                        childAccount.id,
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                              );
+                                            };
+
+                                            collapseChildren(account.id);
+                                            return newState;
+                                          } else {
+                                            // Simply expand this parent
+                                            return {
+                                              ...prev,
+                                              [account.id]: true,
+                                            };
+                                          }
+                                        });
+                                      } else {
+                                        // For regular accounts, select them
+                                        handleLineChange(
+                                          index,
+                                          "accountId",
+                                          account.id.toString(),
+                                        );
+                                      }
+                                    }}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      isParent
+                                        ? "font-semibold opacity-70"
+                                        : "",
+                                      // Hide child accounts when parent is collapsed, but not when searching
+                                      hasParent &&
+                                        !expandedAccounts[
+                                          account.parentId || 0
+                                        ] &&
+                                        !searchQuery
+                                        ? "hidden"
+                                        : "",
+                                      // Add left padding for child accounts
+                                      hasParent ? "pl-6" : "",
+                                      // Apply account type styling if available
+                                      account.type
+                                        ? `account-type-${account.type.toLowerCase().replace(/\s+/g, "-")}`
+                                        : "",
+                                    )}
+                                  >
+                                    {isParent ? (
+                                      expandedAccounts[account.id] ? (
+                                        <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
+                                      )
+                                    ) : hasParent ? (
+                                      <span className="w-4 h-4 inline-block mr-2"></span>
+                                    ) : (
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          line.accountId ===
+                                            account.id.toString()
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                    )}
+                                    <span
+                                      className={cn(
+                                        isParent
+                                          ? "font-medium"
+                                          : hasParent
+                                            ? ""
+                                            : "font-medium",
+                                      )}
+                                    >
+                                      {account.accountCode}
+                                    </span>{" "}
+                                    - {account.name}
+                                    {!hasParent && account.type && (
+                                      <span className="ml-2 text-xs text-gray-500">
+                                        {account.type}
+                                      </span>
+                                    )}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {fieldErrors[`line_${index}_accountId`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {fieldErrors[`line_${index}_accountId`]}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    {/* Combobox for searchable entity dropdown */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={`w-full justify-between ${fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}`}
+                        >
+                          {line.entityCode &&
+                          entities.some(
+                            (entity) => entity.code === line.entityCode,
+                          )
+                            ? `${line.entityCode} - ${entities.find((entity) => entity.code === line.entityCode)?.name}`
+                            : "Select entity..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search entity..."
+                            className="h-9"
+                            onValueChange={(value) => {
+                              // Entity search doesn't need to save state since it's simpler than accounts
+                            }}
+                          />
+                          <CommandEmpty>No entity found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[200px] overflow-auto">
+                              {entities
+                                .filter((entity) => entity.active)
+                                .sort((a, b) => a.code.localeCompare(b.code))
+                                .map((entity) => (
+                                  <CommandItem
+                                    key={entity.id}
+                                    value={`${entity.code} ${entity.name}`}
+                                    onSelect={() => {
+                                      handleLineChange(
+                                        index,
+                                        "entityCode",
+                                        entity.code,
+                                      );
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        line.entityCode === entity.code
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    <span className="font-medium">
+                                      {entity.code}
+                                    </span>{" "}
+                                    - {entity.name}
+                                  </CommandItem>
+                                ))}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {fieldErrors[`line_${index}_entityCode`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {fieldErrors[`line_${index}_entityCode`]}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    value={line.description}
+                    onChange={(e) =>
+                      handleLineChange(index, "description", e.target.value)
+                    }
+                    placeholder="Line description"
+                    className={
+                      fieldErrors[`line_${index}_description`]
+                        ? "border-red-500"
+                        : ""
+                    }
+                  />
+                  {fieldErrors[`line_${index}_description`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {fieldErrors[`line_${index}_description`]}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Using a text input with pattern validation for better formatting control */}
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={line.debit}
+                    onChange={(e) => {
+                      // Use safeParseAmount for consistent number parsing
+                      const rawValue = safeParseAmount(e.target.value).toString();
+                      handleLineChange(index, "debit", rawValue);
+                    }}
+                    onBlur={(e) => {
+                      // Format to 2 decimal places with thousands separators on blur
+                      if (e.target.value) {
+                        const numValue = safeParseAmount(e.target.value);
+
+                        if (!isNaN(numValue)) {
+                          // Format with 2 decimal places and thousands separators
+                          const formattedValue = formatNumberWithSeparator(
+                            numValue.toFixed(2),
+                          );
+                          handleLineChange(index, "debit", formattedValue);
+                        }
+                      }
+                    }}
+                    placeholder="0.00"
+                    className={
+                      fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""
+                    }
+                  />
+                  {fieldErrors[`line_${index}_debit`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {fieldErrors[`line_${index}_debit`]}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Using a text input with pattern validation for better formatting control */}
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={line.credit}
+                    onChange={(e) => {
+                      // Use safeParseAmount for consistent number parsing
+                      const rawValue = safeParseAmount(e.target.value).toString();
+                      handleLineChange(index, "credit", rawValue);
+                    }}
+                    onBlur={(e) => {
+                      // Format to 2 decimal places with thousands separators on blur
+                      if (e.target.value) {
+                        const numValue = safeParseAmount(e.target.value);
+
+                        if (!isNaN(numValue)) {
+                          // Format with 2 decimal places and thousands separators
+                          const formattedValue = formatNumberWithSeparator(
+                            numValue.toFixed(2),
+                          );
+                          handleLineChange(index, "credit", formattedValue);
+                        }
+                      }
+                    }}
+                    placeholder="0.00"
+                    className={
+                      fieldErrors[`line_${index}_credit`]
+                        ? "border-red-500"
+                        : ""
+                    }
+                  />
+                  {fieldErrors[`line_${index}_credit`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {fieldErrors[`line_${index}_credit`]}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => removeLine(index)}
+                    aria-label="Remove line"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+
+          <tfoot>
+            <tr>
+              <td colSpan={6} className="px-6 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addLine}
+                  className="inline-flex items-center"
+                >
+                  <Plus className="-ml-0.5 mr-2 h-4 w-4" />
+                  Add Line
+                </Button>
+              </td>
+            </tr>
+
+            <tr className="bg-gray-50">
+              <td
+                colSpan={3}
+                className="px-6 py-4 text-right text-sm font-medium text-gray-900"
+              >
+                Totals:
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                {totalDebit.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                {totalCredit.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td className="px-6 py-4"></td>
+            </tr>
+
+            <tr className="bg-gray-50">
+              <td
+                colSpan={3}
+                className="px-6 py-4 text-right text-sm font-medium text-gray-900"
+              >
+                Difference:
+              </td>
+              <td
+                colSpan={2}
+                className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isBalanced ? "text-green-600" : "text-red-600"}`}
+              >
+                {difference.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td className="px-6 py-4"></td>
+            </tr>
+
+            {/* Entity Balance Summary Section - Intercompany Validation */}
+            {entityBalances.length > 1 && (
+              <>
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Entity Balance Summary (Intercompany)
+                  </td>
+                </tr>
+                {entityBalances.map((balance: EntityBalance) => (
+                  <tr key={balance.entityCode} className="bg-gray-50">
+                    <td
+                      colSpan={2}
+                      className="px-6 py-2 text-right text-xs font-medium text-gray-900"
+                    >
+                      Entity {balance.entityCode}:
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      DR:{" "}
+                      {balance.debit.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      CR:{" "}
+                      {balance.credit.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td
+                      colSpan={2}
+                      className={`px-6 py-2 whitespace-nowrap text-xs font-medium ${balance.balanced ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {balance.balanced
+                        ? "Balanced"
+                        : `Difference: ${balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    </td>
+                  </tr>
+                ))}
+              </>
+            )}
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Attachment Section Conditional Rendering */}
+      {!isEditing ||
+      (isEditing &&
+        existingEntry?.id &&
+        existingEntry?.status !== "posted" &&
+        existingEntry?.status !== "voided") ? (
+        <AttachmentSection
+          entityId={entityId}
+          journalEntryId={effectiveJournalEntryId}
+          pendingFiles={pendingFiles}
+          setPendingFiles={setPendingFiles}
+          pendingFilesMetadata={pendingFilesMetadata}
+          setPendingFilesMetadata={setPendingFilesMetadata}
+          onUploadToEntryRef={uploadPendingFilesRef}
+        />
+      ) : null}
+
+      <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={createEntry.isPending || updateEntry.isPending}
+        >
+          Cancel
+        </Button>
+
+        <div className="grid grid-cols-2 gap-2">
+          {/* Save as Draft button - for all users */}
           <Button
-            variant="outline"
-            onClick={onCancel}
-            disabled={createEntry.isPending || updateEntry.isPending}
+            onClick={() => handleSubmit(true)}
+            disabled={
+              createEntry.isPending || updateEntry.isPending || isUploading
+            }
+            className="relative"
           >
-            Cancel
+            {(createEntry.isPending ||
+              updateEntry.isPending ||
+              isUploading) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+            )}
+            {!(createEntry.isPending || updateEntry.isPending || isUploading) &&
+              "Save as Draft"}
+            {(createEntry.isPending || updateEntry.isPending) && "Saving..."}
+            {isUploading && "Uploading Files..."}
           </Button>
 
-          <div className="grid grid-cols-2 gap-2">
-            {/* Save as Draft button - for all users */}
+          {/* Post/Submit button based on role */}
+          {user?.role === "admin" ? (
             <Button
-              onClick={() => handleSubmit(true)}
-              disabled={
-                createEntry.isPending || updateEntry.isPending
-              }
-              className="relative"
-            >
-              {(createEntry.isPending ||
-                updateEntry.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
-              )}
-              {!(createEntry.isPending || updateEntry.isPending) &&
-                "Save as Draft"}
-              {(createEntry.isPending || updateEntry.isPending) &&
-                "Saving..."}
-            </Button>
+              variant="default"
+              onClick={() => {
+                console.log("DEBUG: Post button clicked, user is admin");
+                console.log("DEBUG: existingEntry:", existingEntry);
+                if (existingEntry && existingEntry.id) {
+                  console.log(
+                    "DEBUG: Posting existing entry with ID:",
+                    existingEntry.id,
+                  );
+                  // Use postJournalEntry from the properly imported hook at component level
+                  postJournalEntry.mutate(existingEntry.id);
+                } else {
+                  console.log(
+                    "DEBUG: Creating new entry using handleSubmit with saveAsDraft=false",
+                  );
 
-            {/* Submit button - for all users */}
-            <Button
-              type="button"
-              onClick={() => handleSubmit(false)}
+                  // Call handleSubmit with saveAsDraft=false which will handle the two-phase workflow for pending files
+                  handleSubmit(false);
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 relative"
               disabled={
                 createEntry.isPending ||
                 updateEntry.isPending ||
-                !isBalanced
+                !isBalanced ||
+                isUploading
               }
-              className="relative"
+              title={
+                !isBalanced
+                  ? "Journal entry must be balanced before posting"
+                  : isUploading
+                    ? "Please wait while files are uploading"
+                    : pendingFiles.length > 0
+                      ? "Entry will be created as draft first to allow file uploads"
+                      : ""
+              }
             >
               {(createEntry.isPending ||
-                updateEntry.isPending) && (
+                updateEntry.isPending ||
+                isUploading) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending) &&
-                "Submit"}
+              {!(
+                createEntry.isPending ||
+                updateEntry.isPending ||
+                isUploading
+              ) &&
+                isBalanced && <CheckCircle2 className="mr-2 h-4 w-4 inline" />}
+              {!(
+                createEntry.isPending ||
+                updateEntry.isPending ||
+                isUploading
+              ) && "Post Entry"}
+              {(createEntry.isPending || updateEntry.isPending) && "Posting..."}
+              {isUploading && "Uploading Files..."}
+            </Button>
+          ) : (
+            /* Submit for Approval button - for non-admin users */
+            <Button
+              variant="default"
+              onClick={() => {
+                // For non-admin users, submit for approval (changes status to "pending_approval")
+                // Use date directly from the input - already in YYYY-MM-DD format
+                // No need to create a Date object which would cause timezone issues
+                
+                const entryData = {
+                  ...journalData,
+                  date: journalData.date,
+                  status: JournalEntryStatus.PENDING_APPROVAL,
+                };
+                if (existingEntry && existingEntry.id) {
+                  updateEntry.mutate({ ...entryData, id: existingEntry.id });
+                } else {
+                  createEntry.mutate(entryData);
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 relative"
+              disabled={
+                createEntry.isPending ||
+                updateEntry.isPending ||
+                !isBalanced ||
+                isUploading
+              }
+              title={
+                !isBalanced
+                  ? "Journal entry must be balanced before submitting"
+                  : isUploading
+                    ? "Please wait while files are uploading"
+                    : ""
+              }
+            >
+              {(createEntry.isPending ||
+                updateEntry.isPending ||
+                isUploading) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+              )}
+              {!(
+                createEntry.isPending ||
+                updateEntry.isPending ||
+                isUploading
+              ) &&
+                isBalanced && <CheckCircle2 className="mr-2 h-4 w-4 inline" />}
+              {!(
+                createEntry.isPending ||
+                updateEntry.isPending ||
+                isUploading
+              ) && "Submit for Approval"}
               {(createEntry.isPending || updateEntry.isPending) &&
                 "Submitting..."}
+              {isUploading && "Uploading Files..."}
             </Button>
-          </div>
+          )}
         </div>
-
-        {/* Post button - only for admin users and on submitted entries */}
-        {isEditing &&
-          existingEntry?.status === "pending" &&
-          user?.role === "admin" && (
-            <div className="mt-4">
-              <Button
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to post this journal entry? This action cannot be undone.")) {
-                    postJournalEntry.mutate(existingEntry.id);
-                  }
-                }}
-                className="w-full bg-green-500 hover:bg-green-600"
-                disabled={postJournalEntry.isPending}
-              >
-                {postJournalEntry.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...
-                  </>
-                ) : (
-                  "Post Journal Entry"
-                )}
-              </Button>
-            </div>
-          )}
-
-        {/* Void button placeholder - would need to be implemented with a proper void mutation */}
-        {isEditing &&
-          existingEntry?.status === "posted" &&
-          user?.role === "admin" && (
-            <div className="mt-4">
-              <Button
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to void this journal entry? This action cannot be undone.")) {
-                    // Void logic would go here
-                    alert("Void functionality to be implemented");
-                  }
-                }}
-                variant="destructive"
-                className="w-full"
-              >
-                Void Journal Entry
-              </Button>
-            </div>
-          )}
-      </form>
+      </div>
     </div>
   );
 }

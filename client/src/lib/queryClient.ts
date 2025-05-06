@@ -54,11 +54,6 @@ export async function apiRequest(
   // Get response data
   let responseData;
   try {
-    // Check for redirects
-    if (response.redirected) {
-      throw new Error('Unauthenticated – redirect');
-    }
-    
     // First check if response is OK (status 200-299)
     if (!response.ok) {
       // If not OK, throw an error immediately with status code

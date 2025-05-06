@@ -6,11 +6,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { useJournalEntry, JournalEntry } from '@/features/journal-entries/hooks/useJournalEntry';
-import {
+import { 
+  ClientFormatLine, 
+  ServerFormatLine, 
+  JournalEntryLine, 
+  isClientFormatLine, 
+  isServerFormatLine,
   getDebit,
-  getCredit
+  getCredit,
+  safeParse,
+  safeParseAmount
 } from '../utils/lineFormat';
-import { safeParseAmount } from '../utils/numberFormat';
 import { ymdToDisplay } from '@/utils/dateUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -96,44 +102,22 @@ import { useDropzone } from 'react-dropzone';
 function JournalEntryDetail() {
   const { updateJournalEntry, deleteJournalEntry, postJournalEntry } = useJournalEntry();
   
-  // Define journal entry line types for this component
-  interface JournalEntryLine {
-    id?: number;
-    accountId: string | number;
-    entityCode?: string;
-    description?: string;
-    debit?: string | number;
-    credit?: string | number;
-    type?: 'debit' | 'credit';
-    amount?: number | string;
-    [key: string]: any;
-  }
-
-  // Helper functions to check line format type
-  const isClientFormatLine = (line: JournalEntryLine): boolean => {
-    return 'debit' in line || 'credit' in line;
-  };
-
-  const isServerFormatLine = (line: JournalEntryLine): boolean => {
-    return 'type' in line && 'amount' in line;
-  };
-
   // Helper function to process line data consistently for API submission
   const processLineForSubmission = (line: JournalEntryLine) => {
     if (isClientFormatLine(line)) {
       // Check if it's a debit or credit line using safe parsing
-      if (safeParseAmount(line.debit || 0) > 0) {
+      if (safeParseAmount(line.debit) > 0) {
         return {
           type: 'debit',
-          amount: String(safeParseAmount(line.debit || 0)),
+          amount: line.debit.toString(),
           accountId: Number(line.accountId),
           entityCode: line.entityCode || null,
           description: line.description || null
         };
-      } else if (safeParseAmount(line.credit || 0) > 0) {
+      } else if (safeParseAmount(line.credit) > 0) {
         return {
           type: 'credit',
-          amount: String(safeParseAmount(line.credit || 0)),
+          amount: line.credit.toString(),
           accountId: Number(line.accountId),
           entityCode: line.entityCode || null,
           description: line.description || null
@@ -144,7 +128,7 @@ function JournalEntryDetail() {
       // Already in server format, just ensure amount is a string
       return {
         type: line.type,
-        amount: String(line.amount),
+        amount: line.amount.toString(),
         accountId: Number(line.accountId),
         entityCode: line.entityCode || null,
         description: line.description || null
@@ -1520,10 +1504,10 @@ function JournalEntryDetail() {
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">
-                        {getDebit(line) ? formatCurrency(getDebit(line)) : ''}
+                        {debitValue !== 0 ? formatCurrency(debitValue) : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {getCredit(line) ? formatCurrency(getCredit(line)) : ''}
+                        {creditValue !== 0 ? formatCurrency(creditValue) : '-'}
                       </TableCell>
                     </TableRow>
                   );

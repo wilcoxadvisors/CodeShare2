@@ -106,7 +106,6 @@
     "ts-jest": "^29.3.1",
     "ts-prune": "^0.10.3",
     "typescript-eslint": "^8.31.1",
-    "use-mask-input": "^3.4.2",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
