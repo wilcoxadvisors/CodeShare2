@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'wouter';
+import { useEntity } from '@/contexts/EntityContext';
+import { getJournalEntryUrl } from '@/api/urlHelpers';
 
 /**
  * Hook to fetch a journal entry for editing
@@ -9,18 +11,24 @@ import { useParams } from 'wouter';
 export function useEditJournalEntry() {
   // Get the entry ID from the URL parameters
   const params = useParams<{ id: string }>();
-  const entryId = params?.id;
+  const entryId = params?.id ? parseInt(params.id) : undefined;
+  const { currentEntity } = useEntity();
+  const clientId = currentEntity?.clientId;
+  const entityId = currentEntity?.id;
   
   console.log("useEditJournalEntry - Entry ID from URL:", entryId);
+  console.log("useEditJournalEntry - Client ID:", clientId, "Entity ID:", entityId);
   
-  // Fetch the journal entry data
+  // Fetch the journal entry data using hierarchical URL pattern
   const {
     data,
     isLoading,
     error
   } = useQuery({
-    queryKey: entryId ? [`/api/journal-entries/${entryId}`] : ['no-entry-id'],
-    enabled: !!entryId,
+    queryKey: entryId && clientId && entityId 
+      ? [getJournalEntryUrl(clientId, entityId, entryId)] 
+      : ['no-entry-id'],
+    enabled: !!entryId && !!clientId && !!entityId,
     staleTime: 0, // Always fetch fresh data when editing
   });
   

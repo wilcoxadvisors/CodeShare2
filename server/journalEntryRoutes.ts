@@ -2145,4 +2145,80 @@ export function registerJournalEntryRoutes(app: Express) {
     // Redirect to hierarchical route
     res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`);
   }));
+
+  /**
+   * ---------------------------------------------------------------------------
+   *  Hierarchical detail route GET /api/clients/:clientId/entities/:entityId/journal-entries/:id
+   * ---------------------------------------------------------------------------
+   */
+  app.get(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity or journal entry ID');
+      }
+
+      // Optional validation: ensure entity belongs to client and journal entry belongs to entity
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      const journalEntry = await journalEntryStorage.getJournalEntry(id, true, true);
+      
+      if (!journalEntry) {
+        return throwNotFound('Journal entry not found');
+      }
+      
+      if (journalEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+
+      res.json(journalEntry);
+    })
+  );
+
+  /**
+   * Legacy redirect for journal entry detail route
+   */
+  app.get(
+    '/api/entities/:entityId/journal-entries/:id',
+    asyncHandler(async (req: Request, res: Response, next) => {
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      
+      // Skip if this is a test request or no redirection is needed
+      if (req.query.skipRedirect === 'true') {
+        return next();
+      }
+      
+      try {
+        // Get client ID from entity ID and redirect
+        const entity = await db.query.entities.findFirst({
+          where: eq(entities.id, entityId)
+        });
+        
+        if (!entity) {
+          return res.status(404).json({ message: 'Entity not found' });
+        }
+        
+        console.log(`DEBUG: Redirecting legacy journal entry detail request to hierarchical URL pattern for entity ${entityId} under client ${entity.clientId}, journal entry ${id}`);
+        return res.redirect(307, `/api/clients/${entity.clientId}/entities/${entityId}/journal-entries/${id}`);
+      } catch (error) {
+        console.error('Error during redirect:', error);
+        return next();
+      }
+    })
+  );
 }

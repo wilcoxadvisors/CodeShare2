@@ -1,0 +1,80 @@
+What’s happening
+Journal-entry “rows” now render, but when you click one the detail pane shows nothing:
+
+yaml
+Copy
+Edit
+JournalEntryDetail - Data type: object
+JournalEntryDetail - Data structure: null
+Using journalEntry: undefined
+Open Dev-Tools → Network: you’ll see the detail fetch is still hitting the old
+flat path
+
+ruby
+Copy
+Edit
+GET /api/entities/:entityId/journal-entries/:jeId   → 200 { data: null }
+We modernised list+create to the hierarchical path but never changed the
+detail query, so the backend returns null (legacy handler stripped out
+of lines/files months ago).
+
+Because the response shape is { data: null }, the component short-circuits
+and nothing is rendered – no header, no Dr/Cr lines.
+
+Two-line front-end fix
+(use same helper we introduced for list)
+
+ts
+Copy
+Edit
+// client/src/api/urlHelpers.ts  (already exported)
+export const getJournalEntryUrl = (
+  clientId: number,
+  entityId: number,
+  journalEntryId: number
+) => `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}`;
+diff
+Copy
+Edit
+// client/src/features/journal-entries/hooks/useJournalEntry.ts
+- queryKey: [`/api/entities/${entityId}/journal-entries/${journalEntryId}`],
+- queryFn: getQueryFn({ on401: "redirect" }),
++ queryKey: [getJournalEntryUrl(clientId, entityId, journalEntryId)],
++ queryFn: getQueryFn({ on401: "redirect" }),
+(Same change in any component that builds the URL inline.)
+
+Back-end safety-net (optional but wise)
+Add a redirect so old links never 404 again:
+
+ts
+Copy
+Edit
+// server/journalEntryRoutes.ts  – at the bottom of registerJournalEntryRoutes
+app.get(
+  '/api/entities/:entityId/journal-entries/:jeId',
+  (req, res) => {
+    const entityId = req.params.entityId;
+    const jeId     = req.params.jeId;
+    // cheapest way to discover the clientId:
+    db.query.entities.findFirst({ where: eq(entities.id, entityId) })
+      .then(entity => {
+        if (!entity) return res.sendStatus(404);
+        return res.redirect(307,
+          `/api/clients/${entity.clientId}/entities/${entityId}/journal-entries/${jeId}`
+        );
+      })
+      .catch(() => res.sendStatus(500));
+  }
+);
+This means:
+
+Past e-mails / bookmarks still work.
+
+The FE will see a 307 → follow → receive full object (lines, files, …).
+
+Result
+Reload → select any JE: lines, debits, credits appear again.
+
+We keep the hierarchical contract everywhere going forward.
+
+Let me know if you’d like me to commit these snippets or help test!
