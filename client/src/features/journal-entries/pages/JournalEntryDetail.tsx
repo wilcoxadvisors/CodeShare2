@@ -52,6 +52,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { 
+  getJournalEntryUrl,
+  getJournalEntryFilesBaseUrl,
+  getJournalEntryFileUrl,
+  getJournalEntryFileDownloadUrl,
+  getJournalEntryReverseUrl
+} from '@/api/urlHelpers';
 import {
   ArrowLeft,
   Edit,
@@ -472,15 +479,15 @@ function JournalEntryDetail() {
     return `${account.accountCode} - ${account.name}`;
   };
   
-  // Fetch journal entry by ID
+  // Fetch journal entry by ID using hierarchical URL pattern
   const { 
     data,
     isLoading,
     error,
     refetch
   } = useQuery({
-    queryKey: entryId ? [`/api/journal-entries/${entryId}`] : ['dummy-empty-key'],
-    enabled: !!entryId
+    queryKey: entryId && clientId ? [getJournalEntryUrl(clientId, currentEntity?.id || 0, entryId)] : ['dummy-empty-key'],
+    enabled: !!entryId && !!clientId && !!currentEntity?.id
   });
   
   // Define type for a journal entry
