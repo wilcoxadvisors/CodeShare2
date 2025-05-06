@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./chatRoutes";
 import { registerAIRoutes } from "./aiRoutes";
 import { registerAIAnalyticsRoutes } from "./aiAnalyticsRoutes";
 import { registerBatchUploadRoutes } from "./batchUploadRoutes";
+import { registerAttachmentRoutes } from "./attachmentRoutes";
 import blogRoutes from "./routes/blogRoutes";
 import contentRoutes from "./routes/contentRoutes";
 import { registerAIMLRoutes } from "./routes/aiMLRoutes";
@@ -158,6 +159,11 @@ app.use((req, res, next) => {
     log('Registering AI ML routes...');
     registerAIMLRoutes(app);
     log('✅ AI ML routes registered');
+    
+    // Register hierarchical attachment routes
+    log('Registering hierarchical attachment routes...');
+    registerAttachmentRoutes(app);
+    log('✅ Hierarchical attachment routes registered');
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled

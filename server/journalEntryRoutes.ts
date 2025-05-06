@@ -38,6 +38,21 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
  * Register journal entry routes
  */
 export function registerJournalEntryRoutes(app: Express) {
+  // Helper function to find client ID from entity ID
+  const getClientIdFromEntityId = async (entityId: number): Promise<number | null> => {
+    try {
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq }) => eq(entities.id, entityId),
+        columns: {
+          clientId: true
+        }
+      });
+      return entity?.clientId || null;
+    } catch (error) {
+      console.error('Error getting client ID from entity ID:', error);
+      return null;
+    }
+  };
   // Configure multer for file uploads
   // Define allowed MIME types for file uploads
   const ALLOWED_TYPES = [
@@ -1788,5 +1803,195 @@ export function registerJournalEntryRoutes(app: Express) {
     
     // Return success
     res.status(204).send();
+  }));
+  
+  // Legacy routes that redirect to hierarchical routes
+  
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Upload files to a journal entry (redirects to hierarchical route)
+   */
+  app.post('/api/journal-entries/:id/files', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Get the journal entry to find its entity ID
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Get the journal entry to find its entity ID
+    const journalEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    const entityId = journalEntry.entityId;
+    
+    // Find the client ID from the entity ID
+    const clientId = await getClientIdFromEntityId(entityId);
+    
+    if (!clientId) {
+      throwNotFound('Client for this entity');
+    }
+    
+    // Set Deprecation header
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString()); // 90 days
+    res.setHeader('Link', `</api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/files>; rel="successor-version"`);
+    
+    // Redirect to hierarchical route
+    res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/files`);
+  }));
+  
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Get all files for a journal entry (redirects to hierarchical route)
+   */
+  app.get('/api/journal-entries/:id/files', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Get the journal entry to find its entity ID
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      throwBadRequest('Invalid journal entry ID provided');
+    }
+    
+    // Get the journal entry to find its entity ID
+    const journalEntry = await journalEntryStorage.getJournalEntry(id);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    const entityId = journalEntry.entityId;
+    
+    // Find the client ID from the entity ID
+    const clientId = await getClientIdFromEntityId(entityId);
+    
+    if (!clientId) {
+      throwNotFound('Client for this entity');
+    }
+    
+    // Set Deprecation header
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString()); // 90 days
+    res.setHeader('Link', `</api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/files>; rel="successor-version"`);
+    
+    // Redirect to hierarchical route
+    res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/files`);
+  }));
+  
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Get a specific file from a journal entry (redirects to hierarchical route)
+   */
+  app.get('/api/journal-entries/:journalEntryId/files/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Get the journal entry to find its entity ID
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Get the journal entry to find its entity ID
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    const entityId = journalEntry.entityId;
+    
+    // Find the client ID from the entity ID
+    const clientId = await getClientIdFromEntityId(entityId);
+    
+    if (!clientId) {
+      throwNotFound('Client for this entity');
+    }
+    
+    // Set Deprecation header
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString()); // 90 days
+    res.setHeader('Link', `</api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}>; rel="successor-version"`);
+    
+    // Redirect to hierarchical route
+    res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`);
+  }));
+  
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Download a specific file from a journal entry (redirects to hierarchical route)
+   */
+  app.get('/api/journal-entries/:journalEntryId/files/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Get the journal entry to find its entity ID
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Get the journal entry to find its entity ID
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    const entityId = journalEntry.entityId;
+    
+    // Find the client ID from the entity ID
+    const clientId = await getClientIdFromEntityId(entityId);
+    
+    if (!clientId) {
+      throwNotFound('Client for this entity');
+    }
+    
+    // Set Deprecation header
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString()); // 90 days
+    res.setHeader('Link', `</api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}/download>; rel="successor-version"`);
+    
+    // Redirect to hierarchical route
+    res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}/download`);
+  }));
+  
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Delete a file from a journal entry (redirects to hierarchical route)
+   */
+  app.delete('/api/journal-entries/:journalEntryId/files/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    // Get the journal entry to find its entity ID
+    const journalEntryId = parseInt(req.params.journalEntryId);
+    const fileId = parseInt(req.params.fileId);
+    
+    if (isNaN(journalEntryId) || isNaN(fileId)) {
+      throwBadRequest('Invalid journal entry ID or file ID provided');
+    }
+    
+    // Get the journal entry to find its entity ID
+    const journalEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    
+    if (!journalEntry) {
+      throwNotFound('Journal Entry');
+    }
+    
+    const entityId = journalEntry.entityId;
+    
+    // Find the client ID from the entity ID
+    const clientId = await getClientIdFromEntityId(entityId);
+    
+    if (!clientId) {
+      throwNotFound('Client for this entity');
+    }
+    
+    // Set Deprecation header
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString()); // 90 days
+    res.setHeader('Link', `</api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}>; rel="successor-version"`);
+    
+    // Redirect to hierarchical route
+    res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`);
   }));
 }
