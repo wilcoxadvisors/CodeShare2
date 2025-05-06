@@ -1,6 +1,6 @@
 import { Express, Request, Response, Router } from 'express';
 import { asyncHandler, throwBadRequest, throwForbidden, throwNotFound } from './errorHandling';
-// Use the auth middleware from server/index.ts to avoid import issues
+// Use the auth middleware directly to avoid import issues
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
   // If user exists in session, they're authenticated
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -321,16 +321,15 @@ export function registerAttachmentRoutes(app: Express) {
     try {
       // If the file is stored in the blob storage
       if (file.storageKey) {
-        // Get the file data
-        const fileData = await journalEntryStorage.getJournalEntryFileData(file.storageKey);
+        // Get the file data directly from storage
+        const fileBuffer = await fileStorage.load(file.storageKey);
         
-        if (!fileData) {
+        if (!fileBuffer) {
           throwNotFound('File data');
         }
         
         // Send the file as a response
-        const buffer = Buffer.from(fileData.data, 'base64');
-        res.end(buffer);
+        res.end(fileBuffer);
       }
       // If the file is stored in the filesystem (legacy)
       else if (file.path) {
@@ -384,7 +383,10 @@ export function registerAttachmentRoutes(app: Express) {
       throwForbidden('File does not belong to the specified journal entry');
     }
     
-    // For download, set content disposition to attachment
+    // Get the file storage implementation
+    const fileStorage = getFileStorage();
+    
+    // Set response headers for download
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
@@ -404,28 +406,25 @@ export function registerAttachmentRoutes(app: Express) {
     try {
       // If the file is stored in the blob storage
       if (file.storageKey) {
-        // Get the file data
-        const fileData = await journalEntryStorage.getJournalEntryFileData(file.storageKey);
+        // Get the file data directly from storage
+        const fileBuffer = await fileStorage.load(file.storageKey);
         
-        if (!fileData) {
+        if (!fileBuffer) {
           throwNotFound('File data');
         }
         
-        // Send the file as a response
-        const buffer = Buffer.from(fileData.data, 'base64');
-        res.end(buffer);
+        // Send the file as a download
+        res.end(fileBuffer);
       }
-      // If the file is stored in the filesystem (legacy)
+      // Legacy file handling for backward compatibility (filesystem-based)
       else if (file.path) {
-        // Send the file from the filesystem
         res.download(file.path, file.filename);
       }
-      // If neither storage method is available
       else {
-        throwNotFound('File data');
+        throwNotFound('File content');
       }
     } catch (error) {
-      console.error('Error downloading file:', error);
+      console.error('Error serving file for download:', error);
       throw error;
     }
   }));
@@ -456,7 +455,7 @@ export function registerAttachmentRoutes(app: Express) {
       throwForbidden('Journal entry does not belong to the specified entity');
     }
     
-    // Check if journal entry status allows file deletion (only draft or pending_approval)
+    // Check if journal entry status allows file deletions (only draft or pending_approval)
     const allowedStatuses = ['draft', 'pending_approval'];
     const status = (journalEntry.status ?? '').toLowerCase();
     if (!allowedStatuses.includes(status)) {
@@ -468,12 +467,13 @@ export function registerAttachmentRoutes(app: Express) {
           journalEntryId: jeId,
           fileId,
           status: journalEntry.status,
+          reason: 'Invalid journal entry status',
           clientId,
           entityId
         })
       });
       
-      throwForbidden(`File deletion is only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}`);
+      throwForbidden(`File deletions are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}`);
     }
     
     // Get the file metadata
@@ -488,10 +488,14 @@ export function registerAttachmentRoutes(app: Express) {
       throwForbidden('File does not belong to the specified journal entry');
     }
     
-    // Delete the file
-    await journalEntryStorage.deleteJournalEntryFile(fileId);
+    // Delete the file 
+    const deleted = await journalEntryStorage.deleteJournalEntryFile(fileId);
     
-    // Log file deletion for audit purposes (async, don't await to improve response time)
+    if (!deleted) {
+      throwBadRequest('Failed to delete file');
+    }
+    
+    // Log file deletion for audit purposes
     auditLogStorage.createAuditLog({
       action: 'journal_file_deleted',
       performedBy: user.id,
@@ -504,12 +508,11 @@ export function registerAttachmentRoutes(app: Express) {
       })
     }).catch(err => console.error('Error creating audit log for file deletion:', err));
     
-    // Return success response
     res.json({ message: 'File deleted successfully' });
   }));
-  
-  // Register the hierarchical route
+
+  // Set up the hierarchical attachment routes
   app.use('/api/clients/:cId/entities/:eId/journal-entries/:jeId/files', router);
   
-  // Legacy routes that redirect to the hierarchical paths will be handled separately
+  console.log('Registered hierarchical attachment routes for journal entry files');
 }

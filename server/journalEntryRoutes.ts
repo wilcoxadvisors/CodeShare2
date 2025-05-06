@@ -1811,6 +1811,10 @@ export function registerJournalEntryRoutes(app: Express) {
    * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
    * Upload files to a journal entry (redirects to hierarchical route)
    */
+  /**
+   * ⚠️ LEGACY ROUTE - WILL BE DEPRECATED ⚠️
+   * Upload a file to a journal entry (redirects to hierarchical route)
+   */
   app.post('/api/journal-entries/:id/files', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     // Get the journal entry to find its entity ID
     const id = parseInt(req.params.id);
