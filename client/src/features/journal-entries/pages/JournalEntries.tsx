@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
+import { getJournalEntriesBaseUrl } from '@/api/urlHelpers';
 import { ymdToDisplay } from '@/utils/dateUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -53,14 +54,14 @@ function JournalEntries() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   
-  // Fetch journal entries for the current entity
+  // Fetch journal entries for the current entity using hierarchical URL pattern
   const {
     data,
     isLoading,
     error
   } = useQuery({
-    queryKey: currentEntity?.id ? [`/api/entities/${currentEntity.id}/journal-entries`] : [],
-    enabled: !!currentEntity?.id
+    queryKey: currentEntity?.id ? [getJournalEntriesBaseUrl(currentEntity.clientId, currentEntity.id)] : [],
+    enabled: !!currentEntity?.id && !!currentEntity?.clientId
   });
   
   // Calculate total debit/credit for each journal entry by using the lines data

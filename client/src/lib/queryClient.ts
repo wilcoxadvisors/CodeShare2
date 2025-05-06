@@ -42,6 +42,13 @@ export async function apiRequest(
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
   });
+  
+  // Handle 401 Unauthorized responses by redirecting to login page
+  if (response.status === 401) {
+    console.log("Unauthorized request detected, redirecting to login...");
+    window.location.assign('/login');
+    return Promise.reject(new Error('Unauthenticated'));
+  }
 
   // Get response data
   let responseData;
@@ -93,7 +100,7 @@ export async function apiRequest(
   return formattedResponse;
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
+type UnauthorizedBehavior = "returnNull" | "throw" | "redirect";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -103,8 +110,15 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && response.status === 401) {
-      return null;
+    if (response.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      } else if (unauthorizedBehavior === "redirect") {
+        console.log("Unauthorized query detected, redirecting to login...");
+        window.location.assign('/login');
+        return Promise.reject(new Error('Unauthenticated'));
+      }
+      // Otherwise continue to throw error
     }
 
     // Process the response
@@ -133,7 +147,7 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: getQueryFn({ on401: "redirect" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
