@@ -1,0 +1,37 @@
+I skim-checked the whole feature after your latest patch; here are the last few variable-name / consistency nits I’d square away before moving on.
+
+Location	What to look for	Why it still matters
+JournalEntryDetail.tsx
+(early return blocks)	```if (!entry	
+renderActionButtons()	You swapped to const status = entry.status – great – but the later checks still use journalEntry.status in two places (isOwnEntry and the fallback <div>). Search inside that helper for journalEntry. and replace.	Those stray references keep the buttons invisible for non-admins.
+handleDeleteLine (the table line-delete, not file delete)	Look for if (!journalEntry) and journalEntry.lines.splice(…). Replace with entry.	Deleting a line currently throws “cannot read lines of undefined” in console.
+Timeline JSX (progress dots)	You already changed the first <div> but the second/third dots still refer to journalEntry.status. Quick search/replace inside the timeline section will fix.	Otherwise the “Progress” bar shows the wrong colour after status changes.
+File-upload badge text	Same pattern: uploading ? \Uploading ${journalEntry.files?.length}…– useentry`.	Just cosmetic, but avoids NaN on new entries.
+calculateEntityBalances() (helper)	At the very end you push { entityCode, totalDebit, totalCredit } but you never return that new array because the original code forgot the return inside the map. While you were updating variable names it’s a good moment to add return { entityCode, totalDebit, totalCredit };.	Without it, entity balance widgets are always blank.
+JournalEntryForm.tsx	You added getDebit/getCredit helpers in Detail; import & use the same helpers in Form’s inline table so the preview rows aren’t empty while typing.	Keeps both pages consistent and uses one source of truth.
+
+Quick “grep” commands to flush the stragglers
+bash
+Copy
+Edit
+# Anything still using journalEntry.status after your rename
+grep -n "journalEntry\.status" client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+
+# Any remaining 'journalEntry.' references you might have missed
+grep -n "journalEntry\." client/src/features/journal-entries/pages/JournalEntryDetail.tsx | head
+If those come back empty (aside from type definitions / comments) you’re good.
+
+After these tiny clean-ups
+The debit/credit cells fill correctly with both formats.
+
+Draft/Post flows surface validation errors instead of silent 400s.
+
+Action buttons show/hide exactly by role + status.
+
+Give it a whirl, and holler if anything else feels off!
+
+
+
+
+
+

@@ -1,0 +1,67 @@
+1 ⃣ Look for stale journalEntry references
+bash
+Copy
+Edit
+# From repo root
+grep -rn --color -E '\bjournalEntry\b' \
+  client/src/features/journal-entries/pages/JournalEntryDetail.tsx \
+  | grep -vE '(interface|type|comment)'
+Expectations
+
+0 matches in executable code.
+
+OK if the match is in an interface, a comment, or a constant name like JournalEntrySchema.
+
+2 ⃣ Double-check duplicate const entry declarations
+bash
+Copy
+Edit
+grep -rn --color -E 'const +entry *= ' \
+  client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+You should now see exactly one declaration (near the top-level render code).
+If more than one appears, delete the later one.
+
+3 ⃣ Early-return crash guard
+Search for multiple early returns that might short-circuit rendering:
+
+bash
+Copy
+Edit
+grep -n --color -E 'return <(Loader2|Spinner|div)' \
+  client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+You should have only one return for the loading branch (if (isLoading) …).
+If you see a second unconditional return higher up (leftover from the old hot-fix), remove it.
+
+4 ⃣ Helper-function imports
+Verify the helpers we wrote (isClientFormatLine, isServerFormatLine) are defined once in the file and not imported from someplace else; otherwise Typescript may complain about duplicate identifiers.
+
+5 ⃣ Compile & test
+bash
+Copy
+Edit
+pnpm dev   # or npm run dev / yarn dev
+In the Journal Entry detail view:
+
+Debit/Credit columns show the correct numbers for both old and new entries.
+
+Entity totals and “Balanced ✔︎ / Not balanced ✖︎” banner display correctly.
+
+File-attachment buttons appear only when status is draft or pending_approval.
+
+Submit → Pending Approval, Approve, and Post buttons all hit
+PUT /journal-entries/:id with the new entry payload and succeed
+(watch network tab).
+
+6 ⃣ Edge-case smoke tests
+Create a brand-new JE (server-style lines) and save as draft → re-open → post.
+
+Open a legacy JE (client-style lines) and confirm it still renders.
+
+7 ⃣ Optional cleanup
+Rename ClientFormatLine / ServerFormatLine to something more explicit
+(LegacyLine, CompactLine) to avoid confusion.
+
+Move the two helper functions into
+client/src/features/journal-entries/utils/lineFormat.ts
+and import them in both Detail and Form components.
+
