@@ -64,12 +64,16 @@ function JournalEntries() {
     enabled: !!currentEntity?.id && !!currentEntity?.clientId
   });
   
+  // Import helper functions from lineFormat
+  const { getDebit, getCredit, isClientFormatLine, isServerFormatLine } = useJournalEntry();
+  
   // Calculate total debit/credit for each journal entry by using the lines data
   const entriesWithTotals = React.useMemo(() => {
     if (!data) return [];
     
     // Handle different response structures
     const entries = Array.isArray(data) ? data : (data as any).entries || [];
+    console.log("DEBUG - JournalEntries - Raw entries:", entries);
     
     // Map through entries to enhance them with totals data
     return entries.map((entry: any) => {
@@ -80,22 +84,34 @@ function JournalEntries() {
       
       // Otherwise, calculate totals from lines if available
       if (entry.lines && Array.isArray(entry.lines)) {
+        console.log(`DEBUG - JournalEntries - Processing entry ${entry.id} lines:`, entry.lines);
+        
+        // Use our safer helper functions that handle both formats
         const totals = entry.lines.reduce((acc: any, line: any) => {
-          if (line.type === 'debit') {
-            acc.totalDebit += parseFloat(line.amount || 0);
-          } else if (line.type === 'credit') {
-            acc.totalCredit += parseFloat(line.amount || 0);
+          // Log format detection for debugging  
+          if (!isClientFormatLine(line) && !isServerFormatLine(line)) {
+            console.warn(`Unknown line format in entry ${entry.id}:`, line);
           }
+          
+          // Get debit and credit values using our helper functions
+          const debitValue = getDebit(line);
+          const creditValue = getCredit(line);
+          
+          console.log(`Line in entry ${entry.id}: debit=${debitValue}, credit=${creditValue}`);
+          
+          acc.totalDebit += debitValue;
+          acc.totalCredit += creditValue;
           return acc;
         }, { totalDebit: 0, totalCredit: 0 });
         
+        console.log(`DEBUG - JournalEntries - Entry ${entry.id} totals:`, totals);
         return { ...entry, ...totals };
       }
       
-      // If no lines data available, return entry as is
-      return entry;
+      // If no lines data available, return entry as is with zero totals
+      return { ...entry, totalDebit: 0, totalCredit: 0 };
     });
-  }, [data]);
+  }, [data, getDebit, getCredit, isClientFormatLine, isServerFormatLine]);
   
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {

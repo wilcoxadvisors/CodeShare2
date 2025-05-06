@@ -1218,7 +1218,7 @@ function JournalEntryDetail() {
   // Accept data in both formats: with wrapper and without
   // This is a hot-fix to handle both the legacy {journalEntry: {...}} shape
   // and the new direct object format that hierarchical endpoints return
-  if (!data) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div>;
+  if (!data || !entry) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div>;
 
   // Loading state
   if (isLoading) {
@@ -1520,10 +1520,18 @@ function JournalEntryDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(entry.lines as JournalEntryLine[]).map((line: JournalEntryLine, index: number) => {
+                {entry && entry.lines && entry.lines.map((line: JournalEntryLine, index: number) => {
                   // Use our helper functions to get debit and credit values consistently
+                  // Add debug logging for line format detection
+                  if (!isClientFormatLine(line) && !isServerFormatLine(line)) {
+                    console.warn('Unknown line format', line);
+                  }
+                  
+                  // Get values using our safer helper functions
                   const debitValue = getDebit(line);
                   const creditValue = getCredit(line);
+                  
+                  console.log(`Line ${index}: debitValue=${debitValue}, creditValue=${creditValue}, line=`, line);
                   
                   return (
                     <TableRow key={index}>
