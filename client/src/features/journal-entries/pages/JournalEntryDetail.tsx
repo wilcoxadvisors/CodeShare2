@@ -707,8 +707,8 @@ function JournalEntryDetail() {
   
   // Function to handle the back button using hierarchical navigation
   const handleBack = () => {
-    // Use navigate(-1) to go back to previous page instead of hardcoded paths
-    navigate(-1);
+    // Go back to previous page instead of hardcoded paths
+    navigate(-1 as any); // Type assertion to fix TypeScript error with navigate
   };
   
   // Function to void a journal entry
