@@ -707,11 +707,8 @@ function JournalEntryDetail() {
   
   // Function to handle the back button using hierarchical navigation
   const handleBack = () => {
-    if (clientId && currentEntity?.id) {
-      navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
-    } else {
-      navigate('/journal-entries');
-    }
+    // Use navigate(-1) to go back to previous page instead of hardcoded paths
+    navigate(-1);
   };
   
   // Function to void a journal entry
@@ -1503,10 +1500,10 @@ function JournalEntryDetail() {
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">
-                        {debitValue > 0 ? formatCurrency(debitValue) : '-'}
+                        {debitValue !== 0 ? formatCurrency(debitValue) : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {creditValue > 0 ? formatCurrency(creditValue) : '-'}
+                        {creditValue !== 0 ? formatCurrency(creditValue) : '-'}
                       </TableCell>
                     </TableRow>
                   );

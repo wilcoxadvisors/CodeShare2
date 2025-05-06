@@ -41,6 +41,7 @@ export async function apiRequest(
     headers: isFormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",  // critical: keep cookie / session on PUT, PATCH, DELETE
+    redirect: "manual"      // don't follow redirects - stay on JSON response
   });
   
   // Handle 401 Unauthorized responses by redirecting to login page
