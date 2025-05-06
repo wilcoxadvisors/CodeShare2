@@ -1,0 +1,92 @@
+What’s happening — quick diagnosis
+Frontend
+
+The JE list hook now calls
+
+ts
+Copy
+Edit
+/api/clients/:clientId/entities/:entityId/journal-entries   // hierarchical
+(good).
+
+Backend
+
+server/journalEntryRoutes.ts never got a GET-list handler for the new
+3-level path.
+
+The only list endpoint that still exists is the legacy
+/api/entities/:entityId/journal-entries, which the UI no longer hits.
+
+Result: request returns 404 → React-Query treats it as “no data”, so the
+page looks empty.
+
+That’s why new entries you just created appear (because the create-POST
+does use the hierarchical route we added), but the list is blank--the GET
+endpoint is missing.
+
+Surgical backend patch (adds 1 route, <40 LOC)
+Drop this into server/journalEntryRoutes.ts right after the existing
+legacy GET /api/entities/:entityId/journal-entries block:
+
+ts
+Copy
+Edit
+/**
+ * ---------------------------------------------------------------------------
+ *  NEW 3-level list route
+ *    GET /api/clients/:clientId/entities/:entityId/journal-entries
+ * ---------------------------------------------------------------------------
+ */
+app.get(
+  '/api/clients/:clientId/entities/:entityId/journal-entries',
+  isAuthenticated,
+  asyncHandler(async (req: Request, res: Response) => {
+    const clientId  = parseInt(req.params.clientId, 10);
+    const entityId  = parseInt(req.params.entityId, 10);
+
+    if (Number.isNaN(clientId) || Number.isNaN(entityId)) {
+      return throwBadRequest('Invalid client or entity ID');
+    }
+
+    // ✔️ Optional guard: ensure entity belongs to client
+    const entity = await entityStorage.getEntity(entityId);
+    if (!entity || entity.clientId !== clientId) {
+      return throwNotFound('Entity not found for this client');
+    }
+
+    const entries = await journalEntryStorage.listJournalEntries({
+      entityId,
+      includeLines: true,          // preserve old behaviour
+      includeFiles: true,
+    });
+
+    res.json({ data: entries });
+  })
+);
+No other files need to change.
+
+Optional (but nice) – legacy auto-redirect
+If you want to keep the old FE code functioning in parallel for a bit longer,
+add:
+
+ts
+Copy
+Edit
+app.get(
+  '/api/entities/:entityId/journal-entries',
+  (req, res) => {
+    const entityId = req.params.entityId;
+    getClientIdFromEntityId(entityId).then(clientId => {
+      if (!clientId) return res.sendStatus(404);
+      res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries`);
+    });
+  }
+);
+We already did that pattern for attachments, so this stays consistent.
+
+After applying the patch
+Restart dev server (pnpm dev or equivalent).
+
+Hit the JE list page → past entries should load instantly.
+
+Run the Cypress smoke test (once we write it) to lock this in.
