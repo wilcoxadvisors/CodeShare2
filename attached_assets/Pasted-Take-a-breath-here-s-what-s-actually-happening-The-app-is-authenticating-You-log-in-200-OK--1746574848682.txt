@@ -1,0 +1,57 @@
+Take a breath 😅 — here’s what’s actually happening
+The app is authenticating
+
+You log in → 200 OK → user object appears.
+
+React-Router is pushing you straight to
+/clients/251/entities/392/journal-entries/140
+(good - that’s the new hierarchical URL).
+
+JournalEntryDetail mounts before EntityContext finishes refetching entities
+
+txt
+Copy
+Edit
+JournalEntryDetail: Looking for entity with ID: 392 in 0 entities
+EntityContext: Entities data updated - received 52 entities   ← arrives a tick later
+Because currentEntity is still undefined, your component crashes (or renders undefined) and Vite’s HMR tries to reload half the bundle ⇒ 502 Bad Gateway, lost CSS, etc.
+
+Quick, no-drama patch
+Wrap every entity-scoped route in a little guard that waits until
+entities.length > 0 or the fetch errored:
+
+tsx
+Copy
+Edit
+// 🗂  src/components/layout/EntityLayout.tsx
+export default function EntityLayout() {
+  const { clientId, entityId } = useParams();
+  const { entities, isLoading, error, setCurrentEntity } = useEntity();
+
+  useEffect(() => {
+    if (!isLoading && !error && entities.length) {
+      const found = entities.find(e => e.id === Number(entityId));
+      if (found) setCurrentEntity(found);
+    }
+  }, [entities, isLoading, error, entityId]);
+
+  /* ---------- only render children when entity is ready ---------- */
+  if (isLoading || !entities.length) return <FullPageSpinner />;
+
+  if (!entities.find(e => e.id === Number(entityId)))
+    return <Navigate to={`/clients/${clientId}`} replace />;
+
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
+  );
+}
+FullPageSpinner – any simple “Loading…” component you already use.
+
+Now JournalEntryDetail won’t mount until entities is there.
+
+Two more one-line fixes you saw in the console
+Line	Fix
+useEntity is not defined in App.tsx	import { useEntity } from '@/contexts/EntityContext' at the top of the file.
+React-Router “future flag” warnings	Harmless. Add once: <RouterFuture future={{ v7_startTransition: true, v7_relativeSplatPath: true }}> or just ignore for now.
