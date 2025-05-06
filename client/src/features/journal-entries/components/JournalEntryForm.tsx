@@ -229,8 +229,8 @@ const FormSchema = z.object({
     .refine(
       (lines) => {
         // Check if there's at least one debit and one credit line
-        const hasDebit = lines.some((line) => parseFloat(line.debit) > 0);
-        const hasCredit = lines.some((line) => parseFloat(line.credit) > 0);
+        const hasDebit = lines.some((line) => getDebit(line) > 0);
+        const hasCredit = lines.some((line) => getCredit(line) > 0);
         return hasDebit && hasCredit;
       },
       {
@@ -282,11 +282,11 @@ const FormSchema = z.object({
             (line) => line.entityCode === entityCode,
           );
           const entityDebit = entityLines.reduce(
-            (sum, line) => sum + (parseFloat(line.debit) || 0),
+            (sum, line) => sum + getDebit(line),
             0,
           );
           const entityCredit = entityLines.reduce(
-            (sum, line) => sum + (parseFloat(line.credit) || 0),
+            (sum, line) => sum + getCredit(line),
             0,
           );
 
@@ -1237,15 +1237,13 @@ function JournalEntryForm({
 
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
-    // First remove commas from numeric values
+    // Use our shared helper functions to handle different line formats
     const totalDebit = lines.reduce((sum, line) => {
-      const debitValue = parseFloat(unformatNumber(line.debit)) || 0;
-      return sum + debitValue;
+      return sum + getDebit(line);
     }, 0);
 
     const totalCredit = lines.reduce((sum, line) => {
-      const creditValue = parseFloat(unformatNumber(line.credit)) || 0;
-      return sum + creditValue;
+      return sum + getCredit(line);
     }, 0);
 
     const difference = Math.abs(totalDebit - totalCredit);
@@ -1265,12 +1263,10 @@ function JournalEntryForm({
     return uniqueEntityCodes.map((code) => {
       const entityLines = lines.filter((line) => line.entityCode === code);
       const entityDebit = entityLines.reduce((sum, line) => {
-        const debitValue = parseFloat(unformatNumber(line.debit)) || 0;
-        return sum + debitValue;
+        return sum + getDebit(line);
       }, 0);
       const entityCredit = entityLines.reduce((sum, line) => {
-        const creditValue = parseFloat(unformatNumber(line.credit)) || 0;
-        return sum + creditValue;
+        return sum + getCredit(line);
       }, 0);
       const entityDifference = Math.abs(entityDebit - entityCredit);
       const entityBalanced = entityDifference < 0.001;
