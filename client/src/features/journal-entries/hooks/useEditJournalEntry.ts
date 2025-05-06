@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'wouter';
+import { useParams } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import { getJournalEntryUrl } from '@/api/urlHelpers';
 

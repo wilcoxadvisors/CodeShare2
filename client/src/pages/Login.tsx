@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 
 function Login() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { login, isLoading, user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -23,12 +23,12 @@ function Login() {
     if (user && !isLoading) {
       // Add a small delay to ensure all state is updated
       const redirectTimer = setTimeout(() => {
-        setLocation('/dashboard');
+        navigate('/dashboard');
       }, 100);
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading, navigate]);
   
   // Auto-fill demo credentials (remove in production)
   useEffect(() => {
@@ -75,7 +75,7 @@ function Login() {
         });
         
         // Use the SPA navigation instead of page refresh
-        setLocation('/dashboard');
+        navigate('/dashboard');
       } else {
         toast({
           title: "Authentication Error",

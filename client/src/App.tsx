@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Routes, Route, useLocation, useNavigate, Navigate, Outlet } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,7 +38,8 @@ const PublicHeader: React.FC = () => {
   const { setShowLoginModal } = useUI();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [_, navigate] = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Add scroll effect for better UX
   useEffect(() => {
@@ -196,8 +197,8 @@ const PublicHeader: React.FC = () => {
 // Public website footer component
 const PublicFooter = () => {
   const currentYear = new Date().getFullYear();
-  const [_, location] = useLocation();
-  const isHomePage = location === '/' || location === '';
+  const location = useLocation();
+  const isHomePage = location.pathname === '/' || location.pathname === '';
   
   return (
     <footer className="bg-gray-900 text-white py-8">
@@ -259,7 +260,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
   const { user, isLoading } = useAuth();
-  const [location, navigate] = useLocation();
+  const navigate = useNavigate();
 
   // Use useEffect to handle navigation after render
   useEffect(() => {
@@ -301,146 +302,120 @@ function Router() {
   const { user } = useAuth();
 
   return (
-    <Switch>
-      <Route path="/login">
-        {user ? <Redirect to="/dashboard" /> : <Login />}
-      </Route>
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       
-      <Route path="/dashboard">
+      <Route path="/dashboard" element={
         <AppLayout>
           <ProtectedRoute component={Dashboard} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/">
+      <Route path="/" element={
         <PublicLayout>
           <Home />
         </PublicLayout>
-      </Route>
+      } />
       
-      <Route path="/blog">
+      <Route path="/blog" element={
         <PublicLayout>
           <Blog />
         </PublicLayout>
-      </Route>
+      } />
       
       {/* General Ledger moved to Reports tab */}
       
       {/* Batch upload route remains outside of entity context */}
-      <Route path="/journal-entries/batch-upload">
+      <Route path="/journal-entries/batch-upload" element={
         <AppLayout>
           <ProtectedRoute component={BatchUpload} />
         </AppLayout>
-      </Route>
+      } />
       
       {/* Hierarchical routes for journal entries with client and entity context */}
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntries} />
-        </AppLayout>
+      <Route path="/clients/:clientId/entities/:entityId" element={<EntityLayout />}>
+        <Route path="journal-entries" element={<ProtectedRoute component={JournalEntries} />} />
+        <Route path="journal-entries/new" element={<ProtectedRoute component={NewJournalEntry} />} />
+        <Route path="journal-entries/:id" element={<ProtectedRoute component={JournalEntryDetail} />} />
+        <Route path="journal-entries/:id/edit" element={<ProtectedRoute component={NewJournalEntry} />} />
+        <Route path="journal-entries/:id/delete" element={<ProtectedRoute component={DeleteJournalEntry} />} />
       </Route>
       
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/new">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/edit">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete">
-        <AppLayout>
-          <ProtectedRoute component={DeleteJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/chart-of-accounts">
+      <Route path="/chart-of-accounts" element={
         <AppLayout>
           <ProtectedRoute component={ChartOfAccounts} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/reports">
+      <Route path="/reports" element={
         <AppLayout>
           <ProtectedRoute component={Reports} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/trial-balance">
+      <Route path="/trial-balance" element={
         <AppLayout>
           <ProtectedRoute component={TrialBalance} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/accounts-payable">
+      <Route path="/accounts-payable" element={
         <AppLayout>
           <ProtectedRoute component={AccountsPayable} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/accounts-receivable">
+      <Route path="/accounts-receivable" element={
         <AppLayout>
           <ProtectedRoute component={AccountsReceivable} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/fixed-assets">
+      <Route path="/fixed-assets" element={
         <AppLayout>
           <ProtectedRoute component={FixedAssets} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/document-analysis">
+      <Route path="/document-analysis" element={
         <AppLayout>
           <ProtectedRoute component={DocumentAnalysis} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/ai-analytics">
+      <Route path="/ai-analytics" element={
         <AppLayout>
           <ProtectedRoute component={AIAnalytics} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route path="/budget-forecast-dashboard">
+      <Route path="/budget-forecast-dashboard" element={
         <AppLayout>
           <ProtectedRoute component={BudgetForecastDashboard} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/client-onboarding">
+      <Route path="/client-onboarding" element={
         <AppLayout>
           <ProtectedRoute component={ClientOnboarding} adminOnly={true} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/consolidation-management">
+      <Route path="/consolidation-management" element={
         <AppLayout>
           <ProtectedRoute component={ConsolidationManagement} />
         </AppLayout>
-      </Route>
+      } />
       
       {/* Redirect to the consolidated JournalEntryForm implementation */}
-      <Route path="/journal-entries/create">
+      <Route path="/journal-entries/create" element={
         <AppLayout>
           <ProtectedRoute component={NewJournalEntry} />
         </AppLayout>
-      </Route>
+      } />
       
-      <Route>
-        <NotFound />
-      </Route>
-    </Switch>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 

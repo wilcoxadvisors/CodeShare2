@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Menu, Building, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -69,7 +69,9 @@ const mainNavItems = [
 ];
 
 function Header() {
-  const [location] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pathname = location.pathname;
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
@@ -92,12 +94,13 @@ function Header() {
   // Function to determine the base section of the current path (memoized)
   const currentBaseSection = useMemo(() => {
     // Extract the base section (e.g., /reports/balance-sheet -> /reports)
-    const firstSlashIndex = location.indexOf('/', 1);
+    const path = pathname;
+    const firstSlashIndex = path.indexOf('/', 1);
     if (firstSlashIndex === -1) {
-      return location; // Already a base path
+      return path; // Already a base path
     }
-    return location.substring(0, firstSlashIndex);
-  }, [location]);
+    return path.substring(0, firstSlashIndex);
+  }, [pathname]);
 
   return (
     <header className="bg-white shadow-sm z-10">
@@ -234,14 +237,14 @@ function Header() {
           
           <div className="flex items-center">
             {/* Client Selector for client and entity selection - desktop only */}
-            {!hideSelectorRoutes.includes(location) && (
+            {!hideSelectorRoutes.includes(pathname) && (
               <div className="relative mr-3 hidden md:block">
                 <GlobalContextSelector clients={clients} entities={entities} />
               </div>
             )}
             
             {/* Mobile-friendly client selector button - visible on mobile and small screens */}
-            {!hideSelectorRoutes.includes(location) && (
+            {!hideSelectorRoutes.includes(pathname) && (
               <div className="flex md:hidden items-center mr-3">
                 <Button 
                   variant="outline"
@@ -307,7 +310,7 @@ function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden">
           {/* Client/Entity selector for mobile */}
-          {!hideSelectorRoutes.includes(location) && (
+          {!hideSelectorRoutes.includes(pathname) && (
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client</h2>
               <GlobalContextSelector 

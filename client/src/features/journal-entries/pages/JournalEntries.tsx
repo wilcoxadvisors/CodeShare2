@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useRoute } from 'wouter';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
@@ -45,11 +45,12 @@ import {
 } from '@/components/ui/select';
 
 function JournalEntries() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ clientId: string; entityId: string }>();
   const { currentEntity, setCurrentEntity, entities } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [match, params] = useRoute('/clients/:clientId/entities/:entityId/journal-entries');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -64,8 +65,7 @@ function JournalEntries() {
   useEffect(() => {
     console.log("JournalEntries: Route params check - entityId:", entityId, 
                 "clientId:", clientId, 
-                "currentEntity:", currentEntity?.id,
-                "match:", match);
+                "currentEntity:", currentEntity?.id);
     
     if (entityId && (!currentEntity || currentEntity.id !== entityId)) {
       console.log("JournalEntries: Looking for entity with ID:", entityId, "in", entities.length, "entities");
@@ -77,7 +77,7 @@ function JournalEntries() {
         console.log("JournalEntries: Entity not found in context for ID:", entityId);
       }
     }
-  }, [entityId, clientId, currentEntity, entities, setCurrentEntity, match]);
+  }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
   
   // Fetch journal entries for the entity using hierarchical URL pattern
   const {

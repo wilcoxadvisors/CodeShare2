@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useEntity } from "@/contexts/EntityContext";
 import PageHeader from "@/components/PageHeader";
 import JournalEntryForm from "@/features/journal-entries/components/JournalEntryForm";
@@ -37,7 +37,9 @@ interface Location {
 
 function NewJournalEntry() {
   const { currentEntity } = useEntity();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
   
   // Use the edit hook to fetch journal entry data if in edit mode
   const { journalEntry: existingEntry, isLoading: entryLoading, isEditMode } = useEditJournalEntry();
@@ -153,12 +155,20 @@ function NewJournalEntry() {
 
   const handleSubmit = () => {
     // Navigate back to journal entries list
-    setLocation("/journal-entries");
+    if (currentEntity) {
+      navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`);
+    } else {
+      navigate("/journal-entries");
+    }
   };
 
   const handleCancel = () => {
     // Navigate back to journal entries list
-    setLocation("/journal-entries");
+    if (currentEntity) {
+      navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`);
+    } else {
+      navigate("/journal-entries");
+    }
   };
 
   if (!currentEntity) {

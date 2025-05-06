@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
-import { useRoute, useLocation } from 'wouter';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useJournalEntry } from '../hooks/useJournalEntry';
 
 const DeleteJournalEntry: React.FC = () => {
   const { deleteJournalEntry } = useJournalEntry();
   const { toast } = useToast();
-  const [_, navigate] = useLocation();
-  const [match, params] = useRoute('/clients/:clientId/entities/:entityId/journal-entries/:id/delete');
+  const navigate = useNavigate();
+  const params = useParams<{ clientId: string; entityId: string; id: string }>();
   
   const entryId = params?.id ? parseInt(params.id, 10) : null;
   const clientId = params?.clientId ? parseInt(params.clientId, 10) : null;

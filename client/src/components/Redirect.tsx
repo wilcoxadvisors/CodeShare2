@@ -1,18 +1,11 @@
-import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { Navigate } from "react-router-dom";
 
 interface RedirectProps {
   to: string;
 }
 
-function Redirect({ to }: RedirectProps) {
-  const [, setLocation] = useLocation();
-  
-  useEffect(() => {
-    setLocation(to);
-  }, [to, setLocation]);
-  
-  return null;
-}
+const Redirect = ({ to }: RedirectProps) => {
+  return <Navigate to={to} replace />;
+};
 
 export default Redirect;

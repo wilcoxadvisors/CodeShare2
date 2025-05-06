@@ -1,0 +1,18 @@
+Do the steps exactly in this order – copy / paste snippets verbatim.
+
+#	what you type / do	why
+0	Commit / download a snapshot of the repo first.	quick rollback if a typo sneaks in.
+1	Install React Router 6 & purge wouter	bash\nnpm i react-router-dom@^6\nnpm uninstall wouter\n
+2	main.tsx / index.tsx – wrap the app once.	tsx\nimport { BrowserRouter } from 'react-router-dom';\n\nroot.render(\n <BrowserRouter>\n <App />\n </BrowserRouter>\n);\n
+3	Create EntityLayout.tsx (1 file, nothing else).	tsx\nimport { Outlet, useParams, Navigate } from 'react-router-dom';\nimport { useEntity } from '@/contexts/EntityContext';\nimport AppLayout from '@/components/AppLayout';\n\nexport default function EntityLayout() {\n const { clientId, entityId } = useParams(); // <-- ALWAYS defined here\n const { entities, setCurrentEntity } = useEntity();\n\n const ent = entities.find(e => e.id === Number(entityId));\n if (!ent) return <Navigate to=\"/404\" />; // invalid id → 404\n\n setCurrentEntity(ent); // puts it in context\n return (\n <AppLayout>\n <Outlet /> {/* child routes render here */}\n </AppLayout>\n );\n}\n
+4	App.tsx – rip out every old “loose” JE route and drop-in the nested set:	tsx\nimport { Routes, Route } from 'react-router-dom';\nimport EntityLayout from '@/components/layout/EntityLayout';\nimport JournalEntries from '@/features/journal-entries/pages/JournalEntries';\nimport JournalEntryDetail from '@/features/journal-entries/pages/JournalEntryDetail';\nimport JournalEntryForm from '@/features/journal-entries/components/JournalEntryForm';\nimport DeleteJournalEntry from '@/features/journal-entries/pages/DeleteJournalEntry';\n\n<Routes>\n {/* everything else … */}\n\n <Route path=\"clients/:clientId/entities/:entityId/*\" element={<EntityLayout />}>\n <Route index element={<JournalEntries />} />\n <Route path=\"journal-entries\" element={<JournalEntries />} />\n <Route path=\"journal-entries/new\" element={<JournalEntryForm />} />\n <Route path=\"journal-entries/:id\" element={<JournalEntryDetail />} />\n <Route path=\"journal-entries/:id/edit\" element={<JournalEntryForm editMode />} />\n <Route path=\"journal-entries/:id/delete\" element={<DeleteJournalEntry />} />\n </Route>\n</Routes>\n
+5	Search / replace imports (grep -R "from 'wouter'" client/src)	Replace:
+import { useLocation } … } from 'wouter' → import { useNavigate, useLocation } from 'react-router-dom' (or just useNavigate)
+6	Replace useRoute + manual regex	Every file that had:
+const [match, params] = useRoute('/clients/:clientId/...') → tsx\nimport { useParams } from 'react-router-dom';\nconst { clientId, entityId, id } = useParams();\n
+7	Replace const [, navigate] = useLocation()	becomes const navigate = useNavigate();
+8	Fix all <Link> / navigate() calls to include full hierarchy:
+navigate(\/clients/${clientId}/entities/${entityId}/journal-entries/${id}`)`	
+9	Delete the temporary hacks we added for wouter (extra useEffect that copied params → context, manual logs, etc.). EntityLayout now does that.	
+10	npm run dev – log in and hit:
+/clients/251/entities/392/journal-entries – everything should load.

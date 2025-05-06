@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
@@ -52,7 +52,7 @@ import {
 const ACCEPTED_FILE_TYPES = '.csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel';
 
 function BatchUpload() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { currentEntity } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();

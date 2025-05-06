@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Clock, Tag } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -20,7 +20,7 @@ interface BlogPost {
 const ALL_CATEGORIES = "All";
 
 export default function Blog() {
-  const [_, navigate] = useLocation();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = React.useState("All");
   const [searchTerm, setSearchTerm] = React.useState("");
   const [email, setEmail] = React.useState("");

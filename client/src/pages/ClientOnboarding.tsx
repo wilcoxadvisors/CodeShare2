@@ -2,13 +2,13 @@ import ClientOnboardingForm from '@/components/form/ClientOnboardingForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Client Onboarding Page - For adding new clients and their entities
  */
 export default function ClientOnboarding() {
-  const [location, navigate] = useLocation();
+  const navigate = useNavigate();
   const [success, setSuccess] = useState(false);
 
   const handleSuccess = () => {

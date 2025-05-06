@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useUI } from '../contexts/UIContext';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 
 export default function LoginModal() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { login, isLoading } = useAuth();
   const { showLoginModal, setShowLoginModal } = useUI();
   const { toast } = useToast();
@@ -54,7 +54,7 @@ export default function LoginModal() {
       });
       // Close the modal and navigate via SPA navigation
       setShowLoginModal(false);
-      setLocation('/dashboard');
+      navigate('/dashboard');
     } else {
       toast({
         title: "Authentication Error",

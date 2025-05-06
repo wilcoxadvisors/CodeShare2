@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard,
@@ -22,10 +22,11 @@ import {
 
 function Sidebar() {
   const { logout } = useAuth();
-  const [location, navigate] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
-    return location === path;
+    return location.pathname === path;
   };
 
   const handleLogout = async (e: React.MouseEvent) => {
@@ -36,7 +37,7 @@ function Sidebar() {
 
   const NavItem = ({ path, icon, label }: { path: string, icon: React.ReactNode, label: string }) => (
     <Link 
-      href={path}
+      to={path}
       className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer ${
         isActive(path) 
           ? 'bg-primary-700 text-white font-semibold' 
@@ -133,7 +134,7 @@ function Sidebar() {
             
             <div className="mt-6 border-t border-blue-700 pt-4">
               <Link
-                href="/settings"
+                to="/settings"
                 className="flex items-center px-3 py-2.5 text-sm font-medium rounded-md text-white hover:bg-blue-700/60 cursor-pointer"
               >
                 <Settings className="h-5 w-5 mr-2" />

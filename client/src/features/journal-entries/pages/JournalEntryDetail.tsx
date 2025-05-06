@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { useLocation, useRoute, useParams } from 'wouter';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -136,9 +136,11 @@ function JournalEntryDetail() {
     }
     return null; // Skip unrecognized formats
   };
-  const [pathname, navigate] = useLocation();
-  // Use hierarchical route pattern
-  const [match, params] = useRoute('/clients/:clientId/entities/:entityId/journal-entries/:id');
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Use React Router params
+  const params = useParams<{ clientId: string; entityId: string; id: string }>();
+  const pathname = location.pathname;
   const isInEditMode = pathname.endsWith('/edit'); // Check if we're in edit mode
   
   // Extract and convert route params
@@ -149,8 +151,7 @@ function JournalEntryDetail() {
   // Log the extracted parameters for debugging
   console.log("JournalEntryDetail: Route params - clientId:", clientIdParam, 
               "entityId:", entityIdParam, 
-              "entryId:", entryId,
-              "match:", match);
+              "entryId:", entryId);
   
   const { currentEntity, setCurrentEntity, entities } = useEntity();
   const { user } = useAuth();
