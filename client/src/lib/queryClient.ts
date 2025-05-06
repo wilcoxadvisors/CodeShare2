@@ -112,6 +112,15 @@ export const getQueryFn: <T>(options: {
     });
 
     if (response.status === 401) {
+      // Check if we're on the home page, which allows guest access
+      const isHomePage = window.location.pathname === '/';
+      const isBlogPage = window.location.pathname === '/blog' || window.location.pathname.startsWith('/blog/');
+      
+      if (isHomePage || isBlogPage) {
+        // On home or blog page, just return null for unauthorized queries
+        return null;
+      }
+      
       if (unauthorizedBehavior === "returnNull") {
         return null;
       } else if (unauthorizedBehavior === "redirect") {

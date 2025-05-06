@@ -56,8 +56,8 @@ export function EntityProvider({ children }: { children: ReactNode }) {
   
   // Debug log when entities data changes
   useEffect(() => {
-    console.log(`DEBUG: Entities data updated - received ${entities?.length || 0} entities`);
-    if (selectedClientId && entities?.length > 0) {
+    console.log(`DEBUG: Entities data updated - received ${entities && Array.isArray(entities) ? entities.length : 0} entities`);
+    if (selectedClientId && entities && Array.isArray(entities) && entities.length > 0) {
       const clientEntities = entities.filter(entity => entity.clientId === selectedClientId);
       console.log(`DEBUG: After entities update, found ${clientEntities.length} entities for selected client ${selectedClientId}`);
     }
@@ -74,7 +74,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     }
     
     // Refetch entities to ensure we have the latest data for the selected client
-    if (user && selectedClientId) {
+    if (user && selectedClientId && typeof refetchEntities === 'function') {
       console.log("DEBUG: Refetching entities for client:", selectedClientId);
       refetchEntities();
     }
@@ -82,7 +82,8 @@ export function EntityProvider({ children }: { children: ReactNode }) {
 
   // Auto-select first entity only if it belongs to the selected client
   useEffect(() => {
-    if (entities.length > 0 && !currentEntity && selectedClientId) {
+    // Make sure entities exists and is an array before checking length
+    if (entities && Array.isArray(entities) && entities.length > 0 && !currentEntity && selectedClientId) {
       console.log(`DEBUG: Checking for auto-select of entity for client ${selectedClientId}`);
       const clientEntities = entities.filter((entity: Entity) => entity.clientId === selectedClientId);
       console.log(`DEBUG: Found ${clientEntities.length} entities to potentially auto-select for client ${selectedClientId}`);
