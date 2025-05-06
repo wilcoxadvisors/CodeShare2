@@ -56,8 +56,7 @@ import {
   getJournalEntryUrl,
   getJournalEntryFilesBaseUrl,
   getJournalEntryFileUrl,
-  getJournalEntryFileDownloadUrl,
-  getJournalEntryReverseUrl
+  getJournalEntryFileDownloadUrl
 } from '@/api/urlHelpers';
 import {
   ArrowLeft,
@@ -191,8 +190,13 @@ function JournalEntryDetail() {
         formData.append('files', file);
       });
       
+      // Ensure we have required client and entity IDs
+      if (!clientId || !currentEntity?.id) {
+        throw new Error('Client ID and Entity ID are required for file operations');
+      }
+
       const response = await axios.post(
-        `/api/journal-entries/${entryId}/files`,
+        getJournalEntryFilesBaseUrl(clientId, currentEntity.id, entryId),
         formData,
         {
           cancelToken: source.token,
@@ -261,9 +265,12 @@ function JournalEntryDetail() {
   const deleteFile = useMutation({
     mutationFn: async (fileId: number) => {
       if (!entryId) throw new Error('Journal entry ID is required');
+      if (!clientId || !currentEntity?.id) {
+        throw new Error('Client ID and Entity ID are required for file operations');
+      }
       
-      // Use the non-entity-scoped endpoint path for file operations
-      return await apiRequest(`/api/journal-entries/${entryId}/files/${fileId}`, {
+      // Use the hierarchical URL pattern for file operations
+      return await apiRequest(getJournalEntryFileUrl(clientId, currentEntity.id, entryId, fileId), {
         method: 'DELETE'
       });
     },
@@ -371,10 +378,17 @@ function JournalEntryDetail() {
   // Handle file download
   const handleFileDownload = (fileId: number) => {
     if (!entryId) return;
+    if (!clientId || !currentEntity?.id) {
+      toast({
+        title: 'Error',
+        description: 'Client ID and Entity ID are required for file operations',
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    // Use the non-entity-scoped endpoint with the /download suffix
-    // This ensures proper content disposition headers are set for attachment download
-    window.open(`/api/journal-entries/${entryId}/files/${fileId}/download`, '_blank');
+    // Use the hierarchical URL pattern for file download
+    window.open(getJournalEntryFileDownloadUrl(clientId, currentEntity.id, entryId, fileId), '_blank');
   };
   
   // Handle file deletion
@@ -632,17 +646,24 @@ function JournalEntryDetail() {
     }
   };
   
-  // Function to handle the back button
+  // Function to handle the back button using hierarchical navigation
   const handleBack = () => {
-    navigate('/journal-entries');
+    if (clientId && currentEntity?.id) {
+      navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
+    } else {
+      navigate('/journal-entries');
+    }
   };
   
   // Function to void a journal entry
   const voidEntry = useMutation({
     mutationFn: async () => {
       if (!entryId) throw new Error('Journal entry ID is required');
+      if (!clientId || !currentEntity?.id) {
+        throw new Error('Client ID and Entity ID are required for journal entry operations');
+      }
       
-      return await apiRequest(`/api/journal-entries/${entryId}`, {
+      return await apiRequest(getJournalEntryUrl(clientId, currentEntity.id, entryId), {
         method: 'DELETE',
         data: {
           voidReason: voidReason
@@ -672,8 +693,13 @@ function JournalEntryDetail() {
   const reverseEntry = useMutation({
     mutationFn: async () => {
       if (!entryId) throw new Error('Journal entry ID is required');
+      if (!clientId || !currentEntity?.id) {
+        throw new Error('Client ID and Entity ID are required for journal entry operations');
+      }
       
-      return await apiRequest(`/api/journal-entries/${entryId}/reverse`, {
+      // Combine URL correctly for the reverse operation
+      const reverseUrl = `${getJournalEntryUrl(clientId, currentEntity.id, entryId)}/reverse`;
+      return await apiRequest(reverseUrl, {
         method: 'POST',
         data: {
           // Add any customization for the reversal entry
@@ -689,10 +715,18 @@ function JournalEntryDetail() {
       
       // Navigate to the new reversed entry if ID is provided in response
       if (response && response.id) {
-        navigate(`/journal-entries/${response.id}`);
+        if (clientId && currentEntity?.id) {
+          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${response.id}`);
+        } else {
+          navigate(`/journal-entries/${response.id}`);
+        }
       } else {
         // Otherwise, go back to list
-        navigate('/journal-entries');
+        if (clientId && currentEntity?.id) {
+          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
+        } else {
+          navigate('/journal-entries');
+        }
       }
     },
     onError: (error: any) => {
@@ -853,7 +887,13 @@ function JournalEntryDetail() {
     
     // Define basic buttons (not available for posted or voided entries)
     const basicButtons = (
-      <Button variant="outline" onClick={() => navigate(`/journal-entries/edit/${entryId}`)}>
+      <Button variant="outline" onClick={() => {
+        if (clientId && currentEntity?.id && entryId) {
+          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/edit/${entryId}`);
+        } else {
+          navigate(`/journal-entries/edit/${entryId}`);
+        }
+      }}>
         <Edit className="mr-2 h-4 w-4" />
         Edit
       </Button>
@@ -1102,7 +1142,13 @@ function JournalEntryDetail() {
         <Button 
           key="resubmit"
           variant="outline" 
-          onClick={() => navigate(`/journal-entries/edit/${entryId}`)}
+          onClick={() => {
+            if (clientId && currentEntity?.id && entryId) {
+              navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/edit/${entryId}`);
+            } else {
+              navigate(`/journal-entries/edit/${entryId}`);
+            }
+          }}
           className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-2"
         >
           <Edit className="mr-2 h-4 w-4" />
