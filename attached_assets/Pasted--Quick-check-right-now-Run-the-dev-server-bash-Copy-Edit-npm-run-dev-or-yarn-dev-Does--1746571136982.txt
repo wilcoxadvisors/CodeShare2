@@ -1,0 +1,99 @@
+✅ Quick check right now
+Run the dev server
+
+bash
+Copy
+Edit
+npm run dev          # or  yarn dev
+Does it compile without red errors?
+
+If yes → perfect, continue to Step 1 below.
+
+If no → copy the first red error message and send it to me.
+(Don’t fix anything else yet—let’s keep the baseline stable.)
+
+Step 1 | Add the nested journal-entry routes (safe, one file)
+File: client/src/App.tsx
+
+diff
+Copy
+Edit
+- {/* existing routes ... */}
+
+- {/* stand-alone journal-entry routes  ––  delete these */}
+- <Route path="/journal-entries"          element={<AppLayout><ProtectedRoute component={JournalEntries} /></AppLayout>} />
+- <Route path="/journal-entries/new"      element={<AppLayout><ProtectedRoute component={NewJournalEntry} /></AppLayout>} />
+- <Route path="/journal-entries/:id"      element={<AppLayout><ProtectedRoute component={JournalEntryDetail} /></AppLayout>} />
+- <Route path="/journal-entries/:id/edit" element={<AppLayout><ProtectedRoute component={JournalEntryForm} /></AppLayout>} />
+
++ {/* -------  keep journal-entry pages under the selected entity  ------- */}
++ <Route
++   path="clients/:clientId/entities/:entityId/*"
++   element={<EntityLayout />}
++ >
++   <Route path="journal-entries"             element={<JournalEntries />} />
++   <Route path="journal-entries/new"         element={<JournalEntryForm />} />
++   <Route path="journal-entries/:id"         element={<JournalEntryDetail />} />
++   <Route path="journal-entries/:id/edit"    element={<JournalEntryForm editMode />} />
++ </Route>
+Save → restart dev server → it still compiles?
+If yes, URLs now look like
+/clients/251/entities/392/journal-entries/140.
+
+Step 2 | Show debit / credit only when ≠ 0
+a. JournalEntryDetail.tsx
+Find the two cells inside the table row for each line and change to:
+
+jsx
+Copy
+Edit
+<TableCell className="text-right">
+  {getDebit(line) ? new Intl.NumberFormat('en-US',
+     {style:'currency',currency:'USD'}).format(getDebit(line)) : ''}
+</TableCell>
+
+<TableCell className="text-right">
+  {getCredit(line) ? new Intl.NumberFormat('en-US',
+     {style:'currency',currency:'USD'}).format(getCredit(line)) : ''}
+</TableCell>
+b. JournalEntries.tsx list view
+jsx
+Copy
+Edit
+<TableCell className="text-right">
+  {entry.totalDebit ? new Intl.NumberFormat('en-US',
+    {style:'currency',currency:'USD'}).format(entry.totalDebit) : ''}
+</TableCell>
+
+<TableCell className="text-right">
+  {entry.totalCredit ? new Intl.NumberFormat('en-US',
+    {style:'currency',currency:'USD'}).format(entry.totalCredit) : ''}
+</TableCell>
+Save → build → verify figures appear only when non-zero.
+
+Step 3 | Account dropdown closes after pick (tiny tweak)
+Your original popover/command dropdown is fine—just force it to close on select.
+
+In JournalEntryForm.tsx locate the <Command> inside the account <Popover> and add:
+
+jsx
+Copy
+Edit
+<Command
+  onSelect={(value) => {
+    handleLineChange(i, 'accountId', value);
+    setOpen(false);          // <<< this closes the popover
+  }}
+>
+No other refactor needed.
+
+Test pass
+Pick a client → entity → Journal Entries list.
+
+Click a row → detail page URL remains nested.
+
+Debit / Credit show properly in list & detail.
+
+Click Edit → URL ends with /edit and form opens.
+
+In the form pick an account – dropdown closes immediately.
