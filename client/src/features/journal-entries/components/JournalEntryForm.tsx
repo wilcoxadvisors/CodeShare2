@@ -1761,22 +1761,28 @@ function JournalEntryForm({
     }
 
     // Format data for submission - convert debit/credit format to type/amount format
-    const formattedLines = validLines.map((line) => {
-      // Calculate amount and determine type - use safeParseAmount to handle various formats
-      const debitValue = safeParseAmount(line.debit);
-      const creditValue = safeParseAmount(line.credit);
+    const formattedLines = validLines
+      .filter(line => {
+        // Ensure line has an accountId and either a debit or credit value (not both)
+        const debitValue = safeParseAmount(line.debit);
+        const creditValue = safeParseAmount(line.credit);
+        return line.accountId && (debitValue > 0 || creditValue > 0);
+      })
+      .map((line) => {
+        // Calculate amount and determine type - use safeParseAmount to handle various formats
+        const debitValue = safeParseAmount(line.debit);
+        const creditValue = safeParseAmount(line.credit);
 
-      // Convert our UI format (debit/credit fields) to API format (type and amount)
-      return {
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode || defaultEntityCode,
-        description: line.description,
-        // Determine line type and amount based on which field has a value
-        type: debitValue > 0 ? "debit" : "credit",
-        amount: debitValue > 0 ? debitValue : creditValue,
-        entityId,
-      };
-    });
+        // Convert our UI format (debit/credit fields) to API format (type and amount)
+        return {
+          accountId: Number(line.accountId), // Ensure accountId is a number
+          entityCode: line.entityCode || defaultEntityCode,
+          description: line.description,
+          // Only include one of debit or credit based on which has a value
+          type: debitValue > 0 ? "debit" : "credit",
+          amount: debitValue > 0 ? debitValue : creditValue,
+        };
+      });
 
     // Use passed clientId or get from accounts as fallback
     const resolvedClientId =
