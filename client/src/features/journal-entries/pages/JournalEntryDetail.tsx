@@ -159,7 +159,7 @@ function JournalEntryDetail() {
   
   // Use client ID from either URL params or the current entity context
   // Define clientId here for use throughout the component
-  const derivedClientId = clientIdParam || currentEntity?.clientId;
+  const clientId = clientIdParam || currentEntity?.clientId;
   
   // Update entity context if needed based on route params
   React.useEffect(() => {
@@ -514,7 +514,7 @@ function JournalEntryDetail() {
   };
   
   // Get client ID for API requests - prefer route param over entity context for more reliable requests
-  const clientId = clientIdParam || currentEntity?.clientId;
+  // Log the client ID being used
   console.log("JournalEntryDetail: Using clientId", clientId, "for API requests (from param:", clientIdParam, "or entity:", currentEntity?.clientId, ")");
   
   // Fetch accounts for displaying account information
@@ -579,7 +579,7 @@ function JournalEntryDetail() {
   } = useQuery({
     queryKey: entryId ? 
       (clientId && (entityIdParam || currentEntity?.id)) 
-        ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] 
+        ? [`/api/clients/${clientId}/entities/${entityIdParam || currentEntity?.id || 0}/journal-entries/${entryId}`] 
         : [`/api/journal-entries/${entryId}`] 
       : ['dummy-empty-key'],
     enabled: !!entryId // Always enabled if we have an entry ID
