@@ -1,6 +1,15 @@
 import { Express, Request, Response, Router } from 'express';
 import { asyncHandler, throwBadRequest, throwForbidden, throwNotFound } from './errorHandling';
-import { isAuthenticated } from './auth';
+// Use the auth middleware from server/index.ts to avoid import issues
+const isAuthenticated = (req: Request, res: Response, next: Function) => {
+  // If user exists in session, they're authenticated
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  
+  // No authenticated user
+  return res.status(401).json({ message: "Unauthorized" });
+};
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { journalEntryStorage } from './storage/journalEntryStorage';

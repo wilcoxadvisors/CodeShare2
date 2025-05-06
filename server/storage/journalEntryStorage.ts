@@ -986,6 +986,66 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
   }
   
+  async saveJournalEntryFile(fileData: { 
+    journalEntryId: number;
+    filename: string;
+    mimeType: string;
+    size: number;
+    uploadedBy: number;
+    fileData: string;
+  }): Promise<any> {
+    console.log(`Saving file ${fileData.filename} for journal entry ${fileData.journalEntryId}`);
+    try {
+      // Get the file storage implementation
+      const fileStorage = getFileStorage();
+      
+      // Convert base64 string to Buffer
+      const fileBuffer = Buffer.from(fileData.fileData, 'base64');
+      
+      // Store the file data in the blob storage
+      const storageKey = await fileStorage.save(fileBuffer);
+      console.log(`File content saved with storage key: ${storageKey}`);
+      
+      // Create a database record with a reference to the blob storage
+      const [journalEntryFile] = await db.insert(journalEntryFiles)
+        .values({
+          journalEntryId: fileData.journalEntryId,
+          filename: fileData.filename,
+          path: null, // No physical path needed for DB-stored files
+          mimeType: fileData.mimeType || 'application/octet-stream',
+          size: fileData.size || 0,
+          storageKey: storageKey as number, // Reference to the blob storage
+          uploadedBy: fileData.uploadedBy
+        })
+        .returning();
+      
+      console.log(`File metadata stored in database for journal entry ${fileData.journalEntryId}`);
+      
+      return journalEntryFile;
+    } catch (e) {
+      throw handleDbError(e, `saving file for journal entry ${fileData.journalEntryId}`);
+    }
+  }
+  
+  async getJournalEntryFileData(storageKey: number | string): Promise<Buffer> {
+    console.log(`Getting file data with storage key ${storageKey}`);
+    try {
+      // Get the file storage implementation
+      const fileStorage = getFileStorage();
+      
+      // Load the file data from storage
+      const fileBuffer = await fileStorage.load(storageKey);
+      
+      if (!fileBuffer) {
+        throw new ApiError(404, `File data with storage key ${storageKey} not found`);
+      }
+      
+      return fileBuffer;
+    } catch (e) {
+      throw handleDbError(e, `getting file data with storage key ${storageKey}`);
+    }
+  }
+  
   async deleteJournalEntryFile(fileId: number): Promise<boolean> {
     console.log(`Deleting file with ID ${fileId}`);
     try {
