@@ -21,7 +21,8 @@ import {
   isClientFormatLine,
   isServerFormatLine,
   getDebit,
-  getCredit
+  getCredit,
+  safeParseAmount
 } from "../utils/lineFormat";
 import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
@@ -1098,10 +1099,7 @@ function JournalEntryForm({
   >(null);
 
   // Helper function definitions - declaring before they're used
-  // Function to unformat number (remove commas) for processing
-  const unformatNumber = (value: string) => {
-    return value?.replace(/,/g, "") || "";
-  };
+  // Using safeParseAmount from the shared utils file
 
   // Function to format number with thousands separators
   const formatNumberWithSeparator = (value: string) => {

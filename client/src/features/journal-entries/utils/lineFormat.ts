@@ -39,7 +39,7 @@ export function isServerFormatLine(line: any): line is ServerFormatLine {
 }
 
 /** Helper function to safely parse a string amount, handling commas and currency symbols */
-function safeParseAmount(amount: string | number): number {
+export function safeParseAmount(amount: string | number): number {
   if (typeof amount === 'number') return amount;
   
   // Handle null, undefined, or empty string
