@@ -1,0 +1,91 @@
+Replit Agent – Immediate Work Queue
+(execute tasks in order; commit each step as its own PR unless noted)
+
+0 Environment check (once)
+bash
+Copy
+Edit
+pnpm i          # install
+pnpm test       # existing unit tests
+pnpm dev &      # smoke-run web+api locally
+Make sure baseline is green before changes.
+
+1 Quick-cleanup (PR #quick-cleanup)
+Action	Command (git mv/rm)
+Delete throw-aways	git rm -f fixed_journal_entry_form.txt fixed_file_handler.js server/journalEntryRoutesFixed.ts
+Move stray unit tests → tests/unit	mkdir -p tests/unit && git mv $(git ls-files '*test.*' ':!:cypress/**') tests/unit/
+Move one-off scripts → scripts/	mkdir -p scripts && git mv verify-storage-modules.js seed-db.ts scripts/
+Docs / notebooks → docs/playground (optional)	mkdir -p docs/playground && git mv *.ipynb docs/playground/
+Archive unused old sources	git mv server/storage_old.ts server/storage__archive.ts
+
+No runtime imports touched; CI should stay green.
+
+2 Finish Journal-Entry Attachment fix (Bug #7) (PR #je-attachments)
+Back-end
+
+Ensure routes:
+/api/clients/:cId/entities/:eId/journal-entries/:jeId/files → attachment controller (add mergeParams: true).
+
+Front-end
+
+Confirm helpers in urlHelpers.ts produce the same path.
+
+invalidateJournalEntryQueries() also refreshes the files base URL.
+
+API request wrapper handles HTML errors (!response.ok).
+
+Cypress spec cypress/e2e/journalEntryFiles.spec.cy.ts:
+
+upload 2 files → refresh → delete 1 → download 1.
+
+Run pnpm cypress run – all green.
+
+3 Dimensions MVP (branch feat/dimensions-mvp)
+DB & API
+
+sql
+Copy
+Edit
+dimensions(id, entityId, code, name, isRequired, isActive)
+dimension_values(id, dimensionId, code, name, isActive)
+tx_dimension_link(id, journalEntryLineId, dimensionId, dimensionValueId)
+Add CRUD routes & controllers (server/routes/dimensionRoutes.ts).
+
+Seeder inserts Department / Location / Customer / Vendor …
+
+Front-end
+
+Admin “Dimensions” tab – list + create/edit forms.
+
+Read-only Dimensions tab in client portal.
+
+Validator hook validateDimensions(entry) (inactive flag until JE upgrade).
+
+Unit + Jest + Cypress smoke (create dim, create value, deactivate).
+
+4 Manual JE upgrade for Dimensions (branch feat/je-dimensions)
+Line grid gets “Dimension Chips” column.
+
+Form validation uses validateDimensions.
+
+Saves to tx_dimension_link.
+
+Cypress path: create tagged JE → post → reverse (dims copied).
+
+5 Batch JE Upload v2 (branch feat/batch-upload)
+Parser reads CSV/XLSX dimension columns.
+
+Endpoint POST /api/clients/:cId/entities/:eId/journal-entries/batch.
+
+200/207 error payload spec.
+
+Cypress: happy path + 207 error rows.
+
+Conventions
+Commit messages: feat(api): add dimension tables / fix(je): hierarchical attachment route.
+
+Keep one PR open at a time; wait for CI green + review before next.
+
+Run pnpm test & pnpm cypress run before pushing.
+
+Ping me in chat if any spec detail is unclear or blocking.
