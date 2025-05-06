@@ -40,7 +40,7 @@ export async function apiRequest(
     // Let the browser set it automatically with the correct boundary
     headers: isFormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
-    credentials: "include",
+    credentials: "include",  // critical: keep cookie / session on PUT, PATCH, DELETE
   });
   
   // Handle 401 Unauthorized responses by redirecting to login page

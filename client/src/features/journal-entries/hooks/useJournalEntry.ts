@@ -90,7 +90,8 @@ export function useJournalEntry() {
         });
       }
       
-      return data.entry; // Changed from data.journalEntry to data.entry to match server response
+      // Handle both response formats
+      return data.entry || data;
     },
     onError: (error: any) => {
       toast({
@@ -190,7 +191,8 @@ export function useJournalEntry() {
         });
       }
       
-      return data.entry; // Changed from data.journalEntry to data.entry to match server response
+      // Handle both response formats
+      return data.entry || data;
     },
     onError: (error: any) => {
       toast({
@@ -307,7 +309,8 @@ export function useJournalEntry() {
         queryKey: [getJournalEntriesBaseUrl(params.clientId, params.entityId)]
       });
       
-      return data.entry; // Changed from data.journalEntry to data.entry to match server response
+      // Handle both response formats
+      return data.entry || data;
     },
     onError: (error: any) => {
       toast({
