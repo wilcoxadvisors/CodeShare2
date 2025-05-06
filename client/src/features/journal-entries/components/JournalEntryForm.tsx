@@ -994,6 +994,31 @@ function JournalEntryForm({
   onCancel,
   existingEntry,
 }: JournalEntryFormProps) {
+  // Get context client ID as fallback
+  const { selectedClientId } = useEntity();
+  const effectiveClientId = clientId ?? (typeof selectedClientId === 'number' ? selectedClientId : undefined);
+  
+  // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
+  const invalidateJournalEntryQueries = () => {
+    if (effectiveClientId) {
+      // Use hierarchical URL pattern when client ID is available
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntriesBaseUrl(effectiveClientId, entityId)],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/general-ledger`],
+      });
+    } else {
+      // Fall back to entity-only pattern when client ID is not available
+      queryClient.invalidateQueries({
+        queryKey: [`/api/entities/${entityId}/journal-entries`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/entities/${entityId}/general-ledger`],
+      });
+    }
+  };
+  
   // Properly initialize the hook at the component level, not in the event handler
   const { postJournalEntry } = useJournalEntry();
 
