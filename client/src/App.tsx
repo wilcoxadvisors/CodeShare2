@@ -31,6 +31,7 @@ import ChatWidget from "@/components/common/ChatWidget";
 import ConsultationFormModal from "@/components/ConsultationFormModal";
 import LoginModal from "@/components/LoginModal";
 import Redirect from "@/components/Redirect";
+import DeleteJournalEntry from "@/features/journal-entries/pages/DeleteJournalEntry";
 
 // Public website header component
 const PublicHeader: React.FC = () => {
@@ -325,37 +326,14 @@ function Router() {
       
       {/* General Ledger moved to Reports tab */}
       
-      <Route path="/journal-entries">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntries} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/journal-entries/new">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
+      {/* Batch upload route remains outside of entity context */}
       <Route path="/journal-entries/batch-upload">
         <AppLayout>
           <ProtectedRoute component={BatchUpload} />
         </AppLayout>
       </Route>
       
-      <Route path="/journal-entries/edit/:id">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/journal-entries/:id">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
-        </AppLayout>
-      </Route>
-      
-      {/* Hierarchical routes for journal entries */}
+      {/* Hierarchical routes for journal entries with client and entity context */}
       <Route path="/clients/:clientId/entities/:entityId/journal-entries">
         <AppLayout>
           <ProtectedRoute component={JournalEntries} />
@@ -382,7 +360,7 @@ function Router() {
       
       <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete">
         <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
+          <ProtectedRoute component={DeleteJournalEntry} />
         </AppLayout>
       </Route>
       

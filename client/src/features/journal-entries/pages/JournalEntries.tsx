@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
@@ -46,23 +46,38 @@ import {
 
 function JournalEntries() {
   const [, navigate] = useLocation();
-  const { currentEntity } = useEntity();
+  const { currentEntity, setCurrentEntity, entities } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [match, params] = useRoute('/clients/:clientId/entities/:entityId/journal-entries');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   
-  // Fetch journal entries for the current entity using hierarchical URL pattern
+  // Extract and convert route params
+  const clientId = params?.clientId ? parseInt(params.clientId) : (currentEntity?.clientId || null);
+  const entityId = params?.entityId ? parseInt(params.entityId) : (currentEntity?.id || null);
+  
+  // Update entity context if needed based on route params
+  useEffect(() => {
+    if (entityId && (!currentEntity || currentEntity.id !== entityId)) {
+      const entity = entities.find(e => e.id === entityId);
+      if (entity) {
+        setCurrentEntity(entity);
+      }
+    }
+  }, [entityId, currentEntity, entities, setCurrentEntity]);
+  
+  // Fetch journal entries for the entity using hierarchical URL pattern
   const {
     data,
     isLoading,
     error
   } = useQuery({
-    queryKey: currentEntity?.id ? [getJournalEntriesBaseUrl(currentEntity.clientId, currentEntity.id)] : [],
-    enabled: !!currentEntity?.id && !!currentEntity?.clientId
+    queryKey: entityId && clientId ? [getJournalEntriesBaseUrl(clientId, entityId)] : [],
+    enabled: !!entityId && !!clientId
   });
   
   // We imported the helper functions from lineFormat at the top of the file
@@ -115,9 +130,9 @@ function JournalEntries() {
   
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {
-    if (currentEntity?.clientId && currentEntity?.id) {
+    if (clientId && entityId) {
       // Use hierarchical URL pattern for new journal entry
-      navigate('/journal-entries/new');
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/new`);
     } else {
       console.error("Cannot create journal entry: Missing client ID or entity ID");
       toast({
@@ -130,8 +145,8 @@ function JournalEntries() {
   
   // Handle batch upload button click
   const handleBatchUpload = () => {
-    if (currentEntity?.clientId && currentEntity?.id) {
-      // Use hierarchical URL pattern for batch upload
+    if (clientId && entityId) {
+      // Use batch upload URL pattern - this one is outside the entity context
       navigate('/journal-entries/batch-upload');
     } else {
       console.error("Cannot access batch upload: Missing client ID or entity ID");
@@ -145,9 +160,9 @@ function JournalEntries() {
   
   // Handle row click to view journal entry details
   const handleRowClick = (id: number) => {
-    if (currentEntity?.clientId && currentEntity?.id) {
+    if (clientId && entityId) {
       // Use hierarchical URL pattern for journal entry detail view
-      navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries/${id}`);
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/${id}`);
     } else {
       console.error("Cannot navigate to journal entry detail: Missing client ID or entity ID");
       toast({
