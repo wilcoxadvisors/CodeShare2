@@ -2822,8 +2822,7 @@ function JournalEntryForm({
                     onBlur={(e) => {
                       // Format to 2 decimal places with thousands separators on blur
                       if (e.target.value) {
-                        const numValueStr = unformatNumber(e.target.value);
-                        const numValue = parseFloat(numValueStr);
+                        const numValue = safeParseAmount(e.target.value);
 
                         if (!isNaN(numValue)) {
                           // Format with 2 decimal places and thousands separators
@@ -2860,8 +2859,7 @@ function JournalEntryForm({
                     onBlur={(e) => {
                       // Format to 2 decimal places with thousands separators on blur
                       if (e.target.value) {
-                        const numValueStr = unformatNumber(e.target.value);
-                        const numValue = parseFloat(numValueStr);
+                        const numValue = safeParseAmount(e.target.value);
 
                         if (!isNaN(numValue)) {
                           // Format with 2 decimal places and thousands separators
