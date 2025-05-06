@@ -1,45 +1,45 @@
 import React, { useEffect } from 'react';
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import AppLayout from '@/components/AppLayout';
+
+/**
+ * Creates a full-page loading spinner to use while waiting for entities to load
+ */
+const FullPageSpinner = () => (
+  <div className="flex items-center justify-center h-screen w-full">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    <span className="sr-only">Loading...</span>
+  </div>
+);
 
 /**
  * Wraps every "entity-scoped" route.
  *  – Reads :clientId / :entityId from the URL
  *  – Pushes the matching entity into EntityContext
  *  – Shows child routes (<Outlet/>) inside the normal AppLayout shell
+ *  – Critically: waits until entities are loaded before rendering children
  */
-const EntityLayout: React.FC = () => {
-  const { clientId: clientIdStr, entityId: entityIdStr } =
-    useParams<'clientId' | 'entityId'>();
-  const clientId = Number(clientIdStr);
-  const entityId = Number(entityIdStr);
+export default function EntityLayout() {
+  const { clientId, entityId } = useParams();
+  const { entities, isLoading, error, setCurrentEntity } = useEntity();
 
-  const { currentEntity, entities, setCurrentEntity } = useEntity();
-  const navigate = useNavigate();
-
-  /* On mount / param-change: ensure the EntityContext is set */
   useEffect(() => {
-    if (!clientId || !entityId) return;                // bad URL
-
-    // Already correct – no work.
-    if (currentEntity?.id === entityId) return;
-
-    const match = entities.find(e => e.id === entityId && e.clientId === clientId);
-    if (match) {
-      setCurrentEntity(match);
-    } else {
-      // No such entity for this user – bounce them back somewhere safe.
-      navigate('/dashboard', { replace: true });
+    if (!isLoading && !error && entities.length) {
+      const found = entities.find(e => e.id === Number(entityId));
+      if (found) setCurrentEntity(found);
     }
-  }, [clientId, entityId, entities, currentEntity, setCurrentEntity, navigate]);
+  }, [entities, isLoading, error, entityId, setCurrentEntity]);
+
+  /* ---------- only render children when entity is ready ---------- */
+  if (isLoading || !entities.length) return <FullPageSpinner />;
+
+  if (!entities.find(e => e.id === Number(entityId)))
+    return <Navigate to={`/clients/${clientId}`} replace />;
 
   return (
     <AppLayout>
-      {/* children routes render here */}
       <Outlet />
     </AppLayout>
   );
-};
-
-export default EntityLayout;
+}
