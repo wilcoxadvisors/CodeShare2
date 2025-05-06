@@ -1010,15 +1010,15 @@ function JournalEntryForm({
       });
       
       // Invalidate journal entry files queries if we have a valid journal entry ID
-      if (journalEntryId && typeof journalEntryId === 'number') {
+      if (existingEntry?.id && typeof existingEntry.id === 'number') {
         // Invalidate the attachments query
         queryClient.invalidateQueries({
-          queryKey: ['journalEntryAttachments', journalEntryId],
+          queryKey: ['journalEntryAttachments', existingEntry.id],
         });
         
         // Also invalidate using the URL pattern
         queryClient.invalidateQueries({
-          queryKey: [getJournalEntryFilesBaseUrl(effectiveClientId, entityId, journalEntryId)],
+          queryKey: [getJournalEntryFilesBaseUrl(effectiveClientId, entityId, existingEntry.id)],
         });
       }
     } else {
