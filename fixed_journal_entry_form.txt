@@ -1,0 +1,34 @@
+// Find this section around line 1334 and replace:
+        // Even if there's an error, we should continue with the workflow
+        invalidateJournalEntryQueries();
+        onSubmit();
+        return;
+        
+// Find this section around line 1525 and replace:
+        // Even if there's an error, we should continue with the workflow
+        invalidateJournalEntryQueries();
+        onSubmit();
+        return;
+        
+// Find this section around line 1405 and replace:
+      // EXPLICITLY invalidate the journal entry query to refresh attachments
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntryUrl(clientId as number, entityId, newJournalEntryId)],
+      });
+      
+// Find this section around line 1603 and replace:
+      // EXPLICITLY invalidate the journal entry query to refresh attachments
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntryUrl(effectiveClientId as number, entityId, entryId)],
+      });
+      
+// Find these sections where the function ends and replace:
+      queryClient.invalidateQueries({
+        queryKey: [`/api/entities/${entityId}/journal-entries`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/entities/${entityId}/general-ledger`],
+      });
+
+// With:
+      invalidateJournalEntryQueries();
