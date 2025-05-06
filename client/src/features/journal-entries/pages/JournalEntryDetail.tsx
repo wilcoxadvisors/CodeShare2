@@ -101,6 +101,41 @@ import { useDropzone } from 'react-dropzone';
 
 function JournalEntryDetail() {
   const { updateJournalEntry, deleteJournalEntry, postJournalEntry } = useJournalEntry();
+  
+  // Helper function to process line data consistently for API submission
+  const processLineForSubmission = (line: JournalEntryLine) => {
+    if (isClientFormatLine(line)) {
+      // Check if it's a debit or credit line using safe parsing
+      if (safeParseAmount(line.debit) > 0) {
+        return {
+          type: 'debit',
+          amount: line.debit.toString(),
+          accountId: Number(line.accountId),
+          entityCode: line.entityCode || null,
+          description: line.description || null
+        };
+      } else if (safeParseAmount(line.credit) > 0) {
+        return {
+          type: 'credit',
+          amount: line.credit.toString(),
+          accountId: Number(line.accountId),
+          entityCode: line.entityCode || null,
+          description: line.description || null
+        };
+      }
+      return null; // Skip invalid lines
+    } else if (isServerFormatLine(line)) {
+      // Already in server format, just ensure amount is a string
+      return {
+        type: line.type,
+        amount: line.amount.toString(),
+        accountId: Number(line.accountId),
+        entityCode: line.entityCode || null,
+        description: line.description || null
+      };
+    }
+    return null; // Skip unrecognized formats
+  };
   const [pathname, navigate] = useLocation();
   const [match, params] = useRoute('/journal-entries/:id');
   const isInEditMode = pathname.endsWith('/edit'); // Check if we're in edit mode
@@ -805,36 +840,11 @@ function JournalEntryDetail() {
       // Create an array to hold the formatted line data
       const formattedLines = [];
       
-      // Process each line to ensure correct format
+      // Process each line to ensure correct format using our utility function
       for (const line of entry.lines) {
-        if (isClientFormatLine(line)) {
-          // Check if it's a debit or credit line
-          if (parseFloat(line.debit.toString()) > 0) {
-            formattedLines.push({
-              type: 'debit',
-              amount: line.debit.toString(),
-              accountId: Number(line.accountId),
-              entityCode: line.entityCode || null,
-              description: line.description || null
-            });
-          } else if (parseFloat(line.credit.toString()) > 0) {
-            formattedLines.push({
-              type: 'credit',
-              amount: line.credit.toString(),
-              accountId: Number(line.accountId),
-              entityCode: line.entityCode || null,
-              description: line.description || null
-            });
-          }
-        } else if (isServerFormatLine(line)) {
-          // Already in server format, just ensure amount is a string
-          formattedLines.push({
-            type: line.type,
-            amount: line.amount.toString(),
-            accountId: Number(line.accountId),
-            entityCode: line.entityCode || null,
-            description: line.description || null
-          });
+        const processedLine = processLineForSubmission(line);
+        if (processedLine) {
+          formattedLines.push(processedLine);
         }
       }
       
