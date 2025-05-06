@@ -1283,17 +1283,34 @@ function JournalEntryDetail() {
     description?: string;
   };
   
+  // Helper functions for supporting both line formats
+  /** Returns true if the line is in the legacy client format */
   function isClientFormatLine(line: any): line is ClientFormatLine {
     return line && 
            (typeof line.debit !== 'undefined' || typeof line.credit !== 'undefined') &&
            typeof line.accountId !== 'undefined';
   }
   
+  /** Returns true if the line is in the new compact format */
   function isServerFormatLine(line: any): line is ServerFormatLine {
     return line && 
            typeof line.type !== 'undefined' &&
            typeof line.amount !== 'undefined' &&
            typeof line.accountId !== 'undefined';
+  }
+  
+  /** Gets the debit amount from a line regardless of format */
+  function getDebit(line: any): number {
+    if (isClientFormatLine(line)) return parseFloat(line.debit) || 0;
+    if (isServerFormatLine(line)) return line.type === 'debit' ? parseFloat(line.amount.toString()) : 0;
+    return 0;
+  }
+  
+  /** Gets the credit amount from a line regardless of format */
+  function getCredit(line: any): number {
+    if (isClientFormatLine(line)) return parseFloat(line.credit) || 0;
+    if (isServerFormatLine(line)) return line.type === 'credit' ? parseFloat(line.amount.toString()) : 0;
+    return 0;
   }
   
   type JournalEntryLine = ClientFormatLine | ServerFormatLine;
@@ -1309,21 +1326,10 @@ function JournalEntryDetail() {
       return { totalDebit: 0, totalCredit: 0 };
     }
     
-    return (entry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
-      // Add to totals based on line format
-      if (isClientFormatLine(line)) {
-        // Client format
-        acc.totalDebit += parseFloat(line.debit) || 0;
-        acc.totalCredit += parseFloat(line.credit) || 0;
-      } else if (isServerFormatLine(line)) {
-        // Server format
-        const amount = parseFloat(line.amount.toString()) || 0;
-        if (line.type === 'debit') {
-          acc.totalDebit += amount;
-        } else if (line.type === 'credit') {
-          acc.totalCredit += amount;
-        }
-      }
+    return entry.lines.reduce((acc: Totals, line: any) => {
+      // Use our helper functions to handle both formats
+      acc.totalDebit += getDebit(line);
+      acc.totalCredit += getCredit(line);
       
       return acc;
     }, { totalDebit: 0, totalCredit: 0 });
