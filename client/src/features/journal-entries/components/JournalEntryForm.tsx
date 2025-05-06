@@ -1698,8 +1698,8 @@ function JournalEntryForm({
     const validLines = lines.filter(
       (line) =>
         line.accountId ||
-        parseFloat(unformatNumber(line.debit)) > 0 ||
-        parseFloat(unformatNumber(line.credit)) > 0,
+        safeParseAmount(line.debit) > 0 ||
+        safeParseAmount(line.credit) > 0,
     );
 
     // Check if we need special handling for file attachments
@@ -1762,13 +1762,9 @@ function JournalEntryForm({
 
     // Format data for submission - convert debit/credit format to type/amount format
     const formattedLines = validLines.map((line) => {
-      // Calculate amount and determine type - first remove any commas
-      const debitValueStr = unformatNumber(line.debit);
-      const creditValueStr = unformatNumber(line.credit);
-
-      // Parse as floats
-      const debitValue = parseFloat(debitValueStr) || 0;
-      const creditValue = parseFloat(creditValueStr) || 0;
+      // Calculate amount and determine type - use safeParseAmount to handle various formats
+      const debitValue = safeParseAmount(line.debit);
+      const creditValue = safeParseAmount(line.credit);
 
       // Convert our UI format (debit/credit fields) to API format (type and amount)
       return {
@@ -1947,8 +1943,8 @@ function JournalEntryForm({
   const handleLineChange = (index: number, field: string, value: string) => {
     // For debit/credit fields, apply special handling
     if (field === "debit" || field === "credit") {
-      // Remove commas for validation
-      const numericValue = unformatNumber(value);
+      // Handle various number formats with safeParseAmount
+      const numericValue = safeParseAmount(value).toString();
 
       // Only process valid numeric inputs or empty string
       if (numericValue === "" || /^\d*\.?\d{0,2}$/.test(numericValue)) {
@@ -2004,8 +2000,8 @@ function JournalEntryForm({
   // Create a debounced version of line change handler for numeric fields (debit/credit)
   const handleDebouncedLineChange = useDebouncedCallback(
     (index: number, field: string, value: string) => {
-      // Remove commas for processing
-      const numericValue = unformatNumber(value);
+      // Handle various number formats with safeParseAmount
+      const numericValue = safeParseAmount(value).toString();
 
       const updatedLines = [...lines];
 
@@ -2819,8 +2815,8 @@ function JournalEntryForm({
                     inputMode="decimal"
                     value={line.debit}
                     onChange={(e) => {
-                      // Only handle the value without commas
-                      const rawValue = unformatNumber(e.target.value);
+                      // Use safeParseAmount for consistent number parsing
+                      const rawValue = safeParseAmount(e.target.value).toString();
                       handleLineChange(index, "debit", rawValue);
                     }}
                     onBlur={(e) => {
@@ -2857,8 +2853,8 @@ function JournalEntryForm({
                     inputMode="decimal"
                     value={line.credit}
                     onChange={(e) => {
-                      // Only handle the value without commas
-                      const rawValue = unformatNumber(e.target.value);
+                      // Use safeParseAmount for consistent number parsing
+                      const rawValue = safeParseAmount(e.target.value).toString();
                       handleLineChange(index, "credit", rawValue);
                     }}
                     onBlur={(e) => {
