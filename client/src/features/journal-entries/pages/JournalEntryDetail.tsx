@@ -157,6 +157,10 @@ function JournalEntryDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   
+  // Use client ID from either URL params or the current entity context
+  // Define clientId here for use throughout the component
+  const derivedClientId = clientIdParam || currentEntity?.clientId;
+  
   // Update entity context if needed based on route params
   React.useEffect(() => {
     if (entityIdParam && (!currentEntity || currentEntity.id !== entityIdParam)) {
@@ -566,15 +570,19 @@ function JournalEntryDetail() {
     return `${account.accountCode} - ${account.name}`;
   };
   
-  // Fetch journal entry by ID using hierarchical URL pattern
+  // Fetch journal entry by ID - check both URL params and context
   const { 
     data,
     isLoading,
     error,
     refetch
   } = useQuery({
-    queryKey: entryId && clientId ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] : ['dummy-empty-key'],
-    enabled: !!entryId && !!clientId && (!!entityIdParam || !!currentEntity?.id)
+    queryKey: entryId ? 
+      (clientId && (entityIdParam || currentEntity?.id)) 
+        ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] 
+        : [`/api/journal-entries/${entryId}`] 
+      : ['dummy-empty-key'],
+    enabled: !!entryId // Always enabled if we have an entry ID
   });
   
   // Define type for a journal entry
