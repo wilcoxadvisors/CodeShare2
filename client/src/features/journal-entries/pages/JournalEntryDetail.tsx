@@ -1195,8 +1195,14 @@ function JournalEntryDetail() {
     );
   };
   
+  // Accept data in both formats: with wrapper and without
+  // This is a hot-fix to handle both the legacy {journalEntry: {...}} shape
+  // and the new direct object format that hierarchical endpoints return
+  if (!data) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div>;
+  const entry = (data as any).journalEntry ?? data;
+
   // Loading state
-  if (isLoading || !journalEntry) {
+  if (isLoading) {
     return (
       <div className="py-6">
         <PageHeader
@@ -1299,11 +1305,11 @@ function JournalEntryDetail() {
   };
   
   const calculateTotals = (): Totals => {
-    if (!journalEntry || !journalEntry.lines) {
+    if (!entry || !entry.lines) {
       return { totalDebit: 0, totalCredit: 0 };
     }
     
-    return (journalEntry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
+    return (entry.lines as JournalEntryLine[]).reduce((acc: Totals, line: JournalEntryLine) => {
       // Add to totals based on line format
       if (isClientFormatLine(line)) {
         // Client format
@@ -1333,14 +1339,14 @@ function JournalEntryDetail() {
   };
   
   const calculateEntityBalances = (): EntityBalance[] => {
-    if (!journalEntry || !journalEntry.lines) {
+    if (!entry || !entry.lines) {
       return [];
     }
     
     // Group lines by entity code
     const entities: {[key: string]: JournalEntryLine[]} = {};
     
-    journalEntry.lines.forEach((line: JournalEntryLine) => {
+    entry.lines.forEach((line: JournalEntryLine) => {
       const entityCode = line.entityCode || 'No Entity';
       
       if (!entities[entityCode]) {
@@ -1383,6 +1389,7 @@ function JournalEntryDetail() {
     });
   };
   
+  // Make sure to use the entry variable instead of journalEntry
   const { totalDebit, totalCredit } = calculateTotals();
   const difference = Math.abs(totalDebit - totalCredit);
   const isBalanced = Math.abs(difference) < 0.01; // Allow for tiny rounding errors
@@ -1392,8 +1399,8 @@ function JournalEntryDetail() {
   return (
     <div className="py-6">
       <PageHeader
-        title={`Journal Entry #${journalEntry.id}`}
-        description={journalEntry.description || 'No description'}
+        title={`Journal Entry #${entry.id}`}
+        description={entry.description || 'No description'}
       >
         <div className="flex space-x-2">
           <Button variant="outline" onClick={handleBack}>
