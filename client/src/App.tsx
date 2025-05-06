@@ -355,6 +355,37 @@ function Router() {
         </AppLayout>
       </Route>
       
+      {/* Hierarchical routes for journal entries */}
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntries} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/new">
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntryDetail} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/edit">
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntryDetail} />
+        </AppLayout>
+      </Route>
+      
       <Route path="/chart-of-accounts">
         <AppLayout>
           <ProtectedRoute component={ChartOfAccounts} />
