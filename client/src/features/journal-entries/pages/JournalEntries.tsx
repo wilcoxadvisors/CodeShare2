@@ -348,16 +348,16 @@ function JournalEntries() {
                         <TableCell>{entry.journalType || 'JE'}</TableCell>
                         <TableCell>{getStatusBadge(entry.status)}</TableCell>
                         <TableCell className="text-right">
-                          {new Intl.NumberFormat('en-US', {
+                          {entry.totalDebit ? new Intl.NumberFormat('en-US', {
                             style: 'currency',
                             currency: 'USD'
-                          }).format(entry.totalDebit || 0)}
+                          }).format(entry.totalDebit) : ''}
                         </TableCell>
                         <TableCell className="text-right">
-                          {new Intl.NumberFormat('en-US', {
+                          {entry.totalCredit ? new Intl.NumberFormat('en-US', {
                             style: 'currency',
                             currency: 'USD'
-                          }).format(entry.totalCredit || 0)}
+                          }).format(entry.totalCredit) : ''}
                         </TableCell>
                       </TableRow>
                     ))}
