@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { useLocation, useRoute } from 'wouter';
+import { useLocation, useRoute, useParams } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -707,8 +707,12 @@ function JournalEntryDetail() {
   
   // Function to handle the back button using hierarchical navigation
   const handleBack = () => {
-    // Go back to previous page instead of hardcoded paths
-    navigate(-1 as any); // Type assertion to fix TypeScript error with navigate
+    // Use hierarchical paths for navigation
+    if (clientId && currentEntity?.id) {
+      navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
+    } else {
+      navigate('/journal-entries');
+    }
   };
   
   // Function to void a journal entry
