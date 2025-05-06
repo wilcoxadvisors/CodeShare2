@@ -19,11 +19,11 @@ import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
 import { 
-  getJournalEntryUrl,
+  getJournalEntriesBaseUrl, 
+  getJournalEntryUrl, 
   getJournalEntryFilesBaseUrl,
   getJournalEntryFileUrl,
-  getJournalEntryFileDownloadUrl,
-  getJournalEntriesBaseUrl
+  getJournalEntryFileDownloadUrl
 } from "@/api/urlHelpers";
 import {
   X,
