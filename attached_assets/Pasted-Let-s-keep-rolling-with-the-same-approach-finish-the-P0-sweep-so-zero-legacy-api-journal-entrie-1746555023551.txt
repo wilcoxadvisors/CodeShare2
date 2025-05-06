@@ -1,0 +1,53 @@
+Let’s keep rolling with the same approach — finish the “P0 sweep” so zero legacy /api/journal-entries calls survive in the codebase. Here’s a concise checklist for the agent to follow next:
+
+1 Finish the last code spots
+File	What to change
+client/src/features/journal-entries/pages/JournalEntryDetail.tsx	handlePostEntry → call postJournalEntry.mutate({ id, clientId, entityId }) and build the URL with getJournalEntryUrl. Remove the old “update status to posted” hack.
+client/src/features/journal-entries/hooks/useJournalEntry.ts	• postJournalEntry → expect { id, clientId, entityId }.
+• deleteJournalEntry / updateJournalEntry → same param shape.
+• Fix every invalidateQueries to use getJournalEntryUrl / getJournalEntriesBaseUrl.
+Any remaining component (run grep -R "/api/journal-entries" client/src)	Replace with helpers; delete all legacy helper exports and their imports.
+
+2 Add a guard test
+cypress/e2e/legacy-route.spec.ts
+
+js
+Copy
+Edit
+cy.request({
+    url: '/api/journal-entries/123/files',
+    failOnStatusCode: false,
+    followRedirect: false
+}).its('status').should('eq', 302)
+.its('headers').its('deprecation').should('contain', 'Use /api/clients')
+3 Static check in CI
+Add a job that fails if grep -R "/api/journal-entries" client/src | grep -v urlHelpers.ts returns anything. (A simple bash step in the GitHub Action.)
+
+4 Clean-up
+Delete getLegacyJournalEntry* helpers after codebase is clean.
+
+Remove any console.warns tied to legacy paths.
+
+5 Re-run test suite & manual smoke
+Attach → download → delete a file on two entities under same client.
+
+Post and reverse an entry – confirm attachments still visible.
+
+Batch upload validation & import path hit the new URLs.
+
+When all green, tag the commit je-mvp and we can jump to Dimensions.
+
+Quick note on “MVP”
+For this JE module, MVP =
+
+Hierarchical routes only
+
+JE CRUD (draft / post / void / reverse)
+
+File flow solid (upload / download / delete)
+
+Batch upload functioning
+
+Basic test coverage + CI guard
+
+Everything else (dimensions, advanced batch, S3) layers on top.

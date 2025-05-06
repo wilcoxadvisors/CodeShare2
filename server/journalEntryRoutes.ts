@@ -1122,6 +1122,58 @@ export function registerJournalEntryRoutes(app: Express) {
   /**
    * Create a journal entry for a specific entity
    */
+  // Hierarchical route for creating journal entries
+  app.post('/api/clients/:clientId/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    const user = req.user as { id: number };
+    
+    if (isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid entity ID or client ID provided');
+    }
+    
+    try {
+      // Add entityId and clientId to the request body
+      const requestData = {
+        ...req.body,
+        entityId,
+        clientId,
+        createdBy: user.id
+      };
+      
+      // Validate with schema
+      const validatedData = createJournalEntrySchema.parse(requestData);
+      
+      // Extract lines from validated data
+      const { lines, ...journalEntryData } = validatedData;
+      
+      // Create the journal entry
+      const journalEntry = await journalEntryStorage.createJournalEntry(
+        journalEntryData.clientId,
+        journalEntryData.createdBy,
+        journalEntryData
+      );
+      
+      // Add lines to the journal entry
+      if (lines && lines.length > 0) {
+        for (const line of lines) {
+          await journalEntryStorage.createJournalEntryLine({
+            ...line,
+            journalEntryId: journalEntry.id
+          });
+        }
+      }
+      
+      res.status(201).json(journalEntry);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: formatZodError(error) });
+      }
+      throw error;
+    }
+  }));
+  
+  // Legacy route for creating journal entries for backward compatibility
   app.post('/api/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
     const user = req.user as { id: number };
