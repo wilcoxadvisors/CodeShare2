@@ -1504,10 +1504,10 @@ function JournalEntryDetail() {
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">
-                        {debitValue !== 0 ? formatCurrency(debitValue) : '-'}
+                        {getDebit(line) ? formatCurrency(getDebit(line)) : ''}
                       </TableCell>
                       <TableCell className="text-right">
-                        {creditValue !== 0 ? formatCurrency(creditValue) : '-'}
+                        {getCredit(line) ? formatCurrency(getCredit(line)) : ''}
                       </TableCell>
                     </TableRow>
                   );

@@ -1,0 +1,19 @@
+It still isn’t quite there, so let’s finish the job methodically.
+Below is a short “surgical” checklist you can follow. Work through it exactly in this order; after each step run the app and confirm it’s fixed before moving on.
+
+#	what to change	file / snippet	why it matters
+1	React-Router “base” path – make sure every nested JE route is actually inside the <EntityLayout> (or whatever wrapper provides clientId / entityId).	App.tsx jsx <Route path="clients/:clientId/entities/:entityId/*" element={<EntityLayout />}> <Route path="journal-entries" element={<JournalEntries />} /> <Route path="journal-entries/:id" element={<JournalEntryDetail />} /> <Route path="journal-entries/:id/edit" element={<JournalEntryForm editMode />} /> <Route path="journal-entries/:id/delete" element={<DeleteJournalEntry />} /> </Route>	If those routes are outside of the wrapper, useParams() in detail / form pages returns undefined → 404 & missing numbers.
+2	Remove the fallback “plain” routes (/journal-entries/:id etc.) entirely.	same file	With two routes that match, navigate() sometimes lands on the wrong one; deleting the loose routes forces the hierarchical one to be used.
+3	Confirm every navigate() / <Link> uses all three ids. Run: ```bash grep -R "journal-entries" client/src	grep -v .d.ts``` and quickly eyeball each reference.	any component
+4	Accounting dropdown closes after pick. Replace the custom popover with Radix <Select> (already imported):	JournalEntryForm.tsx jsx <Select value={line.accountId?.toString() ?? ''} onValueChange={v => handleLineChange(idx,'accountId',v)}> <SelectTrigger>{getAccountLabel(line.accountId)}</SelectTrigger> <SelectContent> {accounts.map(a => ( <SelectItem key={a.id} value={a.id.toString()}> {a.accountCode} – {a.name} </SelectItem> ))} </SelectContent> </Select>	Radix Select auto-closes; you can delete the open/close state you were holding manually.
+5	Debit / Credit cells – the value prints in console but still blank in UI because your formatCurrency() guard is inside the wrong branch. Replace the two <TableCell>s with:	JournalEntryDetail.tsx jsx <TableCell className="text-right"> {getDebit(line) ? formatCurrency(getDebit(line)) : ''} </TableCell> <TableCell className="text-right"> {getCredit(line) ? formatCurrency(getCredit(line)) : ''} </TableCell>	Now you’re using the same helpers the totals use – no more mismatch.
+6	POST / PUT returning HTML – your backend is redirecting (302 → login) and the fetch wrapper follows it. Add this once in queryClient.ts:	ts if (res.redirected) throw new Error('Unauthenticated – redirect'); and treat as 401 in the caller.	That stops swallowing the error and lets you see the real auth problem if cookies are missing.
+
+Quick test matrix after each step
+page	expected
+/clients/…/entities/…/journal-entries	table loads, clicking a row pushes proper hierarchical URL
+detail screen	Back · Edit · Delete icons all stay inside hierarchy; debit & credit numbers show
+“New JE” form	picking an account collapses the dropdown immediately
+submitting draft → list refresh	no 302/HTML, entry appears in list
+
+Work through steps 1-6 and send the next console dump only if something in that list is still broken – it will be much shorter and easier to pinpoint.

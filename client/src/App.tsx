@@ -325,64 +325,35 @@ function Router() {
       
       {/* General Ledger moved to Reports tab */}
       
-      <Route path="/journal-entries">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntries} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/journal-entries/new">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
+      {/* Batch upload shared route */}
       <Route path="/journal-entries/batch-upload">
         <AppLayout>
           <ProtectedRoute component={BatchUpload} />
         </AppLayout>
       </Route>
       
-      <Route path="/journal-entries/edit/:id">
+      {/* Hierarchical routes for journal entries with proper nesting */}
+      <Route path="/clients/:clientId/entities/:entityId">
         <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/journal-entries/:id">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
-        </AppLayout>
-      </Route>
-      
-      {/* Hierarchical routes for journal entries */}
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntries} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/new">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/edit">
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete">
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
+          <Route path="journal-entries">
+            <ProtectedRoute component={JournalEntries} />
+          </Route>
+          
+          <Route path="journal-entries/new">
+            <ProtectedRoute component={NewJournalEntry} />
+          </Route>
+          
+          <Route path="journal-entries/:id">
+            <ProtectedRoute component={JournalEntryDetail} />
+          </Route>
+          
+          <Route path="journal-entries/:id/edit">
+            <ProtectedRoute component={NewJournalEntry} />
+          </Route>
+          
+          <Route path="journal-entries/:id/delete">
+            <ProtectedRoute component={JournalEntryDetail} />
+          </Route>
         </AppLayout>
       </Route>
       
