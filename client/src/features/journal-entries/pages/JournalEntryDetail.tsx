@@ -591,13 +591,15 @@ function JournalEntryDetail() {
   };
   
   // Format currency values consistently with 2 decimal places
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string) => {
+    // Convert string to number if needed
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(amount);
+    }).format(numericAmount);
   };
   
   // Format file size for display
@@ -805,18 +807,18 @@ function JournalEntryDetail() {
       for (const line of entry.lines) {
         if (isClientFormatLine(line)) {
           // Check if it's a debit or credit line
-          if (parseFloat(line.debit) > 0) {
+          if (parseFloat(line.debit.toString()) > 0) {
             formattedLines.push({
               type: 'debit',
-              amount: line.debit,
+              amount: line.debit.toString(),
               accountId: Number(line.accountId),
               entityCode: line.entityCode || null,
               description: line.description || null
             });
-          } else if (parseFloat(line.credit) > 0) {
+          } else if (parseFloat(line.credit.toString()) > 0) {
             formattedLines.push({
               type: 'credit',
-              amount: line.credit,
+              amount: line.credit.toString(),
               accountId: Number(line.accountId),
               entityCode: line.entityCode || null,
               description: line.description || null
