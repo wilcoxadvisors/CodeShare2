@@ -1232,6 +1232,15 @@ function JournalEntryForm({
     initializeExpandedState,
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
+  
+  // Helper function to get account display label
+  const getAccountLabel = useCallback((accountId: string | undefined) => {
+    if (!accountId || !accounts.some(a => a.id.toString() === accountId)) {
+      return "Select account...";
+    }
+    const account = accounts.find(a => a.id.toString() === accountId);
+    return `${account?.accountCode} – ${account?.name}`;
+  }, [accounts]);
 
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
@@ -2310,408 +2319,22 @@ function JournalEntryForm({
               <tr key={index}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    {/* Combobox for searchable account dropdown */}
-                    <Popover
-                      onOpenChange={(open) => {
-                        // Reset expanded state and search query when dropdown is closed
-                        if (!open) {
-                          setExpandedAccounts(initializeExpandedState());
-                          setSearchQuery(""); // Clear search query
-                        }
-                      }}
+                    {/* Account dropdown using Select */}
+                    <Select 
+                      value={line.accountId?.toString() ?? ''}
+                      onValueChange={v => handleLineChange(index, 'accountId', v)}
                     >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={`w-full justify-between ${fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}`}
-                        >
-                          {line.accountId &&
-                          accounts.some(
-                            (account) =>
-                              account.id.toString() === line.accountId,
-                          )
-                            ? `${accounts.find((account) => account.id.toString() === line.accountId)?.accountCode} - ${accounts.find((account) => account.id.toString() === line.accountId)?.name}`
-                            : "Select account..."}
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0">
-                        <Command>
-                          <div className="relative">
-                            <CommandInput
-                              placeholder="Search account..."
-                              className="h-9 pr-8"
-                              value={searchQuery}
-                              onValueChange={(value) => {
-                                // Update search query
-                                setSearchQuery(value);
-
-                                // When search is cleared, collapse all accounts except for default expanded ones
-                                if (!value.trim()) {
-                                  // Reset to initial expanded state (all collapsed)
-                                  setExpandedAccounts({});
-                                }
-                                // When searching, automatically expand all parent accounts
-                                // that have matching children
-                                else {
-                                  // Find all matching accounts (case insensitive search)
-                                  const lowerQuery = value.toLowerCase();
-                                  const matchingAccounts = accounts.filter(
-                                    (account) =>
-                                      `${account.accountCode} ${account.name}`
-                                        .toLowerCase()
-                                        .includes(lowerQuery),
-                                  );
-
-                                  // Get IDs of parent accounts whose children match the query
-                                  const parentIdsToExpand = new Set<number>();
-
-                                  // Find parents that need to be expanded
-                                  matchingAccounts.forEach((account) => {
-                                    if (account.parentId) {
-                                      parentIdsToExpand.add(account.parentId);
-
-                                      // Also try to find grandparents (for deep hierarchies)
-                                      let currentParentId = account.parentId;
-                                      while (currentParentId) {
-                                        const parent = accounts.find(
-                                          (a) => a.id === currentParentId,
-                                        );
-                                        if (parent?.parentId) {
-                                          parentIdsToExpand.add(
-                                            parent.parentId,
-                                          );
-                                          currentParentId = parent.parentId;
-                                        } else {
-                                          break;
-                                        }
-                                      }
-                                    }
-                                  });
-
-                                  // Expand these parents if they're not already expanded
-                                  if (parentIdsToExpand.size > 0) {
-                                    setExpandedAccounts((prev) => {
-                                      const newState = { ...prev };
-                                      parentIdsToExpand.forEach((id) => {
-                                        newState[id] = true;
-                                      });
-                                      return newState;
-                                    });
-                                  }
-                                }
-                              }}
-                            />
-                            {searchQuery && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  // Clear search query
-                                  setSearchQuery("");
-                                  // Reset expanded accounts state to collapse everything
-                                  setExpandedAccounts({});
-                                }}
-                                className="absolute right-2 top-2.5 h-4 w-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-                                aria-label="Clear search"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                          <CommandEmpty>No account found.</CommandEmpty>
-                          <CommandGroup>
-                            <CommandList className="max-h-[300px] overflow-auto">
-                              {(() => {
-                                // Step 1: Get active accounts
-                                const activeAccounts = accounts.filter(
-                                  (account) => account.active,
-                                );
-
-                                // Step 2: First organize accounts by type
-                                const typeOrder: Record<string, number> = {
-                                  asset: 1,
-                                  assets: 1,
-                                  liability: 2,
-                                  liabilities: 2,
-                                  equity: 3,
-                                  revenue: 4,
-                                  expense: 5,
-                                  expenses: 5,
-                                };
-
-                                // Step 3: Create a tree structure to maintain the hierarchy
-                                type AccountNode = {
-                                  account: Account;
-                                  children: AccountNode[];
-                                };
-
-                                // Step 4: Group accounts by type
-                                const accountsByType: Record<
-                                  string,
-                                  Account[]
-                                > = {};
-
-                                activeAccounts.forEach((account) => {
-                                  const type = account.type.toLowerCase();
-                                  if (!accountsByType[type]) {
-                                    accountsByType[type] = [];
-                                  }
-                                  accountsByType[type].push(account);
-                                });
-
-                                // Step 5: For each type, build hierarchical trees
-                                const forestByType: Record<
-                                  string,
-                                  AccountNode[]
-                                > = {};
-
-                                Object.keys(accountsByType).forEach((type) => {
-                                  const accountsOfType = accountsByType[type];
-
-                                  // Create lookup maps
-                                  const accountMap = new Map<number, Account>();
-                                  const nodeMap = new Map<
-                                    number,
-                                    AccountNode
-                                  >();
-
-                                  // Fill the maps
-                                  accountsOfType.forEach((account) => {
-                                    accountMap.set(account.id, account);
-                                    nodeMap.set(account.id, {
-                                      account,
-                                      children: [],
-                                    });
-                                  });
-
-                                  // Build the forest (multiple trees)
-                                  const forest: AccountNode[] = [];
-
-                                  // Connect parents to children
-                                  accountsOfType.forEach((account) => {
-                                    const node = nodeMap.get(account.id)!;
-
-                                    if (
-                                      account.parentId &&
-                                      nodeMap.has(account.parentId)
-                                    ) {
-                                      // This is a child node, add it to its parent
-                                      const parentNode = nodeMap.get(
-                                        account.parentId,
-                                      )!;
-                                      parentNode.children.push(node);
-                                    } else {
-                                      // This is a root node (no parent or parent not in this type)
-                                      forest.push(node);
-                                    }
-                                  });
-
-                                  // Sort each level by account code
-                                  const sortByCode = (nodes: AccountNode[]) => {
-                                    nodes.sort((a, b) => {
-                                      const aCode =
-                                        parseInt(
-                                          a.account.accountCode.replace(
-                                            /\D/g,
-                                            "",
-                                          ),
-                                        ) || 0;
-                                      const bCode =
-                                        parseInt(
-                                          b.account.accountCode.replace(
-                                            /\D/g,
-                                            "",
-                                          ),
-                                        ) || 0;
-                                      return aCode - bCode;
-                                    });
-
-                                    // Sort children recursively
-                                    nodes.forEach((node) => {
-                                      sortByCode(node.children);
-                                    });
-                                  };
-
-                                  // Sort the forest
-                                  sortByCode(forest);
-                                  forestByType[type] = forest;
-                                });
-
-                                // Step 6: Flatten the forest into a display list while maintaining hierarchy
-                                const flattenedAccounts: Account[] = [];
-
-                                // Helper to flatten a tree into the list
-                                const flattenTree = (node: AccountNode) => {
-                                  flattenedAccounts.push(node.account);
-                                  node.children.forEach((child) =>
-                                    flattenTree(child),
-                                  );
-                                };
-
-                                // Process each type in the correct order
-                                Object.keys(typeOrder)
-                                  .sort((a, b) => typeOrder[a] - typeOrder[b])
-                                  .forEach((type) => {
-                                    if (forestByType[type]) {
-                                      forestByType[type].forEach((rootNode) =>
-                                        flattenTree(rootNode),
-                                      );
-                                    }
-                                  });
-
-                                // Handle any other types not in the predefined order
-                                Object.keys(forestByType)
-                                  .filter((type) => !(type in typeOrder))
-                                  .forEach((type) => {
-                                    forestByType[type].forEach((rootNode) =>
-                                      flattenTree(rootNode),
-                                    );
-                                  });
-
-                                return flattenedAccounts;
-                              })().map((account) => {
-                                // Determine if this is a parent account (has children accounts)
-                                const isParent = accounts.some(
-                                  (childAccount) =>
-                                    childAccount.parentId === account.id,
-                                );
-
-                                // Determine nesting level by checking if it has a parent
-                                const hasParent =
-                                  account.parentId !== null &&
-                                  account.parentId !== undefined;
-
-                                return (
-                                  <CommandItem
-                                    key={account.id}
-                                    value={`${account.accountCode} ${account.name}`}
-                                    onSelect={() => {
-                                      // For parent accounts, toggle expand/collapse
-                                      if (isParent) {
-                                        setExpandedAccounts((prev) => {
-                                          if (prev[account.id]) {
-                                            // If collapsing, we need to recursively collapse all children
-                                            const newState = {
-                                              ...prev,
-                                              [account.id]: false,
-                                            };
-
-                                            // Find and collapse all child accounts
-                                            const collapseChildren = (
-                                              parentId: number,
-                                            ) => {
-                                              accounts.forEach(
-                                                (childAccount) => {
-                                                  if (
-                                                    childAccount.parentId ===
-                                                    parentId
-                                                  ) {
-                                                    // Collapse this child
-                                                    newState[childAccount.id] =
-                                                      false;
-
-                                                    // If this child is also a parent, collapse its children
-                                                    if (
-                                                      accounts.some(
-                                                        (acc) =>
-                                                          acc.parentId ===
-                                                          childAccount.id,
-                                                      )
-                                                    ) {
-                                                      collapseChildren(
-                                                        childAccount.id,
-                                                      );
-                                                    }
-                                                  }
-                                                },
-                                              );
-                                            };
-
-                                            collapseChildren(account.id);
-                                            return newState;
-                                          } else {
-                                            // Simply expand this parent
-                                            return {
-                                              ...prev,
-                                              [account.id]: true,
-                                            };
-                                          }
-                                        });
-                                      } else {
-                                        // For regular accounts, select them
-                                        handleLineChange(
-                                          index,
-                                          "accountId",
-                                          account.id.toString(),
-                                        );
-                                      }
-                                    }}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      isParent
-                                        ? "font-semibold opacity-70"
-                                        : "",
-                                      // Hide child accounts when parent is collapsed, but not when searching
-                                      hasParent &&
-                                        !expandedAccounts[
-                                          account.parentId || 0
-                                        ] &&
-                                        !searchQuery
-                                        ? "hidden"
-                                        : "",
-                                      // Add left padding for child accounts
-                                      hasParent ? "pl-6" : "",
-                                      // Apply account type styling if available
-                                      account.type
-                                        ? `account-type-${account.type.toLowerCase().replace(/\s+/g, "-")}`
-                                        : "",
-                                    )}
-                                  >
-                                    {isParent ? (
-                                      expandedAccounts[account.id] ? (
-                                        <ChevronDown className="mr-2 h-4 w-4 text-muted-foreground" />
-                                      ) : (
-                                        <ChevronRight className="mr-2 h-4 w-4 text-muted-foreground" />
-                                      )
-                                    ) : hasParent ? (
-                                      <span className="w-4 h-4 inline-block mr-2"></span>
-                                    ) : (
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          line.accountId ===
-                                            account.id.toString()
-                                            ? "opacity-100"
-                                            : "opacity-0",
-                                        )}
-                                      />
-                                    )}
-                                    <span
-                                      className={cn(
-                                        isParent
-                                          ? "font-medium"
-                                          : hasParent
-                                            ? ""
-                                            : "font-medium",
-                                      )}
-                                    >
-                                      {account.accountCode}
-                                    </span>{" "}
-                                    - {account.name}
-                                    {!hasParent && account.type && (
-                                      <span className="ml-2 text-xs text-gray-500">
-                                        {account.type}
-                                      </span>
-                                    )}
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandList>
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                      <SelectTrigger className={fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}>
+                        {getAccountLabel(line.accountId)}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.filter(a => a.active).map(a => (
+                          <SelectItem key={a.id} value={a.id.toString()}>
+                            {a.accountCode} – {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {fieldErrors[`line_${index}_accountId`] && (
                     <p className="text-red-500 text-sm mt-1">
@@ -2722,70 +2345,24 @@ function JournalEntryForm({
 
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    {/* Combobox for searchable entity dropdown */}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={`w-full justify-between ${fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}`}
-                        >
-                          {line.entityCode &&
-                          entities.some(
-                            (entity) => entity.code === line.entityCode,
-                          )
-                            ? `${line.entityCode} - ${entities.find((entity) => entity.code === line.entityCode)?.name}`
-                            : "Select entity..."}
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[300px] p-0">
-                        <Command>
-                          <CommandInput
-                            placeholder="Search entity..."
-                            className="h-9"
-                            onValueChange={(value) => {
-                              // Entity search doesn't need to save state since it's simpler than accounts
-                            }}
-                          />
-                          <CommandEmpty>No entity found.</CommandEmpty>
-                          <CommandGroup>
-                            <CommandList className="max-h-[200px] overflow-auto">
-                              {entities
-                                .filter((entity) => entity.active)
-                                .sort((a, b) => a.code.localeCompare(b.code))
-                                .map((entity) => (
-                                  <CommandItem
-                                    key={entity.id}
-                                    value={`${entity.code} ${entity.name}`}
-                                    onSelect={() => {
-                                      handleLineChange(
-                                        index,
-                                        "entityCode",
-                                        entity.code,
-                                      );
-                                    }}
-                                    className="cursor-pointer"
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        line.entityCode === entity.code
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    <span className="font-medium">
-                                      {entity.code}
-                                    </span>{" "}
-                                    - {entity.name}
-                                  </CommandItem>
-                                ))}
-                            </CommandList>
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                    {/* Entity dropdown using Select */}
+                    <Select 
+                      value={line.entityCode ?? ''}
+                      onValueChange={v => handleLineChange(index, 'entityCode', v)}
+                    >
+                      <SelectTrigger className={fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}>
+                        {line.entityCode && entities.some((entity) => entity.code === line.entityCode)
+                          ? `${line.entityCode} - ${entities.find((entity) => entity.code === line.entityCode)?.name}`
+                          : "Select entity..."}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {entities.filter(e => e.active).sort((a, b) => a.code.localeCompare(b.code)).map(entity => (
+                          <SelectItem key={entity.id} value={entity.code}>
+                            {entity.code} – {entity.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {fieldErrors[`line_${index}_entityCode`] && (
                     <p className="text-red-500 text-sm mt-1">
