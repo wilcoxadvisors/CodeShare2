@@ -137,13 +137,38 @@ function JournalEntryDetail() {
     return null; // Skip unrecognized formats
   };
   const [pathname, navigate] = useLocation();
-  const [match, params] = useRoute('/journal-entries/:id');
+  // Use hierarchical route pattern
+  const [match, params] = useRoute('/clients/:clientId/entities/:entityId/journal-entries/:id');
   const isInEditMode = pathname.endsWith('/edit'); // Check if we're in edit mode
+  
+  // Extract and convert route params
+  const clientIdParam = params?.clientId ? parseInt(params.clientId) : null;
+  const entityIdParam = params?.entityId ? parseInt(params.entityId) : null;
   const entryId = params?.id ? parseInt(params.id) : null;
   
-  const { currentEntity } = useEntity();
+  // Log the extracted parameters for debugging
+  console.log("JournalEntryDetail: Route params - clientId:", clientIdParam, 
+              "entityId:", entityIdParam, 
+              "entryId:", entryId,
+              "match:", match);
+  
+  const { currentEntity, setCurrentEntity, entities } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Update entity context if needed based on route params
+  React.useEffect(() => {
+    if (entityIdParam && (!currentEntity || currentEntity.id !== entityIdParam)) {
+      console.log("JournalEntryDetail: Looking for entity with ID:", entityIdParam, "in", entities.length, "entities");
+      const entity = entities.find(e => e.id === entityIdParam);
+      if (entity) {
+        console.log("JournalEntryDetail: Found entity in context, setting current entity:", entity.name);
+        setCurrentEntity(entity);
+      } else {
+        console.log("JournalEntryDetail: Entity not found in context for ID:", entityIdParam);
+      }
+    }
+  }, [entityIdParam, currentEntity, entities, setCurrentEntity]);
   
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -483,8 +508,9 @@ function JournalEntryDetail() {
     }
   };
   
-  // Get client ID for accounts query - use entity's clientId
-  const clientId = currentEntity?.clientId;
+  // Get client ID for API requests - prefer route param over entity context for more reliable requests
+  const clientId = clientIdParam || currentEntity?.clientId;
+  console.log("JournalEntryDetail: Using clientId", clientId, "for API requests (from param:", clientIdParam, "or entity:", currentEntity?.clientId, ")");
   
   // Fetch accounts for displaying account information
   const { 
@@ -546,8 +572,8 @@ function JournalEntryDetail() {
     error,
     refetch
   } = useQuery({
-    queryKey: entryId && clientId ? [getJournalEntryUrl(clientId, currentEntity?.id || 0, entryId)] : ['dummy-empty-key'],
-    enabled: !!entryId && !!clientId && !!currentEntity?.id
+    queryKey: entryId && clientId ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] : ['dummy-empty-key'],
+    enabled: !!entryId && !!clientId && (!!entityIdParam || !!currentEntity?.id)
   });
   
   // Define type for a journal entry
@@ -707,11 +733,14 @@ function JournalEntryDetail() {
   
   // Function to handle the back button using hierarchical navigation
   const handleBack = () => {
-    // Use hierarchical paths for navigation
-    if (clientId && currentEntity?.id) {
-      navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
+    // Use hierarchical paths for navigation - prefer route params when available
+    const entityId = entityIdParam || currentEntity?.id;
+    if (clientId && entityId) {
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries`);
+      console.log("JournalEntryDetail: Navigating back to list with path:", `/clients/${clientId}/entities/${entityId}/journal-entries`);
     } else {
       navigate('/journal-entries');
+      console.log("JournalEntryDetail: Navigating back to generic journal entries page");
     }
   };
   

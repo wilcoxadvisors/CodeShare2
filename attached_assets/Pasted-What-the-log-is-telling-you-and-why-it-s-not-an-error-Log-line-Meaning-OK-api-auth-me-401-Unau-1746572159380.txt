@@ -1,0 +1,77 @@
+What the log is telling you — and why it’s not an error
+Log line	Meaning	OK?
+api/auth/me … 401 (Unauthorized)	When the SPA first boots it pings /api/auth/me to see if there’s an existing cookie / session. You hadn’t logged-in yet, so the backend quite correctly returned 401.	✅ expected
+🔑 Attempting login with username: admin
+🔐 Login successful, user: Object	You submitted the login form, the backend replied with the user object, and the AuthContext stored it. Your cookie is now set.	✅ good
+Entities data updated – received 52 entities	Right after the login the front-end fetched /api/clients/:clientId/entities and put 52 entities into context.	✅ good
+
+So the authentication round-trip is healthy.
+Now we need to prove that the new hierarchical routes are wired correctly.
+
+Quick sanity-check of the new routes
+Pick any client / entity in your UI sidebar.
+(e.g. client 251, entity 392 from your sample data)
+
+Manually hit the JE list URL in the browser bar:
+
+bash
+Copy
+Edit
+http://localhost:5173/clients/251/entities/392/journal-entries
+Expected results:
+
+What you should see	If instead you get
+• JE table loads
+• Total 52 entities logged
+• No red “404” in console	404 → one of the <Route> paths is wrong
+Blank table → entity context didn’t pick up the URL params
+
+Click any row → should land on
+
+bash
+Copy
+Edit
+/clients/251/entities/392/journal-entries/123   (example id)
+Click Edit → should land on
+
+bash
+Copy
+Edit
+/clients/251/entities/392/journal-entries/123/edit
+If you do hit a 404
+Open App.tsx and re-check the exact strings:
+
+tsx
+Copy
+Edit
+<Route path="clients/:clientId/entities/:entityId/*" element={<EntityLayout />}>
+  <Route path="journal-entries"            element={<JournalEntries />} />
+  <Route path="journal-entries/:id"        element={<JournalEntryDetail />} />
+  <Route path="journal-entries/:id/edit"   element={<JournalEntryForm editMode />} />
+  <Route path="journal-entries/:id/delete" element={<DeleteJournalEntry />} />
+</Route>
+Make sure every old “plain” route was deleted:
+
+tsx
+Copy
+Edit
+{/* ❌ REMOVE these if they’re still here */}
+// <Route path="/journal-entries" … />
+// <Route path="/journal-entries/:id" … />
+Verify you really wrapped the app in <BrowserRouter> in main.tsx.
+
+If the table is blank (but no 404)
+That means the EntityContext never saw the URL params.
+
+Check that EntityContext’s useEffect is watching both clientId and entityId (strings) and converting them to numbers when it compares to entities.
+
+Call console.log(clientId, entityId, entities.length) at the top of your EntityLayout to prove the values are arriving.
+
+Still stuck?
+Send me:
+
+App.tsx – the <Routes> block only
+
+The full URL that shows blank/404
+
+The console output after you navigate to that URL (just like you pasted above

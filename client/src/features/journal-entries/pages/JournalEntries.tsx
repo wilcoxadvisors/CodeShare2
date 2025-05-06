@@ -62,13 +62,22 @@ function JournalEntries() {
   
   // Update entity context if needed based on route params
   useEffect(() => {
+    console.log("JournalEntries: Route params check - entityId:", entityId, 
+                "clientId:", clientId, 
+                "currentEntity:", currentEntity?.id,
+                "match:", match);
+    
     if (entityId && (!currentEntity || currentEntity.id !== entityId)) {
+      console.log("JournalEntries: Looking for entity with ID:", entityId, "in", entities.length, "entities");
       const entity = entities.find(e => e.id === entityId);
       if (entity) {
+        console.log("JournalEntries: Found entity in context, setting current entity:", entity.name);
         setCurrentEntity(entity);
+      } else {
+        console.log("JournalEntries: Entity not found in context for ID:", entityId);
       }
     }
-  }, [entityId, currentEntity, entities, setCurrentEntity]);
+  }, [entityId, clientId, currentEntity, entities, setCurrentEntity, match]);
   
   // Fetch journal entries for the entity using hierarchical URL pattern
   const {
@@ -224,7 +233,30 @@ function JournalEntries() {
     }
   };
   
-  if (!currentEntity) {
+  // If we have entityId from URL but no corresponding entity in context yet, show loading
+  if (entityId && !currentEntity) {
+    return (
+      <div className="py-6">
+        <PageHeader
+          title="Journal Entries"
+          description="Loading entity data..."
+        />
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-gray-500 mb-4">Loading entity information...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  // If no entity at all (neither from URL nor from context), prompt user to select one
+  if (!entityId && !currentEntity) {
     return (
       <div className="py-6">
         <PageHeader
