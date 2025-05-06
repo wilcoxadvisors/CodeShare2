@@ -582,10 +582,11 @@ Explicit upfront costs documented:
 
 **Explicit Priority Order:**
 
-1. Complete debugging of JE File Attachment Bug (#7).
-2. Implement Dimensions & Smart Rules (Task B.2.1).
-3. Only after B.2.1 is complete, implement Batch Journal Entry uploads (endpoint `POST /api/journal-entries/batch`, CSV/XLSX support, explicit validation).
-4. Begin expanding Dimensions & Smart Events implementation as per detailed spec in Task B.4.
+1. ✅ Quick-cleanup (remove throw-away files, reorganize tests and scripts)
+2. Complete debugging of JE File Attachment Bug (#7).
+3. Implement Dimensions & Smart Rules (Task B.2.1).
+4. Only after B.2.1 is complete, implement Batch Journal Entry uploads (endpoint `POST /api/journal-entries/batch`, CSV/XLSX support, explicit validation).
+5. Begin expanding Dimensions & Smart Events implementation as per detailed spec in Task B.4.
 
 **Explicit Standards to Follow:**
 
