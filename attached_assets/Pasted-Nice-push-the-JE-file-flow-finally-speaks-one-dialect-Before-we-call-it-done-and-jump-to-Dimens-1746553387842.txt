@@ -1,0 +1,51 @@
+Nice push — the JE file-flow finally speaks one dialect.
+Before we call it “done” and jump to Dimensions, here are the last polish items worth tackling. I’ve grouped them by effort vs. payoff so you can decide whether to slot them in now or after MVP.
+
+Priority	Task	What / Why	Quick-hint
+P0	Remove every residual reference to legacy /api/journal-entries in FE	A quick grep still shows comments & toasts referencing the fallback. These won’t break prod but will confuse future devs.	`grep -R "/api/journal-entries" client/src
+P0	Add a route‐guard test	Cypress spec that tries to hit the legacy URL directly; expect 302 + Deprecation header. Catches regressions automatically.	cy.request({url, followRedirect: false}).its('status').should('eq',302)
+P1	Centralise file-size / type limits	They’re hard-coded in two places (AttachmentSection and backend multer). Hoist to a shared constant so FE can do early validation.	shared/constants/upload.ts
+P1	Better UX for long uploads	We already show % in console; surface a linear progress bar and disable the Submit button while uploading.	Re-use shadcn/ui <Progress>
+P1	Retry / resume on 413 Payload Too Large	BE returns 413; FE should surface “File exceeds 25 MB” instead of silent fail.	Intercept axios error .response.status === 413
+P2	Background S3/Blob storage switch	Current impl stores files on local disk. Wrap upload service so we can swap driver without touching components.	storageProvider.upload()
+P2	Pre-signed download URLs	Avoid streaming through the API for big files. Server returns 302 to S3 presigned URL; FE just follows.	GET /files/:id/presign
+
+Tests to add before marking JE MVP as ✅
+Attach‐download-delete cycle across two entities under the same client
+
+ensures path calc is correct
+
+Permission matrix (draft vs. posted vs. voided) blocks uploads & deletions
+
+Date regression: create JE on 29 Feb 2024 UTC, verify display unchanged in any TZ
+
+Migration smoke: legacy route still 302’s, but FE never calls it
+
+Tip: Use vitest --changed to keep the suite tight while editing only JE files.
+
+Next Sprint: Dimensions
+Once the above are green-bar:
+
+Dimensions CRUD under
+/api/clients/:clientId/entities/:entityId/dimensions
+
+id, name, code, type (cost-centre, project…), active
+
+Extend JournalEntryLine schema → optional dimensionId
+
+Patch FE line editor: searchable dimension dropdown (react-query + debounce)
+
+Batch upload v1: keep existing CSV flow, append Dimension column.
+
+TL;DR for the Agent
+* Never emit or accept non-hierarchical JE file URLs again.
+* Finish P0 items → merge → tag je-mvp.
+* Then branch feature/dimensions.
+
+Ping me when P0 & tests are merged, and we’ll kick off the Dimensions API design.
+
+
+
+
+
+

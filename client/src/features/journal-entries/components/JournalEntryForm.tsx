@@ -22,7 +22,8 @@ import {
   getJournalEntryUrl,
   getJournalEntryFilesBaseUrl,
   getJournalEntryFileUrl,
-  getJournalEntryFileDownloadUrl
+  getJournalEntryFileDownloadUrl,
+  getJournalEntriesBaseUrl
 } from "@/api/urlHelpers";
 import {
   X,
@@ -1274,7 +1275,8 @@ function JournalEntryForm({
         reference: data.reference, // Explicitly included reference
       };
 
-      return await apiRequest(`/api/journal-entries`, {
+      // Use the hierarchical URL pattern for creating journal entries
+      return await apiRequest(getJournalEntriesBaseUrl(clientId as number, entityId), {
         method: "POST",
         data: apiPayload,
       });
@@ -1345,7 +1347,7 @@ function JournalEntryForm({
 
           // EXPLICITLY invalidate the journal entry query to refresh attachments
           queryClient.invalidateQueries({
-            queryKey: [`/api/journal-entries/${newJournalEntryId}`],
+            queryKey: [getJournalEntryUrl(clientId as number, entityId, newJournalEntryId)],
           });
 
           toast({
@@ -1465,8 +1467,8 @@ function JournalEntryForm({
         reference: data.reference, // Explicitly included reference
       };
 
-      // We explicitly use the entry ID for the update operation
-      return await apiRequest(`/api/journal-entries/${existingEntry.id}`, {
+      // We explicitly use the hierarchical URL pattern for the update operation
+      return await apiRequest(getJournalEntryUrl(clientId as number, entityId, existingEntry.id), {
         method: "PUT",
         data: apiPayload,
       });
@@ -1536,7 +1538,7 @@ function JournalEntryForm({
 
           // EXPLICITLY invalidate the journal entry query to refresh attachments
           queryClient.invalidateQueries({
-            queryKey: [`/api/journal-entries/${entryId}`],
+            queryKey: [getJournalEntryUrl(clientId as number, entityId, entryId)],
           });
 
           toast({
