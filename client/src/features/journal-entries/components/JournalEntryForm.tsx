@@ -1008,6 +1008,19 @@ function JournalEntryForm({
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/general-ledger`],
       });
+      
+      // Invalidate journal entry files queries if we have a valid journal entry ID
+      if (journalEntryId && typeof journalEntryId === 'number') {
+        // Invalidate the attachments query
+        queryClient.invalidateQueries({
+          queryKey: ['journalEntryAttachments', journalEntryId],
+        });
+        
+        // Also invalidate using the URL pattern
+        queryClient.invalidateQueries({
+          queryKey: [getJournalEntryFilesBaseUrl(effectiveClientId, entityId, journalEntryId)],
+        });
+      }
     } else {
       // Fall back to entity-only pattern when client ID is not available
       queryClient.invalidateQueries({
