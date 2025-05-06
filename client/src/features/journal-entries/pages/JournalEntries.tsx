@@ -6,6 +6,7 @@ import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { getJournalEntriesBaseUrl } from '@/api/urlHelpers';
 import { ymdToDisplay } from '@/utils/dateUtils';
+import { getDebit, getCredit, isClientFormatLine, isServerFormatLine } from '../utils/lineFormat';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,8 +65,7 @@ function JournalEntries() {
     enabled: !!currentEntity?.id && !!currentEntity?.clientId
   });
   
-  // Import helper functions from lineFormat
-  const { getDebit, getCredit, isClientFormatLine, isServerFormatLine } = useJournalEntry();
+  // We imported the helper functions from lineFormat at the top of the file
   
   // Calculate total debit/credit for each journal entry by using the lines data
   const entriesWithTotals = React.useMemo(() => {
@@ -111,7 +111,7 @@ function JournalEntries() {
       // If no lines data available, return entry as is with zero totals
       return { ...entry, totalDebit: 0, totalCredit: 0 };
     });
-  }, [data, getDebit, getCredit, isClientFormatLine, isServerFormatLine]);
+  }, [data]);
   
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {

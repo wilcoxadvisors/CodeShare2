@@ -5,8 +5,8 @@
 
 // Type guard to check if the line is in client format (debit/credit)
 export type ClientFormatLine = {
-  debit: string;
-  credit: string;
+  debit: string | number;
+  credit: string | number;
   accountId: string | number;
   entityCode?: string;
   description?: string;
@@ -65,6 +65,15 @@ export function isServerFormatLine(line: any): line is ServerFormatLine {
   return hasTypeAndAmount && hasAccountId;
 }
 
+/** robust parser that swallows "1,000.00", "$1,000" or number */
+export function safeParse(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === "number") return value;
+  return parseFloat(
+    value.replace(/[^\d.-]/g, "")  // strip $, €, commas, spaces
+  ) || 0;
+}
+
 /** Helper function to safely parse a string amount, handling commas and currency symbols */
 export function safeParseAmount(amount: string | number): number {
   if (typeof amount === 'number') return amount;
@@ -85,15 +94,15 @@ export function getDebit(line: any): number {
   if (!line) return 0;
   
   if (isClientFormatLine(line)) {
-    return safeParseAmount(line.debit);
+    return safeParse(line.debit);
   }
   
   if (isServerFormatLine(line)) {
-    return line.type === 'debit' ? safeParseAmount(line.amount) : 0;
+    return line.type === 'debit' ? safeParse(line.amount) : 0;
   }
   
   // Fallback for legacy or unrecognized formats
-  return typeof line.debit !== 'undefined' ? safeParseAmount(line.debit) : 0;
+  return typeof line.debit !== 'undefined' ? safeParse(line.debit) : 0;
 }
 
 /** Gets the credit amount from a line regardless of format */
@@ -101,13 +110,13 @@ export function getCredit(line: any): number {
   if (!line) return 0;
   
   if (isClientFormatLine(line)) {
-    return safeParseAmount(line.credit);
+    return safeParse(line.credit);
   }
   
   if (isServerFormatLine(line)) {
-    return line.type === 'credit' ? safeParseAmount(line.amount) : 0;
+    return line.type === 'credit' ? safeParse(line.amount) : 0;
   }
   
   // Fallback for legacy or unrecognized formats
-  return typeof line.credit !== 'undefined' ? safeParseAmount(line.credit) : 0;
+  return typeof line.credit !== 'undefined' ? safeParse(line.credit) : 0;
 }
