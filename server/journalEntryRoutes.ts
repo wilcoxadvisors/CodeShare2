@@ -1304,7 +1304,8 @@ export function registerJournalEntryRoutes(app: Express) {
         includeFiles: true,
       });
 
-      res.json({ data: entries });
+      // The frontend is looking for a direct array, not wrapped in data property
+      res.json(entries);
     })
   );
   
