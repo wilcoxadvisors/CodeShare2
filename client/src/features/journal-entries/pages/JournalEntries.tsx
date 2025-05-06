@@ -86,17 +86,44 @@ function JournalEntries() {
     error
   } = useQuery({
     queryKey: entityId && clientId ? [getJournalEntriesBaseUrl(clientId, entityId)] : [],
-    enabled: !!entityId && !!clientId
+    enabled: !!entityId && !!clientId,
+    retry: 3, // Retry up to 3 times if the query fails
+    onError: (err: any) => {
+      console.error("Journal entries fetch error:", err);
+      toast({
+        title: "Error loading journal entries",
+        description: err.message || "Failed to load journal entries. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
+  
+  useEffect(() => {
+    console.log("JournalEntries Data:", data);
+    console.log("JournalEntries Error:", error);
+    console.log("JournalEntries Loading:", isLoading);
+    
+    if (!isLoading && !data && !error && entityId && clientId) {
+      console.log("Journal entries query not running despite entityId and clientId being set");
+      console.log("QueryKey:", getJournalEntriesBaseUrl(clientId, entityId));
+      console.log("Current entity:", currentEntity);
+    }
+  }, [data, error, isLoading, entityId, clientId, currentEntity]);
   
   // We imported the helper functions from lineFormat at the top of the file
   
   // Calculate total debit/credit for each journal entry by using the lines data
   const entriesWithTotals = React.useMemo(() => {
-    if (!data) return [];
+    if (!data) {
+      console.log("No data available for journal entries");
+      return [];
+    }
     
     // Handle different response structures
-    const entries = Array.isArray(data) ? data : (data as any).entries || [];
+    const entries = Array.isArray(data) 
+      ? data 
+      : (data as any).entries || (data as any).journalEntries || [];
+    
     console.log("DEBUG - JournalEntries - Raw entries:", entries);
     
     // Map through entries to enhance them with totals data
