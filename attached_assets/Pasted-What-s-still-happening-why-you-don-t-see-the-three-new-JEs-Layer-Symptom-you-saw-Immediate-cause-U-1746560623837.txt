@@ -1,0 +1,95 @@
+What’s still happening & why you don’t see the three new JEs
+Layer	Symptom you saw	Immediate cause	Under-the-hood detail
+Auth	401 /api/auth/me and every call after	Session cookie got nuked when the dev-server hot-reloaded	No global “on 401→re-login” hook yet
+JE List	Table is empty even though the POST/draft calls returned 201	The list query still hits the legacy URL (/api/entities/:eId/journal-entries) which now 404s	The hook was never migrated to getJournalEntriesBaseUrl()
+Posting	One JE came back 400	Our new hierarchical route rejects duplicate referenceNumber (yours was “new1”)	The error bubbles as a generic 400 instead of a toasty message
+Attachments	Upload looked “OK” but nothing to click	List call for files uses the same legacy path, so React Query cache never populates	Exact same mismatch as the JE list
+
+Minimal patch set to get you un-blocked
+(these are safe, additive changes; no schema or migration work)
+
+1️⃣ Global 401 handler
+client/src/lib/queryClient.ts
+
+ts
+Copy
+Edit
+export async function apiRequest<T>(
+  method: string,
+  url: string,
+  data?: BodyInit | object,
+  isFormData = false
+): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    credentials: "include",
+    body: isFormData ? data as BodyInit : JSON.stringify(data),
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
+  });
+
+  /* 👇 NEW */
+  if (res.status === 401) {
+    window.location.assign("/login");
+    throw new Error("Unauthenticated – redirecting to /login");
+  }
+
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.headers.get("content-type")?.includes("json") ? res.json() : (undefined as unknown as T);
+}
+2️⃣ Move list hooks to the hierarchical URL helpers
+client/src/features/journal-entries/hooks/useJournalEntries.ts
+
+diff
+Copy
+Edit
+- const url = `/api/entities/${entityId}/journal-entries`;
++ const url = getJournalEntriesBaseUrl(clientId, entityId);
+(import getJournalEntriesBaseUrl at top)
+
+Do the same in AttachmentSection (list & delete).
+
+3️⃣ Use the same key when we invalidate
+JournalEntryForm.tsx
+
+diff
+Copy
+Edit
+queryClient.invalidateQueries({
+-  queryKey: [`/api/entities/${entityId}/journal-entries`],
++  queryKey: [getJournalEntriesBaseUrl(clientId, entityId)],
+});
+4️⃣ Bubble duplicate referenceNumber nicely
+Inside the catch of the create / update routes:
+
+ts
+Copy
+Edit
+if (/duplicate.*reference/i.test(String(error))) {
+  return res.status(400).json({
+    field: "referenceNumber",
+    message: "That reference number is already in use."
+  });
+}
+Then in the form’s mutation.onError, show a toast when error.field === "referenceNumber".
+
+Quick verification script (after patch)
+Login again (session reset).
+
+POST /api/clients/:cId/entities/:eId/journal-entries in Postman – confirm 201.
+
+In browser: JE list refreshes automatically, row appears.
+
+Create another JE with same reference → toast “already in use”.
+
+Attach a PDF – list shows the file chip & download works.
+
+Kill cookie in dev-tools → you’re bounced to /login.
+
+Where this leaves the roadmap
+Blocker	Status after patch
+JE list & file list	Fixed
+Session expiry UX	Fixed – auto-redirect
+Duplicate reference clarity	Fixed
+Remaining for B.2	Finish Cypress spec for attachments; then start Dimensions & Smart Rules
+
+Let me know if you want me to open the PR with those exact diffs or if you’d like any tweaks before I move on to Dimensions.
