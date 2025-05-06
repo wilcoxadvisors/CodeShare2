@@ -1774,10 +1774,14 @@ function JournalEntryDetail() {
             <Button 
               variant="destructive" 
               onClick={() => {
-                if (entryId) {
-                  deleteJournalEntry.mutate(entryId);
+                if (entryId && clientId && currentEntity?.id) {
+                  deleteJournalEntry.mutate({
+                    id: entryId,
+                    clientId,
+                    entityId: currentEntity.id
+                  });
                   setShowDeleteDialog(false);
-                  navigate('/journal-entries');
+                  navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
                 }
               }}
             >
