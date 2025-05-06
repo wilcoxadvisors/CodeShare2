@@ -1421,7 +1421,7 @@ function JournalEntryDetail() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center space-x-2">
-                {getStatusBadge(journalEntry.status)}
+                {getStatusBadge(entry.status)}
                 {!isBalanced && (
                   <Badge variant="outline" className="bg-red-100 text-red-800">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -1435,22 +1435,22 @@ function JournalEntryDetail() {
                 <p className="text-sm text-gray-500 mb-2">Progress</p>
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className={`h-3 w-3 rounded-full ${entry.status === 'draft' || entry.status === 'pending_approval' || entry.status === 'approved' || entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                     <span className="text-xs mt-1">Draft</span>
                   </div>
-                  <div className={`h-0.5 w-12 ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className={`h-0.5 w-12 ${entry.status === 'pending_approval' || entry.status === 'approved' || entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                   <div className="flex flex-col items-center">
-                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'pending_approval' || journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className={`h-3 w-3 rounded-full ${entry.status === 'pending_approval' || entry.status === 'approved' || entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                     <span className="text-xs mt-1">Approval</span>
                   </div>
-                  <div className={`h-0.5 w-12 ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className={`h-0.5 w-12 ${entry.status === 'approved' || entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                   <div className="flex flex-col items-center">
-                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'approved' || journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                    <div className={`h-3 w-3 rounded-full ${entry.status === 'approved' || entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                     <span className="text-xs mt-1">Approved</span>
                   </div>
-                  <div className={`h-0.5 w-12 ${journalEntry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                  <div className={`h-0.5 w-12 ${entry.status === 'posted' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                   <div className="flex flex-col items-center">
-                    <div className={`h-3 w-3 rounded-full ${journalEntry.status === 'posted' ? 'bg-blue-500' : journalEntry.status === 'voided' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                    <div className={`h-3 w-3 rounded-full ${entry.status === 'posted' ? 'bg-blue-500' : entry.status === 'voided' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
                     <span className="text-xs mt-1">Posted</span>
                   </div>
                 </div>
@@ -1467,19 +1467,19 @@ function JournalEntryDetail() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs text-gray-500">Date</Label>
-                  <p className="font-medium">{formatDate(journalEntry.date)}</p>
+                  <p className="font-medium">{formatDate(entry.date)}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Description</Label>
-                  <p className="font-medium">{journalEntry.description || 'None'}</p>
+                  <p className="font-medium">{entry.description || 'None'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Reference</Label>
-                  <p className="font-medium">{journalEntry.referenceNumber || 'None'}</p>
+                  <p className="font-medium">{entry.referenceNumber || 'None'}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Journal Type</Label>
-                  <p className="font-medium">{journalEntry.journalType || 'Manual'}</p>
+                  <p className="font-medium">{entry.journalType || 'Manual'}</p>
                 </div>
               </div>
             </CardContent>
@@ -1553,7 +1553,7 @@ function JournalEntryDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(journalEntry.lines as JournalEntryLine[]).map((line: JournalEntryLine, index: number) => {
+                {(entry.lines as JournalEntryLine[]).map((line: JournalEntryLine, index: number) => {
                   // Determine debit and credit values based on format
                   let debitValue = 0;
                   let creditValue = 0;
@@ -1617,7 +1617,7 @@ function JournalEntryDetail() {
           </CardHeader>
           <CardContent>
             {/* File Upload Area - only visible for draft or pending_approval entries */}
-            {journalEntry.status === 'draft' || journalEntry.status === 'pending_approval' ? (
+            {entry.status === 'draft' || entry.status === 'pending_approval' ? (
               <div className="mb-4">
                 {!uploading && (
                   <div
@@ -1700,10 +1700,10 @@ function JournalEntryDetail() {
                 )}
                 {/* Console log for debugging successful uploads as per requirements */}
                 <div className="text-xs text-muted-foreground mt-1">
-                  {uploading ? `Uploading ${journalEntry.files?.length || 0} file(s)...` : ''}
+                  {uploading ? `Uploading ${entry.files?.length || 0} file(s)...` : ''}
                 </div>
               </div>
-            ) : journalEntry.status === 'posted' || journalEntry.status === 'voided' ? (
+            ) : entry.status === 'posted' || entry.status === 'voided' ? (
               <div className="bg-gray-50 border rounded-md p-4 mb-4 flex items-center">
                 <span className="h-5 w-5 text-gray-400 mr-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1712,15 +1712,15 @@ function JournalEntryDetail() {
                   </svg>
                 </span>
                 <p className="text-sm text-gray-500">
-                  File uploads are disabled for {journalEntry.status} journal entries
+                  File uploads are disabled for {entry.status} journal entries
                 </p>
               </div>
             ) : null}
             
             {/* File Listing */}
-            {journalEntry.files && journalEntry.files.length > 0 ? (
+            {entry.files && entry.files.length > 0 ? (
               <div className="space-y-3">
-                {journalEntry.files.map((file, index) => (
+                {entry.files.map((file, index) => (
                   <div 
                     key={index} 
                     className="flex items-center justify-between p-3 border rounded-md"
@@ -1743,7 +1743,7 @@ function JournalEntryDetail() {
                       </Button>
                       
                       {/* Bug fix #2: Only show delete button in edit mode and only for draft or pending_approval entries */}
-                      {isInEditMode && (journalEntry.status === 'draft' || journalEntry.status === 'pending_approval') && (
+                      {isInEditMode && (entry.status === 'draft' || entry.status === 'pending_approval') && (
                         <Button 
                           size="sm" 
                           variant="outline"
