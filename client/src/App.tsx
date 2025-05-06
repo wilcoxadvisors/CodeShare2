@@ -11,7 +11,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import GeneralLedger from "@/pages/GeneralLedger";
-import { JournalEntries, JournalEntryDetail, NewJournalEntry, BatchUpload, JournalEntryForm } from "@/features/journal-entries";
+import { JournalEntries, JournalEntryDetail, NewJournalEntry, BatchUpload } from "@/features/journal-entries";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import Reports from "@/pages/Reports";
 import TrialBalance from "@/pages/TrialBalance";
@@ -31,7 +31,6 @@ import ChatWidget from "@/components/common/ChatWidget";
 import ConsultationFormModal from "@/components/ConsultationFormModal";
 import LoginModal from "@/components/LoginModal";
 import Redirect from "@/components/Redirect";
-import EntityLayout from "@/components/EntityLayout";
 
 // Public website header component
 const PublicHeader: React.FC = () => {
@@ -326,22 +325,34 @@ function Router() {
       
       {/* General Ledger moved to Reports tab */}
       
-      {/* journal-entry/batch-upload preserved at the original location */}
+      <Route path="/journal-entries">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntries} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/journal-entries/new">
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      </Route>
+      
       <Route path="/journal-entries/batch-upload">
         <AppLayout>
           <ProtectedRoute component={BatchUpload} />
         </AppLayout>
       </Route>
       
-      {/* -------  keep journal-entry pages under the selected entity  ------- */}
-      <Route
-        path="clients/:clientId/entities/:entityId/*"
-        element={<EntityLayout />}
-      >
-        <Route path="journal-entries"             element={<JournalEntries />} />
-        <Route path="journal-entries/new"         element={<JournalEntryForm />} />
-        <Route path="journal-entries/:id"         element={<JournalEntryDetail />} />
-        <Route path="journal-entries/:id/edit"    element={<JournalEntryForm editMode />} />
+      <Route path="/journal-entries/edit/:id">
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/journal-entries/:id">
+        <AppLayout>
+          <ProtectedRoute component={JournalEntryDetail} />
+        </AppLayout>
       </Route>
       
       {/* Hierarchical routes for journal entries */}
