@@ -276,18 +276,14 @@ function AttachmentSection({
     setUploadProgress(0);
 
     try {
-      // Create FormData to upload files
-      const formData = new FormData();
-      pendingFiles.forEach((file) => {
-        formData.append("files", file);
-      });
-
       // If we have an entry ID, proceed with the upload
       if (entryId) {
-        const response = await addFiles.mutateAsync({
-          entityId,
-          journalEntryId: entryId,
-          formData,
+        // Use the uploadFiles mutation with progress tracking
+        const response = await uploadFiles.mutateAsync({
+          files: pendingFiles,
+          onProgress: (progress) => {
+            setUploadProgress(progress);
+          }
         });
 
         if (response) {
@@ -348,6 +344,7 @@ function AttachmentSection({
   const handleDeleteFile = async (fileId: number) => {
     try {
       await deleteFile.mutateAsync({
+        clientId,
         entityId,
         journalEntryId: journalEntryId as number,
         fileId,
@@ -1587,18 +1584,17 @@ function JournalEntryForm({
             <Button
               onClick={() => handleSubmit(true)}
               disabled={
-                createEntry.isPending || updateEntry.isPending || isUploading
+                createEntry.isPending || updateEntry.isPending
               }
               className="relative"
             >
               {(createEntry.isPending ||
-                updateEntry.isPending ||
-                isUploading) && (
+                updateEntry.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending || isUploading) &&
+              {!(createEntry.isPending || updateEntry.isPending) &&
                 "Save as Draft"}
-              {(createEntry.isPending || updateEntry.isPending || isUploading) &&
+              {(createEntry.isPending || updateEntry.isPending) &&
                 "Saving..."}
             </Button>
 
@@ -1609,19 +1605,17 @@ function JournalEntryForm({
               disabled={
                 createEntry.isPending ||
                 updateEntry.isPending ||
-                !isBalanced ||
-                isUploading
+                !isBalanced
               }
               className="relative"
             >
               {(createEntry.isPending ||
-                updateEntry.isPending ||
-                isUploading) && (
+                updateEntry.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
               )}
-              {!(createEntry.isPending || updateEntry.isPending || isUploading) &&
+              {!(createEntry.isPending || updateEntry.isPending) &&
                 "Submit"}
-              {(createEntry.isPending || updateEntry.isPending || isUploading) &&
+              {(createEntry.isPending || updateEntry.isPending) &&
                 "Submitting..."}
             </Button>
           </div>

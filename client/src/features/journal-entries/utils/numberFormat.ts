@@ -9,19 +9,26 @@
  * @returns Formatted currency string
  */
 export function formatCurrency(
-  value: number,
+  value: number | string,
   options: Intl.NumberFormatOptions = {}
 ): string {
-  // Default to USD if no currency is specified
+  // Default options for currency formatting
   const defaultOptions: Intl.NumberFormatOptions = {
-    style: "currency",
-    currency: "USD",
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     ...options,
   };
 
-  return new Intl.NumberFormat("en-US", defaultOptions).format(value);
+  // Convert string to number if needed
+  const num = typeof value === 'string' ? safeParseAmount(value) : value;
+
+  // Return dash for zero values
+  if (num === 0) return '-';
+
+  // Format the number
+  return new Intl.NumberFormat('en-US', defaultOptions).format(num);
 }
 
 /**
@@ -30,23 +37,18 @@ export function formatCurrency(
  * @returns Formatted number string with thousands separators
  */
 export function formatNumberWithSeparator(value: string): string {
-  // Remove existing separators and whitespace
-  const cleanedValue = value.replace(/[,\s]/g, "");
+  // Clean the input value
+  const cleanValue = value.replace(/[^0-9.]/g, '');
   
-  // If it's not a valid number, return the original value
-  if (isNaN(Number(cleanedValue))) {
-    return value;
-  }
-
-  // Split the number into parts before and after decimal point
-  const parts = cleanedValue.split(".");
-  const wholePart = parts[0];
-  const decimalPart = parts.length > 1 ? `.${parts[1]}` : "";
-
-  // Add thousands separators to the whole part
-  const formattedWholePart = wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-  return formattedWholePart + decimalPart;
+  // Split the value into integer and decimal parts
+  const parts = cleanValue.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+  
+  // Add thousands separators
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  return formattedInteger + decimalPart;
 }
 
 /**
@@ -55,24 +57,20 @@ export function formatNumberWithSeparator(value: string): string {
  * @returns Parsed number or 0 if invalid
  */
 export function safeParseAmount(value: string | number): number {
-  if (typeof value === "number") {
-    return value;
-  }
-
-  // Remove currency symbols, commas, and whitespace
-  const cleanedValue = value.replace(/[$,\s]/g, "");
+  if (typeof value === 'number') return value;
   
-  // Handle negative values with parentheses like (123.45)
-  const isNegative = cleanedValue.startsWith("(") && cleanedValue.endsWith(")");
-  const valueWithoutParentheses = isNegative 
-    ? cleanedValue.slice(1, -1) 
-    : cleanedValue;
+  // Return 0 for empty strings
+  if (!value) return 0;
   
-  // Parse the value
-  const parsedValue = parseFloat(valueWithoutParentheses);
+  // Remove currency symbols, commas, and other non-numeric characters
+  // Keep decimal points and negative signs
+  const cleanValue = value.toString().replace(/[^0-9.-]/g, '');
   
-  // Return the value (negative if in parentheses)
-  return isNaN(parsedValue) ? 0 : (isNegative ? -parsedValue : parsedValue);
+  // Parse as float
+  const num = parseFloat(cleanValue);
+  
+  // Return 0 if the result is NaN
+  return isNaN(num) ? 0 : num;
 }
 
 /**

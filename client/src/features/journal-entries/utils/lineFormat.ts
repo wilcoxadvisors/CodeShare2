@@ -1,117 +1,204 @@
 /**
- * Helper functions for handling different journal entry line formats
- * Used by both JournalEntryDetail and JournalEntryForm components
+ * Utility functions for handling journal entry line format conversions
+ * between the client and server formats
  */
 
-// Type guard to check if the line is in client format (debit/credit)
-export type ClientFormatLine = {
-  debit: string | number;
-  credit: string | number;
+import { safeParseAmount } from './numberFormat';
+
+/**
+ * Interface representing a line in client-side format
+ * with separate debit and credit fields
+ */
+interface ClientFormatLine {
+  id?: number;
   accountId: string | number;
   entityCode?: string;
   description?: string;
-};
+  debit?: string | number;
+  credit?: string | number;
+  [key: string]: any;
+}
 
-// Type guard to check if the line is in server format (type/amount)
-export type ServerFormatLine = {
-  type: 'debit' | 'credit';
-  amount: string | number;
+/**
+ * Interface representing a line in server-side format
+ * with type and amount fields
+ */
+interface ServerFormatLine {
+  id?: number;
   accountId: string | number;
   entityCode?: string;
   description?: string;
-};
+  type?: 'debit' | 'credit';
+  amount?: number;
+  [key: string]: any;
+}
 
-export type JournalEntryLine = ClientFormatLine | ServerFormatLine;
-
-/** Returns true if the line is in the legacy client format */
+/**
+ * Check if a journal entry line is in client format (has debit/credit fields)
+ * 
+ * @param line The journal entry line to check
+ * @returns True if the line is in client format
+ */
 export function isClientFormatLine(line: any): line is ClientFormatLine {
-  if (!line || typeof line !== 'object') return false;
-  
-  // More flexible check for debit/credit properties
-  // At least one of debit or credit must be present and have a value
-  const hasDebit = 'debit' in line && (line.debit !== undefined && line.debit !== null);
-  const hasCredit = 'credit' in line && (line.credit !== undefined && line.credit !== null);
-  const hasDebitOrCredit = hasDebit || hasCredit;
-  
-  // Check for accountId in any form - it must be present and have a value
-  const hasAccountId = 'accountId' in line && (line.accountId !== undefined && line.accountId !== null);
-  
-  // Ensure it's not a server format line (no 'type' field)
-  const isNotServerFormat = !('type' in line && (line.type === 'debit' || line.type === 'credit'));
-  
-  return hasDebitOrCredit && hasAccountId && isNotServerFormat;
+  return line && 
+    ('debit' in line || 'credit' in line) && 
+    !('type' in line && 'amount' in line);
 }
 
-/** Returns true if the line is in the new compact format */
+/**
+ * Check if a journal entry line is in server format (has type/amount fields)
+ * 
+ * @param line The journal entry line to check
+ * @returns True if the line is in server format
+ */
 export function isServerFormatLine(line: any): line is ServerFormatLine {
-  if (!line || typeof line !== 'object') return false;
-  
-  // Check for valid type property (must be either 'debit' or 'credit')
-  const hasValidType = 'type' in line && 
-                       line.type !== undefined && 
-                       (line.type === 'debit' || line.type === 'credit');
-  
-  // Check for amount property (must be present and have a value)
-  const hasAmount = 'amount' in line && (line.amount !== undefined && line.amount !== null);
-  
-  // Check for accountId in any form - it must be present and have a value
-  const hasAccountId = 'accountId' in line && (line.accountId !== undefined && line.accountId !== null);
-  
-  return hasValidType && hasAmount && hasAccountId;
+  return line && 
+    ('type' in line || 'amount' in line) && 
+    !('debit' in line && 'credit' in line);
 }
 
-/** robust parser that swallows "1,000.00", "$1,000" or number */
-export function safeParse(value: string | number | null | undefined): number {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === "number") return value;
-  return parseFloat(
-    value.replace(/[^\d.-]/g, "")  // strip $, €, commas, spaces
-  ) || 0;
-}
-
-/** Helper function to safely parse a string amount, handling commas and currency symbols */
-export function safeParseAmount(amount: string | number): number {
-  if (typeof amount === 'number') return amount;
-  
-  // Handle null, undefined, or empty string
-  if (!amount) return 0;
-  
-  // Remove common currency symbols, commas, and spaces
-  const cleanedAmount = amount.toString()
-    .replace(/[$€£¥,\s]/g, '');
-  
-  // Parse the cleaned string to a float
-  return parseFloat(cleanedAmount) || 0;
-}
-
-/** Gets the debit amount from a line regardless of format */
-export function getDebit(line: any): number {
-  if (!line) return 0;
-  
-  if (isClientFormatLine(line)) {
+/**
+ * Extract the debit amount from a journal entry line, regardless of format
+ * 
+ * @param line The journal entry line (client or server format)
+ * @returns The debit amount as a number
+ */
+export function getDebit(line: ClientFormatLine | ServerFormatLine): number {
+  // If line uses client format with explicit debit field
+  if ('debit' in line && line.debit !== undefined) {
     return safeParseAmount(line.debit);
   }
   
-  if (isServerFormatLine(line)) {
-    return line.type === 'debit' ? safeParseAmount(line.amount) : 0;
+  // If line uses server format with type/amount
+  if ('type' in line && 'amount' in line) {
+    if (line.type === 'debit' && line.amount !== undefined) {
+      return typeof line.amount === 'number' ? line.amount : safeParseAmount(line.amount as string);
+    }
   }
   
-  // Fallback for legacy or unrecognized formats
-  return typeof line.debit !== 'undefined' ? safeParseAmount(line.debit) : 0;
+  return 0;
 }
 
-/** Gets the credit amount from a line regardless of format */
-export function getCredit(line: any): number {
-  if (!line) return 0;
-  
-  if (isClientFormatLine(line)) {
+/**
+ * Extract the credit amount from a journal entry line, regardless of format
+ * 
+ * @param line The journal entry line (client or server format)
+ * @returns The credit amount as a number
+ */
+export function getCredit(line: ClientFormatLine | ServerFormatLine): number {
+  // If line uses client format with explicit credit field
+  if ('credit' in line && line.credit !== undefined) {
     return safeParseAmount(line.credit);
   }
   
-  if (isServerFormatLine(line)) {
-    return line.type === 'credit' ? safeParseAmount(line.amount) : 0;
+  // If line uses server format with type/amount
+  if ('type' in line && 'amount' in line) {
+    if (line.type === 'credit' && line.amount !== undefined) {
+      return typeof line.amount === 'number' ? line.amount : safeParseAmount(line.amount as string);
+    }
   }
   
-  // Fallback for legacy or unrecognized formats
-  return typeof line.credit !== 'undefined' ? safeParseAmount(line.credit) : 0;
+  return 0;
+}
+
+/**
+ * Convert a journal entry line from client format (debit/credit) to server format (type/amount)
+ * 
+ * @param line The journal entry line in client format
+ * @returns The journal entry line in server format
+ */
+export function convertToServerFormat(line: ClientFormatLine): ServerFormatLine {
+  const debit = getDebit(line);
+  const credit = getCredit(line);
+  
+  const serverLine: ServerFormatLine = {
+    accountId: line.accountId,
+    description: line.description || '',
+    entityCode: line.entityCode,
+  };
+  
+  // Preserve the ID if it exists
+  if (line.id) {
+    serverLine.id = line.id;
+  }
+  
+  // Copy any other properties
+  Object.keys(line).forEach(key => {
+    if (
+      !['id', 'accountId', 'description', 'entityCode', 'debit', 'credit'].includes(key)
+    ) {
+      serverLine[key] = line[key];
+    }
+  });
+  
+  // Determine type and amount
+  if (debit > 0) {
+    serverLine.type = 'debit';
+    serverLine.amount = debit;
+  } else if (credit > 0) {
+    serverLine.type = 'credit';
+    serverLine.amount = credit;
+  } else {
+    // Default to debit with zero amount if both are empty
+    serverLine.type = 'debit';
+    serverLine.amount = 0;
+  }
+  
+  return serverLine;
+}
+
+/**
+ * Convert a journal entry line from server format (type/amount) to client format (debit/credit)
+ * 
+ * @param line The journal entry line in server format
+ * @returns The journal entry line in client format
+ */
+export function convertToClientFormat(line: ServerFormatLine): ClientFormatLine {
+  const clientLine: ClientFormatLine = {
+    accountId: line.accountId,
+    description: line.description || '',
+    entityCode: line.entityCode || '',
+    debit: '',
+    credit: '',
+  };
+  
+  // Preserve the ID if it exists
+  if (line.id) {
+    clientLine.id = line.id;
+  }
+  
+  // Copy any other properties
+  Object.keys(line).forEach(key => {
+    if (
+      !['id', 'accountId', 'description', 'entityCode', 'type', 'amount'].includes(key)
+    ) {
+      clientLine[key] = line[key];
+    }
+  });
+  
+  // Set debit or credit field
+  if (line.type === 'debit' && line.amount !== undefined) {
+    clientLine.debit = String(line.amount);
+  } else if (line.type === 'credit' && line.amount !== undefined) {
+    clientLine.credit = String(line.amount);
+  }
+  
+  return clientLine;
+}
+
+/**
+ * Process an array of journal entry lines for API submission
+ * Converts from client format to server format
+ * 
+ * @param lines Array of journal entry lines in client format
+ * @returns Array of journal entry lines in server format
+ */
+export function processLinesForSubmission(lines: ClientFormatLine[]): ServerFormatLine[] {
+  return lines
+    .filter(line => {
+      const debit = getDebit(line);
+      const credit = getCredit(line);
+      return line.accountId && (debit > 0 || credit > 0);
+    })
+    .map(convertToServerFormat);
 }
