@@ -417,99 +417,28 @@ function Router() {
         </AppLayout>
       } />
 
-      {/* Legacy journal entries routes - redirect to the new hierarchical pattern */}
+      {/* Legacy journal entries routes - render with simple redirects */}
       <Route path="/journal-entries" element={
         <AppLayout>
-          <ProtectedRoute component={() => {
-            // Get entities from the context
-            const { entities } = useEntity();
-            const navigate = useNavigate();
-
-            useEffect(() => {
-              // Pick the first available entity or redirect to dashboard if none
-              if (entities && Array.isArray(entities) && entities.length > 0) {
-                const entity = entities[0];
-                navigate(`/clients/${entity.clientId}/entities/${entity.id}/journal-entries`, { replace: true });
-              } else {
-                navigate('/dashboard', { replace: true });
-              }
-            }, [entities, navigate]);
-
-            return <div className="flex items-center justify-center h-full">
-              <p className="text-lg">Redirecting to journal entries...</p>
-            </div>;
-          }} />
+          <ProtectedRoute component={JournalEntries} />
         </AppLayout>
       } />
       
-      {/* Additional legacy journal entries routes */}
       <Route path="/journal-entries/:id" element={
         <AppLayout>
-          <ProtectedRoute component={() => {
-            const { id } = useParams();
-            const { entities } = useEntity();
-            const navigate = useNavigate();
-
-            useEffect(() => {
-              // Pick the first available entity or redirect to dashboard if none
-              if (entities && Array.isArray(entities) && entities.length > 0) {
-                const entity = entities[0];
-                navigate(`/clients/${entity.clientId}/entities/${entity.id}/journal-entries/${id}`, { replace: true });
-              } else {
-                navigate('/dashboard', { replace: true });
-              }
-            }, [entities, navigate, id]);
-
-            return <div className="flex items-center justify-center h-full">
-              <p className="text-lg">Redirecting to journal entry details...</p>
-            </div>;
-          }} />
+          <ProtectedRoute component={JournalEntryDetail} />
         </AppLayout>
       } />
       
       <Route path="/journal-entries/:id/edit" element={
         <AppLayout>
-          <ProtectedRoute component={() => {
-            const { id } = useParams();
-            const { entities } = useEntity();
-            const navigate = useNavigate();
-
-            useEffect(() => {
-              if (entities && Array.isArray(entities) && entities.length > 0) {
-                const entity = entities[0];
-                navigate(`/clients/${entity.clientId}/entities/${entity.id}/journal-entries/${id}/edit`, { replace: true });
-              } else {
-                navigate('/dashboard', { replace: true });
-              }
-            }, [entities, navigate, id]);
-
-            return <div className="flex items-center justify-center h-full">
-              <p className="text-lg">Redirecting to edit journal entry...</p>
-            </div>;
-          }} />
+          <ProtectedRoute component={NewJournalEntry} />
         </AppLayout>
       } />
       
       <Route path="/journal-entries/:id/delete" element={
         <AppLayout>
-          <ProtectedRoute component={() => {
-            const { id } = useParams();
-            const { entities } = useEntity();
-            const navigate = useNavigate();
-
-            useEffect(() => {
-              if (entities && Array.isArray(entities) && entities.length > 0) {
-                const entity = entities[0];
-                navigate(`/clients/${entity.clientId}/entities/${entity.id}/journal-entries/${id}/delete`, { replace: true });
-              } else {
-                navigate('/dashboard', { replace: true });
-              }
-            }, [entities, navigate, id]);
-
-            return <div className="flex items-center justify-center h-full">
-              <p className="text-lg">Redirecting to delete journal entry...</p>
-            </div>;
-          }} />
+          <ProtectedRoute component={DeleteJournalEntry} />
         </AppLayout>
       } />
       
