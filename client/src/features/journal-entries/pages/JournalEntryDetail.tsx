@@ -973,12 +973,12 @@ function JournalEntryDetail() {
                 id: entryId,
                 status: 'pending_approval',
                 // EXPLICITLY include these critical fields to avoid data loss
-                date: journalEntry.date,
-                description: journalEntry.description,
-                referenceNumber: journalEntry.referenceNumber,
-                journalType: journalEntry.journalType || 'JE',
-                entityId: journalEntry.entityId,
-                clientId: journalEntry.clientId,
+                date: entry.date,
+                description: entry.description,
+                referenceNumber: entry.referenceNumber,
+                journalType: entry.journalType || 'JE',
+                entityId: entry.entityId,
+                clientId: entry.clientId,
                 // EXPLICITLY include lines to ensure complete data preservation
                 lines: formattedLines
               }, {
@@ -1034,8 +1034,8 @@ function JournalEntryDetail() {
               // Update status to approved
               // Format lines to ensure proper data structure
               const formattedLines = [];
-              if (journalEntry.lines) {
-                for (const line of journalEntry.lines) {
+              if (entry.lines) {
+                for (const line of entry.lines) {
                   if (isClientFormatLine(line)) {
                     // Check if it's a debit or credit line
                     if (parseFloat(line.debit) > 0) {
@@ -1074,12 +1074,12 @@ function JournalEntryDetail() {
                 id: entryId,
                 status: 'approved',
                 // EXPLICITLY include these critical fields to avoid data loss
-                date: journalEntry.date,
-                description: journalEntry.description,
-                referenceNumber: journalEntry.referenceNumber,
-                journalType: journalEntry.journalType || 'JE',
-                entityId: journalEntry.entityId,
-                clientId: journalEntry.clientId,
+                date: entry.date,
+                description: entry.description,
+                referenceNumber: entry.referenceNumber,
+                journalType: entry.journalType || 'JE',
+                entityId: entry.entityId,
+                clientId: entry.clientId,
                 // EXPLICITLY include lines to ensure complete data preservation
                 lines: formattedLines
               }, {
