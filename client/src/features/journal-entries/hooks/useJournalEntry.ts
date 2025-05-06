@@ -183,6 +183,10 @@ export function useJournalEntry() {
       if (clientId && entityId && id) {
         // Invalidate journal entry and journal entries queries using hierarchical URL pattern
         queryClient.invalidateQueries({ 
+          queryKey: ["journal-entry", id]
+        });
+        
+        queryClient.invalidateQueries({ 
           queryKey: [getJournalEntryUrl(clientId, entityId, id)]
         });
         
