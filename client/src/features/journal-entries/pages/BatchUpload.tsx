@@ -174,12 +174,17 @@ function BatchUpload() {
   const importJournalEntries = useMutation({
     mutationFn: async () => {
       if (!file || !currentEntity) return null;
+      if (!currentEntity.clientId) {
+        throw new Error('Client ID is required for import');
+      }
       
       const formData = new FormData();
       formData.append('file', file);
       formData.append('entityId', currentEntity.id.toString());
       
-      const response = await apiRequest(`/api/journal-entries/import-batch`, {
+      // Use hierarchical URL pattern
+      const importUrl = `${getJournalEntriesBaseUrl(currentEntity.clientId, currentEntity.id)}/import-batch`;
+      const response = await apiRequest(importUrl, {
         method: 'POST',
         data: formData,
       });
@@ -236,7 +241,13 @@ function BatchUpload() {
   
   // Handle back button click
   const handleBack = () => {
-    navigate('/journal-entries');
+    if (!currentEntity?.clientId) {
+      // If no current entity or client, fallback to home
+      navigate('/');
+      return;
+    }
+    // Navigate to journal entries list using hierarchical URL
+    navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`);
   };
   
   // Handle navigation between steps
@@ -514,7 +525,11 @@ function BatchUpload() {
                             <TableRow
                               key={index}
                               className="cursor-pointer hover:bg-gray-50"
-                              onClick={() => navigate(`/journal-entries/${entry.id}`)}
+                              onClick={() => {
+                                if (currentEntity?.clientId) {
+                                  navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries/${entry.id}`);
+                                }
+                              }}
                             >
                               <TableCell className="font-medium">#{entry.id}</TableCell>
                               <TableCell>{entry.date}</TableCell>
@@ -544,7 +559,13 @@ function BatchUpload() {
                     Upload Another File
                   </Button>
                   
-                  <Button onClick={() => navigate('/journal-entries')}>
+                  <Button onClick={() => {
+                    if (currentEntity?.clientId) {
+                      navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`);
+                    } else {
+                      navigate('/');
+                    }
+                  }}>
                     Go to Journal Entries
                   </Button>
                 </div>

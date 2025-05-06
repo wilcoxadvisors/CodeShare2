@@ -5,6 +5,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useEntity } from '@/contexts/EntityContext';
 import { JournalEntryStatus } from '@shared/schema';
 import { getTodayYMD } from '@/utils/dateUtils';
+import { 
+  getJournalEntriesBaseUrl, 
+  getJournalEntryUrl,
+} from '@/api/urlHelpers';
 
 // Define line item interface for journal entry lines
 export interface JournalLine {
@@ -60,7 +64,14 @@ export function useJournalEntry() {
   const createJournalEntry = useMutation({
     mutationFn: async (journalEntry: JournalEntry) => {
       console.log('DEBUG: Creating journal entry:', JSON.stringify(journalEntry, null, 2));
-      return await apiRequest('/api/journal-entries', {
+      
+      if (!journalEntry.clientId || !journalEntry.entityId) {
+        throw new Error('Client ID and Entity ID are required for journal entry creation');
+      }
+      
+      // Use hierarchical URL pattern
+      const url = getJournalEntriesBaseUrl(journalEntry.clientId, journalEntry.entityId);
+      return await apiRequest(url, {
         method: 'POST',
         data: journalEntry
       });
@@ -144,7 +155,14 @@ export function useJournalEntry() {
       console.log('DEBUG: Updating journal entry with ID:', id);
       console.log('DEBUG: Update data:', JSON.stringify(payload, null, 2));
       
-      return await apiRequest(`/api/journal-entries/${id}`, {
+      // Ensure we have clientId and entityId for constructing hierarchical URL
+      if (!payload.clientId || !payload.entityId) {
+        throw new Error('Client ID and Entity ID are required for journal entry update');
+      }
+      
+      // Use hierarchical URL pattern
+      const url = getJournalEntryUrl(payload.clientId, payload.entityId, id);
+      return await apiRequest(url, {
         method: 'PUT',
         data: payload
       });
@@ -179,8 +197,14 @@ export function useJournalEntry() {
   });
   
   const deleteJournalEntry = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/journal-entries/${id}`, {
+    mutationFn: async (params: { id: number, clientId: number, entityId: number }) => {
+      if (!params.clientId || !params.entityId) {
+        throw new Error('Client ID and Entity ID are required for journal entry deletion');
+      }
+      
+      // Use hierarchical URL pattern
+      const url = getJournalEntryUrl(params.clientId, params.entityId, params.id);
+      return await apiRequest(url, {
         method: 'DELETE'
       });
     },
