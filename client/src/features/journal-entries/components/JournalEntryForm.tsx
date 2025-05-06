@@ -1585,12 +1585,8 @@ function JournalEntryForm({
         description: "The journal entry has been updated successfully.",
       });
 
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/journal-entries`],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/general-ledger`],
-      });
+      // Use our helper function to invalidate queries with hierarchical URL patterns
+      invalidateJournalEntryQueries();
       onSubmit();
     },
     onError: (error: any) => {
