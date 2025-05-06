@@ -32,6 +32,7 @@ import ConsultationFormModal from "@/components/ConsultationFormModal";
 import LoginModal from "@/components/LoginModal";
 import Redirect from "@/components/Redirect";
 import DeleteJournalEntry from "@/features/journal-entries/pages/DeleteJournalEntry";
+import EntityLayout from "@/components/layout/EntityLayout";
 
 // Public website header component
 const PublicHeader: React.FC = () => {

@@ -1,38 +1,45 @@
-import React from 'react';
-import { Outlet, useParams, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import AppLayout from '@/components/AppLayout';
 
-export default function EntityLayout() {
-  const { clientId, entityId } = useParams();
-  const { entities, setCurrentEntity } = useEntity();
+/**
+ * Wraps every "entity-scoped" route.
+ *  – Reads :clientId / :entityId from the URL
+ *  – Pushes the matching entity into EntityContext
+ *  – Shows child routes (<Outlet/>) inside the normal AppLayout shell
+ */
+const EntityLayout: React.FC = () => {
+  const { clientId: clientIdStr, entityId: entityIdStr } =
+    useParams<'clientId' | 'entityId'>();
+  const clientId = Number(clientIdStr);
+  const entityId = Number(entityIdStr);
 
-  // On first mount or when params change, set the current entity from the URL
-  React.useEffect(() => {
-    if (clientId && entityId) {
-      console.log("EntityLayout: Looking for entity with ID:", entityId, "and clientId:", clientId);
-      const match = entities.find(
-        e => e.id.toString() === entityId && e.clientId.toString() === clientId
-      );
-      
-      if (match) {
-        console.log("EntityLayout: Found entity, setting current entity:", match.name);
-        setCurrentEntity(match);
-      } else {
-        console.log("EntityLayout: Entity not found for ID:", entityId, "and clientId:", clientId);
-      }
+  const { currentEntity, entities, setCurrentEntity } = useEntity();
+  const navigate = useNavigate();
+
+  /* On mount / param-change: ensure the EntityContext is set */
+  useEffect(() => {
+    if (!clientId || !entityId) return;                // bad URL
+
+    // Already correct – no work.
+    if (currentEntity?.id === entityId) return;
+
+    const match = entities.find(e => e.id === entityId && e.clientId === clientId);
+    if (match) {
+      setCurrentEntity(match);
+    } else {
+      // No such entity for this user – bounce them back somewhere safe.
+      navigate('/dashboard', { replace: true });
     }
-  }, [clientId, entityId, entities, setCurrentEntity]);
-
-  // If no client or entity ID in URL, redirect to dashboard
-  if (!clientId || !entityId) {
-    console.log("EntityLayout: Missing clientId or entityId, redirecting to dashboard");
-    return <Navigate to="/" replace />;
-  }
+  }, [clientId, entityId, entities, currentEntity, setCurrentEntity, navigate]);
 
   return (
     <AppLayout>
+      {/* children routes render here */}
       <Outlet />
     </AppLayout>
   );
-}
+};
+
+export default EntityLayout;
