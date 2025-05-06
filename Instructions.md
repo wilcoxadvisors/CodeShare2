@@ -1,6 +1,7 @@
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
 ## Recent Changelog:
+- **2025-05-06**: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
 - **2025-05-01**: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
 - **2025-04-29**: Added Date & Attachment Reliability Guards; documented multi-file attachment CRUD test coverage
 
@@ -211,10 +212,12 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 
 #### Next Immediate Task:
 
+1. Finish Journal-Entry Attachment bug #7 (hierarchical routes + Cypress spec)
+2. Dimensions & Smart Rules (Task B.2.1)
+3. Batch Journal-Entry Upload v2 (depends on Dimensions)
+
 - 📝 Review UI/UX verification document for content management components.
-- 📝 Focus on debugging and completing Journal Entry File Attachment functionality (#7).
 - 📝 Begin AI integration planning for blog content generation.
-- 📝 After Journal Entry File Attachments are complete, implement **Task B.2.1: Dimensions & Smart Rules** and then proceed to Batch Journal Entry uploads.
 - 📝 After the Journal Entry feature set is complete, move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
 ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
@@ -668,6 +671,7 @@ Throughout every task explicitly:
 - Continuous refactoring explicitly evident in PRs/code changes.
 - All new and existing modules clearly documented explicitly.
 - Regular execution of unused code detection scripts (ts-prune, knip).
+- Quick-cleanup scripts/tests relocation passes — repo root is tidy.
 
 ## 📚 Appendix – Dimensions & Smart Events Glossary
 
