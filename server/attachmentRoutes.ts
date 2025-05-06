@@ -6,9 +6,10 @@ import rateLimit from 'express-rate-limit';
 import { journalEntryStorage } from './storage/journalEntryStorage';
 import { auditLogStorage } from './storage/auditLogStorage';
 import { getFileStorage } from './storage/fileStorage';
-import { journalEntryFileBlobs } from '../shared/schema';
+import { journalEntryFileBlobs, journalEntryFiles } from '../shared/schema';
 import { db } from './db';
 import { eq } from 'drizzle-orm';
+import fs from 'fs';
 
 /**
  * Register hierarchical attachment routes for journal entries
