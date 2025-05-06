@@ -174,14 +174,19 @@ export function useJournalEntry() {
         description: 'Journal entry updated successfully',
       });
       
-      // Invalidate journal entry and journal entries queries
-      queryClient.invalidateQueries({ 
-        queryKey: [`/api/journal-entries/${variables.id}`]
-      });
+      // Get clientId and entityId from variables
+      const clientId = variables.clientId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.clientId : null);
+      const entityId = variables.entityId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.entityId : null);
+      const id = variables.id;
       
-      if (currentEntity?.id) {
+      if (clientId && entityId && id) {
+        // Invalidate journal entry and journal entries queries using hierarchical URL pattern
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
+          queryKey: [getJournalEntryUrl(clientId, entityId, id)]
+        });
+        
+        queryClient.invalidateQueries({ 
+          queryKey: [getJournalEntriesBaseUrl(clientId, entityId)]
         });
       }
       
@@ -208,18 +213,16 @@ export function useJournalEntry() {
         method: 'DELETE'
       });
     },
-    onSuccess: (_, id) => {
+    onSuccess: (_, params) => {
       toast({
         title: 'Success',
         description: 'Journal entry deleted successfully',
       });
       
-      // Invalidate journal entries queries
-      if (currentEntity?.id) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
-        });
-      }
+      // Invalidate journal entries queries using hierarchical URL pattern
+      queryClient.invalidateQueries({ 
+        queryKey: [getJournalEntriesBaseUrl(params.clientId, params.entityId)]
+      });
     },
     onError: (error: any) => {
       // Check for different types of errors
@@ -275,29 +278,34 @@ export function useJournalEntry() {
   
   // Post journal entry 
   const postJournalEntry = useMutation({
-    mutationFn: async (id: number) => {
-      console.log('DEBUG: Posting journal entry with ID:', id);
-      return await apiRequest(`/api/journal-entries/${id}/post`, {
+    mutationFn: async (params: { id: number, clientId: number, entityId: number }) => {
+      console.log('DEBUG: Posting journal entry with ID:', params.id);
+      
+      if (!params.clientId || !params.entityId) {
+        throw new Error('Client ID and Entity ID are required for posting a journal entry');
+      }
+      
+      // Use hierarchical URL pattern
+      const url = `${getJournalEntryUrl(params.clientId, params.entityId, params.id)}/post`;
+      return await apiRequest(url, {
         method: 'POST'
       });
     },
-    onSuccess: (data, id) => {
+    onSuccess: (data, params) => {
       console.log('DEBUG: Post success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry posted successfully',
       });
       
-      // Invalidate journal entry and journal entries queries
+      // Invalidate journal entry and journal entries queries using hierarchical URL pattern
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/journal-entries/${id}`]
+        queryKey: [getJournalEntryUrl(params.clientId, params.entityId, params.id)]
       });
       
-      if (currentEntity?.id) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
-        });
-      }
+      queryClient.invalidateQueries({ 
+        queryKey: [getJournalEntriesBaseUrl(params.clientId, params.entityId)]
+      });
       
       return data.entry; // Changed from data.journalEntry to data.entry to match server response
     },
