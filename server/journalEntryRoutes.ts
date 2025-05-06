@@ -1117,6 +1117,35 @@ export function registerJournalEntryRoutes(app: Express) {
   /**
    * Get journal entries for a specific entity
    */
+  /**
+   * Legacy GET /api/entities/:entityId/journal-entries route with auto-redirect
+   * This redirects to the new hierarchical pattern
+   */
+  app.get('/api/entities/:entityId/journal-entries', (req, res, next) => {
+    const entityId = req.params.entityId;
+    
+    // Skip if this is a test request or no redirection is needed
+    if (req.query.skipRedirect === 'true') {
+      return next();
+    }
+    
+    // Get client ID from entity ID and redirect
+    getClientIdFromEntityId(parseInt(entityId, 10)).then(clientId => {
+      if (!clientId) {
+        return res.status(404).json({ message: 'Entity not found' });
+      }
+      console.log(`DEBUG: Redirecting legacy journal entry request to hierarchical URL pattern for entity ${entityId} under client ${clientId}`);
+      res.redirect(307, `/api/clients/${clientId}/entities/${entityId}/journal-entries`);
+    }).catch(error => {
+      console.error('Error during redirect:', error);
+      next();
+    });
+  });
+  
+  /**
+   * Legacy GET /api/entities/:entityId/journal-entries route (fallback handler)
+   * This only runs if the redirect above is skipped or fails
+   */
   app.get('/api/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
     
@@ -1239,6 +1268,45 @@ export function registerJournalEntryRoutes(app: Express) {
       throw error;
     }
   }));
+  
+  /**
+   * ---------------------------------------------------------------------------
+   *  NEW 3-level list route
+   *    GET /api/clients/:clientId/entities/:entityId/journal-entries
+   * ---------------------------------------------------------------------------
+   */
+  app.get(
+    '/api/clients/:clientId/entities/:entityId/journal-entries',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId)) {
+        return throwBadRequest('Invalid client or entity ID');
+      }
+
+      // ✔️ Optional guard: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      const entries = await journalEntryStorage.listJournalEntries({
+        entityId,
+        includeLines: true,          // preserve old behavior
+        includeFiles: true,
+      });
+
+      res.json({ data: entries });
+    })
+  );
   
   // Legacy route for creating journal entries for backward compatibility
   app.post('/api/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
