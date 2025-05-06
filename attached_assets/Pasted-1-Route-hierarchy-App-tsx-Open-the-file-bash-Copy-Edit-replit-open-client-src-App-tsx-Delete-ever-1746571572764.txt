@@ -1,0 +1,144 @@
+1 Route hierarchy (App.tsx)
+Open the file
+
+bash
+Copy
+Edit
+replit open client/src/App.tsx
+Delete every “loose” JE route.
+Remove anything that looks like:
+
+jsx
+Copy
+Edit
+<Route path="/journal-entries" … />
+<Route path="/journal-entries/:id" … />
+<Route path="/journal-entries/:id/edit" … />
+Paste this single block inside <Routes> (usually just below the <ProtectedRoute> for your dashboard):
+
+jsx
+Copy
+Edit
+<Route path="clients/:clientId/entities/:entityId/*" element={<EntityLayout />}>
+  <Route path="journal-entries" element={<JournalEntries />} />
+  <Route path="journal-entries/:id" element={<JournalEntryDetail />} />
+  <Route path="journal-entries/:id/edit" element={<JournalEntryForm editMode />} />
+  <Route path="journal-entries/:id/delete" element={<DeleteJournalEntry />} />
+</Route>
+Save (Ctrl + S).
+
+2 Search & fix every link / navigate
+bash
+Copy
+Edit
+grep -R "journal-entries" client/src | grep -v ".d.ts"
+For each result:
+
+Make sure the path contains all three IDs
+
+js
+Copy
+Edit
+`/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}`
+If it doesn’t, edit the file and fix it.
+
+3 Drop-down that closes (JournalEntryForm.tsx)
+Open
+
+bash
+Copy
+Edit
+replit open client/src/features/journal-entries/components/JournalEntryForm.tsx
+Find the account column (search for /* Combobox for searchable account dropdown */).
+Replace the entire <Popover …> block with:
+
+jsx
+Copy
+Edit
+<Select
+  value={line.accountId?.toString() ?? ''}
+  onValueChange={v => handleLineChange(index, 'accountId', v)}
+>
+  <SelectTrigger className="w-[230px]">
+    {getAccountLabel(line.accountId)}
+  </SelectTrigger>
+
+  <SelectContent>
+    {accounts.map(a => (
+      <SelectItem key={a.id} value={a.id.toString()}>
+        {a.accountCode} – {a.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+Delete any now-unused state like accountOpen, expandedAccounts, searchQuery, plus the old Popover / Command imports.
+
+4 Debit / Credit cells (JournalEntryDetail.tsx)
+Open
+
+bash
+Copy
+Edit
+replit open client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+Locate the two <TableCell className="text-right"> … </TableCell> that render line amounts.
+Replace them with:
+
+jsx
+Copy
+Edit
+<TableCell className="text-right">
+  {getDebit(line) ? formatCurrency(getDebit(line)) : ''}
+</TableCell>
+<TableCell className="text-right">
+  {getCredit(line) ? formatCurrency(getCredit(line)) : ''}
+</TableCell>
+5 Stop silent redirects (queryClient.ts)
+Open
+
+bash
+Copy
+Edit
+replit open client/src/lib/queryClient.ts
+Immediately after the fetch call returns (const res = await fetch(...);) add:
+
+ts
+Copy
+Edit
+// ─── Handle backend login redirects (HTML) ────────────────────────────────
+if (res.redirected) {
+  // treat the same as 401 so UI can bounce to /login
+  throw new Error('Unauthenticated – redirect');
+}
+Save.
+
+6 Delete leftover plain routes
+Run once to be sure no stray routes remain:
+
+bash
+Copy
+Edit
+grep -R 'path="/journal-entries' client/src
+If the command prints anything, delete those lines (they’re the old fallback routes).
+
+7 Re-start the dev server
+bash
+Copy
+Edit
+npm run dev
+# or `yarn dev` / `pnpm dev` depending on the repo
+You should now be able to:
+
+Browse to
+http://localhost:5173/clients/251/entities/392/journal-entries
+(change IDs as needed),
+
+Click a JE row → detail page opens (no 404),
+
+Hit Edit → /edit form loads with client/entity context,
+
+Pick an Account → dropdown auto-closes,
+
+Debit / Credit amounts show in the grid,
+
+An expired session triggers the “Unauthenticated – redirect” error instead of HTML garbage.
+
