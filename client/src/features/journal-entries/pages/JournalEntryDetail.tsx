@@ -548,12 +548,23 @@ function JournalEntryDetail() {
   
   // API might return the journal entry directly or wrapped in a journalEntry property
   // The explicit cast and nullish coalescing ensure we get a properly typed object or undefined
-  const entry = data ? 
-    (data && typeof data === 'object' && 'journalEntry' in data ? (data.journalEntry as JournalEntry) : (data as JournalEntry)) 
-    : undefined;
+  const entry = React.useMemo(() => {
+    if (!data) return undefined;
+    
+    console.log("DEBUG - JournalEntryDetail - Data type:", typeof data);
+    console.log("DEBUG - JournalEntryDetail - Data structure:", data);
+    
+    // Check if entry is nested inside journalEntry property
+    if (typeof data === 'object' && 'journalEntry' in data) {
+      return data.journalEntry as JournalEntry;
+    }
+    
+    // Or if it's directly the journal entry object
+    return data as JournalEntry;
+  }, [data]);
   
-  console.log("DEBUG - JournalEntryDetail - Data type:", typeof data);
-  console.log("DEBUG - JournalEntryDetail - Data structure:", data);
+  // Log entry at render for debugging
+  console.log('entry at render', entry);
   console.log("DEBUG - JournalEntryDetail - Using entry:", entry);
   
   // Log specific properties to help track format issues

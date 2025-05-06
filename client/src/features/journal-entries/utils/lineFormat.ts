@@ -25,17 +25,44 @@ export type JournalEntryLine = ClientFormatLine | ServerFormatLine;
 
 /** Returns true if the line is in the legacy client format */
 export function isClientFormatLine(line: any): line is ClientFormatLine {
-  return line && 
-         (typeof line.debit !== 'undefined' || typeof line.credit !== 'undefined') &&
-         typeof line.accountId !== 'undefined';
+  if (!line) return false;
+  
+  // More flexible check for debit/credit properties
+  const hasDebitOrCredit = (
+    'debit' in line || 
+    'credit' in line ||
+    (typeof line.debit !== 'undefined') || 
+    (typeof line.credit !== 'undefined')
+  );
+  
+  // Check for accountId in any form
+  const hasAccountId = (
+    'accountId' in line || 
+    (typeof line.accountId !== 'undefined')
+  );
+  
+  return hasDebitOrCredit && hasAccountId;
 }
 
 /** Returns true if the line is in the new compact format */
 export function isServerFormatLine(line: any): line is ServerFormatLine {
-  return line && 
-         typeof line.type !== 'undefined' &&
-         typeof line.amount !== 'undefined' &&
-         typeof line.accountId !== 'undefined';
+  if (!line) return false;
+  
+  // More flexible check for type/amount properties
+  const hasTypeAndAmount = (
+    'type' in line && 
+    'amount' in line &&
+    (typeof line.type !== 'undefined') &&
+    (typeof line.amount !== 'undefined') 
+  );
+  
+  // Check for accountId in any form
+  const hasAccountId = (
+    'accountId' in line || 
+    (typeof line.accountId !== 'undefined')
+  );
+  
+  return hasTypeAndAmount && hasAccountId;
 }
 
 /** Helper function to safely parse a string amount, handling commas and currency symbols */
