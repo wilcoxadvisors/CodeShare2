@@ -1,0 +1,111 @@
+1 Login / session keeps falling back to 401
+What we see
+
+bash
+Copy
+Edit
+api/auth/me  ⟶ 401 (Unauthorized)
+Every hard-refresh hits /api/auth/me first.
+When the browser doesn’t send a valid session cookie you get 401 and the React
+app initialises in a half-logged-out state.
+As soon as you perform the first state-changing request (e.g. POST a journal
+entry) you’re authenticated again because that request does include the
+cookie.
+
+Why?
+
+On Replit ( *.janeway.replit.dev ) we’re on HTTPS but behind a proxy.
+The session cookie (sid) is currently issued with
+
+js
+Copy
+Edit
+cookie: {
+  secure: true,
+  sameSite: 'strict'
+}
+Chrome blocks that cookie on the very first request because
+sameSite=strict + navigation from about:blank → app origin looks like a
+cross-site context.
+
+One-line fix
+
+Relax the SameSite attribute to lax.
+
+ts
+Copy
+Edit
+// server/authSession.ts  (or wherever express-session is initialised)
+app.use(
+  session({
+    /* …other opts… */
+    cookie: {
+      secure: true,
+      sameSite: 'lax',   // was 'strict'
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    }
+  })
+);
+That keeps CSRF protection (lax still blocks most cross-site POSTs) but allows
+the cookie on top-level navigations.
+
+2 Journal-entry list call still 404 → list is empty
+FE now calls
+
+ruby
+Copy
+Edit
+GET /api/clients/:cId/entities/:eId/journal-entries
+but the backend never got the matching route.
+Create (POST) works, list (GET) doesn’t.
+
+Add this just after the existing legacy list endpoint:
+
+ts
+Copy
+Edit
+// server/journalEntryRoutes.ts
+app.get(
+  '/api/clients/:clientId/entities/:entityId/journal-entries',
+  isAuthenticated,
+  asyncHandler(async (req, res) => {
+    const clientId  = Number(req.params.clientId);
+    const entityId  = Number(req.params.entityId);
+
+    if (!clientId || !entityId) {
+      return throwBadRequest('Invalid client / entity');
+    }
+
+    // optional sanity-check that entity belongs to client
+    const entity = await entityStorage.getEntity(entityId);
+    if (!entity || entity.clientId !== clientId) {
+      return throwNotFound('Entity not found for this client');
+    }
+
+    const entries = await journalEntryStorage.listJournalEntries({
+      entityId,
+      includeLines: true,
+      includeFiles: true
+    });
+
+    res.json({ data: entries });
+  })
+);
+(If you want to keep the old FE working, add a 307 redirect from
+/api/entities/:entityId/journal-entries → new path, same as we did for file
+uploads.)
+
+3 Frontend query invalidation is now correct
+No further changes needed there—the blank list was purely because the GET
+above returned 404.
+
+Next steps to test
+Restart the server after changing the cookie settings and adding the
+GET route.
+
+Hard-refresh the browser (Shift-Reload).
+You should stay authenticated (no 401) and past JEs should load
+immediately.
+
+Create a new JE → it should appear in the list without refreshing.
