@@ -44,6 +44,10 @@ import {
   Download
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { 
+  getJournalEntriesBaseUrl, 
+  getJournalEntriesBatchTemplateUrl 
+} from '@/api/urlHelpers';
 
 const ACCEPTED_FILE_TYPES = '.csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel';
 
@@ -111,6 +115,9 @@ function BatchUpload() {
   const validateFile = useMutation({
     mutationFn: async () => {
       if (!file || !currentEntity) return null;
+      if (!currentEntity.clientId) {
+        throw new Error('Client ID is required for validation');
+      }
       
       setIsValidating(true);
       
@@ -118,7 +125,9 @@ function BatchUpload() {
       formData.append('file', file);
       formData.append('entityId', currentEntity.id.toString());
       
-      const response = await apiRequest(`/api/journal-entries/validate-batch`, {
+      // Use hierarchical URL pattern
+      const validateUrl = `${getJournalEntriesBaseUrl(currentEntity.clientId, currentEntity.id)}/validate-batch`;
+      const response = await apiRequest(validateUrl, {
         method: 'POST',
         data: formData,
       });
@@ -212,8 +221,17 @@ function BatchUpload() {
   
   // Handle download template
   const handleDownloadTemplate = () => {
-    // Trigger download of CSV template
-    window.location.href = '/api/journal-entries/download-template';
+    if (!currentEntity?.clientId || !currentEntity?.id) {
+      toast({
+        title: 'Error',
+        description: 'Client ID and Entity ID are required for template download',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Trigger download of CSV template using hierarchical URL
+    window.location.href = getJournalEntriesBatchTemplateUrl(currentEntity.clientId, currentEntity.id);
   };
   
   // Handle back button click

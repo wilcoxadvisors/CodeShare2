@@ -93,6 +93,13 @@ export function getBatchUploadUrl(clientId: number | string, entityId: number | 
   return `${getJournalEntriesBaseUrl(clientId, entityId)}/batch`;
 }
 
+/**
+ * Constructs the URL for downloading a batch upload template
+ */
+export function getJournalEntriesBatchTemplateUrl(clientId: number | string, entityId: number | string): string {
+  return `${getJournalEntriesBaseUrl(clientId, entityId)}/download-template`;
+}
+
 // Legacy URL helpers for backward compatibility
 // These will return a 302 redirect with a Deprecation header
 
