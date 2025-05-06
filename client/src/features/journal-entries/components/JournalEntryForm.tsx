@@ -1022,10 +1022,26 @@ function JournalEntryForm({
         });
       }
     } else {
-      // Fall back to entity-only pattern when client ID is not available
+      // Even without a client ID, we should use the hierarchical pattern by getting all possible keys
+      // This ensures we invalidate all queries that might match
+      
+      // First try to get all entities for this entity ID, regardless of client
       queryClient.invalidateQueries({
         queryKey: [`/api/entities/${entityId}/journal-entries`],
+        exact: false
       });
+      
+      // Also invalidate any client-specific paths that might exist
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients`],
+        predicate: (query) => {
+          const queryKey = Array.isArray(query.queryKey) ? query.queryKey[0] : '';
+          return typeof queryKey === 'string' && 
+                 queryKey.includes(`/entities/${entityId}/journal-entries`);
+        }
+      });
+      
+      // Invalidate general ledger as well
       queryClient.invalidateQueries({
         queryKey: [`/api/entities/${entityId}/general-ledger`],
       });
