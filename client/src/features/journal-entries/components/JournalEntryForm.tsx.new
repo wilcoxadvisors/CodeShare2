@@ -10,8 +10,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { JournalEntryStatus, AccountType } from "@shared/schema";
 import { useJournalEntry } from "../hooks/useJournalEntry";
 import {
-  useJournalEntryFiles,
-  useUploadJournalEntryFile,
+  useAttachmentQueries,
+  useAddJournalEntryFiles,
   useDeleteJournalEntryFile,
 } from "../hooks/attachmentQueries";
 import { 
@@ -66,7 +66,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthentication } from "@/hooks/useAuthentication";
 import { useHookFormMask } from "use-mask-input";
 import { cn } from "@/lib/utils";
 import {
@@ -209,17 +209,13 @@ function AttachmentSection({
   setPendingFilesMetadata,
   onUploadToEntryRef,
 }: AttachmentSectionProps) {
-  // Get the clientId from parent component's props
-  const clientId = 1; // Default to 1 if not available
-  
-  const { data: attachments, isLoading, refetch } = useJournalEntryFiles(
-    journalEntryId,
+  const { data: attachments, isLoading, refetch } = useAttachmentQueries(
     entityId,
-    clientId
+    journalEntryId,
   );
 
   // File upload mutation
-  const uploadFiles = useUploadJournalEntryFile(journalEntryId, entityId, clientId);
+  const addFiles = useAddJournalEntryFiles();
   const deleteFile = useDeleteJournalEntryFile();
 
   // File upload state
@@ -589,7 +585,7 @@ function JournalEntryForm({
   entities = [],
 }: JournalEntryFormProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useAuthentication();
 
   // Post journal entry mutation
   const postJournalEntry = useMutation({
