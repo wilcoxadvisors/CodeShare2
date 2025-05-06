@@ -38,16 +38,49 @@ export function isServerFormatLine(line: any): line is ServerFormatLine {
          typeof line.accountId !== 'undefined';
 }
 
+/** Helper function to safely parse a string amount, handling commas and currency symbols */
+function safeParseAmount(amount: string | number): number {
+  if (typeof amount === 'number') return amount;
+  
+  // Handle null, undefined, or empty string
+  if (!amount) return 0;
+  
+  // Remove common currency symbols, commas, and spaces
+  const cleanedAmount = amount.toString()
+    .replace(/[$€£¥,\s]/g, '');
+  
+  // Parse the cleaned string to a float
+  return parseFloat(cleanedAmount) || 0;
+}
+
 /** Gets the debit amount from a line regardless of format */
 export function getDebit(line: any): number {
-  if (isClientFormatLine(line)) return parseFloat(line.debit) || 0;
-  if (isServerFormatLine(line)) return line.type === 'debit' ? parseFloat(line.amount.toString()) : 0;
-  return 0;
+  if (!line) return 0;
+  
+  if (isClientFormatLine(line)) {
+    return safeParseAmount(line.debit);
+  }
+  
+  if (isServerFormatLine(line)) {
+    return line.type === 'debit' ? safeParseAmount(line.amount) : 0;
+  }
+  
+  // Fallback for legacy or unrecognized formats
+  return typeof line.debit !== 'undefined' ? safeParseAmount(line.debit) : 0;
 }
 
 /** Gets the credit amount from a line regardless of format */
 export function getCredit(line: any): number {
-  if (isClientFormatLine(line)) return parseFloat(line.credit) || 0;
-  if (isServerFormatLine(line)) return line.type === 'credit' ? parseFloat(line.amount.toString()) : 0;
-  return 0;
+  if (!line) return 0;
+  
+  if (isClientFormatLine(line)) {
+    return safeParseAmount(line.credit);
+  }
+  
+  if (isServerFormatLine(line)) {
+    return line.type === 'credit' ? safeParseAmount(line.amount) : 0;
+  }
+  
+  // Fallback for legacy or unrecognized formats
+  return typeof line.credit !== 'undefined' ? safeParseAmount(line.credit) : 0;
 }
