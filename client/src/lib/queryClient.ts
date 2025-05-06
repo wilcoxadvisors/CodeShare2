@@ -46,15 +46,28 @@ export async function apiRequest(
   // Get response data
   let responseData;
   try {
-    // Parse the JSON response if it's not a file download
-    if (response.headers.get('content-type')?.includes('application/json')) {
+    // First check if response is OK (status 200-299)
+    if (!response.ok) {
+      // If not OK, throw an error immediately with status code
+      throw new Error(`API request failed with status ${response.status} ${response.statusText}`);
+    }
+    
+    // Only try to parse JSON if the content-type is application/json
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
       responseData = await response.json();
+      
+      // Additional validation: Check that we actually got a proper JSON response
+      if (responseData === null || typeof responseData !== 'object') {
+        throw new Error('Invalid JSON response: expected an object but got ' + typeof responseData);
+      }
     } else {
+      // For non-JSON responses, just get the text
       responseData = await response.text();
     }
   } catch (error) {
-    console.warn('Failed to parse response data:', error);
-    responseData = {};
+    console.error('Failed to process API response:', error);
+    throw error;
   }
 
   // Create a completely new object with the response properties we need
