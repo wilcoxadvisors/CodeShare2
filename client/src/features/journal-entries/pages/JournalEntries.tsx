@@ -147,7 +147,7 @@ function JournalEntries() {
   const handleRowClick = (id: number) => {
     if (currentEntity?.clientId && currentEntity?.id) {
       // Use hierarchical URL pattern for journal entry detail view
-      navigate(`/journal-entries/${id}`);
+      navigate(`/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries/${id}`);
     } else {
       console.error("Cannot navigate to journal entry detail: Missing client ID or entity ID");
       toast({
