@@ -965,38 +965,13 @@ function JournalEntryDetail() {
             variant="outline" 
             onClick={() => {
               // Update status to pending_approval
-              // Format lines to ensure proper data structure
+              // Format lines to ensure proper data structure using our helper function
               const formattedLines = [];
               if (entry.lines) {
                 for (const line of entry.lines) {
-                  if (isClientFormatLine(line)) {
-                    // Check if it's a debit or credit line
-                    if (parseFloat(line.debit) > 0) {
-                      formattedLines.push({
-                        type: 'debit',
-                        amount: line.debit,
-                        accountId: Number(line.accountId),
-                        entityCode: line.entityCode || null,
-                        description: line.description || null
-                      });
-                    } else if (parseFloat(line.credit) > 0) {
-                      formattedLines.push({
-                        type: 'credit',
-                        amount: line.credit,
-                        accountId: Number(line.accountId),
-                        entityCode: line.entityCode || null,
-                        description: line.description || null
-                      });
-                    }
-                  } else if (isServerFormatLine(line)) {
-                    // Already in server format, just ensure amount is a string
-                    formattedLines.push({
-                      type: line.type,
-                      amount: line.amount.toString(),
-                      accountId: Number(line.accountId),
-                      entityCode: line.entityCode || null,
-                      description: line.description || null
-                    });
+                  const processedLine = processLineForSubmission(line);
+                  if (processedLine) {
+                    formattedLines.push(processedLine);
                   }
                 }
               }
@@ -1066,38 +1041,13 @@ function JournalEntryDetail() {
             variant="outline" 
             onClick={() => {
               // Update status to approved
-              // Format lines to ensure proper data structure
+              // Format lines to ensure proper data structure using our helper function
               const formattedLines = [];
               if (entry.lines) {
                 for (const line of entry.lines) {
-                  if (isClientFormatLine(line)) {
-                    // Check if it's a debit or credit line
-                    if (parseFloat(line.debit) > 0) {
-                      formattedLines.push({
-                        type: 'debit',
-                        amount: line.debit,
-                        accountId: Number(line.accountId),
-                        entityCode: line.entityCode || null,
-                        description: line.description || null
-                      });
-                    } else if (parseFloat(line.credit) > 0) {
-                      formattedLines.push({
-                        type: 'credit',
-                        amount: line.credit,
-                        accountId: Number(line.accountId),
-                        entityCode: line.entityCode || null,
-                        description: line.description || null
-                      });
-                    }
-                  } else if (isServerFormatLine(line)) {
-                    // Already in server format, just ensure amount is a string
-                    formattedLines.push({
-                      type: line.type,
-                      amount: line.amount.toString(),
-                      accountId: Number(line.accountId),
-                      entityCode: line.entityCode || null,
-                      description: line.description || null
-                    });
+                  const processedLine = processLineForSubmission(line);
+                  if (processedLine) {
+                    formattedLines.push(processedLine);
                   }
                 }
               }
