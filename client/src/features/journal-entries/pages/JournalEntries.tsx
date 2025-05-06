@@ -83,19 +83,14 @@ function JournalEntries() {
   const {
     data,
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: entityId && clientId ? [getJournalEntriesBaseUrl(clientId, entityId)] : [],
     enabled: !!entityId && !!clientId,
     retry: 3, // Retry up to 3 times if the query fails
-    onError: (err: any) => {
-      console.error("Journal entries fetch error:", err);
-      toast({
-        title: "Error loading journal entries",
-        description: err.message || "Failed to load journal entries. Please try again.",
-        variant: "destructive"
-      });
-    }
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: false // Don't refetch when window regains focus
   });
   
   useEffect(() => {
@@ -328,7 +323,7 @@ function JournalEntries() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <Card>
           <CardHeader>
-            <CardTitle>Journal Entries for {currentEntity.name}</CardTitle>
+            <CardTitle>Journal Entries for {currentEntity?.name || 'Selected Entity'}</CardTitle>
             <CardDescription>
               View and manage transactions for this entity
             </CardDescription>

@@ -582,15 +582,7 @@ function JournalEntryDetail() {
         ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] 
         : [`/api/journal-entries/${entryId}`] 
       : ['dummy-empty-key'],
-    enabled: !!entryId, // Always enabled if we have an entry ID
-    onError: (error: any) => {
-      console.error("Error fetching journal entry:", error);
-      toast({
-        title: "Error",
-        description: `Could not load journal entry data: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-    }
+    enabled: !!entryId // Always enabled if we have an entry ID
   });
   
   // Define type for a journal entry
