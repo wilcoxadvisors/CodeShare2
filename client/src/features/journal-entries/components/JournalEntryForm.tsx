@@ -1332,12 +1332,7 @@ function JournalEntryForm({
         });
 
         // Even if there's an error, we should continue with the workflow
-        queryClient.invalidateQueries({
-          queryKey: [`/api/entities/${entityId}/journal-entries`],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [`/api/entities/${entityId}/general-ledger`],
-        });
+        invalidateJournalEntryQueries();
         onSubmit();
         return;
       }
@@ -1402,12 +1397,8 @@ function JournalEntryForm({
       setPendingFiles([]);
       setPendingFilesMetadata([]);
 
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/journal-entries`],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [`/api/entities/${entityId}/general-ledger`],
-      });
+      // Use our helper function to invalidate queries
+      invalidateJournalEntryQueries();
       onSubmit();
     },
     onError: (error: any) => {
@@ -1523,12 +1514,7 @@ function JournalEntryForm({
         });
 
         // Even if there's an error, we should continue with the workflow
-        queryClient.invalidateQueries({
-          queryKey: [`/api/entities/${entityId}/journal-entries`],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [`/api/entities/${entityId}/general-ledger`],
-        });
+        invalidateJournalEntryQueries();
         onSubmit();
         return;
       }
