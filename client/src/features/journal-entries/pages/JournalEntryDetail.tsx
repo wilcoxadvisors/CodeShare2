@@ -6,6 +6,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { useJournalEntry, JournalEntry } from '@/features/journal-entries/hooks/useJournalEntry';
+import { 
+  ClientFormatLine, 
+  ServerFormatLine, 
+  JournalEntryLine, 
+  isClientFormatLine, 
+  isServerFormatLine,
+  getDebit,
+  getCredit
+} from '../utils/lineFormat';
 import { ymdToDisplay } from '@/utils/dateUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -1264,55 +1273,7 @@ function JournalEntryDetail() {
     );
   }
   
-  // Type guard to check if the line is in client format (debit/credit)
-  type ClientFormatLine = {
-    debit: string;
-    credit: string;
-    accountId: string | number;
-    entityCode?: string;
-    description?: string;
-  };
-  
-  // Type guard to check if the line is in server format (type/amount)
-  type ServerFormatLine = {
-    type: 'debit' | 'credit';
-    amount: string | number;
-    accountId: string | number;
-    entityCode?: string;
-    description?: string;
-  };
-  
-  // Helper functions for supporting both line formats
-  /** Returns true if the line is in the legacy client format */
-  function isClientFormatLine(line: any): line is ClientFormatLine {
-    return line && 
-           (typeof line.debit !== 'undefined' || typeof line.credit !== 'undefined') &&
-           typeof line.accountId !== 'undefined';
-  }
-  
-  /** Returns true if the line is in the new compact format */
-  function isServerFormatLine(line: any): line is ServerFormatLine {
-    return line && 
-           typeof line.type !== 'undefined' &&
-           typeof line.amount !== 'undefined' &&
-           typeof line.accountId !== 'undefined';
-  }
-  
-  /** Gets the debit amount from a line regardless of format */
-  function getDebit(line: any): number {
-    if (isClientFormatLine(line)) return parseFloat(line.debit) || 0;
-    if (isServerFormatLine(line)) return line.type === 'debit' ? parseFloat(line.amount.toString()) : 0;
-    return 0;
-  }
-  
-  /** Gets the credit amount from a line regardless of format */
-  function getCredit(line: any): number {
-    if (isClientFormatLine(line)) return parseFloat(line.credit) || 0;
-    if (isServerFormatLine(line)) return line.type === 'credit' ? parseFloat(line.amount.toString()) : 0;
-    return 0;
-  }
-  
-  type JournalEntryLine = ClientFormatLine | ServerFormatLine;
+  // Using shared helper functions from utils/lineFormat.ts that were imported at the top of file
   
   // Calculate totals for the journal entry
   type Totals = {

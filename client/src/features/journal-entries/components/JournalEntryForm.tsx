@@ -14,6 +14,15 @@ import {
   useUploadJournalEntryFile,
   useDeleteJournalEntryFile,
 } from "../hooks/attachmentQueries";
+import {
+  ClientFormatLine,
+  ServerFormatLine,
+  JournalEntryLine,
+  isClientFormatLine,
+  isServerFormatLine,
+  getDebit,
+  getCredit
+} from "../utils/lineFormat";
 import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -234,11 +243,11 @@ const FormSchema = z.object({
         // Check if debits equal credits - only for submissions, not during editing
         // This makes the form more forgiving while the user is still editing
         const totalDebit = lines.reduce(
-          (sum, line) => sum + (parseFloat(line.debit) || 0),
+          (sum, line) => sum + getDebit(line),
           0,
         );
         const totalCredit = lines.reduce(
-          (sum, line) => sum + (parseFloat(line.credit) || 0),
+          (sum, line) => sum + getCredit(line),
           0,
         );
 
