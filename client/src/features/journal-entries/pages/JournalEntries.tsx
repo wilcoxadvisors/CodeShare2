@@ -115,17 +115,47 @@ function JournalEntries() {
   
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {
-    navigate('/journal-entries/new');
+    if (currentEntity?.clientId && currentEntity?.id) {
+      // Use hierarchical URL pattern for new journal entry
+      navigate('/journal-entries/new');
+    } else {
+      console.error("Cannot create journal entry: Missing client ID or entity ID");
+      toast({
+        title: "Error",
+        description: "Cannot create journal entry. Please select a client and entity first.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle batch upload button click
   const handleBatchUpload = () => {
-    navigate('/journal-entries/batch-upload');
+    if (currentEntity?.clientId && currentEntity?.id) {
+      // Use hierarchical URL pattern for batch upload
+      navigate('/journal-entries/batch-upload');
+    } else {
+      console.error("Cannot access batch upload: Missing client ID or entity ID");
+      toast({
+        title: "Error",
+        description: "Cannot access batch upload. Please select a client and entity first.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle row click to view journal entry details
   const handleRowClick = (id: number) => {
-    navigate(`/journal-entries/${id}`);
+    if (currentEntity?.clientId && currentEntity?.id) {
+      // Use hierarchical URL pattern for journal entry detail view
+      navigate(`/journal-entries/${id}`);
+    } else {
+      console.error("Cannot navigate to journal entry detail: Missing client ID or entity ID");
+      toast({
+        title: "Error",
+        description: "Cannot view journal entry. Please select a client and entity first.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Filter and search journal entries
