@@ -397,8 +397,8 @@ function JournalEntryDetail() {
     if (!entryId) return;
     
     // Only allow deletion for draft and pending_approval status
-    if (journalEntry && (journalEntry.status !== 'draft' && journalEntry.status !== 'pending_approval')) {
-      console.log("DEBUG: File deletion not allowed for status:", journalEntry.status);
+    if (entry && (entry.status !== 'draft' && entry.status !== 'pending_approval')) {
+      console.log("DEBUG: File deletion not allowed for status:", entry.status);
       toast({
         title: "Not Allowed",
         description: "Files can only be deleted when the journal entry is in draft or pending approval status.",
@@ -539,13 +539,13 @@ function JournalEntryDetail() {
   
   // API might return the journal entry directly or wrapped in a journalEntry property
   // The explicit cast and nullish coalescing ensure we get a properly typed object or undefined
-  const journalEntry = data ? 
+  const entry = data ? 
     (data && typeof data === 'object' && 'journalEntry' in data ? (data.journalEntry as JournalEntry) : (data as JournalEntry)) 
     : undefined;
   
   console.log("DEBUG - JournalEntryDetail - Data type:", typeof data);
   console.log("DEBUG - JournalEntryDetail - Data structure:", data);
-  console.log("DEBUG - JournalEntryDetail - Using journalEntry:", journalEntry);
+  console.log("DEBUG - JournalEntryDetail - Using entry:", entry);
   
   // Log specific properties to help track format issues
   if (data && typeof data === 'object') {
@@ -555,8 +555,8 @@ function JournalEntryDetail() {
   }
   
   // Log line format to help with client/server format detection
-  if (journalEntry && journalEntry.lines && journalEntry.lines.length > 0) {
-    const firstLine = journalEntry.lines[0];
+  if (entry && entry.lines && entry.lines.length > 0) {
+    const firstLine = entry.lines[0];
     console.log("DEBUG - JournalEntryDetail - First line format:", 
       isClientFormatLine(firstLine) ? "Client format (debit/credit)" : 
       isServerFormatLine(firstLine) ? "Server format (type/amount)" : 
@@ -769,7 +769,7 @@ function JournalEntryDetail() {
     // Confirm before posting
     if (window.confirm('Are you sure you want to post this journal entry? Once posted, it cannot be edited or deleted.')) {
       // Make sure we have journal entry data
-      if (!journalEntry || !journalEntry.lines) {
+      if (!entry || !entry.lines) {
         toast({
           title: "Error",
           description: "Journal entry data is missing. Please reload the page and try again.",
@@ -782,7 +782,7 @@ function JournalEntryDetail() {
       const formattedLines = [];
       
       // Process each line to ensure correct format
-      for (const line of journalEntry.lines) {
+      for (const line of entry.lines) {
         if (isClientFormatLine(line)) {
           // Check if it's a debit or credit line
           if (parseFloat(line.debit) > 0) {
@@ -823,13 +823,13 @@ function JournalEntryDetail() {
         status: 'posted',
         lines: formattedLines,
         // EXPLICITLY include these critical fields to avoid data loss
-        date: journalEntry.date,
-        description: journalEntry.description,
-        referenceNumber: journalEntry.referenceNumber,
+        date: entry.date,
+        description: entry.description,
+        referenceNumber: entry.referenceNumber,
         // Include other important fields
-        journalType: journalEntry.journalType || 'JE',
-        entityId: journalEntry.entityId,
-        clientId: journalEntry.clientId
+        journalType: entry.journalType || 'JE',
+        entityId: entry.entityId,
+        clientId: entry.clientId
       };
       
       // Log the complete payload for debugging
@@ -861,16 +861,16 @@ function JournalEntryDetail() {
   // Render action buttons based on status
   const renderActionButtons = () => {
     // If journal entry is not loaded or doesn't have a status, return empty div
-    if (!journalEntry) return <div></div>;
+    if (!entry) return <div></div>;
     
-    const status = journalEntry.status;
+    const status = entry.status;
     const isAdmin = user?.role === 'admin';
     const isSupervisor = user?.role === 'supervisor';
     const isAccounting = user?.role === 'accounting';
     const hasApprovalRights = isAdmin || isSupervisor || isAccounting;
     
     // Check if the current user is the owner of the entry
-    const isOwnEntry = user?.id === journalEntry.createdBy;
+    const isOwnEntry = user?.id === entry.createdBy;
     
     // Log for debugging permission matrix
     console.log('DEBUG: Permission matrix:', {
@@ -882,7 +882,7 @@ function JournalEntryDetail() {
       hasApprovalRights,
       isOwnEntry,
       userId: user?.id,
-      createdBy: journalEntry.createdBy
+      createdBy: entry.createdBy
     });
     
     // Define basic buttons (not available for posted or voided entries)
@@ -933,8 +933,8 @@ function JournalEntryDetail() {
               // Update status to pending_approval
               // Format lines to ensure proper data structure
               const formattedLines = [];
-              if (journalEntry.lines) {
-                for (const line of journalEntry.lines) {
+              if (entry.lines) {
+                for (const line of entry.lines) {
                   if (isClientFormatLine(line)) {
                     // Check if it's a debit or credit line
                     if (parseFloat(line.debit) > 0) {
@@ -1199,7 +1199,6 @@ function JournalEntryDetail() {
   // This is a hot-fix to handle both the legacy {journalEntry: {...}} shape
   // and the new direct object format that hierarchical endpoints return
   if (!data) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div>;
-  const entry = (data as any).journalEntry ?? data;
 
   // Loading state
   if (isLoading) {
@@ -1364,20 +1363,10 @@ function JournalEntryDetail() {
     
     // Calculate totals for each entity
     return Object.entries(entities).map(([entityCode, entityLines]) => {
-      const { totalDebit, totalCredit } = entityLines.reduce((acc: Totals, line: JournalEntryLine) => {
-        if (isClientFormatLine(line)) {
-          // Client format
-          acc.totalDebit += parseFloat(line.debit) || 0;
-          acc.totalCredit += parseFloat(line.credit) || 0;
-        } else if (isServerFormatLine(line)) {
-          // Server format
-          const amount = parseFloat(line.amount.toString()) || 0;
-          if (line.type === 'debit') {
-            acc.totalDebit += amount;
-          } else if (line.type === 'credit') {
-            acc.totalCredit += amount;
-          }
-        }
+      const { totalDebit, totalCredit } = entityLines.reduce((acc: Totals, line: any) => {
+        // Use our helper functions to handle both formats consistently
+        acc.totalDebit += getDebit(line);
+        acc.totalCredit += getCredit(line);
         
         return acc;
       }, { totalDebit: 0, totalCredit: 0 });
@@ -1560,23 +1549,9 @@ function JournalEntryDetail() {
               </TableHeader>
               <TableBody>
                 {(entry.lines as JournalEntryLine[]).map((line: JournalEntryLine, index: number) => {
-                  // Determine debit and credit values based on format
-                  let debitValue = 0;
-                  let creditValue = 0;
-                  
-                  if (isClientFormatLine(line)) {
-                    // Client format (debit/credit)
-                    debitValue = parseFloat(line.debit) || 0;
-                    creditValue = parseFloat(line.credit) || 0;
-                  } else if (isServerFormatLine(line)) {
-                    // Server format (type/amount)
-                    const amount = parseFloat(line.amount.toString()) || 0;
-                    if (line.type === 'debit') {
-                      debitValue = amount;
-                    } else if (line.type === 'credit') {
-                      creditValue = amount;
-                    }
-                  }
+                  // Use our helper functions to get debit and credit values consistently
+                  const debitValue = getDebit(line);
+                  const creditValue = getCredit(line);
                   
                   return (
                     <TableRow key={index}>
