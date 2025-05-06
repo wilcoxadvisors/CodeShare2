@@ -22,20 +22,48 @@ const FullPageSpinner = () => (
  */
 export default function EntityLayout() {
   const { clientId, entityId } = useParams();
-  const { entities, isLoading, error, setCurrentEntity } = useEntity();
+  const { entities, isLoading, setCurrentEntity } = useEntity();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && !error && entities.length) {
+    console.log("EntityLayout: Current entities", entities.length, "Looking for entity ID:", entityId);
+    
+    if (!isLoading && entities.length) {
       const found = entities.find(e => e.id === Number(entityId));
-      if (found) setCurrentEntity(found);
+      if (found) {
+        console.log("EntityLayout: Found entity, setting current entity:", found.name);
+        setCurrentEntity(found);
+      } else {
+        console.log("EntityLayout: Entity not found in loaded entities");
+      }
     }
-  }, [entities, isLoading, error, entityId, setCurrentEntity]);
+  }, [entities, isLoading, entityId, setCurrentEntity]);
 
   /* ---------- only render children when entity is ready ---------- */
-  if (isLoading || !entities.length) return <FullPageSpinner />;
+  if (isLoading || !entities.length) {
+    console.log("EntityLayout: Still loading entities or no entities loaded");
+    return <FullPageSpinner />;
+  }
 
-  if (!entities.find(e => e.id === Number(entityId)))
-    return <Navigate to={`/clients/${clientId}`} replace />;
+  // Don't redirect if the entity isn't found - simply show a message
+  const entityExists = entities.find(e => e.id === Number(entityId));
+  if (!entityExists) {
+    console.log("EntityLayout: Entity ID not found:", entityId);
+    return (
+      <AppLayout>
+        <div className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">Entity Not Found</h2>
+          <p className="mb-4">The entity you're looking for doesn't exist or you don't have access to it.</p>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="px-4 py-2 bg-primary text-white rounded"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

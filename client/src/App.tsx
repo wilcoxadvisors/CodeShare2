@@ -417,29 +417,33 @@ function Router() {
         </AppLayout>
       } />
 
-      {/* Legacy journal entries routes - render with simple redirects */}
+      {/* Legacy journal entries routes - using Redirect component to the hierarchical paths */}
       <Route path="/journal-entries" element={
-        <AppLayout>
-          <ProtectedRoute component={JournalEntries} />
-        </AppLayout>
+        <Redirect to="/clients/250/entities/391/journal-entries" />
       } />
       
       <Route path="/journal-entries/:id" element={
-        <AppLayout>
-          <ProtectedRoute component={JournalEntryDetail} />
-        </AppLayout>
+        <Redirect 
+          to={params => 
+            `/clients/250/entities/391/journal-entries/${params.id}`
+          } 
+        />
       } />
       
       <Route path="/journal-entries/:id/edit" element={
-        <AppLayout>
-          <ProtectedRoute component={NewJournalEntry} />
-        </AppLayout>
+        <Redirect 
+          to={params => 
+            `/clients/250/entities/391/journal-entries/${params.id}/edit`
+          } 
+        />
       } />
       
       <Route path="/journal-entries/:id/delete" element={
-        <AppLayout>
-          <ProtectedRoute component={DeleteJournalEntry} />
-        </AppLayout>
+        <Redirect 
+          to={params => 
+            `/clients/250/entities/391/journal-entries/${params.id}/delete`
+          } 
+        />
       } />
       
       <Route path="*" element={<NotFound />} />
