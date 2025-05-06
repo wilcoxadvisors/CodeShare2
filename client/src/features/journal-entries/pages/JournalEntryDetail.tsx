@@ -924,9 +924,9 @@ function JournalEntryDetail() {
     const basicButtons = (
       <Button variant="outline" onClick={() => {
         if (clientId && currentEntity?.id && entryId) {
-          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/edit/${entryId}`);
+          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
         } else {
-          navigate(`/journal-entries/edit/${entryId}`);
+          navigate(`/journal-entries/${entryId}/edit`);
         }
       }}>
         <Edit className="mr-2 h-4 w-4" />
@@ -1129,9 +1129,9 @@ function JournalEntryDetail() {
           variant="outline" 
           onClick={() => {
             if (clientId && currentEntity?.id && entryId) {
-              navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/edit/${entryId}`);
+              navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
             } else {
-              navigate(`/journal-entries/edit/${entryId}`);
+              navigate(`/journal-entries/${entryId}/edit`);
             }
           }}
           className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-2"
