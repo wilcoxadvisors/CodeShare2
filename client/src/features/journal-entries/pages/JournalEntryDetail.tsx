@@ -1504,10 +1504,12 @@ function JournalEntryDetail() {
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
                       <TableCell className="text-right">
-                        {debitValue !== 0 ? formatCurrency(debitValue) : '-'}
+                        {getDebit(line) ? new Intl.NumberFormat('en-US',
+                           {style:'currency',currency:'USD'}).format(getDebit(line)) : ''}
                       </TableCell>
                       <TableCell className="text-right">
-                        {creditValue !== 0 ? formatCurrency(creditValue) : '-'}
+                        {getCredit(line) ? new Intl.NumberFormat('en-US',
+                           {style:'currency',currency:'USD'}).format(getCredit(line)) : ''}
                       </TableCell>
                     </TableRow>
                   );
