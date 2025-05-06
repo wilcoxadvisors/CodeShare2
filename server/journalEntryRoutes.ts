@@ -185,6 +185,21 @@ export function registerJournalEntryRoutes(app: Express) {
       console.log('Calling journalEntryStorage.createJournalEntry with createdById:', modifiedEntryData.createdBy);
       console.log('DEBUG BE Route: Data passed to storage:', JSON.stringify(modifiedEntryData, null, 2));
       
+      // Check if reference number already exists for this entity before creating
+      if (modifiedEntryData.referenceNumber) {
+        const existingEntries = await journalEntryStorage.listJournalEntries({
+          entityId: modifiedEntryData.entityId,
+          referenceNumber: modifiedEntryData.referenceNumber,
+        });
+        
+        if (existingEntries.length > 0) {
+          console.log('DEBUG: Duplicate reference number detected:', modifiedEntryData.referenceNumber);
+          return res.status(400).json({ 
+            message: `Reference number "${modifiedEntryData.referenceNumber}" is already in use for this entity. Please use a different reference number.` 
+          });
+        }
+      }
+      
       // Create the journal entry with 'draft' status if it was originally 'posted'
       const journalEntry = await journalEntryStorage.createJournalEntry(
         modifiedEntryData.clientId,
@@ -292,6 +307,17 @@ export function registerJournalEntryRoutes(app: Express) {
         console.error('Validation error details:', JSON.stringify(error.errors));
         return res.status(400).json({ errors: formatZodError(error) });
       }
+      
+      // Check for database-specific errors, especially duplicate reference numbers
+      const errorMessage = String(error);
+      if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate key')) {
+        if (errorMessage.toLowerCase().includes('reference_number')) {
+          return res.status(400).json({ 
+            message: `Reference number "${modifiedEntryData?.referenceNumber}" is already in use. Please use a different reference number.` 
+          });
+        }
+      }
+      
       throw error;
     }
   }));
@@ -1161,6 +1187,21 @@ export function registerJournalEntryRoutes(app: Express) {
       
       // Extract lines from validated data
       const { lines, ...journalEntryData } = validatedData;
+      
+      // Check if reference number already exists for this entity
+      if (journalEntryData.referenceNumber) {
+        const existingEntries = await journalEntryStorage.listJournalEntries({
+          entityId: journalEntryData.entityId,
+          referenceNumber: journalEntryData.referenceNumber,
+        });
+        
+        if (existingEntries.length > 0) {
+          console.log('DEBUG: Duplicate reference number detected:', journalEntryData.referenceNumber);
+          return res.status(400).json({ 
+            message: `Reference number "${journalEntryData.referenceNumber}" is already in use for this entity. Please use a different reference number.` 
+          });
+        }
+      }
       
       // Create the journal entry
       const journalEntry = await journalEntryStorage.createJournalEntry(
