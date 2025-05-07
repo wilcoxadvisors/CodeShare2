@@ -97,15 +97,8 @@ function JournalEntries() {
     retry: 3, // Retry up to 3 times if the query fails
     staleTime: 30000, // Consider data fresh for 30 seconds
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    // EMERGENCY FIX: Add explicit error handler to log the actual error
-    onError: (err: any) => {
-      console.error("Journal entries fetch error:", err);
-      console.error("Error message:", err.message);
-      if (err.response) {
-        console.error("Error response data:", err.response.data);
-        console.error("Error response status:", err.response.status);
-      }
-    }
+    // TanStack Query v5 doesn't support onError in options
+    // Handle errors with error state instead
   });
   
   useEffect(() => {

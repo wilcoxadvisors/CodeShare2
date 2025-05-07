@@ -577,21 +577,14 @@ function JournalEntryDetail() {
     error,
     refetch
   } = useQuery({
-    // EMERGENCY FIX: Direct API URL with no helper function
+    // EMERGENCY FIX: Direct API URL with more robust fallbacks
     queryKey: entryId ? 
       (clientId && (entityIdParam || currentEntity?.id)) 
         ? [`/api/clients/${clientId}/entities/${entityIdParam || currentEntity?.id || 0}/journal-entries/${entryId}`] 
-        : [`/api/journal-entries/${entryId}`] 
+        : (entryId ? [`/api/journal-entries/${entryId}`] : ['dummy-empty-key'])
       : ['dummy-empty-key'],
     enabled: !!entryId, // Always enabled if we have an entry ID
-    // Add detailed error logging
-    onError: (error: any) => {
-      console.error("Error fetching journal entry detail:", error);
-      if (error.response) {
-        console.error("Error status:", error.response.status);
-        console.error("Error data:", error.response.data);
-      }
-    }
+    // TanStack Query v5 doesn't support onError in options - using error state instead
   });
   
   // Define type for a journal entry
