@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useParams, useNavigate } from "react-router-dom";
 import { useEntity } from "@/contexts/EntityContext";
 import { useToast } from "@/hooks/use-toast";
+// Added comment to force rebuild
 
 interface DynamicJournalRedirectProps {
   mode?: 'list' | 'detail' | 'edit' | 'delete';

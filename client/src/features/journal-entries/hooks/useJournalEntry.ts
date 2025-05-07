@@ -84,8 +84,14 @@ export function useJournalEntry() {
         description: 'Journal entry created successfully',
       });
       
-      // Invalidate journal entries queries
-      if (currentEntity?.id) {
+      // Invalidate journal entries queries with correct hierarchical URL pattern
+      if (currentEntity?.id && currentEntity?.clientId) {
+        // Use the hierarchical path structure for invalidation
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`] 
+        });
+        
+        // Also invalidate any legacy URLs for backwards compatibility
         queryClient.invalidateQueries({ 
           queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
         });

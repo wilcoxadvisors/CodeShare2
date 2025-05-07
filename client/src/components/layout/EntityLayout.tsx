@@ -3,6 +3,7 @@ import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import AppLayout from '@/components/AppLayout';
 import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Creates a full-page loading spinner to use while waiting for entities to load
@@ -25,6 +26,7 @@ export default function EntityLayout() {
   const { clientId, entityId } = useParams();
   const { entities, isLoading, setCurrentEntity, setSelectedClientId } = useEntity();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Set client ID from URL params for better context coordination
   useEffect(() => {
@@ -35,10 +37,24 @@ export default function EntityLayout() {
   }, [clientId, setSelectedClientId]);
 
   // Directly fetch entity if needed - as a backup to the main entity loading
-  const { data: entityData } = useQuery({
+  const { data: entityData, isError, error } = useQuery({
     queryKey: [`/api/clients/${clientId}/entities/${entityId}`],
     enabled: !!clientId && !!entityId && (!entities.length || !entities.find(e => e.id === Number(entityId))),
   });
+
+  // Log errors with direct entity fetching for debugging
+  useEffect(() => {
+    if (isError && error) {
+      console.error("EntityLayout: Error fetching specific entity:", error);
+      
+      // Show toast notification for better UX
+      toast({
+        title: "Entity Loading Error",
+        description: "There was a problem loading the selected entity. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [isError, error, toast]);
 
   useEffect(() => {
     console.log("EntityLayout: Current entities", entities.length, "Looking for entity ID:", entityId);
