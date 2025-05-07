@@ -70,11 +70,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
     staleTime: 60000, // 1 minute
   });
 
-  // Store all entities without filtering
-  const allEntities = entitiesData as Entity[];
+  // Store all entities without filtering - ensure it's always an array
+  const allEntities = Array.isArray(entitiesData) ? entitiesData : [];
   
-  // Get filtered entities based on selected client
-  const entities = selectedClientId 
+  // Get filtered entities based on selected client - with null checks
+  const entities = selectedClientId && allEntities && allEntities.length > 0
     ? allEntities.filter(entity => entity.clientId === selectedClientId)
     : [];
   
@@ -103,9 +103,13 @@ function EntityProvider({ children }: { children: ReactNode }) {
     }
     
     // Auto-select first entity when client changes but only if none is selected
-    if (!currentEntity) {
-      const clientEntities = allEntities.filter(entity => entity.clientId === selectedClientId);
-      if (clientEntities.length > 0) {
+    if (!currentEntity && Array.isArray(allEntities) && allEntities.length > 0) {
+      // Add null check for allEntities before filtering
+      const clientEntities = allEntities.filter(entity => 
+        entity && entity.clientId === selectedClientId
+      );
+      
+      if (clientEntities && clientEntities.length > 0) {
         console.log(`DEBUG: Auto-selecting first entity for client ${selectedClientId}:`, clientEntities[0].id);
         setCurrentEntity(clientEntities[0]);
       }
@@ -115,8 +119,8 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Debug logs for tracking state changes
   useEffect(() => {
     console.log(`DEBUG: Entities context state:
-    - Total entities: ${allEntities.length}
-    - Filtered entities: ${entities.length}
+    - Total entities: ${allEntities?.length || 0}
+    - Filtered entities: ${entities?.length || 0}
     - Selected client: ${selectedClientId}
     - Current entity: ${currentEntity?.id}
     - Initial loading complete: ${initialLoadComplete}
@@ -126,10 +130,18 @@ function EntityProvider({ children }: { children: ReactNode }) {
 
   // Function to set current entity by ID
   const setCurrentEntityById = (entityId: number) => {
+    if (!entityId) {
+      console.warn("Cannot set entity: Invalid entity ID");
+      return;
+    }
+    
     console.log("Setting current entity by ID:", entityId);
     
     // First check all entities regardless of client filter
-    const entity = allEntities.find(e => e.id === entityId);
+    // Make sure allEntities is an array before calling find
+    const entity = Array.isArray(allEntities) && allEntities.length > 0 
+      ? allEntities.find(e => e?.id === entityId)
+      : undefined;
     
     if (entity) {
       console.log(`Found entity with ID ${entityId}:`, entity.name);
@@ -143,7 +155,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
       // Then set the entity
       setCurrentEntity(entity);
     } else {
-      console.warn(`Entity with ID ${entityId} not found among ${allEntities.length} entities`);
+      console.warn(`Entity with ID ${entityId} not found among ${allEntities?.length || 0} entities`);
     }
   };
 
