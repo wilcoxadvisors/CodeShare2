@@ -1,106 +1,51 @@
-import React, { useEffect } from 'react';
-import { useParams, useNavigate } from "react-router-dom";
+import React from 'react';
+import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEntity } from "@/contexts/EntityContext";
-import NoEntitySelected from './NoEntitySelected';
-
-interface JournalRedirectorProps {
-  mode?: 'list' | 'detail' | 'edit' | 'delete';
-}
+import Spinner from "@/components/Spinner";
+import NoEntitySelected from "@/components/NoEntitySelected";
 
 /**
- * A component that dynamically redirects journal entry URLs to the 
- * hierarchical structure using the current entity in context
+ * A component that handles the journal entry context and routing.
+ * - Shows a loading spinner while waiting for initial data
+ * - Shows a placeholder when no client/entity is selected
+ * - Renders the journal entry components when an entity is selected
  */
-const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
-  const params = useParams<{ id?: string }>();
-  const { currentEntity, entities, isInitialLoading } = useEntity();
+const JournalRedirector: React.FC = () => {
+  const { entities, currentEntity, isInitialLoading } = useEntity();
   const navigate = useNavigate();
+  const params = useParams();
   
-  console.log("JournalRedirector render state:", { 
+  console.log('JR guards', { 
     isInitialLoading, 
-    hasEntities: entities?.length > 0,
-    entitiesCount: entities?.length,
-    hasCurrentEntity: !!currentEntity
+    entitiesLen: entities.length, 
+    hasCurrent: !!currentEntity,
+    params
   });
+
+  // 1. If we're still loading the initial data, show a spinner
+  if (isInitialLoading) {
+    return <Spinner />;
+  }
+
+  // 2. If no client or entity is selected, show the placeholder
+  if (!entities.length || !currentEntity) {
+    return <NoEntitySelected />;
+  }
   
-  // If we have an entry ID from params
+  // 3. If we have a specific ID in the URL but no nested route, redirect to the hierarchical URL
   const entryId = params.id;
   
-  // Wait for initial data load to complete and then handle redirection
-  useEffect(() => {
-    // Only proceed once the initial data load is done
-    if (isInitialLoading) {
-      console.log("JournalRedirector: Waiting for initial data load...");
-      return;
-    }
-    
-    // If no entities are available (no client selected), show placeholder
-    if (!entities.length) {
-      console.log("JournalRedirector: No entities available (no client selected), showing placeholder");
-      return;
-    }
-    
-    // If no specific entity is selected, show placeholder
-    if (!currentEntity) {
-      console.log("JournalRedirector: No entity selected, showing placeholder");
-      return;
-    }
-    
-    // If we have a current entity, build and navigate to the hierarchical URL
+  if (entryId && Object.keys(params).length === 1) {
+    // This means we're at a direct URL like /journal-entries/123 which needs redirection
     const clientId = currentEntity.clientId;
     const entityId = currentEntity.id;
-    
-    let path = `/clients/${clientId}/entities/${entityId}/journal-entries`;
-    
-    // Add entry ID and mode if needed
-    if (entryId) {
-      path += `/${entryId}`;
-      
-      // Add action suffix for edit/delete
-      if (mode === 'edit') {
-        path += '/edit';
-      } else if (mode === 'delete') {
-        path += '/delete';
-      }
-    }
-    
-    console.log("JournalRedirector: Navigating to hierarchical path:", path);
+    const path = `/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}`;
     navigate(path, { replace: true });
-    
-  }, [currentEntity, entities, isInitialLoading, entryId, mode, navigate]);
-  
-  // 1. First wait for initial data loading
-  if (isInitialLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center space-y-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <div className="text-sm text-muted-foreground">
-            Loading...
-          </div>
-        </div>
-      </div>
-    );
+    return <Spinner label="Redirecting..." />;
   }
-  
-  // 2. Then check if there are no entities (client not selected)
-  if (!entities.length) {
-    return <NoEntitySelected />;
-  }
-  
-  // 3. Then check if there's no current entity selected
-  if (!currentEntity) {
-    return <NoEntitySelected />;
-  }
-  
-  // 4. If we have an entity, show a brief loading message while redirecting
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-sm text-muted-foreground">
-        Preparing journal entries...
-      </div>
-    </div>
-  );
+
+  // 4. Happy path: Entity is selected, render the journal entry components
+  return <Outlet />;
 };
 
 export default JournalRedirector;
