@@ -4,13 +4,17 @@ import { useEntity } from "@/contexts/EntityContext";
 import Spinner from "@/components/Spinner";
 import NoEntitySelected from "@/components/NoEntitySelected";
 
+interface JournalRedirectorProps {
+  mode?: 'list' | 'detail' | 'edit' | 'delete';
+}
+
 /**
  * A component that handles the journal entry context and routing.
  * - Shows a loading spinner while waiting for initial data
  * - Shows a placeholder when no client/entity is selected
  * - Renders the journal entry components when an entity is selected
  */
-const JournalRedirector: React.FC = () => {
+const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
   const { entities, currentEntity, isInitialLoading } = useEntity();
   const navigate = useNavigate();
   const params = useParams();

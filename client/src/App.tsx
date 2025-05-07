@@ -421,19 +421,27 @@ function Router() {
 
       {/* Legacy journal entries routes - using JournalRedirector to redirect to hierarchical paths */}
       <Route path="/journal-entries" element={
-        <JournalRedirector />
+        <AppLayout>
+          <JournalRedirector />
+        </AppLayout>
       } />
       
       <Route path="/journal-entries/:id" element={
-        <JournalRedirector mode="detail" />
+        <AppLayout>
+          <JournalRedirector mode="detail" />
+        </AppLayout>
       } />
       
       <Route path="/journal-entries/:id/edit" element={
-        <JournalRedirector mode="edit" />
+        <AppLayout>
+          <JournalRedirector mode="edit" />
+        </AppLayout>
       } />
       
       <Route path="/journal-entries/:id/delete" element={
-        <JournalRedirector mode="delete" />
+        <AppLayout>
+          <JournalRedirector mode="delete" />
+        </AppLayout>
       } />
       
       <Route path="*" element={<NotFound />} />
