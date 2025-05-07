@@ -577,12 +577,21 @@ function JournalEntryDetail() {
     error,
     refetch
   } = useQuery({
+    // EMERGENCY FIX: Direct API URL with no helper function
     queryKey: entryId ? 
       (clientId && (entityIdParam || currentEntity?.id)) 
-        ? [getJournalEntryUrl(clientId, entityIdParam || currentEntity?.id || 0, entryId)] 
+        ? [`/api/clients/${clientId}/entities/${entityIdParam || currentEntity?.id || 0}/journal-entries/${entryId}`] 
         : [`/api/journal-entries/${entryId}`] 
       : ['dummy-empty-key'],
-    enabled: !!entryId // Always enabled if we have an entry ID
+    enabled: !!entryId, // Always enabled if we have an entry ID
+    // Add detailed error logging
+    onError: (error: any) => {
+      console.error("Error fetching journal entry detail:", error);
+      if (error.response) {
+        console.error("Error status:", error.response.status);
+        console.error("Error data:", error.response.data);
+      }
+    }
   });
   
   // Define type for a journal entry
@@ -761,7 +770,8 @@ function JournalEntryDetail() {
         throw new Error('Client ID and Entity ID are required for journal entry operations');
       }
       
-      return await apiRequest(getJournalEntryUrl(clientId, currentEntity.id, entryId), {
+      // EMERGENCY FIX: Direct URL instead of helper function
+      return await apiRequest(`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}`, {
         method: 'DELETE',
         data: {
           voidReason: voidReason
@@ -795,8 +805,8 @@ function JournalEntryDetail() {
         throw new Error('Client ID and Entity ID are required for journal entry operations');
       }
       
-      // Combine URL correctly for the reverse operation
-      const reverseUrl = `${getJournalEntryUrl(clientId, currentEntity.id, entryId)}/reverse`;
+      // EMERGENCY FIX: Direct URL instead of helper function
+      const reverseUrl = `/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/reverse`;
       return await apiRequest(reverseUrl, {
         method: 'POST',
         data: {

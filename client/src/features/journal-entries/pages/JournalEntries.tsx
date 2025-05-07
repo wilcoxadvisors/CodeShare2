@@ -79,8 +79,8 @@ function JournalEntries() {
     }
   }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
   
-  // Create the API URL for debug logging
-  const apiUrl = entityId && clientId ? getJournalEntriesBaseUrl(clientId, entityId) : null;
+  // EMERGENCY FIX: Direct API URL with no helper function
+  const apiUrl = entityId && clientId ? `/api/clients/${clientId}/entities/${entityId}/journal-entries` : null;
   
   // Log the constructed URL for debugging
   console.log(`DEBUG: Constructing journal entries API URL: ${apiUrl}`);
@@ -96,7 +96,16 @@ function JournalEntries() {
     enabled: !!apiUrl,
     retry: 3, // Retry up to 3 times if the query fails
     staleTime: 30000, // Consider data fresh for 30 seconds
-    refetchOnWindowFocus: false // Don't refetch when window regains focus
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    // EMERGENCY FIX: Add explicit error handler to log the actual error
+    onError: (err: any) => {
+      console.error("Journal entries fetch error:", err);
+      console.error("Error message:", err.message);
+      if (err.response) {
+        console.error("Error response data:", err.response.data);
+        console.error("Error response status:", err.response.status);
+      }
+    }
   });
   
   useEffect(() => {
