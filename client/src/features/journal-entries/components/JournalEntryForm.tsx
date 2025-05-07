@@ -1060,7 +1060,7 @@ function JournalEntryForm({
   const effectiveClientId = clientId ?? (typeof selectedClientId === 'number' ? selectedClientId : undefined);
   
   // Fetch existing journal entries for reference number validation
-  const { data: existingEntries = [] } = useQuery({
+  const { data: existingEntries = [] } = useQuery<any[]>({
     queryKey: effectiveClientId && entityId 
       ? [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries`] 
       : ['no-journal-entries'],
@@ -1767,7 +1767,7 @@ function JournalEntryForm({
     // Check for duplicate reference numbers
     if (isReferenceDuplicate(
       journalData.referenceNumber,
-      existingEntries,
+      existingEntries as any[],
       existingEntry?.id
     )) {
       setFieldErrors({
