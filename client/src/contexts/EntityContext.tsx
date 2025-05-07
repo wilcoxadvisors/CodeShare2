@@ -28,6 +28,7 @@ interface EntityContextType {
   setCurrentEntity: (entity: Entity | null) => void;
   setCurrentEntityById: (entityId: number) => void;
   isLoading: boolean;
+  isInitialLoading: boolean;
   selectedClientId: number | null;
   setSelectedClientId: (clientId: number | null) => void;
 }
@@ -40,6 +41,7 @@ const EntityContext = createContext<EntityContextType>({
   setCurrentEntity: () => {},
   setCurrentEntityById: () => {},
   isLoading: true,
+  isInitialLoading: true,
   selectedClientId: null,
   setSelectedClientId: () => {}
 });
@@ -49,11 +51,15 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   
-  // Get all entities for the user with refetch capability when client changes
+  // Our own loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  // Get all entities for the user
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
-    isInitialLoading,
+    isFetching,
     isError,
     refetch: refetchEntities 
   } = useQuery<Entity[]>({
@@ -64,97 +70,80 @@ function EntityProvider({ children }: { children: ReactNode }) {
     staleTime: 60000, // 1 minute
   });
 
-  // Maintain our own loading state to ensure it's properly set to false
-  const [isLoading, setIsLoading] = useState(true);
-
   // Store all entities without filtering
   const allEntities = entitiesData as Entity[];
   
   // Get filtered entities based on selected client
   const entities = selectedClientId 
     ? allEntities.filter(entity => entity.clientId === selectedClientId)
-    : allEntities;
+    : [];
   
-  // Update our loading state whenever the query state changes
+  // Update loading state based on queries
   useEffect(() => {
-    // If query is done loading (success or error), set our loading to false
-    if (!queryIsLoading) {
-      setIsLoading(false);
+    // Handle initial loading state - this only happens once
+    if (!initialLoadComplete && !queryIsLoading) {
+      console.log("DEBUG: Initial entities loading completed");
+      setInitialLoadComplete(true);
     }
-  }, [queryIsLoading, isError]);
+    
+    // Handle general loading state (for spinners, etc.)
+    setIsLoading(queryIsLoading);
+  }, [queryIsLoading, initialLoadComplete]);
   
-  // Debug log when entities data changes
+  // When client selection changes, clear entity if needed
   useEffect(() => {
-    console.log(`DEBUG: Entities data updated - received ${allEntities.length} entities, isLoading=${isLoading}`);
-    console.log(`DEBUG: Client filter: selectedClientId=${selectedClientId}, filtered entities=${entities.length}`);
-  }, [allEntities, entities, selectedClientId, isLoading]);
-
-  // Auto-select the first client and entity when entities load and none are selected
-  useEffect(() => {
-    if (queryIsLoading) return;
-    if (!allEntities.length) return;
-
-    // If no client is selected yet, pick the first client with entities
-    if (selectedClientId === null) {
-      const firstClient = allEntities[0].clientId;
-      console.log(`DEBUG: Auto-selecting first client: ${firstClient}`);
-      setSelectedClientId(firstClient);
-    }
-
-    // If no entity is selected yet and we have entities, pick the first one
-    if (currentEntity === null && entities.length > 0) {
-      console.log(`DEBUG: Auto-selecting first entity: ${entities[0].id}`);
-      setCurrentEntity(entities[0]);
-    }
-  }, [queryIsLoading, allEntities, entities, selectedClientId, currentEntity]);
-
-  // When client selection changes: clear entity selection and refetch entities
-  useEffect(() => {
+    if (!selectedClientId) return;
+    
     console.log("DEBUG: Client selection changed:", selectedClientId);
     
     // Clear entity selection if it doesn't match the new client
-    if (currentEntity && selectedClientId && currentEntity.clientId !== selectedClientId) {
+    if (currentEntity && currentEntity.clientId !== selectedClientId) {
       console.log("DEBUG: Clearing current entity as it belongs to a different client");
       setCurrentEntity(null);
     }
     
-    // Auto-select first entity when client changes
-    if (selectedClientId && !currentEntity) {
+    // Auto-select first entity when client changes but only if none is selected
+    if (!currentEntity) {
       const clientEntities = allEntities.filter(entity => entity.clientId === selectedClientId);
       if (clientEntities.length > 0) {
         console.log(`DEBUG: Auto-selecting first entity for client ${selectedClientId}:`, clientEntities[0].id);
         setCurrentEntity(clientEntities[0]);
       }
     }
-    
-    // Refetch entities to ensure we have the latest data for the selected client
-    if (user && selectedClientId && typeof refetchEntities === 'function') {
-      console.log("DEBUG: Refetching entities for client:", selectedClientId);
-      refetchEntities();
-    }
-  }, [selectedClientId, currentEntity, user, refetchEntities, allEntities]);
+  }, [selectedClientId, currentEntity, allEntities]);
+
+  // Debug logs for tracking state changes
+  useEffect(() => {
+    console.log(`DEBUG: Entities context state:
+    - Total entities: ${allEntities.length}
+    - Filtered entities: ${entities.length}
+    - Selected client: ${selectedClientId}
+    - Current entity: ${currentEntity?.id}
+    - Initial loading complete: ${initialLoadComplete}
+    - Loading: ${isLoading}
+    - Query fetching: ${isFetching}`);
+  }, [allEntities, entities, selectedClientId, currentEntity, initialLoadComplete, isLoading, isFetching]);
 
   // Function to set current entity by ID
   const setCurrentEntityById = (entityId: number) => {
     console.log("Setting current entity by ID:", entityId);
     
-    if (!Array.isArray(entities) || entities.length === 0) {
-      console.warn("No entities available to select from");
-      return;
-    }
+    // First check all entities regardless of client filter
+    const entity = allEntities.find(e => e.id === entityId);
     
-    const entity = entities.find(e => e.id === entityId);
     if (entity) {
       console.log(`Found entity with ID ${entityId}:`, entity.name);
-      setCurrentEntity(entity);
       
-      // Also set the client ID if it's not already set
+      // Set the client ID first to ensure proper filtering
       if (entity.clientId !== selectedClientId) {
-        console.log(`Also setting client ID to ${entity.clientId}`);
+        console.log(`Setting client ID to ${entity.clientId}`);
         setSelectedClientId(entity.clientId);
       }
+      
+      // Then set the entity
+      setCurrentEntity(entity);
     } else {
-      console.warn(`Entity with ID ${entityId} not found among ${entities.length} entities`);
+      console.warn(`Entity with ID ${entityId} not found among ${allEntities.length} entities`);
     }
   };
 
@@ -167,6 +156,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
       setCurrentEntity,
       setCurrentEntityById,
       isLoading,
+      isInitialLoading: !initialLoadComplete,
       selectedClientId,
       setSelectedClientId
     }}>

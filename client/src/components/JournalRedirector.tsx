@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { useEntity } from "@/contexts/EntityContext";
-import { useToast } from "@/hooks/use-toast";
+import NoEntitySelected from './NoEntitySelected';
 
 interface JournalRedirectorProps {
   mode?: 'list' | 'detail' | 'edit' | 'delete';
@@ -13,63 +13,27 @@ interface JournalRedirectorProps {
  */
 const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
   const params = useParams<{ id?: string }>();
-  const { currentEntity, entities, allEntities, setCurrentEntityById, isLoading } = useEntity();
-  const { toast } = useToast();
+  const { currentEntity, isInitialLoading } = useEntity();
   const navigate = useNavigate();
-  const [redirectPath, setRedirectPath] = useState<string | null>(null);
-  
-  console.log("JournalRedirector: mode =", mode, "params =", params);
-  console.log("JournalRedirector: currentEntity =", currentEntity);
-  console.log("JournalRedirector: entities count =", entities?.length || 0);
-  console.log("JournalRedirector: isLoading =", isLoading);
-  console.log("JR state", { isLoading, entities: entities.length });
   
   // If we have an entry ID from params
   const entryId = params.id;
   
-  // Handle all redirects in useEffect to avoid React warnings about state updates during render
+  // Wait for initial data load to complete and then handle redirection
   useEffect(() => {
-    // Wait for entities to finish loading
-    if (isLoading) {
-      console.log("JournalRedirector: Still loading entities, waiting...");
+    // Only proceed once the initial data load is done
+    if (isInitialLoading) {
+      console.log("JournalRedirector: Waiting for initial data load...");
       return;
     }
     
-    console.log("JournalRedirector: Data loaded", { 
-      allEntities: allEntities.length,
-      filteredEntities: entities.length,
-      currentEntity: currentEntity?.id 
+    console.log("JournalRedirector: Initial data load complete", { 
+      hasCurrentEntity: !!currentEntity,
+      currentEntityId: currentEntity?.id,
+      entryId
     });
     
-    // If we don't have any entities at all (check allEntities, not filtered entities)
-    if (!allEntities || allEntities.length === 0) {
-      console.log("JournalRedirector: No entities available at all");
-      toast({
-        title: "No Entities Available",
-        description: "You need to create an entity before you can work with journal entries",
-        variant: "destructive",
-      });
-      
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-    
-    // Use all entities if filtered list is empty (when no client is selected)
-    const availableEntities = entities.length > 0 ? entities : allEntities;
-    
-    // Auto-select the first entity if none is selected but entities are available
-    if (!currentEntity && availableEntities.length > 0) {
-      console.log("JournalRedirector: Auto-selecting first entity:", availableEntities[0].id);
-      try {
-        setCurrentEntityById(availableEntities[0].id);
-        // Let the effect run again after setting the entity
-        return;
-      } catch (err) {
-        console.error("Error auto-selecting entity:", err);
-      }
-    }
-    
-    // If we have a current entity, create the hierarchical URL
+    // If we have a current entity, build and navigate to the hierarchical URL
     if (currentEntity) {
       const clientId = currentEntity.clientId;
       const entityId = currentEntity.id;
@@ -88,33 +52,39 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
         }
       }
       
-      console.log("JournalRedirector: Setting redirect path:", path);
-      setRedirectPath(path);
-      return;
+      console.log("JournalRedirector: Navigating to hierarchical path:", path);
+      navigate(path, { replace: true });
     }
     
-    // Fallback - shouldn't reach here, but just in case
-    console.error("JournalRedirector: Unexpected state - falling back to dashboard");
-    navigate('/dashboard', { replace: true });
+    // If no entity is selected, we show the NoEntitySelected component
+    // The component will render in the return statement when currentEntity is null
     
-  }, [currentEntity, entities, allEntities, setCurrentEntityById, isLoading, entryId, mode, toast, navigate]);
+  }, [currentEntity, isInitialLoading, entryId, mode, navigate]);
   
-  // Use another useEffect to handle the navigation when redirectPath changes
-  useEffect(() => {
-    if (redirectPath) {
-      console.log("JournalRedirector: Navigating to:", redirectPath);
-      navigate(redirectPath, { replace: true });
-    }
-  }, [redirectPath, navigate]);
+  // Render a loading spinner while waiting for the initial data load
+  if (isInitialLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="text-sm text-muted-foreground">
+            Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
   
-  // Render a loading spinner while waiting for entities or the redirect to happen
+  // Show a "no entity selected" view if the user hasn't chosen an entity
+  if (!currentEntity) {
+    return <NoEntitySelected />;
+  }
+  
+  // This will only show briefly until the redirect happens
   return (
     <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center space-y-2">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <div className="text-sm text-muted-foreground">
-          Loading...
-        </div>
+      <div className="text-sm text-muted-foreground">
+        Preparing journal entries...
       </div>
     </div>
   );
