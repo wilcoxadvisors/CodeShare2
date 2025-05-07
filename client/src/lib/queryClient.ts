@@ -31,7 +31,13 @@ export async function apiRequest(
   
   // Handle file uploads with FormData differently
   const isFormData = data instanceof FormData || options?.isFormData === true;
-  console.log("DEBUG apiRequest: isFormData:", isFormData, "data type:", typeof data);
+  console.log("DEBUG apiRequest: isFormData:", isFormData, "data type:", typeof data, 
+              "url:", url, "method:", method);
+  
+  if (isFormData) {
+    console.log("DEBUG apiRequest: Processing FormData submission, keys:", 
+                data instanceof FormData ? [...(data as FormData).keys()] : 'unknown');
+  }
   
   // For FormData, don't set Content-Type - let browser handle the multipart boundary
   const headers: Record<string, string> = {};

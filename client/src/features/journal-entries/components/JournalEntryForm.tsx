@@ -476,14 +476,11 @@ function AttachmentSection({
         `DEBUG AttachmentSection: Uploading ${pendingFiles.length} pending files to journal entry ${entryId}`,
       );
 
-      // Use axios for the file upload with progress tracking
-      const axios = (await import("axios")).default;
-
       // Make 3 attempts if needed
       let attempts = 0;
       let success = false;
       let lastError;
-      let response;
+      let responseData;
 
       while (attempts < 3 && !success) {
         try {
@@ -505,30 +502,54 @@ function AttachmentSection({
           const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
           console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
           
-          response = await axios.post(
-            url,
-            formData,
-            {
-              // Bug fix #7: Do NOT set Content-Type header when using FormData
-              // Let the browser set this automatically with boundary parameter
-              headers: {
-                // Explicitly remove content type - let browser handle it
-                "Content-Type": undefined,
-              },
-              onUploadProgress: (progressEvent: any) => {
-                const percentCompleted = Math.round(
-                  (progressEvent.loaded * 100) / progressEvent.total,
-                );
+          // Use XMLHttpRequest directly for better control over FormData uploads
+          responseData = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            
+            // Set up the request
+            xhr.open('POST', url, true);
+            
+            // Add auth headers if needed
+            const authHeader = localStorage.getItem('authHeader');
+            if (authHeader) {
+              xhr.setRequestHeader('Authorization', authHeader);
+            }
+            
+            // Add event listeners for progress tracking
+            xhr.upload.onprogress = (progressEvent) => {
+              if (progressEvent.lengthComputable) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 setUploadProgress(percentCompleted);
                 console.log("DEBUG AttachmentSection: Upload progress:", percentCompleted, "%");
-              },
-            },
-          );
+              }
+            };
+            
+            // Handle response
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const data = JSON.parse(xhr.responseText);
+                  resolve(data);
+                } catch (e) {
+                  resolve({ success: true }); // If response isn't JSON
+                }
+              } else {
+                reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+              }
+            };
+            
+            xhr.onerror = () => {
+              reject(new Error('Network error during file upload'));
+            };
+            
+            // Send the FormData
+            xhr.send(formData);
+          });
 
           success = true;
           console.log(
             "DEBUG AttachmentSection: Upload to entry successful:",
-            response.data,
+            responseData,
           );
         } catch (error) {
           console.error(
@@ -555,7 +576,7 @@ function AttachmentSection({
         queryKey: ["journalEntryAttachments", entryId],
       });
 
-      return response?.data;
+      return responseData;
     } catch (error) {
       console.error("Failed to upload pending files to entry:", error);
       throw error;
@@ -568,7 +589,14 @@ function AttachmentSection({
   // This allows the parent component to call this function
   React.useEffect(() => {
     if (onUploadToEntryRef) {
-      onUploadToEntryRef.current = uploadPendingFilesToEntry;
+      // Wrap the function to ensure it returns void
+      onUploadToEntryRef.current = async (entryId: number) => {
+        try {
+          await uploadPendingFilesToEntry(entryId);
+        } catch (err) {
+          console.error("Error in upload function:", err);
+        }
+      };
     }
 
     // Cleanup when component unmounts
