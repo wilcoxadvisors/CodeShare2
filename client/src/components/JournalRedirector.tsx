@@ -13,8 +13,15 @@ interface JournalRedirectorProps {
  */
 const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
   const params = useParams<{ id?: string }>();
-  const { currentEntity, isInitialLoading } = useEntity();
+  const { currentEntity, entities, isInitialLoading } = useEntity();
   const navigate = useNavigate();
+  
+  console.log("JournalRedirector render state:", { 
+    isInitialLoading, 
+    hasEntities: entities?.length > 0,
+    entitiesCount: entities?.length,
+    hasCurrentEntity: !!currentEntity
+  });
   
   // If we have an entry ID from params
   const entryId = params.id;
@@ -27,37 +34,34 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       return;
     }
     
-    console.log("JournalRedirector: Initial data load complete", { 
-      hasCurrentEntity: !!currentEntity,
-      currentEntityId: currentEntity?.id,
-      entryId
-    });
+    console.log("JournalRedirector: Initial data load complete, checking for entity");
     
-    // If we have a current entity, build and navigate to the hierarchical URL
-    if (currentEntity) {
-      const clientId = currentEntity.clientId;
-      const entityId = currentEntity.id;
-      
-      let path = `/clients/${clientId}/entities/${entityId}/journal-entries`;
-      
-      // Add entry ID and mode if needed
-      if (entryId) {
-        path += `/${entryId}`;
-        
-        // Add action suffix for edit/delete
-        if (mode === 'edit') {
-          path += '/edit';
-        } else if (mode === 'delete') {
-          path += '/delete';
-        }
-      }
-      
-      console.log("JournalRedirector: Navigating to hierarchical path:", path);
-      navigate(path, { replace: true });
+    // If no entities are selected, we'll show the NoEntitySelected component in the render
+    if (!currentEntity) {
+      console.log("JournalRedirector: No entity selected, showing placeholder");
+      return;
     }
     
-    // If no entity is selected, we show the NoEntitySelected component
-    // The component will render in the return statement when currentEntity is null
+    // If we have a current entity, build and navigate to the hierarchical URL
+    const clientId = currentEntity.clientId;
+    const entityId = currentEntity.id;
+    
+    let path = `/clients/${clientId}/entities/${entityId}/journal-entries`;
+    
+    // Add entry ID and mode if needed
+    if (entryId) {
+      path += `/${entryId}`;
+      
+      // Add action suffix for edit/delete
+      if (mode === 'edit') {
+        path += '/edit';
+      } else if (mode === 'delete') {
+        path += '/delete';
+      }
+    }
+    
+    console.log("JournalRedirector: Navigating to hierarchical path:", path);
+    navigate(path, { replace: true });
     
   }, [currentEntity, isInitialLoading, entryId, mode, navigate]);
   

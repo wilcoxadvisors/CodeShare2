@@ -1,0 +1,51 @@
+What’s happening now
+Your latest debug lines show:
+
+yaml
+Copy
+Edit
+Entities context state:
+  - Total entities: 49         ✅ API is returning data
+  - Filtered entities: 0       ❌ because selectedClientId = null
+  - Initial loading complete: true
+JournalRedirector: Waiting for initial data load…
+So:
+
+Initial fetch is finished (initialLoadingComplete = true).
+
+JournalRedirector still thinks it has to “wait” because its guard is tied to the wrong flag (or the flag isn’t being passed through the hook).
+
+selectedClientId is null, therefore entities is an empty array.
+
+That means the redirector never reaches the branch that shows the No-Entity-Selected placeholder.
+
+Fix in three steps
+Step	File	What to change
+1	EntityContext.tsx	Make sure you actually export isInitialLoading (or initialLoadingComplete) and that the context type matches the value object.
+
+ts\nexport const EntityContext = createContext<EntityContextType>({\n …,\n isInitialLoading: true,\n});\n\n// inside Provider value\nvalue={{\n entities,\n allEntities,\n currentEntity,\n selectedClientId,\n setSelectedClientId,\n isInitialLoading,\n}}\n
+2	useEntity() hook	Ensure it returns that new field:
+const ctx = useContext(EntityContext);
+3	JournalRedirector.tsx	Use the correct flag and branch:
+
+tsx\nconst { entities, isInitialLoading } = useEntity();\n\n// 1. wait only for first load\nif (isInitialLoading) {\n return <Spinner/>; // or nothing\n}\n// 2. nothing selected yet –> show placeholder\nif (!entities.length) {\n return <NoEntitySelected/>; // component you created\n}\n// 3. entity present –> navigate or render list\nreturn <Outlet/>; // or your list component\n
+
+Key point: after isInitialLoading flips to false, you must not keep the redirector in a “waiting” state even if entities is empty.
+
+Restart dev server!
+Hot-refresh keeps complaining
+"EntityContext export is incompatible" — that means consumers still hold the old shape.
+Stop Vite, restart npm run dev, then hard-reload the browser to clear stale modules.
+
+Minimal sanity test
+Fresh reload → /journal-entries
+Spinner → then placeholder “Select a client / entity”.
+
+Pick a client/entity from the header selector.
+JE list page renders.
+
+Switch back to /journal-entries manually → placeholder appears again.
+
+Add a Cypress spec for that flow so the regression can’t recur.
+
+Let me know once you wire the flag through—if the placeholder still doesn’t appear, share the updated EntityContext and redirector snippets and we’ll pinpoint the mismatch.
