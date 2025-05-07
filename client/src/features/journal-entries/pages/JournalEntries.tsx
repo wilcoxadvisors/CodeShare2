@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
@@ -327,15 +327,35 @@ function JournalEntries() {
         description="Create, view, and manage journal entries"
       >
         <div className="flex space-x-2">
-          <Button onClick={handleNewJournalEntry}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Entry
-          </Button>
-          
-          <Button variant="outline" onClick={handleBatchUpload}>
-            <FileUp className="mr-2 h-4 w-4" />
-            Batch Upload
-          </Button>
+          {clientId && entityId ? (
+            <>
+              <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/new`}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Entry
+                </Button>
+              </Link>
+              
+              <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/batch-upload`}>
+                <Button variant="outline">
+                  <FileUp className="mr-2 h-4 w-4" />
+                  Batch Upload
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Button onClick={handleNewJournalEntry}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Entry
+              </Button>
+              
+              <Button variant="outline" onClick={handleBatchUpload}>
+                <FileUp className="mr-2 h-4 w-4" />
+                Batch Upload
+              </Button>
+            </>
+          )}
         </div>
       </PageHeader>
       
@@ -391,10 +411,19 @@ function JournalEntries() {
             ) : filteredEntries.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64">
                 <p className="text-gray-500 mb-4">No journal entries found</p>
-                <Button onClick={handleNewJournalEntry}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create New Journal Entry
-                </Button>
+                {clientId && entityId ? (
+                  <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/new`}>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create New Journal Entry
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button onClick={handleNewJournalEntry}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Journal Entry
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -413,42 +442,68 @@ function JournalEntries() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedEntries.map((entry: any) => (
-                      <TableRow 
-                        key={entry.id}
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleRowClick(entry.id)}
-                      >
-                        <TableCell className="font-medium">
-                          {entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {entry.id}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="mr-2 h-4 w-4 text-gray-400" />
-                            {formatDate(entry.date)}
-                          </div>
-                        </TableCell>
-                        <TableCell>{entry.referenceNumber || entry.reference || '-'}</TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
-                        <TableCell>{entry.journalType || 'JE'}</TableCell>
-                        <TableCell>{getStatusBadge(entry.status)}</TableCell>
-                        <TableCell className="text-right">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD'
-                          }).format(entry.totalDebit || 0)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD'
-                          }).format(entry.totalCredit || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {paginatedEntries.map((entry: any) => {
+                      // Create the entry detail link once
+                      const entryDetailLink = clientId && entityId 
+                        ? `/clients/${clientId}/entities/${entityId}/journal-entries/${entry.id}`
+                        : null;
+                        
+                      return (
+                        <TableRow 
+                          key={entry.id}
+                          className="hover:bg-gray-50"
+                        >
+                          <TableCell className="font-medium">
+                            {entryDetailLink ? (
+                              <Link 
+                                to={entryDetailLink}
+                                className="text-blue-600 hover:underline hover:text-blue-800"
+                              >
+                                {entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`}
+                              </Link>
+                            ) : (
+                              entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {entry.id}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Calendar className="mr-2 h-4 w-4 text-gray-400" />
+                              {formatDate(entry.date)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {entryDetailLink ? (
+                              <Link 
+                                to={entryDetailLink}
+                                className="hover:underline"
+                              >
+                                {entry.referenceNumber || entry.reference || '-'}
+                              </Link>
+                            ) : (
+                              entry.referenceNumber || entry.reference || '-'
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                          <TableCell>{entry.journalType || 'JE'}</TableCell>
+                          <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                          <TableCell className="text-right">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: 'USD'
+                            }).format(entry.totalDebit || 0)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: 'USD'
+                            }).format(entry.totalCredit || 0)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
