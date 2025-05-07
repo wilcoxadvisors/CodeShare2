@@ -419,30 +419,20 @@ function Router() {
         </AppLayout>
       } />
 
-      {/* Legacy journal entries routes - using JournalRedirector to redirect to hierarchical paths */}
+      {/* Legacy journal entries routes - using JournalRedirector with nested routes */}
       <Route path="/journal-entries" element={
         <AppLayout>
           <JournalRedirector />
         </AppLayout>
-      } />
-      
-      <Route path="/journal-entries/:id" element={
-        <AppLayout>
-          <JournalRedirector mode="detail" />
-        </AppLayout>
-      } />
-      
-      <Route path="/journal-entries/:id/edit" element={
-        <AppLayout>
-          <JournalRedirector mode="edit" />
-        </AppLayout>
-      } />
-      
-      <Route path="/journal-entries/:id/delete" element={
-        <AppLayout>
-          <JournalRedirector mode="delete" />
-        </AppLayout>
-      } />
+      }>
+        {/* Index route shows journal entries list when entity is selected */}
+        <Route index element={<ProtectedRoute component={JournalEntries} />} />
+        <Route path="list/:entityId" element={<ProtectedRoute component={JournalEntries} />} />
+        <Route path="new/:entityId" element={<ProtectedRoute component={NewJournalEntry} />} />
+        <Route path=":id" element={<ProtectedRoute component={JournalEntryDetail} />} />
+        <Route path=":id/edit" element={<ProtectedRoute component={NewJournalEntry} />} />
+        <Route path=":id/delete" element={<ProtectedRoute component={DeleteJournalEntry} />} />
+      </Route>
       
       <Route path="*" element={<NotFound />} />
     </Routes>
