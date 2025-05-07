@@ -39,7 +39,7 @@ export async function apiRequest(
     // Bug fix #7: For FormData, don't set Content-Type header at all
     // Let the browser set it automatically with the correct boundary
     headers: isFormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
-    body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+    body: isFormData ? (data as FormData) : (data ? JSON.stringify(data) : undefined),
     credentials: "include",  // critical: keep cookie / session on PUT, PATCH, DELETE
     redirect: "manual"      // don't follow redirects - stay on JSON response
   });
@@ -54,24 +54,52 @@ export async function apiRequest(
   // Get response data
   let responseData;
   try {
-    // First check if response is OK (status 200-299)
-    if (!response.ok) {
-      // If not OK, throw an error immediately with status code
-      throw new Error(`API request failed with status ${response.status} ${response.statusText}`);
-    }
-    
-    // Only try to parse JSON if the content-type is application/json
+    // Check content type first - always try to read the response regardless of status
     const contentType = response.headers.get('content-type');
+    
+    // Clone the response so we can read it multiple ways if needed
+    const clonedResponse = response.clone();
+    
     if (contentType && contentType.includes('application/json')) {
-      responseData = await response.json();
-      
-      // Additional validation: Check that we actually got a proper JSON response
-      if (responseData === null || typeof responseData !== 'object') {
-        throw new Error('Invalid JSON response: expected an object but got ' + typeof responseData);
+      try {
+        // Try to parse as JSON regardless of status code
+        responseData = await response.json();
+        
+        // If we're here and not OK, prepare a detailed error with the JSON error details
+        if (!response.ok && responseData) {
+          console.error('API Error Details:', responseData);
+        }
+      } catch (jsonError) {
+        // If JSON parsing fails, fall back to text
+        console.warn('Failed to parse error response as JSON:', jsonError);
+        responseData = await clonedResponse.text();
       }
     } else {
       // For non-JSON responses, just get the text
       responseData = await response.text();
+    }
+    
+    // Now handle error status after we've read the response
+    if (!response.ok) {
+      let errorMessage = `API request failed with status ${response.status} ${response.statusText}`;
+      
+      // Add detailed error message if we have one
+      if (typeof responseData === 'object' && responseData !== null) {
+        // Format the error object for better display
+        const errorDetails = JSON.stringify(responseData, null, 2);
+        errorMessage += `\nDetails: ${errorDetails}`;
+      } else if (typeof responseData === 'string' && responseData.length > 0) {
+        errorMessage += `\nDetails: ${responseData}`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    // Success case - additional validation for JSON responses
+    if (contentType && contentType.includes('application/json')) {
+      if (responseData === null || typeof responseData !== 'object') {
+        throw new Error('Invalid JSON response: expected an object but got ' + typeof responseData);
+      }
     }
   } catch (error) {
     console.error('Failed to process API response:', error);
@@ -88,15 +116,8 @@ export async function apiRequest(
       'content-type': response.headers.get('content-type'),
       'content-length': response.headers.get('content-length')
     },
-    ...responseData // Spread any properties from the JSON body
+    ...(typeof responseData === 'object' ? responseData : {}) // Spread any properties from the JSON body, only if it's an object
   };
-
-  if (!response.ok) {
-    // Check if we need to throw with custom error message
-    await throwIfResNotOk(response);
-    // If throwIfResNotOk doesn't throw, throw our formatted response
-    throw formattedResponse;
-  }
 
   return formattedResponse;
 }
@@ -134,20 +155,43 @@ export const getQueryFn: <T>(options: {
     // Process the response
     let responseData;
     try {
-      // Only attempt to parse JSON if we have a response with content
-      if (response.headers.get('content-type')?.includes('application/json')) {
-        responseData = await response.json();
+      const contentType = response.headers.get('content-type');
+      const clonedResponse = response.clone();
+      
+      // Always try to parse the response first
+      if (contentType?.includes('application/json')) {
+        try {
+          responseData = await response.json();
+          
+          // If not OK, log the error details
+          if (!response.ok && responseData) {
+            console.error('API Query Error Details:', responseData);
+          }
+        } catch (jsonError) {
+          console.warn('Failed to parse error response as JSON:', jsonError);
+          responseData = await clonedResponse.text();
+        }
       } else {
-        responseData = null;
+        responseData = await response.text();
+      }
+      
+      // Handle error after reading the response
+      if (!response.ok) {
+        let errorMessage = `API query failed with status ${response.status} ${response.statusText}`;
+        
+        // Add detailed error message if we have one
+        if (typeof responseData === 'object' && responseData !== null) {
+          const errorDetails = JSON.stringify(responseData, null, 2);
+          errorMessage += `\nDetails: ${errorDetails}`;
+        } else if (typeof responseData === 'string' && responseData.length > 0) {
+          errorMessage += `\nDetails: ${responseData}`;
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.warn('Failed to parse response data in queryFn:', error);
-      responseData = null;
-    }
-
-    // Check for errors
-    if (!response.ok) {
-      await throwIfResNotOk(response);
+      console.error('Failed to process query response:', error);
+      throw error;
     }
 
     // Return the parsed data

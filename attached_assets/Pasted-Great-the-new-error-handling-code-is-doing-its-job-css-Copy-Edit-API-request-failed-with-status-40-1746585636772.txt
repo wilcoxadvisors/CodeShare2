@@ -1,0 +1,173 @@
+Great — the new error-handling code is doing its job
+css
+Copy
+Edit
+API request failed with status 400 Bad Request  
+Details: {  
+  "message": "Reference number \"877\" is already in use for this entity. Please use a different reference number."
+}
+That’s the server telling us the business-rule failed (reference numbers must be unique per entity).
+So the network / routing problems are solved; now we just need to surface these semantic errors to the user and optionally help them pick a free reference number.
+
+1 Show the message to the user instead of the silent console error
+Inside JournalEntryForm.tsx you already have the React-Query mutation:
+
+ts
+Copy
+Edit
+const createEntryMutation = useMutation({
+  mutationFn: (payload) => apiRequest({...}),
+  onError: (err) => { … }
+});
+Replace the current onError with:
+
+ts
+Copy
+Edit
+onError: (err: any) => {
+  // err is the object you throw in apiRequest
+  const msg =
+    typeof err === 'object' && err.message
+      ? err.message
+      : 'Something went wrong while saving the journal entry.';
+  // ①  put it next to the Reference field
+  setError('referenceNumber', { type: 'server', message: msg });
+  // ②  and pop a toast
+  toast.error(msg, { duration: 6000 });
+},
+(If you’re using react-hook-form, setError is available; otherwise keep only the toast.)
+
+2 Validate before the POST (optional but nice)
+Add this synchronous check to handleSubmit:
+
+ts
+Copy
+Edit
+// local duplicate check (cache contains the latest list)
+const dup = queryClient
+  .getQueryData<JournalEntry[]>(['journalEntries', clientId, entityId])
+  ?.some(e => e.referenceNumber === data.referenceNumber);
+
+if (dup) {
+  setError('referenceNumber', {
+    type: 'manual',
+    message: 'That reference number is already used in this entity.'
+  });
+  return;              // stop here, don’t hit the API
+}
+3 Auto-suggest the next free reference (quality-of-life)
+ts
+Copy
+Edit
+function getNextReferenceNumber(existing: string[]): string {
+  // extract numeric tail, find max, add 1
+  const nums = existing
+    .map(r => parseInt(r.match(/\d+$/)?.[0] ?? '0', 10))
+    .filter(n => !isNaN(n));
+  return (Math.max(0, ...nums) + 1).toString();
+}
+
+// when the user focuses the field and it’s empty
+<input
+  {...register('referenceNumber')}
+  onFocus={(e) => {
+    if (!e.target.value) {
+      const refs = queryClient
+        .getQueryData<JournalEntry[]>(['journalEntries', clientId, entityId])
+        ?.map(j => j.referenceNumber) ?? [];
+      setValue('referenceNumber', getNextReferenceNumber(refs));
+    }
+  }}
+/>
+Quick recap
+Error bubble – we now surface the 400 message in the form & toast.
+
+Pre-check – optionally block duplicates before the network call.
+
+Auto-fill – suggest the next valid number to speed data entry.
+
+Try creating the same entry again; you should see the inline error immediately.
+Change the reference to a unique value → click Post → it should succeed.
+
+Let me know if you’d like help polishing the UI/UX further!
+
+
+
+
+
+
+You said:
+Can make a new entry and posted or put in draft.
+I can view a draft entry or posted entry:
+The reference says its in use. But its not the database id or je id
+
+
+ChatGPT said:
+Here’s what’s happening and a couple of quick ways to get rid of the “reference already in use” road-block.
+
+1. Why the server is complaining
+referenceNumber must be unique within the same entity.
+The API checks the string you submit – it is not looking at the journal-entry’s DB ID. If the exact same referenceNumber string is already stored for any JE that belongs to entity 391, the server returns 400.
+
+When editing an existing entry the check sometimes fires on itself unless you pass the current entry’s id in the payload (or the backend is coded to ignore it).
+
+Small string differences matter:
+
+leading/trailing spaces  ("877 " vs "877")
+
+case  ("Inv-001" vs "inv-001")
+
+invisible characters pasted from Excel, etc.
+
+2. Quick client-side guard
+Add this before you hit apiRequest (you already have the cache with the 42 entries):
+
+ts
+Copy
+Edit
+const dup = cachedEntries.some(
+  e =>
+    e.referenceNumber.trim().toLowerCase() ===
+    data.referenceNumber.trim().toLowerCase() &&
+    // ignore the entry we’re editing
+    (editing ? e.id !== currentEntryId : true)
+);
+
+if (dup) {
+  setError('referenceNumber', {
+    type: 'duplicate',
+    message: 'That reference number is already used for this entity.'
+  });
+  return;         // don’t call the API
+}
+This stops the round-trip if you really are duplicating the reference, and—more importantly—prevents the false-positive when you’re editing your own entry.
+
+3. If you are editing an entry
+Make sure the PUT/PATCH body includes the entry’s id (or whatever identifier the backend expects) and that the backend validator skips the row whose id matches:
+
+ts
+Copy
+Edit
+{
+  ...data,
+  id: currentEntryId      // <- let the server know “it’s me”
+}
+4. If you’re still certain the reference is unique
+Inspect what the UI is sending (Network tab → Request payload) – confirm the exact referenceNumber.
+
+Query the API directly:
+
+bash
+Copy
+Edit
+GET /api/clients/250/entities/391/journal-entries?referenceNumber=877
+If that returns a row, you know where the collision is.
+
+TL;DR
+Trim + lowercase before comparing on the client.
+
+While editing, tell the server which row you’re updating.
+
+If the server still rejects, fetch the colliding entry to see what reference it has stored (often an old draft with the same number).
+
+Give that a try and let me know if the error disappears or if we need to tweak the backend validator next.

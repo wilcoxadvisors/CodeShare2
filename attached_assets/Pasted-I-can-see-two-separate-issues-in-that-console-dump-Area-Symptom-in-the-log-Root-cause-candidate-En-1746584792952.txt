@@ -1,0 +1,107 @@
+I can see two separate issues in that console dump:
+
+Area	Symptom in the log	Root-cause candidate
+EntityLayout	EntityLayout: Current entities 0 Looking for entity ID: 391 followed by an endless “still loading” loop	We’re still mounting EntityLayout for screens that don’t need it, so it re-calculates while the query is in flight and shows the spinner forever.
+POST /api/…/journal-entries	400 Bad Request every time you hit Save / Post	The payload that reaches the API violates a server-side validation rule (the backend echoes a 400 immediately).
+
+Below is a tight, step-by-step fix list.
+
+1 Push “detail / new / delete / batch-upload” outside EntityLayout
+The list page lives inside EntityLayout (because it needs the sidebar and top context).
+The other four screens shouldn’t. That single change stops the infinite “Current entities 0” loop.
+
+tsx
+Copy
+Edit
+// src/App.tsx  (only the journal routes)
+
+// journal root still uses EntityLayout so “/journal-entries” shows the list
+<Route element={<EntityLayout />}>
+  <Route path="journal-entries" index         element={<JournalEntries />} />
+</Route>
+
+/* the other screens do **not** need EntityLayout */
+<Route path="journal-entries/detail/:jeId" element={<JournalEntryDetail />} />
+<Route path="journal-entries/new"          element={<NewJournalEntry   />} />
+<Route path="journal-entries/delete/:jeId" element={<DeleteJournalEntry />} />
+<Route path="journal-entries/batch-upload" element={<BatchUpload        />} />
+(If you’re using a ProtectedRoute, wrap each new line with it.)
+
+2 Let EntityLayout really wait for the first fetch
+A tiny guard does it:
+
+tsx
+Copy
+Edit
+// src/components/layout/EntityLayout.tsx
+const { entities, allEntities, isInitialLoading, isLoading } = useEntity();
+
+const stillFetching =
+  isInitialLoading ||                    // first query not done yet
+  (isLoading && allEntities.length === 0); // we haven’t received anything
+
+if (stillFetching) return <Spinner />;
+Now the spinner disappears exactly once, after data arrives.
+
+3 Find why the API answers 400
+The backend is telling us what’s wrong— we’re just swallowing the body.
+Add one line in the generic apiRequest helper:
+
+ts
+Copy
+Edit
+if (!response.ok) {
+  const text = await response.text();           // <= NEW
+  throw new Error(
+    `API request failed with status ${response.status} ${response.statusText}\n${text}`
+  );
+}
+Make one more Save / Post attempt and read the message Chrome prints just after
+API request failed with status 400.
+Typical offenders I’ve seen:
+
+lines must not be empty – you added lines in the UI but they weren’t included in the JSON (look at the payload you printed; if the amount is zero or the accountId missing the server rejects it).
+
+referenceNumber already exists
+
+sum of debits and credits must be zero
+
+attachment validation (supDocId expected when files array present)
+
+Whatever the message says, adjust the transform in handleSubmit (or in the server fixture) accordingly.
+
+4 A quick sanity checklist for the payload
+The API the team shipped in February expects exactly this shape:
+
+json
+Copy
+Edit
+{
+  "reference":        "string",  (required, unique per entity)
+  "referenceNumber":  "string",  (optional)
+  "date":             "YYYY-MM-DD",
+  "description":      "string",
+  "status":           "draft" | "posted",
+  "journalType":      "JE",
+  "clientId":         number,
+  "entityId":         number,
+  "createdBy":        number,
+  "lines": [
+     { "accountId": number, "type": "debit" | "credit", "amount": number }
+  ],
+  "attachments": [ { "fileId": uuid, "name": "something.pdf" } ]
+}
+All amounts must be positive, the debit / credit flag defines the sign.
+
+lines.length ≥ 2 and Σ debit === Σ credit.
+
+If you send attachments, omit supDocId. If you send supDocId, omit attachments.
+
+Double-check your final payload log against that list before the request goes out.
+
+After you apply the three patches
+Navigate to /journal-entries – spinner → list loads.
+
+Click a row – detail screen opens (no more infinite spinner).
+
+Click “New Entry” – form opens, you can post; if you still get 400 the console now shows the exact backend message so we can fix that field only.
