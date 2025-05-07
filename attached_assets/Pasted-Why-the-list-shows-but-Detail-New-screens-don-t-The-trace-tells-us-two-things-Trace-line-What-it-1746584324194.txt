@@ -1,0 +1,83 @@
+Why the list shows but Detail / New screens don’t
+The trace tells us two things:
+
+Trace line	What it means
+EntityLayout: Current entities 0 Looking for entity ID: 391	The EntityLayout wrapper receives no entities (it sees an empty array) even though context just reported filtered entities: 1.
+JournalEntryDetail / NewJournalEntry never appear in the log	React-router never mounts those components (the route guard bails out before they’re reached).
+
+That points to a double-filtering problem:
+
+EntityContext trims the list to the selected client (filteredEntities.length === 1 – good).
+
+EntityLayout filters again inside useEffect before the query for that client finishes, so as soon as it renders for the first time it thinks there are “0 entities” and shows the spinner forever.
+
+1 Patch EntityLayout so it really “waits”
+tsx
+Copy
+Edit
+// src/components/layout/EntityLayout.tsx
+const { allEntities, entities, isLoading, isInitialLoading } = useEntity();
+const { clientId, entityId } = useParams();
+
+/** NEW: if we’re still fetching entities for this client, keep waiting */
+const stillFetchingForClient =
+  isInitialLoading ||
+  (isLoading && entities.length === 0 && allEntities.length === 0);
+
+if (stillFetchingForClient) return <Spinner />;
+
+/** after fetch: find the entity */
+const entity = entities.find(e => e.id === Number(entityId));
+if (!entity) return <NoEntitySelected />;
+return <Outlet />;
+Key change: we look at allEntities.length to distinguish “nothing yet fetched” from “fetched but empty”.
+
+2 Put Detail and New routes outside EntityLayout
+EntityLayout is designed for pages that display under the client/entity tabs (e.g. Chart of Accounts).
+Detail / New pages don’t need those tabs; wrapping them introduces the loading glitch.
+
+tsx
+Copy
+Edit
+// src/App.tsx (simplified)
+<Route element={<AppLayout />}>
+  {/* pages that need EntityLayout */}  
+  <Route element={<EntityLayout />}>
+     <Route path="chart-of-accounts" element={<ChartOfAccounts />} />
+     <Route path="reports/*"         element={<Reports />} />
+  </Route>
+
+  {/* journal-entry stack */}
+  <Route path="journal-entries"  element={<JournalRedirector />}>
+      <Route index               element={<JournalEntries />} />
+      <Route path="detail/:jeId" element={<JournalEntryDetail />} />   // NO EntityLayout
+      <Route path="new/:entityId"element={<NewJournalEntry />} />      // NO EntityLayout
+  </Route>
+</Route>
+3 Make sure the links hit those paths
+tsx
+Copy
+Edit
+// JournalEntries (table):
+<Link to={`detail/${row.id}`}>{row.reference}</Link>
+
+<Button
+  onClick={() => navigate(`new/${currentEntity!.id}`)}
+>
+  New Entry
+</Button>
+4 Watch the network after the patch
+GET /api/clients/250/entities/391/journal-entries/123 → 200
+(Detail view loads.)
+
+POST /api/clients/250/entities/391/journal-entries → 201
+(Creating a new entry works.)
+
+If either call fails, paste the response payload / status so we can fix the backend side.
+
+TL;DR
+EntityLayout: don’t early-bail when entities.length === 0 && isLoading – wait for the fetch to finish.
+
+Routes: keep JournalEntryDetail and NewJournalEntry outside EntityLayout.
+
+Row / button links: point to detail/:jeId and new/:entityId.

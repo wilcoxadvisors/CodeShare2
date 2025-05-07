@@ -429,9 +429,10 @@ function Router() {
         <Route index element={<ProtectedRoute component={JournalEntries} />} />
         <Route path="list/:entityId" element={<ProtectedRoute component={JournalEntries} />} />
         <Route path="new/:entityId" element={<ProtectedRoute component={NewJournalEntry} />} />
-        <Route path=":id" element={<ProtectedRoute component={JournalEntryDetail} />} />
-        <Route path=":id/edit" element={<ProtectedRoute component={NewJournalEntry} />} />
-        <Route path=":id/delete" element={<ProtectedRoute component={DeleteJournalEntry} />} />
+        <Route path="detail/:jeId" element={<ProtectedRoute component={JournalEntryDetail} />} />
+        <Route path="edit/:jeId" element={<ProtectedRoute component={NewJournalEntry} />} />
+        <Route path="delete/:jeId" element={<ProtectedRoute component={DeleteJournalEntry} />} />
+        <Route path="batch-upload" element={<ProtectedRoute component={BatchUpload} />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />

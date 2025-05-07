@@ -181,8 +181,8 @@ function JournalEntries() {
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {
     if (clientId && entityId) {
-      // Use hierarchical URL pattern for new journal entry
-      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/new`);
+      // Use legacy URL pattern for new journal entry with the entityId
+      navigate(`/journal-entries/new/${entityId}`);
     } else {
       console.error("Cannot create journal entry: Missing client ID or entity ID");
       toast({
@@ -211,8 +211,9 @@ function JournalEntries() {
   // Handle row click to view journal entry details
   const handleRowClick = (id: number) => {
     if (clientId && entityId) {
-      // Use hierarchical URL pattern for journal entry detail view
-      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/${id}`);
+      // Navigate to journal entry detail view using our legacy URL pattern
+      // This now uses the detail/:jeId pattern defined in the route config
+      navigate(`/journal-entries/detail/${id}`);
     } else {
       console.error("Cannot navigate to journal entry detail: Missing client ID or entity ID");
       toast({
