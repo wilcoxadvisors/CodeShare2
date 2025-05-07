@@ -48,22 +48,42 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   
   // Get all entities for the user with refetch capability when client changes
-  const { data: entitiesData = [], isLoading, refetch: refetchEntities } = useQuery<Entity[]>({
+  const { 
+    data: entitiesData = [], 
+    isLoading: queryIsLoading,
+    isInitialLoading,
+    isError,
+    refetch: refetchEntities 
+  } = useQuery<Entity[]>({
     queryKey: user ? ['/api/entities'] : [],
-    enabled: !!user
+    enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 60000, // 1 minute
   });
+
+  // Maintain our own loading state to ensure it's properly set to false
+  const [isLoading, setIsLoading] = useState(true);
 
   // Just use the entities from the general list but trigger a refetch when client changes
   const entities = entitiesData as Entity[];
   
+  // Update our loading state whenever the query state changes
+  useEffect(() => {
+    // If query is done loading (success or error), set our loading to false
+    if (!queryIsLoading) {
+      setIsLoading(false);
+    }
+  }, [queryIsLoading, isError]);
+  
   // Debug log when entities data changes
   useEffect(() => {
-    console.log(`DEBUG: Entities data updated - received ${entities && Array.isArray(entities) ? entities.length : 0} entities`);
+    console.log(`DEBUG: Entities data updated - received ${entities && Array.isArray(entities) ? entities.length : 0} entities, isLoading=${isLoading}`);
     if (selectedClientId && entities && Array.isArray(entities) && entities.length > 0) {
       const clientEntities = entities.filter(entity => entity.clientId === selectedClientId);
       console.log(`DEBUG: After entities update, found ${clientEntities.length} entities for selected client ${selectedClientId}`);
     }
-  }, [entities, selectedClientId]);
+  }, [entities, selectedClientId, isLoading]);
 
   // When client selection changes: clear entity selection and refetch entities
   useEffect(() => {

@@ -1,0 +1,79 @@
+What the new log is telling us
+
+Time	Line	Meaning
+Entities … received 0	first background request returns an empty array (that’s fine)	
+Entities … received 49	the real list arrives a moment later	
+JournalRedirector … isLoading = true (twice)	the component still thinks the entity list is loading even after the 49-entity payload has been committed	
+
+So EntityContext never flips its isLoading flag to false, therefore JournalRedirector stays stuck in “waiting…”.
+
+60-second fix
+In EntityContext.tsx make sure the query sets isLoading = false once the first successful fetch resolves.
+
+ts
+Copy
+Edit
+// EntityContext.tsx
+const [entities, setEntities] = useState<Entity[]>([]);
+const [isLoading, setIsLoading] = useState(true);
+
+useEffect(() => {
+  let isMounted = true;
+  fetch('/api/entities')
+    .then(res => res.json())
+    .then(data => {
+      if (!isMounted) return;
+      setEntities(data);        // ← 0 or 49, whatever comes back
+      setIsLoading(false);      // ← **important**
+    })
+    .catch(err => {
+      console.error('Entity fetch failed', err);
+      setIsLoading(false);      // still stop waiting so UI can error-out
+    });
+  return () => (isMounted = false);
+}, []);
+In JournalRedirector.tsx, react when isLoading flips to false.
+
+tsx
+Copy
+Edit
+const { entities, isLoading, currentEntity, setCurrentEntity } = useEntityContext();
+const navigate = useNavigate();
+
+useEffect(() => {
+  if (isLoading) return;                // wait until loading finishes
+  if (!entities.length) {
+    navigate('/no-entities');           // or toast “no entities found”
+    return;
+  }
+  const next = currentEntity ?? entities[0]; // pick first entity
+  if (!currentEntity) setCurrentEntity(next);
+  navigate(`/journal-entries/list/${next.id}`);
+}, [isLoading, entities, currentEntity, navigate]);
+No setState (or navigate) calls should be inside the render body.
+
+Double-check that nothing resets isLoading to true later (e.g. in a refetch that fires immediately after login). If you want the flag during refetches, expose both isInitialLoading and isFetching like TanStack Query does so the redirector only waits on the very first load.
+
+Quick test
+Reload → log in.
+
+EntityContext shows … received 49 entities, then isLoading → false.
+
+JournalRedirector fires, detects the 49 entities, auto-selects the first, and routes you to /journal-entries/list/<id>.
+
+If it still hangs, add:
+
+ts
+Copy
+Edit
+console.log('EntityContext loading:', isLoading, 'entities:', entities.length);
+and watch that the flag really flips to false before JournalRedirector runs.
+
+Why this works
+The context is authoritative: once it declares “done loading”, every consumer can assume the list is final (even if it’s empty).
+
+Redirect logic sits in useEffect, so there are no state mutations during render.
+
+First-entity auto-selection guarantees the JE screen always has an entity ID.
+
+Give that a try—let me know if the JE list still refuses to appear or if another error pops up!
