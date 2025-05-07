@@ -54,9 +54,9 @@ export default function EntityLayout() {
         console.log("EntityLayout: Entity not found in loaded entities, trying direct fetch");
         
         // If we have direct entity data from the backup query
-        if (entityData) {
+        if (entityData && typeof entityData === 'object' && 'id' in entityData) {
           console.log("EntityLayout: Using directly fetched entity data:", entityData);
-          setCurrentEntity(entityData);
+          setCurrentEntity(entityData as any); // Cast as Entity since we've verified key properties
         }
       }
     }

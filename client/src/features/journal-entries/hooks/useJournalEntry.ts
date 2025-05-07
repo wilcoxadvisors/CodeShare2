@@ -234,6 +234,11 @@ export function useJournalEntry() {
       queryClient.invalidateQueries({ 
         queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries`]
       });
+      
+      // ALSO invalidate the entities API to refresh entity list
+      queryClient.invalidateQueries({
+        queryKey: ['/api/entities']
+      });
     },
     onError: (error: any) => {
       // Check for different types of errors

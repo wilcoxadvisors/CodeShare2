@@ -61,6 +61,17 @@ function JournalEntries() {
   const clientId = params?.clientId ? parseInt(params.clientId) : (currentEntity?.clientId || null);
   const entityId = params?.entityId ? parseInt(params.entityId) : (currentEntity?.id || null);
   
+  // Log detailed entity context information
+  console.log("JournalEntries: Detailed context check", {
+    "params.clientId": params?.clientId,
+    "params.entityId": params?.entityId,
+    "currentEntity?.clientId": currentEntity?.clientId,
+    "currentEntity?.id": currentEntity?.id,
+    "calculated clientId": clientId,
+    "calculated entityId": entityId,
+    "total entities in context": entities.length
+  });
+  
   // Update entity context if needed based on route params
   useEffect(() => {
     console.log("JournalEntries: Route params check - entityId:", entityId, 
