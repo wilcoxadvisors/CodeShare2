@@ -34,9 +34,13 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       return;
     }
     
-    console.log("JournalRedirector: Initial data load complete, checking for entity");
+    // If no entities are available (no client selected), show placeholder
+    if (!entities.length) {
+      console.log("JournalRedirector: No entities available (no client selected), showing placeholder");
+      return;
+    }
     
-    // If no entities are selected, we'll show the NoEntitySelected component in the render
+    // If no specific entity is selected, show placeholder
     if (!currentEntity) {
       console.log("JournalRedirector: No entity selected, showing placeholder");
       return;
@@ -63,9 +67,9 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     console.log("JournalRedirector: Navigating to hierarchical path:", path);
     navigate(path, { replace: true });
     
-  }, [currentEntity, isInitialLoading, entryId, mode, navigate]);
+  }, [currentEntity, entities, isInitialLoading, entryId, mode, navigate]);
   
-  // Render a loading spinner while waiting for the initial data load
+  // 1. First wait for initial data loading
   if (isInitialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -79,12 +83,17 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     );
   }
   
-  // Show a "no entity selected" view if the user hasn't chosen an entity
+  // 2. Then check if there are no entities (client not selected)
+  if (!entities.length) {
+    return <NoEntitySelected />;
+  }
+  
+  // 3. Then check if there's no current entity selected
   if (!currentEntity) {
     return <NoEntitySelected />;
   }
   
-  // This will only show briefly until the redirect happens
+  // 4. If we have an entity, show a brief loading message while redirecting
   return (
     <div className="flex items-center justify-center h-64">
       <div className="text-sm text-muted-foreground">
