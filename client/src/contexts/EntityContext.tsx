@@ -25,6 +25,7 @@ interface EntityContextType {
   entities: Entity[];
   currentEntity: Entity | null;
   setCurrentEntity: (entity: Entity | null) => void;
+  setCurrentEntityById: (entityId: number) => void;
   isLoading: boolean;
   selectedClientId: number | null;
   setSelectedClientId: (clientId: number | null) => void;
@@ -35,6 +36,7 @@ export const EntityContext = createContext<EntityContextType>({
   entities: [],
   currentEntity: null,
   setCurrentEntity: () => {},
+  setCurrentEntityById: () => {},
   isLoading: true,
   selectedClientId: null,
   setSelectedClientId: () => {}
@@ -101,10 +103,35 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     }
   }, [entities, currentEntity, selectedClientId]);
 
+  // Function to set current entity by ID
+  const setCurrentEntityById = (entityId: number) => {
+    console.log("Setting current entity by ID:", entityId);
+    
+    if (!Array.isArray(entities) || entities.length === 0) {
+      console.warn("No entities available to select from");
+      return;
+    }
+    
+    const entity = entities.find(e => e.id === entityId);
+    if (entity) {
+      console.log(`Found entity with ID ${entityId}:`, entity.name);
+      setCurrentEntity(entity);
+      
+      // Also set the client ID if it's not already set
+      if (entity.clientId !== selectedClientId) {
+        console.log(`Also setting client ID to ${entity.clientId}`);
+        setSelectedClientId(entity.clientId);
+      }
+    } else {
+      console.warn(`Entity with ID ${entityId} not found among ${entities.length} entities`);
+    }
+  };
+
   const value = {
     entities,
     currentEntity,
     setCurrentEntity,
+    setCurrentEntityById,
     isLoading,
     selectedClientId,
     setSelectedClientId

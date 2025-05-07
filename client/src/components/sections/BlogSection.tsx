@@ -32,8 +32,39 @@ const BlogSection: React.FC<BlogSectionProps> = () => {
   // Get blog posts from the API, ensuring we handle the correct data structure
   const blogPosts = data?.posts || [];
   
-  // Display at most 3 posts
-  const displayPosts = blogPosts.slice(0, 3);
+  // Create fallback posts if no posts are available
+  const fallbackPosts: BlogPost[] = blogPosts.length === 0 ? [
+    {
+      id: 1,
+      title: "5 Financial Tips for Small Business Owners",
+      excerpt: "Practical advice for managing business finances and ensuring sustainable growth.",
+      publishedAt: new Date().toISOString(),
+      author: "Financial Team",
+      category: "Business Finance",
+      slug: "financial-tips"
+    },
+    {
+      id: 2,
+      title: "Understanding Tax Deductions for Your Business",
+      excerpt: "A comprehensive guide to business tax deductions that can save you money.",
+      publishedAt: new Date().toISOString(),
+      author: "Tax Specialist",
+      category: "Taxation",
+      slug: "tax-deductions"
+    },
+    {
+      id: 3,
+      title: "The Power of Financial Forecasting",
+      excerpt: "Learn how financial forecasting can help your business make better decisions.",
+      publishedAt: new Date().toISOString(),
+      author: "Analytics Team",
+      category: "Financial Planning",
+      slug: "financial-forecasting"
+    }
+  ] : [];
+  
+  // Display at most 3 posts, using fallback posts if none are available
+  const displayPosts = blogPosts.length > 0 ? blogPosts.slice(0, 3) : fallbackPosts;
 
   return (
     <section id="blog" className="py-20 bg-white">

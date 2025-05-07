@@ -66,6 +66,7 @@ function Sidebar() {
             
             {/* General Ledger moved to Reports tab */}
             
+            {/* Journal Entries link - gets dynamically redirected if entity context exists */}
             <NavItem 
               path="/journal-entries" 
               icon={<ClipboardEdit className="h-5 w-5 mr-2" />} 
