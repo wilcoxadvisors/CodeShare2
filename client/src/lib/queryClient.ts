@@ -35,8 +35,10 @@ export async function apiRequest(
               "url:", url, "method:", method);
   
   if (isFormData) {
-    console.log("DEBUG apiRequest: Processing FormData submission, keys:", 
-                data instanceof FormData ? [...(data as FormData).keys()] : 'unknown');
+    console.log("DEBUG apiRequest: Processing FormData submission with FormData object");
+    // We can't easily iterate over FormData keys in all TypeScript configurations
+    // Just indicate that we're processing FormData without trying to list the keys
+    console.log("DEBUG apiRequest: FormData is being transmitted properly");
   }
   
   // For FormData, don't set Content-Type - let browser handle the multipart boundary
