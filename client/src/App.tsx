@@ -337,14 +337,33 @@ function Router() {
         </AppLayout>
       } />
       
-      {/* Hierarchical routes for journal entries with client and entity context */}
+      {/* Hierarchical routes for entities - list pages that need EntityLayout */}
       <Route path="/clients/:clientId/entities/:entityId" element={<EntityLayout />}>
         <Route path="journal-entries" element={<ProtectedRoute component={JournalEntries} />} />
-        <Route path="journal-entries/new" element={<ProtectedRoute component={NewJournalEntry} />} />
-        <Route path="journal-entries/:id" element={<ProtectedRoute component={JournalEntryDetail} />} />
-        <Route path="journal-entries/:id/edit" element={<ProtectedRoute component={NewJournalEntry} />} />
-        <Route path="journal-entries/:id/delete" element={<ProtectedRoute component={DeleteJournalEntry} />} />
+        {/* Keep entity-related pages that need EntityLayout here */}
       </Route>
+      
+      {/* Detail/edit routes for journal entries - OUTSIDE EntityLayout to avoid double filtering */}
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/new" element={
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      } />
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id" element={
+        <AppLayout>
+          <ProtectedRoute component={JournalEntryDetail} />
+        </AppLayout>
+      } />
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/edit" element={
+        <AppLayout>
+          <ProtectedRoute component={NewJournalEntry} />
+        </AppLayout>
+      } />
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete" element={
+        <AppLayout>
+          <ProtectedRoute component={DeleteJournalEntry} />
+        </AppLayout>
+      } />
       
       <Route path="/chart-of-accounts" element={
         <AppLayout>

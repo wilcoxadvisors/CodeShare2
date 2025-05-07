@@ -79,8 +79,20 @@ export default function EntityLayout() {
   }, [entities, isLoading, entityId, clientId, setCurrentEntity, entityData]);
 
   /* ---------- only render children when entity context is being loaded ---------- */
-  if (isLoading) {
-    console.log("EntityLayout: Still loading entities");
+  const { allEntities, isInitialLoading } = useEntity();
+  
+  // NEW: If we're still fetching entities for this client, keep waiting
+  const stillFetchingForClient = 
+    isInitialLoading || 
+    (isLoading && entities.length === 0 && allEntities.length === 0);
+    
+  if (stillFetchingForClient) {
+    console.log("EntityLayout: Still loading entities - waiting for initial load", { 
+      isInitialLoading, 
+      isLoading, 
+      entitiesLength: entities.length, 
+      allEntitiesLength: allEntities.length 
+    });
     return <FullPageSpinner />;
   }
 
