@@ -122,7 +122,8 @@ function BatchUpload() {
       setIsValidating(true);
       
       const formData = new FormData();
-      formData.append('file', file);
+      // Include filename as third parameter to ensure proper field name and filename
+      formData.append('file', file, file.name);
       formData.append('entityId', currentEntity.id.toString());
       
       // Use hierarchical URL pattern
@@ -179,7 +180,8 @@ function BatchUpload() {
       }
       
       const formData = new FormData();
-      formData.append('file', file);
+      // Include filename as third parameter to ensure proper field name and filename
+      formData.append('file', file, file.name);
       formData.append('entityId', currentEntity.id.toString());
       
       // Use hierarchical URL pattern
