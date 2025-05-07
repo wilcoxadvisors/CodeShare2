@@ -13,7 +13,7 @@ interface JournalRedirectorProps {
  */
 const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
   const params = useParams<{ id?: string }>();
-  const { currentEntity, entities, setCurrentEntityById, isLoading } = useEntity();
+  const { currentEntity, entities, allEntities, setCurrentEntityById, isLoading } = useEntity();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
@@ -35,8 +35,14 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       return;
     }
     
-    // If we don't have any entities at all
-    if (!entities || entities.length === 0) {
+    console.log("JournalRedirector: Data loaded", { 
+      allEntities: allEntities.length,
+      filteredEntities: entities.length,
+      currentEntity: currentEntity?.id 
+    });
+    
+    // If we don't have any entities at all (check allEntities, not filtered entities)
+    if (!allEntities || allEntities.length === 0) {
       console.log("JournalRedirector: No entities available at all");
       toast({
         title: "No Entities Available",
@@ -48,11 +54,14 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       return;
     }
     
+    // Use all entities if filtered list is empty (when no client is selected)
+    const availableEntities = entities.length > 0 ? entities : allEntities;
+    
     // Auto-select the first entity if none is selected but entities are available
-    if (!currentEntity && entities.length > 0) {
-      console.log("JournalRedirector: Auto-selecting first entity:", entities[0].id);
+    if (!currentEntity && availableEntities.length > 0) {
+      console.log("JournalRedirector: Auto-selecting first entity:", availableEntities[0].id);
       try {
-        setCurrentEntityById(entities[0].id);
+        setCurrentEntityById(availableEntities[0].id);
         // Let the effect run again after setting the entity
         return;
       } catch (err) {
@@ -88,7 +97,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     console.error("JournalRedirector: Unexpected state - falling back to dashboard");
     navigate('/dashboard', { replace: true });
     
-  }, [currentEntity, entities, setCurrentEntityById, isLoading, entryId, mode, toast, navigate]);
+  }, [currentEntity, entities, allEntities, setCurrentEntityById, isLoading, entryId, mode, toast, navigate]);
   
   // Use another useEffect to handle the navigation when redirectPath changes
   useEffect(() => {
