@@ -181,8 +181,8 @@ function JournalEntries() {
   // Handle new journal entry button click
   const handleNewJournalEntry = () => {
     if (clientId && entityId) {
-      // Use legacy URL pattern for new journal entry with the entityId
-      navigate(`/journal-entries/new/${entityId}`);
+      // Use absolute URL pattern to ensure parameters are included
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/new`);
     } else {
       console.error("Cannot create journal entry: Missing client ID or entity ID");
       toast({
@@ -196,8 +196,8 @@ function JournalEntries() {
   // Handle batch upload button click
   const handleBatchUpload = () => {
     if (clientId && entityId) {
-      // Use batch upload URL pattern - this one is outside the entity context
-      navigate('/journal-entries/batch-upload');
+      // Use absolute URL pattern to ensure client and entity params are included
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/batch-upload`);
     } else {
       console.error("Cannot access batch upload: Missing client ID or entity ID");
       toast({
@@ -211,9 +211,8 @@ function JournalEntries() {
   // Handle row click to view journal entry details
   const handleRowClick = (id: number) => {
     if (clientId && entityId) {
-      // Navigate to journal entry detail view using our legacy URL pattern
-      // This now uses the detail/:jeId pattern defined in the route config
-      navigate(`/journal-entries/detail/${id}`);
+      // Use absolute URL path to include all parameters
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/${id}`);
     } else {
       console.error("Cannot navigate to journal entry detail: Missing client ID or entity ID");
       toast({
