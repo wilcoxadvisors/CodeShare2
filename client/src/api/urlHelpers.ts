@@ -41,7 +41,10 @@ export function getEntityUrl(clientId: number | string, entityId: number | strin
  * Constructs the base URL for journal entries under an entity
  */
 export function getJournalEntriesBaseUrl(clientId: number | string, entityId: number | string): string {
-  return `${getEntityUrl(clientId, entityId)}/journal-entries`;
+  console.log(`DEBUG: getJournalEntriesBaseUrl called with clientId: ${clientId}, entityId: ${entityId}`);
+  const url = `${getEntityUrl(clientId, entityId)}/journal-entries`;
+  console.log(`DEBUG: getJournalEntriesBaseUrl constructed URL: ${url}`);
+  return url;
 }
 
 /**

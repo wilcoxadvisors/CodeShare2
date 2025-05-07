@@ -79,6 +79,12 @@ function JournalEntries() {
     }
   }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
   
+  // Create the API URL for debug logging
+  const apiUrl = entityId && clientId ? getJournalEntriesBaseUrl(clientId, entityId) : null;
+  
+  // Log the constructed URL for debugging
+  console.log(`DEBUG: Constructing journal entries API URL: ${apiUrl}`);
+  
   // Fetch journal entries for the entity using hierarchical URL pattern
   const {
     data,
@@ -86,8 +92,8 @@ function JournalEntries() {
     error,
     refetch
   } = useQuery({
-    queryKey: entityId && clientId ? [getJournalEntriesBaseUrl(clientId, entityId)] : [],
-    enabled: !!entityId && !!clientId,
+    queryKey: apiUrl ? [apiUrl] : [],
+    enabled: !!apiUrl,
     retry: 3, // Retry up to 3 times if the query fails
     staleTime: 30000, // Consider data fresh for 30 seconds
     refetchOnWindowFocus: false // Don't refetch when window regains focus
