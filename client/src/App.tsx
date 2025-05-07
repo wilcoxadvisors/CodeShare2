@@ -31,6 +31,7 @@ import ChatWidget from "@/components/common/ChatWidget";
 import ConsultationFormModal from "@/components/ConsultationFormModal";
 import LoginModal from "@/components/LoginModal";
 import Redirect from "@/components/Redirect";
+import DynamicJournalRedirect from "@/components/DynamicJournalRedirect";
 import DeleteJournalEntry from "@/features/journal-entries/pages/DeleteJournalEntry";
 import EntityLayout from "@/components/layout/EntityLayout";
 
@@ -419,31 +420,19 @@ function Router() {
 
       {/* Legacy journal entries routes - using Redirect component to the hierarchical paths */}
       <Route path="/journal-entries" element={
-        <Redirect to="/clients/250/entities/391/journal-entries" />
+        <DynamicJournalRedirect />
       } />
       
       <Route path="/journal-entries/:id" element={
-        <Redirect 
-          to={params => 
-            `/clients/250/entities/391/journal-entries/${params.id}`
-          } 
-        />
+        <DynamicJournalRedirect mode="detail" />
       } />
       
       <Route path="/journal-entries/:id/edit" element={
-        <Redirect 
-          to={params => 
-            `/clients/250/entities/391/journal-entries/${params.id}/edit`
-          } 
-        />
+        <DynamicJournalRedirect mode="edit" />
       } />
       
       <Route path="/journal-entries/:id/delete" element={
-        <Redirect 
-          to={params => 
-            `/clients/250/entities/391/journal-entries/${params.id}/delete`
-          } 
-        />
+        <DynamicJournalRedirect mode="delete" />
       } />
       
       <Route path="*" element={<NotFound />} />
