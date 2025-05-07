@@ -1,0 +1,75 @@
+we broke the provider tree when we “lifted” EntityProvider.
+Right now the JSX hierarchy looks (roughly) like this:
+
+tsx
+Copy
+Edit
+<QueryClientProvider>
+  <AuthProvider>
+    <UIProvider>
+      <AppWithAuth />   // ← NOT inside EntityProvider
+      <Toaster />
+      <EntityProvider>  // ← lives *next* to the app, so context never reaches it
+        <AppWithAuth /> // (accidental duplicate)
+        <Toaster />     // (accidental duplicate)
+      </EntityProvider>
+    </UIProvider>
+  </AuthProvider>
+</QueryClientProvider>
+Because AppWithAuth isn’t wrapped by EntityProvider, every component is getting the default (empty) entity context, so the list is always zero and the “nothing loads” spiral begins.
+
+1 – Fix the provider order (and remove the duplicates)
+tsx
+Copy
+Edit
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <EntityProvider>          {/*  <-- wrap the whole UI */}
+          <UIProvider>
+            <AppWithAuth />
+            <Toaster />
+          </UIProvider>
+        </EntityProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+No more duplicate AppWithAuth / Toaster.
+
+Every routed page is now a descendant of EntityProvider.
+
+2 – Prevent the 401 loop on /api/entities
+The first entities fetch fires before we’re logged-in, so the backend rejects it.
+Add an “only fetch when authenticated” guard inside EntityContext.tsx:
+
+tsx
+Copy
+Edit
+const { user } = useAuth();   // or whatever your hook returns
+
+const {
+  data: entitiesData,
+  isFetching,
+  isSuccess,
+} = useQuery({
+  queryKey: ['entities'],
+  queryFn: () => apiRequest('/api/entities'),
+  enabled: !!user,            // 🔑 wait for login
+  staleTime: 60000,
+});
+Now the query doesn’t run until user is truthy, which avoids the 401 and the “always‐empty” cache state.
+
+After the patch
+Restart / hot-reload the client.
+
+Log in → the Entities query should fire once (200 OK) and you’ll see
+
+diff
+Copy
+Edit
+- Total entities: 49
+in the dev console.
+
+Selecting a client should reveal its entity list and all downstream pages (journal entries, CoA, etc.) should work again.

@@ -61,10 +61,18 @@ function EntityProvider({ children }: { children: ReactNode }) {
     isLoading: queryIsLoading,
     isFetching,
     isError,
+    isSuccess,
     refetch: refetchEntities 
   } = useQuery<Entity[]>({
-    queryKey: user ? ['/api/entities'] : [],
-    enabled: !!user,
+    queryKey: ['/api/entities'],
+    queryFn: () => {
+      console.log("DEBUG: Fetching entities with auth:", !!user);
+      return fetch('/api/entities').then(res => {
+        if (!res.ok) throw new Error(`Entities fetch failed: ${res.status}`);
+        return res.json();
+      });
+    },
+    enabled: !!user, // Critical: Only run this query when user is authenticated
     retry: 2,
     retryDelay: 1000,
     staleTime: 60000, // 1 minute

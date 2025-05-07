@@ -473,12 +473,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <UIProvider>
-          <EntityProvider>
+        <EntityProvider>
+          <UIProvider>
             <AppWithAuth />
             <Toaster />
-          </EntityProvider>
-        </UIProvider>
+          </UIProvider>
+        </EntityProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
