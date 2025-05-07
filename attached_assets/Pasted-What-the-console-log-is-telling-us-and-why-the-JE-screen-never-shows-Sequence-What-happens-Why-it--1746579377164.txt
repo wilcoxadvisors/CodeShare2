@@ -1,0 +1,84 @@
+What the console log is telling us — and why the JE screen never shows
+Sequence	What happens	Why it fails
+1	You load the app → AuthContext tries GET /api/auth/me → returns 401 → the app drops you into guest mode.	Normal when the browser hasn’t stored a valid JWT/cookie yet.
+2	You log in (admin) → login succeeds → user object is set.	✅
+3	EntityContext fires two queries: first one comes back 0 entities, then a second one comes back with 52 entities.	The first, empty response is returned before the real fetch finishes (usually because the context initialises with an empty array).
+4	JournalRedirector renders before the second (real) entity list arrives. It sees “0 entities” and:
+* logs “No entities available at all”
+* tries to setState while still in its render function → React warning	Rendering side-effects during render() is a React anti-pattern; React blocks the navigation and you’re stuck on a blank screen.
+
+Two-line diagnosis
+The redirect component fires too early (before entities finishes loading) and it mutates state during render, so React bails out.
+
+Quick fix (front-end)
+Move the redirect logic into useEffect()
+
+tsx
+Copy
+Edit
+// JournalRedirector.tsx
+const { entities, loading } = useEntityContext();
+
+// 🚫 never do this in the body:
+// if (!entities.length) setSomething(...)
+
+useEffect(() => {
+  if (loading) return;                // wait for fetch
+  if (!entities.length) {
+    // show a friendly "no entities" page or toast
+    navigate('/no-entities');
+    return;
+  }
+  // pick previously-selected entity or default to first
+  const target = currentEntity ?? entities[0];
+  setCurrentEntity(target);
+  navigate(`/journal-entries/list/${target.id}`);
+}, [loading, entities, currentEntity]);
+Give EntityContext a simple “loading” flag so the redirector can wait:
+
+ts
+Copy
+Edit
+const [entities, setEntities] = useState<Entity[]>([]);
+const [loading, setLoading]  = useState(true);
+
+useEffect(() => {
+  fetchEntities().then(res => {
+    setEntities(res);
+    setLoading(false);
+  });
+}, []);
+Auto-select a default entity right after fetch completes (only if the user hasn’t chosen one yet):
+
+ts
+Copy
+Edit
+useEffect(() => {
+  if (!selectedEntity && entities.length) {
+    setSelectedEntity(entities[0]);
+  }
+}, [entities, selectedEntity]);
+That removes the React warning and guarantees the JE list always has an entity context before it mounts.
+
+Backend sanity-check (just to be safe)
+Ensure /api/entities (or whatever route you hit) really does respond with the user’s 52 entities when the JWT is present.
+
+bash
+Copy
+Edit
+curl -H "Authorization: Bearer <yourToken>" https://…/api/entities
+If that returns the list correctly, the issue is purely front-end timing/state, not auth.
+
+Why this works
+No more setState in render → React stops complaining.
+
+loading gate → redirect only after the real entity list is known.
+
+Default entity → even brand-new tenants with one entity won’t get stuck.
+
+Next steps
+Patch JournalRedirector and EntityContext as above.
+
+Re-run the flow; you should land on /journal-entries/list/:entityId without the warning.
+
+Once the JE attachment bug (#7) is finished, add a Cypress test that logs in, waits for entities, and confirms the JE list renders—so this regression never sneaks back in.
