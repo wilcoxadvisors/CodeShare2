@@ -81,29 +81,49 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       if (onProgress) {
         const axios = (await import('axios')).default;
         
-        // Bug fix #7: Do NOT set Content-Type header when using FormData
+        // Do NOT set Content-Type header when using FormData
         // Let the browser automatically set the correct multipart boundary parameter
         console.log("DEBUG: Uploading file with progress tracking to URL:", url);
-        const response = await axios.post(
-          url, 
-          formData,
-          {
-            // Important: Don't manually set Content-Type when using FormData
-            // The browser needs to set this automatically with the boundary parameter
-            headers: {
-              // Explicitly remove content type - let browser handle it
-              'Content-Type': undefined
-            },
-            onUploadProgress: (progressEvent) => {
-              if (progressEvent.total) {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                onProgress(percentCompleted);
-              }
-            }
-          }
-        );
         
-        return response.data;
+        // Create a standard XMLHttpRequest to have more control over the FormData upload
+        const xhr = new XMLHttpRequest();
+        
+        // Set up the request
+        xhr.open('POST', url, true);
+        
+        // Add event listeners for progress tracking
+        xhr.upload.onprogress = (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(percentCompleted);
+          }
+        };
+        
+        // Create a promise to handle the XHR response
+        const responsePromise = new Promise((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data);
+              } catch (e) {
+                resolve({ success: true }); // If response isn't JSON
+              }
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+            }
+          };
+          
+          xhr.onerror = () => {
+            reject(new Error('Network error during file upload'));
+          };
+        });
+        
+        // Send the FormData
+        xhr.send(formData);
+        
+        // Wait for the response and return it
+        return await responsePromise;
       } else {
         // Use standard apiRequest if no progress tracking is needed
         console.log("DEBUG: Uploading file without progress tracking to URL:", url);
