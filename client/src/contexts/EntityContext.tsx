@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 
@@ -31,8 +31,8 @@ interface EntityContextType {
   setSelectedClientId: (clientId: number | null) => void;
 }
 
-// Create context with default values
-export const EntityContext = createContext<EntityContextType>({
+// Create context with initial empty implementation
+const EntityContext = createContext<EntityContextType>({
   entities: [],
   currentEntity: null,
   setCurrentEntity: () => {},
@@ -42,7 +42,7 @@ export const EntityContext = createContext<EntityContextType>({
   setSelectedClientId: () => {}
 });
 
-export function EntityProvider({ children }: { children: ReactNode }) {
+function EntityProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
@@ -127,23 +127,29 @@ export function EntityProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const value = {
-    entities,
-    currentEntity,
-    setCurrentEntity,
-    setCurrentEntityById,
-    isLoading,
-    selectedClientId,
-    setSelectedClientId
-  };
-
-  return <EntityContext.Provider value={value}>{children}</EntityContext.Provider>;
+  // Provide all the required values to the context
+  return (
+    <EntityContext.Provider value={{
+      entities,
+      currentEntity,
+      setCurrentEntity,
+      setCurrentEntityById,
+      isLoading,
+      selectedClientId,
+      setSelectedClientId
+    }}>
+      {children}
+    </EntityContext.Provider>
+  );
 }
 
-export function useEntity(): EntityContextType {
+function useEntity() {
   const context = useContext(EntityContext);
   if (context === undefined) {
     throw new Error('useEntity must be used within an EntityProvider');
   }
   return context;
 }
+
+export { EntityContext, EntityProvider, useEntity };
+export type { EntityContextType, Entity, Client };

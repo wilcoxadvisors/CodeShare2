@@ -12,7 +12,7 @@ interface JournalRedirectorProps {
  * hierarchical structure using the current entity in context
  */
 const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) => {
-  const params = useParams();
+  const params = useParams<{ id?: string }>();
   const { currentEntity, entities, setCurrentEntityById } = useEntity();
   const { toast } = useToast();
   
@@ -25,13 +25,18 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
   
   // Auto-select the first entity if none is selected but entities are available
   useEffect(() => {
-    if (!currentEntity && entities && entities.length > 0 && setCurrentEntityById) {
+    if (!currentEntity && entities && entities.length > 0) {
       console.log("JournalRedirector: Auto-selecting first entity:", entities[0].id);
-      setCurrentEntityById(entities[0].id);
+      try {
+        setCurrentEntityById(entities[0].id);
+      } catch (err) {
+        console.error("Error auto-selecting entity:", err);
+      }
     }
   }, [currentEntity, entities, setCurrentEntityById]);
   
   // If we don't have a current entity, but we do have available entities in context
+  // and we haven't auto-selected one yet
   if (!currentEntity && entities && entities.length > 0) {
     console.log("JournalRedirector: No current entity but entities are available");
     toast({
