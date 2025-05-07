@@ -1,0 +1,96 @@
+Why the status column looks wrong
+Database values (what the API returns)	What the UI should show	What you’re currently seeing
+isActive = true , isDeleted = false	Active (green badge)	✅ correct
+isActive = false , isDeleted = false	Inactive (gray badge)	(blank cell)
+isDeleted = true (any isActive)	Deleted (red badge)	“Deleted” label even when only inactive
+
+The bug is in the mapping function that converts those two booleans into a status label/badge.
+
+Quick-fix steps (front-end)
+Locate the mapper
+Usually lives in one of these:
+
+bash
+Copy
+Edit
+client/src/components/ClientStatusBadge.tsx
+client/src/lib/statusUtils.ts
+Replace the faulty logic
+
+tsx
+Copy
+Edit
+// statusUtils.ts
+export type ClientStatus = 'active' | 'inactive' | 'deleted';
+
+export function getClientStatus(
+  isActive: boolean,
+  isDeleted: boolean
+): ClientStatus {
+  if (isDeleted) return 'deleted';
+  return isActive ? 'active' : 'inactive';
+}
+Update the badge component
+
+tsx
+Copy
+Edit
+// ClientStatusBadge.tsx
+import { getClientStatus } from '@/lib/statusUtils';
+
+const statusMap = {
+  active:  { text: 'Active',   className: 'bg-green-100 text-green-800' },
+  inactive:{ text: 'Inactive', className: 'bg-gray-100 text-gray-600' },
+  deleted: { text: 'Deleted',  className: 'bg-red-100  text-red-800' },
+} as const;
+
+export const ClientStatusBadge = ({
+  isActive,
+  isDeleted,
+}: { isActive: boolean; isDeleted: boolean }) => {
+  const status = getClientStatus(isActive, isDeleted);
+  const { text, className } = statusMap[status];
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${className}`}>
+      {text}
+    </span>
+  );
+};
+Audit the table column
+Make sure the dashboard table passes both booleans:
+
+tsx
+Copy
+Edit
+<ClientStatusBadge
+  isActive={client.isActive}
+  isDeleted={client.isDeleted}
+/>
+
+kotlin
+Copy
+Edit
+
+5. **Retest**  
+- Active clients → green “Active”  
+- Inactive clients (not deleted) → gray “Inactive”  
+- Deleted clients → red “Deleted”
+
+---
+
+## Recommended safety net
+
+* **Unit test** the utility:
+
+```ts
+describe('getClientStatus', () => {
+ it('returns deleted when isDeleted', () =>
+   expect(getClientStatus(true, true)).toBe('deleted'));
+ it('returns active when active & not deleted', () =>
+   expect(getClientStatus(true, false)).toBe('active'));
+ it('returns inactive when not active & not deleted', () =>
+   expect(getClientStatus(false, false)).toBe('inactive'));
+});
+Cypress check: log in as admin, open dashboard, assert the badge text for a known inactive client equals “Inactive”.
+
+That should clear up the bla
