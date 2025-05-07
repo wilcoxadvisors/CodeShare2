@@ -142,6 +142,29 @@ interface Account {
   [key: string]: any;
 }
 
+/** Returns true when the proposed referenceNumber is already used
+ *  in another JE that belongs to the same entity. */
+function isReferenceDuplicate(
+  referenceNumber: string,
+  allEntries: any[], // Existing journal entries 
+  currentEntryId?: number // undefined when creating a new one
+) {
+  if (!referenceNumber || !allEntries || !Array.isArray(allEntries)) {
+    return false;
+  }
+  
+  const normalized = referenceNumber.trim().toLowerCase();
+  if (normalized.length < 3) {
+    return false; // Let the length validation handle this
+  }
+  
+  return allEntries.some(e =>
+    e.id !== currentEntryId && // ignore "myself" when editing
+    e.referenceNumber && 
+    e.referenceNumber.trim().toLowerCase() === normalized
+  );
+}
+
 interface Location {
   id: number;
   name: string;
