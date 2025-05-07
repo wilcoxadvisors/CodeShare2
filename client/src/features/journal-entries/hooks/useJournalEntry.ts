@@ -69,8 +69,9 @@ export function useJournalEntry() {
         throw new Error('Client ID and Entity ID are required for journal entry creation');
       }
       
-      // Use hierarchical URL pattern
-      const url = getJournalEntriesBaseUrl(journalEntry.clientId, journalEntry.entityId);
+      // EMERGENCY FIX: Direct URL construction
+      const url = `/api/clients/${journalEntry.clientId}/entities/${journalEntry.entityId}/journal-entries`;
+      console.log(`DEBUG: Creating journal entry with direct URL: ${url}`);
       return await apiRequest(url, {
         method: 'POST',
         data: journalEntry
@@ -161,8 +162,9 @@ export function useJournalEntry() {
         throw new Error('Client ID and Entity ID are required for journal entry update');
       }
       
-      // Use hierarchical URL pattern
-      const url = getJournalEntryUrl(payload.clientId, payload.entityId, id);
+      // EMERGENCY FIX: Direct URL construction
+      const url = `/api/clients/${payload.clientId}/entities/${payload.entityId}/journal-entries/${id}`;
+      console.log(`DEBUG: Updating journal entry with direct URL: ${url}`);
       return await apiRequest(url, {
         method: 'PUT',
         data: payload
@@ -181,17 +183,19 @@ export function useJournalEntry() {
       const id = variables.id;
       
       if (clientId && entityId && id) {
-        // Invalidate journal entry and journal entries queries using hierarchical URL pattern
+        // EMERGENCY FIX: Invalidate using direct URLs
         queryClient.invalidateQueries({ 
           queryKey: ["journal-entry", id]
         });
         
+        // Invalidate detail route with direct URL
         queryClient.invalidateQueries({ 
-          queryKey: [getJournalEntryUrl(clientId, entityId, id)]
+          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}`]
         });
         
+        // Invalidate list route with direct URL
         queryClient.invalidateQueries({ 
-          queryKey: [getJournalEntriesBaseUrl(clientId, entityId)]
+          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries`]
         });
       }
       
@@ -213,8 +217,9 @@ export function useJournalEntry() {
         throw new Error('Client ID and Entity ID are required for journal entry deletion');
       }
       
-      // Use hierarchical URL pattern
-      const url = getJournalEntryUrl(params.clientId, params.entityId, params.id);
+      // EMERGENCY FIX: Direct URL construction
+      const url = `/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}`;
+      console.log(`DEBUG: Deleting journal entry with direct URL: ${url}`);
       return await apiRequest(url, {
         method: 'DELETE'
       });
@@ -225,9 +230,9 @@ export function useJournalEntry() {
         description: 'Journal entry deleted successfully',
       });
       
-      // Invalidate journal entries queries using hierarchical URL pattern
+      // EMERGENCY FIX: Invalidate using direct URLs
       queryClient.invalidateQueries({ 
-        queryKey: [getJournalEntriesBaseUrl(params.clientId, params.entityId)]
+        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries`]
       });
     },
     onError: (error: any) => {
@@ -291,8 +296,9 @@ export function useJournalEntry() {
         throw new Error('Client ID and Entity ID are required for posting a journal entry');
       }
       
-      // Use hierarchical URL pattern
-      const url = `${getJournalEntryUrl(params.clientId, params.entityId, params.id)}/post`;
+      // EMERGENCY FIX: Direct URL construction
+      const url = `/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}/post`;
+      console.log(`DEBUG: Posting journal entry with direct URL: ${url}`);
       return await apiRequest(url, {
         method: 'POST'
       });
@@ -304,13 +310,13 @@ export function useJournalEntry() {
         description: 'Journal entry posted successfully',
       });
       
-      // Invalidate journal entry and journal entries queries using hierarchical URL pattern
+      // EMERGENCY FIX: Invalidate using direct URLs
       queryClient.invalidateQueries({ 
-        queryKey: [getJournalEntryUrl(params.clientId, params.entityId, params.id)]
+        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}`]
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: [getJournalEntriesBaseUrl(params.clientId, params.entityId)]
+        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries`]
       });
       
       // Handle both response formats
