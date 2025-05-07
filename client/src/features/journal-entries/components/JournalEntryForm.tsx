@@ -1031,6 +1031,15 @@ function JournalEntryForm({
   const { selectedClientId } = useEntity();
   const effectiveClientId = clientId ?? (typeof selectedClientId === 'number' ? selectedClientId : undefined);
   
+  // Fetch existing journal entries for reference number validation
+  const { data: existingEntries = [] } = useQuery({
+    queryKey: effectiveClientId && entityId 
+      ? [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries`] 
+      : ['no-journal-entries'],
+    enabled: !!effectiveClientId && !!entityId,
+    staleTime: 30000, // Keep cache for 30 seconds
+  });
+  
   // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
   const invalidateJournalEntryQueries = () => {
     if (effectiveClientId) {
@@ -1716,6 +1725,30 @@ function JournalEntryForm({
     // Clear previous errors
     setFormError(null);
     setFieldErrors({});
+    
+    // First check for reference number validation and duplicates
+    if (journalData.referenceNumber.trim().length < 3) {
+      setFieldErrors({
+        ...fieldErrors,
+        referenceNumber: "Reference number must be at least 3 characters"
+      });
+      setFormError("Please correct the errors in the form before submitting.");
+      return;
+    }
+    
+    // Check for duplicate reference numbers
+    if (isReferenceDuplicate(
+      journalData.referenceNumber,
+      existingEntries,
+      existingEntry?.id
+    )) {
+      setFieldErrors({
+        ...fieldErrors,
+        referenceNumber: "This reference number is already in use for this entity"
+      });
+      setFormError("Please use a unique reference number.");
+      return;
+    }
 
     // Prepare data for validation - only keep lines with account or debit/credit values
     const validLines = lines.filter(
@@ -2249,14 +2282,29 @@ function JournalEntryForm({
 
         <div>
           <Label htmlFor="reference-number">Reference</Label>
-          <Input
-            id="reference-number"
-            name="referenceNumber"
-            value={journalData.referenceNumber}
-            onChange={handleChange}
-            placeholder="Invoice #, Check #, etc."
-            className="mt-1"
-          />
+          <div className="relative">
+            <Input
+              id="reference-number"
+              name="referenceNumber"
+              value={journalData.referenceNumber}
+              onChange={handleChange}
+              placeholder="Invoice #, Check #, etc."
+              className={`mt-1 ${fieldErrors.referenceNumber ? "border-red-500 pr-10" : ""}`}
+            />
+            {fieldErrors.referenceNumber && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <AlertCircle
+                  className="h-5 w-5 text-red-500"
+                  aria-hidden="true"
+                />
+              </div>
+            )}
+          </div>
+          {fieldErrors.referenceNumber && (
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.referenceNumber}
+            </p>
+          )}
         </div>
       </div>
 
