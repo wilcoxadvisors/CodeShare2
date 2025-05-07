@@ -67,7 +67,8 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       
       const formData = new FormData();
       files.forEach(file => {
-        formData.append('files', file);
+        // Include filename as third parameter to ensure proper field name and filename
+        formData.append('files', file, file.name);
       });
       
       if (!clientId) {

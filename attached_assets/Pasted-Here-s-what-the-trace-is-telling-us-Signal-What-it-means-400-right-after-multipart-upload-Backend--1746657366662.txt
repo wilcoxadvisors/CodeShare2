@@ -1,0 +1,57 @@
+Here’s what the trace is telling us:
+
+Signal	What it means
+400 right after multipart upload	Backend received the request but didn’t find the field(s) it expects in the form-data payload.
+GET …/journal-entries/:id/files returns 200	Auth/cookies are fine – the 400 isn’t an auth issue.
+We always append ­file	The API route is /files plural (and the Rails/Nest back-end behind it was written to expect files or attachments[], not file).
+
+1 – change the form-data field name
+diff
+Copy
+Edit
+//  client/src/features/journal-entries/hooks/attachmentQueries.ts
+- formData.append('file', file)          // current
++ formData.append('files', file, file.name)  // backend expects plural key
+For the bulk uploader in uploadPendingFilesToEntry do the same:
+
+diff
+Copy
+Edit
+- pendingFiles.forEach(f => formData.append('file', f))
++ pendingFiles.forEach(f => formData.append('files', f, f.name))
+No other parts of the request need to change – leaving the Content-Type unset lets
+the browser generate the proper boundary.
+
+2 – use the platform’s fetch instead of Axios (simpler, no header quirks)
+ts
+Copy
+Edit
+const res = await fetch(url, {
+  method: 'POST',
+  body: formData,      // <- browser sets multipart header
+  credentials: 'include'
+})
+if (!res.ok) throw await res.text()
+return res.json()      // backend returns JSON with file-id list
+3 – invalidate attachment & entry queries after success
+ts
+Copy
+Edit
+queryClient.invalidateQueries(['journalEntryAttachments', entryId])
+queryClient.invalidateQueries(['journalEntries', clientId, entityId])
+That guarantees the list view shows the freshly-attached files (and that deleting
+them later works without a hard refresh).
+
+4 – quick manual test
+Upload one file
+Network → request payload should display
+------XXX\nContent-Disposition: form-data; name="files"; filename="…" …
+
+Server response should be 201/200 JSON containing at least one id.
+
+List view refreshes automatically (thanks to query invalidation).
+
+If you still get a 400 after changing the field name, open the Network panel,
+click the Response tab of that request – the backend usually returns a tiny
+JSON error ({"error":"param files is missing"} or similar).
+Paste that message here and we’ll tighten things up.

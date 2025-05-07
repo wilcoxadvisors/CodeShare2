@@ -263,7 +263,8 @@ function JournalEntryDetail() {
       
       // Add all files to the formData
       files.forEach(file => {
-        formData.append('files', file);
+        // Include filename as third parameter to ensure proper field name and filename
+        formData.append('files', file, file.name);
       });
       
       // Ensure we have required client and entity IDs
