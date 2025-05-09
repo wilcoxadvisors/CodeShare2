@@ -1958,149 +1958,89 @@ function JournalEntryForm({
       updateEntry.mutate(entryData);
     } else {
       // For new entries
-      // If we have pending attachments AND we want to post (not save as draft)
-      if (hasPendingAttachments && !saveAsDraft) {
-        // First create as draft
-        setIsUploading(true);
-        createEntry.mutate(entryData, {
+      // IMPROVED IMPLEMENTATION: Always use a two-step process for creating and posting entries
+      // Step 1: Always create as draft first for all new entries
+      if (!saveAsDraft) {
+        // Enhanced logging for the two-step process
+        console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Starting two-step process for journal entry");
+        console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Has attachments:", hasPendingAttachments);
+        
+        // Always create as draft first, regardless of attachment status
+        const draftEntryData = {
+          ...entryData,
+          status: JournalEntryStatus.DRAFT // Always use draft status for initial creation
+        };
+        
+        console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Step 1 - Creating entry as draft with payload:", 
+          JSON.stringify(draftEntryData, null, 2));
+        
+        // Set uploading state if we have attachments
+        if (hasPendingAttachments) {
+          setIsUploading(true);
+        }
+        
+        // Create as draft, then handle attachments and posting in the onSuccess callback
+        createEntry.mutate(draftEntryData, {
           onSuccess: async (result) => {
             // Extract the new entry ID
             const newEntryId = result?.id || (result?.entry && result.entry.id);
-
+            
             if (!newEntryId) {
+              console.error("ARCHITECT_DEBUG_JE_CREATE_POST: Failed to extract entry ID from response:", result);
               toast({
                 title: "Error",
                 description: "Failed to extract entry ID from server response",
-                variant: "destructive",
-              });
-              onSubmit(); // Still call onSubmit to navigate away
-              return;
-            }
-
-            console.log(
-              "DEBUG: Created draft entry, now uploading files to ID:",
-              newEntryId,
-            );
-
-            // Show a toast to inform user
-            toast({
-              title: "Uploading attachments",
-              description: `Uploading ${pendingFiles.length} file(s) before posting...`,
-            });
-
-            try {
-              // Upload the pending files
-              if (uploadPendingFilesRef.current) {
-                await uploadPendingFilesRef.current(newEntryId);
-                console.log(
-                  "DEBUG: File uploads complete, now updating status to POSTED",
-                );
-
-                // Post the journal entry after attaching files
-                console.log("DEBUG: Using postJournalEntry.mutate instead of updateEntry.mutate for posting after file upload");
-                console.log("DEBUG: Post parameters", {
-                  id: newEntryId,
-                  clientId: resolvedClientId,
-                  entityId: entityId
-                });
-                
-                // Use the dedicated postJournalEntry mutation instead of updateEntry
-                postJournalEntry.mutate(
-                  {
-                    id: newEntryId,
-                    clientId: resolvedClientId,
-                    entityId: entityId
-                  },
-                  {
-                    onSuccess: (result) => {
-                      console.log("DEBUG: Successfully posted journal entry after file upload:", result);
-                      toast({
-                        title: "Success",
-                        description: "Journal entry posted with attachments",
-                      });
-                      onSubmit(); // Navigate away
-                    },
-                    onError: (error) => {
-                      console.error(
-                        "Failed to post journal entry after file upload:",
-                        error,
-                      );
-                      toast({
-                        title: "Warning",
-                        description:
-                          "Files uploaded but entry remained in draft state. You can post it manually.",
-                        variant: "destructive",
-                      });
-                      onSubmit(); // Still navigate away
-                    },
-                  },
-                );
-              } else {
-                console.error("uploadPendingFilesRef.current is not defined");
-                toast({
-                  title: "Warning",
-                  description:
-                    "Entry created but could not upload files. You may need to attach them manually.",
-                  variant: "destructive",
-                });
-                onSubmit(); // Still navigate away
-              }
-            } catch (error) {
-              console.error("Failed to upload files:", error);
-              toast({
-                title: "Warning",
-                description:
-                  "Entry created as draft but file upload failed. Please try posting it manually.",
                 variant: "destructive",
               });
               onSubmit(); // Still navigate away
-            } finally {
-              setIsUploading(false);
-            }
-          },
-          onError: (error) => {
-            console.error("Failed to create journal entry:", error);
-            setIsUploading(false);
-            toast({
-              title: "Error",
-              description: "Failed to create journal entry",
-              variant: "destructive",
-            });
-          },
-        });
-      } else if (!saveAsDraft) {
-        // Create-then-post flow for new entries that need to be posted immediately without attachments
-        console.log("DEBUG: Implementing two-step process for creating and posting a journal entry");
-        
-        // Step 1: Create the entry as a draft first
-        const draftEntryData = {
-          ...entryData,
-          status: JournalEntryStatus.DRAFT // Always create as draft first
-        };
-        
-        console.log("DEBUG: Step 1 - Creating entry as draft first:", JSON.stringify(draftEntryData, null, 2));
-        
-        // Create as draft, then post in the onSuccess callback
-        createEntry.mutate(draftEntryData, {
-          onSuccess: (result) => {
-            // Extract the new entry ID
-            const newEntryId = result?.id || (result?.entry && result.entry.id);
-            
-            if (!newEntryId) {
-              console.error("ERROR: Failed to extract new entry ID from server response:", result);
-              toast({
-                title: "Error",
-                description: "Failed to extract entry ID from server response",
-                variant: "destructive",
-              });
-              onSubmit(); // Still call onSubmit to navigate away
               return;
             }
             
-            console.log("DEBUG: Step 1 complete - Created draft entry with ID:", newEntryId);
-            console.log("DEBUG: Step 2 - Now posting the draft entry");
+            console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Step 1 complete - Created draft entry with ID:", newEntryId);
             
-            // Step 2: Post the journal entry
+            // Step 1.5: Handle file uploads if there are any
+            if (hasPendingAttachments) {
+              console.log(`ARCHITECT_DEBUG_JE_CREATE_POST: Uploading ${pendingFiles.length} attachments to entry ${newEntryId}`);
+              
+              toast({
+                title: "Uploading attachments",
+                description: `Uploading ${pendingFiles.length} file(s) before posting...`,
+              });
+              
+              try {
+                if (uploadPendingFilesRef.current) {
+                  await uploadPendingFilesRef.current(newEntryId);
+                  console.log("ARCHITECT_DEBUG_JE_CREATE_POST: File uploads completed successfully");
+                } else {
+                  console.error("ARCHITECT_DEBUG_JE_CREATE_POST: uploadPendingFilesRef.current is not defined");
+                  toast({
+                    title: "Warning",
+                    description: "Entry created but could not upload files. You may need to attach them manually.",
+                    variant: "destructive",
+                  });
+                }
+              } catch (error) {
+                console.error("ARCHITECT_DEBUG_JE_CREATE_POST: File upload failed:", error);
+                toast({
+                  title: "Warning",
+                  description: "Entry created as draft but file upload failed. You can still post it manually.",
+                  variant: "destructive",
+                });
+                // Continue with posting attempt despite file upload failure
+              } finally {
+                setIsUploading(false);
+              }
+            }
+            
+            // Step 2: Post the journal entry after creation and optional file uploads
+            console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Step 2 - Posting the draft entry");
+            console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Post parameters:", {
+              id: newEntryId,
+              clientId: resolvedClientId,
+              entityId: entityId
+            });
+            
+            // Use the dedicated postJournalEntry mutation from useJournalEntry hook
             postJournalEntry.mutate(
               {
                 id: newEntryId,
@@ -2109,18 +2049,20 @@ function JournalEntryForm({
               },
               {
                 onSuccess: (postResult) => {
-                  console.log("DEBUG: Step 2 complete - Successfully posted journal entry:", postResult);
+                  console.log("ARCHITECT_DEBUG_JE_CREATE_POST: Step 2 complete - Successfully posted journal entry:", postResult);
                   toast({
                     title: "Success",
-                    description: "Journal entry created and posted successfully",
+                    description: hasPendingAttachments 
+                      ? "Journal entry created and posted with attachments" 
+                      : "Journal entry created and posted successfully",
                   });
                   onSubmit(); // Navigate away
                 },
                 onError: (error) => {
-                  console.error("DEBUG: Step 2 failed - Error posting journal entry:", error);
+                  console.error("ARCHITECT_DEBUG_JE_CREATE_POST: Step 2 failed - Error posting journal entry:", error);
                   toast({
                     title: "Warning",
-                    description: "Entry created as draft but could not be posted. You can post it manually.",
+                    description: "Entry created as draft but could not be posted. You can post it manually later.",
                     variant: "destructive",
                   });
                   onSubmit(); // Still navigate away
@@ -2129,17 +2071,18 @@ function JournalEntryForm({
             );
           },
           onError: (error) => {
-            console.error("DEBUG: Step 1 failed - Error creating draft entry:", error);
+            console.error("ARCHITECT_DEBUG_JE_CREATE_POST: Step 1 failed - Error creating draft entry:", error);
+            setIsUploading(false);
             toast({
               title: "Error",
-              description: `Failed to create journal entry: ${error.message}`,
+              description: `Failed to create journal entry: ${error.message || 'Unknown error'}`,
               variant: "destructive",
             });
           }
         });
       } else {
         // Standard flow - just saving as draft
-        console.log("DEBUG: Creating entry as draft normally");
+        console.log("ARCHITECT_DEBUG_JE_CREATE: Creating entry as draft normally");
         createEntry.mutate(entryData);
       }
     }
