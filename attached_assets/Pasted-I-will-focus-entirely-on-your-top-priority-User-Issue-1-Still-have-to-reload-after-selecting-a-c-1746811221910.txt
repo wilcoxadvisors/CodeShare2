@@ -1,0 +1,41 @@
+I will focus entirely on your top priority: User Issue #1: "Still have to reload after selecting a client. Entities do not show right away in the selector," which is clearly tied to the initial authentication and entity loading sequence.
+
+Here's my plan to address this, following your guidance:
+
+Action Plan for Fixing Authentication & Initial Entity Loading (User Issue #1):
+
+Modify client/src/contexts/AuthContext.tsx:
+
+Objective: Ensure that upon successful login, the entities query cache is immediately invalidated to trigger a fresh, authenticated fetch.
+Specific Change: Locate the login function. Immediately after setUser(userData.user) is successfully called and the user state is updated:
+Add: console.log('AUTH_CONTEXT_LOGIN_SUCCESS: User set, invalidating /api/entities query. User:', userData.user);
+Add: queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+I will also ensure queryClient is properly imported/available in this context.
+Modify client/src/contexts/EntityContext.tsx:
+
+Objective: Ensure the entities query (useQuery for ['/api/entities']) only runs when a user is properly authenticated and that its state updates correctly.
+Specific Changes:
+Query enabled option:
+Import useAuth from AuthContext.
+Get const { user, isLoading: isAuthLoading } = useAuth();.
+Set the enabled option for the useQuery fetching ['/api/entities'] to !!user && !isAuthLoading.
+Add log: console.log('ENTITY_CONTEXT_QUERY: Firing. enabled=', !!user && !isAuthLoading, 'user_exists=', !!user, 'isAuthLoading=', isAuthLoading); just before the queryFn.
+Query queryFn:
+Ensure the Workspace call within queryFn for /api/entities includes credentials: 'include' if cookies are being used for session management, to ensure authentication details are sent. (The agent's latest diff showed an attempt to add this).
+Add detailed logging for the fetch attempt and its success/failure within the queryFn.
+Query onSuccess / Data Handling:
+When the query successfully fetches entitiesData:
+Log: console.log('ENTITY_CONTEXT_QUERY_SUCCESS: Fetched entities. Count:', entitiesData?.length, 'Data:', entitiesData);
+Ensure setAllEntities(entitiesData || []); (to handle potential null/undefined responses gracefully).
+Ensure setInitialLoadComplete(true); is called.
+Log the state after these setters: console.log('ENTITY_CONTEXT_STATE_POST_FETCH: allEntities.length=', allEntitiesRef.current?.length, 'initialLoadComplete=', initialLoadCompleteRef.current); (using refs for immediate value if direct state logging is tricky in effects).
+Initial State: Ensure initialLoadComplete is initialized to false and allEntities to []. The logs Total entities: 0 ... Initial loading complete: false ... Loading: true are correct for the very start, but then Initial loading complete: true ... Loading: false ... Total entities: 0 after a 401 is problematic if isSuccess from the query is not correctly reflecting the 401 as a non-success. The initialLoadComplete should only become true upon a successful first fetch of entities.
+The logic if (!initialLoadComplete && !loading && isSuccess) that sets initialLoadComplete = true needs isSuccess to be truly indicative of a successful fetch, not just the query finishing (even with an error). If isError is true for the entities query, initialLoadComplete should likely remain false or be handled differently.
+Modify client/src/components/dashboard/GlobalContextSelector.tsx:
+
+Objective: Ensure it correctly receives and displays entities after they are loaded in EntityContext.
+Specific Changes:
+When the component renders, log the allEntities, selectedClientId, and currentEntity received from useEntity().
+When a client is selected from the dropdown, log the clientId being passed to setSelectedClientId(newClientId).
+Log the list of entities being passed to the entity selector dropdown component to ensure it's correctly filtered based on selectedClientId.
+I will now implement these logging and logic changes focused only on the authentication-to-entity-loading sequence. I will then attempt a login and provide the console logs showing this specific flow. I will not address the other reported issues until we have confirmation that entities are loading correctly and appearing in the selectors without a manual page reload.

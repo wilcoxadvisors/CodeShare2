@@ -58,6 +58,16 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Get all entities for the user
   const { isLoading: isAuthLoading } = useAuth();
   
+  // Use a useRef to track whether we've tried to fetch entities after auth
+  const entityFetchAttempted = React.useRef(false);
+  
+  // Log detailed auth and entity state information
+  console.log('ENTITY_CONTEXT_AUTH_STATE:', {
+    user: user ? { id: user.id, username: user.username } : null,
+    isAuthLoading,
+    entityFetchAttempted: entityFetchAttempted.current
+  });
+  
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
@@ -68,21 +78,34 @@ function EntityProvider({ children }: { children: ReactNode }) {
   } = useQuery<Entity[]>({
     queryKey: ['/api/entities'],
     queryFn: () => {
-      console.log("DEBUG: Fetching entities with auth:", !!user);
+      console.log("ENTITY_CONTEXT_QUERY: Firing. enabled=", !!user && !isAuthLoading, 
+        "user_exists=", !!user, "isAuthLoading=", isAuthLoading);
+      
+      entityFetchAttempted.current = true;
+      
       return fetch('/api/entities', {
-        credentials: 'include' // Ensure cookies are sent for authentication
+        credentials: 'include', // Ensure cookies are sent for authentication
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       }).then(res => {
         if (!res.ok) {
           console.error(`Entities fetch failed with status ${res.status}`);
           throw new Error(`Entities fetch failed: ${res.status}`);
         }
-        return res.json();
+        const data = res.json();
+        return data;
+      }).then(data => {
+        console.log('ENTITY_CONTEXT_QUERY_SUCCESS: Fetched entities. Count:', 
+          data?.length, 'First few:', data?.slice(0, 2));
+        return data;
       });
     },
     enabled: !!user && !isAuthLoading, // Critical: Only run this query when user is authenticated and auth loading is complete
     retry: 2,
     retryDelay: 1000,
-    staleTime: 60000, // 1 minute
+    staleTime: 30000, // 30 seconds
   });
 
   // Store all entities without filtering - ensure it's always an array
@@ -99,14 +122,32 @@ function EntityProvider({ children }: { children: ReactNode }) {
     const loading = isAuthLoading || queryIsLoading || (isFetching && !initialLoadComplete);
     
     // Handle initial loading state - this only happens once
-    if (!initialLoadComplete && !loading && isSuccess) {
-      console.log("DEBUG: Initial entities loading completed");
+    // CRITICAL: Only mark loading as complete if we have successful data AND auth is complete
+    if (!initialLoadComplete && !isAuthLoading && isSuccess) {
+      // Log detailed entity data received
+      console.log(`ENTITY_CONTEXT_STATE_POST_FETCH: 
+        - Total entities: ${allEntities?.length || 0}
+        - Auth loading: ${isAuthLoading}
+        - Query state: Success=${isSuccess}, Loading=${queryIsLoading}, Error=${isError}`);
+      
+      // Mark initialization as complete since we have entities and auth is done
       setInitialLoadComplete(true);
+      console.log("DEBUG: Initial entities loading completed successfully");
     }
     
     // Handle general loading state (for spinners, etc.)
     setIsLoading(loading);
-  }, [queryIsLoading, isFetching, isAuthLoading, initialLoadComplete, isSuccess]);
+    
+    // Log any loading state changes for debugging
+    if (isLoading !== loading) {
+      console.log(`ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
+        From ${isLoading} to ${loading}
+        - Auth loading: ${isAuthLoading}
+        - Query loading: ${queryIsLoading}
+        - Fetching: ${isFetching}
+        - Initial load complete: ${initialLoadComplete}`);
+    }
+  }, [queryIsLoading, isFetching, isAuthLoading, initialLoadComplete, isSuccess, isError, allEntities, isLoading]);
   
   // When client selection changes, clear entity if needed
   useEffect(() => {

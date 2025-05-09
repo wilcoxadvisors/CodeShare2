@@ -43,6 +43,13 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
   useEffect(() => {
     // Only try to set entity once auth and entities have loaded
     if (isAuthLoading || isLoading || !allEntities.length || !user) {
+      console.log('JR_ENTITY_FROM_URL: Waiting for prerequisites:', {
+        isAuthLoading,
+        isLoading,
+        entitiesLoaded: !!allEntities.length,
+        userAuthenticated: !!user,
+        urlEntityId: params.entityId ? parseInt(params.entityId, 10) : null
+      });
       return;
     }
 
@@ -50,8 +57,17 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     const urlEntityId = params.entityId ? parseInt(params.entityId, 10) : null;
     
     if (urlEntityId && !currentEntity) {
-      console.log('DEBUG: Auto-setting entity from URL:', urlEntityId);
-      setCurrentEntityById(urlEntityId);
+      console.log('JR_ENTITY_FROM_URL: Auto-setting entity from URL:', urlEntityId);
+      
+      // Check if the entity exists in our loaded entities
+      const entityExists = allEntities.some(e => e.id === urlEntityId);
+      
+      if (entityExists) {
+        console.log('JR_ENTITY_FROM_URL: Found matching entity, setting current entity');
+        setCurrentEntityById(urlEntityId);
+      } else {
+        console.warn(`JR_ENTITY_FROM_URL: Entity ID ${urlEntityId} from URL not found in loaded entities`);
+      }
     }
   }, [params.entityId, currentEntity, isAuthLoading, isLoading, allEntities, user, setCurrentEntityById]);
 

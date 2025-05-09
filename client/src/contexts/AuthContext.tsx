@@ -162,16 +162,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData.user);
         console.log('🔐 Login successful, user:', userData.user);
         
-        // Critical fix: Invalidate entities and clients queries to force re-fetch now that we're authenticated
-        console.log('🔐 Invalidating data caches to force re-fetch after login');
+        // Critical fix: Reset and invalidate entities and clients queries to force re-fetch now that we're authenticated
+        console.log('AUTH_CONTEXT_LOGIN_SUCCESS: User set, invalidating entity/client queries. User:', userData.user);
+        
+        // First reset to clear any stale data
+        queryClient.resetQueries({ queryKey: ['/api/entities'] });
+        queryClient.resetQueries({ queryKey: ['/api/clients'] });
+        
+        // Then invalidate to trigger fresh fetch with auth credentials
         queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
         queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
         
-        // Set a small timeout to ensure the queries have time to properly invalidate
+        // Set a timeout to ensure the queries have time to properly invalidate and refetch
         setTimeout(() => {
-          console.log('🔐 Triggering data refetch after cache invalidation');
+          console.log('AUTH_CONTEXT_LOGIN_REFETCH: Explicitly triggering entity/client refetch');
           queryClient.refetchQueries({ queryKey: ['/api/entities'] });
-        }, 100);
+          queryClient.refetchQueries({ queryKey: ['/api/clients'] });
+        }, 200);
         
         return true;
       } else {
