@@ -1,0 +1,28 @@
+Task 1: Refine GlobalContextSelector.tsx UI/UX for Initial Display and Selection (UX Refinement of Previous Task 1)
+
+Objective: Make the relationship between clients and their entities clearer and more immediate in the selector.
+Action for Agent:
+Confirm Manual Switching: First, explicitly test and confirm with logs that you can manually switch between different clients, and upon each switch, the entity dropdown correctly populates with entities for the newly selected client, and the first entity for that client is auto-selected. This should work with the localStorage persistence.
+Enhance GlobalContextSelector.tsx Display:
+When allEntities (the full list of 50) and clients are loaded into EntityContext and available to GlobalContextSelector.tsx:
+The client dropdown should populate.
+Instead of a separate entity dropdown that only populates after a client is clicked: Modify the client dropdown itself (or the component rendering the list of clients if it's a custom popover) to be an expandable list. Each client item, when expanded (e.g., by clicking a ">" icon), should immediately show its associated entities (filtered from allEntities) as sub-items.
+The user can then click directly on an entity, which will set both selectedClientId (its parent client's ID) and currentEntity.
+Alternatively, if they click on just a Client (without expanding to pick an entity), then selectedClientId is set, and currentEntity could be set to the first entity of that client (as it seems to be doing now) or remain null if the current view doesn't require a specific entity (like Chart of Accounts).
+Chart of Accounts Context:
+When navigating to a view like "Chart of Accounts" that is client-specific but not entity-specific:
+The UI should only require/use selectedClientId.
+The GlobalContextSelector should allow selecting just a client, and currentEntity could remain null or be ignored by the CoA page. The CoA page should fetch its data based only on selectedClientId.
+Re-Confirmation of Other Priorities (Once Client/Entity Selection UX is confirmed satisfactory by Creator/Owner):
+
+The rest of the bug list you provided remains critical:
+
+Creating New JE Workflow (Your point #4 in previous list)
+JE ID / Reference Stability (Your point #3)
+Attachment Issues (Deletion, Upload 400, UI for new attachments, Duplicates - Your points #2, #3, #5, #6)
+Void/Reverse JE (Your point #7)
+Account Selector UX (JE Form) (Your point #1, first part)
+Button Behavior (Save as Draft/Post) (Your point #4, second part)
+Agent, please first confirm that the Creator/Owner can now freely switch between any client, and that upon doing so, the entities for the selected client are correctly loaded and an entity is auto-selected. Provide logs for this manual switching.
+
+Then, proceed to refine the GlobalContextSelector.tsx display logic to more closely match the Creator/Owner's expectation of seeing entities "under the client" in a potentially expandable list, allowing direct entity selection.

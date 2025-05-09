@@ -60,16 +60,41 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     ? clients.find(client => client.id === selectedClientId)
     : undefined;
   
-  // Determine the button text
-  let buttonText = "Select Client...";
+  // Determine the button text with enhanced display
+  let buttonText: React.ReactNode = "Select Client...";
+  
   if (hasEntityContext && currentEntity) {
-    if (selectedClient) {
-      buttonText = `Entity: ${currentEntity.name} (${selectedClient.name})`;
-    } else {
-      buttonText = `Entity: ${currentEntity.name}`;
-    }
+    // Show both entity and client info for better context
+    buttonText = (
+      <div className="flex items-center overflow-hidden">
+        <div className="flex-1 truncate flex flex-col">
+          <span className="font-medium truncate">
+            <Layers className="h-4 w-4 inline mr-1" />
+            {currentEntity.name}
+          </span>
+          <span className="text-xs text-muted-foreground truncate">
+            <Building className="h-3 w-3 inline mr-1" />
+            {selectedClient?.name || 'Unknown Client'}
+            {currentEntity.code && ` • Code: ${currentEntity.code}`}
+          </span>
+        </div>
+      </div>
+    );
   } else if (hasClientContext && selectedClient) {
-    buttonText = `Client: ${selectedClient.name}`;
+    // Show client info with an indication that no entity is selected
+    buttonText = (
+      <div className="flex items-center overflow-hidden">
+        <div className="flex-1 truncate flex flex-col">
+          <span className="font-medium truncate">
+            <Building className="h-4 w-4 inline mr-1" />
+            {selectedClient.name}
+          </span>
+          <span className="text-xs text-muted-foreground truncate">
+            No entity selected
+          </span>
+        </div>
+      </div>
+    );
   }
   
   // Filter function for search
@@ -200,12 +225,26 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     setExpandedClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
   };
 
-  // Auto-expand the client of the currently selected entity
+  // Auto-expand all clients initially to show entities right away
+  useEffect(() => {
+    if (Array.isArray(clients) && clients.length > 0) {
+      // Create a record with all clients expanded by default
+      const initialExpandState: Record<number, boolean> = {};
+      clients.forEach(client => {
+        initialExpandState[client.id] = true;
+      });
+      
+      console.log('ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients to show entities immediately');
+      setExpandedClients(initialExpandState);
+    }
+  }, [clients]);
+  
+  // Auto-expand the client of the currently selected entity (as a backup)
   useEffect(() => {
     if (selectedClientId && !expandedClients[selectedClientId]) {
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, expandedClients]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
@@ -313,24 +352,25 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                         const id = parseInt(currentValue.split('-')[1]);
                         selectClient(id);
                       }}
-                      className="cursor-pointer font-medium"
+                      className="cursor-pointer font-medium bg-muted/30 border-l-2 border-primary/40"
                     >
                       <div className="flex items-center w-full overflow-hidden">
                         {clientEntities.length > 0 ? (
                           <button 
                             onClick={(e) => toggleClientExpansion(e, client.id)}
-                            className="mr-2 flex-shrink-0"
+                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/10 rounded-sm"
+                            aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
                             {isExpanded ? 
-                              <ChevronDown className="h-4 w-4" /> : 
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronDown className="h-4 w-4 text-primary" /> : 
+                              <ChevronRight className="h-4 w-4 text-primary" />
                             }
                           </button>
                         ) : (
-                          <span className="w-4 mr-2"></span>
+                          <span className="w-6 mr-2"></span>
                         )}
-                        <Building className="mr-2 h-4 w-4" />
-                        <span className="truncate">{client.name}</span>
+                        <Building className="mr-2 h-4 w-4 text-primary" />
+                        <span className="truncate font-semibold">{client.name}</span>
                         {selectedClientId === client.id && !hasEntityContext && (
                           <Check className="ml-auto h-4 w-4" />
                         )}
@@ -338,40 +378,53 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                     </CommandItem>
                     
                     {isExpanded && clientEntities.length > 0 && (
-                      <div className="pt-1 pb-1">
-                        {clientEntities.map((entity) => (
-                          <CommandItem
-                            key={`entity-${entity.id}`}
-                            value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`} // Use unique identifier + name/code for better search
-                            onSelect={(currentValue) => {
-                              // Parse the entity ID from the value string
-                              const id = parseInt(currentValue.split('-')[1]);
-                              // Find the entity by ID
-                              const selectedEntity = entities.find(e => e.id === id);
-                              if (selectedEntity) {
-                                console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selected, setting context:', 
-                                  { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
-                                selectEntity(selectedEntity);
-                              } else {
-                                console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
-                              }
-                            }}
-                            className="cursor-pointer pl-8 py-1"
-                          >
-                            <div className="flex items-center w-full overflow-hidden">
-                              <Layers className="h-4 w-4 mr-2" />
-                              <div className="flex flex-col overflow-hidden">
-                                <span className="truncate text-sm">{entity.name}</span>
-                                {entity.code && (
-                                  <span className="text-xs text-muted-foreground truncate">{entity.code}</span>
+                      <div className="pt-1 pb-1 border-l-2 border-muted ml-4">
+                        {clientEntities.map((entity) => {
+                          // Determine entity status styling
+                          const isActive = entity.active === true && entity.deletedAt === null;
+                          const isDeleted = entity.deletedAt !== null;
+                          
+                          // Status styling classes
+                          const statusClasses = isDeleted 
+                            ? "border-red-500/50 bg-red-50/10" 
+                            : (isActive 
+                                ? "border-green-500/50 bg-green-50/10" 
+                                : "border-gray-400/50 bg-gray-50/10");
+                          
+                          return (
+                            <CommandItem
+                              key={`entity-${entity.id}`}
+                              value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`} // Use unique identifier + name/code for better search
+                              onSelect={(currentValue) => {
+                                // Parse the entity ID from the value string
+                                const id = parseInt(currentValue.split('-')[1]);
+                                // Find the entity by ID
+                                const selectedEntity = entities.find(e => e.id === id);
+                                if (selectedEntity) {
+                                  console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selected, setting context:', 
+                                    { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
+                                  selectEntity(selectedEntity);
+                                } else {
+                                  console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
+                                }
+                              }}
+                              className={`cursor-pointer pl-4 py-1 my-1 mx-2 rounded-sm border-l-2 hover:bg-muted/50 ${statusClasses}`}
+                            >
+                              <div className="flex items-center w-full overflow-hidden">
+                                <Layers className="h-4 w-4 mr-2" />
+                                <div className="flex flex-col overflow-hidden">
+                                  <span className="truncate text-sm">{entity.name}</span>
+                                  {entity.code && (
+                                    <span className="text-xs text-muted-foreground truncate">{entity.code}</span>
+                                  )}
+                                </div>
+                                {currentEntity?.id === entity.id && (
+                                  <Check className="ml-auto h-4 w-4" />
                                 )}
                               </div>
-                              {currentEntity?.id === entity.id && (
-                                <Check className="ml-auto h-4 w-4" />
-                              )}
-                            </div>
-                          </CommandItem>
-                        ))}
+                            </CommandItem>
+                          );
+                        })}
                       </div>
                     )}
                   </CommandGroup>
