@@ -2188,6 +2188,140 @@ export function registerJournalEntryRoutes(app: Express) {
       res.json(journalEntry);
     })
   );
+  
+  /**
+   * ---------------------------------------------------------------------------
+   *  Hierarchical update route PUT /api/clients/:clientId/entities/:entityId/journal-entries/:id
+   * ---------------------------------------------------------------------------
+   */
+  app.put(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      const user = req.user as { id: number };
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity or journal entry ID');
+      }
+
+      // Validate: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      // Get the existing entry
+      const existingEntry = await journalEntryStorage.getJournalEntry(id);
+      
+      if (!existingEntry) {
+        return throwNotFound('Journal Entry');
+      }
+      
+      // Verify this entry belongs to the specified entity
+      if (existingEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+      
+      // Prevent updates to posted or void entries
+      if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
+        throwBadRequest(`Cannot update a journal entry with status '${existingEntry.status}'`);
+      }
+      
+      try {
+        // Validate update data
+        const validatedData = updateJournalEntrySchema.parse({
+          ...req.body,
+          updatedBy: user.id
+        });
+        
+        // Extract lines from validated data
+        const { lines, ...entryData } = validatedData;
+        
+        // Update the journal entry with lines
+        const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
+        
+        res.json(updatedEntry);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return res.status(400).json({ errors: formatZodError(error) });
+        }
+        throw error;
+      }
+    })
+  );
+
+  /**
+   * ---------------------------------------------------------------------------
+   *  Hierarchical post route PUT /api/clients/:clientId/entities/:entityId/journal-entries/:id/post
+   * ---------------------------------------------------------------------------
+   */
+  app.put(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id/post',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      const user = req.user as { id: number };
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity or journal entry ID');
+      }
+
+      // Validate: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      // Get the existing entry
+      const existingEntry = await journalEntryStorage.getJournalEntry(id);
+      
+      if (!existingEntry) {
+        return throwNotFound('Journal Entry');
+      }
+      
+      // Verify this entry belongs to the specified entity
+      if (existingEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+      
+      // Check if entry can be posted
+      if (existingEntry.status !== JournalEntryStatus.DRAFT && 
+          existingEntry.status !== JournalEntryStatus.PENDING_APPROVAL) {
+        return throwBadRequest(`Cannot post a journal entry with status '${existingEntry.status}'`);
+      }
+      
+      try {
+        // Update the status to POSTED
+        const updatedEntry = await journalEntryStorage.updateJournalEntry(id, {
+          status: JournalEntryStatus.POSTED,
+          postedBy: user.id,
+          postedAt: new Date(),
+          updatedBy: user.id
+        });
+        
+        res.json(updatedEntry);
+      } catch (error) {
+        throw error;
+      }
+    })
+  );
 
   /**
    * Legacy redirect for journal entry detail route
