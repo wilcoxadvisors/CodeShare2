@@ -89,8 +89,16 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         // Create a standard XMLHttpRequest to have more control over the FormData upload
         const xhr = new XMLHttpRequest();
         
+        // Add with credentials to ensure session cookies are sent
+        xhr.withCredentials = true;
+        
         // Set up the request
         xhr.open('POST', url, true);
+        
+        // Debug logging
+        console.log("DEBUG: XHR file upload to URL:", url);
+        console.log("DEBUG: FormData contains files count:", 
+                    formData.getAll('files').length);
         
         // Add event listeners for progress tracking
         xhr.upload.onprogress = (progressEvent) => {
@@ -103,19 +111,26 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
         // Create a promise to handle the XHR response
         const responsePromise = new Promise((resolve, reject) => {
           xhr.onload = () => {
+            console.log(`DEBUG: XHR response status: ${xhr.status}`);
+            console.log(`DEBUG: XHR response headers: ${xhr.getAllResponseHeaders()}`);
+            
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
                 resolve(data);
               } catch (e) {
+                console.log("DEBUG: XHR response is not JSON, raw response:", xhr.responseText);
                 resolve({ success: true }); // If response isn't JSON
               }
             } else {
-              reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+              // Log the error response
+              console.error(`DEBUG: Upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`);
+              reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`));
             }
           };
           
           xhr.onerror = () => {
+            console.error("DEBUG: Network error during file upload");
             reject(new Error('Network error during file upload'));
           };
         });
@@ -189,13 +204,51 @@ export function useDeleteJournalEntryFile() {
         throw new Error('Client ID is required');
       }
       
+      if (!entityId) {
+        throw new Error('Entity ID is required');
+      }
+      
+      if (!journalEntryId) {
+        throw new Error('Journal Entry ID is required');
+      }
+      
+      if (!fileId) {
+        throw new Error('File ID is required');
+      }
+      
       // Always use hierarchical URL pattern
       const url = getJournalEntryFileUrl(clientId, entityId, journalEntryId, fileId);
       
       console.log("DEBUG: Deleting file using URL:", url);
       
-      return await apiRequest(url, {
-        method: 'DELETE'
+      // Use XMLHttpRequest for better debugging
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.withCredentials = true; // Include credentials
+        xhr.open('DELETE', url, true);
+        
+        xhr.onload = () => {
+          console.log(`DEBUG: Delete file response status: ${xhr.status}, text: ${xhr.responseText || 'no text'}`);
+          
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
+            } catch (e) {
+              // If not valid JSON, still resolve if status is OK
+              resolve({ success: true });
+            }
+          } else {
+            reject(new Error(`Failed to delete file: ${xhr.status} ${xhr.statusText}`));
+          }
+        };
+        
+        xhr.onerror = () => {
+          console.error("Network error during file deletion");
+          reject(new Error('Network error during file deletion'));
+        };
+        
+        xhr.send();
       });
     },
     onSuccess: (_, variables) => {

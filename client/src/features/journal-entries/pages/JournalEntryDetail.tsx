@@ -272,28 +272,74 @@ function JournalEntryDetail() {
         throw new Error('Client ID and Entity ID are required for file operations');
       }
 
-      const response = await axios.post(
-        getJournalEntryFilesBaseUrl(clientId, currentEntity.id, entryId),
-        formData,
-        {
-          cancelToken: source.token,
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              
-              // Update the global progress state (legacy)
-              setUploadProgress(percentCompleted);
-              
-              // Update the per-file progress assuming equal distribution
-              const newProgressMap = { ...initialProgress };
-              files.forEach(file => {
-                newProgressMap[file.name] = percentCompleted;
-              });
-              setUploadProgressMap(newProgressMap);
-            }
-          }
+      // Use XMLHttpRequest for better control over the upload
+      const url = getJournalEntryFilesBaseUrl(clientId, currentEntity.id, entryId);
+      console.log("DEBUG: Uploading files to URL:", url);
+      console.log("DEBUG: FormData contains files count:", formData.getAll('files').length);
+      
+      // Create a Promise that will be resolved when the upload completes
+      const uploadPromise = new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.withCredentials = true; // Include credentials (cookies)
+        
+        // Check if the upload was cancelled
+        if (source.token.reason) {
+          reject(new axios.Cancel('Upload cancelled by user'));
+          return;
         }
-      );
+        
+        xhr.open('POST', url, true);
+        
+        // Set up progress tracking
+        xhr.upload.onprogress = (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            
+            // Update the global progress state
+            setUploadProgress(percentCompleted);
+            
+            // Update per-file progress
+            const newProgressMap = { ...initialProgress };
+            files.forEach(file => {
+              newProgressMap[file.name] = percentCompleted;
+            });
+            setUploadProgressMap(newProgressMap);
+          }
+        };
+        
+        // Set up completion handler
+        xhr.onload = () => {
+          console.log(`DEBUG: Upload response status: ${xhr.status}`);
+          console.log(`DEBUG: Upload response headers: ${xhr.getAllResponseHeaders()}`);
+          
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
+            } catch (e) {
+              console.log("DEBUG: Response is not JSON, raw response:", xhr.responseText);
+              // Even if we can't parse JSON, consider it a success if status is OK
+              resolve({ success: true, files: files.length });
+            }
+          } else {
+            console.error(`DEBUG: Upload failed with status ${xhr.status}`);
+            console.error(`DEBUG: Response: ${xhr.responseText}`);
+            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`));
+          }
+        };
+        
+        // Set up error handler
+        xhr.onerror = () => {
+          console.error("DEBUG: Network error during upload");
+          reject(new Error('Network error during upload'));
+        };
+        
+        // Send the FormData
+        xhr.send(formData);
+      });
+      
+      // Return the Promise result
+      return await uploadPromise;
       
       return response.data;
     },
