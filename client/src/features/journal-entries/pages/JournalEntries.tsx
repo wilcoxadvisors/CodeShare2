@@ -142,38 +142,83 @@ function JournalEntries() {
     
     // Map through entries to enhance them with totals data
     return entries.map((entry: any) => {
+      // Enhanced debugging to see the full entry structure
+      console.log(`DEBUG - Entry ${entry.id} structure:`, Object.keys(entry));
+      
       // If entry already has totals, use them
-      if (entry.totalDebit !== undefined && entry.totalCredit !== undefined) {
+      if (entry.totalDebit !== undefined && entry.totalCredit !== undefined && 
+          (entry.totalDebit > 0 || entry.totalCredit > 0)) {
+        console.log(`DEBUG - Using existing totals for entry ${entry.id}: debit=${entry.totalDebit}, credit=${entry.totalCredit}`);
         return entry;
+      }
+      
+      // Check if the API response includes totals in a nested structure
+      if (entry.totals && typeof entry.totals === 'object') {
+        if ('debit' in entry.totals && 'credit' in entry.totals) {
+          console.log(`DEBUG - Using nested totals for entry ${entry.id}: debit=${entry.totals.debit}, credit=${entry.totals.credit}`);
+          return { 
+            ...entry, 
+            totalDebit: safeParseAmount(entry.totals.debit), 
+            totalCredit: safeParseAmount(entry.totals.credit)
+          };
+        }
       }
       
       // Otherwise, calculate totals from lines if available
       if (entry.lines && Array.isArray(entry.lines)) {
         console.log(`DEBUG - JournalEntries - Processing entry ${entry.id} lines:`, entry.lines);
         
+        // Log the format of the first line to help diagnose issues
+        if (entry.lines.length > 0) {
+          const firstLine = entry.lines[0];
+          console.log(`DEBUG - First line format for entry ${entry.id}:`, 
+            isClientFormatLine(firstLine) ? "Client format" : 
+            isServerFormatLine(firstLine) ? "Server format" : 
+            "Unknown format", Object.keys(firstLine));
+        }
+        
         // Use our safer helper functions that handle both formats
         const totals = entry.lines.reduce((acc: any, line: any) => {
-          // Log format detection for debugging  
-          if (!isClientFormatLine(line) && !isServerFormatLine(line)) {
-            console.warn(`Unknown line format in entry ${entry.id}:`, line);
-          }
-          
           // Get debit and credit values using our helper functions
           const debitValue = getDebit(line);
           const creditValue = getCredit(line);
           
-          console.log(`Line in entry ${entry.id}: debit=${debitValue}, credit=${creditValue}`);
+          console.log(`Line in entry ${entry.id}: debit=${debitValue}, credit=${creditValue}`, line);
           
           acc.totalDebit += debitValue;
           acc.totalCredit += creditValue;
           return acc;
         }, { totalDebit: 0, totalCredit: 0 });
         
-        console.log(`DEBUG - JournalEntries - Entry ${entry.id} totals:`, totals);
+        console.log(`DEBUG - JournalEntries - Entry ${entry.id} calculated totals:`, totals);
         return { ...entry, ...totals };
       }
       
-      // If no lines data available, return entry as is with zero totals
+      // Look for debitTotal and creditTotal fields which might be present in some API responses
+      if (entry.debitTotal !== undefined || entry.creditTotal !== undefined) {
+        const totalDebit = safeParseAmount(entry.debitTotal);
+        const totalCredit = safeParseAmount(entry.creditTotal);
+        console.log(`DEBUG - Using debitTotal/creditTotal for entry ${entry.id}: debit=${totalDebit}, credit=${totalCredit}`);
+        return { ...entry, totalDebit, totalCredit };
+      }
+      
+      // If still no totals, try to calculate from a summary array if present
+      if (entry.summary && Array.isArray(entry.summary)) {
+        const totals = entry.summary.reduce((acc: any, item: any) => {
+          if (item.type === 'debit') {
+            acc.totalDebit += safeParseAmount(item.total);
+          } else if (item.type === 'credit') {
+            acc.totalCredit += safeParseAmount(item.total);
+          }
+          return acc;
+        }, { totalDebit: 0, totalCredit: 0 });
+        
+        console.log(`DEBUG - Using summary data for entry ${entry.id}: debit=${totals.totalDebit}, credit=${totals.totalCredit}`);
+        return { ...entry, ...totals };
+      }
+      
+      // If no lines or other total data available, return entry as is with zero totals
+      console.warn(`DEBUG - No totals data found for entry ${entry.id}, using zeros`);
       return { ...entry, totalDebit: 0, totalCredit: 0 };
     });
   }, [data]);
