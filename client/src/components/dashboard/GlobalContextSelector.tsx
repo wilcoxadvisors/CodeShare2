@@ -40,9 +40,14 @@ interface Entity {
 interface GlobalContextSelectorProps {
   clients: Client[];
   entities: Entity[];
+  /** 
+   * Set to false to hide entity selection - useful for features like Chart of Accounts
+   * where the entities under a client share the same chart
+   */
+  showEntities?: boolean;
 }
 
-export default function GlobalContextSelector({ clients, entities }: GlobalContextSelectorProps) {
+export default function GlobalContextSelector({ clients, entities, showEntities = true }: GlobalContextSelectorProps) {
   const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,31 +168,43 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
         return newState;
       });
       
-      // CRITICAL: Always keep the dropdown open when selecting a new client to allow immediate entity selection
+      // CRITICAL: Keep dropdown behavior appropriate for the context
       setTimeout(() => {
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Keeping dropdown open to show entities for client ${newClientId}`);
-        setOpen(true);
+        if (showEntities) {
+          // For normal case, keep dropdown open when selecting a new client to allow immediate entity selection
+          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Keeping dropdown open to show entities for client ${newClientId}`);
+          setOpen(true);
+        } else {
+          // For features like Chart of Accounts where entities aren't needed, close the dropdown
+          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Closing dropdown after client selection for non-entity feature`);
+          setOpen(false);
+        }
       }, 50);
     } else {
       // If clicking the same client that's already selected, just toggle its expansion state
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. Toggling expansion.`);
       
-      setExpandedClients(prev => {
-        const isCurrentlyExpanded = !!prev[newClientId];
-        const newState = { ...prev, [newClientId]: !isCurrentlyExpanded };
-        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${newClientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
-        return newState;
-      });
-      
-      // Always keep the dropdown open when toggling expansion
-      setTimeout(() => {
-        setOpen(true);
-      }, 50);
+      if (showEntities) {
+        setExpandedClients(prev => {
+          const isCurrentlyExpanded = !!prev[newClientId];
+          const newState = { ...prev, [newClientId]: !isCurrentlyExpanded };
+          console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${newClientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
+          return newState;
+        });
+        
+        // Always keep the dropdown open when toggling expansion
+        setTimeout(() => {
+          setOpen(true);
+        }, 50);
+      } else {
+        // For features like Chart of Accounts where entities aren't needed, close the dropdown
+        setOpen(false);
+      }
     }
     
     // Show detailed debugging after client selection
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
-  }, [clients, currentEntity, selectedClientId, open]);
+  }, [clients, currentEntity, selectedClientId, open, showEntities]);
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
@@ -268,6 +285,23 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       selectedClientIdRef.current = selectedClientId;
     }
   }, [selectedClientId]);
+  
+  // Auto-expand ALL clients when the dropdown first opens
+  // This ensures entities appear without requiring a click on the client
+  useEffect(() => {
+    if (open && Array.isArray(clients) && clients.length > 0) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients when dropdown opens for better visibility`);
+      
+      // Create a new object with all clients expanded
+      const allClientsExpanded = clients.reduce((acc, client) => {
+        acc[client.id] = true;
+        return acc;
+      }, {} as Record<number, boolean>);
+      
+      // Merge with existing state to avoid losing other state data
+      setExpandedClients(prev => ({ ...prev, ...allClientsExpanded }));
+    }
+  }, [open, clients]);
   
   // Initialize expansion state when clients first load
   useEffect(() => {
@@ -382,11 +416,16 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                         // Parse the client ID from the value string
                         const id = parseInt(currentValue.split('-')[1]);
                         selectClient(id);
+                        
+                        // If entities shouldn't be shown, close the dropdown after selecting client
+                        if (!showEntities) {
+                          setOpen(false);
+                        }
                       }}
                       className="cursor-pointer font-medium bg-muted/30 border-l-2 border-primary/40"
                     >
                       <div className="flex items-center w-full overflow-hidden">
-                        {clientEntities.length > 0 ? (
+                        {showEntities && clientEntities.length > 0 ? (
                           <div 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -419,13 +458,14 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                         )}
                         <Building className="mr-2 h-4 w-4 text-primary" />
                         <span className="truncate font-semibold">{client.name}</span>
-                        {selectedClientId === client.id && !hasEntityContext && (
+                        {selectedClientId === client.id && (!hasEntityContext || !showEntities) && (
                           <Check className="ml-auto h-4 w-4" />
                         )}
                       </div>
                     </CommandItem>
                     
-                    {isExpanded && clientEntities.length > 0 && (
+                    {/* Only show entities section if showEntities prop is true */}
+                    {showEntities && isExpanded && clientEntities.length > 0 && (
                       <div className="pt-1 pb-1 border-l-2 border-muted ml-4">
                         {clientEntities.map((entity) => {
                           // Determine entity status styling
