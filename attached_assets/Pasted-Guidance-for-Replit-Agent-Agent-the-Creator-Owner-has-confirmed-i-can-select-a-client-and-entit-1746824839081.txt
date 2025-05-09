@@ -1,0 +1,42 @@
+Guidance for Replit Agent:
+
+Agent, the Creator/Owner has confirmed: "i can select a client and entity now without issue." This is excellent news! Your fixes to GlobalContextSelector.tsx and the localStorage persistence in EntityContext.tsx have resolved the critical P0 regression where the user was stuck. This means the foundation for client/entity selection is now much more stable.
+
+The Creator/Owner also provided UX feedback: "Just the entities associated with the client do not load right away. I should be able to expand the client and see the entities to chose when needed."
+
+Your very last set of changes (auto-expanding all clients in GlobalContextSelector.tsx and styling for hierarchy) was aimed directly at this. The Creator/Owner may not have seen these specific changes in action yet.
+
+Task 1: Confirm and Finalize Client/Entity Selector UX
+
+Action:
+Verify your latest GlobalContextSelector.tsx changes:
+The useEffect that sets expandedClients to initially expand all clients when the dropdown opens (if (open && Array.isArray(clients) && clients.length > 0) { ... }).
+The conditional rendering logic for entities ({isExpanded && showEntities && clientEntities.length > 0 && (...) }).
+The styling changes for client rows and nested entity items.
+The showEntities prop (defaulting to true) to conditionally hide the entity part of the selector (e.g., for Chart of Accounts).
+Test the Flow & Provide Logs/Screenshot:
+After login, when the GlobalContextSelector dropdown is opened, do all clients now appear expanded by default, showing their respective entities immediately underneath?
+Can the user click to collapse/expand individual clients?
+Can the user directly select an entity from this hierarchical view?
+When navigating to a page like "Chart of Accounts" (where showEntities would eventually be set to false for the selector on that page), confirm that if only a client is selected (and showEntities is false), the dropdown closes immediately after client selection, and the checkmark correctly appears next to the client.
+Capture a screenshot (or describe carefully) of the opened GlobalContextSelector dropdown showing the hierarchical client > entity display.
+Provide the ARCHITECT_DEBUG_SELECTOR_ logs for this interaction.
+Once the Creator/Owner confirms this refined selector UX meets their expectations, we will proceed to the next critical functional bugs.
+
+Task 2: (Next CRITICAL) Creating New Journal Entries Reliably (Creator/Owner Issue from their previous list: "When creating a new entry I get a error...")
+
+Problem: Creating a new JE directly with status: "posted" and lines fails with server-side validation.
+Action (Verify/Complete your previous work):
+In client/src/features/journal-entries/components/JournalEntryForm.tsx, ensure your handleSubmit function for new entries (!existingEntry) strictly follows the two-step process if the user intends to "Create and Post":
+Initial createJournalEntry.mutate sends payload with status: "draft".
+onSuccess of draft creation: get newEntry.id.
+If files: uploadPendingFilesToEntry(newEntry.id, ...).
+onSuccess of uploads (or after draft creation if no files): then call postJournalEntry.mutate({ id: newEntry.id, clientId: ..., entityId: ... }).
+Test and provide logs for creating a new JE with lines and attempting to post it directly. We should see the two-step API calls in the network tab and no "Cannot add line to journal entry with status posted" error from the initial create. Server errors for duplicate reference or unbalanced lines are acceptable if the data is genuinely problematic.
+Task 3: (Next CRITICAL) "Journal ID changing in Edit mode" (Creator/Owner Issue #3)
+
+Action:
+Architect Awaiting Clarification: I am still waiting for the Creator/Owner to clarify if "Journal ID" means database id (integer) or the formatted reference ("JE-YYYY-####"). Ask them this directly if possible via a UI message or I will relay it.
+If Database id: Implement the detailed logging in JournalEntryForm.tsx (ID on load, in submit payload, in API response) as I specified in my last detailed guidance.
+If Formatted reference: Investigate JournalEntryForm.tsx state for the referenceNumber/reference field. It should not change on edit unless user-edited. Review backend sequence generation for "####" part for robustness (target >9999/year, uniqueness per entity/year).
+Agent, please confirm the status of Client/Entity Selector UX (Task 1 here) with logs and a description/screenshot first. Then proceed to New JE Creation Workflow (Task 2 here).

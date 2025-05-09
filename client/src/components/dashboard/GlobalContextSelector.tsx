@@ -292,16 +292,26 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     if (open && Array.isArray(clients) && clients.length > 0) {
       console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients when dropdown opens for better visibility`);
       
-      // Create a new object with all clients expanded
+      // CRITICAL FIX: Make sure to expand all clients by default to improve UX
       const allClientsExpanded = clients.reduce((acc, client) => {
         acc[client.id] = true;
         return acc;
       }, {} as Record<number, boolean>);
       
-      // Merge with existing state to avoid losing other state data
-      setExpandedClients(prev => ({ ...prev, ...allClientsExpanded }));
+      // Set initial expanded state for all clients
+      setExpandedClients(allClientsExpanded);
+      
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Set expanded state for ${clients.length} clients`, 
+        Object.keys(allClientsExpanded).length);
+      
+      // Force another render after a small delay to ensure React has updated the DOM
+      setTimeout(() => {
+        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Forcing re-render to ensure entities are visible');
+        // Re-apply the same expanded state to trigger a re-render
+        setExpandedClients({...allClientsExpanded});
+      }, 100);
     }
-  }, [open, clients]);
+  }, [open, clients]); // Removed entities dependency to ensure this runs as soon as the dropdown opens
   
   // Initialize expansion state when clients first load
   useEffect(() => {
@@ -415,11 +425,19 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                       onSelect={(currentValue) => {
                         // Parse the client ID from the value string
                         const id = parseInt(currentValue.split('-')[1]);
+                        console.log('ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client', id, 'showEntities=', showEntities);
+                        
+                        // Select the client in context
                         selectClient(id);
                         
-                        // If entities shouldn't be shown, close the dropdown after selecting client
+                        // If entities shouldn't be shown (Chart of Accounts case), close dropdown immediately
                         if (!showEntities) {
+                          console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode) - closing dropdown after client selection');
                           setOpen(false);
+                        } else {
+                          console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Keeping dropdown open for entity selection');
+                          // Ensure this client is expanded
+                          setExpandedClients(prev => ({ ...prev, [id]: true }));
                         }
                       }}
                       className="cursor-pointer font-medium bg-muted/30 border-l-2 border-primary/40"
@@ -465,8 +483,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                     </CommandItem>
                     
                     {/* Only show entities section if showEntities prop is true */}
-                    {showEntities && isExpanded && clientEntities.length > 0 && (
-                      <div className="pt-1 pb-1 border-l-2 border-muted ml-4">
+                    {showEntities && clientEntities.length > 0 && (
+                      <div 
+                        className={`pt-1 pb-1 border-l-2 border-muted ml-4 transition-all duration-300 ${
+                          isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none overflow-hidden'
+                        }`}
+                      >
                         {clientEntities.map((entity) => {
                           // Determine entity status styling
                           const isActive = entity.active === true && entity.deletedAt === null;
