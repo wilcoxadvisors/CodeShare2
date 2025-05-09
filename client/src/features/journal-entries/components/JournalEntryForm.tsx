@@ -228,12 +228,31 @@ interface JournalLine {
   credit: string;
 }
 
-// Form validation schema
+// Form validation schema - dynamically created to include context-aware validation
+// This will be adapted to handle duplicate reference number checking
+function createFormSchema(existingEntries: any[] = [], currentEntryId?: number) {
+  return z.object({
+    date: z.string().min(1, "Date is required"),
+    reference: z.string().min(3, "Reference must be at least 3 characters"),
+    referenceNumber: z.string()
+      .min(3, "Reference Number must be at least 3 characters")
+      .refine(
+        (refNum) => !isReferenceDuplicate(refNum, existingEntries, currentEntryId),
+        "This reference number is already used by another journal entry in this entity"
+      ),
+    description: z.string().min(1, "Description is required"), // Make description required to match server validation
+    journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
+    supDocId: z.string().optional(),
+    reversalDate: z.string().optional(),
+  });
+}
+
+// Define base schema for initial renders
 const FormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   reference: z.string().min(3, "Reference must be at least 3 characters"),
-  referenceNumber: z.string().min(3, "Reference Number must be at least 3 characters"), // Enhanced validation
-  description: z.string().min(1, "Description is required"), // Make description required to match server validation
+  referenceNumber: z.string().min(3, "Reference Number must be at least 3 characters"),
+  description: z.string().min(1, "Description is required"),
   journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
   supDocId: z.string().optional(),
   reversalDate: z.string().optional(),
@@ -1813,12 +1832,24 @@ function JournalEntryForm({
 
     // Only validate fully if we're not saving as draft (final intended state)
     if (!saveAsDraft) {
-      // Full validation for posting
-      const validation = validateForm(formData, FormSchema);
+      // Create a dynamic schema that includes reference number duplication check
+      const contextAwareSchema = createFormSchema(
+        existingEntries as any[], 
+        existingEntry?.id
+      );
+      
+      // Full validation for posting using context-aware schema
+      const validation = validateForm(formData, contextAwareSchema);
 
       if (!validation.valid) {
         setFieldErrors(validation.errors || {});
-        setFormError("Please correct the errors in the form before posting.");
+        
+        // Special handling for reference number duplication
+        if (validation.errors?.referenceNumber?.includes("already used")) {
+          setFormError("This reference number is already in use. Please choose a unique reference number.");
+        } else {
+          setFormError("Please correct the errors in the form before posting.");
+        }
         return;
       }
     } else {
