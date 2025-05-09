@@ -1768,32 +1768,38 @@ function JournalEntryForm({
 
     // Verify and log attachment status for debugging
     logAttachmentStatus();
+    
+    // Pre-check for reference number duplication before form validation
+    if (!saveAsDraft && journalData.referenceNumber && journalData.referenceNumber.length >= 3) {
+      if (isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id)) {
+        setFieldErrors({
+          ...fieldErrors,
+          referenceNumber: "This reference number is already used by another journal entry in this entity"
+        });
+        setFormError("Please choose a unique reference number for this journal entry.");
+        
+        // Scroll to the error
+        const refInput = document.getElementById("reference-number");
+        if (refInput) {
+          refInput.scrollIntoView({ behavior: "smooth", block: "center" });
+          refInput.focus();
+        }
+        
+        return;
+      }
+    }
 
     // Clear previous errors
     setFormError(null);
     setFieldErrors({});
     
-    // First check for reference number validation and duplicates
+    // First check for reference number validation - duplicate check is already done in pre-check
     if (journalData.referenceNumber.trim().length < 3) {
       setFieldErrors({
         ...fieldErrors,
         referenceNumber: "Reference number must be at least 3 characters"
       });
       setFormError("Please correct the errors in the form before submitting.");
-      return;
-    }
-    
-    // Check for duplicate reference numbers
-    if (isReferenceDuplicate(
-      journalData.referenceNumber,
-      existingEntries as any[],
-      existingEntry?.id
-    )) {
-      setFieldErrors({
-        ...fieldErrors,
-        referenceNumber: "This reference number is already in use for this entity"
-      });
-      setFormError("Please use a unique reference number.");
       return;
     }
 
@@ -2346,7 +2352,16 @@ function JournalEntryForm({
               id="reference-number"
               name="referenceNumber"
               value={journalData.referenceNumber}
-              onChange={handleChange}
+              onChange={(e) => {
+                // Clear duplicate error when typing
+                if (fieldErrors.referenceNumber?.includes("already used")) {
+                  setFieldErrors(prev => ({
+                    ...prev,
+                    referenceNumber: undefined
+                  }));
+                }
+                handleChange(e);
+              }}
               placeholder="Invoice #, Check #, etc."
               className={`mt-1 ${fieldErrors.referenceNumber ? "border-red-500 pr-10" : ""}`}
             />
@@ -2362,6 +2377,19 @@ function JournalEntryForm({
           {fieldErrors.referenceNumber && (
             <p className="text-red-500 text-sm mt-1 flex items-center">
               <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.referenceNumber}
+            </p>
+          )}
+          {/* Show live validation warnings for reference number */}
+          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length > 0 && 
+           journalData.referenceNumber.length < 3 && (
+            <p className="text-amber-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> Reference number must be at least 3 characters
+            </p>
+          )}
+          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
+           isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
+            <p className="text-red-500 text-sm mt-1 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" /> This reference number is already in use
             </p>
           )}
         </div>
