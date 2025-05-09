@@ -305,7 +305,43 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
     
     try {
-      return await query;
+      // Get the base journal entries
+      const entries = await query;
+
+      // Enhance entries with pre-calculated totals
+      const enhancedEntries = await Promise.all(entries.map(async (entry) => {
+        // Get lines for this entry
+        const lines = await this.getJournalEntryLines(entry.id);
+        
+        // Calculate totals
+        let totalDebit = 0;
+        let totalCredit = 0;
+        
+        lines.forEach(line => {
+          if (line.type === 'debit') {
+            // Handle both string and number formats
+            const amount = typeof line.amount === 'string' ? parseFloat(line.amount) : line.amount;
+            totalDebit += isNaN(amount) ? 0 : amount;
+          } else if (line.type === 'credit') {
+            // Handle both string and number formats
+            const amount = typeof line.amount === 'string' ? parseFloat(line.amount) : line.amount;
+            totalCredit += isNaN(amount) ? 0 : amount;
+          }
+        });
+        
+        console.log(`DEBUG: Calculated totals for entry ${entry.id}: debit=${totalDebit}, credit=${totalCredit}`);
+        
+        // Return the enhanced entry with totals
+        return {
+          ...entry,
+          totals: {
+            debit: totalDebit,
+            credit: totalCredit
+          }
+        };
+      }));
+      
+      return enhancedEntries;
     } catch (e) {
       throw handleDbError(e, `listing journal entries with filters`);
     }
