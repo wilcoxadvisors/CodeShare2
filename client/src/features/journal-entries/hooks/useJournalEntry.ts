@@ -301,7 +301,11 @@ export function useJournalEntry() {
   // Post journal entry 
   const postJournalEntry = useMutation({
     mutationFn: async (params: { id: number, clientId: number, entityId: number }) => {
-      console.log('DEBUG: Posting journal entry with ID:', params.id);
+      console.log('DEBUG: Posting journal entry with params:', JSON.stringify(params, null, 2));
+      
+      if (!params.id) {
+        throw new Error('Journal entry ID is required for posting');
+      }
       
       if (!params.clientId || !params.entityId) {
         throw new Error('Client ID and Entity ID are required for posting a journal entry');

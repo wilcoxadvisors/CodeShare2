@@ -900,6 +900,8 @@ function JournalEntryDetail() {
   
   // Handle post entry button click
   const handlePostEntry = () => {
+    console.log('DEBUG: handlePostEntry called in JournalEntryDetail');
+    
     // Check if the entry is balanced before posting
     const { totalDebit, totalCredit } = calculateTotals();
     const difference = Math.abs(totalDebit - totalCredit);
@@ -937,7 +939,7 @@ function JournalEntryDetail() {
         }
       }
       
-      console.log('Posting journal entry with formatted lines:', formattedLines);
+      console.log('DEBUG: Posting journal entry with formatted lines:', formattedLines);
       
       // EXPLICITLY include all required fields from the original journal entry
       // to ensure they're preserved when posting
@@ -961,6 +963,27 @@ function JournalEntryDetail() {
       // Use the dedicated postJournalEntry mutation instead of updateJournalEntry
       console.log('DEBUG: Posting existing entry with ID:', entryId);
       
+      // Log the exact route parameters from the URL
+      console.log('DEBUG: Route params for posting:', {
+        clientIdParam: clientIdParam,
+        entityIdParam: entityIdParam,
+        entryId: entryId
+      });
+      
+      // Log the resolved clientId and currentEntity values
+      console.log('DEBUG: Resolved context values:', {
+        clientId: clientId,
+        entityId: currentEntity?.id,
+        entityName: currentEntity?.name
+      });
+      
+      // Log the entry object itself
+      console.log('DEBUG: Entry object for posting:', JSON.stringify({
+        id: entry.id,
+        clientId: entry.clientId,
+        entityId: entry.entityId
+      }, null, 2));
+      
       // Make sure we have all required IDs for posting
       if (!entryId || !entry.clientId || !entry.entityId) {
         console.error('ERROR: Missing required IDs for posting:', { 
@@ -978,12 +1001,18 @@ function JournalEntryDetail() {
       }
       
       // Use the dedicated post endpoint with correct parameters
-      postJournalEntry.mutate({
-        id: entryId,
-        clientId: entry.clientId,
-        entityId: entry.entityId
-      }, {
-        onSuccess: () => {
+      // IMPORTANT: Ensure we're passing numeric values, not strings
+      const postParams = {
+        id: Number(entryId),
+        clientId: Number(entry.clientId),
+        entityId: Number(entry.entityId)
+      };
+      
+      console.log('DEBUG: Final post parameters:', JSON.stringify(postParams, null, 2));
+      
+      postJournalEntry.mutate(postParams, {
+        onSuccess: (result) => {
+          console.log('DEBUG: Post success response:', JSON.stringify(result, null, 2));
           toast({
             title: "Journal Entry Posted",
             description: "The journal entry has been posted successfully.",
@@ -993,7 +1022,8 @@ function JournalEntryDetail() {
           refetch();
         },
         onError: (error: any) => {
-          console.error('Error posting journal entry:', error);
+          console.error('ERROR: Failed to post journal entry:', error);
+          console.error('ERROR: Error response:', error.response?.data);
           toast({
             title: "Error",
             description: `Failed to post journal entry: ${error.message}`,

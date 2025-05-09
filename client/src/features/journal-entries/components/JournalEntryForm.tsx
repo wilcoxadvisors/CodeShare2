@@ -2068,8 +2068,78 @@ function JournalEntryForm({
             });
           },
         });
+      } else if (!saveAsDraft) {
+        // Create-then-post flow for new entries that need to be posted immediately without attachments
+        console.log("DEBUG: Implementing two-step process for creating and posting a journal entry");
+        
+        // Step 1: Create the entry as a draft first
+        const draftEntryData = {
+          ...entryData,
+          status: JournalEntryStatus.DRAFT // Always create as draft first
+        };
+        
+        console.log("DEBUG: Step 1 - Creating entry as draft first:", JSON.stringify(draftEntryData, null, 2));
+        
+        // Create as draft, then post in the onSuccess callback
+        createEntry.mutate(draftEntryData, {
+          onSuccess: (result) => {
+            // Extract the new entry ID
+            const newEntryId = result?.id || (result?.entry && result.entry.id);
+            
+            if (!newEntryId) {
+              console.error("ERROR: Failed to extract new entry ID from server response:", result);
+              toast({
+                title: "Error",
+                description: "Failed to extract entry ID from server response",
+                variant: "destructive",
+              });
+              onSubmit(); // Still call onSubmit to navigate away
+              return;
+            }
+            
+            console.log("DEBUG: Step 1 complete - Created draft entry with ID:", newEntryId);
+            console.log("DEBUG: Step 2 - Now posting the draft entry");
+            
+            // Step 2: Post the journal entry
+            postJournalEntry.mutate(
+              {
+                id: newEntryId,
+                clientId: resolvedClientId,
+                entityId: entityId
+              },
+              {
+                onSuccess: (postResult) => {
+                  console.log("DEBUG: Step 2 complete - Successfully posted journal entry:", postResult);
+                  toast({
+                    title: "Success",
+                    description: "Journal entry created and posted successfully",
+                  });
+                  onSubmit(); // Navigate away
+                },
+                onError: (error) => {
+                  console.error("DEBUG: Step 2 failed - Error posting journal entry:", error);
+                  toast({
+                    title: "Warning",
+                    description: "Entry created as draft but could not be posted. You can post it manually.",
+                    variant: "destructive",
+                  });
+                  onSubmit(); // Still navigate away
+                }
+              }
+            );
+          },
+          onError: (error) => {
+            console.error("DEBUG: Step 1 failed - Error creating draft entry:", error);
+            toast({
+              title: "Error",
+              description: `Failed to create journal entry: ${error.message}`,
+              variant: "destructive",
+            });
+          }
+        });
       } else {
-        // Standard flow - no pending attachments or just saving as draft
+        // Standard flow - just saving as draft
+        console.log("DEBUG: Creating entry as draft normally");
         createEntry.mutate(entryData);
       }
     }
