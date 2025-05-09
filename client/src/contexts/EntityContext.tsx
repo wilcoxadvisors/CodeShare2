@@ -46,11 +46,15 @@ const EntityContext = createContext<EntityContextType>({
   setSelectedClientId: () => {}
 });
 
+// Local storage keys for persisting selections
+const STORAGE_KEY_CLIENT = 'selected_client_id';
+const STORAGE_KEY_ENTITY = 'selected_entity_id';
+
 function EntityProvider({ children }: { children: ReactNode }) {
   // Updated to use isGuestUser directly from AuthContext
   const { user, isLoading: isAuthLoadingFromAuthContext, isGuestUser } = useAuth();
-  const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [currentEntity, setCurrentEntityState] = useState<Entity | null>(null);
+  const [selectedClientId, setSelectedClientIdState] = useState<number | null>(null);
   
   // Our own loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +62,36 @@ function EntityProvider({ children }: { children: ReactNode }) {
   
   // Use a useRef to track whether we've tried to fetch entities after auth
   const entityFetchAttempted = React.useRef(false);
+  
+  // Enhanced setter for client ID that persists to localStorage
+  const setSelectedClientId = (clientId: number | null) => {
+    console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Setting client ID to ${clientId}`);
+    setSelectedClientIdState(clientId);
+    
+    // Persist to localStorage when value is not null
+    if (clientId !== null) {
+      localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
+      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved client ID ${clientId} to localStorage`);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_CLIENT);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Cleared client ID from localStorage`);
+    }
+  };
+  
+  // Enhanced setter for entity that persists to localStorage
+  const setCurrentEntity = (entity: Entity | null) => {
+    console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Setting entity to ${entity?.id || 'null'}`);
+    setCurrentEntityState(entity);
+    
+    // Persist to localStorage when value is not null
+    if (entity !== null) {
+      localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
+      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved entity ID ${entity.id} to localStorage`);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_ENTITY);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Cleared entity ID from localStorage`);
+    }
+  };
   
   // Log detailed auth and entity state information
   console.log('ENTITY_CONTEXT_AUTH_STATE:', {
@@ -155,6 +189,53 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const entities = selectedClientId && allEntities && allEntities.length > 0
     ? allEntities.filter(entity => entity.clientId === selectedClientId)
     : [];
+    
+  // Restore saved client and entity selections when entities are loaded
+  useEffect(() => {
+    // Only run this if we have entities loaded, and we're not loading, and no client is selected yet
+    if (allEntities.length > 0 && !isLoading && !selectedClientId && !currentEntity && !isGuestUser) {
+      console.log('ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Attempting to restore saved selections from localStorage');
+      
+      // First try to restore entity directly
+      const savedEntityId = localStorage.getItem(STORAGE_KEY_ENTITY);
+      const savedClientId = localStorage.getItem(STORAGE_KEY_CLIENT);
+      
+      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Found saved values: clientId=${savedClientId}, entityId=${savedEntityId}`);
+      
+      if (savedEntityId) {
+        const entityId = parseInt(savedEntityId);
+        // Look for the entity in our loaded entities
+        const entity = allEntities.find(e => e.id === entityId);
+        
+        if (entity) {
+          console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Restoring entity ${entity.id} (${entity.name})`);
+          
+          // First set the client ID
+          setSelectedClientIdState(entity.clientId);
+          
+          // Then set the entity
+          setCurrentEntityState(entity);
+          return;
+        } else {
+          console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved entity ID ${entityId} not found in loaded entities`);
+        }
+      }
+      
+      // If we couldn't restore the entity but have a client ID, restore that
+      if (savedClientId) {
+        const clientId = parseInt(savedClientId);
+        // Check if this client has any entities
+        const clientEntities = allEntities.filter(e => e.clientId === clientId);
+        
+        if (clientEntities.length > 0) {
+          console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Restoring client ${clientId} selection`);
+          setSelectedClientIdState(clientId);
+        } else {
+          console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved client ID ${clientId} has no entities, not restoring`);
+        }
+      }
+    }
+  }, [allEntities, isLoading, selectedClientId, currentEntity, isGuestUser]);
   
   // Update loading state based on queries and auth state
   useEffect(() => {
