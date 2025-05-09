@@ -303,21 +303,36 @@ export function useJournalEntry() {
     mutationFn: async (params: { id: number, clientId: number, entityId: number }) => {
       console.log('DEBUG: Posting journal entry with params:', JSON.stringify(params, null, 2));
       
-      if (!params.id) {
-        throw new Error('Journal entry ID is required for posting');
+      try {
+        if (!params.id) {
+          throw new Error('Journal entry ID is required for posting');
+        }
+        
+        if (!params.clientId || !params.entityId) {
+          throw new Error('Client ID and Entity ID are required for posting a journal entry');
+        }
+        
+        // Ensure all parameters are actual numbers, not string representations
+        const entryId = Number(params.id);
+        const clientId = Number(params.clientId);
+        const entityId = Number(params.entityId);
+        
+        // Log normalized parameters
+        console.log('DEBUG: Normalized parameters:', { entryId, clientId, entityId });
+        
+        // Use proper URL construction with correct HTTP method (PUT)
+        const url = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/post`;
+        console.log(`DEBUG: Posting journal entry with direct URL: ${url}`);
+        console.log(`DEBUG: Using PUT method as required by the server endpoint`);
+        
+        // Return the API request with proper error handling
+        return await apiRequest(url, {
+          method: 'PUT'
+        });
+      } catch (error) {
+        console.error('ERROR in postJournalEntry mutation function:', error);
+        throw error; // Re-throw to allow the mutation error handler to process it
       }
-      
-      if (!params.clientId || !params.entityId) {
-        throw new Error('Client ID and Entity ID are required for posting a journal entry');
-      }
-      
-      // Use proper URL construction with correct HTTP method (PUT)
-      const url = `/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}/post`;
-      console.log(`DEBUG: Posting journal entry with direct URL: ${url}`);
-      console.log(`DEBUG: Using PUT method as required by the server endpoint`);
-      return await apiRequest(url, {
-        method: 'PUT'
-      });
     },
     onSuccess: (data, params) => {
       console.log('DEBUG: Post success response:', JSON.stringify(data, null, 2));
@@ -339,9 +354,13 @@ export function useJournalEntry() {
       return data.entry || data;
     },
     onError: (error: any) => {
+      console.error('ERROR: Post journal entry mutation failed:', error);
+      // Try to extract more detailed error information if available
+      const errorDetails = error.response?.data?.message || error.message;
+      
       toast({
         title: 'Error',
-        description: `Failed to post journal entry: ${error.message}`,
+        description: `Failed to post journal entry: ${errorDetails}`,
         variant: 'destructive',
       });
     }
