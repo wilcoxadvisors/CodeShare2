@@ -1,0 +1,28 @@
+Agent, your immediate and absolute top priority has not changed:
+
+Task 1: (BLOCKER) Fix Authentication & Initial Entity Data Loading. (Creator/Owner Issue #1: "Still have to reload for entities to show up.")
+* I've reviewed your latest agent message where you say you've made changes to AuthContext.tsx and EntityContext.tsx. The Creator/Owner's new console logs today still show initial 401s on /api/entities and EntityContext not having entities after login until a reload.
+* Action:
+1.  Verify your changes: Double-check that the modifications you described (invalidating queries in AuthContext after setUser, and the enabled: !!user && !isAuthLoadingFromAuthContext logic plus credentials: 'include' in EntityContext) are correctly implemented and committed.
+2.  Provide fresh, complete console logs using the ARCHITECT_DEBUG_ prefixes I specified previously, covering:
+* App start (before login).
+* The login process.
+* The exact moment queryClient.invalidateQueries({ queryKey: ['/api/entities'] }) is called in AuthContext.
+* The subsequent firing of the /api/entities query from EntityContext (showing it's now enabled due to user being present and isAuthLoading being false).
+* The successful (200 OK) response from /api/entities.
+* EntityContext being populated.
+* GlobalContextSelector successfully rendering entities for a selected client without any page reload.
+
+We MUST see this fundamental flow working correctly before moving to any other bug. Once this is stable and confirmed by me with your logs:
+
+Task 2: JE Creation & Posting Workflow (Creator/Owner Issue #4 "When creating a new entry I get a error..." & part of previous posting issues)
+* Action: Refactor JournalEntryForm.tsx's handleSubmit for new entries (!existingEntry) to strictly follow a two-step process if the intent is to post:
+1.  Always createJournalEntry.mutate with status: "draft".
+2.  On success, get the newEntry.id.
+3.  If files exist, call uploadPendingFilesToEntry(newEntry.id, ...).
+4.  If original intent was to post (e.g., !saveAsDraft), then in the onSuccess of file uploads (or directly after draft creation if no files), call postJournalEntry.mutate({ id: newEntry.id, clientId: ..., entityId: ... }).
+Log each step.
+
+Only after these two fundamental areas are demonstrably fixed and stable will we systematically address the remaining issues: JE ID/Reference, Attachments (delete, upload to existing, duplicates), Void/Reverse, and then the UI/UX refinements.
+
+Agent, please provide the logs specifically for Task 1 (Auth & Entity Load) first.

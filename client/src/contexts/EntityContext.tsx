@@ -84,8 +84,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
   } = useQuery<Entity[]>({
     queryKey: ['/api/entities'],
     queryFn: () => {
-      console.log("ENTITY_CONTEXT_QUERY: Firing. enabled=", !!user && !isAuthLoadingFromAuthContext, 
-        "user_exists=", !!user, "isAuthLoadingFromAuthContext=", isAuthLoadingFromAuthContext);
+      // Log detailed information about the query execution
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Query function executing with:");
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - User:", user ? `ID ${user.id}, Username ${user.username}` : "null");
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Auth loading state:", isAuthLoadingFromAuthContext);
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Query enabled:", !!user && !isAuthLoadingFromAuthContext);
       
       entityFetchAttempted.current = true;
       
@@ -96,19 +99,22 @@ function EntityProvider({ children }: { children: ReactNode }) {
           'Cache-Control': 'no-cache'
         }
       }).then(res => {
+        // Log the HTTP response status
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Status ${res.status} ${res.statusText}`);
+        
         if (!res.ok) {
-          console.error(`Entities fetch failed with status ${res.status}`);
+          console.error(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_ERROR: Entities fetch failed with status ${res.status}`);
           throw new Error(`Entities fetch failed: ${res.status}`);
         }
+        
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Got successful response, parsing JSON...');
         const data = res.json();
         return data;
       }).then(data => {
+        // Log detailed information about the received data
         console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', data?.length);
-        console.log('ENTITY_CONTEXT_QUERY_SUCCESS: Fetched entities. Count:', 
-          data?.length, 'First few:', data?.slice(0, 2));
-        
-        // Add more detailed debugging about the entities received
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Fetched entities raw data:', data);
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities:', 
+          data?.slice(0, 2).map(e => ({ id: e.id, name: e.name, clientId: e.clientId })));
         
         return data;
       });
@@ -116,9 +122,19 @@ function EntityProvider({ children }: { children: ReactNode }) {
     // CRITICAL: Only run this query when user is authenticated and auth loading is complete
     // This must match EXACTLY the condition in our debug log above
     enabled: !!user && !isAuthLoadingFromAuthContext,
+    // Additional props to ensure reliable loading
     retry: 2,
     retryDelay: 1000,
     staleTime: 30000, // 30 seconds
+    // Make sure we get logs when query is enabled/disabled
+    onSettled: (data, error) => {
+      console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SETTLED:', { 
+        success: !error, 
+        dataReceived: !!data, 
+        entitiesCount: data?.length || 0,
+        error: error ? String(error) : null
+      });
+    }
   });
 
   // Store all entities without filtering - ensure it's always an array

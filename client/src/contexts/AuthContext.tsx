@@ -164,20 +164,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // CRITICAL: When login is successful, we MUST ensure React Query knows to refetch
         // data that depends on authentication.
         console.log('ARCHITECT_DEBUG_AUTH_CTX: Login successful. User set:', userData.user);
-        console.log('ARCHITECT_DEBUG_AUTH_CTX: Invalidating [/api/entities] and [/api/clients] queries NOW.');
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Starting critical query invalidation sequence...');
         
         // First reset to clear any stale data
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Step 1 - Resetting [/api/entities] and [/api/clients] queries to clear stale data');
         await queryClient.resetQueries({ queryKey: ['/api/entities'] });
         await queryClient.resetQueries({ queryKey: ['/api/clients'] });
         
         // Then invalidate to trigger fresh fetch with auth credentials
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Step 2 - Invalidating [/api/entities] and [/api/clients] queries NOW to force refetch');
         await queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
         await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
         
         // Explicitly trigger a refetch to ensure the data is loaded immediately
-        console.log('ARCHITECT_DEBUG_AUTH_CTX: Triggered refetch for /api/entities and /api/clients.');
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Step 3 - Explicitly triggering refetch for [/api/entities] and [/api/clients]');
         await queryClient.refetchQueries({ queryKey: ['/api/entities'] });
         await queryClient.refetchQueries({ queryKey: ['/api/clients'] });
+        
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Query invalidation sequence completed. Entities should load without page reload.');
         
         return true;
       } else {
