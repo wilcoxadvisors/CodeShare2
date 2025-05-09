@@ -145,32 +145,49 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       } : null
     });
     
-    // If changing to a different client
+    // If changing to a different client, update client selection
     if (newClientId !== currentSelectedClientId) {
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting new client to ${newClientId}. Clearing current entity.`);
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
       // Auto-expand the client we just selected to show entities
-      setExpandedClients(prev => ({ ...prev, [newClientId]: true }));
+      setExpandedClients(prev => {
+        // Expand the new client, collapse all others for cleaner UI
+        const newState = { ...prev };
+        Object.keys(newState).forEach(key => {
+          newState[Number(key)] = Number(key) === newClientId;
+        });
+        newState[newClientId] = true;
+        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Setting client ${newClientId} expanded state to true`);
+        return newState;
+      });
       
-      // CRITICAL: Keep the dropdown open when selecting a client to allow immediate entity selection
-      // Add a brief timeout to ensure the state has updated before closing
+      // CRITICAL: Always keep the dropdown open when selecting a new client to allow immediate entity selection
       setTimeout(() => {
         console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Keeping dropdown open to show entities for client ${newClientId}`);
         setOpen(true);
       }, 50);
     } else {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. No change.`);
-      // Toggle the dropdown - if it's open, close it, if closed, open it
+      // If clicking the same client that's already selected, just toggle its expansion state
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. Toggling expansion.`);
+      
+      setExpandedClients(prev => {
+        const isCurrentlyExpanded = !!prev[newClientId];
+        const newState = { ...prev, [newClientId]: !isCurrentlyExpanded };
+        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${newClientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
+        return newState;
+      });
+      
+      // Always keep the dropdown open when toggling expansion
       setTimeout(() => {
-        setOpen(!open);
+        setOpen(true);
       }, 50);
     }
     
     // Show detailed debugging after client selection
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
-  }, [clients, currentEntity, selectedClientId]);
+  }, [clients, currentEntity, selectedClientId, open]);
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
@@ -375,13 +392,21 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                               e.stopPropagation();
                               e.preventDefault();
                               console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling expansion for client ${client.id}`);
+                              
+                              // Toggle expansion state directly here
                               setExpandedClients(prev => {
-                                const newState = { ...prev, [client.id]: !prev[client.id] };
-                                console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: New expansion state for client ${client.id}:`, newState[client.id]);
+                                const isCurrentlyExpanded = !!prev[client.id];
+                                const newState = { ...prev, [client.id]: !isCurrentlyExpanded };
+                                console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${client.id} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
                                 return newState;
                               });
+                              
+                              // Keep dropdown open after toggling expansion
+                              setTimeout(() => {
+                                setOpen(true);
+                              }, 50);
                             }}
-                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/10 rounded-sm cursor-pointer"
+                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/20 rounded-full cursor-pointer border border-primary/30"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
                             {isExpanded ? 
