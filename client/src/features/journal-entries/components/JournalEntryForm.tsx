@@ -3298,9 +3298,18 @@ function JournalEntryForm({
                   console.log(
                     "DEBUG: Posting existing entry with ID:",
                     existingEntry.id,
+                    "clientId:", 
+                    effectiveClientId,
+                    "entityId:", 
+                    entityId
                   );
-                  // Use postJournalEntry from the properly imported hook at component level
-                  postJournalEntry.mutate(existingEntry.id);
+                  
+                  // Pass all required parameters to postJournalEntry (id, clientId, entityId)
+                  postJournalEntry.mutate({
+                    id: existingEntry.id,
+                    clientId: effectiveClientId,
+                    entityId: entityId
+                  });
                 } else {
                   console.log(
                     "DEBUG: Creating new entry using handleSubmit with saveAsDraft=false",
