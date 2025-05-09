@@ -160,11 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userData && userData.user) {
         // Set user from the authenticated session
         setUser(userData.user);
-        console.log('🔐 Login successful, user:', userData.user);
         
         // Critical fix: Reset and invalidate entities and clients queries to force re-fetch now that we're authenticated
-        console.log('AUTH_CONTEXT_LOGIN_SUCCESS: User set, invalidating entity/client queries. User:', userData.user);
-        
         // First reset to clear any stale data
         queryClient.resetQueries({ queryKey: ['/api/entities'] });
         queryClient.resetQueries({ queryKey: ['/api/clients'] });
@@ -173,9 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
         queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
         
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Login success. User set. Invalidated /api/entities and /api/clients. User:', userData.user);
+        
         // Set a timeout to ensure the queries have time to properly invalidate and refetch
         setTimeout(() => {
-          console.log('AUTH_CONTEXT_LOGIN_REFETCH: Explicitly triggering entity/client refetch');
+          console.log('ARCHITECT_DEBUG_AUTH_CTX_REFETCH: Explicitly triggering entity/client refetch');
           queryClient.refetchQueries({ queryKey: ['/api/entities'] });
           queryClient.refetchQueries({ queryKey: ['/api/clients'] });
         }, 200);

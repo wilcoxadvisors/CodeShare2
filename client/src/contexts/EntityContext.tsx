@@ -68,6 +68,10 @@ function EntityProvider({ children }: { children: ReactNode }) {
     entityFetchAttempted: entityFetchAttempted.current
   });
   
+  // Add more detailed debugging for entity context query enabling conditions
+  console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY: Check enabled. UserExists=', 
+    !!user, 'AuthNotLoading=', !isAuthLoading, 'QueryEnabled=', !!user && !isAuthLoading);
+  
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
@@ -99,6 +103,10 @@ function EntityProvider({ children }: { children: ReactNode }) {
       }).then(data => {
         console.log('ENTITY_CONTEXT_QUERY_SUCCESS: Fetched entities. Count:', 
           data?.length, 'First few:', data?.slice(0, 2));
+        
+        // Add more detailed debugging about the entities received
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Fetched entities raw data:', data);
+        
         return data;
       });
     },
@@ -132,6 +140,18 @@ function EntityProvider({ children }: { children: ReactNode }) {
       
       // Mark initialization as complete since we have entities and auth is done
       setInitialLoadComplete(true);
+      
+      // Add detailed current state information for debugging the initial load
+      console.log('ARCHITECT_DEBUG_ENTITY_CTX_STATE_POST_FETCH:', {
+        allEntitiesLength: allEntities?.length || 0,
+        initialLoadComplete: initialLoadComplete,
+        isAuthLoading: isAuthLoading,
+        queryIsLoading: queryIsLoading,
+        isFetching: isFetching,
+        isSuccess: isSuccess,
+        isError: isError
+      });
+      
       console.log("DEBUG: Initial entities loading completed successfully");
     }
     
