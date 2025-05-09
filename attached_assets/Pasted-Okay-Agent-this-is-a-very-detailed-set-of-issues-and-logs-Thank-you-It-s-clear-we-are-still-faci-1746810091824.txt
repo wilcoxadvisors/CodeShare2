@@ -1,0 +1,47 @@
+Okay, Agent, this is a very detailed set of issues and logs. Thank you. It's clear we are still facing significant hurdles in stabilizing the core functionalities.
+
+Overarching Issue: Authentication & Initial Data Load (User Issue #1)
+
+Before we can reliably debug many of the other problems, we must address the first issue you reported: "Still have to reload after selecting a client. Entities do not show right away in the selector."
+
+The console logs provide strong clues here:
+
+Initial State: DEBUG: Entities context state: ... Total entities: 0 ... Initial loading complete: false ... Loading: true
+Auth Failure: api/auth/me:1 Failed to load resource: the server responded with a status of 401 (Unauthorized)
+Entity Fetch Failure: Repeated api/entities:1 Failed to load resource: the server responded with a status of 401 (Unauthorized), even after logs indicate DEBUG: Fetching entities with auth: true.
+After Login: Even after 🔐 Login successful, user: Object, the subsequent EntityContext logs still show Total entities: 0, and GlobalContextSelector.tsx also reports Full entities list length: 0.
+This sequence strongly suggests that the initial fetch of entities in EntityContext.tsx is failing due to authentication (401s), or it's not being re-triggered correctly immediately after a successful login. If EntityContext doesn't have the allEntities populated correctly, then GlobalContextSelector cannot filter and display entities for a selected client, and consequently, the Journal Entry list cannot load. The manual reload likely forces a fresh, authenticated fetch which then works.
+
+Action for Agent - Priority #1: Fix Initial Entity Loading & Selector:
+
+EntityContext.tsx - Entity Query enabled state:
+
+Review the useQuery call for fetching /api/entities. Its enabled option must be strictly dependent on a confirmed authenticated user state from AuthContext. For example: enabled: !!user && !isLoadingAuth (where user and isLoadingAuth come from useAuth()). Do not attempt to fetch entities if the user is not yet authenticated or if auth status is still loading.
+Log the user object from AuthContext and the enabled status of the entities query just before it fires.
+AuthContext.tsx - Post-Login Entity Re-fetch:
+
+When login is successful (e.g., in the onSuccess of your login mutation or after user state is set), you must ensure the entities query is re-fetched or invalidated so EntityContext can get the data with the new authenticated session.
+The simplest way is to call queryClient.invalidateQueries({ queryKey: ['/api/entities'] }) from AuthContext immediately after the user state is updated to reflect a successful login. This will tell React Query to mark the entities data as stale and re-fetch.
+EntityContext.tsx - State Updates:
+
+Ensure that when the entities data is successfully fetched (after login and query invalidation/re-fetch), the internal state of EntityContext (e.g., allEntities, isLoading, initialLoadComplete) is correctly updated and that this update properly propagates to consuming components like GlobalContextSelector.tsx. The logs show Initial loading complete: true, Loading: false even when Total entities: 0 after login, which might indicate premature state setting or stale data.
+GlobalContextSelector.tsx - Reactivity:
+
+Once EntityContext reliably holds allEntities after login, verify that GlobalContextSelector re-renders and that its filtering logic (e.g., DEBUG: Filtered list for Client 73. Length: 0 Array(0)) correctly processes allEntities based on the selectedClientId.
+Debugging this specific flow is paramount. Until entities load correctly and are available in the selectors without a page reload after login, debugging downstream issues (JE list, JE posting, attachments) will be compounded by inconsistent or missing prerequisite data.
+
+Regarding the Other User-Reported Issues (To be addressed after Issue #1 is stable):
+
+Issue 2 & 4 (Attachments): "when edit a JE uploading an attachment does not show. But appears to save." AND "Can not remove attachments once added." AND the file upload 400 errors for existing JEs.
+We still need the full JSON error response body for the 400 errors during file upload to an existing JE.
+For deletion, we need a network trace (request/response) of the DELETE attempt.
+Issue 3 (JE ID changes when editing): This needs the specific logging I outlined previously to trace the ID through the edit lifecycle in JournalEntryForm.tsx.
+Issue 5 (Posting Error: "Says client ID and entity id required to post je"):
+Your latest agent response mentions fixing the postJournalEntry.mutate call to include these. The new logs from the user now show a different error when trying to create and post directly: POST /api/clients/250/entities/393/journal-entries results in a 400 Bad Request with messages like "Reference number \"122\" is already in use..." or "Each entity's debits must equal credits..." or "Cannot add line to journal entry with status posted".
+These are server-side validation errors and are actually good in a sense – they mean the server is receiving the request and validating the business logic.
+"Reference number ... already in use": Your client-side isReferenceDuplicate check should catch this before sending to the server if existingEntries is populated correctly.
+"Each entity's debits must equal credits for intercompany transactions": This is a new validation. Ensure your JE lines for intercompany JEs are balanced per entity.
+"Cannot add line to journal entry with status posted": If you are creating a JE with status: "posted" in the initial POST request to /api/clients/.../journal-entries, the backend is likely designed to prevent lines from being included in this scenario (expecting a two-step: create draft with lines, then update status to posted). Odoo often works this way. It might be better to always create JEs as 'draft' first, then have a separate action/call to post them. This simplifies the create API.
+Issue 7 (Takes a while for an entry to update): Likely client-side cache invalidation.
+Issue (from previous list) "not sure if deleting an entry works": The new logs show a DELETE /api/clients/250/entities/393/journal-entries/144. We need to see the server response to this and confirm UI behavior.
+Agent, please prioritize fixing User Issue #1: The initial loading of entities after login and ensuring they appear in selectors without requiring a page reload. Focus your efforts on AuthContext.tsx (post-login actions) and EntityContext.tsx (entity query enabled state and data propagation). Provide logs specifically around the user login, the /api/entities fetch attempt (request headers if possible, and full response), and the subsequent state of EntityContext.

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 
 interface User {
   id: number;
@@ -160,6 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Set user from the authenticated session
         setUser(userData.user);
         console.log('🔐 Login successful, user:', userData.user);
+        
+        // Critical fix: Invalidate entities query to force re-fetch now that we're authenticated
+        console.log('🔐 Invalidating entities cache to force re-fetch after login');
+        queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+        
         return true;
       } else {
         console.error('🔐 Login succeeded but session verification failed');
