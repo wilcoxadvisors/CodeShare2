@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
@@ -47,6 +47,9 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
+  const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
+  // Reference to current selectedClientId to avoid stale references
+  const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
 
   // Determine what context is selected for display
   const hasClientContext = selectedClientId !== null;
@@ -98,11 +101,14 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     : [];
   
   // Handle client selection
-  const selectClient = (clientId: number) => {
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered - clientId: ${clientId}`);
+  // Handle client selection - Improved version to fix client switching bug
+  const selectClient = useCallback((newClientId: number) => {
+    const currentSelectedClientId = selectedClientIdRef.current;
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered. New ClientId: ${newClientId}, Previous ClientId: ${currentSelectedClientId}`);
+    
     // Find client name for logging
-    const clientName = clients.find(c => c.id === clientId)?.name || 'Unknown';
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting client context: ${clientId} (${clientName})`);
+    const clientName = clients.find(c => c.id === newClientId)?.name || 'Unknown';
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting client context: ${newClientId} (${clientName})`);
     
     // Show detailed debugging for prior state
     console.log('ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: BEFORE client selection - Current state:', {
@@ -114,33 +120,24 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       } : null
     });
     
-    // CRITICAL FIX: Force a complete re-render cycle for full reset
-    // First clear the entity
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Clearing current entity to force re-render cycle`);
-    setCurrentEntity(null);
-    
-    // Then clear the client ID
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Clearing client ID to force re-render cycle`);
-    setSelectedClientId(null);
-    
-    // Use a short timeout to ensure the state changes are processed
-    setTimeout(() => {
-      // Now set the new client ID which will trigger refetch of entities in the EntityContext
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting new client ID: ${clientId}`);
-      setSelectedClientId(clientId);
+    // If changing to a different client
+    if (newClientId !== currentSelectedClientId) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting new client to ${newClientId}. Clearing current entity.`);
+      setCurrentEntity(null); // Clear entity when client changes
+      setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
       // Auto-expand the client we just selected to show entities
-      setExpandedClients(prev => ({ ...prev, [clientId]: true }));
-      
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - clientId: ${clientId}, entityId: null`);
-    }, 50);
+      setExpandedClients(prev => ({ ...prev, [newClientId]: true }));
+    } else {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. No change.`);
+    }
     
     // Close the dropdown immediately
     setOpen(false);
     
-    // Show detailed debugging for after state change is initiated
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: AFTER client selection initiated - clientId: ${clientId}, entityId: null`);
-  };
+    // Show detailed debugging after client selection
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
+  }, [clients, currentEntity, selectedClientId]);
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
@@ -210,19 +207,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     }
   }, [selectedClientId]);
   
-  // Auto-select first client if none is selected
-  useEffect(() => {
-    // Only trigger this if we have clients, no client is selected, and no entity is selected
-    if (Array.isArray(clients) && clients.length > 0 && selectedClientId === null && currentEntity === null) {
-      // Find the first active client
-      const firstActiveClient = clients.find(client => client.active === true && client.deletedAt === null);
-      
-      if (firstActiveClient) {
-        console.log(`ARCHITECT_DEBUG_SELECTOR_AUTO_SELECT: Auto-selecting first client: ${firstActiveClient.id} (${firstActiveClient.name})`);
-        selectClient(firstActiveClient.id);
-      }
-    }
-  }, [clients, selectedClientId, currentEntity]);
+  // Auto-selection of first client has been removed as requested
+  // No automatic client selection will occur
 
   // Scroll to selected item when the dropdown opens
   useEffect(() => {
