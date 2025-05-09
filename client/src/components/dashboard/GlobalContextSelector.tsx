@@ -210,6 +210,20 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     }
   }, [selectedClientId]);
   
+  // Auto-select first client if none is selected
+  useEffect(() => {
+    // Only trigger this if we have clients, no client is selected, and no entity is selected
+    if (Array.isArray(clients) && clients.length > 0 && selectedClientId === null && currentEntity === null) {
+      // Find the first active client
+      const firstActiveClient = clients.find(client => client.active === true && client.deletedAt === null);
+      
+      if (firstActiveClient) {
+        console.log(`ARCHITECT_DEBUG_SELECTOR_AUTO_SELECT: Auto-selecting first client: ${firstActiveClient.id} (${firstActiveClient.name})`);
+        selectClient(firstActiveClient.id);
+      }
+    }
+  }, [clients, selectedClientId, currentEntity]);
+
   // Scroll to selected item when the dropdown opens
   useEffect(() => {
     if (open) {
