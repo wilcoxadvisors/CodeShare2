@@ -114,16 +114,28 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       } : null
     });
     
-    // Clear current entity selection first to avoid any state dependencies
+    // CRITICAL FIX: Force a complete re-render cycle for full reset
+    // First clear the entity
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Clearing current entity to force re-render cycle`);
     setCurrentEntity(null);
     
-    // Then set client ID which will trigger refetch of entities in the EntityContext
-    setSelectedClientId(clientId);
+    // Then clear the client ID
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Clearing client ID to force re-render cycle`);
+    setSelectedClientId(null);
     
-    // Auto-expand the client we just selected to show entities
-    setExpandedClients(prev => ({ ...prev, [clientId]: true }));
+    // Use a short timeout to ensure the state changes are processed
+    setTimeout(() => {
+      // Now set the new client ID which will trigger refetch of entities in the EntityContext
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting new client ID: ${clientId}`);
+      setSelectedClientId(clientId);
+      
+      // Auto-expand the client we just selected to show entities
+      setExpandedClients(prev => ({ ...prev, [clientId]: true }));
+      
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - clientId: ${clientId}, entityId: null`);
+    }, 50);
     
-    // Close the dropdown
+    // Close the dropdown immediately
     setOpen(false);
     
     // Show detailed debugging for after state change is initiated
@@ -162,15 +174,24 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Client context already set to: ${entity.clientId}, skipping update`);
     }
     
-    // Then set entity context
-    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting entity context to:`, {
-      id: entity.id,
-      name: entity.name, 
-      clientId: entity.clientId
-    });
-    setCurrentEntity(entity);
+    // CRITICAL FIX: Force a complete re-render cycle by first clearing the entity
+    // This ensures that all components dependent on the entity context are notified of the change
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Clearing current entity to force re-render cycle`);
+    setCurrentEntity(null);
     
-    // Close popover
+    // Then set entity context with a delay to ensure the null state is processed
+    setTimeout(() => {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting entity context to:`, {
+        id: entity.id,
+        name: entity.name, 
+        clientId: entity.clientId
+      });
+      setCurrentEntity(entity);
+      
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection completed - clientId: ${entity.clientId}, entityId: ${entity.id}`);
+    }, 50); // Short timeout to ensure state update is processed
+    
+    // Close popover immediately
     setOpen(false);
     
     console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);

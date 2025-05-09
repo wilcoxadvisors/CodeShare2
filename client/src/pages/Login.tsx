@@ -64,14 +64,22 @@ function Login() {
     }
     
     // Add detailed logging
-    console.log('🔑 Attempting login with username:', formData.username);
-    console.log('🔑 Password length:', formData.password.length);
+    console.log('ARCHITECT_DEBUG_LOGIN_FORM: Attempting login with username:', formData.username);
+    console.log('ARCHITECT_DEBUG_LOGIN_FORM: Password length:', formData.password.length);
     
     try {
+      // Show toast to indicate login in progress
+      toast({
+        title: "Authenticating",
+        description: "Verifying your credentials...",
+        variant: "default"
+      });
+      
       // Use the login function from the AuthContext
+      console.log('ARCHITECT_DEBUG_LOGIN_FORM: Calling AuthContext login function');
       const success = await login(formData.username, formData.password);
       
-      console.log('🔑 Login result:', success ? 'Success' : 'Failed');
+      console.log('ARCHITECT_DEBUG_LOGIN_FORM: Login result:', success ? 'Success' : 'Failed');
       
       if (success) {
         toast({
@@ -80,22 +88,26 @@ function Login() {
           variant: "default"
         });
         
-        // Wait a bit for entities to load before navigating
+        // Wait a bit longer for entities to load before navigating
+        // This ensures the critical query invalidation sequence in AuthContext has time to complete
+        console.log('ARCHITECT_DEBUG_LOGIN_FORM: Setting navigation timeout after successful login');
         setTimeout(() => {
-          console.log('🔑 Navigating to dashboard after login');
-          // Use the SPA navigation instead of page refresh
+          console.log('ARCHITECT_DEBUG_LOGIN_FORM: Navigation timeout expired, checking if entities have loaded');
+          
+          // Navigate to dashboard
+          console.log('ARCHITECT_DEBUG_LOGIN_FORM: Navigating to dashboard after login');
           navigate('/dashboard');
-        }, 500);
+        }, 800); // Increased timeout to give queries more time to complete
       } else {
         toast({
           title: "Authentication Error",
           description: "Invalid username or password",
           variant: "destructive"
         });
-        console.log('🔑 Login failed with provided credentials');
+        console.log('ARCHITECT_DEBUG_LOGIN_FORM: Login failed with provided credentials');
       }
     } catch (error) {
-      console.error('🔑 Login error:', error);
+      console.error('ARCHITECT_DEBUG_LOGIN_FORM: Login error:', error);
       toast({
         title: "Login Error",
         description: "An error occurred during login. Please try again.",
