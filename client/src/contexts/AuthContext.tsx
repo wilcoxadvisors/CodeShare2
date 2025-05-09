@@ -161,23 +161,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Set user from the authenticated session
         setUser(userData.user);
         
-        // Critical fix: Reset and invalidate entities and clients queries to force re-fetch now that we're authenticated
+        // CRITICAL: When login is successful, we MUST ensure React Query knows to refetch
+        // data that depends on authentication.
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Login successful. User set:', userData.user);
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Invalidating [/api/entities] and [/api/clients] queries NOW.');
+        
         // First reset to clear any stale data
-        queryClient.resetQueries({ queryKey: ['/api/entities'] });
-        queryClient.resetQueries({ queryKey: ['/api/clients'] });
+        await queryClient.resetQueries({ queryKey: ['/api/entities'] });
+        await queryClient.resetQueries({ queryKey: ['/api/clients'] });
         
         // Then invalidate to trigger fresh fetch with auth credentials
-        queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
         
-        console.log('ARCHITECT_DEBUG_AUTH_CTX: Login success. User set. Invalidated /api/entities and /api/clients. User:', userData.user);
-        
-        // Set a timeout to ensure the queries have time to properly invalidate and refetch
-        setTimeout(() => {
-          console.log('ARCHITECT_DEBUG_AUTH_CTX_REFETCH: Explicitly triggering entity/client refetch');
-          queryClient.refetchQueries({ queryKey: ['/api/entities'] });
-          queryClient.refetchQueries({ queryKey: ['/api/clients'] });
-        }, 200);
+        // Explicitly trigger a refetch to ensure the data is loaded immediately
+        console.log('ARCHITECT_DEBUG_AUTH_CTX: Triggered refetch for /api/entities and /api/clients.');
+        await queryClient.refetchQueries({ queryKey: ['/api/entities'] });
+        await queryClient.refetchQueries({ queryKey: ['/api/clients'] });
         
         return true;
       } else {

@@ -56,7 +56,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   // Get all entities for the user
-  const { isLoading: isAuthLoading } = useAuth();
+  const { isLoading: isAuthLoadingFromAuthContext } = useAuth();
   
   // Use a useRef to track whether we've tried to fetch entities after auth
   const entityFetchAttempted = React.useRef(false);
@@ -64,13 +64,15 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Log detailed auth and entity state information
   console.log('ENTITY_CONTEXT_AUTH_STATE:', {
     user: user ? { id: user.id, username: user.username } : null,
-    isAuthLoading,
+    isAuthLoading: isAuthLoadingFromAuthContext,
     entityFetchAttempted: entityFetchAttempted.current
   });
   
-  // Add more detailed debugging for entity context query enabling conditions
-  console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY: Check enabled. UserExists=', 
-    !!user, 'AuthNotLoading=', !isAuthLoading, 'QueryEnabled=', !!user && !isAuthLoading);
+  // CRITICAL: Add detailed debugging for entity context query enabling conditions
+  // This must match EXACTLY what we use in the enabled: property of useQuery below
+  console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists=', 
+    !!user, 'AuthNotLoading=', !isAuthLoadingFromAuthContext, 'QueryEnabled=', 
+    !!user && !isAuthLoadingFromAuthContext);
   
   const { 
     data: entitiesData = [], 
@@ -82,8 +84,8 @@ function EntityProvider({ children }: { children: ReactNode }) {
   } = useQuery<Entity[]>({
     queryKey: ['/api/entities'],
     queryFn: () => {
-      console.log("ENTITY_CONTEXT_QUERY: Firing. enabled=", !!user && !isAuthLoading, 
-        "user_exists=", !!user, "isAuthLoading=", isAuthLoading);
+      console.log("ENTITY_CONTEXT_QUERY: Firing. enabled=", !!user && !isAuthLoadingFromAuthContext, 
+        "user_exists=", !!user, "isAuthLoadingFromAuthContext=", isAuthLoadingFromAuthContext);
       
       entityFetchAttempted.current = true;
       
@@ -101,6 +103,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
         const data = res.json();
         return data;
       }).then(data => {
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', data?.length);
         console.log('ENTITY_CONTEXT_QUERY_SUCCESS: Fetched entities. Count:', 
           data?.length, 'First few:', data?.slice(0, 2));
         
@@ -110,7 +113,9 @@ function EntityProvider({ children }: { children: ReactNode }) {
         return data;
       });
     },
-    enabled: !!user && !isAuthLoading, // Critical: Only run this query when user is authenticated and auth loading is complete
+    // CRITICAL: Only run this query when user is authenticated and auth loading is complete
+    // This must match EXACTLY the condition in our debug log above
+    enabled: !!user && !isAuthLoadingFromAuthContext,
     retry: 2,
     retryDelay: 1000,
     staleTime: 30000, // 30 seconds
@@ -127,15 +132,15 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Update loading state based on queries and auth state
   useEffect(() => {
     // Be in a loading state if auth is loading OR entities query is loading/fetching
-    const loading = isAuthLoading || queryIsLoading || (isFetching && !initialLoadComplete);
+    const loading = isAuthLoadingFromAuthContext || queryIsLoading || (isFetching && !initialLoadComplete);
     
     // Handle initial loading state - this only happens once
     // CRITICAL: Only mark loading as complete if we have successful data AND auth is complete
-    if (!initialLoadComplete && !isAuthLoading && isSuccess) {
+    if (!initialLoadComplete && !isAuthLoadingFromAuthContext && isSuccess) {
       // Log detailed entity data received
       console.log(`ENTITY_CONTEXT_STATE_POST_FETCH: 
         - Total entities: ${allEntities?.length || 0}
-        - Auth loading: ${isAuthLoading}
+        - Auth loading: ${isAuthLoadingFromAuthContext}
         - Query state: Success=${isSuccess}, Loading=${queryIsLoading}, Error=${isError}`);
       
       // Mark initialization as complete since we have entities and auth is done
@@ -145,7 +150,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
       console.log('ARCHITECT_DEBUG_ENTITY_CTX_STATE_POST_FETCH:', {
         allEntitiesLength: allEntities?.length || 0,
         initialLoadComplete: initialLoadComplete,
-        isAuthLoading: isAuthLoading,
+        isAuthLoading: isAuthLoadingFromAuthContext,
         queryIsLoading: queryIsLoading,
         isFetching: isFetching,
         isSuccess: isSuccess,
@@ -162,12 +167,12 @@ function EntityProvider({ children }: { children: ReactNode }) {
     if (isLoading !== loading) {
       console.log(`ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
         From ${isLoading} to ${loading}
-        - Auth loading: ${isAuthLoading}
+        - Auth loading: ${isAuthLoadingFromAuthContext}
         - Query loading: ${queryIsLoading}
         - Fetching: ${isFetching}
         - Initial load complete: ${initialLoadComplete}`);
     }
-  }, [queryIsLoading, isFetching, isAuthLoading, initialLoadComplete, isSuccess, isError, allEntities, isLoading]);
+  }, [queryIsLoading, isFetching, isAuthLoadingFromAuthContext, initialLoadComplete, isSuccess, isError, allEntities, isLoading]);
   
   // When client selection changes, clear entity if needed
   useEffect(() => {
