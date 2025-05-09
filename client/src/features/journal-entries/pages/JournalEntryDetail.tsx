@@ -958,8 +958,31 @@ function JournalEntryDetail() {
       // Log the complete payload for debugging
       console.log('DEBUG: Complete posting payload:', JSON.stringify(updatePayload, null, 2));
       
-      // Update the status to posted with formatted lines and all required fields
-      updateJournalEntry.mutate(updatePayload, {
+      // Use the dedicated postJournalEntry mutation instead of updateJournalEntry
+      console.log('DEBUG: Posting existing entry with ID:', entryId);
+      
+      // Make sure we have all required IDs for posting
+      if (!entryId || !entry.clientId || !entry.entityId) {
+        console.error('ERROR: Missing required IDs for posting:', { 
+          entryId, 
+          clientId: entry.clientId, 
+          entityId: entry.entityId 
+        });
+        
+        toast({
+          title: "Error",
+          description: "Cannot post journal entry: Missing required IDs",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Use the dedicated post endpoint with correct parameters
+      postJournalEntry.mutate({
+        id: entryId,
+        clientId: entry.clientId,
+        entityId: entry.entityId
+      }, {
         onSuccess: () => {
           toast({
             title: "Journal Entry Posted",

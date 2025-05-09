@@ -357,6 +357,12 @@ export const listJournalEntriesFiltersSchema = z.object({
   status: z.enum(['draft', 'pending_approval', 'approved', 'posted', 'rejected', 'voided']).optional(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   referenceNumber: optionalString.nullable(),
+  // Additional filter fields for enhanced search
+  accountId: z.number().int().positive().optional(),
+  descriptionText: z.string().optional(),
+  minAmount: z.number().optional(),
+  maxAmount: z.number().optional(),
+  // Pagination and sorting fields - all made optional
   limit: z.preprocess(
     (val) => val === undefined ? 25 : (typeof val === 'string' ? parseInt(val, 10) : val),
     z.number().int().min(1).max(100).optional().default(25)
@@ -367,7 +373,7 @@ export const listJournalEntriesFiltersSchema = z.object({
   ),
   sortBy: z.enum(['date', 'referenceNumber', 'description', 'amount']).optional().default('date'),
   sortDirection: z.enum(['asc', 'desc']).optional().default('desc')
-});
+}).partial(); // Make all fields optional to support partial filter sets
 
 // Type for the filters
 export type ListJournalEntriesFilters = z.infer<typeof listJournalEntriesFiltersSchema>;
