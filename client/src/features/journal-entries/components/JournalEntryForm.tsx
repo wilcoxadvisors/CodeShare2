@@ -1996,15 +1996,24 @@ function JournalEntryForm({
                   "DEBUG: File uploads complete, now updating status to POSTED",
                 );
 
-                // Update the entry status to POSTED after successful upload
-                updateEntry.mutate(
+                // Post the journal entry after attaching files
+                console.log("DEBUG: Using postJournalEntry.mutate instead of updateEntry.mutate for posting after file upload");
+                console.log("DEBUG: Post parameters", {
+                  id: newEntryId,
+                  clientId: resolvedClientId,
+                  entityId: entityId
+                });
+                
+                // Use the dedicated postJournalEntry mutation instead of updateEntry
+                postJournalEntry.mutate(
                   {
-                    ...entryData,
                     id: newEntryId,
-                    status: JournalEntryStatus.POSTED,
+                    clientId: resolvedClientId,
+                    entityId: entityId
                   },
                   {
-                    onSuccess: () => {
+                    onSuccess: (result) => {
+                      console.log("DEBUG: Successfully posted journal entry after file upload:", result);
                       toast({
                         title: "Success",
                         description: "Journal entry posted with attachments",
@@ -2013,7 +2022,7 @@ function JournalEntryForm({
                     },
                     onError: (error) => {
                       console.error(
-                        "Failed to update entry status to POSTED:",
+                        "Failed to post journal entry after file upload:",
                         error,
                       );
                       toast({
