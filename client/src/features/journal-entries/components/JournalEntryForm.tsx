@@ -143,7 +143,8 @@ interface Account {
 }
 
 /** Returns true when the proposed referenceNumber is already used
- *  in another journal entry that belongs to the same entity. */
+ *  in another journal entry that belongs to the same entity.
+ *  Compares case-insensitively and ignores leading/trailing whitespace. */
 function isReferenceDuplicate(
   referenceNumber: string,
   allEntries: any[], // Existing journal entries 
@@ -160,7 +161,8 @@ function isReferenceDuplicate(
     return false;
   }
   
-  const normalized = referenceNumber.trim().toLowerCase();
+  // Normalize input by removing all whitespace and converting to lowercase
+  const normalized = referenceNumber.replace(/\s+/g, '').toLowerCase();
   if (normalized.length < 3) {
     console.log("DEBUG isReferenceDuplicate: Reference number too short, skipping check");
     return false; // Let the length validation handle this
@@ -169,7 +171,7 @@ function isReferenceDuplicate(
   const duplicate = allEntries.find(e =>
     e.id !== currentEntryId && // ignore "myself" when editing
     e.referenceNumber && 
-    e.referenceNumber.trim().toLowerCase() === normalized
+    e.referenceNumber.replace(/\s+/g, '').toLowerCase() === normalized
   );
   
   console.log("DEBUG isReferenceDuplicate: Result", {
@@ -2448,6 +2450,12 @@ function JournalEntryForm({
            isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
             <p className="text-red-500 text-sm mt-1 flex items-center">
               <AlertCircle className="h-3 w-3 mr-1" /> This reference number is already in use
+            </p>
+          )}
+          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
+           !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
+            <p className="text-green-500 text-sm mt-1 flex items-center">
+              <Check className="h-3 w-3 mr-1" /> Reference number is valid and unique
             </p>
           )}
         </div>
