@@ -56,6 +56,8 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   // Get all entities for the user
+  const { isLoading: isAuthLoading } = useAuth();
+  
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
@@ -67,12 +69,17 @@ function EntityProvider({ children }: { children: ReactNode }) {
     queryKey: ['/api/entities'],
     queryFn: () => {
       console.log("DEBUG: Fetching entities with auth:", !!user);
-      return fetch('/api/entities').then(res => {
-        if (!res.ok) throw new Error(`Entities fetch failed: ${res.status}`);
+      return fetch('/api/entities', {
+        credentials: 'include' // Ensure cookies are sent for authentication
+      }).then(res => {
+        if (!res.ok) {
+          console.error(`Entities fetch failed with status ${res.status}`);
+          throw new Error(`Entities fetch failed: ${res.status}`);
+        }
         return res.json();
       });
     },
-    enabled: !!user, // Critical: Only run this query when user is authenticated
+    enabled: !!user && !isAuthLoading, // Critical: Only run this query when user is authenticated and auth loading is complete
     retry: 2,
     retryDelay: 1000,
     staleTime: 60000, // 1 minute
@@ -86,21 +93,25 @@ function EntityProvider({ children }: { children: ReactNode }) {
     ? allEntities.filter(entity => entity.clientId === selectedClientId)
     : [];
   
-  // Update loading state based on queries
+  // Update loading state based on queries and auth state
   useEffect(() => {
+    // Be in a loading state if auth is loading OR entities query is loading/fetching
+    const loading = isAuthLoading || queryIsLoading || (isFetching && !initialLoadComplete);
+    
     // Handle initial loading state - this only happens once
-    if (!initialLoadComplete && !queryIsLoading) {
+    if (!initialLoadComplete && !loading && isSuccess) {
       console.log("DEBUG: Initial entities loading completed");
       setInitialLoadComplete(true);
     }
     
     // Handle general loading state (for spinners, etc.)
-    setIsLoading(queryIsLoading);
-  }, [queryIsLoading, initialLoadComplete]);
+    setIsLoading(loading);
+  }, [queryIsLoading, isFetching, isAuthLoading, initialLoadComplete, isSuccess]);
   
   // When client selection changes, clear entity if needed
   useEffect(() => {
-    if (!selectedClientId) return;
+    // Skip this effect when we're loading or don't have a client selected
+    if (!selectedClientId || isLoading || queryIsLoading || isFetching) return;
     
     console.log("DEBUG: Client selection changed:", selectedClientId);
     
@@ -111,18 +122,23 @@ function EntityProvider({ children }: { children: ReactNode }) {
     }
     
     // Auto-select first entity when client changes but only if none is selected
-    if (!currentEntity && Array.isArray(allEntities) && allEntities.length > 0) {
+    // AND we have received entity data from the server
+    if (!currentEntity && Array.isArray(allEntities) && allEntities.length > 0 && isSuccess) {
+      console.log("DEBUG: Looking for entities to auto-select after client change");
+      
       // Add null check for allEntities before filtering
       const clientEntities = allEntities.filter(entity => 
         entity && entity.clientId === selectedClientId
       );
+      
+      console.log(`DEBUG: Found ${clientEntities.length} entities for client ${selectedClientId}`);
       
       if (clientEntities && clientEntities.length > 0) {
         console.log(`DEBUG: Auto-selecting first entity for client ${selectedClientId}:`, clientEntities[0].id);
         setCurrentEntity(clientEntities[0]);
       }
     }
-  }, [selectedClientId, currentEntity, allEntities]);
+  }, [selectedClientId, currentEntity, allEntities, isLoading, queryIsLoading, isFetching, isSuccess]);
 
   // Debug logs for tracking state changes
   useEffect(() => {
