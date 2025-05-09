@@ -307,11 +307,12 @@ export function useJournalEntry() {
         throw new Error('Client ID and Entity ID are required for posting a journal entry');
       }
       
-      // EMERGENCY FIX: Direct URL construction
+      // Use proper URL construction with correct HTTP method (PUT)
       const url = `/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}/post`;
       console.log(`DEBUG: Posting journal entry with direct URL: ${url}`);
+      console.log(`DEBUG: Using PUT method as required by the server endpoint`);
       return await apiRequest(url, {
-        method: 'POST'
+        method: 'PUT'
       });
     },
     onSuccess: (data, params) => {

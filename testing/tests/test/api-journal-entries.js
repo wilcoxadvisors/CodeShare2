@@ -317,7 +317,7 @@ async function testAddJournalEntryLine() {
 async function testPostJournalEntry() {
   try {
     const cookie = getCookieHeader();
-    const response = await axios.post(`${API_URL}/api/journal-entries/${journalEntryId}/post`, {}, {
+    const response = await axios.put(`${API_URL}/api/journal-entries/${journalEntryId}/post`, {}, {
       headers: { Cookie: cookie }
     });
     

@@ -720,8 +720,9 @@ export function registerJournalEntryRoutes(app: Express) {
 
   /**
    * Post a journal entry (change status from draft to posted)
+   * @deprecated Use the hierarchical PUT /api/clients/:clientId/entities/:entityId/journal-entries/:id/post instead
    */
-  app.post('/api/journal-entries/:id/post', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  app.put('/api/journal-entries/:id/post', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const user = req.user as { id: number, role?: string };
     
