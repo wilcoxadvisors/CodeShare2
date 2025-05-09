@@ -143,8 +143,8 @@ interface Account {
 }
 
 /** Returns true when the proposed referenceNumber is already used
- *  in another JE that belongs to the same entity. */
-export function isReferenceDuplicate(
+ *  in another journal entry that belongs to the same entity. */
+function isReferenceDuplicate(
   referenceNumber: string,
   allEntries: any[], // Existing journal entries 
   currentEntryId?: number // undefined when creating a new one

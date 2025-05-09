@@ -180,13 +180,34 @@ export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { suc
  */
 export function validateForm<T>(data: unknown, schema: z.ZodSchema<T>): { valid: boolean; data?: T; errors?: Record<string, string> } {
   try {
+    console.log("DEBUG validateForm: Validating data against schema:", 
+      JSON.stringify({
+        schemaName: schema.description || "Unknown Schema", 
+        dataKeys: Object.keys(data as object || {})
+      }, null, 2)
+    );
+    
     const validated = schema.parse(data);
+    console.log("DEBUG validateForm: Validation succeeded");
     return { valid: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { valid: false, errors: formatZodError(error) };
+      console.log("DEBUG validateForm: Validation failed with ZodError:", 
+        JSON.stringify({
+          errorCount: error.errors.length,
+          firstError: error.errors[0] ? {
+            path: error.errors[0].path.join('.'),
+            message: error.errors[0].message,
+            code: error.errors[0].code
+          } : null
+        }, null, 2)
+      );
+      const formattedErrors = formatZodError(error);
+      console.log("DEBUG validateForm: Formatted errors:", JSON.stringify(formattedErrors, null, 2));
+      return { valid: false, errors: formattedErrors };
     }
     // Handle other types of errors
+    console.log("DEBUG validateForm: Validation failed with unexpected error:", error);
     return { valid: false, errors: { _form: 'Validation failed' } };
   }
 }
