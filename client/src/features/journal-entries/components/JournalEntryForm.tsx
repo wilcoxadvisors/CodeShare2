@@ -232,7 +232,7 @@ interface JournalLine {
 const FormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   reference: z.string().min(3, "Reference must be at least 3 characters"),
-  referenceNumber: z.string().optional(), // Additional reference field to match server schema
+  referenceNumber: z.string().min(3, "Reference Number must be at least 3 characters"), // Enhanced validation
   description: z.string().min(1, "Description is required"), // Make description required to match server validation
   journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
   supDocId: z.string().optional(),
