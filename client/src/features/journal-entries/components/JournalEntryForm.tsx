@@ -149,20 +149,36 @@ function isReferenceDuplicate(
   allEntries: any[], // Existing journal entries 
   currentEntryId?: number // undefined when creating a new one
 ) {
+  console.log("DEBUG isReferenceDuplicate: Checking duplicate reference number", {
+    referenceNumber,
+    entriesCount: allEntries?.length || 0,
+    currentEntryId: currentEntryId || "new entry"
+  });
+  
   if (!referenceNumber || !allEntries || !Array.isArray(allEntries)) {
+    console.log("DEBUG isReferenceDuplicate: No reference number or entries, skipping check");
     return false;
   }
   
   const normalized = referenceNumber.trim().toLowerCase();
   if (normalized.length < 3) {
+    console.log("DEBUG isReferenceDuplicate: Reference number too short, skipping check");
     return false; // Let the length validation handle this
   }
   
-  return allEntries.some(e =>
+  const duplicate = allEntries.find(e =>
     e.id !== currentEntryId && // ignore "myself" when editing
     e.referenceNumber && 
     e.referenceNumber.trim().toLowerCase() === normalized
   );
+  
+  console.log("DEBUG isReferenceDuplicate: Result", {
+    isDuplicate: !!duplicate,
+    duplicateId: duplicate?.id || null,
+    normalizedInput: normalized
+  });
+  
+  return !!duplicate;
 }
 
 interface Location {
@@ -2054,8 +2070,33 @@ function JournalEntryForm({
     const { name, value } = e.target;
     setJournalData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear field error when user changes the value
-    if (fieldErrors[name]) {
+    // Special handling for reference number to provide real-time validation
+    if (name === 'referenceNumber') {
+      // Check if valid length
+      if (value.trim().length < 3) {
+        setFieldErrors(prev => ({
+          ...prev,
+          referenceNumber: "Reference number must be at least 3 characters"
+        }));
+      } 
+      // Check for duplicate if length is valid
+      else if (value.trim().length >= 3 && isReferenceDuplicate(value, existingEntries as any[], existingEntry?.id)) {
+        setFieldErrors(prev => ({
+          ...prev,
+          referenceNumber: "This reference number is already used by another journal entry"
+        }));
+      } 
+      // Clear error if reference is valid
+      else {
+        setFieldErrors(prev => {
+          const updated = { ...prev };
+          delete updated.referenceNumber;
+          return updated;
+        });
+      }
+    }
+    // For other fields, just clear their errors when changed
+    else if (fieldErrors[name]) {
       setFieldErrors((prev) => {
         const updated = { ...prev };
         delete updated[name];
@@ -2355,20 +2396,37 @@ function JournalEntryForm({
               onChange={(e) => {
                 // Clear duplicate error when typing
                 if (fieldErrors.referenceNumber?.includes("already used")) {
-                  setFieldErrors(prev => ({
-                    ...prev,
-                    referenceNumber: undefined
-                  }));
+                  setFieldErrors(prev => {
+                    const updated = { ...prev };
+                    delete updated.referenceNumber;
+                    return updated;
+                  });
                 }
                 handleChange(e);
               }}
               placeholder="Invoice #, Check #, etc."
-              className={`mt-1 ${fieldErrors.referenceNumber ? "border-red-500 pr-10" : ""}`}
+              className={`mt-1 ${
+                fieldErrors.referenceNumber 
+                  ? "border-red-500 pr-10" 
+                  : journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
+                    !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) 
+                      ? "border-green-500 pr-10" 
+                      : ""
+              }`}
             />
             {fieldErrors.referenceNumber && (
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
                 <AlertCircle
                   className="h-5 w-5 text-red-500"
+                  aria-hidden="true"
+                />
+              </div>
+            )}
+            {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
+             !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
+                <Check
+                  className="h-5 w-5 text-green-500"
                   aria-hidden="true"
                 />
               </div>
