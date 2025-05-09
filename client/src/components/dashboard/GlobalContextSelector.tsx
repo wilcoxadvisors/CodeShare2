@@ -99,13 +99,13 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
   
   // Handle client selection
   const selectClient = (clientId: number) => {
-    console.log(`DEBUG: Client selection triggered - clientId: ${clientId}`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered - clientId: ${clientId}`);
     // Find client name for logging
     const clientName = clients.find(c => c.id === clientId)?.name || 'Unknown';
-    console.log(`DEBUG: Setting client context: ${clientId} (${clientName})`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting client context: ${clientId} (${clientName})`);
     
     // Show detailed debugging for prior state
-    console.log('DEBUG: BEFORE client selection - Current state:', {
+    console.log('ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: BEFORE client selection - Current state:', {
       selectedClientId,
       currentEntity: currentEntity ? {
         id: currentEntity.id,
@@ -120,29 +120,32 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     // Then set client ID which will trigger refetch of entities in the EntityContext
     setSelectedClientId(clientId);
     
+    // Auto-expand the client we just selected to show entities
+    setExpandedClients(prev => ({ ...prev, [clientId]: true }));
+    
     // Close the dropdown
     setOpen(false);
     
     // Show detailed debugging for after state change is initiated
-    console.log(`DEBUG: AFTER client selection initiated - clientId: ${clientId}, entityId: null`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: AFTER client selection initiated - clientId: ${clientId}, entityId: null`);
   };
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
-    console.log(`DEBUG: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
     
     // CRITICAL - Verify entity has valid clientId
     if (!entity.clientId) {
-      console.error(`ERROR: Entity ${entity.id} (${entity.name}) has no clientId!`);
+      console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Entity ${entity.id} (${entity.name}) has no clientId!`);
       return;
     }
     
     // Find client name for logging
     const clientName = clients.find(c => c.id === entity.clientId)?.name || 'Unknown';
-    console.log(`DEBUG: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
     
     // Show detailed debugging for prior state
-    console.log('DEBUG: BEFORE entity selection - Current state:', {
+    console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: BEFORE entity selection - Current state:', {
       selectedClientId,
       currentEntity: currentEntity ? {
         id: currentEntity.id,
@@ -153,14 +156,14 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     
     // Critical - only set the client ID if it's different from current 
     if (selectedClientId !== entity.clientId) {
-      console.log(`DEBUG: Updating client context to: ${entity.clientId} (${clientName})`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Updating client context to: ${entity.clientId} (${clientName})`);
       setSelectedClientId(entity.clientId);
     } else {
-      console.log(`DEBUG: Client context already set to: ${entity.clientId}, skipping update`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Client context already set to: ${entity.clientId}, skipping update`);
     }
     
     // Then set entity context
-    console.log(`DEBUG: Setting entity context to:`, {
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting entity context to:`, {
       id: entity.id,
       name: entity.name, 
       clientId: entity.clientId
@@ -170,7 +173,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     // Close popover
     setOpen(false);
     
-    console.log(`DEBUG: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
   // Toggle client expansion
@@ -243,8 +246,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
 
             {filteredClients.map((client) => {
               // CRITICAL: Get entities for this client - more explicit filter with enhanced logging
-              console.log(`DEBUG: Rendering entities for Client ${client.id} (${client.name}). Expanded: ${!!expandedClients[client.id]}`);
-              console.log(`DEBUG: Full entities list length: ${entities?.length}`);
+              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Rendering entities for Client ${client.id} (${client.name}). Expanded: ${!!expandedClients[client.id]}`);
+              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Full entities list length: ${entities?.length}`);
               
               // First ensure entities is an array and filter based on clientId
               // Only show active and non-deleted entities (plus the current entity)
@@ -255,7 +258,8 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                      (currentEntity && e.id === currentEntity.id)))
                 : [];
               
-              console.log(`DEBUG: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, filteredByClient.map(e => e.id));
+              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, 
+                filteredByClient.map(e => ({ id: e.id, name: e.name })));
                 
               // Then apply search filter separately and put selected entity at the top
               const clientEntities = filteredByClient
@@ -269,7 +273,7 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                 });
                 
               // Final entities after all filtering
-              console.log(`Final result - Client ${client.id} (${client.name}): Found ${filteredByClient.length} entities, ${clientEntities.length} after search filter`);
+              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Final result - Client ${client.id} (${client.name}): Found ${filteredByClient.length} entities, ${clientEntities.length} after search filter`);
               
               // Skip if no matches
               if (!filterBySearchQuery(client) && clientEntities.length === 0) {
@@ -324,10 +328,11 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                               // Find the entity by ID
                               const selectedEntity = entities.find(e => e.id === id);
                               if (selectedEntity) {
-                                console.log('Entity selected, setting context:', selectedEntity);
+                                console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selected, setting context:', 
+                                  { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
                                 selectEntity(selectedEntity);
                               } else {
-                                console.error(`ERROR: Could not find entity with ID ${id} in entities list`);
+                                console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
                               }
                             }}
                             className="cursor-pointer pl-8 py-1"

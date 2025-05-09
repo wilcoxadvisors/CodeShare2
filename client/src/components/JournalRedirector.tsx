@@ -28,26 +28,33 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
   const navigate = useNavigate();
   const params = useParams();
   
-  console.log('DEBUG: JR guards', { 
+  // Comprehensive debug log capturing essential state for redirector
+  console.log('ARCHITECT_DEBUG_REDIRECTOR_STATE:', { 
+    mode,
     isInitialLoading, 
     isLoading,
     isAuthLoading,
-    entitiesLen: entities.length,
-    allEntitiesLen: allEntities.length,
-    hasCurrent: !!currentEntity,
+    entitiesLen: entities?.length || 0,
+    allEntitiesLen: allEntities?.length || 0,
+    currentEntityId: currentEntity?.id,
+    currentEntityClientId: currentEntity?.clientId,
     hasUser: !!user,
-    params
+    userId: user?.id,
+    params,
+    url: window.location.pathname
   });
 
   // Auto-set current entity from URL if available
   useEffect(() => {
     // Only try to set entity once auth and entities have loaded
-    if (isAuthLoading || isLoading || !allEntities.length || !user) {
-      console.log('JR_ENTITY_FROM_URL: Waiting for prerequisites:', {
+    if (isAuthLoading || isLoading || !allEntities?.length || !user) {
+      console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: Waiting for prerequisites:', {
         isAuthLoading,
         isLoading,
-        entitiesLoaded: !!allEntities.length,
+        entitiesLoaded: !!(allEntities?.length),
+        entitiesCount: allEntities?.length || 0,
         userAuthenticated: !!user,
+        userId: user?.id,
         urlEntityId: params.entityId ? parseInt(params.entityId, 10) : null
       });
       return;
@@ -57,32 +64,58 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     const urlEntityId = params.entityId ? parseInt(params.entityId, 10) : null;
     
     if (urlEntityId && !currentEntity) {
-      console.log('JR_ENTITY_FROM_URL: Auto-setting entity from URL:', urlEntityId);
+      console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: Auto-setting entity from URL:', urlEntityId);
       
       // Check if the entity exists in our loaded entities
-      const entityExists = allEntities.some(e => e.id === urlEntityId);
+      const entityExists = allEntities.some(e => e?.id === urlEntityId);
       
       if (entityExists) {
-        console.log('JR_ENTITY_FROM_URL: Found matching entity, setting current entity');
+        console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: Found matching entity, setting current entity');
         setCurrentEntityById(urlEntityId);
       } else {
-        console.warn(`JR_ENTITY_FROM_URL: Entity ID ${urlEntityId} from URL not found in loaded entities`);
+        console.warn(`ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: Entity ID ${urlEntityId} from URL not found in loaded entities (${allEntities.length} available)`);
+        
+        // Log first few entities for debugging
+        if (allEntities.length > 0) {
+          console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: First few available entities:', 
+            allEntities.slice(0, 3).map(e => ({ id: e.id, name: e.name, clientId: e.clientId })));
+        }
       }
+    } else if (currentEntity) {
+      console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: Entity already selected:', {
+        id: currentEntity.id,
+        name: currentEntity.name,
+        clientId: currentEntity.clientId
+      });
+    } else if (!urlEntityId) {
+      console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: No entity ID in URL parameters');
     }
   }, [params.entityId, currentEntity, isAuthLoading, isLoading, allEntities, user, setCurrentEntityById]);
 
+  // Decision tree for rendering - with detailed logs at each step
+  
   // 1. If we're still loading auth or initial data, show a spinner
   if (isAuthLoading || isInitialLoading || isLoading) {
+    console.log('ARCHITECT_DEBUG_REDIRECTOR_RENDER: Showing loading spinner due to:', {
+      isAuthLoading,
+      isInitialLoading,
+      isLoading
+    });
     return <Spinner label="Loading data..." />;
   }
 
   // 2. If no authentication, entity context cannot be properly initialized
   if (!user) {
+    console.log('ARCHITECT_DEBUG_REDIRECTOR_RENDER: No user authenticated');
     return <Spinner label="Checking authentication..." />;
   }
 
   // 3. If no client or entity is selected, show the placeholder
-  if (!entities.length || !currentEntity) {
+  if (!entities?.length || !currentEntity) {
+    console.log('ARCHITECT_DEBUG_REDIRECTOR_RENDER: No entity selected, showing placeholder', {
+      filteredEntitiesLength: entities?.length || 0,
+      hasCurrentEntity: !!currentEntity
+    });
     return <NoEntitySelected />;
   }
   
@@ -94,11 +127,27 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     const clientId = currentEntity.clientId;
     const entityId = currentEntity.id;
     const path = `/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}`;
+    
+    console.log('ARCHITECT_DEBUG_REDIRECTOR_RENDER: Redirecting to hierarchical URL:', {
+      from: window.location.pathname,
+      to: path,
+      clientId,
+      entityId,
+      entryId
+    });
+    
     navigate(path, { replace: true });
     return <Spinner label="Redirecting..." />;
   }
 
   // 5. Happy path: Entity is selected, render the journal entry components
+  console.log('ARCHITECT_DEBUG_REDIRECTOR_RENDER: Rendering outlet with selected entity:', {
+    entityId: currentEntity.id,
+    entityName: currentEntity.name,
+    clientId: currentEntity.clientId,
+    mode
+  });
+  
   return <Outlet />;
 };
 

@@ -193,34 +193,57 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // When client selection changes, clear entity if needed
   useEffect(() => {
     // Skip this effect when we're loading or don't have a client selected
-    if (!selectedClientId || isLoading || queryIsLoading || isFetching) return;
+    if (!selectedClientId) {
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic");
+      return;
+    }
     
-    console.log("DEBUG: Client selection changed:", selectedClientId);
+    if (isLoading || queryIsLoading || isFetching) {
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic:", {
+        isLoading, queryIsLoading, isFetching
+      });
+      return;
+    }
+    
+    console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client selection changed:", {
+      selectedClientId,
+      currentEntityId: currentEntity?.id,
+      currentEntityClientId: currentEntity?.clientId,
+      entitiesCount: allEntities?.length || 0,
+      initialLoadComplete
+    });
     
     // Clear entity selection if it doesn't match the new client
     if (currentEntity && currentEntity.clientId !== selectedClientId) {
-      console.log("DEBUG: Clearing current entity as it belongs to a different client");
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Clearing current entity as it belongs to a different client");
       setCurrentEntity(null);
     }
     
     // Auto-select first entity when client changes but only if none is selected
     // AND we have received entity data from the server
     if (!currentEntity && Array.isArray(allEntities) && allEntities.length > 0 && isSuccess) {
-      console.log("DEBUG: Looking for entities to auto-select after client change");
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Looking for entities to auto-select after client change");
       
       // Add null check for allEntities before filtering
       const clientEntities = allEntities.filter(entity => 
         entity && entity.clientId === selectedClientId
       );
       
-      console.log(`DEBUG: Found ${clientEntities.length} entities for client ${selectedClientId}`);
+      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Found ${clientEntities.length} entities for client ${selectedClientId}:`, 
+        clientEntities.slice(0, 3).map(e => ({ id: e.id, name: e.name })));
       
       if (clientEntities && clientEntities.length > 0) {
-        console.log(`DEBUG: Auto-selecting first entity for client ${selectedClientId}:`, clientEntities[0].id);
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Auto-selecting first entity:`, {
+          id: clientEntities[0].id,
+          name: clientEntities[0].name,
+          clientId: clientEntities[0].clientId
+        });
         setCurrentEntity(clientEntities[0]);
+      } else {
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No eligible entities found for client ${selectedClientId}`);
       }
     }
-  }, [selectedClientId, currentEntity, allEntities, isLoading, queryIsLoading, isFetching, isSuccess]);
+  }, [selectedClientId, currentEntity, allEntities, isLoading, queryIsLoading, isFetching, isSuccess, initialLoadComplete]);
 
   // Debug logs for tracking state changes
   useEffect(() => {
@@ -237,11 +260,17 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Function to set current entity by ID
   const setCurrentEntityById = (entityId: number) => {
     if (!entityId) {
-      console.warn("Cannot set entity: Invalid entity ID");
+      console.warn("ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Cannot set entity: Invalid entity ID");
       return;
     }
     
-    console.log("Setting current entity by ID:", entityId);
+    console.log("ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Setting current entity by ID:", entityId);
+    console.log("ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Current state:", {
+      selectedClientId,
+      currentEntityId: currentEntity?.id,
+      hasEntities: Array.isArray(allEntities) && allEntities.length > 0,
+      entitiesCount: allEntities?.length || 0
+    });
     
     // First check all entities regardless of client filter
     // Make sure allEntities is an array before calling find
@@ -250,18 +279,33 @@ function EntityProvider({ children }: { children: ReactNode }) {
       : undefined;
     
     if (entity) {
-      console.log(`Found entity with ID ${entityId}:`, entity.name);
+      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Found entity with ID ${entityId}:`, {
+        id: entity.id,
+        name: entity.name,
+        clientId: entity.clientId
+      });
       
       // Set the client ID first to ensure proper filtering
       if (entity.clientId !== selectedClientId) {
-        console.log(`Setting client ID to ${entity.clientId}`);
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Setting client ID to ${entity.clientId}`);
         setSelectedClientId(entity.clientId);
       }
       
       // Then set the entity
+      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Setting current entity to:`, {
+        id: entity.id,
+        name: entity.name, 
+        clientId: entity.clientId
+      });
       setCurrentEntity(entity);
     } else {
-      console.warn(`Entity with ID ${entityId} not found among ${allEntities?.length || 0} entities`);
+      console.warn(`ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: Entity with ID ${entityId} not found among ${allEntities?.length || 0} entities`);
+      
+      // Log the first few entities to help with debugging
+      if (Array.isArray(allEntities) && allEntities.length > 0) {
+        console.log("ARCHITECT_DEBUG_ENTITY_CTX_SET_BY_ID: First few entities available:", 
+          allEntities.slice(0, 3).map(e => ({ id: e.id, name: e.name, clientId: e.clientId })));
+      }
     }
   };
 
