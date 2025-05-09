@@ -24,7 +24,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     isLoading, 
     setCurrentEntityById 
   } = useEntity();
-  const { isLoading: isAuthLoading, user } = useAuth();
+  const { isLoading: isAuthLoading, user, isGuestUser } = useAuth();
   const navigate = useNavigate();
   const params = useParams();
   
@@ -40,6 +40,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     currentEntityClientId: currentEntity?.clientId,
     hasUser: !!user,
     userId: user?.id,
+    isGuestUser,
     params,
     url: window.location.pathname
   });
@@ -55,6 +56,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
         entitiesCount: allEntities?.length || 0,
         userAuthenticated: !!user,
         userId: user?.id,
+        isGuestUser: isGuestUser,
         urlEntityId: params.entityId ? parseInt(params.entityId, 10) : null
       });
       return;

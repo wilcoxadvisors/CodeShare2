@@ -47,16 +47,14 @@ const EntityContext = createContext<EntityContextType>({
 });
 
 function EntityProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  // Updated to use isGuestUser directly from AuthContext
+  const { user, isLoading: isAuthLoadingFromAuthContext, isGuestUser } = useAuth();
   const [currentEntity, setCurrentEntity] = useState<Entity | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   
   // Our own loading state
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  
-  // Get all entities for the user
-  const { isLoading: isAuthLoadingFromAuthContext } = useAuth();
   
   // Use a useRef to track whether we've tried to fetch entities after auth
   const entityFetchAttempted = React.useRef(false);
@@ -74,6 +72,9 @@ function EntityProvider({ children }: { children: ReactNode }) {
     !!user, 'AuthNotLoading=', !isAuthLoadingFromAuthContext, 'QueryEnabled=', 
     !!user && !isAuthLoadingFromAuthContext);
   
+  // CRITICAL FIX: Special handling for guest users
+  // Since guest users (ID=0) will get 401 errors when trying to access entities,
+  // we need to skip the actual API call but still maintain the query structure
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
@@ -89,14 +90,23 @@ function EntityProvider({ children }: { children: ReactNode }) {
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - User:", user ? `ID ${user.id}, Username ${user.username}` : "null");
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Auth loading state:", isAuthLoadingFromAuthContext);
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Query enabled:", !!user && !isAuthLoadingFromAuthContext);
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Is Guest user:", isGuestUser);
       
       entityFetchAttempted.current = true;
       
+      // CRITICAL FIX: For guest users, don't actually make the API call
+      // This prevents 401 errors for guest users while still maintaining the query structure
+      if (isGuestUser) {
+        console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Guest user detected, skipping actual API call and returning empty array");
+        return Promise.resolve([]);
+      }
+      
+      // For regular authenticated users, proceed with the normal API call
       return fetch('/api/entities', {
         credentials: 'include', // Ensure cookies are sent for authentication
         headers: {
           'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate' // Strong anti-caching headers
         }
       }).then(res => {
         // Log the HTTP response status
@@ -123,15 +133,16 @@ function EntityProvider({ children }: { children: ReactNode }) {
     // This must match EXACTLY the condition in our debug log above
     enabled: !!user && !isAuthLoadingFromAuthContext,
     // Additional props to ensure reliable loading
-    retry: 2,
+    retry: isGuestUser ? 0 : 2, // No retry for guest users
     retryDelay: 1000,
     staleTime: 30000, // 30 seconds
-    // Make sure we get logs when query is enabled/disabled
+    // Make sure we get logs when query is settled
     onSettled: (data, error) => {
       console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SETTLED:', { 
         success: !error, 
         dataReceived: !!data, 
         entitiesCount: data?.length || 0,
+        isGuestUser: isGuestUser,
         error: error ? String(error) : null
       });
     }

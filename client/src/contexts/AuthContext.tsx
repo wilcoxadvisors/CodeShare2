@@ -13,6 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isGuestUser: boolean; // Added flag to easily identify guest users
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
@@ -21,6 +22,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
+  isGuestUser: false,
   login: async () => false,
   logout: async () => {}
 });
@@ -301,9 +303,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper function to determine if the current user is a guest
+  const isGuestUser = user?.id === 0 && user?.username === 'guest';
+
   const value = {
     user,
     isLoading,
+    isGuestUser,
     login,
     logout
   };
