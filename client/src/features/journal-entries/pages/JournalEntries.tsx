@@ -6,7 +6,7 @@ import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
 import { getJournalEntriesBaseUrl } from '@/api/urlHelpers';
 import { ymdToDisplay } from '@/utils/dateUtils';
-import { getDebit, getCredit, isClientFormatLine, isServerFormatLine } from '../utils/lineFormat';
+import { getDebit, getCredit, isClientFormatLine, isServerFormatLine, safeParseAmount } from '../utils/lineFormat';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

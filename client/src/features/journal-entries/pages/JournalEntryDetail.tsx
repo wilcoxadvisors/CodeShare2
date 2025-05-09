@@ -340,8 +340,6 @@ function JournalEntryDetail() {
       
       // Return the Promise result
       return await uploadPromise;
-      
-      return response.data;
     },
     onSuccess: (response) => {
       setUploading(false);
@@ -360,7 +358,9 @@ function JournalEntryDetail() {
       // Add the debug logging as required by the task
       console.log("DEBUG Attachment:", { 
         journalEntryId: entryId, 
-        fileCount: response?.files?.length || 0 
+        fileCount: typeof response === 'object' && response !== null && 'files' in response ? 
+          response.files.length : 
+          (response && typeof response === 'object' ? Object.keys(response).length : 0)
       });
       
       // Refresh the journal entry to show the new files
