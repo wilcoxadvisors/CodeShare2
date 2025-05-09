@@ -162,9 +162,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData.user);
         console.log('🔐 Login successful, user:', userData.user);
         
-        // Critical fix: Invalidate entities query to force re-fetch now that we're authenticated
-        console.log('🔐 Invalidating entities cache to force re-fetch after login');
+        // Critical fix: Invalidate entities and clients queries to force re-fetch now that we're authenticated
+        console.log('🔐 Invalidating data caches to force re-fetch after login');
         queryClient.invalidateQueries({ queryKey: ['/api/entities'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+        
+        // Set a small timeout to ensure the queries have time to properly invalidate
+        setTimeout(() => {
+          console.log('🔐 Triggering data refetch after cache invalidation');
+          queryClient.refetchQueries({ queryKey: ['/api/entities'] });
+        }, 100);
         
         return true;
       } else {
@@ -190,13 +197,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Log the result but clear user state regardless of success
       if (!response.ok) {
-        console.error('Logout response was not OK:', response.status);
+        console.error('🔒 Logout response was not OK:', response.status);
+      } else {
+        console.log('🔒 Logout successful');
       }
       
       // Clear the user state
       setUser(null);
+      
+      // Clear entity-related data from cache
+      console.log('🔒 Clearing entity and client data caches after logout');
+      queryClient.resetQueries({ queryKey: ['/api/entities'] });
+      queryClient.resetQueries({ queryKey: ['/api/clients'] });
+      
+      // Navigate to login page
+      console.log('🔒 Redirecting to login page');
+      window.location.href = '/login';
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('🔒 Logout failed:', error);
+      // Clear the user state even if logout API call fails
+      setUser(null);
     } finally {
       setIsLoading(false);
     }

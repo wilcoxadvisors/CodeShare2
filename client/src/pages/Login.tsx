@@ -21,12 +21,18 @@ function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && !isLoading) {
-      // Add a small delay to ensure all state is updated
-      const redirectTimer = setTimeout(() => {
-        navigate('/dashboard');
-      }, 100);
+      console.log('🔑 User already logged in, preparing for redirect');
       
-      return () => clearTimeout(redirectTimer);
+      // Add a more substantial delay to ensure all API calls complete
+      const redirectTimer = setTimeout(() => {
+        console.log('🔑 Redirecting to dashboard due to existing session');
+        navigate('/dashboard');
+      }, 500);
+      
+      return () => {
+        console.log('🔑 Cancelling redirect timer due to component unmount');
+        clearTimeout(redirectTimer);
+      };
     }
   }, [user, isLoading, navigate]);
   
@@ -69,13 +75,17 @@ function Login() {
       
       if (success) {
         toast({
-          title: "Success",
-          description: "Logged in successfully",
+          title: "Welcome",
+          description: "Logged in successfully. Loading your data...",
           variant: "default"
         });
         
-        // Use the SPA navigation instead of page refresh
-        navigate('/dashboard');
+        // Wait a bit for entities to load before navigating
+        setTimeout(() => {
+          console.log('🔑 Navigating to dashboard after login');
+          // Use the SPA navigation instead of page refresh
+          navigate('/dashboard');
+        }, 500);
       } else {
         toast({
           title: "Authentication Error",
