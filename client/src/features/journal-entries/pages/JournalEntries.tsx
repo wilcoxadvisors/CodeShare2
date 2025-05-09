@@ -90,11 +90,12 @@ function JournalEntries() {
     }
   }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
   
-  // EMERGENCY FIX: Direct API URL with no helper function
-  const apiUrl = entityId && clientId ? `/api/clients/${clientId}/entities/${entityId}/journal-entries` : null;
+  // Use API helper function to construct URL
+  const apiUrl = getJournalEntriesBaseUrl(clientId || 0, entityId || 0);
   
   // Log the constructed URL for debugging
   console.log(`DEBUG: Constructing journal entries API URL: ${apiUrl}`);
+  console.log(`DEBUG: Query will be enabled: ${!!clientId && !!entityId}`);
   
   // Fetch journal entries for the entity using hierarchical URL pattern
   const {
@@ -103,13 +104,15 @@ function JournalEntries() {
     error,
     refetch
   } = useQuery({
-    queryKey: apiUrl ? [apiUrl] : [],
-    enabled: !!apiUrl,
+    queryKey: [apiUrl, clientId, entityId],
+    enabled: !!clientId && !!entityId,
     retry: 3, // Retry up to 3 times if the query fails
     staleTime: 30000, // Consider data fresh for 30 seconds
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    // TanStack Query v5 doesn't support onError in options
-    // Handle errors with error state instead
+    onSuccess: (data) => {
+      console.log(`DEBUG: Journal entries fetch success for ${apiUrl}:`, 
+                 Array.isArray(data) ? data.length : 'non-array response');
+    }
   });
   
   useEffect(() => {
