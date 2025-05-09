@@ -148,23 +148,23 @@ function JournalEntries() {
       // Enhanced debugging to see the full entry structure
       console.log(`DEBUG - Entry ${entry.id} structure:`, Object.keys(entry));
       
-      // If entry already has totals, use them
-      if (entry.totalDebit !== undefined && entry.totalCredit !== undefined && 
-          (entry.totalDebit > 0 || entry.totalCredit > 0)) {
-        console.log(`DEBUG - Using existing totals for entry ${entry.id}: debit=${entry.totalDebit}, credit=${entry.totalCredit}`);
-        return entry;
-      }
-      
-      // Check if the API response includes totals in a nested structure
+      // First, check for our new server-side totals format from pre-calculated values
       if (entry.totals && typeof entry.totals === 'object') {
         if ('debit' in entry.totals && 'credit' in entry.totals) {
-          console.log(`DEBUG - Using nested totals for entry ${entry.id}: debit=${entry.totals.debit}, credit=${entry.totals.credit}`);
+          console.log(`DEBUG - Using pre-calculated totals for entry ${entry.id}: debit=${entry.totals.debit}, credit=${entry.totals.credit}`);
           return { 
             ...entry, 
             totalDebit: safeParseAmount(entry.totals.debit), 
             totalCredit: safeParseAmount(entry.totals.credit)
           };
         }
+      }
+      
+      // If entry already has totals directly on the object, use them
+      if (entry.totalDebit !== undefined && entry.totalCredit !== undefined && 
+          (entry.totalDebit > 0 || entry.totalCredit > 0)) {
+        console.log(`DEBUG - Using existing totals for entry ${entry.id}: debit=${entry.totalDebit}, credit=${entry.totalCredit}`);
+        return entry;
       }
       
       // Otherwise, calculate totals from lines if available
