@@ -153,12 +153,20 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
       
       // Auto-expand the client we just selected to show entities
       setExpandedClients(prev => ({ ...prev, [newClientId]: true }));
+      
+      // CRITICAL: Keep the dropdown open when selecting a client to allow immediate entity selection
+      // Add a brief timeout to ensure the state has updated before closing
+      setTimeout(() => {
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Keeping dropdown open to show entities for client ${newClientId}`);
+        setOpen(true);
+      }, 50);
     } else {
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. No change.`);
+      // Toggle the dropdown - if it's open, close it, if closed, open it
+      setTimeout(() => {
+        setOpen(!open);
+      }, 50);
     }
-    
-    // Close the dropdown immediately
-    setOpen(false);
     
     // Show detailed debugging after client selection
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
@@ -219,32 +227,38 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
     console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
-  // Toggle client expansion
+  // Toggle client expansion - improved with logging
   const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
     e.stopPropagation();
-    setExpandedClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+    e.preventDefault();
+    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: toggleClientExpansion called for client ${clientId}`);
+    setExpandedClients(prev => {
+      const newState = { ...prev, [clientId]: !prev[clientId] };
+      console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: New expansion state for client ${clientId}:`, newState[clientId]);
+      return newState;
+    });
   };
 
-  // Auto-expand all clients initially to show entities right away
+  // Auto-expand the selected client and ensure its entities are immediately visible
   useEffect(() => {
-    if (Array.isArray(clients) && clients.length > 0) {
-      // Create a record with all clients expanded by default
-      const initialExpandState: Record<number, boolean> = {};
-      clients.forEach(client => {
-        initialExpandState[client.id] = true;
-      });
+    if (selectedClientId) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding selected client ${selectedClientId} to show entities`);
       
-      console.log('ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients to show entities immediately');
-      setExpandedClients(initialExpandState);
+      // Instead of updating all clients, we'll focus on keeping the selected client expanded
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+      
+      // Update reference for later comparisons
+      selectedClientIdRef.current = selectedClientId;
     }
-  }, [clients]);
+  }, [selectedClientId]);
   
-  // Auto-expand the client of the currently selected entity (as a backup)
+  // Initialize expansion state when clients first load
   useEffect(() => {
-    if (selectedClientId && !expandedClients[selectedClientId]) {
+    if (Array.isArray(clients) && clients.length > 0 && selectedClientId) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Initial expansion for client ${selectedClientId}`);
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
-  }, [selectedClientId, expandedClients]);
+  }, [clients, selectedClientId]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
@@ -356,16 +370,25 @@ export default function GlobalContextSelector({ clients, entities }: GlobalConte
                     >
                       <div className="flex items-center w-full overflow-hidden">
                         {clientEntities.length > 0 ? (
-                          <button 
-                            onClick={(e) => toggleClientExpansion(e, client.id)}
-                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/10 rounded-sm"
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling expansion for client ${client.id}`);
+                              setExpandedClients(prev => {
+                                const newState = { ...prev, [client.id]: !prev[client.id] };
+                                console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: New expansion state for client ${client.id}:`, newState[client.id]);
+                                return newState;
+                              });
+                            }}
+                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/10 rounded-sm cursor-pointer"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
                             {isExpanded ? 
                               <ChevronDown className="h-4 w-4 text-primary" /> : 
                               <ChevronRight className="h-4 w-4 text-primary" />
                             }
-                          </button>
+                          </div>
                         ) : (
                           <span className="w-6 mr-2"></span>
                         )}
