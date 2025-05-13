@@ -345,11 +345,27 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }
   }, [open, clients, entities]); // Added entities dependency back to ensure this runs after entities load
   
-  // Initialize expansion state when clients first load
+  // Initialize expansion state whenever clients load/change
   useEffect(() => {
-    if (Array.isArray(clients) && clients.length > 0 && selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Initial expansion for client ${selectedClientId}`);
-      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+    if (Array.isArray(clients) && clients.length > 0) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Initializing expansion state for all ${clients.length} clients`);
+      
+      // CRITICAL FIX: Expand ALL clients by default for better UX
+      const allClientsExpanded = clients.reduce((acc, client) => {
+        acc[client.id] = true;
+        return acc;
+      }, {} as Record<number, boolean>);
+      
+      // If we have a selected client, ensure it's expanded
+      if (selectedClientId) {
+        console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Ensuring selected client ${selectedClientId} is expanded`);
+        allClientsExpanded[selectedClientId] = true;
+      }
+      
+      // Set expanded state for all clients
+      setExpandedClients(allClientsExpanded);
+      
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: All clients are now expanded by default`);
     }
   }, [clients, selectedClientId]);
   
