@@ -84,8 +84,32 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   // Determine the button text with enhanced display
   let buttonText: React.ReactNode = "Select Client...";
   
-  if (hasEntityContext && currentEntity) {
-    // Show both entity and client info for better context
+  if (!showEntities) {
+    // Special case for Chart of Accounts (no entity selection needed)
+    if (hasClientContext && selectedClient) {
+      buttonText = (
+        <div className="flex items-center overflow-hidden">
+          <div className="flex-1 truncate flex flex-col">
+            <span className="font-medium truncate">
+              <Building className="h-4 w-4 inline mr-1" />
+              {selectedClient.name}
+            </span>
+            <span className="text-xs text-muted-foreground truncate">
+              Chart of Accounts
+            </span>
+          </div>
+        </div>
+      );
+    } else {
+      buttonText = (
+        <div className="flex items-center overflow-hidden">
+          <Building className="h-4 w-4 inline mr-1 text-primary" />
+          <span>Select Client for Chart of Accounts</span>
+        </div>
+      );
+    }
+  } else if (hasEntityContext && currentEntity) {
+    // Standard case with entity selection
     buttonText = (
       <div className="flex items-center overflow-hidden">
         <div className="flex-1 truncate flex flex-col">
@@ -102,7 +126,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       </div>
     );
   } else if (hasClientContext && selectedClient) {
-    // Show client info with an indication that no entity is selected
+    // Client selected but no entity yet
     buttonText = (
       <div className="flex items-center overflow-hidden">
         <div className="flex-1 truncate flex flex-col">
@@ -111,7 +135,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
             {selectedClient.name}
           </span>
           <span className="text-xs text-muted-foreground truncate">
-            No entity selected
+            {showEntities ? "No entity selected" : ""}
           </span>
         </div>
       </div>
