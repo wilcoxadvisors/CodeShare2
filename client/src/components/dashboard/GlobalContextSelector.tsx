@@ -429,7 +429,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                           setExpandedClients(prev => ({ ...prev, [id]: true }));
                         }
                       }}
-                      className="cursor-pointer font-medium bg-muted/30 border-l-2 border-primary/40"
+                      className="cursor-pointer font-medium bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/70 rounded-sm mb-1"
                     >
                       <div className="flex items-center w-full overflow-hidden">
                         {showEntities && clientEntities.length > 0 ? (
@@ -452,12 +452,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                                 setOpen(true);
                               }, 50);
                             }}
-                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/20 rounded-full cursor-pointer border border-primary/30"
+                            className="mr-2 flex-shrink-0 p-1 hover:bg-primary/30 rounded-md cursor-pointer border border-primary/40 transition-colors duration-200"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
                             {isExpanded ? 
-                              <ChevronDown className="h-4 w-4 text-primary" /> : 
-                              <ChevronRight className="h-4 w-4 text-primary" />
+                              <ChevronDown className="h-4 w-4 text-primary transition-transform duration-200" /> : 
+                              <ChevronRight className="h-4 w-4 text-primary transition-transform duration-200" />
                             }
                           </div>
                         ) : (
@@ -475,10 +475,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                     {/* CRITICAL FIX: Now preloading all entities but conditionally showing them */}
                     {showEntities && clientEntities.length > 0 && (
                       <div 
-                        className={`pt-1 pb-1 border-l-2 border-muted ml-4 transition-all duration-200 ${
+                        className={`pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out ${
                           isExpanded 
-                            ? 'max-h-[1000px] opacity-100' 
-                            : 'max-h-0 opacity-0 pointer-events-none overflow-hidden'
+                            ? 'max-h-[500px] opacity-100 translate-y-0' 
+                            : 'max-h-0 opacity-0 translate-y-[-8px] pointer-events-none overflow-hidden'
                         }`}
                         aria-hidden={!isExpanded}
                       >
@@ -489,10 +489,17 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                           
                           // Status styling classes
                           const statusClasses = isDeleted 
-                            ? "border-red-500/50 bg-red-50/10" 
+                            ? "border-red-500/50 bg-red-50/10 text-red-500" 
                             : (isActive 
-                                ? "border-green-500/50 bg-green-50/10" 
-                                : "border-gray-400/50 bg-gray-50/10");
+                                ? "border-green-500/50 bg-green-50/10 text-green-700" 
+                                : "border-gray-400/50 bg-gray-50/10 text-gray-500");
+                            
+                          // Status indicator component
+                          const StatusIndicator = () => (
+                            <div className={`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
+                              isDeleted ? "bg-red-500" : (isActive ? "bg-green-500" : "bg-gray-400")
+                            }`} title={isDeleted ? "Deleted" : (isActive ? "Active" : "Inactive")}></div>
+                          );
                           
                           return (
                             <CommandItem
@@ -514,6 +521,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                               className={`cursor-pointer pl-4 py-1 my-1 mx-2 rounded-sm border-l-2 hover:bg-muted/50 ${statusClasses}`}
                             >
                               <div className="flex items-center w-full overflow-hidden">
+                                <StatusIndicator />
                                 <Layers className="h-4 w-4 mr-2" />
                                 <div className="flex flex-col overflow-hidden">
                                   <span className="truncate text-sm">{entity.name}</span>

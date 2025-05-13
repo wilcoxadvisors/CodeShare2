@@ -1,0 +1,51 @@
+Agent, the Creator/Owner has provided new feedback along with a screenshot.
+
+Excellent Progress on Initial Data Loading!
+The console logs confirm that the foundational data loading (all entities fetched into EntityContext after login, and entities correctly filtered when a client is selected) is now working much more reliably. The Creator/Owner also confirms they can now select clients and entities without the "stuck" issue. This is a major step forward.
+
+Current Task 1: Refine Client/Entity Selector UX (Creator/Owner Issue #1)
+
+Creator/Owner's Expectation: "I should be able to expand the client and see the entities to chose when needed." They want an intuitive way to see entities nested under each client when the selector is open, likely by clicking to expand a specific client, rather than all clients being expanded by default if that feels overwhelming.
+Your Last Changes: You modified GlobalContextSelector.tsx to:
+Auto-expand ALL clients when the dropdown opens (useEffect on open and clients).
+Add a showEntities prop (defaulting to true).
+Style client and entity items.
+Action:
+Modify Client Expansion Logic in GlobalContextSelector.tsx:
+Remove "Auto-Expand All Clients on Open": Revert or remove the useEffect that sets expandedClients to expand all clients when the dropdown open state becomes true. This might be causing the "entities still dont load under client right away" feeling if it's too much at once or if there's a slight delay before all are expanded and visible.
+Focus on Single Client Expansion:
+When the component loads or selectedClientId (from EntityContext) changes, ensure the currently selected client is marked as expanded in the expandedClients state (e.g., setExpandedClients(prev => ({ ...Object.keys(prev).reduce((acc, key) => ({...acc, [key]: false}), {}), [selectedClientId]: true }));). This makes other clients collapsed by default.
+Ensure the toggleClientExpansion(clientId) function (called when the user clicks the expand/collapse icon next to a client name) correctly updates the expandedClients state for that specific client only, allowing the user to manually explore.
+Visual Cue: The entities for an expanded client should be clearly indented or visually nested under their parent client. Your styling efforts should support this.
+Test the showEntities Prop:
+Temporarily, in a page like Dashboard.tsx where GlobalContextSelector is used, pass showEntities={false}.
+Verify that when you select a client in this mode:
+The entity selection part of the dropdown is hidden.
+The dropdown closes immediately after client selection.
+The main button of the selector correctly displays only the selected client name.
+Provide Screenshot/GIF: Capture a short screen recording or GIF demonstrating:
+Opening the selector: Clients are listed, perhaps the currently active one is expanded, others are collapsed.
+Manually expanding a different client to see its entities.
+Selecting an entity from an expanded client.
+Switching to another client and its entities.
+The behavior when showEntities={false}.
+Once the Creator/Owner confirms the selector UX is satisfactory, proceed to these CRITICAL functional bugs:
+
+Task 2: Creating New Journal Entries & Posting Workflow (Creator/Owner Issue #4 & previous related issues)
+
+Action: Strictly implement the two-step "create draft, then post" workflow in JournalEntryForm.tsx for new JEs intended for posting. Ensure server validation errors (duplicate reference, unbalanced lines) are caught during the draft creation step and clearly displayed.
+Task 3: "Journal ID changing in Edit mode" / Reference Field Stability (Creator/Owner Issue #3)
+
+Action:
+Clarify with Creator/Owner: Is "Journal ID" the database id (integer) or the formatted reference ("JE-YYYY-####")?
+Implement detailed logging to trace the specified identifier through the edit process in JournalEntryForm.tsx.
+Review backend reference generation for robustness and uniqueness (target >9999/year).
+Task 4: Attachment Issues (Bug #7) (Creator/Owner Issues #2, #3, #5, #6)
+
+Deletion: Provide network trace (request & response) and client logs for a delete attempt.
+Upload to Existing JE (400 error): Provide the full JSON error response body.
+New Attachments Not Viewable/Removable & Duplicate Attachments: Ensure UI refresh via invalidateQueries. Investigate duplicate upload logic.
+Task 5: Void/Reverse JE (Creator/Owner Issue #2 new list / #7 old list)
+
+Action: Attempt void, then reverse. Provide network traces and console logs.
+Focus on Task 1 (Selector UX) first. We need the Creator/Owner to be happy with how they navigate clients and entities.
