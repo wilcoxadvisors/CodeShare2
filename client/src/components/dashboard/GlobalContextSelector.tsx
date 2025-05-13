@@ -459,7 +459,8 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                       className="cursor-pointer font-medium bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/70 rounded-sm mb-1"
                     >
                       <div className="flex items-center w-full overflow-hidden">
-                        {showEntities && clientEntities.length > 0 ? (
+                        {/* Only show expansion controls when showEntities is true */}
+                        {showEntities ? (
                           <div 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -505,12 +506,8 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                     */}
                     {showEntities && clientEntities.length > 0 && isExpanded && (
                       <div 
-                        className={`pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out ${
-                          isExpanded 
-                            ? 'max-h-[500px] opacity-100 translate-y-0' 
-                            : 'max-h-0 opacity-0 translate-y-[-8px] pointer-events-none overflow-hidden'
-                        }`}
-                        aria-hidden={!isExpanded}
+                        className="pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out max-h-[500px] opacity-100 translate-y-0"
+                        aria-hidden="false"
                       >
                         {clientEntities.map((entity) => {
                           // Per Creator/Owner request: color indicators for entity status are not needed
