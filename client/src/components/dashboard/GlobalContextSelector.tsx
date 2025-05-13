@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
@@ -51,7 +51,25 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
+  
+  // CRITICAL FIX: Pre-compute expanded state for all clients to ensure they're expanded by default
+  const initialExpandedState = useMemo(() => {
+    if (!Array.isArray(clients) || clients.length === 0) return {};
+    
+    // Create an object where ALL clients are expanded by default
+    const result = clients.reduce((acc, client) => {
+      acc[client.id] = true; // All clients expanded for better UX
+      return acc;
+    }, {} as Record<number, boolean>);
+    
+    console.log(`ARCHITECT_DEBUG_SELECTOR_INIT: Created initial expanded state for ${clients.length} clients:`, 
+      Object.keys(result).length);
+    
+    return result;
+  }, [clients]);
+  
+  // Track which clients are expanded - initialized with all clients expanded by default
+  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>(initialExpandedState);
   const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
@@ -286,32 +304,46 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }
   }, [selectedClientId]);
   
-  // Auto-expand ALL clients when the dropdown first opens
-  // This ensures entities appear without requiring a click on the client
+  // CRITICAL: This is the key effect that auto-expands ALL clients when the dropdown opens
+  // This ensures entities appear immediately and don't require an extra click
   useEffect(() => {
     if (open && Array.isArray(clients) && clients.length > 0) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients when dropdown opens for better visibility`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients when dropdown opens - critical UX improvement`);
       
-      // CRITICAL FIX: Make sure to expand all clients by default to improve UX
+      // Create an object with ALL clients expanded by default
       const allClientsExpanded = clients.reduce((acc, client) => {
-        acc[client.id] = true;
+        acc[client.id] = true; // Set ALL clients to expanded state = true
         return acc;
       }, {} as Record<number, boolean>);
       
-      // Set initial expanded state for all clients
+      // Apply this expanded state immediately
       setExpandedClients(allClientsExpanded);
       
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Set expanded state for ${clients.length} clients`, 
-        Object.keys(allClientsExpanded).length);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Expanded ALL ${clients.length} clients at once:`);
+      clients.forEach(client => {
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_EXPANDED: Client ${client.id} (${client.name}) is expanded`);
+      });
       
-      // Force another render after a small delay to ensure React has updated the DOM
+      // Set a sequence of re-renders to handle race conditions with entity loading
+      // First re-render - immediate
       setTimeout(() => {
-        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Forcing re-render to ensure entities are visible');
-        // Re-apply the same expanded state to trigger a re-render
         setExpandedClients({...allClientsExpanded});
-      }, 100);
+        console.log('ARCHITECT_DEBUG_SELECTOR_UI: First re-render to ensure expand state is applied');
+      }, 50);
+      
+      // Second re-render - after a short delay in case entities take time to load
+      setTimeout(() => {
+        setExpandedClients({...allClientsExpanded});
+        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Second re-render to catch any newly loaded entities');
+      }, 200);
+      
+      // Final re-render - last chance to ensure everything is visible
+      setTimeout(() => {
+        setExpandedClients({...allClientsExpanded});
+        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Final re-render to ensure all entities are visible');
+      }, 500);
     }
-  }, [open, clients]); // Removed entities dependency to ensure this runs as soon as the dropdown opens
+  }, [open, clients, entities]); // Added entities dependency back to ensure this runs after entities load
   
   // Initialize expansion state when clients first load
   useEffect(() => {
@@ -483,11 +515,15 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                     </CommandItem>
                     
                     {/* Only show entities section if showEntities prop is true */}
+                    {/* CRITICAL FIX: Now preloading all entities but conditionally showing them */}
                     {showEntities && clientEntities.length > 0 && (
                       <div 
-                        className={`pt-1 pb-1 border-l-2 border-muted ml-4 transition-all duration-300 ${
-                          isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none overflow-hidden'
+                        className={`pt-1 pb-1 border-l-2 border-muted ml-4 transition-all duration-200 ${
+                          isExpanded 
+                            ? 'max-h-[1000px] opacity-100' 
+                            : 'max-h-0 opacity-0 pointer-events-none overflow-hidden'
                         }`}
+                        aria-hidden={!isExpanded}
                       >
                         {clientEntities.map((entity) => {
                           // Determine entity status styling

@@ -1,0 +1,38 @@
+gent, your recent work has resulted in significant and visible progress on the initial authentication and entity loading! The Creator/Owner's latest console logs (with your ARCHITECT_DEBUG_ traces) confirm that:
+
+After login, the /api/entities call is succeeding, and all 50 entities are being loaded into EntityContext.
+When a client is selected in GlobalContextSelector, the entities are correctly filtered for that client, an entity is auto-selected, and the Journal Entry list loads.
+The JE list now correctly displays debit/credit totals. This is excellent work and resolves major foundational blockers.
+The Creator/Owner's feedback "task 1 is working better now" acknowledges this. Their remaining comment "Just wish the entities would show up along with the clients. I have to select a client then entity" and "I should be able to expand the client and see the entities to chose when needed" provides clear UX direction for the selector.
+
+Your very last implemented changes (auto-expanding all clients in GlobalContextSelector.tsx and styling for hierarchy, plus the showEntities prop) were aimed directly at this.
+
+Task 1: (UX FINALIZATION) Confirm and Refine Client/Entity Selector Hierarchical Display
+
+Action:
+Verify Your Latest GlobalContextSelector.tsx Changes are Active: Ensure the version of the code being tested by the Creator/Owner includes your recent enhancements (auto-expanding clients when the dropdown opens, hierarchical styling, showEntities prop).
+Test the Creator/Owner's Desired Flow:
+After login, when the GlobalContextSelector dropdown is opened, do all clients now appear expanded by default (as per your last described change), showing their respective entities immediately underneath?
+Can the user click to collapse/expand individual clients if they wish?
+Can the user directly select an entity from this hierarchical view, which then sets both client and entity context?
+For a page like "Chart of Accounts" (where the selector would eventually be used with showEntities={false}), if only a client is selected, does the dropdown close as you intended, and does the checkmark correctly appear next to the client?
+Provide a Screenshot and Logs: Please provide a screenshot of the open GlobalContextSelector demonstrating this hierarchical view with clients and their nested entities. Also include the ARCHITECT_DEBUG_SELECTOR_ logs for this interaction.
+Once the Creator/Owner confirms this selector UX is satisfactory, proceed to the following critical functional bugs, addressing them in order:
+
+Task 2: Creating New Journal Entries (Creator/Owner Issue #4)
+
+Action: Implement the strict two-step "create draft, then post" workflow in JournalEntryForm.tsx for !existingEntry when saveAsDraft is false. Ensure server validation errors (duplicate reference, unbalanced lines) from the initial draft creation are clearly displayed to the user.
+Task 3: "Journal ID changing in Edit mode" / Reference Field Stability (Creator/Owner Issue #3)
+
+Action:
+Architect to Clarify with Creator/Owner: Is "Journal ID" the database id or the formatted reference string ("JE-YYYY-####")? (I will ask them).
+Based on clarification: If database id, add detailed logging as specified previously. If formatted reference, investigate JournalEntryForm.tsx state management for referenceNumber to ensure it's stable on edit unless user-modified. Review backend sequence generation for referenceNumber.
+Task 4: Attachment Issues (Bug #7) (Creator/Owner Issues #2, #3, #5, #6 new list)
+
+Deletion: Provide network trace (request & response) and client logs for a delete attempt.
+Upload to Existing JE (400 error): Provide the full JSON error response body.
+New Attachments Not Viewable/Removable & Duplicate Attachments: Ensure UI refresh via invalidateQueries after successful uploads. Investigate causes for duplicate uploads in the new JE + post workflow.
+Task 5: Void/Reverse JE (Creator/Owner Issue #7 new list)
+
+Action: Attempt void and reverse. Provide network traces and console logs.
+We are making progress. Let's get the client/entity selector UX confirmed and then systematically resolve these functional bugs.
