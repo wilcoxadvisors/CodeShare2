@@ -52,33 +52,18 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // CRITICAL FIX: Creator/Owner requested UX - All clients collapsed by default except selected
-  // "...all clients are listed. Clients are collapsed by default (unless a specific client was previously selected...)"
-  const initialExpandedState = useMemo(() => {
-    // Start with empty object with all clients explicitly collapsed
-    const result: Record<number, boolean> = {};
-    
-    // Set all clients to collapsed by default
-    if (Array.isArray(clients)) {
-      clients.forEach(client => {
-        result[client.id] = false;
-      });
-    }
-    
-    // Only if a client is selected/restored from localStorage, expand that one
-    const restoredSelectedClientId = selectedClientId;
-    if (restoredSelectedClientId) {
-      result[restoredSelectedClientId] = true;
-      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Initializing. Restored ClientID: ${restoredSelectedClientId}. Expanding only this one if present, all others collapsed.`);
-    } else {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: No client restored from localStorage. All clients collapsed by default.`);
-    }
-    
-    return result;
-  }, [clients, selectedClientId]);
+  // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's requested exact behavior
+  // "I want to be able to see and expand clients without out selecting entities."
+  // "I should be able to expand the client and see the entities to chose when needed."
   
-  // Track which clients are expanded - only the selected client expanded by default
-  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>(initialExpandedState);
+  // CRITICAL: All clients are always collapsed by default, even the selected one
+  // Users have complete control over expansion through UI interaction
+  
+  // Track which clients are expanded - ALL collapsed by default, no auto-expansion
+  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
+  
+  // Log this important UX change
+  console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Creator/Owner requirement: Starting with ALL clients collapsed. User has full expansion control via chevron icons.`);
   const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
@@ -181,8 +166,8 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
         })
     : [];
   
-  // Handle client selection
-  // Handle client selection - Creator/Owner requested exact behavior
+  // Handle client selection - PURE SELECTION ONLY
+  // Updated per Creator/Owner feedback: "I want to be able to see and expand clients without selecting entities"
   const selectClient = useCallback((newClientId: number) => {
     const currentSelectedClientId = selectedClientIdRef.current;
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered. New ClientId: ${newClientId}, Previous ClientId: ${currentSelectedClientId}`);
@@ -207,14 +192,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
-      // Per Creator/Owner exact requirement: "Clicking a Client Name... Updates expandedClients to ensure this clicked client is now expanded."
-      // "Multiple clients can be expanded by the user."
-      setExpandedClients(prev => {
-        // Simply ensure this client is expanded without changing others' state
-        const newState = { ...prev, [newClientId]: true };
-        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Only setting client ${newClientId} expanded state to true, preserving other user expansion preferences`);
-        return newState;
-      });
+      // CRITICALLY IMPORTANT: Do NOT auto-expand the client when selecting it
+      // This addresses User Feedback: "No. I want to be able to be able to click through and find the clients. 
+      // The way its set up it switches when clicking another client then entities populate."
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${newClientId} selected, but NOT auto-expanded per Creator/Owner request. User must explicitly expand clients.`);
       
       // CRITICAL: Keep dropdown behavior appropriate for the context
       setTimeout(() => {
@@ -470,8 +451,9 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                           setOpen(false);
                         } else {
                           console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Keeping dropdown open for entity selection');
-                          // Ensure this client is expanded
-                          setExpandedClients(prev => ({ ...prev, [id]: true }));
+                          // IMPORTANT: Do NOT auto-expand this client - per Creator/Owner: "I want to be able to see and expand clients 
+                          // without selecting entities"
+                          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${id} selected, but NOT auto-expanded per Creator/Owner request. User must explicitly expand via chevron.`);
                         }
                       }}
                       className="cursor-pointer font-medium bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/70 rounded-sm mb-1"
@@ -516,9 +498,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                       </div>
                     </CommandItem>
                     
-                    {/* Only show entities section if showEntities prop is true */}
-                    {/* CRITICAL FIX: Now preloading all entities but conditionally showing them */}
-                    {showEntities && clientEntities.length > 0 && (
+                    {/* CRITICAL UX FIX: Only show entities section when ALL conditions are met:
+                       1. showEntities prop is true (not in CoA mode)
+                       2. This client has entities to show
+                       3. This client is explicitly expanded by user action 
+                    */}
+                    {showEntities && clientEntities.length > 0 && isExpanded && (
                       <div 
                         className={`pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out ${
                           isExpanded 
