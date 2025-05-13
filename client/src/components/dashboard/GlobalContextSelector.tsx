@@ -52,9 +52,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // CRITICAL FIX: Only pre-compute expanded state for the selected client (if any)
+  // CRITICAL FIX: Only expand the selected client initially 
+  // Per Creator/Owner feedback - "entities for the currently active client are immediately visible"
   const initialExpandedState = useMemo(() => {
-    // Start with empty object - don't auto-expand all clients
+    // Start with empty object - no clients expanded by default
     const result: Record<number, boolean> = {};
     
     // If there's a selected client, only expand that one
@@ -196,12 +197,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
-      // CRITICAL FIX: Auto-expand the client we just selected to show entities
-      // But don't collapse other clients - let user control their expansion state
+      // Per Creator/Owner feedback: "entities for the currently active client are immediately visible"
+      // Auto-expand the client we just selected (other clients may be collapsed or expanded based on user interaction)
       setExpandedClients(prev => {
-        // Simply ensure this client is expanded without changing others
+        // Simply ensure this client is expanded without changing others' state
         const newState = { ...prev, [newClientId]: true };
-        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Setting client ${newClientId} expanded state to true`);
+        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Setting client ${newClientId} expanded state to true to show its entities immediately`);
         return newState;
       });
       
@@ -323,11 +324,21 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }
   }, [selectedClientId]);
   
-  // Keep only the selected client expanded - CRITICAL FIX to avoid regression
-  // This auto-expands ONLY the selected client, but doesn't aggressively expand all clients
+  // Auto-expand the selected client when dropdown opens
+  // Per Creator/Owner feedback: "When the dropdown is opened, entities for the currently active client are immediately visible"
+  useEffect(() => {
+    if (open && selectedClientId) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Dropdown opened - ensuring selected client ${selectedClientId} is expanded to show its entities`);
+      
+      // Only ensure the selected client is expanded, leave others in user-controlled state
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+    }
+  }, [open, selectedClientId]);
+
+  // Also ensure the selected client is expanded whenever it changes (not just when dropdown opens)
   useEffect(() => {
     if (selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding only the selected client ${selectedClientId} to show its entities`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - ensuring it's expanded to show its entities`);
       
       // Only ensure the selected client is expanded, leave others in user-controlled state
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
@@ -398,7 +409,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
               console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Full entities list length: ${entities?.length}`);
               
               // First ensure entities is an array and filter based on clientId
-              // Only show active and non-deleted entities (plus the current entity)
+              // Per Creator/Owner request: only show active entities (plus the current entity)
               const filteredByClient = Array.isArray(entities) 
                 ? entities.filter(e => 
                     e.clientId === client.id && 
@@ -507,23 +518,13 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                         aria-hidden={!isExpanded}
                       >
                         {clientEntities.map((entity) => {
-                          // Determine entity status styling
-                          const isActive = entity.active === true && entity.deletedAt === null;
-                          const isDeleted = entity.deletedAt !== null;
+                          // Per Creator/Owner request: color indicators for entity status are not needed
+                          // We already filter out inactive and deleted entities above
                           
-                          // Status styling classes
-                          const statusClasses = isDeleted 
-                            ? "border-red-500/50 bg-red-50/10 text-red-500" 
-                            : (isActive 
-                                ? "border-green-500/50 bg-green-50/10 text-green-700" 
-                                : "border-gray-400/50 bg-gray-50/10 text-gray-500");
-                            
-                          // Status indicator component
-                          const StatusIndicator = () => (
-                            <div className={`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
-                              isDeleted ? "bg-red-500" : (isActive ? "bg-green-500" : "bg-gray-400")
-                            }`} title={isDeleted ? "Deleted" : (isActive ? "Active" : "Inactive")}></div>
-                          );
+                          // Basic styling classes for all entities (no status colors)
+                          const statusClasses = entity.id === currentEntity?.id
+                            ? "border-primary/50 bg-primary/5" 
+                            : "border-muted/40 hover:border-primary/30";
                           
                           return (
                             <CommandItem
@@ -545,7 +546,6 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                               className={`cursor-pointer pl-4 py-1 my-1 mx-2 rounded-sm border-l-2 hover:bg-muted/50 ${statusClasses}`}
                             >
                               <div className="flex items-center w-full overflow-hidden">
-                                <StatusIndicator />
                                 <Layers className="h-4 w-4 mr-2" />
                                 <div className="flex flex-col overflow-hidden">
                                   <span className="truncate text-sm">{entity.name}</span>
