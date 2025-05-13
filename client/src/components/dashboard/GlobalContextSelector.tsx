@@ -52,23 +52,21 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // CRITICAL FIX: Pre-compute expanded state for all clients to ensure they're expanded by default
+  // CRITICAL FIX: Only pre-compute expanded state for the selected client (if any)
   const initialExpandedState = useMemo(() => {
-    if (!Array.isArray(clients) || clients.length === 0) return {};
+    // Start with empty object - don't auto-expand all clients
+    const result: Record<number, boolean> = {};
     
-    // Create an object where ALL clients are expanded by default
-    const result = clients.reduce((acc, client) => {
-      acc[client.id] = true; // All clients expanded for better UX
-      return acc;
-    }, {} as Record<number, boolean>);
-    
-    console.log(`ARCHITECT_DEBUG_SELECTOR_INIT: Created initial expanded state for ${clients.length} clients:`, 
-      Object.keys(result).length);
+    // If there's a selected client, only expand that one
+    if (selectedClientId) {
+      result[selectedClientId] = true;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT: Initially expanding only selected client ${selectedClientId}`);
+    }
     
     return result;
-  }, [clients]);
+  }, [selectedClientId]);
   
-  // Track which clients are expanded - initialized with all clients expanded by default
+  // Track which clients are expanded - only the selected client expanded by default
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>(initialExpandedState);
   const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
   // Reference to current selectedClientId to avoid stale references
@@ -174,14 +172,11 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
-      // Auto-expand the client we just selected to show entities
+      // CRITICAL FIX: Auto-expand the client we just selected to show entities
+      // But don't collapse other clients - let user control their expansion state
       setExpandedClients(prev => {
-        // Expand the new client, collapse all others for cleaner UI
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          newState[Number(key)] = Number(key) === newClientId;
-        });
-        newState[newClientId] = true;
+        // Simply ensure this client is expanded without changing others
+        const newState = { ...prev, [newClientId]: true };
         console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Setting client ${newClientId} expanded state to true`);
         return newState;
       });
@@ -304,70 +299,16 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }
   }, [selectedClientId]);
   
-  // CRITICAL: This is the key effect that auto-expands ALL clients when the dropdown opens
-  // This ensures entities appear immediately and don't require an extra click
+  // Keep only the selected client expanded - CRITICAL FIX to avoid regression
+  // This auto-expands ONLY the selected client, but doesn't aggressively expand all clients
   useEffect(() => {
-    if (open && Array.isArray(clients) && clients.length > 0) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding all clients when dropdown opens - critical UX improvement`);
+    if (selectedClientId) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding only the selected client ${selectedClientId} to show its entities`);
       
-      // Create an object with ALL clients expanded by default
-      const allClientsExpanded = clients.reduce((acc, client) => {
-        acc[client.id] = true; // Set ALL clients to expanded state = true
-        return acc;
-      }, {} as Record<number, boolean>);
-      
-      // Apply this expanded state immediately
-      setExpandedClients(allClientsExpanded);
-      
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Expanded ALL ${clients.length} clients at once:`);
-      clients.forEach(client => {
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_EXPANDED: Client ${client.id} (${client.name}) is expanded`);
-      });
-      
-      // Set a sequence of re-renders to handle race conditions with entity loading
-      // First re-render - immediate
-      setTimeout(() => {
-        setExpandedClients({...allClientsExpanded});
-        console.log('ARCHITECT_DEBUG_SELECTOR_UI: First re-render to ensure expand state is applied');
-      }, 50);
-      
-      // Second re-render - after a short delay in case entities take time to load
-      setTimeout(() => {
-        setExpandedClients({...allClientsExpanded});
-        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Second re-render to catch any newly loaded entities');
-      }, 200);
-      
-      // Final re-render - last chance to ensure everything is visible
-      setTimeout(() => {
-        setExpandedClients({...allClientsExpanded});
-        console.log('ARCHITECT_DEBUG_SELECTOR_UI: Final re-render to ensure all entities are visible');
-      }, 500);
+      // Only ensure the selected client is expanded, leave others in user-controlled state
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
-  }, [open, clients, entities]); // Added entities dependency back to ensure this runs after entities load
-  
-  // Initialize expansion state whenever clients load/change
-  useEffect(() => {
-    if (Array.isArray(clients) && clients.length > 0) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Initializing expansion state for all ${clients.length} clients`);
-      
-      // CRITICAL FIX: Expand ALL clients by default for better UX
-      const allClientsExpanded = clients.reduce((acc, client) => {
-        acc[client.id] = true;
-        return acc;
-      }, {} as Record<number, boolean>);
-      
-      // If we have a selected client, ensure it's expanded
-      if (selectedClientId) {
-        console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Ensuring selected client ${selectedClientId} is expanded`);
-        allClientsExpanded[selectedClientId] = true;
-      }
-      
-      // Set expanded state for all clients
-      setExpandedClients(allClientsExpanded);
-      
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: All clients are now expanded by default`);
-    }
-  }, [clients, selectedClientId]);
+  }, [selectedClientId]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
