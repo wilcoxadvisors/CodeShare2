@@ -52,20 +52,30 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // CRITICAL FIX: Only expand the selected client initially 
-  // Per Creator/Owner feedback - "entities for the currently active client are immediately visible"
+  // CRITICAL FIX: Creator/Owner requested UX - All clients collapsed by default except selected
+  // "...all clients are listed. Clients are collapsed by default (unless a specific client was previously selected...)"
   const initialExpandedState = useMemo(() => {
-    // Start with empty object - no clients expanded by default
+    // Start with empty object with all clients explicitly collapsed
     const result: Record<number, boolean> = {};
     
-    // If there's a selected client, only expand that one
-    if (selectedClientId) {
-      result[selectedClientId] = true;
-      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT: Initially expanding only selected client ${selectedClientId}`);
+    // Set all clients to collapsed by default
+    if (Array.isArray(clients)) {
+      clients.forEach(client => {
+        result[client.id] = false;
+      });
+    }
+    
+    // Only if a client is selected/restored from localStorage, expand that one
+    const restoredSelectedClientId = selectedClientId;
+    if (restoredSelectedClientId) {
+      result[restoredSelectedClientId] = true;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Initializing. Restored ClientID: ${restoredSelectedClientId}. Expanding only this one if present, all others collapsed.`);
+    } else {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: No client restored from localStorage. All clients collapsed by default.`);
     }
     
     return result;
-  }, [selectedClientId]);
+  }, [clients, selectedClientId]);
   
   // Track which clients are expanded - only the selected client expanded by default
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>(initialExpandedState);
@@ -172,7 +182,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     : [];
   
   // Handle client selection
-  // Handle client selection - Improved version to fix client switching bug
+  // Handle client selection - Creator/Owner requested exact behavior
   const selectClient = useCallback((newClientId: number) => {
     const currentSelectedClientId = selectedClientIdRef.current;
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered. New ClientId: ${newClientId}, Previous ClientId: ${currentSelectedClientId}`);
@@ -197,12 +207,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
-      // Per Creator/Owner feedback: "entities for the currently active client are immediately visible"
-      // Auto-expand the client we just selected (other clients may be collapsed or expanded based on user interaction)
+      // Per Creator/Owner exact requirement: "Clicking a Client Name... Updates expandedClients to ensure this clicked client is now expanded."
+      // "Multiple clients can be expanded by the user."
       setExpandedClients(prev => {
         // Simply ensure this client is expanded without changing others' state
         const newState = { ...prev, [newClientId]: true };
-        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Setting client ${newClientId} expanded state to true to show its entities immediately`);
+        console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Only setting client ${newClientId} expanded state to true, preserving other user expansion preferences`);
         return newState;
       });
       
@@ -324,21 +334,21 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }
   }, [selectedClientId]);
   
-  // Auto-expand the selected client when dropdown opens
-  // Per Creator/Owner feedback: "When the dropdown is opened, entities for the currently active client are immediately visible"
+  // When dropdown opens, ensure the selected client is expanded
+  // Per Creator/Owner's exact requirement: "entities for the currently active client are immediately visible"
   useEffect(() => {
     if (open && selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Dropdown opened - ensuring selected client ${selectedClientId} is expanded to show its entities`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Dropdown opened - ensuring only selected client ${selectedClientId} is expanded and visible`);
       
       // Only ensure the selected client is expanded, leave others in user-controlled state
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
   }, [open, selectedClientId]);
 
-  // Also ensure the selected client is expanded whenever it changes (not just when dropdown opens)
+  // When selected client changes, ensure it's expanded
   useEffect(() => {
     if (selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - ensuring it's expanded to show its entities`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - ensuring it's expanded`);
       
       // Only ensure the selected client is expanded, leave others in user-controlled state
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
