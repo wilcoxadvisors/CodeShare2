@@ -513,93 +513,59 @@ function AttachmentSection({
         `DEBUG AttachmentSection: Uploading ${pendingFiles.length} pending files to journal entry ${entryId}`,
       );
 
-      // Make 3 attempts if needed
-      let attempts = 0;
-      let success = false;
-      let lastError;
-      let responseData;
+      // Always use the hierarchical URL pattern for uploads
+      if (!clientId) {
+        throw new Error('Client ID is required for file uploads');
+      }
 
-      while (attempts < 3 && !success) {
-        try {
-          attempts++;
-          console.log(
-            `DEBUG AttachmentSection: Upload attempt ${attempts} for entry ${entryId}`,
-          );
-
-          // Wait a bit before retrying (except first attempt)
-          if (attempts > 1) {
-            await new Promise((r) => setTimeout(r, 500));
-          }
-
-          // Always use the hierarchical URL pattern for uploads
-          if (!clientId) {
-            throw new Error('Client ID is required for file uploads');
-          }
-
-          const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
-          console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
-          
-          // Use XMLHttpRequest directly for better control over FormData uploads
-          responseData = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            
-            // Set up the request
-            xhr.open('POST', url, true);
-            
-            // Add auth headers if needed
-            const authHeader = localStorage.getItem('authHeader');
-            if (authHeader) {
-              xhr.setRequestHeader('Authorization', authHeader);
-            }
-            
-            // Add event listeners for progress tracking
-            xhr.upload.onprogress = (progressEvent) => {
-              if (progressEvent.lengthComputable) {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                setUploadProgress(percentCompleted);
-                console.log("DEBUG AttachmentSection: Upload progress:", percentCompleted, "%");
-              }
-            };
-            
-            // Handle response
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const data = JSON.parse(xhr.responseText);
-                  resolve(data);
-                } catch (e) {
-                  resolve({ success: true }); // If response isn't JSON
-                }
-              } else {
-                reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
-              }
-            };
-            
-            xhr.onerror = () => {
-              reject(new Error('Network error during file upload'));
-            };
-            
-            // Send the FormData
-            xhr.send(formData);
-          });
-
-          success = true;
-          console.log(
-            "DEBUG AttachmentSection: Upload to entry successful:",
-            responseData,
-          );
-        } catch (error) {
-          console.error(
-            `DEBUG AttachmentSection: Upload attempt ${attempts} failed:`,
-            error,
-          );
-          lastError = error;
+      const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
+      console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
+      
+      // Use XMLHttpRequest directly for better control over FormData uploads
+      const responseData = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Set up the request
+        xhr.open('POST', url, true);
+        
+        // Add auth headers if needed
+        const authHeader = localStorage.getItem('authHeader');
+        if (authHeader) {
+          xhr.setRequestHeader('Authorization', authHeader);
         }
-      }
+        
+        // Add event listeners for progress tracking
+        xhr.upload.onprogress = (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            console.log("DEBUG AttachmentSection: Upload progress:", percentCompleted, "%");
+          }
+        };
+        
+        // Handle response
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
+            } catch (e) {
+              resolve({ success: true }); // If response isn't JSON
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+          }
+        };
+        
+        xhr.onerror = () => {
+          reject(new Error('Network error during file upload'));
+        };
+        
+        // Send the FormData
+        xhr.send(formData);
+      });
 
-      if (!success) {
-        throw lastError;
-      }
+      console.log("DEBUG AttachmentSection: Upload successful:", responseData);
 
       // Clear the pending files after successful upload
       setPendingFiles([]);

@@ -455,10 +455,12 @@ export function registerAttachmentRoutes(app: Express) {
       throwForbidden('Journal entry does not belong to the specified entity');
     }
     
-    // Check if journal entry status allows file deletions (only draft or pending_approval)
-    const allowedStatuses = ['draft', 'pending_approval'];
+    // Check if journal entry status allows file deletions 
+    // Allow deletion for draft, pending_approval, and posted entries
+    // Only restrict deletion for voided or reversed entries
+    const restrictedStatuses = ['voided', 'reversed'];
     const status = (journalEntry.status ?? '').toLowerCase();
-    if (!allowedStatuses.includes(status)) {
+    if (restrictedStatuses.includes(status)) {
       // Log the attempt for audit purposes
       await auditLogStorage.createAuditLog({
         action: 'journal_file_delete_denied',
@@ -467,13 +469,13 @@ export function registerAttachmentRoutes(app: Express) {
           journalEntryId: jeId,
           fileId,
           status: journalEntry.status,
-          reason: 'Invalid journal entry status',
+          reason: 'Cannot delete files from voided or reversed entries',
           clientId,
           entityId
         })
       });
       
-      throwForbidden(`File deletions are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}`);
+      throwForbidden(`File deletions are not allowed for ${journalEntry.status} entries. Files can only be removed from active journal entries.`);
     }
     
     // Get the file metadata
