@@ -531,6 +531,15 @@ function AttachmentSection({
       const url = getJournalEntryFilesBaseUrl(clientId, entityId, entryId);
       console.log("DEBUG AttachmentSection: Using hierarchical URL for upload:", url);
       
+      console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Preparing upload request:', {
+        url,
+        clientId,
+        entityId,
+        entryId,
+        filesCount: pendingFiles.length,
+        fileDetails: pendingFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
+      });
+      
       // Use XMLHttpRequest directly for better control over FormData uploads
       const responseData = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -540,6 +549,7 @@ function AttachmentSection({
         
         // Add auth headers if needed
         const authHeader = localStorage.getItem('authHeader');
+        console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Auth header:', authHeader ? 'Present' : 'Missing');
         if (authHeader) {
           xhr.setRequestHeader('Authorization', authHeader);
         }
@@ -555,15 +565,33 @@ function AttachmentSection({
         
         // Handle response
         xhr.onload = () => {
+          console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload response received:', {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            responseText: xhr.responseText
+          });
+          
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const data = JSON.parse(xhr.responseText);
+              console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload successful, parsed data:', data);
               resolve(data);
             } catch (e) {
+              console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload successful, non-JSON response');
               resolve({ success: true }); // If response isn't JSON
             }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+            console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload failed with error status');
+            let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText}`;
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              if (errorData.error) {
+                errorMessage = `Upload failed: ${errorData.error}`;
+              }
+            } catch (e) {
+              // Use the default error message if response isn't JSON
+            }
+            reject(new Error(errorMessage));
           }
         };
         
