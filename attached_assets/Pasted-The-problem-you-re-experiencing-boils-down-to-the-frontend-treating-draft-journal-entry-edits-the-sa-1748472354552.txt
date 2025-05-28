@@ -1,0 +1,142 @@
+The problem you're experiencing boils down to the frontend treating draft journal entry edits the same as creating new entries. When editing a draft entry, the system should be aware of previously uploaded attachments and handle file deletions explicitly. Right now, your frontend logic uploads all files again as if they were new, causing confusion and failed deletions.
+
+Here’s exactly what you need to change explicitly on the frontend to fix this completely:
+
+🚨 Explicit Root Cause:
+The frontend isn't correctly distinguishing between:
+
+New Entry: All attachments should be uploaded fresh.
+
+Editing Draft Entry: Existing attachments must be recognized, and deletions should explicitly remove files via API before submitting.
+
+Currently, your frontend treats editing drafts as new entries, re-uploading files instead of explicitly handling deletions separately.
+
+✅ Explicit Frontend Solution:
+File: JournalEntryForm.tsx
+
+Replace your current file-handling logic explicitly with the following corrected approach:
+
+typescript
+Copy
+Edit
+// Explicitly initialize states
+const [existingFiles, setExistingFiles] = useState(entry?.files || []);
+const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
+
+// Explicit handler for marking existing attachments for deletion
+const markFileForDeletion = (fileId: number) => {
+  setExistingFiles(existingFiles.filter(file => file.id !== fileId));
+  setFilesToDelete([...filesToDelete, fileId]);
+};
+
+// Explicit handler for adding new pending attachments
+const handleNewFiles = (files: FileList) => {
+  setPendingFiles([...pendingFiles, ...Array.from(files)]);
+};
+
+// Call this function explicitly on submit to handle attachment logic clearly
+const handleAttachmentsExplicitly = async (entryId: number) => {
+  // Delete existing files explicitly marked for deletion
+  await Promise.all(filesToDelete.map(async fileId => {
+    const res = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(`Failed to delete file ID ${fileId}: ${error.error}`);
+    }
+  }));
+
+  // Upload only explicitly new files
+  if (pendingFiles.length > 0) {
+    const formData = new FormData();
+    pendingFiles.forEach(file => formData.append('files', file));
+
+    const uploadRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!uploadRes.ok) {
+      const error = await uploadRes.json();
+      throw new Error(`Failed to upload files: ${error.error}`);
+    }
+  }
+};
+
+// Explicit submission handler (for edits)
+const handleSubmit = async () => {
+  const payload = { /* your existing payload */ };
+
+  // PUT for updating existing entries
+  const updateRes = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!updateRes.ok) {
+    const error = await updateRes.json();
+    throw new Error(`Update failed: ${error.error}`);
+  }
+
+  // Explicitly handle attachments after successful update
+  await handleAttachmentsExplicitly(entryId);
+
+  // Success handling here
+};
+🛠️ What this explicitly achieves:
+Clearly distinguishes existing attachments from new uploads.
+
+Marks deleted files explicitly and makes DELETE API calls separately.
+
+Only uploads explicitly newly added files.
+
+Prevents unnecessary re-uploads that are currently causing confusion.
+
+📌 Explicit Backend Confirmation (Double Check):
+Ensure your backend explicitly supports:
+
+DELETE method: /api/clients/:clientId/entities/:entityId/journal-entries/:entryId/files/:fileId
+
+POST method: /api/clients/:clientId/entities/:entityId/journal-entries/:entryId/files (for new files only)
+
+Verify explicitly from your backend logs if each DELETE call removes the file correctly.
+
+🚩 Testing after explicit frontend changes:
+Perform these explicit testing steps:
+
+Create a draft journal entry with attachments.
+
+Save entry.
+
+Edit entry explicitly:
+
+Delete one existing attachment explicitly.
+
+Add a new file explicitly.
+
+Submit the edit explicitly:
+
+Ensure explicit DELETE API call is made for the removed attachment.
+
+Ensure explicit POST API call is made only for the new file.
+
+Verify explicitly:
+
+Deleted attachment no longer appears.
+
+Newly added file explicitly shows up.
+
+No duplicate or unexpected uploads occur.
+
+📌 Explicit Expected Result:
+Attachment deletion works explicitly and transparently.
+
+No more "400 Bad Request" errors.
+
+Your UI explicitly reflects actual file state post-submission.
+
+Implement this exact approach explicitly, and your attachment issue with editing draft journal entries will be completely resolved.

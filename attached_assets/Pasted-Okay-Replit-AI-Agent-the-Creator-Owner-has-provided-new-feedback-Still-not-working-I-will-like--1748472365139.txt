@@ -1,0 +1,43 @@
+Okay, Replit AI Agent, the Creator/Owner has provided new feedback: "Still not working. I will like when I edit a draft JE the system is functioning like a new JE so the files are uploaded and showing. It may let me delete but it doesnt tell something in the back end to delete the files." They have also supplied new console logs.
+
+The logs indicate a persistent 400 Bad Request error during file UPLOAD when saving draft Journal Entries (both new and existing ones being edited). This is a P0 issue and needs to be the immediate priority. The deletion issue for drafts, and the request for edited drafts to handle new files like new JEs, are likely impacted by this upload failure.
+
+Here is the complete instruction for your next actions:
+
+Creator/Owner, thank you for the specific feedback and the console logs. I understand the key issues are:
+
+Still unable to delete attachments when editing a draft journal entry. You suspect the backend deletion might not be happening even if the UI changes.
+You want editing a draft JE (when adding new files) to behave like creating a new JE, meaning new files are uploaded and shown.
+The console logs show a persistent 400 Bad Request error when the system attempts to upload files (e.g., to /api/clients/250/entities/393/journal-entries/154/files), even for newly created/edited drafts.
+My immediate and highest priority is to fix the 400 Bad Request error occurring during file uploads. This is fundamental to all attachment functionality.
+
+Here's the plan:
+
+Phase 1: Resolve 400 Bad Request on File Upload (POST to /.../files)
+
+A. Client-Side Investigation (client/src/features/journal-entries/components/JournalEntryForm.tsx - focus on the uploadPendingFilesToEntry function within AttachmentSection):
+
+XHR Promise Handling: I will ensure the promise returned by uploadPendingFilesToEntry (which wraps the XMLHttpRequest) accurately rejects if the xhr.status is not a 2xx success code. This is critical so that calling functions (like in createEntry.onSuccess or updateEntry.onSuccess) correctly recognize the upload failure.
+Error Propagation: I will verify that if uploadPendingFilesRef.current() (which calls uploadPendingFilesToEntry) fails (i.e., its promise rejects), the error is caught and handled properly in the onSuccess callbacks of createEntry.mutate and updateEntry.mutate. Success messages like "Uploaded pending files successfully" or "Files attached" should not appear if the underlying XHR call resulted in a 400 error.
+Request Details: I will add ARCHITECT_DEBUG_UPLOAD_XHR_SENDING_ logs to show:
+The exact URL being used.
+The names and sizes of files being appended to FormData.
+Confirmation that the authHeader is being correctly retrieved and set.
+B. Server-Side Investigation (server/attachmentRoutes.ts - POST '/' endpoint for attachments):
+
+Pinpoint 400 Source: I will add detailed ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION_ logs immediately before every potential point where a throwBadRequest(...) or res.status(400).json(...) occurs. This will show exactly which validation rule or condition is triggering the 400 error.
+Multer Processing: I'll log req.files right after the upload.array('files', 10) middleware to see what multer has processed and if there are any upstream issues with file parsing.
+Data Integrity for Storage: I'll check the data being passed to journalEntryStorage.saveJournalEntryFile, especially ensuring file.buffer is valid and correctly converted to base64 if that's still part of the flow to DbFileStorage.
+Phase 2: Address Deletion from Draft & New Files on Edit (After Upload Fix)
+
+Once files can be reliably uploaded to draft JEs without a 400 error:
+
+Test Deletion from Draft: I will specifically ask you to test deleting an attachment from an existing draft JE that has confirmed, successfully uploaded attachments.
+
+I will then analyze the ARCHITECT_DEBUG_DRAFT_DELETE_UI_, _HOOK_, and _ROUTE_ logs to trace the entire flow.
+I will pay close attention to the isAttachmentsDisabled logic in AttachmentSection for draft JEs and ensure all parameters (clientId, entityId, actual journalEntryId, fileId) are correct.
+Test Adding New Files to Existing Draft:
+
+I will ask you to edit an existing draft JE, add new files, and save the draft.
+The now-fixed upload process should ensure these new files are uploaded and associated with the JE. The UI should then refresh to show them.
+I will begin immediately by focusing on Phase 1 to resolve the 400 Bad Request on uploads. I'll update you on my findings and fixes for that before we re-test deletion.

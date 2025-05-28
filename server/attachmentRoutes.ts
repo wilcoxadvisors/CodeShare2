@@ -99,33 +99,62 @@ export function registerAttachmentRoutes(app: Express) {
       const clientId = parseInt(req.params.cId);
       const user = req.user as { id: number };
       
-      console.log('DEBUG Attach BE: Received params:', {
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_START: File upload request received:', {
+        url: req.url,
+        method: req.method,
         clientId,
         entityId,
         jeId,
-        files: req.files?.length || 0
+        userId: user.id,
+        filesCount: req.files?.length || 0,
+        rawParams: req.params
       });
       
       if (isNaN(jeId) || isNaN(entityId) || isNaN(clientId)) {
-        throwBadRequest('Invalid ID provided - Journal Entry, Entity, or Client ID is not a number');
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Invalid ID parameters - returning 400');
+        return res.status(400).json({ 
+          error: 'Invalid ID provided - Journal Entry, Entity, or Client ID is not a number',
+          details: { jeId, entityId, clientId }
+        });
       }
       
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: All IDs validated successfully');
+      
       // Get the existing entry to check its status
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Fetching journal entry');
       const journalEntry = await journalEntryStorage.getJournalEntry(jeId);
       
       if (!journalEntry) {
-        throwNotFound('Journal Entry');
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Journal entry not found - returning 404');
+        return res.status(404).json({ error: 'Journal Entry not found' });
       }
+      
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Journal entry found:', {
+        id: journalEntry.id,
+        status: journalEntry.status,
+        entityId: journalEntry.entityId
+      });
       
       // Verify that the journal entry belongs to the specified entity
       if (journalEntry.entityId !== entityId) {
-        throwForbidden('Journal entry does not belong to the specified entity');
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Entity ID mismatch - returning 403');
+        return res.status(403).json({ error: 'Journal entry does not belong to the specified entity' });
       }
       
       // Check if journal entry status allows file attachments (only draft or pending_approval)
       const allowedStatuses = ['draft', 'pending_approval'];
       const status = (journalEntry.status ?? '').toLowerCase();
+      
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Status check:', {
+        originalStatus: journalEntry.status,
+        lowercaseStatus: status,
+        allowedStatuses,
+        isStatusAllowed: allowedStatuses.includes(status)
+      });
+      
       if (!allowedStatuses.includes(status)) {
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Status check FAILED - upload denied');
+        
         // Log the attempt for audit purposes
         await auditLogStorage.createAuditLog({
           action: 'journal_file_upload_denied',
@@ -138,15 +167,38 @@ export function registerAttachmentRoutes(app: Express) {
           })
         });
         
-        throwForbidden(`File uploads are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}`);
+        return res.status(403).json({ 
+          error: `File uploads are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}`
+        });
       }
+      
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Status check PASSED');
       
       // Check if files were included in the request
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Files check:', {
+        hasReqFiles: !!req.files,
+        isArray: Array.isArray(req.files),
+        filesLength: req.files?.length || 0
+      });
+      
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-        throwBadRequest('No files were uploaded');
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: No files uploaded - returning 400');
+        return res.status(400).json({ error: 'No files were uploaded' });
       }
       
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: Files check PASSED');
+      
       // Filter out files with disallowed types
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: File type validation:', {
+        totalFiles: (req.files as Express.Multer.File[]).length,
+        fileDetails: (req.files as Express.Multer.File[]).map(f => ({
+          name: f.originalname,
+          mimetype: f.mimetype,
+          size: f.size,
+          isAllowed: isAllowedFileType(f.mimetype)
+        }))
+      });
+      
       const validFiles = (req.files as Express.Multer.File[]).filter(file => 
         isAllowedFileType(file.mimetype)
       );
@@ -155,9 +207,21 @@ export function registerAttachmentRoutes(app: Express) {
         !isAllowedFileType(file.mimetype)
       );
       
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: File validation results:', {
+        validFilesCount: validFiles.length,
+        skippedFilesCount: skippedFiles.length,
+        skippedFileNames: skippedFiles.map(f => f.originalname)
+      });
+      
       if (validFiles.length === 0) {
-        throwBadRequest(`No valid files were uploaded. Allowed file types: PDF, Office documents, images, text files, CSV. Rejected files: ${skippedFiles.map(f => f.originalname).join(', ')}`);
+        console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: No valid files - returning 400');
+        return res.status(400).json({ 
+          error: `No valid files were uploaded. Allowed file types: PDF, Office documents, images, text files, CSV.`,
+          rejectedFiles: skippedFiles.map(f => f.originalname)
+        });
       }
+      
+      console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION: File validation PASSED - proceeding to save files');
       
       // Get the file storage implementation
       const fileStorage = getFileStorage();
