@@ -445,6 +445,16 @@ function AttachmentSection({
     journalEntry &&
     !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
 
+  // DEBUG: Log attachment status for troubleshooting
+  console.log("ARCHITECT_DEBUG_DRAFT_DELETE_UI: Attachment status check:", {
+    journalEntry: !!journalEntry,
+    journalEntryStatus: (journalEntry as { status?: string })?.status,
+    isAttachmentsDisabled,
+    clientId,
+    entityId,
+    journalEntryId: typeof journalEntryId === "number" ? journalEntryId : "not-a-number"
+  });
+
   // Helper function to format bytes into readable format
   const formatBytes = (bytes: number, decimals: number = 2): string => {
     if (bytes === 0) return "0 Bytes";

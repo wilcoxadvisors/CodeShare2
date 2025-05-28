@@ -439,7 +439,12 @@ export function registerAttachmentRoutes(app: Express) {
     const fileId = parseInt(req.params.fileId);
     const user = req.user as { id: number };
     
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: DELETE request received:', {
+      jeId, entityId, clientId, fileId, userId: user.id
+    });
+    
     if (isNaN(jeId) || isNaN(entityId) || isNaN(clientId) || isNaN(fileId)) {
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Invalid ID parameters');
       throwBadRequest('Invalid ID provided');
     }
     
@@ -458,7 +463,17 @@ export function registerAttachmentRoutes(app: Express) {
     // Check if journal entry status allows file deletions (only draft or pending_approval)
     const allowedStatuses = ['draft', 'pending_approval'];
     const status = (journalEntry.status ?? '').toLowerCase();
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Status check:', {
+      originalStatus: journalEntry.status,
+      lowercaseStatus: status,
+      allowedStatuses,
+      isStatusAllowed: allowedStatuses.includes(status)
+    });
+    
     if (!allowedStatuses.includes(status)) {
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Status check FAILED - deletion denied');
+      
       // Log the attempt for audit purposes
       await auditLogStorage.createAuditLog({
         action: 'journal_file_delete_denied',
@@ -475,6 +490,8 @@ export function registerAttachmentRoutes(app: Express) {
       
       throwForbidden(`File deletions are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}. Posted entries are final and cannot be modified.`);
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Status check PASSED - proceeding with deletion');
     
     // Get the file metadata
     const file = await journalEntryStorage.getJournalEntryFile(fileId);
