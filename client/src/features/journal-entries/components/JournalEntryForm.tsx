@@ -550,8 +550,15 @@ function AttachmentSection({
         // Add auth headers if needed
         const authHeader = localStorage.getItem('authHeader');
         console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Auth header:', authHeader ? 'Present' : 'Missing');
+        
+        // Enable credentials for session-based auth
+        xhr.withCredentials = true;
+        
         if (authHeader) {
           xhr.setRequestHeader('Authorization', authHeader);
+          console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header SET.');
+        } else {
+          console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header is MISSING from localStorage. Using credentials instead.');
         }
         
         // Add event listeners for progress tracking
