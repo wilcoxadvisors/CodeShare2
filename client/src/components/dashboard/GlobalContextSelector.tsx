@@ -193,6 +193,26 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     }));
   };
 
+  const handleExpandAll = useCallback(() => {
+    if (!showEntities) return; // Only act if entities are shown
+    console.log("ARCHITECT_DEBUG_SELECTOR_EXPAND_ALL: Expanding all visible clients");
+    const allExpanded: Record<number, boolean> = {};
+    filteredClients.forEach(client => {
+      // Ensure client has entities to expand before marking for expansion
+      const clientEntities = entitiesByClient[client.id] || [];
+      if (clientEntities.length > 0) {
+        allExpanded[client.id] = true;
+      }
+    });
+    setExpandedClients(allExpanded);
+  }, [filteredClients, entitiesByClient, showEntities]);
+
+  const handleCollapseAll = useCallback(() => {
+    if (!showEntities) return; // Only act if entities are shown
+    console.log("ARCHITECT_DEBUG_SELECTOR_COLLAPSE_ALL: Collapsing all clients");
+    setExpandedClients({}); // Reset to all collapsed
+  }, [showEntities]);
+
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
     console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
@@ -314,6 +334,26 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
+          {showEntities && (
+            <div className="flex justify-end space-x-2 p-2 border-b">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={handleExpandAll}
+                className="text-xs h-auto py-1 px-2"
+              >
+                Expand All
+              </Button>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={handleCollapseAll}
+                className="text-xs h-auto py-1 px-2"
+              >
+                Collapse All
+              </Button>
+            </div>
+          )}
           <CommandList className="max-h-[60vh] overflow-y-auto">
             <CommandEmpty>No matches found.</CommandEmpty>
 
