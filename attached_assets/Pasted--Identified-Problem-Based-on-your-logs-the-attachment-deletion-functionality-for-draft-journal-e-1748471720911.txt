@@ -1,0 +1,144 @@
+🚨 Identified Problem:
+Based on your logs, the attachment deletion functionality for draft journal entries is explicitly failing with a 400 Bad Request error when the DELETE request hits the server:
+
+plaintext
+Copy
+Edit
+/api/clients/250/entities/393/journal-entries/154/files:1  
+Failed to load resource: the server responded with a status of 400 (Bad Request)
+The debugging clearly indicates:
+
+Frontend: The deletion request is correctly initiated.
+
+Backend: Immediately rejects the request with status 400.
+
+🎯 Exact Cause of the Problem:
+This issue is due to either:
+
+Incorrect parsing or handling of URL parameters on the backend.
+
+Type mismatch or validation logic incorrectly triggering a 400 error.
+
+Because the frontend explicitly logs all correct IDs, the issue is almost certainly server-side in the DELETE endpoint logic.
+
+✅ Explicit Backend Solution (Immediate Fix):
+📌 Step 1: Validate and Correct URL Params on DELETE Endpoint
+File: server/attachmentRoutes.ts
+
+Replace the existing DELETE route implementation explicitly with the following robust code:
+
+typescript
+Copy
+Edit
+router.delete('/clients/:clientId/entities/:entityId/journal-entries/:entryId/files/:fileId', async (req, res) => {
+  const { clientId, entityId, entryId, fileId } = req.params;
+
+  // Explicit parsing of IDs
+  const clientIdNum = parseInt(clientId, 10);
+  const entityIdNum = parseInt(entityId, 10);
+  const entryIdNum = parseInt(entryId, 10);
+  const fileIdNum = parseInt(fileId, 10);
+
+  console.log('🚩 DELETE Attachment request:', { clientIdNum, entityIdNum, entryIdNum, fileIdNum });
+
+  if ([clientIdNum, entityIdNum, entryIdNum, fileIdNum].some(id => isNaN(id))) {
+    console.error('❌ Invalid ID parameters:', { clientIdNum, entityIdNum, entryIdNum, fileIdNum });
+    return res.status(400).json({ error: 'Invalid numeric ID provided' });
+  }
+
+  try {
+    const journalEntry = await getJournalEntry(clientIdNum, entityIdNum, entryIdNum);
+    
+    if (!journalEntry) {
+      console.error('❌ Journal entry not found:', entryIdNum);
+      return res.status(404).json({ error: 'Journal entry not found' });
+    }
+
+    console.log('📌 Journal Entry Status:', journalEntry.status);
+
+    const allowedStatuses = ['draft', 'pending_approval'];
+    if (!allowedStatuses.includes(journalEntry.status.toLowerCase())) {
+      console.error('❌ Status not allowed for deletion:', journalEntry.status);
+      return res.status(403).json({ error: 'Cannot delete files from entries unless draft or pending approval' });
+    }
+
+    await deleteAttachment(fileIdNum);
+
+    console.log('✅ File deleted successfully:', fileIdNum);
+    res.status(200).json({ success: true, message: 'File deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Error during deletion:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+});
+Key changes explicitly made:
+
+Explicit integer parsing of URL parameters.
+
+Robust logging at every critical validation step.
+
+Clear error responses for debugging frontend issues.
+
+📌 Step 2: Explicitly Verify Frontend Delete Request
+On the frontend (JournalEntryForm.tsx), make sure your DELETE request explicitly uses correctly formatted IDs:
+
+typescript
+Copy
+Edit
+async function deleteAttachment(clientId, entityId, entryId, fileId) {
+  const deleteUrl = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files/${fileId}`;
+  
+  console.log('🚩 Sending DELETE request to:', deleteUrl);
+
+  try {
+    const response = await fetch(deleteUrl, { method: 'DELETE' });
+
+    if (!response.ok) {
+      const errorResponse = await response.json();
+      console.error('❌ Failed to delete attachment:', errorResponse.error);
+      throw new Error(`Deletion failed: ${errorResponse.error}`);
+    }
+
+    console.log('✅ Attachment deleted successfully');
+    return await response.json();
+
+  } catch (error) {
+    console.error('❌ Attachment deletion error:', error);
+    throw error;
+  }
+}
+This logging explicitly confirms the DELETE URL is correctly formatted.
+
+🚀 Immediate Testing (Explicit Steps):
+After making these exact backend code updates, perform the following steps explicitly:
+
+Create a new draft journal entry.
+
+Upload files successfully.
+
+Attempt deletion of attachments from this draft:
+
+Verify DELETE request logs explicitly (🚩 DELETE Attachment request:).
+
+Check for success logs (✅ File deleted successfully:).
+
+Confirm frontend displays attachment removal explicitly.
+
+🛠️ Expected Outcome:
+After implementing the explicit backend fix above:
+
+Attachment deletion for draft journal entries should explicitly succeed.
+
+Posted journal entries should remain explicitly protected from deletion.
+
+Your console logs should explicitly confirm successful DELETE requests and clear backend responses.
+
+📋 Next Steps (if issues persist):
+If the issue continues after this exact implementation:
+
+Share the backend server logs explicitly showing the logged parameters and errors.
+
+Confirm explicitly the full DELETE URL from frontend logs matches backend expectations.
+
+🔧 Apply this fix immediately, and let's confirm the issue is resolved explicitly.

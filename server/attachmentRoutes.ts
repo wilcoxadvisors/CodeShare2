@@ -440,24 +440,38 @@ export function registerAttachmentRoutes(app: Express) {
     const user = req.user as { id: number };
     
     console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: DELETE request received:', {
-      jeId, entityId, clientId, fileId, userId: user.id
+      jeId, entityId, clientId, fileId, userId: user.id,
+      rawParams: req.params
     });
     
     if (isNaN(jeId) || isNaN(entityId) || isNaN(clientId) || isNaN(fileId)) {
-      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Invalid ID parameters');
-      throwBadRequest('Invalid ID provided');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Invalid ID parameters - returning 400');
+      return res.status(400).json({ 
+        error: 'Invalid ID provided',
+        details: { jeId, entityId, clientId, fileId }
+      });
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: All IDs validated, fetching journal entry');
     
     // Check that the journal entry exists
     const journalEntry = await journalEntryStorage.getJournalEntry(jeId);
     
     if (!journalEntry) {
-      throwNotFound('Journal Entry');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Journal entry not found - returning 404');
+      return res.status(404).json({ error: 'Journal Entry not found' });
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Journal entry found:', {
+      id: journalEntry.id,
+      status: journalEntry.status,
+      entityId: journalEntry.entityId
+    });
     
     // Verify that the journal entry belongs to the specified entity
     if (journalEntry.entityId !== entityId) {
-      throwForbidden('Journal entry does not belong to the specified entity');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Entity ID mismatch - returning 403');
+      return res.status(403).json({ error: 'Journal entry does not belong to the specified entity' });
     }
     
     // Check if journal entry status allows file deletions (only draft or pending_approval)
@@ -488,7 +502,9 @@ export function registerAttachmentRoutes(app: Express) {
         })
       });
       
-      throwForbidden(`File deletions are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}. Posted entries are final and cannot be modified.`);
+      return res.status(403).json({ 
+        error: `File deletions are only allowed for entries in draft or pending approval status. Current status: ${journalEntry.status}. Posted entries are final and cannot be modified.`
+      });
     }
     
     console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Status check PASSED - proceeding with deletion');
@@ -497,20 +513,33 @@ export function registerAttachmentRoutes(app: Express) {
     const file = await journalEntryStorage.getJournalEntryFile(fileId);
     
     if (!file) {
-      throwNotFound('File');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: File not found - returning 404');
+      return res.status(404).json({ error: 'File not found' });
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: File found:', {
+      id: file.id,
+      filename: file.filename,
+      journalEntryId: file.journalEntryId
+    });
     
     // Verify that the file belongs to the journal entry
     if (file.journalEntryId !== jeId) {
-      throwForbidden('File does not belong to the specified journal entry');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: File JE ID mismatch - returning 403');
+      return res.status(403).json({ error: 'File does not belong to the specified journal entry' });
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: Starting file deletion process');
     
     // Delete the file 
     const deleted = await journalEntryStorage.deleteJournalEntryFile(fileId);
     
     if (!deleted) {
-      throwBadRequest('Failed to delete file');
+      console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: File deletion failed - returning 500');
+      return res.status(500).json({ error: 'Failed to delete file' });
     }
+    
+    console.log('ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE: File deletion completed successfully');
     
     // Log file deletion for audit purposes
     auditLogStorage.createAuditLog({
