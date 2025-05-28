@@ -179,6 +179,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const selectClient = (clientId: number) => {
     setSelectedClientId(clientId);
     setCurrentEntity(null);
+    
+    if (!showEntities) { // Explicitly check if it's CoA mode
+      setOpen(false);    // Close dropdown immediately
+    }
   };
 
   const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
