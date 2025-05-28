@@ -197,36 +197,21 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       // The way its set up it switches when clicking another client then entities populate."
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${newClientId} selected, but NOT auto-expanded per Creator/Owner request. User must explicitly expand clients.`);
       
-      // CRITICAL: Keep dropdown behavior appropriate for the context
-      setTimeout(() => {
-        if (showEntities) {
-          // For normal case, keep dropdown open when selecting a new client to allow immediate entity selection
-          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Keeping dropdown open to show entities for client ${newClientId}`);
-          setOpen(true);
-        } else {
-          // For features like Chart of Accounts where entities aren't needed, close the dropdown
-          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Closing dropdown after client selection for non-entity feature`);
-          setOpen(false);
-        }
-      }, 50);
-    } else {
-      // If clicking the same client that's already selected, just toggle its expansion state
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. Toggling expansion.`);
-      
-      if (showEntities) {
-        setExpandedClients(prev => {
-          const isCurrentlyExpanded = !!prev[newClientId];
-          const newState = { ...prev, [newClientId]: !isCurrentlyExpanded };
-          console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${newClientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
-          return newState;
-        });
-        
-        // Always keep the dropdown open when toggling expansion
-        setTimeout(() => {
-          setOpen(true);
-        }, 50);
+      // CRITICAL: Handle dropdown behavior for different contexts WITHOUT causing page reload
+      if (!showEntities) {
+        // For Chart of Accounts mode, close dropdown immediately
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Chart of Accounts mode - closing dropdown after client selection`);
+        setOpen(false);
       } else {
-        // For features like Chart of Accounts where entities aren't needed, close the dropdown
+        // For entity selection mode, keep dropdown open but do NOT auto-expand
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Entity mode - keeping dropdown open, user controls expansion`);
+      }
+    } else {
+      // If clicking the same client that's already selected, keep it selected but don't auto-expand
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. No action needed - user controls expansion via chevron.`);
+      
+      if (!showEntities) {
+        // For Chart of Accounts mode, close dropdown
         setOpen(false);
       }
     }
@@ -475,10 +460,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                                 return newState;
                               });
                               
-                              // Keep dropdown open after toggling expansion
-                              setTimeout(() => {
-                                setOpen(true);
-                              }, 50);
+                              // No need to manipulate dropdown state - it should stay open naturally
                             }}
                             className="mr-2 flex-shrink-0 p-1 hover:bg-primary/30 rounded-md cursor-pointer border border-primary/40 transition-colors duration-200"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
