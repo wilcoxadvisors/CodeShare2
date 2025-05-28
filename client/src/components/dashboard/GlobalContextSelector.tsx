@@ -52,18 +52,17 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's requested exact behavior
-  // "I want to be able to see and expand clients without out selecting entities."
-  // "I should be able to expand the client and see the entities to chose when needed."
-  
-  // CRITICAL: All clients are always collapsed by default, even the selected one
-  // Users have complete control over expansion through UI interaction
-  
-  // Track which clients are expanded - ALL collapsed by default, no auto-expansion
+  // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
+  // Track which clients are expanded - start collapsed, allow restoration for selected client
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
   
-  // Log this important UX change
-  console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Creator/Owner requirement: Starting with ALL clients collapsed. User has full expansion control via chevron icons.`);
+  // PERSISTENCE RESTORATION: If there's a selected client from localStorage, expand it initially
+  useEffect(() => {
+    if (selectedClientId && clients.length > 0) {
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Restored selectedClientId ${selectedClientId}, expanding it for user convenience`);
+    }
+  }, [selectedClientId, clients.length]);
   const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
@@ -192,19 +191,18 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       setCurrentEntity(null); // Clear entity when client changes
       setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
       
-      // CRITICALLY IMPORTANT: Do NOT auto-expand the client when selecting it
-      // This addresses User Feedback: "No. I want to be able to be able to click through and find the clients. 
-      // The way its set up it switches when clicking another client then entities populate."
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${newClientId} selected, but NOT auto-expanded per Creator/Owner request. User must explicitly expand clients.`);
+      // Per Creator/Owner's latest requirements: When selecting a client, expand it to show entities
+      setExpandedClients(prev => ({ ...prev, [newClientId]: true }));
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${newClientId} selected and expanded to show its entities`);
       
-      // CRITICAL: Handle dropdown behavior for different contexts WITHOUT causing page reload
+      // Handle dropdown behavior for different contexts
       if (!showEntities) {
         // For Chart of Accounts mode, close dropdown immediately
         console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Chart of Accounts mode - closing dropdown after client selection`);
         setOpen(false);
       } else {
-        // For entity selection mode, keep dropdown open but do NOT auto-expand
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Entity mode - keeping dropdown open, user controls expansion`);
+        // For entity selection mode, keep dropdown open to show the newly expanded client's entities
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Entity mode - keeping dropdown open to show expanded client entities`);
       }
     } else {
       // If clicking the same client that's already selected, keep it selected but don't auto-expand
@@ -219,6 +217,24 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     // Show detailed debugging after client selection
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
   }, [clients, currentEntity, selectedClientId, open, showEntities]);
+
+  // Handle pure expansion toggle - separate from selection logic per Creator/Owner requirements
+  const toggleClientExpansion = useCallback((clientId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: User clicked expansion toggle for client ${clientId}`);
+    
+    setExpandedClients(prev => {
+      const isCurrentlyExpanded = !!prev[clientId];
+      const newState = { ...prev, [clientId]: !isCurrentlyExpanded };
+      console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${clientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
+      return newState;
+    });
+    
+    // This is purely a UI state change - does NOT affect selectedClientId or currentEntity
+    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Expansion toggle complete - no context changes, purely for browsing`);
+  }, []);
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
@@ -275,43 +291,8 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
-  // Toggle client expansion - improved with logging
-  const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
-    e.stopPropagation();
-    e.preventDefault();
-    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: toggleClientExpansion called for client ${clientId}`);
-    setExpandedClients(prev => {
-      const newState = { ...prev, [clientId]: !prev[clientId] };
-      console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: New expansion state for client ${clientId}:`, newState[clientId]);
-      return newState;
-    });
-  };
 
-  // Auto-expand the selected client and ensure its entities are immediately visible
-  useEffect(() => {
-    if (selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Auto-expanding selected client ${selectedClientId} to show entities`);
-      
-      // Instead of updating all clients, we'll focus on keeping the selected client expanded
-      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
-      
-      // Update reference for later comparisons
-      selectedClientIdRef.current = selectedClientId;
-    }
-  }, [selectedClientId]);
-  
-  // When dropdown opens, ensure the selected client is expanded
-  // Per Creator/Owner's exact requirement: "entities for the currently active client are immediately visible"
-  useEffect(() => {
-    if (open && selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Dropdown opened - ensuring only selected client ${selectedClientId} is expanded and visible`);
-      
-      // Only ensure the selected client is expanded, leave others in user-controlled state
-      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
-    }
-  }, [open, selectedClientId]);
 
-  // When selected client changes, ensure it's expanded
   useEffect(() => {
     if (selectedClientId) {
       console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - ensuring it's expanded`);
@@ -447,21 +428,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                         {/* Only show expansion controls when showEntities is true */}
                         {showEntities ? (
                           <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling expansion for client ${client.id}`);
-                              
-                              // Toggle expansion state directly here
-                              setExpandedClients(prev => {
-                                const isCurrentlyExpanded = !!prev[client.id];
-                                const newState = { ...prev, [client.id]: !isCurrentlyExpanded };
-                                console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${client.id} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
-                                return newState;
-                              });
-                              
-                              // No need to manipulate dropdown state - it should stay open naturally
-                            }}
+                            onClick={(e) => toggleClientExpansion(client.id, e)}
                             className="mr-2 flex-shrink-0 p-1 hover:bg-primary/30 rounded-md cursor-pointer border border-primary/40 transition-colors duration-200"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
