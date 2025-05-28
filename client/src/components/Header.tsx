@@ -75,7 +75,7 @@ function Header() {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
-  const { selectedClientId, setSelectedClientId, currentEntity, entities } = useEntity();
+  const { selectedClientId, setSelectedClientId, currentEntity, allEntities } = useEntity();
   
   // Define routes where the selector should not be shown
   const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup'];
@@ -239,7 +239,7 @@ function Header() {
             {/* Client Selector for client and entity selection - desktop only */}
             {!hideSelectorRoutes.includes(pathname) && (
               <div className="relative mr-3 hidden md:block">
-                <GlobalContextSelector clients={clients} entities={entities} />
+                <GlobalContextSelector clients={clients} entities={allEntities} />
               </div>
             )}
             
@@ -276,7 +276,7 @@ function Header() {
                     <div className="p-4 overflow-y-auto flex-1">
                       <MobileContextSelector 
                         clients={clients} 
-                        entities={entities} 
+                        entities={allEntities} 
                         onSelect={() => setMobileContextOpen(false)} 
                       />
                     </div>
@@ -315,7 +315,7 @@ function Header() {
               <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client</h2>
               <GlobalContextSelector 
                 clients={clients} 
-                entities={entities} 
+                entities={allEntities} 
               />
             </div>
           )}
