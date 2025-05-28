@@ -148,6 +148,17 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     return nameMatch || codeMatch;
   };
   
+  // Explicitly pre-fetch and filter entities by client immediately
+  const entitiesByClient = useMemo(() => {
+    const map: Record<number, Entity[]> = {};
+    clients.forEach(client => {
+      map[client.id] = entities.filter(
+        e => e.clientId === client.id && e.active && !e.deletedAt
+      );
+    });
+    return map;
+  }, [clients, entities]);
+
   // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
     ? clients
@@ -165,76 +176,18 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
         })
     : [];
   
-  // Handle client selection - PURE SELECTION ONLY
-  // Updated per Creator/Owner feedback: "I want to be able to see and expand clients without selecting entities"
-  const selectClient = useCallback((newClientId: number) => {
-    const currentSelectedClientId = selectedClientIdRef.current;
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection triggered. New ClientId: ${newClientId}, Previous ClientId: ${currentSelectedClientId}`);
-    
-    // Find client name for logging
-    const clientName = clients.find(c => c.id === newClientId)?.name || 'Unknown';
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting client context: ${newClientId} (${clientName})`);
-    
-    // Show detailed debugging for prior state
-    console.log('ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: BEFORE client selection - Current state:', {
-      selectedClientId,
-      currentEntity: currentEntity ? {
-        id: currentEntity.id,
-        name: currentEntity.name,
-        clientId: currentEntity.clientId
-      } : null
-    });
-    
-    // If changing to a different client, update client selection
-    if (newClientId !== currentSelectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Setting new client to ${newClientId}. Clearing current entity.`);
-      setCurrentEntity(null); // Clear entity when client changes
-      setSelectedClientId(newClientId); // Set the new client directly - NO intermediate null state
-      
-      // Per Creator/Owner's latest requirements: When selecting a client, expand it to show entities
-      setExpandedClients(prev => ({ ...prev, [newClientId]: true }));
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client ${newClientId} selected and expanded to show its entities`);
-      
-      // Handle dropdown behavior for different contexts
-      if (!showEntities) {
-        // For Chart of Accounts mode, close dropdown immediately
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Chart of Accounts mode - closing dropdown after client selection`);
-        setOpen(false);
-      } else {
-        // For entity selection mode, keep dropdown open to show the newly expanded client's entities
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Entity mode - keeping dropdown open to show expanded client entities`);
-      }
-    } else {
-      // If clicking the same client that's already selected, keep it selected but don't auto-expand
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client ${newClientId} is already selected. No action needed - user controls expansion via chevron.`);
-      
-      if (!showEntities) {
-        // For Chart of Accounts mode, close dropdown
-        setOpen(false);
-      }
-    }
-    
-    // Show detailed debugging after client selection
-    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_CHANGE: Client selection completed - Selected client set to: ${newClientId}`);
-  }, [clients, currentEntity, selectedClientId, open, showEntities]);
+  const selectClient = (clientId: number) => {
+    setSelectedClientId(clientId);
+    setCurrentEntity(null);
+  };
 
-  // Handle pure expansion toggle - separate from selection logic per Creator/Owner requirements
-  const toggleClientExpansion = useCallback((clientId: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    
-    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: User clicked expansion toggle for client ${clientId}`);
-    
-    setExpandedClients(prev => {
-      const isCurrentlyExpanded = !!prev[clientId];
-      const newState = { ...prev, [clientId]: !isCurrentlyExpanded };
-      console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Toggling client ${clientId} expansion from ${isCurrentlyExpanded} to ${!isCurrentlyExpanded}`);
-      return newState;
-    });
-    
-    // This is purely a UI state change - does NOT affect selectedClientId or currentEntity
-    console.log(`ARCHITECT_DEBUG_SELECTOR_EXPAND: Expansion toggle complete - no context changes, purely for browsing`);
-  }, []);
+  const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
+    e.stopPropagation();
+    setExpandedClients(prev => ({
+      ...prev,
+      [clientId]: !prev[clientId],
+    }));
+  };
 
   // Handle entity selection
   const selectEntity = (entity: Entity) => {
@@ -361,24 +314,11 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
             <CommandEmpty>No matches found.</CommandEmpty>
 
             {filteredClients.map((client) => {
-              // CRITICAL: Get entities for this client - more explicit filter with enhanced logging
-              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Rendering entities for Client ${client.id} (${client.name}). Expanded: ${!!expandedClients[client.id]}`);
-              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Full entities list length: ${entities?.length}`);
+              // Use the explicitly pre-filtered entities map
+              const clientEntities = entitiesByClient[client.id] || [];
               
-              // First ensure entities is an array and filter based on clientId
-              // Per Creator/Owner request: only show active entities (plus the current entity)
-              const filteredByClient = Array.isArray(entities) 
-                ? entities.filter(e => 
-                    e.clientId === client.id && 
-                    ((e.active === true && e.deletedAt === null) || 
-                     (currentEntity && e.id === currentEntity.id)))
-                : [];
-              
-              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Filtered list for Client ${client.id}. Length: ${filteredByClient.length}`, 
-                filteredByClient.map(e => ({ id: e.id, name: e.name })));
-                
-              // Then apply search filter separately and put selected entity at the top
-              const clientEntities = filteredByClient
+              // Apply search filter and sort by selected entity first
+              const filteredEntities = clientEntities
                 .filter(filterBySearchQuery)
                 .sort((a, b) => {
                   // Always put the selected entity at the top
@@ -387,12 +327,9 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                   // Otherwise sort alphabetically
                   return a.name.localeCompare(b.name);
                 });
-                
-              // Final entities after all filtering
-              console.log(`ARCHITECT_DEBUG_SELECTOR_RENDER: Final result - Client ${client.id} (${client.name}): Found ${filteredByClient.length} entities, ${clientEntities.length} after search filter`);
               
               // Skip if no matches
-              if (!filterBySearchQuery(client) && clientEntities.length === 0) {
+              if (!filterBySearchQuery(client) && filteredEntities.length === 0) {
                 return null;
               }
               
@@ -428,7 +365,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                         {/* Only show expansion controls when showEntities is true */}
                         {showEntities ? (
                           <div 
-                            onClick={(e) => toggleClientExpansion(client.id, e)}
+                            onClick={(e) => toggleClientExpansion(e, client.id)}
                             className="mr-2 flex-shrink-0 p-1 hover:bg-primary/30 rounded-md cursor-pointer border border-primary/40 transition-colors duration-200"
                             aria-label={isExpanded ? "Collapse client" : "Expand client"}
                           >
@@ -453,12 +390,12 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                        2. This client has entities to show
                        3. This client is explicitly expanded by user action 
                     */}
-                    {showEntities && clientEntities.length > 0 && isExpanded && (
+                    {showEntities && filteredEntities.length > 0 && isExpanded && (
                       <div 
                         className="pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out max-h-[500px] opacity-100 translate-y-0"
                         aria-hidden="false"
                       >
-                        {clientEntities.map((entity) => {
+                        {filteredEntities.map((entity) => {
                           // Per Creator/Owner request: color indicators for entity status are not needed
                           // We already filter out inactive and deleted entities above
                           
