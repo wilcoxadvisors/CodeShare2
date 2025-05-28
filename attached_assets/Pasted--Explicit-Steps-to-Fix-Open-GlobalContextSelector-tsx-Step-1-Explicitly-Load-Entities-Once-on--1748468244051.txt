@@ -1,0 +1,150 @@
+🚧 Explicit Steps to Fix:
+Open:
+GlobalContextSelector.tsx
+
+Step 1: Explicitly Load Entities Once on Dropdown Open:
+Replace your current conditional loading logic with immediate and explicit loading of entities:
+
+typescript
+Copy
+Edit
+// Explicitly pre-fetch and filter entities by client immediately
+const entitiesByClient = useMemo(() => {
+  const map: Record<number, Entity[]> = {};
+  clients.forEach(client => {
+    map[client.id] = entities.filter(
+      e => e.clientId === client.id && e.active && !e.deletedAt
+    );
+  });
+  return map;
+}, [clients, entities]);
+This code snippet explicitly creates a pre-filtered map of client IDs to their entities, ready immediately upon opening the dropdown.
+
+Step 2: Update Client Rendering Logic (Explicit):
+Use this explicitly pre-filtered map to display entities beneath each client without waiting for user interactions:
+
+tsx
+Copy
+Edit
+{clients.map(client => (
+  <div key={client.id}>
+    <div 
+      onClick={() => selectClient(client.id)} 
+      className="client-row cursor-pointer"
+    >
+      <button onClick={(e) => toggleClientExpansion(e, client.id)}>
+        {expandedClients[client.id] ? '▼' : '▶'}
+      </button>
+      {client.name}
+    </div>
+
+    {showEntities && expandedClients[client.id] && (
+      <ul>
+        {entitiesByClient[client.id]?.map(entity => (
+          <li 
+            key={entity.id} 
+            className="entity-row cursor-pointer" 
+            onClick={() => selectEntity(entity)}
+          >
+            {entity.name}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+))}
+No double-clicking needed: Entities explicitly pre-loaded and immediately available.
+
+User-controlled expansion remains explicitly intact.
+
+Step 3: Explicitly Verify the Updated UX:
+After these explicit updates, please perform the following explicit checks:
+
+ When opening the dropdown, entities immediately available under each client after expansion.
+
+ Clients remain collapsed initially until explicitly expanded by user.
+
+ Selecting a client does not affect other clients' expanded/collapsed states.
+
+ Selecting an entity explicitly updates context and closes dropdown smoothly.
+
+ Explicitly ensure no reloads or unexpected UI effects occur.
+
+📋 Full Updated Component Logic (for absolute clarity):
+Your refined GlobalContextSelector.tsx should clearly resemble this explicit structure:
+
+tsx
+Copy
+Edit
+const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
+
+// Explicitly pre-fetch entities once, mapped by client
+const entitiesByClient = useMemo(() => {
+  const map: Record<number, Entity[]> = {};
+  clients.forEach(client => {
+    map[client.id] = entities.filter(
+      e => e.clientId === client.id && e.active && !e.deletedAt
+    );
+  });
+  return map;
+}, [clients, entities]);
+
+const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
+  e.stopPropagation();
+  setExpandedClients(prev => ({
+    ...prev,
+    [clientId]: !prev[clientId],
+  }));
+};
+
+const selectClient = (clientId: number) => {
+  setSelectedClientId(clientId);
+  setCurrentEntity(null);
+};
+
+const selectEntity = (entity: Entity) => {
+  setSelectedClientId(entity.clientId);
+  setCurrentEntity(entity);
+  setOpen(false);
+};
+
+// Component JSX
+return (
+  <div>
+    {clients.map(client => (
+      <div key={client.id}>
+        <div 
+          onClick={() => selectClient(client.id)}
+          className="client-row cursor-pointer"
+        >
+          <button onClick={(e) => toggleClientExpansion(e, client.id)}>
+            {expandedClients[client.id] ? '▼' : '▶'}
+          </button>
+          {client.name}
+        </div>
+
+        {showEntities && expandedClients[client.id] && (
+          <ul>
+            {entitiesByClient[client.id]?.map(entity => (
+              <li 
+                key={entity.id} 
+                className="entity-row cursor-pointer" 
+                onClick={() => selectEntity(entity)}
+              >
+                {entity.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    ))}
+  </div>
+);
+⚡ Expected Outcome (Explicit):
+Entities load explicitly without delay beneath each client when expanded.
+
+User explicitly controls expansion and selection independently without double-clicking.
+
+Improved, intuitive, and explicitly clear UX aligning with your exact requirements.
+
+This precise implementation explicitly addresses your issue and ensures you have the intended selector
