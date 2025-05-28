@@ -588,12 +588,15 @@ function AttachmentSection({
               resolve({ success: true }); // If response isn't JSON
             }
           } else {
-            console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload failed with error status');
+            // CRITICAL FIX: Properly reject the promise on error status
+            console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload failed with error status:', xhr.status);
             let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText}`;
             try {
               const errorData = JSON.parse(xhr.responseText);
               if (errorData.error) {
                 errorMessage = `Upload failed: ${errorData.error}`;
+              } else if (errorData.message) {
+                errorMessage = `Upload failed: ${errorData.message}`;
               }
             } catch (e) {
               // Use the default error message if response isn't JSON
@@ -1696,12 +1699,11 @@ function JournalEntryForm({
             title: "Files attached",
             description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
           });
-        } catch (fileError) {
+        } catch (fileError: any) {
           console.error("Failed to upload pending files:", fileError);
           toast({
-            title: "Note about files",
-            description:
-              "Journal entry updated, but some files could not be attached. Please try uploading them again.",
+            title: "File Upload Failed",
+            description: `Journal entry updated, but file upload failed: ${fileError.message || 'Unknown error'}. Please try uploading them again.`,
             variant: "destructive",
           });
         } finally {
@@ -2022,6 +2024,10 @@ function JournalEntryForm({
                 if (uploadPendingFilesRef.current) {
                   await uploadPendingFilesRef.current(newEntryId);
                   console.log("ARCHITECT_DEBUG_JE_CREATE_POST: File uploads completed successfully");
+                  toast({
+                    title: "Files Attached",
+                    description: `${pendingFiles.length} file(s) uploaded successfully`,
+                  });
                 } else {
                   console.error("ARCHITECT_DEBUG_JE_CREATE_POST: uploadPendingFilesRef.current is not defined");
                   toast({
@@ -2030,14 +2036,16 @@ function JournalEntryForm({
                     variant: "destructive",
                   });
                 }
-              } catch (error) {
-                console.error("ARCHITECT_DEBUG_JE_CREATE_POST: File upload failed:", error);
+              } catch (uploadError: any) {
+                console.error("ARCHITECT_DEBUG_JE_CREATE_POST: File upload failed:", uploadError);
                 toast({
-                  title: "Warning",
-                  description: "Entry created as draft but file upload failed. You can still post it manually.",
+                  title: "File Upload Failed",
+                  description: `Entry created as draft but file upload failed: ${uploadError.message || 'Unknown error'}`,
                   variant: "destructive",
                 });
-                // Continue with posting attempt despite file upload failure
+                // Don't continue with posting if file upload fails
+                setIsUploading(false);
+                return; // Exit here to prevent posting
               } finally {
                 setIsUploading(false);
               }
