@@ -80,6 +80,9 @@ function Header() {
   // Define routes where the selector should not be shown
   const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup'];
   
+  // Define routes where entity selection should be hidden (Chart of Accounts mode)
+  const clientOnlyRoutes = ['/chart-of-accounts'];
+  
   // Query for clients to populate client selector
   const { data: clientsResponse } = useQuery<{ status: string, data: Client[] }>({
     queryKey: user ? ['/api/admin/clients'] : [],
@@ -239,7 +242,11 @@ function Header() {
             {/* Client Selector for client and entity selection - desktop only */}
             {!hideSelectorRoutes.includes(pathname) && (
               <div className="relative mr-3 hidden md:block">
-                <GlobalContextSelector clients={clients} entities={allEntities} />
+                <GlobalContextSelector 
+                  clients={clients} 
+                  entities={allEntities} 
+                  showEntities={!clientOnlyRoutes.includes(pathname)}
+                />
               </div>
             )}
             
@@ -276,7 +283,8 @@ function Header() {
                     <div className="p-4 overflow-y-auto flex-1">
                       <MobileContextSelector 
                         clients={clients} 
-                        entities={allEntities} 
+                        entities={allEntities}
+                        showEntities={!clientOnlyRoutes.includes(pathname)} 
                         onSelect={() => setMobileContextOpen(false)} 
                       />
                     </div>
@@ -316,6 +324,7 @@ function Header() {
               <GlobalContextSelector 
                 clients={clients} 
                 entities={allEntities} 
+                showEntities={!clientOnlyRoutes.includes(pathname)}
               />
             </div>
           )}
