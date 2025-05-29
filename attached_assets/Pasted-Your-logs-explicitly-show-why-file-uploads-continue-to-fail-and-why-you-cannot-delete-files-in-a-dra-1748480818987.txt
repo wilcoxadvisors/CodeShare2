@@ -1,0 +1,139 @@
+Your logs explicitly show why file uploads continue to fail and why you cannot delete files in a draft entry:
+
+🚩 Critical issues explicitly identified:
+Issue 1: Uploading Files – Incorrect FormData
+
+Your debug logging clearly indicates the FormData issue:
+
+yaml
+Copy
+Edit
+ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: FormData contents before sending:
+ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Files count in FormData: 1
+  - File 0: undefined 50400 undefined
+This explicitly indicates:
+
+The file name is undefined.
+
+The file type is undefined.
+
+Only the file size (50400) is explicitly provided.
+
+The backend explicitly rejects this malformed request:
+
+vbnet
+Copy
+Edit
+Failed to upload pending files to entry: Error 400: No files were uploaded
+Issue 2: Deletion of attachments – Incorrect condition logic
+
+Your changes attempted this explicitly:
+
+typescript
+Copy
+Edit
+const isAttachmentsDisabled =
+  journalEntry &&
+  !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+  
+const isFileDeletionDisabled = 
+  journalEntry &&
+  !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+However, explicitly checking, both variables have identical logic and thus offer no improvement. The deletion logic is explicitly not effective.
+
+🛠️ Explicit Code Fixes Required
+✅ Fix for Issue 1: Correctly formulating FormData
+The explicit correct way to form the file attachments is this:
+
+In uploadPendingFilesToEntry function explicitly ensure:
+
+typescript
+Copy
+Edit
+const formData = new FormData();
+
+pendingFiles.forEach(file => {
+  // explicitly ensure "files" is the correct backend field
+  formData.append("files", file, file.name);
+});
+CRITICAL FIX:
+Your current code doesn't explicitly pass the filename. The correct explicit method is:
+
+typescript
+Copy
+Edit
+formData.append("files", file, file.name);
+This explicitly ensures the file name, type, and data are passed correctly, solving the undefined issue.
+
+✅ Fix for Issue 2: File Deletion Logic Correction
+The deletion should explicitly be allowed only when entries are draft or pending_approval. Implement explicitly as follows:
+
+typescript
+Copy
+Edit
+const canModifyAttachments = journalEntry?.status === "draft" || journalEntry?.status === "pending_approval";
+
+// Explicitly set disable condition correctly
+const isAttachmentsDisabled = !canModifyAttachments;
+
+// Explicitly set file deletion logic
+const isFileDeletionDisabled = !canModifyAttachments;
+Then explicitly use this condition:
+
+jsx
+Copy
+Edit
+<Button
+  disabled={deleteFileMutation.isPending || isFileDeletionDisabled}
+>
+✅ Preventing File Duplication (Explicit Recommendation)
+After successful upload, explicitly clear pending files to avoid duplication:
+
+typescript
+Copy
+Edit
+if (uploadPendingFilesRef.current) {
+  await uploadPendingFilesRef.current(entryId);
+  setPendingFiles([]); // explicitly clear pending files
+}
+🚨 Explicit Code Implementation Recap (Critical to explicitly implement now):
+1. Explicitly correct FormData upload:
+
+typescript
+Copy
+Edit
+pendingFiles.forEach(file => {
+  formData.append("files", file, file.name); // explicit fix
+});
+2. Explicitly correct file deletion logic:
+
+typescript
+Copy
+Edit
+const canModifyAttachments = ["draft", "pending_approval"].includes(journalEntry?.status || "");
+
+const isAttachmentsDisabled = !canModifyAttachments;
+const isFileDeletionDisabled = !canModifyAttachments;
+Use this explicitly to conditionally disable buttons correctly.
+
+3. Explicitly clear pending files on successful upload explicitly:
+
+typescript
+Copy
+Edit
+await uploadPendingFilesRef.current(entryId);
+setPendingFiles([]); // explicit clear
+✅ Explicit Immediate Next Step for Verification:
+Explicitly apply these corrections explicitly as listed above.
+
+Explicitly retest the file upload:
+
+Verify console logs explicitly show correct filenames and data.
+
+Explicitly retest file deletion in draft mode:
+
+Ensure buttons are enabled explicitly.
+
+Explicitly confirm files delete without errors.
+
+These corrections will explicitly resolve the current critical problems clearly shown in your logs.

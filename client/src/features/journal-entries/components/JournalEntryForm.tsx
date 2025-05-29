@@ -439,16 +439,12 @@ function AttachmentSection({
     enabled: isExistingEntry && !!clientId && !!entityId,
   });
 
-  // Determine if attachments are disabled based on entry status
-  // We need to allow file management in draft and pending_approval modes
-  const isAttachmentsDisabled =
-    journalEntry &&
-    !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+  // Determine if we can modify attachments based on entry status
+  const canModifyAttachments = (journalEntry as { status?: string })?.status === "draft" || (journalEntry as { status?: string })?.status === "pending_approval";
   
-  // For file deletion specifically, we should allow it for draft and pending_approval
-  const isFileDeletionDisabled = 
-    journalEntry &&
-    !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+  // Set disable conditions correctly
+  const isAttachmentsDisabled = !canModifyAttachments;
+  const isFileDeletionDisabled = !canModifyAttachments;
 
   // DEBUG: Log attachment status for troubleshooting
   console.log("ARCHITECT_DEBUG_DRAFT_DELETE_UI: Attachment status check:", {
@@ -521,7 +517,8 @@ function AttachmentSection({
       // Create a FormData object for the upload
       const formData = new FormData();
       pendingFiles.forEach((file) => {
-        formData.append("files", file);
+        // CRITICAL FIX: Explicitly pass filename to ensure proper FormData structure
+        formData.append("files", file, file.name);
       });
 
       console.log(
@@ -2034,7 +2031,7 @@ function JournalEntryForm({
                     title: "Files Processed", 
                     description: `${pendingFiles.length} file(s) were submitted successfully.`
                   });
-                  // Clear pending files after successful upload
+                  // CRITICAL: Clear pending files after successful upload to prevent duplication
                   setPendingFiles([]);
                   setPendingFilesMetadata([]);
                   // Invalidate queries to refresh attachments list

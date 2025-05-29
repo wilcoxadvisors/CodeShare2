@@ -1,0 +1,119 @@
+The console logs, especially the persistent ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Auth header: Missing and the subsequent 400 Bad Request stating "No files were uploaded", point to clear, actionable problems in client/src/features/journal-entries/components/JournalEntryForm.tsx. Your feedback that "nothing should be in local storage fyi" regarding authentication is also key.
+
+I will NOW implement the following MANDATORY code changes to directly address these issues.
+
+MANDATORY CODE CHANGES for File Upload & Error Handling:
+
+Target File: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Fix XHR Authentication in uploadPendingFilesToEntry function (within AttachmentSection):
+
+Action: I will ensure xhr.withCredentials = true; is set. I will remove the problematic localStorage.getItem('authHeader') logic for this XHR call, as it is the source of the "Auth header: Missing" errors and withCredentials = true is the standard for session/cookie-based authentication with XHR.
+
+TypeScript
+
+// Inside uploadPendingFilesToEntry function, when creating the XMLHttpRequest:
+const xhr = new XMLHttpRequest();
+xhr.withCredentials = true; // CRITICAL: Ensure this is set for session-based auth. This is the primary auth method for this XHR.
+console.log('ARCHITECT_DEBUG_UPLOAD_XHR_CONFIG: xhr.withCredentials explicitly SET to true.');
+
+// REMOVE THE FOLLOWING LINES or ensure they are fully commented out:
+// const authHeader = localStorage.getItem('authHeader');
+// console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Auth header from localStorage:', authHeader ? 'Present' : 'Missing');
+// if (authHeader) {
+//   xhr.setRequestHeader('Authorization', authHeader);
+//   console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header SET from localStorage.');
+// } else {
+//   console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header is MISSING from localStorage. Now relying on withCredentials.');
+// }
+
+// ... (rest of xhr setup: open, onprogress, onload, onerror)
+// xhr.open('POST', url, true);
+// ...
+// console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: FormData contents before sending:');
+// for (const pair of formData.entries()) { // Keep this for debugging FormData
+//   console.log('  -', pair[0], pair[1]);
+// }
+// xhr.send(formData);
+Fix XHR Promise Error Handling in uploadPendingFilesToEntry:
+
+Action: The xhr.onload handler must reject the promise if xhr.status is not a 2xx success code. The xhr.onerror must also reject.
+
+TypeScript
+
+// Modify the xhr.onload and xhr.onerror within the new Promise in uploadPendingFilesToEntry:
+xhr.onload = () => {
+  console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload XHR onload. Status:', xhr.status, 'ResponseText:', xhr.responseText?.substring(0, 500));
+  if (xhr.status >= 200 && xhr.status < 300) {
+    try {
+      const data = JSON.parse(xhr.responseText);
+      resolve(data);
+    } catch (e) {
+      console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload successful (2xx), but response was not valid JSON. ResponseText:', xhr.responseText?.substring(0, 500));
+      resolve({ success: true, message: "Upload succeeded, but response was not JSON." }); // Or resolve with xhr.responseText if appropriate
+    }
+  } else {
+    // CRITICAL FIX: Ensure promise rejects on HTTP error with server message
+    let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText || 'Unknown Error'}`;
+    if (xhr.responseText) {
+      try {
+        const errorData = JSON.parse(xhr.responseText);
+        errorMessage = errorData.message || errorData.error || xhr.responseText;
+      } catch (e) {
+        errorMessage = xhr.responseText.substring(0,500); // Use raw response if not JSON
+      }
+    }
+    console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload FAILED. Rejecting promise with error:', errorMessage);
+    reject(new Error(errorMessage));
+  }
+};
+xhr.onerror = () => {
+  console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Network error during XHR upload.');
+  reject(new Error('Network error during file upload.'));
+};
+Fix Error Propagation in Calling Functions (createEntry.onSuccess and updateEntry.onSuccess within handleSubmit):
+
+Action: The calls to await uploadPendingFilesRef.current(entryId); must be correctly wrapped in try/catch/finally blocks. The catch block must handle the error from the (now correctly) rejected promise, display an accurate error toast, and prevent misleading success messages. setIsUploading(false) must be in the finally block.
+
+TypeScript
+
+// Example for createEntry.onSuccess (and apply IDENTICAL logic for updateEntry.onSuccess):
+// ... after newEntryId is confirmed ...
+if (hasPendingAttachments && uploadPendingFilesRef.current) {
+  setIsUploading(true);
+  try {
+    console.log(`ARCHITECT_DEBUG_UPLOAD_HANDLER: Attempting to upload ${pendingFiles.length} files to journal entry ${newEntryId || existingEntry?.id} via ref...`);
+    await uploadPendingFilesRef.current(newEntryId || existingEntry.id); // Pass the correct JE ID
+    console.log("ARCHITECT_DEBUG_UPLOAD_HANDLER: File upload process completed for JE:", newEntryId || existingEntry?.id);
+    toast({ title: "Files Submitted", description: `${pendingFiles.length} file(s) submitted. Server processing.` });
+    setPendingFiles([]);
+    setPendingFilesMetadata([]);
+    // Invalidate queries to refresh attachments list only AFTER successful upload is truly confirmed by server
+    queryClient.invalidateQueries({ queryKey: [getJournalEntryUrl(effectiveClientId as number, entityId, (newEntryId || existingEntry.id))] });
+  } catch (uploadError) {
+    console.error("ARCHITECT_DEBUG_UPLOAD_HANDLER: File upload FAILED for JE:", newEntryId || existingEntry?.id, uploadError);
+    toast({
+      title: "File Upload Error",
+      description: `Journal entry saved, but files failed to upload: ${uploadError.message}`,
+      variant: "destructive",
+    });
+    // Do NOT log or toast misleading success messages for attachments here.
+  } finally {
+    setIsUploading(false);
+  }
+}
+// ... rest of the logic for posting or completing draft save ...
+Server-Side Logging for Uploads (VERIFICATION):
+
+I will now ensure the POST '/' endpoint in server/attachmentRoutes.ts has the detailed ARCHITECT_DEBUG_UPLOAD_ROUTE_START_ and ARCHITECT_DEBUG_UPLOAD_ROUTE_VALIDATION_ logs at every single validation step (ID checks, JE status, req.files processing, isAllowedFileType checks, and right before calls to journalEntryStorage.saveJournalEntryFile).
+Request for FOCUSED UPLOAD Test (After Agent Confirms CODE CHANGES):
+
+Once I have made these specific code modifications to JournalEntryForm.tsx and verified the server-side logging:
+
+I will explicitly confirm to you that these changes are complete.
+Then, please attempt to upload files again to a draft journal entry (both by creating a new draft with files, and by editing an existing draft and adding new files, then saving).
+Provide the client-side console logs.
+Provide any relevant server-side application logs showing the ARCHITECT_DEBUG_UPLOAD_ROUTE_ messages.
+These direct code changes are aimed at fixing the "Auth header: Missing" issue and ensuring that any actual server errors from the upload (like "No files were uploaded") are correctly reported to you in the UI.
+
+Once uploads are stable, we will systematically tackle the draft deletion issue. I am prioritizing getting these fundamental code fixes in place.
