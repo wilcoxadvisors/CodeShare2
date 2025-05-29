@@ -444,6 +444,11 @@ function AttachmentSection({
   const isAttachmentsDisabled =
     journalEntry &&
     !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
+  
+  // For file deletion specifically, we should allow it for draft and pending_approval
+  const isFileDeletionDisabled = 
+    journalEntry &&
+    !["draft", "pending_approval"].includes((journalEntry as { status?: string })?.status || "");
 
   // DEBUG: Log attachment status for troubleshooting
   console.log("ARCHITECT_DEBUG_DRAFT_DELETE_UI: Attachment status check:", {
@@ -1058,7 +1063,7 @@ function AttachmentSection({
                                     }
                                     disabled={
                                       Boolean(deleteFileMutation.isPending) ||
-                                      Boolean(isAttachmentsDisabled)
+                                      Boolean(isFileDeletionDisabled)
                                     }
                                   >
                                     {deleteFileMutation.isPending ? (
@@ -1069,7 +1074,7 @@ function AttachmentSection({
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  {isAttachmentsDisabled ? (
+                                  {isFileDeletionDisabled ? (
                                     <p>Delete not allowed for posted entries</p>
                                   ) : (
                                     <p>Delete</p>
