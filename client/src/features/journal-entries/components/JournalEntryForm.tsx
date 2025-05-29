@@ -977,7 +977,10 @@ function AttachmentSection({
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  onClick={() => deletePendingFile(file.id)}
+                                  onClick={() => {
+                                    console.log('ARCHITECT_DEBUG_DELETE_PENDING_CLICK: localId=', file.id);
+                                    deletePendingFile(file.id);
+                                  }}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1050,14 +1053,15 @@ function AttachmentSection({
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      console.log('ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: fileId=', file.id, 'journalEntryId=', journalEntryId, 'isDisabled=', isFileDeletionDisabled);
                                       deleteFileMutation.mutate({
                                         clientId: clientId as number,  // Required: clientId for hierarchical URL pattern
                                         entityId: entityId as number,
                                         journalEntryId: journalEntryId as number,
                                         fileId: file.id,
-                                      })
-                                    }
+                                      });
+                                    }}
                                     disabled={
                                       Boolean(deleteFileMutation.isPending) ||
                                       Boolean(isFileDeletionDisabled)

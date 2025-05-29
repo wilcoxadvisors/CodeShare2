@@ -1,0 +1,171 @@
+MANDATORY CODE CHANGES (No More Just Logging):
+
+Target File: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+FIX FILE UPLOAD (400 Bad Request & Error Handling):
+
+A. Fix XHR Authentication in uploadPendingFilesToEntry function (within AttachmentSection):
+
+Action: I will ensure xhr.withCredentials = true; is set correctly. The localStorage.getItem('authHeader') logic for this XHR call will be removed to prevent the "Auth header: Missing" conflict, as withCredentials = true should handle session-based authentication.
+
+TypeScript
+
+// Inside uploadPendingFilesToEntry function, when creating the XMLHttpRequest:
+const xhr = new XMLHttpRequest();
+// CRITICAL FIX: Ensure this is set for session/cookie based auth.
+xhr.withCredentials = true; 
+console.log('ARCHITECT_DEBUG_UPLOAD_XHR_CONFIG: xhr.withCredentials explicitly SET to true.');
+
+// REMOVE OR FULLY COMMENT OUT THE ENTIRE localStorage 'authHeader' BLOCK:
+/*
+const authHeader = localStorage.getItem('authHeader');
+if (authHeader) {
+  xhr.setRequestHeader('Authorization', authHeader);
+  console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header SET from localStorage.');
+} else {
+  console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: localStorage authHeader is MISSING. Relying on withCredentials for session auth.');
+}
+*/
+
+xhr.open('POST', url, true);
+// Ensure FormData is populated correctly before sending
+console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: FormData contents before sending (first file):');
+if (pendingFiles.length > 0 && pendingFiles[0] instanceof File) {
+     console.log(`  - File 0: Name: ${pendingFiles[0].name}, Type: ${pendingFiles[0].type}, Size: ${pendingFiles[0].size}`);
+} else if (pendingFiles.length > 0) {
+     console.log(`  - File 0 (not a File instance?):`, pendingFiles[0]);
+}
+
+// Loop to append files and log:
+pendingFiles.forEach((file, index) => {
+  if (file instanceof File && file.name) {
+    formData.append("files", file, file.name); // Ensure file.name is valid
+    console.log(`ARCHITECT_DEBUG_UPLOAD_XHR_FORMDATA: Appended file ${index}: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
+  } else {
+    console.error(`ARCHITECT_DEBUG_UPLOAD_XHR_FORMDATA: SKIPPING File ${index} - Not a valid File object or missing name. Details:`, file);
+  }
+});
+// Check if any files were actually appended before sending
+if (!formData.has("files")) {
+     console.error("ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: No valid files were appended to FormData. Aborting XHR send.");
+     reject(new Error("No valid files to upload. Check file objects.")); // Reject promise if no files
+     return; // Stop further execution
+}
+xhr.send(formData);
+B. Fix XHR Promise Error Handling in uploadPendingFilesToEntry:
+
+Action: The xhr.onload handler must reject if xhr.status is not 2xx. xhr.onerror must also reject.
+
+TypeScript
+
+// Modify xhr.onload and xhr.onerror in uploadPendingFilesToEntry:
+xhr.onload = () => {
+  console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload XHR onload. Status:', xhr.status, 'ResponseText:', xhr.responseText?.substring(0, 500));
+  if (xhr.status >= 200 && xhr.status < 300) {
+    try {
+      const data = JSON.parse(xhr.responseText);
+      resolve(data);
+    } catch (e) {
+      console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload successful (2xx), but response non-JSON. ResponseText:', xhr.responseText?.substring(0, 500));
+      resolve({ success: true, message: "Upload succeeded; server response not JSON." });
+    }
+  } else {
+    let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText || 'Server Error'}`;
+    if (xhr.responseText) {
+      try {
+        const errorData = JSON.parse(xhr.responseText);
+        errorMessage = errorData.message || errorData.error || xhr.responseText;
+      } catch (e) {
+        errorMessage = xhr.responseText.substring(0,500);
+      }
+    }
+    console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload FAILED. Rejecting promise with error:', errorMessage);
+    reject(new Error(errorMessage)); // CRITICAL: Reject promise
+  }
+};
+xhr.onerror = () => {
+  console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Network error during XHR upload.');
+  reject(new Error('Network error during file upload.')); // CRITICAL: Reject promise
+};
+C. Fix Error Propagation in handleSubmit (for createEntry.onSuccess and updateEntry.onSuccess):
+
+Action: The await uploadPendingFilesRef.current(entryId); calls must be in try/catch/finally blocks that correctly handle the rejection from uploadPendingFilesToEntry, log the actual error, show a specific error toast, and prevent misleading success messages. setIsUploading(false) must be in finally.
+
+TypeScript
+
+// Inside createEntry.onSuccess AND updateEntry.onSuccess within handleSubmit:
+// (Ensure 'hasPendingAttachments' and 'uploadPendingFilesRef.current' are checked before this block)
+if (hasPendingAttachments && uploadPendingFilesRef.current) {
+  setIsUploading(true);
+  try {
+    const jeIdForUpload = isEditing ? existingEntry.id : newEntryId; // Ensure correct ID is used
+    console.log(`ARCHITECT_DEBUG_UPLOAD_HANDLER: Attempting to upload ${pendingFiles.length} files to JE ID ${jeIdForUpload} via ref...`);
+    await uploadPendingFilesRef.current(jeIdForUpload);
+    console.log("ARCHITECT_DEBUG_UPLOAD_HANDLER: File upload process appears successful for JE:", jeIdForUpload);
+    toast({ title: "Files Submitted", description: `${pendingFiles.length} file(s) submitted for processing.` });
+    setPendingFiles([]); // Clear after attempt, success/failure handled by server state refresh
+    setPendingFilesMetadata([]);
+    queryClient.invalidateQueries({ queryKey: [getJournalEntryUrl(effectiveClientId as number, entityId, jeIdForUpload)] });
+  } catch (uploadError) {
+    console.error("ARCHITECT_DEBUG_UPLOAD_HANDLER: File upload FAILED for JE:", (isEditing ? existingEntry.id : newEntryId), uploadError);
+    toast({
+      title: "File Upload Error",
+      description: `Journal entry saved, but files could not be uploaded: ${uploadError.message}`,
+      variant: "destructive",
+    });
+    // DO NOT show misleading success toasts for attachments here.
+  } finally {
+    setIsUploading(false);
+  }
+}
+// ... (rest of the original onSuccess logic, like navigating or posting)
+// For createEntry and saveAsDraft=false, the posting logic should only proceed if uploads were successful, or handle appropriately.
+// For now, the above focuses on fixing the upload call itself and its error handling.
+FIX DELETION FROM DRAFT JEs (client/.../JournalEntryForm.tsx - AttachmentSection):
+
+Problem: User reports "File remove from pending upload" when trying to delete an existing, uploaded file from a draft. This indicates the wrong delete function or wrong parameters are used.
+Action:
+Differentiate Delete Buttons:
+When mapping pendingFilesMetadata (for files not yet uploaded): The delete button must call deletePendingFile(localOrTempFileId).
+When mapping attachments (for files already on the server, from useJournalEntryFiles): The delete button must call deleteFileMutation.mutate({ clientId, entityId, journalEntryId, fileId: serverFileId }).
+Correct isFileDeletionDisabled Logic and Usage:
+You previously created isFileDeletionDisabled. Ensure its logic is simply:
+TypeScript
+
+const isFileDeletionDisabled = !(journalEntry?.status === "draft" || journalEntry?.status === "pending_approval");
+The "Delete" button for existing server attachments (those in the attachments array) must use this isFileDeletionDisabled for its disabled prop.
+TypeScript
+
+// Inside AttachmentSection, when rendering existing attachments from the 'attachments' prop:
+// ...
+<Button
+  onClick={() => deleteFileMutation.mutate({
+    clientId: clientId as number,
+    entityId: entityId as number,
+    journalEntryId: journalEntryId as number, // actual JE ID
+    fileId: file.id // actual file ID from server
+  })}
+  disabled={deleteFileMutation.isPending || isFileDeletionDisabled}
+>
+  {/* ... icon ... */}
+</Button>
+// ...
+Add Specific Logging:
+ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: fileId={file.id}, journalEntryId={journalEntryId}, isDisabled={isFileDeletionDisabled}
+ARCHITECT_DEBUG_DELETE_PENDING_CLICK: localId={file.id}
+Verify Server-Side Logging:
+
+I will ensure the POST '/' (upload) and DELETE '/:fileId' endpoints in server/attachmentRoutes.ts have the detailed ARCHITECT_DEBUG_..._ROUTE_... logs previously specified, covering every validation step.
+Request for Focused Testing (UPLOAD FIRST, THEN DELETION from DRAFT):
+
+After I have made these exact code modifications:
+
+Test UPLOAD: Please first try uploading files to a new draft JE AND to an existing draft JE (by editing and adding new files).
+
+Provide client console logs and server logs. We must confirm the "Auth header: Missing" is gone and the 400 "No files were uploaded" error is resolved. Files should now upload.
+Test DELETION FROM DRAFT (ONLY if uploads work):
+
+Edit a draft JE that has successfully uploaded attachments. Try to delete one of these uploaded attachments.
+Confirm the UI does not say "File remove from pending upload."
+Provide client console logs (we should see ARCHITECT_DEBUG_DELETE_EXISTING_CLICK followed by hook activity) AND server logs (we should see ARCHITECT_DEBUG_DRAFT_DELETE_ROUTE_ logs showing successful processing).
+I will implement these changes now. My sole focus is to get these fundamental operations working correctly with clear error reporting.
