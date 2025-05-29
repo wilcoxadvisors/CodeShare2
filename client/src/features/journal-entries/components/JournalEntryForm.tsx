@@ -540,26 +540,26 @@ function AttachmentSection({
         fileDetails: pendingFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
       });
       
+      // Create FormData and debug it
+      console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: FormData contents before sending:');
+      console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Files count in FormData:', pendingFiles.length);
+      pendingFiles.forEach((file, index) => {
+        console.log(`  - File ${index}:`, file.name, file.size, file.type);
+      });
+
       // Use XMLHttpRequest directly for better control over FormData uploads
       const responseData = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
+        // CRITICAL: Enable credentials for session-based auth FIRST
+        xhr.withCredentials = true;
+        console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: xhr.withCredentials SET to true for session auth');
+        
         // Set up the request
         xhr.open('POST', url, true);
         
-        // Add auth headers if needed
-        const authHeader = localStorage.getItem('authHeader');
-        console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Auth header:', authHeader ? 'Present' : 'Missing');
-        
-        // Enable credentials for session-based auth
-        xhr.withCredentials = true;
-        
-        if (authHeader) {
-          xhr.setRequestHeader('Authorization', authHeader);
-          console.log('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header SET.');
-        } else {
-          console.warn('ARCHITECT_DEBUG_UPLOAD_XHR_SENDING: Authorization header is MISSING from localStorage. Using credentials instead.');
-        }
+        // DO NOT set Authorization header - we're using session-based auth
+        // DO NOT set Content-Type - let browser set it for FormData automatically
         
         // Add event listeners for progress tracking
         xhr.upload.onprogress = (progressEvent) => {
@@ -575,7 +575,7 @@ function AttachmentSection({
           console.log('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload response received:', {
             status: xhr.status,
             statusText: xhr.statusText,
-            responseText: xhr.responseText
+            responseText: xhr.responseText?.substring(0, 500)
           });
           
           if (xhr.status >= 200 && xhr.status < 300) {
@@ -589,7 +589,7 @@ function AttachmentSection({
             }
           } else {
             // CRITICAL FIX: Properly reject the promise on error status
-            console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload failed with error status:', xhr.status);
+            console.error('ARCHITECT_DEBUG_UPLOAD_XHR_RESPONSE: Upload FAILED with HTTP status:', xhr.status);
             let errorMessage = `Upload failed with status ${xhr.status}: ${xhr.statusText}`;
             try {
               const errorData = JSON.parse(xhr.responseText);
@@ -2022,11 +2022,19 @@ function JournalEntryForm({
               
               try {
                 if (uploadPendingFilesRef.current) {
-                  await uploadPendingFilesRef.current(newEntryId);
-                  console.log("ARCHITECT_DEBUG_JE_CREATE_POST: File uploads completed successfully");
+                  console.log(`ARCHITECT_DEBUG_UPLOAD_HANDLER: Attempting to upload ${pendingFiles.length} files to new journal entry ${newEntryId} via ref...`);
+                  await uploadPendingFilesRef.current(newEntryId); // This will now throw on XHR error
+                  console.log("ARCHITECT_DEBUG_UPLOAD_HANDLER: File uploads reported as successful for new entry:", newEntryId);
                   toast({
-                    title: "Files Attached",
-                    description: `${pendingFiles.length} file(s) uploaded successfully`,
+                    title: "Files Processed", 
+                    description: `${pendingFiles.length} file(s) were submitted successfully.`
+                  });
+                  // Clear pending files after successful upload
+                  setPendingFiles([]);
+                  setPendingFilesMetadata([]);
+                  // Invalidate queries to refresh attachments list
+                  queryClient.invalidateQueries({ 
+                    queryKey: [getJournalEntryUrl(resolvedClientId as number, entityId, newEntryId)] 
                   });
                 } else {
                   console.error("ARCHITECT_DEBUG_JE_CREATE_POST: uploadPendingFilesRef.current is not defined");
@@ -2037,13 +2045,13 @@ function JournalEntryForm({
                   });
                 }
               } catch (uploadError: any) {
-                console.error("ARCHITECT_DEBUG_JE_CREATE_POST: File upload failed:", uploadError);
+                console.error("ARCHITECT_DEBUG_UPLOAD_HANDLER: File upload FAILED for new entry:", newEntryId, uploadError);
                 toast({
-                  title: "File Upload Failed",
-                  description: `Entry created as draft but file upload failed: ${uploadError.message || 'Unknown error'}`,
+                  title: "File Upload Error",
+                  description: `Journal entry was saved as draft, but attached files failed to upload: ${uploadError.message}`,
                   variant: "destructive",
                 });
-                // Don't continue with posting if file upload fails
+                // Do NOT proceed with any logic that assumes attachments were successful
                 setIsUploading(false);
                 return; // Exit here to prevent posting
               } finally {
