@@ -3313,13 +3313,9 @@ function JournalEntryForm({
         </table>
       </div>
 
-      {/* Attachment Section Conditional Rendering */}
+      {/* Attachment Section - Always render for draft and pending_approval entries */}
       {(() => {
-        const shouldRender = !isEditing ||
-          (isEditing &&
-            existingEntry?.id &&
-            existingEntry?.status !== "posted" &&
-            existingEntry?.status !== "voided");
+        const shouldRender = !isEditing || (isEditing && existingEntry?.id);
         
         console.log("ARCHITECT_DEBUG_ATTACHMENT_RENDERING:", {
           isEditing,
@@ -3328,9 +3324,7 @@ function JournalEntryForm({
           shouldRender,
           attachmentCondition: {
             notEditing: !isEditing,
-            editingWithValidEntry: isEditing && existingEntry?.id,
-            statusNotPosted: existingEntry?.status !== "posted",
-            statusNotVoided: existingEntry?.status !== "voided"
+            editingWithValidEntry: isEditing && existingEntry?.id
           }
         });
         
