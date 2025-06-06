@@ -3311,11 +3311,18 @@ function JournalEntryForm({
       </div>
 
       {/* DEBUG: Force render attachment section */}
-      <div style={{ background: 'yellow', padding: '10px', margin: '10px' }}>
-        DEBUG: This should always be visible on the edit page
-      </div>
-      
-      {/* Attachment Section - Force render */}
+      {/* Attachment Section */}
+      {(() => {
+        console.log("ARCHITECT_DEBUG_ATTACHMENT_PROPS:", {
+          entityId,
+          effectiveClientId,
+          journalEntryId: effectiveJournalEntryId,
+          clientIdType: typeof effectiveClientId,
+          entityIdType: typeof entityId,
+          journalEntryIdType: typeof effectiveJournalEntryId
+        });
+        return null;
+      })()}
       <AttachmentSection
           entityId={entityId}
           clientId={effectiveClientId as number}
