@@ -3314,11 +3314,28 @@ function JournalEntryForm({
       </div>
 
       {/* Attachment Section Conditional Rendering */}
-      {!isEditing ||
-      (isEditing &&
-        existingEntry?.id &&
-        existingEntry?.status !== "posted" &&
-        existingEntry?.status !== "voided") ? (
+      {(() => {
+        const shouldRender = !isEditing ||
+          (isEditing &&
+            existingEntry?.id &&
+            existingEntry?.status !== "posted" &&
+            existingEntry?.status !== "voided");
+        
+        console.log("ARCHITECT_DEBUG_ATTACHMENT_RENDERING:", {
+          isEditing,
+          existingEntryId: existingEntry?.id,
+          existingEntryStatus: existingEntry?.status,
+          shouldRender,
+          attachmentCondition: {
+            notEditing: !isEditing,
+            editingWithValidEntry: isEditing && existingEntry?.id,
+            statusNotPosted: existingEntry?.status !== "posted",
+            statusNotVoided: existingEntry?.status !== "voided"
+          }
+        });
+        
+        return shouldRender;
+      })() ? (
         <AttachmentSection
           entityId={entityId}
           journalEntryId={effectiveJournalEntryId}
