@@ -940,6 +940,24 @@ function AttachmentSection({
           )}
 
           {/* Step 3: Handle Empty State (only if not loading and no errors) */}
+          {(() => {
+            const shouldShowEmpty = !isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0;
+            const shouldShowFiles = !isLoadingAttachments && !isAttachmentsError && ((attachments?.length || 0) > 0 || (pendingFilesMetadata?.length || 0) > 0);
+            
+            console.log("ARCHITECT_DEBUG_RENDER_CONDITIONS:", {
+              isLoadingAttachments,
+              isAttachmentsError,
+              attachmentsLength: attachments?.length || 0,
+              pendingLength: pendingFilesMetadata?.length || 0,
+              shouldShowEmpty,
+              shouldShowFiles,
+              attachmentsType: typeof attachments,
+              attachmentsIsArray: Array.isArray(attachments)
+            });
+            
+            return null;
+          })()}
+          
           {!isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
