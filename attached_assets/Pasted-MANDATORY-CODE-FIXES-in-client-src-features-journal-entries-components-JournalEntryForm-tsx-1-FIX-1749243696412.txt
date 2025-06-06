@@ -1,0 +1,87 @@
+MANDATORY CODE FIXES in client/src/features/journal-entries/components/JournalEntryForm.tsx:
+
+1. FIX THE TypeError ON UPLOAD by Correcting State Initialization:
+
+Problem: The pendingFiles state is being polluted with non-File objects from existingEntry, causing the FormData.append to fail. pendingFiles must only contain new files added during the current edit session.
+
+ACTION: I will change the state initializations for pendingFiles and pendingFilesMetadata to always start as empty arrays.
+
+Location: JournalEntryForm component function body (around line 1008).
+I will change this code:
+TypeScript
+
+const [pendingFiles, setPendingFiles] = useState<File[]>(existingEntry?.files ?? []);
+const [pendingFilesMetadata, setPendingFilesMetadata] = useState<...>(
+  existingEntry?.files ? existingEntry.files.map(file => ({...})) : []
+);
+To this:
+TypeScript
+
+const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+const [pendingFilesMetadata, setPendingFilesMetadata] = useState<Array<{ id: number; filename: string; size: number; mimeType: string; addedAt: Date | number; }>>([]);
+Result: This ensures pendingFiles only ever contains proper File objects from the dropzone, fixing the TypeError. Existing attachments from the server are displayed separately via the attachments prop and are not affected.
+2. FIX THE DELETION LOGIC by Separating Handlers:
+
+Problem: The delete button for an existing, uploaded file incorrectly calls the function for deleting local, pending files (deletePendingFile), which is why you see the "File remove from pending upload" message.
+
+ACTION: I will ensure the onClick handler for the delete button on an existing attachment unambiguously calls the deleteFileMutation.mutate function with the correct server IDs.
+
+Location: Inside the AttachmentSection component, in the JSX where attachments are mapped (around line 984).
+I will verify and ensure the delete button logic is exactly as follows:
+TypeScript
+
+// This is the loop for EXISTING server attachments from the 'attachments' prop
+{Array.isArray(attachments) && attachments.map((file: JournalEntryFile) => (
+  <TableRow key={file.id}>
+    {/* ... other cells ... */}
+    <TableCell>
+      <div className="flex space-x-2">
+        {/* ... Download Button ... */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  // Ensure all IDs are valid numbers before calling
+                  const cClientId = typeof clientId === 'number' ? clientId : undefined;
+                  const cEntityId = typeof entityId === 'number' ? entityId : undefined;
+                  const cJournalEntryId = typeof journalEntryId === 'number' ? journalEntryId : undefined;
+
+                  if (cClientId && cEntityId && cJournalEntryId && file.id) {
+                    console.log(`ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: Calling deleteFileMutation for EXISTING file. FileID: ${file.id}, JE_ID: ${cJournalEntryId}`);
+                    deleteFileMutation.mutate({
+                      clientId: cClientId,
+                      entityId: cEntityId,
+                      journalEntryId: cJournalEntryId,
+                      fileId: file.id, // This is the server's file ID
+                    });
+                  } else {
+                    console.error("ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: Cannot delete, one or more required IDs are missing.", {fileId: file.id, cjeId: cJournalEntryId, cClientId, cEntityId});
+                    toast({title: "Deletion Error", description: "Cannot delete file: required identifiers are missing.", variant: "destructive"});
+                  }
+                }}
+                disabled={deleteFileMutation.isPending || isAttachmentsDisabled}
+              >
+                {deleteFileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isAttachmentsDisabled ? <p>Deletion not allowed for this entry's status</p> : <p>Delete</p>}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </TableCell>
+  </TableRow>
+))}
+Result: This change ensures clicking delete on an existing attachment calls the correct backend API to delete the file from the server, and not the local pending-file removal function.
+Verification Request (After I Confirm Fixes are Implemented):
+
+I will implement these exact code changes now. Once complete:
+
+Please test BOTH uploading and deleting files when you edit a draft journal entry.
+Upload: Add a new file to an existing draft and save. It should upload without error.
+Delete: On that same draft, delete an attachment that was previously uploaded. It should disappear, and the backend should process the deletion. The UI should not say "File remove from pending upload" for this action.

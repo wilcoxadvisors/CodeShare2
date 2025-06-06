@@ -1054,13 +1054,23 @@ function AttachmentSection({
                                     size="icon"
                                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() => {
-                                      console.log('ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: fileId=', file.id, 'journalEntryId=', journalEntryId, 'isDisabled=', isFileDeletionDisabled);
-                                      deleteFileMutation.mutate({
-                                        clientId: clientId as number,  // Required: clientId for hierarchical URL pattern
-                                        entityId: entityId as number,
-                                        journalEntryId: journalEntryId as number,
-                                        fileId: file.id,
-                                      });
+                                      // Ensure all IDs are valid numbers before calling
+                                      const cClientId = typeof clientId === 'number' ? clientId : undefined;
+                                      const cEntityId = typeof entityId === 'number' ? entityId : undefined;
+                                      const cJournalEntryId = typeof journalEntryId === 'number' ? journalEntryId : undefined;
+
+                                      if (cClientId && cEntityId && cJournalEntryId && file.id) {
+                                        console.log(`ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: Calling deleteFileMutation for EXISTING file. FileID: ${file.id}, JE_ID: ${cJournalEntryId}`);
+                                        deleteFileMutation.mutate({
+                                          clientId: cClientId,
+                                          entityId: cEntityId,
+                                          journalEntryId: cJournalEntryId,
+                                          fileId: file.id, // This is the server's file ID
+                                        });
+                                      } else {
+                                        console.error("ARCHITECT_DEBUG_DELETE_EXISTING_CLICK: Cannot delete, one or more required IDs are missing.", {fileId: file.id, cjeId: cJournalEntryId, cClientId, cEntityId});
+                                        toast({title: "Deletion Error", description: "Cannot delete file: required identifiers are missing.", variant: "destructive"});
+                                      }
                                     }}
                                     disabled={
                                       Boolean(deleteFileMutation.isPending) ||
@@ -1184,10 +1194,9 @@ function JournalEntryForm({
   const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
 
   // State for pending file attachments
-  // Bug fix #1: hydrate with existing files when editing
-  const [pendingFiles, setPendingFiles] = useState<File[]>(
-    existingEntry?.files ?? []
-  );
+  // CRITICAL FIX: pendingFiles should only contain newly added File objects in current session
+  // Existing files are handled by the attachments prop from useJournalEntryFiles
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingFilesMetadata, setPendingFilesMetadata] = useState<
     {
       id: number;
@@ -1196,18 +1205,7 @@ function JournalEntryForm({
       mimeType: string;
       addedAt: Date | number;
     }[]
-  >(
-    // Convert existing files to metadata format if available
-    existingEntry?.files 
-      ? existingEntry.files.map((file: any) => ({
-          id: file.id,
-          filename: file.filename || file.originalname || "Unknown filename",
-          size: file.size || 0,
-          mimeType: file.mimeType || "application/octet-stream",
-          addedAt: file.uploadedAt ? Date.parse(file.uploadedAt.toString()) : Date.now()
-        }))
-      : []
-  );
+  >([]);
 
   // Ref to hold the function to upload pending files to a specific journal entry
   // This will be passed to and set by the AttachmentSection component

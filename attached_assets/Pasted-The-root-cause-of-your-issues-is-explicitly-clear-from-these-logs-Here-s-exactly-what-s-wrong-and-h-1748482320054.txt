@@ -1,0 +1,165 @@
+The root cause of your issues is explicitly clear from these logs. Here's exactly what's wrong and how to explicitly fix it:
+
+🚩 Root Causes:
+Pending Files vs. Existing Files:
+
+After uploading files to a saved draft entry, your app incorrectly retains them as "pending files" rather than persisted files.
+
+Therefore, when you attempt additional file uploads, it fails with:
+
+pgsql
+Copy
+Edit
+TypeError: Failed to execute 'append' on 'FormData': parameter 2 is not of type 'Blob'.
+This happens because your frontend code is no longer storing actual File objects after the first upload, causing invalid subsequent attempts to upload "pending" files that already exist on the backend.
+
+File Deletion:
+
+When trying to delete existing attachments, it incorrectly tries to delete these attachments as pending files because the file states (existingFiles vs. pendingFiles) are not properly managed or separated.
+
+🚧 Critical Corrections Needed Immediately:
+You must explicitly manage and separate:
+
+existingFiles: Already uploaded attachments stored on the backend.
+
+pendingFiles: New file uploads that have not yet been sent to the backend.
+
+🛠️ Step-by-Step Correct Implementation (Explicit):
+✅ Step 1: Clearly Define Two Separate States:
+tsx
+Copy
+Edit
+const [existingFiles, setExistingFiles] = useState<ExistingFile[]>([]);
+const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+✅ Step 2: Load Existing Files Clearly (Upon Opening Draft):
+tsx
+Copy
+Edit
+const { data: existingFilesData } = useQuery(
+  ['journalEntryFiles', entryId],
+  () => axios.get(`/api/.../${entryId}/files`).then(res => res.data)
+);
+
+useEffect(() => {
+  if (existingFilesData) {
+    setExistingFiles(existingFilesData);
+  }
+}, [existingFilesData]);
+✅ Step 3: Explicit File Upload Logic (For Pending Files Only):
+tsx
+Copy
+Edit
+const uploadPendingFiles = async (entryId: number, files: File[]) => {
+  const formData = new FormData();
+  files.forEach(file => formData.append('files', file, file.name));
+
+  await axios.post(`/api/.../journal-entries/${entryId}/files`, formData, {
+    withCredentials: true,
+  });
+
+  // Explicitly clear pending files once uploaded successfully
+  setPendingFiles([]);
+  setPendingFilesMetadata([]);
+
+  // Refresh existing files explicitly after upload
+  queryClient.invalidateQueries(['journalEntryFiles', entryId]);
+};
+Critical Fix:
+
+Always ensure pendingFiles only contains valid File objects (Blob).
+
+✅ Step 4: Explicitly Handle Deletion of Existing Files:
+tsx
+Copy
+Edit
+const deleteExistingFile = async (fileId: number) => {
+  await axios.delete(`/api/.../journal-entries/${entryId}/files/${fileId}`, {
+    withCredentials: true,
+  });
+
+  // Explicitly refresh files after deletion
+  queryClient.invalidateQueries(['journalEntryFiles', entryId]);
+};
+✅ Step 5: Pending File Removal (Frontend Only):
+Pending file removal logic explicitly:
+
+tsx
+Copy
+Edit
+const deletePendingFile = (fileId: string) => {
+  setPendingFiles(prev => prev.filter(f => f.id !== fileId));
+  setPendingFilesMetadata(prev => prev.filter(meta => meta.localId !== fileId));
+};
+Critical:
+
+Do NOT call backend API for pending file deletion.
+
+🐛 Specific Error Explanation:
+Your current error explicitly:
+
+pgsql
+Copy
+Edit
+TypeError: Failed to execute 'append' on 'FormData': parameter 2 is not of type 'Blob'.
+Reason:
+
+You're incorrectly attempting to re-upload already-uploaded attachments (these aren't valid File objects after the initial upload).
+
+pendingFiles must only contain valid File objects. After upload, explicitly clear them.
+
+📌 Exact Code Snippet for Save Draft Action (Corrected):
+When saving a draft entry explicitly:
+
+tsx
+Copy
+Edit
+const handleSaveDraft = async (entryData: JournalEntry) => {
+  try {
+    const updatedEntry = await axios.put(`/api/.../journal-entries/${entryId}`, entryData, {
+      withCredentials: true,
+    });
+
+    // CRITICAL FIX: Upload only real pending File objects explicitly
+    if (pendingFiles.length > 0) {
+      await uploadPendingFiles(entryId, pendingFiles);
+    }
+
+    toast.success('Draft saved successfully!');
+  } catch (error) {
+    console.error('Failed to save draft:', error);
+    toast.error('Failed to save draft.');
+  }
+};
+📌 Explicit UI Logic:
+Your UI must explicitly differentiate between existingFiles and pendingFiles:
+
+tsx
+Copy
+Edit
+existingFiles.map(file => (
+  <div key={file.id}>
+    <span>{file.fileName}</span>
+    <Button onClick={() => deleteExistingFile(file.id)}>Delete</Button>
+  </div>
+));
+
+pendingFiles.map(file => (
+  <div key={file.localId}>
+    <span>{file.name}</span>
+    <Button onClick={() => deletePendingFile(file.localId)}>Remove</Button>
+  </div>
+));
+✅ Final Explicit Testing Instructions:
+Once corrected explicitly, test:
+
+Save a new JE as draft → files upload explicitly.
+
+Verify files move from pendingFiles → existingFiles.
+
+Explicitly delete existing files from backend via delete API.
+
+Explicitly add new files again (pending → existing).
+
+This explicitly corrects your issue, clearly separates pending and existing states, and eliminates your confusion.
+
+Implement these exact changes explicitly, and you'll have this fully resolved.
