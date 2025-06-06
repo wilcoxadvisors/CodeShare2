@@ -54,7 +54,7 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
 
       
       // Transform the response data to match the expected interface
-      const files = response?.data || [];
+      const files = response?.data?.files || response?.data || [];
       console.log("ARCHITECT_DEBUG_ATTACHMENT_TRANSFORM:", {
         filesCount: files.length,
         firstFile: files[0],
