@@ -28,10 +28,21 @@ export interface JournalEntryFile {
  * Hook to fetch files attached to a journal entry
  */
 export function useJournalEntryFiles(journalEntryId: number | undefined | null, entityId: number, clientId: number) {
+  console.log("ARCHITECT_DEBUG_ATTACHMENT_QUERY_PARAMS:", {
+    journalEntryId,
+    entityId,
+    clientId,
+    queryEnabled: !!journalEntryId && !!entityId && !!clientId
+  });
+  
   return useQuery<JournalEntryFile[]>({
     queryKey: ['journalEntryAttachments', journalEntryId],
+    enabled: !!journalEntryId && !!entityId && !!clientId,
     queryFn: async () => {
-      if (!journalEntryId || !entityId || !clientId) return [];
+      if (!journalEntryId || !entityId || !clientId) {
+        console.log("ARCHITECT_DEBUG_ATTACHMENT_QUERY_SKIPPED:", { journalEntryId, entityId, clientId });
+        return [];
+      }
       
       // Always use the hierarchical URL pattern
       const url = getJournalEntryFilesBaseUrl(clientId, entityId, journalEntryId);
@@ -62,7 +73,6 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
         };
       });
     },
-    enabled: !!(journalEntryId && entityId && clientId),
   });
 }
 
