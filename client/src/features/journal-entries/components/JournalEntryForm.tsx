@@ -2170,11 +2170,14 @@ function JournalEntryForm({
         finalValue = `${wholePart}.${decimalPart}`;
       }
 
-      // 3. Update the state with the cleaned value.
+      // 3. Apply thousands separators for display while preserving the clean decimal format.
+      const formattedValue = finalValue === "" ? "" : formatNumberWithSeparator(finalValue);
+      
+      // 4. Update the state with the formatted value.
       const updatedLines = [...lines];
-      updatedLines[index] = { ...updatedLines[index], [field]: finalValue };
+      updatedLines[index] = { ...updatedLines[index], [field]: formattedValue };
 
-      // 4. Clear the opposite field if necessary.
+      // 5. Clear the opposite field if necessary.
       if (safeParseAmount(finalValue) > 0) {
         const oppositeField = field === "debit" ? "credit" : "debit";
         updatedLines[index][oppositeField] = "";
