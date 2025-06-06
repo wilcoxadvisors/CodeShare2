@@ -942,18 +942,8 @@ function AttachmentSection({
             </Alert>
           )}
 
-          {/* Step 3: Handle Empty State */}
-          {!isLoadingAttachments && !isAttachmentsError && (!attachments || attachments.length === 0) && (!pendingFilesMetadata || pendingFilesMetadata.length === 0) && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No files attached yet
-            </p>
-          )}
-
-          {/* Step 4: Render the File Table */}
-          {!isLoadingAttachments && !isAttachmentsError && (
-            (Array.isArray(attachments) && attachments.length > 0) || 
-            (Array.isArray(pendingFilesMetadata) && pendingFilesMetadata.length > 0)
-          ) && (
+          {/* Always show the file table section when not loading, regardless of data state */}
+          {!isLoadingAttachments && (
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
                 <TableHeader>
@@ -965,6 +955,14 @@ function AttachmentSection({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Debug: Show table structure */}
+                  {!Array.isArray(attachments) && !Array.isArray(pendingFilesMetadata) && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No files attached yet
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {/* Pending files (for new entries) */}
                   {pendingFilesMetadata.map((file) => (
                     <TableRow key={`pending-${file.id}`}>
@@ -1026,9 +1024,8 @@ function AttachmentSection({
                     </TableRow>
                   ))}
 
-                  {/* Existing files (for saved entries) */}
-                  {Array.isArray(attachments) &&
-                    attachments.map((file: JournalEntryFile) => (
+                  {/* Existing files (for saved entries) - Force display if data exists */}
+                  {(Array.isArray(attachments) ? attachments : []).map((file: JournalEntryFile) => (
                       <TableRow key={file.id}>
                         <TableCell className="flex items-center">
                           {getFileIcon(file.mimeType)}
