@@ -515,7 +515,10 @@ function AttachmentSection({
     isAttachmentsError,
     pendingFilesLength: pendingFilesMetadata?.length,
     isExistingEntry,
-    journalEntryId
+    journalEntryId,
+    attachmentsRaw: JSON.stringify(attachments),
+    clientId,
+    entityId
   });
 
 
@@ -939,33 +942,18 @@ function AttachmentSection({
             </Alert>
           )}
 
-          {/* Step 3: Handle Empty State (only if not loading and no errors) */}
-          {(() => {
-            const shouldShowEmpty = !isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0;
-            const shouldShowFiles = !isLoadingAttachments && !isAttachmentsError && ((attachments?.length || 0) > 0 || (pendingFilesMetadata?.length || 0) > 0);
-            
-            console.log("ARCHITECT_DEBUG_RENDER_CONDITIONS:", {
-              isLoadingAttachments,
-              isAttachmentsError,
-              attachmentsLength: attachments?.length || 0,
-              pendingLength: pendingFilesMetadata?.length || 0,
-              shouldShowEmpty,
-              shouldShowFiles,
-              attachmentsType: typeof attachments,
-              attachmentsIsArray: Array.isArray(attachments)
-            });
-            
-            return null;
-          })()}
-          
-          {!isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 && (
+          {/* Step 3: Handle Empty State */}
+          {!isLoadingAttachments && !isAttachmentsError && (!attachments || attachments.length === 0) && (!pendingFilesMetadata || pendingFilesMetadata.length === 0) && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>
           )}
 
-          {/* Step 4: Render the File Table (only if not loading, no errors, and there are files to show) */}
-          {!isLoadingAttachments && !isAttachmentsError && ((attachments?.length || 0) > 0 || (pendingFilesMetadata?.length || 0) > 0) && (
+          {/* Step 4: Render the File Table */}
+          {!isLoadingAttachments && !isAttachmentsError && (
+            (Array.isArray(attachments) && attachments.length > 0) || 
+            (Array.isArray(pendingFilesMetadata) && pendingFilesMetadata.length > 0)
+          ) && (
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
                 <TableHeader>
