@@ -2155,43 +2155,41 @@ function JournalEntryForm({
 
   // Regular handleLineChange for non-numeric fields
   const handleLineChange = (index: number, field: string, value: string) => {
-    // For debit/credit fields, apply special handling
+    // New, corrected logic for debit/credit fields
     if (field === "debit" || field === "credit") {
-      // Handle various number formats with safeParseAmount
-      const numericValue = safeParseAmount(value).toString();
+      // This new logic sanitizes the input to ensure it's a valid decimal format.
+      // 1. Remove any character that is NOT a digit or a period.
+      const sanitizedValue = value.replace(/[^0-9.]/g, '');
+      const parts = sanitizedValue.split('.');
 
-      // Only process valid numeric inputs or empty string
-      if (/^[\d,.]*$/.test(value) && (value.match(/\./g) || []).length <= 1) {
-        const updatedLines = [...lines];
+      // 2. Ensure only one decimal point is present and limit decimals to 2 places.
+      let finalValue = sanitizedValue;
+      if (parts.length > 1) {
+        const wholePart = parts[0];
+        const decimalPart = parts.slice(1).join('').substring(0, 2);
+        finalValue = `${wholePart}.${decimalPart}`;
+      }
 
-        // Format the value with commas for display
-        const formattedValue =
-          numericValue === "" ? "" : formatNumberWithSeparator(numericValue);
+      // 3. Update the state with the cleaned value.
+      const updatedLines = [...lines];
+      updatedLines[index] = { ...updatedLines[index], [field]: finalValue };
 
-        // Set the current field value
-        updatedLines[index] = {
-          ...updatedLines[index],
-          [field]: formattedValue,
-        };
+      // 4. Clear the opposite field if necessary.
+      if (safeParseAmount(finalValue) > 0) {
+        const oppositeField = field === "debit" ? "credit" : "debit";
+        updatedLines[index][oppositeField] = "";
+      }
 
-        // Clear the opposite field if this field has a value > 0
-        if (parseFloat(numericValue) > 0) {
-          const oppositeField = field === "debit" ? "credit" : "debit";
-          updatedLines[index][oppositeField] = "";
-        }
+      setLines(updatedLines);
 
-        // Update lines state directly, no debounce
-        setLines(updatedLines);
-
-        // Clear field error when user changes the value
-        const errorKey = `line_${index}_${field}`;
-        if (fieldErrors[errorKey]) {
-          setFieldErrors((prev) => {
-            const updated = { ...prev };
-            delete updated[errorKey];
-            return updated;
-          });
-        }
+      // 5. Clear any errors for this field.
+      const errorKey = `line_${index}_${field}`;
+      if (fieldErrors[errorKey]) {
+        setFieldErrors((prev) => {
+          const updated = { ...prev };
+          delete updated[errorKey];
+          return updated;
+        });
       }
     } else {
       // For non-numeric fields, update immediately
