@@ -3328,7 +3328,6 @@ function JournalEntryForm({
           setPendingFilesMetadata={setPendingFilesMetadata}
           onUploadToEntryRef={uploadPendingFilesRef}
         />
-      ) : null}
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
         <Button
