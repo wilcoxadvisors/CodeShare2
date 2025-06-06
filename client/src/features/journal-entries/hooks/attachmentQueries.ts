@@ -46,7 +46,12 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
       const files = response?.data || [];
       console.log("ARCHITECT_DEBUG_ATTACHMENT_TRANSFORM:", {
         filesCount: files.length,
-        firstFile: files[0]
+        firstFile: files[0],
+        url,
+        responseData: response?.data,
+        journalEntryId,
+        entityId,
+        clientId
       });
       
       return files.map((file: any) => {
