@@ -919,12 +919,10 @@ function AttachmentSection({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
-                {(attachmentsError as Error)?.message ||
-                  "Failed to load attachments"}
+                {(attachmentsError as Error)?.message || "Failed to load attachments"}
               </AlertDescription>
             </Alert>
-          ) : (!Array.isArray(attachments) || attachments.length === 0) &&
-            pendingFilesMetadata.length === 0 ? (
+          ) : (attachments?.length || 0) + (pendingFilesMetadata?.length || 0) === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>
