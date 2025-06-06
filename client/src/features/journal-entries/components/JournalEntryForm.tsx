@@ -383,6 +383,7 @@ const FormSchema = z.object({
  */
 interface AttachmentSectionProps {
   entityId: number;
+  clientId: number;
   journalEntryId: number | null | undefined;
   pendingFiles: File[];
   setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
@@ -412,6 +413,7 @@ interface AttachmentSectionProps {
 
 function AttachmentSection({
   entityId,
+  clientId,
   journalEntryId,
   pendingFiles,
   setPendingFiles,
@@ -422,11 +424,6 @@ function AttachmentSection({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  
-  // Get client ID from context
-  const { selectedClientId } = useEntity();
-  // Convert nullable selectedClientId to number or undefined
-  const clientId = typeof selectedClientId === 'number' ? selectedClientId : undefined;
 
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
@@ -3321,6 +3318,7 @@ function JournalEntryForm({
       {/* Attachment Section - Force render */}
       <AttachmentSection
           entityId={entityId}
+          clientId={effectiveClientId as number}
           journalEntryId={effectiveJournalEntryId}
           pendingFiles={pendingFiles}
           setPendingFiles={setPendingFiles}

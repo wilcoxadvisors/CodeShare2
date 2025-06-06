@@ -1,0 +1,86 @@
+The problem lies in how the clientId is being passed (or rather, not passed) to the AttachmentSection component. Here's a breakdown of the issue:
+
+The Problem: The AttachmentSection component, which is responsible for displaying the list of files, tries to fetch the attachments using the useJournalEntryFiles hook. This hook requires a clientId, entityId, and journalEntryId to work correctly. However, the clientId is not being passed down to it from the parent JournalEntryForm. Instead, it relies on a context (useEntity), which appears not to be reliably providing the clientId in this specific workflow, causing the API call to fetch the files to be disabled.
+
+The Solution: We need to ensure the clientId is explicitly passed down through the component hierarchy, from JournalEntryForm to AttachmentSection.
+
+Here are the precise, step-by-step instructions to fix this bug.
+
+Mandatory Code Fixes
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Step 1: Update the AttachmentSectionProps Interface
+
+First, we need to update the props interface for the AttachmentSection to officially accept a clientId.
+
+Locate the AttachmentSectionProps interface (around line 433).
+Add the clientId property to it.
+TypeScript
+
+// Around line 433 in client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+interface AttachmentSectionProps {
+  entityId: number;
+  clientId: number; // <-- ADD THIS LINE
+  journalEntryId: number | null | undefined;
+  pendingFiles: File[];
+  // ... rest of the interface
+}
+Step 2: Update the AttachmentSection Component Definition
+
+Next, modify the AttachmentSection function to receive the clientId from its props and use it directly, instead of trying to get it from the context.
+
+Locate the AttachmentSection function definition (around line 462).
+Add clientId to the destructured props.
+Remove the two lines where clientId is being derived from the useEntity context.
+TypeScript
+
+// Around line 462 in client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+function AttachmentSection({
+  entityId,
+  clientId, // <-- ADD THIS
+  journalEntryId,
+  pendingFiles,
+  // ... rest of the props
+}: AttachmentSectionProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  
+  // v-- REMOVE THESE TWO LINES --v
+  // const { selectedClientId } = useEntity();
+  // const clientId = typeof selectedClientId === 'number' ? selectedClientId : undefined;
+  // ^-- REMOVE THESE TWO LINES --^
+
+  // ... rest of the component
+Step 3: Pass the clientId Prop to AttachmentSection
+
+Finally, update the place where JournalEntryForm renders AttachmentSection to pass the required clientId.
+
+Locate where <AttachmentSection ... /> is rendered inside the JournalEntryForm component (around line 1740).
+Pass the clientId to it. You can use the effectiveClientId variable that is already available in the JournalEntryForm's scope.
+TypeScript
+
+// Around line 1740 in client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+      {/* Attachment Section Conditional Rendering */}
+      {!isEditing ||
+      (isEditing &&
+        existingEntry?.id &&
+        existingEntry?.status !== "posted" &&
+        existingEntry?.status !== "voided") ? (
+        <AttachmentSection
+          entityId={entityId}
+          clientId={effectiveClientId as number} // <-- ADD THIS LINE
+          journalEntryId={effectiveJournalEntryId}
+          pendingFiles={pendingFiles}
+          setPendingFiles={setPendingFiles}
+          pendingFilesMetadata={pendingFilesMetadata}
+          setPendingFilesMetadata={setPendingFilesMetadata}
+          onUploadToEntryRef={uploadPendingFilesRef}
+        />
+      ) : null}
+By making these changes, you will create a direct and reliable data flow for the clientId. This will ensure the useJournalEntryFiles hook is always enabled with the correct parameters when editing an existing entry, allowing it to fetch and display the list of already uploaded files.
+
+Please apply these changes. This should resolve the critical attachment visibility issue.
