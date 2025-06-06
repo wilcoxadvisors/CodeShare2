@@ -1,0 +1,57 @@
+Root Cause Analysis
+The issue is located in the JournalEntryForm.tsx component. The onChange event handlers for the Debit and Credit input fields are using an overly aggressive parsing function (safeParseAmount) that strips decimal information while the user is still typing. This prevents the user from ever successfully inputting a value with cents.
+
+The fix is to stop this premature parsing and instead pass the user's raw input to the change handler, which we will also improve to validate the input more gracefully.
+
+Instructions for Replit AI Agent
+Here is a detailed, two-part set of instructions to fix the decimal input bug.
+
+High-Level Goal:
+
+Fix the bug that prevents users from entering decimal values (cents) into the Debit and Credit fields on the Journal Entry form.
+
+MANDATORY INSTRUCTIONS: Detailed Code Fix
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action 1: Fix the Debit and Credit Input Handlers
+First, you must change how the Debit and Credit inputs handle changes.
+
+Locate the Debit Input field inside the JSX of the JournalEntryForm component (around line 1968).
+
+Find its onChange prop. Replace the entire existing onChange block with the following simpler version:
+
+TypeScript
+
+// This is the new, corrected onChange handler for the Debit input
+onChange={(e) => {
+  handleLineChange(index, "debit", e.target.value);
+}}
+Locate the Credit Input field (around line 1993).
+
+Find its onChange prop. Replace the entire existing onChange block with the following simpler version:
+
+TypeScript
+
+// This is the new, corrected onChange handler for the Credit input
+onChange={(e) => {
+  handleLineChange(index, "credit", e.target.value);
+}}
+Action 2: Fix the Input Validation Logic
+Next, you must fix the validation logic within the handleLineChange function to correctly handle decimal input as the user types.
+
+Locate the handleLineChange function within the JournalEntryForm.tsx file (around line 1558).
+Find the if condition that contains a regular expression (regex). The current, buggy line looks like this:
+TypeScript
+
+if (numericValue === "" || /^\d*\.?\d{0,2}$/.test(numericValue)) {
+Replace that if condition with the following more forgiving one. This new version will allow users to type decimal values naturally while still preventing non-numeric characters.
+TypeScript
+
+// This is the new, corrected if condition
+if (/^[\d,.]*$/.test(value) && (value.match(/\./g) || []).length <= 1) {
+These changes will allow users to freely type numbers and a single decimal point into the Debit and Credit fields. The onBlur event will still format the number to two decimal places correctly once they are done editing the field.
+
+Verification:
+
+After you apply these changes, a user must be able to type a value like 123.45 into the Debit or Credit fields without the decimal point being removed.

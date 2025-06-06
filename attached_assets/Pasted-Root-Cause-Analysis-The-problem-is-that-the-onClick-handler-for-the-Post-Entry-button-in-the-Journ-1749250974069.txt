@@ -1,0 +1,62 @@
+Root Cause Analysis
+The problem is that the onClick handler for the "Post Entry" button in the JournalEntryForm.tsx component correctly calls the mutation to post the entry, but it's missing the onSuccess callback to trigger the navigation after the post is successful.
+
+The function to navigate away (onSubmit) is already available within the component; we just need to make sure it's called after the posting action succeeds.
+
+Instructions for Replit AI Agent
+Here are the detailed instructions to fix the navigation workflow.
+
+High-Level Goal:
+
+After a user clicks the "Post Entry" button when editing an existing journal entry, and the entry is successfully posted, the application must automatically navigate back to the journal entries list page.
+
+MANDATORY INSTRUCTIONS: Detailed Code Fix
+
+Open this exact file:
+
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+Locate the "Post Entry" Button:
+
+Scroll down to the JSX returned by the JournalEntryForm component, near the end of the file.
+Find the <Button> component with the text "Post Entry". It will be inside an onClick handler that checks if user?.role === 'admin'.
+Find the specific code to replace:
+
+Inside that button's onClick handler, find the postJournalEntry.mutate(...) call. It will look like this:
+TypeScript
+
+// Around line 1780
+postJournalEntry.mutate({
+  id: existingEntry.id,
+  clientId: effectiveClientId,
+  entityId: entityId
+});
+Replace that code block with the following, which adds the required onSuccess callback:
+
+TypeScript
+
+// Replace the previous block with this one
+postJournalEntry.mutate({
+  id: existingEntry.id,
+  clientId: effectiveClientId,
+  entityId: entityId
+}, {
+  onSuccess: () => {
+    toast({
+      title: "Journal Entry Posted",
+      description: "The journal entry was successfully posted.",
+    });
+    onSubmit(); // This triggers the navigation
+  },
+  onError: (error) => {
+    toast({
+      title: "Error Posting",
+      description: `There was an error posting the entry: ${error.message}`,
+      variant: "destructive",
+    });
+  }
+});
+This change tells the mutation what to do upon success: show a confirmation toast and then call onSubmit(), which will correctly navigate the user back to the list of journal entries.
+
+Verification:
+
+To test the fix, please edit a draft journal entry, click the "Post Entry" button, and confirm that you are redirected to the main journal entries page after the entry is posted.

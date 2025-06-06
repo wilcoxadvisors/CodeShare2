@@ -2161,7 +2161,7 @@ function JournalEntryForm({
       const numericValue = safeParseAmount(value).toString();
 
       // Only process valid numeric inputs or empty string
-      if (numericValue === "" || /^\d*\.?\d{0,2}$/.test(numericValue)) {
+      if (/^[\d,.]*$/.test(value) && (value.match(/\./g) || []).length <= 1) {
         const updatedLines = [...lines];
 
         // Format the value with commas for display
@@ -3089,9 +3089,7 @@ function JournalEntryForm({
                     inputMode="decimal"
                     value={line.debit}
                     onChange={(e) => {
-                      // Use safeParseAmount for consistent number parsing
-                      const rawValue = safeParseAmount(e.target.value).toString();
-                      handleLineChange(index, "debit", rawValue);
+                      handleLineChange(index, "debit", e.target.value);
                     }}
                     onBlur={(e) => {
                       // Format to 2 decimal places with thousands separators on blur
@@ -3126,9 +3124,7 @@ function JournalEntryForm({
                     inputMode="decimal"
                     value={line.credit}
                     onChange={(e) => {
-                      // Use safeParseAmount for consistent number parsing
-                      const rawValue = safeParseAmount(e.target.value).toString();
-                      handleLineChange(index, "credit", rawValue);
+                      handleLineChange(index, "credit", e.target.value);
                     }}
                     onBlur={(e) => {
                       // Format to 2 decimal places with thousands separators on blur
@@ -3340,6 +3336,21 @@ function JournalEntryForm({
                     id: existingEntry.id,
                     clientId: effectiveClientId,
                     entityId: entityId
+                  }, {
+                    onSuccess: () => {
+                      toast({
+                        title: "Journal Entry Posted",
+                        description: "The journal entry was successfully posted.",
+                      });
+                      onSubmit(); // This triggers the navigation
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Error Posting",
+                        description: `There was an error posting the entry: ${error.message}`,
+                        variant: "destructive",
+                      });
+                    }
                   });
                 } else {
                   console.log(
