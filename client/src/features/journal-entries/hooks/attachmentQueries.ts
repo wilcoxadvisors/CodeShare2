@@ -40,6 +40,12 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
         method: 'GET'
       });
       
+      console.log("ARCHITECT_DEBUG_ATTACHMENT_API_RESPONSE:", {
+        url,
+        response: response?.data,
+        responseLength: response?.data?.length || 0
+      });
+      
       return response?.data || [];
     },
     enabled: !!(journalEntryId && entityId && clientId),

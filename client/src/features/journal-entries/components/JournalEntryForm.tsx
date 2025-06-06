@@ -456,6 +456,8 @@ function AttachmentSection({
     journalEntryId: typeof journalEntryId === "number" ? journalEntryId : "not-a-number"
   });
 
+
+
   // Helper function to format bytes into readable format
   const formatBytes = (bytes: number, decimals: number = 2): string => {
     if (bytes === 0) return "0 Bytes";
@@ -504,6 +506,23 @@ function AttachmentSection({
     entityId,
     clientId as number // Cast to number since it's required by the hook
   );
+
+  // DEBUG: Log attachments data and hook parameters
+  console.log("ARCHITECT_DEBUG_ATTACHMENTS_HOOK_PARAMS:", {
+    isExistingEntry,
+    journalEntryId,
+    entityId,
+    clientId,
+    hookEnabled: !!(isExistingEntry && journalEntryId && entityId && clientId)
+  });
+  
+  console.log("ARCHITECT_DEBUG_ATTACHMENTS_DATA:", {
+    attachmentsData: attachments,
+    attachmentsLength: attachments?.length || 0,
+    isLoadingAttachments,
+    isAttachmentsError,
+    attachmentsError: attachmentsError?.message
+  });
 
   // Function to upload pending files to a specific journal entry ID
   // This function will be exposed to parent components via the ref
