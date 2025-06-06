@@ -938,8 +938,17 @@ function AttachmentSection({
                   "Failed to load attachments"}
               </AlertDescription>
             </Alert>
-          ) : (!Array.isArray(attachments) || attachments.length === 0) &&
-            pendingFilesMetadata.length === 0 ? (
+          ) : (() => {
+            const showNoFiles = (!Array.isArray(attachments) || attachments.length === 0) && pendingFilesMetadata.length === 0;
+            console.log("ARCHITECT_DEBUG_SHOW_NO_FILES:", {
+              showNoFiles,
+              isArrayAttachments: Array.isArray(attachments),
+              attachmentsLength: attachments?.length || 0,
+              pendingFilesLength: pendingFilesMetadata.length,
+              attachmentsRaw: attachments
+            });
+            return showNoFiles;
+          })() ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>
