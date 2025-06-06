@@ -439,7 +439,9 @@ function AttachmentSection({
   });
 
   // Determine if we can modify attachments based on entry status
-  const canModifyAttachments = (journalEntry as { status?: string })?.status === "draft" || (journalEntry as { status?: string })?.status === "pending_approval";
+  const isNewEntry = !isExistingEntry;
+  const canModifyExistingEntry = journalEntry?.status === 'draft' || journalEntry?.status === 'pending_approval';
+  const canModifyAttachments = isNewEntry || canModifyExistingEntry;
   
   // Set disable conditions correctly
   const isAttachmentsDisabled = !canModifyAttachments;
