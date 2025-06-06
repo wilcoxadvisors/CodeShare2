@@ -1,0 +1,131 @@
+Required Code Modification
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action: We will modify the AttachmentSection to be a simpler component that receives the attachments as a direct prop, and we will update the JournalEntryForm to pass those attachments to it.
+
+Step 1: Update AttachmentSection Props
+
+Locate the AttachmentSectionProps interface (around line 433).
+
+Add a new prop called attachments to it.
+
+TypeScript
+
+// Around line 433
+interface AttachmentSectionProps {
+  entityId: number;
+  clientId: number;
+  journalEntryId: number | null | undefined;
+  pendingFiles: File[];
+  setPendingFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  pendingFilesMetadata: Array<{
+    id: number;
+    filename: string;
+    size: number;
+    mimeType: string;
+    addedAt: Date | number;
+  }>;
+  setPendingFilesMetadata: React.Dispatch<
+    React.SetStateAction<
+      Array<{
+        id: number;
+        filename: string;
+        size: number;
+        mimeType: string;
+        addedAt: Date | number;
+      }>
+    >
+  >;
+  onUploadToEntryRef?: React.MutableRefObject<
+    ((entryId: number) => Promise<void>) | null
+  >;
+  attachments: JournalEntryFile[]; // <-- ADD THIS LINE
+}
+Step 2: Refactor the AttachmentSection Component
+
+Locate the AttachmentSection function (around line 462).
+
+Update the function signature to accept the new attachments prop.
+
+Completely DELETE the useJournalEntryFiles hook call inside it. It is no longer needed.
+
+Remove the loading and error handling from the JSX that was associated with the deleted hook.
+
+TypeScript
+
+// Around line 462...
+
+// 1. UPDATE the function signature here:
+function AttachmentSection({
+  entityId,
+  clientId,
+  journalEntryId,
+  pendingFiles,
+  setPendingFiles,
+  pendingFilesMetadata,
+  setPendingFilesMetadata,
+  onUploadToEntryRef,
+  attachments, // <-- ADD the new prop here
+}: AttachmentSectionProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // ... keep the rest of the existing code inside the function ...
+
+  // 2. DELETE this entire block of code:
+  /*
+  const {
+    data: attachments = [],
+    isLoading: isLoadingAttachments,
+    isError: isAttachmentsError,
+    error: attachmentsError,
+  } = useJournalEntryFiles(
+    isExistingEntry ? (journalEntryId as number) : undefined,
+    entityId,
+    clientId as number
+  );
+  */
+
+  // ... The rest of the function continues ...
+
+  // 3. UPDATE the JSX rendering logic. Find this block around line 1118:
+  {/* Attachments List */}
+  <div className="mt-4">
+    <h4 className="text-sm font-medium mb-2">Attached Files</h4>
+
+    {/* REPLACE all the loading/error logic with a simple check on the new prop */}
+    {(attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 ? (
+      <p className="text-sm text-muted-foreground text-center py-4">
+        No files attached yet
+      </p>
+    ) : (
+      <ScrollArea className="h-[200px] rounded-md border">
+        {/* The rest of the Table rendering can stay the same, as it already maps over the `attachments` array */}
+        <Table>
+        {/* ... table content ... */}
+        </Table>
+      </ScrollArea>
+    )}
+  </div>
+Step 3: Pass the Attachments to the Component
+
+Locate where <AttachmentSection ... /> is rendered inside the JournalEntryForm component's return statement (around line 1740).
+
+Pass the existingEntry.files to the new attachments prop.
+
+TypeScript
+
+// Around line 1740
+<AttachmentSection
+  entityId={entityId}
+  clientId={effectiveClientId as number}
+  journalEntryId={effectiveJournalEntryId}
+  pendingFiles={pendingFiles}
+  setPendingFiles={setPendingFiles}
+  pendingFilesMetadata={pendingFilesMetadata}
+  setPendingFilesMetadata={setPendingFilesMetadata}
+  onUploadToEntryRef={uploadPendingFilesRef}
+  attachments={existingEntry?.files || []} // <-- ADD THIS LINE
+/>
+This revised strategy simplifies the code, removes the unnecessary API call, and directly uses the data that is already confirmed to be loading correctly. This will fix the problem.

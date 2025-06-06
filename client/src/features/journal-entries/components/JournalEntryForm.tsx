@@ -409,6 +409,7 @@ interface AttachmentSectionProps {
   onUploadToEntryRef?: React.MutableRefObject<
     ((entryId: number) => Promise<void>) | null
   >;
+  attachments: JournalEntryFile[];
 }
 
 function AttachmentSection({
@@ -420,6 +421,7 @@ function AttachmentSection({
   pendingFilesMetadata,
   setPendingFilesMetadata,
   onUploadToEntryRef,
+  attachments,
 }: AttachmentSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -492,24 +494,12 @@ function AttachmentSection({
     }
   };
 
-  // Fetch attachments for this journal entry (only for existing entries)
-  const {
-    data: attachments = [],
-    isLoading: isLoadingAttachments,
-    isError: isAttachmentsError,
-    error: attachmentsError,
-  } = useJournalEntryFiles(
-    isExistingEntry ? (journalEntryId as number) : undefined,
-    entityId,
-    clientId as number // Cast to number since it's required by the hook
-  );
+  // Attachments are now passed as props directly from the parent component
 
   // Debug the attachments data
   console.log("ARCHITECT_DEBUG_ATTACHMENTS_STATE:", {
     attachments,
     attachmentsLength: attachments?.length,
-    isLoadingAttachments,
-    isAttachmentsError,
     pendingFilesLength: pendingFilesMetadata?.length,
     isExistingEntry,
     journalEntryId,
@@ -921,26 +911,12 @@ function AttachmentSection({
         <div className="mt-4">
           <h4 className="text-sm font-medium mb-2">Attached Files</h4>
 
-          {/* Step 1: Handle Loading State */}
-          {isLoadingAttachments && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          )}
-
-          {/* Step 2: Handle Error State */}
-          {isAttachmentsError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                {(attachmentsError as Error)?.message || "Failed to load attachments."}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Always show the file table section when not loading, regardless of data state */}
-          {!isLoadingAttachments && (
+          {/* Show message when no files exist */}
+          {(attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No files attached yet
+            </p>
+          ) : (
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
                 <TableHeader>
@@ -3332,6 +3308,7 @@ function JournalEntryForm({
           pendingFilesMetadata={pendingFilesMetadata}
           setPendingFilesMetadata={setPendingFilesMetadata}
           onUploadToEntryRef={uploadPendingFilesRef}
+          attachments={existingEntry?.files || []}
         />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
