@@ -44,10 +44,18 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
       
       // Transform the response data to match the expected interface
       const files = response?.data || [];
-      return files.map((file: any) => ({
-        ...file,
-        uploadedAt: new Date(file.uploadedAt) // Convert string to Date
-      }));
+      console.log("ARCHITECT_DEBUG_ATTACHMENT_TRANSFORM:", {
+        filesCount: files.length,
+        firstFile: files[0]
+      });
+      
+      return files.map((file: any) => {
+        const uploadedAtDate = file.uploadedAt ? new Date(file.uploadedAt) : null;
+        return {
+          ...file,
+          uploadedAt: uploadedAtDate && !isNaN(uploadedAtDate.getTime()) ? uploadedAtDate : null
+        };
+      });
     },
     enabled: !!(journalEntryId && entityId && clientId),
   });

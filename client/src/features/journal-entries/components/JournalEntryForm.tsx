@@ -909,12 +909,27 @@ function AttachmentSection({
         {/* Attachments List */}
         <div className="mt-4">
           <h4 className="text-sm font-medium mb-2">Attached Files</h4>
+          {(() => {
+            const attachmentsCount = attachments?.length || 0;
+            const pendingCount = pendingFilesMetadata?.length || 0;
+            console.log("ARCHITECT_DEBUG_RENDER_LOGIC:", {
+              isLoadingAttachments,
+              isAttachmentsError,
+              attachmentsCount,
+              pendingCount,
+              totalFiles: attachmentsCount + pendingCount,
+              attachmentsArray: attachments,
+              shouldShowFiles: !isLoadingAttachments && !isAttachmentsError && (attachmentsCount > 0 || pendingCount > 0)
+            });
+            return null;
+          })()}
 
-          {isLoadingAttachments ? (
+          {isLoadingAttachments && (
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : isAttachmentsError && isExistingEntry ? (
+          )}
+          {isAttachmentsError && isExistingEntry && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
@@ -922,11 +937,13 @@ function AttachmentSection({
                 {(attachmentsError as Error)?.message || "Failed to load attachments"}
               </AlertDescription>
             </Alert>
-          ) : (attachments?.length || 0) + (pendingFilesMetadata?.length || 0) === 0 ? (
+          )}
+          {!isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>
-          ) : (
+          )}
+          {!isLoadingAttachments && !isAttachmentsError && ((attachments?.length || 0) > 0 || (pendingFilesMetadata?.length || 0) > 0) && (
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
                 <TableHeader>
