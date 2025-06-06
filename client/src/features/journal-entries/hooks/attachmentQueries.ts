@@ -46,7 +46,12 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
         responseLength: response?.data?.length || 0
       });
       
-      return response?.data || [];
+      // Transform the response data to match the expected interface
+      const files = response?.data || [];
+      return files.map((file: any) => ({
+        ...file,
+        uploadedAt: new Date(file.uploadedAt) // Convert string to Date
+      }));
     },
     enabled: !!(journalEntryId && entityId && clientId),
   });
