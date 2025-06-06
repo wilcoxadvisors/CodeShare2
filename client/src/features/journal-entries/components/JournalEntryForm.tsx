@@ -733,6 +733,8 @@ function AttachmentSection({
     }
   };
 
+
+
   // Delete file hook (for existing entries)
   // Pass clientId and entityId to the hook for hierarchical URL pattern support
   const deleteFileMutation = useDeleteJournalEntryFile();
