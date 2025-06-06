@@ -496,18 +496,6 @@ function AttachmentSection({
 
   // Attachments are now passed as props directly from the parent component
 
-  // Debug the attachments data
-  console.log("ARCHITECT_DEBUG_ATTACHMENTS_STATE:", {
-    attachments,
-    attachmentsLength: attachments?.length,
-    pendingFilesLength: pendingFilesMetadata?.length,
-    isExistingEntry,
-    journalEntryId,
-    attachmentsRaw: JSON.stringify(attachments),
-    clientId,
-    entityId
-  });
-
 
 
   // Function to upload pending files to a specific journal entry ID
@@ -3286,19 +3274,7 @@ function JournalEntryForm({
         </table>
       </div>
 
-      {/* DEBUG: Force render attachment section */}
       {/* Attachment Section */}
-      {(() => {
-        console.log("ARCHITECT_DEBUG_ATTACHMENT_PROPS:", {
-          entityId,
-          effectiveClientId,
-          journalEntryId: effectiveJournalEntryId,
-          clientIdType: typeof effectiveClientId,
-          entityIdType: typeof entityId,
-          journalEntryIdType: typeof effectiveJournalEntryId
-        });
-        return null;
-      })()}
       <AttachmentSection
           entityId={entityId}
           clientId={effectiveClientId as number}

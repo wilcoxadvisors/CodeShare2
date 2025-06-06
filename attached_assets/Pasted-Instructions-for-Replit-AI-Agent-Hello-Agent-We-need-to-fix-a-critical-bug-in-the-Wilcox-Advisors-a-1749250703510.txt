@@ -1,0 +1,41 @@
+Instructions for Replit AI Agent
+Hello Agent. We need to fix a critical bug in the Wilcox Advisors accounting system.
+
+High-Level Goal:
+
+The immediate goal is to fix a bug that prevents users from uploading files when creating a new journal entry. Currently, the file upload area on the "New Journal Entry" page is incorrectly disabled and displays the message, "Files can't be added once the entry is posted."
+
+Root Cause Analysis:
+
+The bug is located in the file: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+
+Inside this file, there is a sub-component named AttachmentSection. The logic within this section that determines whether the file upload area should be enabled or disabled only works correctly for existing journal entries. It fails to properly handle the case for a new entry (which doesn't have a status yet), causing it to incorrectly default to a "disabled" or "locked" state.
+
+MANDATORY INSTRUCTIONS: Detailed Code Fix
+
+You are to perform the following modification to the specified file.
+
+Open this exact file:
+
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+Locate the AttachmentSection component:
+
+Scroll down or search for function AttachmentSection(.
+Find the specific line to replace:
+
+Inside AttachmentSection, find this exact line of code (it should be around line 483):
+TypeScript
+
+const canModifyAttachments = (journalEntry as { status?: string })?.status === "draft" || (journalEntry as { status?: string })?.status === "pending_approval";
+Replace that single line with the following three lines of improved logic:
+
+TypeScript
+
+const isNewEntry = !isExistingEntry;
+const canModifyExistingEntry = journalEntry?.status === 'draft' || journalEntry?.status === 'pending_approval';
+const canModifyAttachments = isNewEntry || canModifyExistingEntry;
+This new logic correctly handles all scenarios: it explicitly permits file uploads for any new entry (isNewEntry) while preserving the existing rules for draft or pending entries (canModifyExistingEntry).
+
+Verification:
+
+After you apply this change, the bug will be resolved. To verify, a user must be able to go to the "Manual Journal Entry" page and see that the file upload dropzone is active and ready to accept files.
