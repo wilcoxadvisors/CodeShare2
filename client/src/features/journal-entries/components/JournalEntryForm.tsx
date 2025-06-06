@@ -507,22 +507,7 @@ function AttachmentSection({
     clientId as number // Cast to number since it's required by the hook
   );
 
-  // DEBUG: Log attachments data and hook parameters
-  console.log("ARCHITECT_DEBUG_ATTACHMENTS_HOOK_PARAMS:", {
-    isExistingEntry,
-    journalEntryId,
-    entityId,
-    clientId,
-    hookEnabled: !!(isExistingEntry && journalEntryId && entityId && clientId)
-  });
-  
-  console.log("ARCHITECT_DEBUG_ATTACHMENTS_DATA:", {
-    attachmentsData: attachments,
-    attachmentsLength: attachments?.length || 0,
-    isLoadingAttachments,
-    isAttachmentsError,
-    attachmentsError: attachmentsError?.message
-  });
+
 
   // Function to upload pending files to a specific journal entry ID
   // This function will be exposed to parent components via the ref
@@ -938,17 +923,8 @@ function AttachmentSection({
                   "Failed to load attachments"}
               </AlertDescription>
             </Alert>
-          ) : (() => {
-            const showNoFiles = (!Array.isArray(attachments) || attachments.length === 0) && pendingFilesMetadata.length === 0;
-            console.log("ARCHITECT_DEBUG_SHOW_NO_FILES:", {
-              showNoFiles,
-              isArrayAttachments: Array.isArray(attachments),
-              attachmentsLength: attachments?.length || 0,
-              pendingFilesLength: pendingFilesMetadata.length,
-              attachmentsRaw: attachments
-            });
-            return showNoFiles;
-          })() ? (
+          ) : (!Array.isArray(attachments) || attachments.length === 0) &&
+            pendingFilesMetadata.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>

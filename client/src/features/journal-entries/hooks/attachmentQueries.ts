@@ -40,11 +40,7 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
         method: 'GET'
       });
       
-      console.log("ARCHITECT_DEBUG_ATTACHMENT_API_RESPONSE:", {
-        url,
-        response: response?.data,
-        responseLength: response?.data?.length || 0
-      });
+
       
       // Transform the response data to match the expected interface
       const files = response?.data || [];
