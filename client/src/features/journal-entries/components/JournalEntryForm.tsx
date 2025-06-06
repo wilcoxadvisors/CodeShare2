@@ -507,6 +507,17 @@ function AttachmentSection({
     clientId as number // Cast to number since it's required by the hook
   );
 
+  // Debug the attachments data
+  console.log("ARCHITECT_DEBUG_ATTACHMENTS_STATE:", {
+    attachments,
+    attachmentsLength: attachments?.length,
+    isLoadingAttachments,
+    isAttachmentsError,
+    pendingFilesLength: pendingFilesMetadata?.length,
+    isExistingEntry,
+    journalEntryId
+  });
+
 
 
   // Function to upload pending files to a specific journal entry ID
@@ -909,40 +920,33 @@ function AttachmentSection({
         {/* Attachments List */}
         <div className="mt-4">
           <h4 className="text-sm font-medium mb-2">Attached Files</h4>
-          {(() => {
-            const attachmentsCount = attachments?.length || 0;
-            const pendingCount = pendingFilesMetadata?.length || 0;
-            console.log("ARCHITECT_DEBUG_RENDER_LOGIC:", {
-              isLoadingAttachments,
-              isAttachmentsError,
-              attachmentsCount,
-              pendingCount,
-              totalFiles: attachmentsCount + pendingCount,
-              attachmentsArray: attachments,
-              shouldShowFiles: !isLoadingAttachments && !isAttachmentsError && (attachmentsCount > 0 || pendingCount > 0)
-            });
-            return null;
-          })()}
 
+          {/* Step 1: Handle Loading State */}
           {isLoadingAttachments && (
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           )}
-          {isAttachmentsError && isExistingEntry && (
-            <Alert variant="destructive" className="mb-4">
+
+          {/* Step 2: Handle Error State */}
+          {isAttachmentsError && (
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
-                {(attachmentsError as Error)?.message || "Failed to load attachments"}
+                {(attachmentsError as Error)?.message || "Failed to load attachments."}
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Step 3: Handle Empty State (only if not loading and no errors) */}
           {!isLoadingAttachments && !isAttachmentsError && (attachments?.length || 0) === 0 && (pendingFilesMetadata?.length || 0) === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No files attached yet
             </p>
           )}
+
+          {/* Step 4: Render the File Table (only if not loading, no errors, and there are files to show) */}
           {!isLoadingAttachments && !isAttachmentsError && ((attachments?.length || 0) > 0 || (pendingFilesMetadata?.length || 0) > 0) && (
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
