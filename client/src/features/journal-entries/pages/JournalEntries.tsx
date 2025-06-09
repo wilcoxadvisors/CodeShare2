@@ -531,17 +531,25 @@ function JournalEntries() {
                               {formatDate(entry.date)}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            {entryDetailLink ? (
-                              <Link 
-                                to={entryDetailLink}
-                                className="hover:underline"
-                              >
-                                {entry.referenceNumber || entry.reference || '-'}
-                              </Link>
-                            ) : (
-                              entry.referenceNumber || entry.reference || '-'
-                            )}
+                          <TableCell className="max-w-[180px]">
+                            <div className="flex items-center">
+                              {entryDetailLink ? (
+                                <Link 
+                                  to={entryDetailLink}
+                                  className="text-blue-600 hover:underline hover:text-blue-800 truncate font-mono text-sm"
+                                  title={entry.referenceNumber || entry.reference || '-'}
+                                >
+                                  {entry.referenceNumber || entry.reference || '-'}
+                                </Link>
+                              ) : (
+                                <span 
+                                  className="font-mono text-sm truncate"
+                                  title={entry.referenceNumber || entry.reference || '-'}
+                                >
+                                  {entry.referenceNumber || entry.reference || '-'}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
                           <TableCell>{entry.journalType || 'JE'}</TableCell>

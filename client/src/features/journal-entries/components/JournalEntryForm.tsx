@@ -2430,7 +2430,7 @@ function JournalEntryForm({
             </div>
             <p className="text-xs text-gray-600 flex items-center">
               <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-              Auto-generated unique prefix (cannot be changed)
+              Unique system-generated ID
             </p>
             
             {/* Optional user suffix */}
@@ -2440,15 +2440,21 @@ function JournalEntryForm({
                 name="referenceUserSuffix"
                 value={journalData.referenceUserSuffix}
                 onChange={handleChange}
-                placeholder="Optional: Add custom suffix (e.g., ACCRUAL_ADJ, INV_001)"
+                placeholder="Add your own reference (optional)"
                 className="mt-1"
-                maxLength={50}
+                maxLength={30}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Examples: INV-001, ACCRUAL, PAYROLL, etc.
+            </p>
             {journalData.referenceUserSuffix && (
-              <p className="text-xs text-gray-600">
-                Full reference: <span className="font-mono text-sm">{buildFullReference(autoReferencePrefix, journalData.referenceUserSuffix)}</span>
-              </p>
+              <div className="mt-2 p-2 bg-gray-50 rounded border">
+                <p className="text-xs text-gray-600">Complete reference:</p>
+                <p className="font-mono text-sm text-gray-800 break-all">
+                  {buildFullReference(autoReferencePrefix, journalData.referenceUserSuffix)}
+                </p>
+              </div>
             )}
           </div>
         </div>
