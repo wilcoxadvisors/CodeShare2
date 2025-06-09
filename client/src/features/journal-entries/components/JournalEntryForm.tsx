@@ -28,6 +28,7 @@ import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
+import { generateUniqueReferencePrefix, buildFullReference } from "@/utils/journalIdUtils";
 import { 
   getJournalEntriesBaseUrl, 
   getJournalEntryUrl, 
@@ -450,7 +451,7 @@ function AttachmentSection({
   // DEBUG: Log attachment status for troubleshooting
   console.log("ARCHITECT_DEBUG_DRAFT_DELETE_UI: Attachment status check:", {
     journalEntry: !!journalEntry,
-    journalEntryStatus: (journalEntry as { status?: string })?.status,
+    journalEntryStatus: (journalEntry as any)?.status,
     isAttachmentsDisabled,
     clientId,
     entityId,
@@ -1281,9 +1282,26 @@ function JournalEntryForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
+  // Generate auto-reference prefix for new entries
+  const autoReferencePrefix = useMemo(() => {
+    if (existingEntry?.referenceNumber) {
+      // For existing entries, parse the existing reference
+      const parts = existingEntry.referenceNumber.split(':');
+      return parts[0]; // Return the prefix part
+    } else {
+      // For new entries, generate a unique prefix
+      return generateUniqueReferencePrefix(
+        entityId ?? 0, 
+        getTodayYMD().substring(0, 4)
+      );
+    }
+  }, [existingEntry, entityId]);
+
   const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
-    referenceNumber: existingEntry?.referenceNumber || "", // Use referenceNumber to match server schema
+    referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix, // Auto-generated prefix
+    referenceUserSuffix: existingEntry?.referenceNumber ? 
+      existingEntry.referenceNumber.split(':')[1] || "" : "", // Extract user suffix if exists
     date: existingEntry?.date ?? // already "YYYY-MM-DD" 
           getTodayYMD(), // Use our timezone-safe utility instead of Date()
     description: existingEntry?.description || "",
