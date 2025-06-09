@@ -1684,7 +1684,19 @@ function JournalEntryDetail() {
           </CardHeader>
           <CardContent>
             {/* File Upload Area - only visible for draft or pending_approval entries */}
-            {entry.status === 'draft' || entry.status === 'pending_approval' ? (
+            {(() => {
+              // DEBUG: Log entry status for attachment permission troubleshooting
+              console.log("ARCHITECT_DEBUG_DETAIL_ATTACHMENT_PERMISSIONS:", {
+                entryStatus: entry?.status,
+                entryExists: !!entry,
+                canUpload: entry?.status === 'draft' || entry?.status === 'pending_approval',
+                entryId: entryId,
+                isInEditMode: isInEditMode,
+                entryObject: entry ? { id: entry.id, status: entry.status, description: entry.description } : null
+              });
+              return null;
+            })()}
+            {entry && (entry.status === 'draft' || entry.status === 'pending_approval') ? (
               <div className="mb-4">
                 {!uploading && (
                   <div
