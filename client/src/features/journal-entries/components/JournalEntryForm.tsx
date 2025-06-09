@@ -438,7 +438,12 @@ function AttachmentSection({
 
   // Determine if we can modify attachments based on entry status
   const isNewEntry = !isExistingEntry;
-  const canModifyExistingEntry = journalEntry?.status === 'draft' || journalEntry?.status === 'pending_approval';
+  
+  // For existing entries, we need both the journal entry data AND it must be in draft/pending status
+  // If we don't have journal entry data yet, we should disable attachments by default for safety
+  const canModifyExistingEntry = isExistingEntry && journalEntry && 
+    (journalEntry.status === 'draft' || journalEntry.status === 'pending_approval');
+  
   const canModifyAttachments = isNewEntry || canModifyExistingEntry;
   
   // Set disable conditions correctly
@@ -446,13 +451,19 @@ function AttachmentSection({
   const isFileDeletionDisabled = !canModifyAttachments;
 
   // DEBUG: Log attachment status for troubleshooting
-  console.log("ARCHITECT_DEBUG_DRAFT_DELETE_UI: Attachment status check:", {
+  console.log("ARCHITECT_DEBUG_ATTACHMENT_PERMISSIONS:", {
     journalEntry: !!journalEntry,
-    journalEntryStatus: (journalEntry as any)?.status,
+    journalEntryStatus: journalEntry?.status,
+    isExistingEntry,
+    isNewEntry,
+    canModifyExistingEntry,
+    canModifyAttachments,
     isAttachmentsDisabled,
+    isFileDeletionDisabled,
     clientId,
     entityId,
-    journalEntryId: typeof journalEntryId === "number" ? journalEntryId : "not-a-number"
+    journalEntryId: typeof journalEntryId === "number" ? journalEntryId : "temp-id",
+    journalEntryIdType: typeof journalEntryId
   });
 
 
