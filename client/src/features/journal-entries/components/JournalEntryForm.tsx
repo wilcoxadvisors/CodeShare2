@@ -58,6 +58,8 @@ import {
   FileArchive,
   Lock,
   SendHorizontal,
+  Save,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3252,20 +3254,25 @@ function JournalEntryForm({
         <div className="grid grid-cols-2 gap-2">
           {/* Save as Draft button - for all users */}
           <Button
+            variant="outline"
             onClick={() => handleSubmit(true)}
             disabled={
               createEntry.isPending || updateEntry.isPending || isUploading
             }
-            className="relative"
+            className="relative border-gray-300 text-gray-700 hover:bg-gray-50"
           >
             {(createEntry.isPending ||
               updateEntry.isPending ||
               isUploading) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
             )}
-            {!(createEntry.isPending || updateEntry.isPending || isUploading) &&
-              "Save as Draft"}
-            {(createEntry.isPending || updateEntry.isPending) && "Saving..."}
+            {!(createEntry.isPending || updateEntry.isPending || isUploading) && (
+              <>
+                <Save className="mr-2 h-4 w-4 inline" />
+                Save as Draft
+              </>
+            )}
+            {(createEntry.isPending || updateEntry.isPending) && "Saving Draft..."}
             {isUploading && "Uploading Files..."}
           </Button>
 
@@ -3316,7 +3323,7 @@ function JournalEntryForm({
                   handleSubmit(false);
                 }
               }}
-              className="bg-green-600 hover:bg-green-700 relative"
+              className="bg-green-600 hover:bg-green-700 text-white relative"
               disabled={
                 createEntry.isPending ||
                 updateEntry.isPending ||
@@ -3343,7 +3350,7 @@ function JournalEntryForm({
                 updateEntry.isPending ||
                 isUploading
               ) &&
-                isBalanced && <CheckCircle2 className="mr-2 h-4 w-4 inline" />}
+                isBalanced && <Send className="mr-2 h-4 w-4 inline" />}
               {!(
                 createEntry.isPending ||
                 updateEntry.isPending ||
@@ -3372,7 +3379,7 @@ function JournalEntryForm({
                   createEntry.mutate(entryData);
                 }
               }}
-              className="bg-blue-600 hover:bg-blue-700 relative"
+              className="bg-blue-600 hover:bg-blue-700 text-white relative"
               disabled={
                 createEntry.isPending ||
                 updateEntry.isPending ||
@@ -3397,7 +3404,7 @@ function JournalEntryForm({
                 updateEntry.isPending ||
                 isUploading
               ) &&
-                isBalanced && <CheckCircle2 className="mr-2 h-4 w-4 inline" />}
+                isBalanced && <SendHorizontal className="mr-2 h-4 w-4 inline" />}
               {!(
                 createEntry.isPending ||
                 updateEntry.isPending ||
