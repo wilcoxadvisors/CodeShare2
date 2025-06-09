@@ -1196,6 +1196,9 @@ function JournalEntryForm({
     }[]
   >([]);
 
+  // Flag to track if files have already been uploaded in the two-phase workflow
+  const [filesAlreadyUploaded, setFilesAlreadyUploaded] = useState(false);
+
   // Ref to hold the function to upload pending files to a specific journal entry
   // This will be passed to and set by the AttachmentSection component
   const uploadPendingFilesRef = useRef<
@@ -1500,8 +1503,8 @@ function JournalEntryForm({
       }
 
       // Upload pending files if there are any and we have a valid journal entry ID
-      // EXPLICITLY wait for file uploads to complete before proceeding
-      if (hasAttachments && uploadPendingFilesRef.current) {
+      // Only upload if files haven't already been uploaded in the two-phase workflow
+      if (hasAttachments && uploadPendingFilesRef.current && !filesAlreadyUploaded) {
         try {
           console.log(
             `DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`,
@@ -1539,6 +1542,8 @@ function JournalEntryForm({
           // EXPLICITLY clear loading state
           setIsUploading(false);
         }
+      } else if (filesAlreadyUploaded) {
+        console.log("DEBUG: Skipping file upload - files already uploaded in two-phase workflow");
       }
 
       toast({
@@ -1549,6 +1554,7 @@ function JournalEntryForm({
       // Clear pending files after successful upload or if there were none
       setPendingFiles([]);
       setPendingFilesMetadata([]);
+      setFilesAlreadyUploaded(false); // Reset the flag for next entry
 
       // Use our helper function to invalidate queries
       invalidateJournalEntryQueries();
@@ -2008,6 +2014,7 @@ function JournalEntryForm({
                   // CRITICAL: Clear pending files after successful upload to prevent duplication
                   setPendingFiles([]);
                   setPendingFilesMetadata([]);
+                  setFilesAlreadyUploaded(true); // Mark files as uploaded to prevent duplicate uploads
                   // Invalidate queries to refresh attachments list
                   queryClient.invalidateQueries({ 
                     queryKey: [getJournalEntryUrl(resolvedClientId as number, entityId, newEntryId)] 
