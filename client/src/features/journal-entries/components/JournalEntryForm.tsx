@@ -1859,12 +1859,7 @@ function JournalEntryForm({
       if (!validation.valid) {
         setFieldErrors(validation.errors || {});
         
-        // Special handling for reference number duplication
-        if (validation.errors?.referenceNumber?.includes("already used")) {
-          setFormError("This reference number is already in use. Please choose a unique reference number.");
-        } else {
-          setFormError("Please correct the errors in the form before posting.");
-        }
+        setFormError("Please correct the errors in the form before posting.");
         return;
       }
     } else {
