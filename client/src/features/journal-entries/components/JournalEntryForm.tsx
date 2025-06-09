@@ -249,16 +249,11 @@ interface JournalLine {
 
 // Form validation schema - dynamically created to include context-aware validation
 // This will be adapted to handle duplicate reference number checking
-function createFormSchema(existingEntries: any[] = [], currentEntryId?: number) {
+function createFormSchema() {
   return z.object({
     date: z.string().min(1, "Date is required"),
     reference: z.string().min(3, "Reference must be at least 3 characters"),
-    referenceNumber: z.string()
-      .min(3, "Reference Number must be at least 3 characters")
-      .refine(
-        (refNum) => !isReferenceDuplicate(refNum, existingEntries, currentEntryId),
-        "This reference number is already used by another journal entry in this entity"
-      ),
+    referenceUserSuffix: z.string().optional(), // Optional user suffix for reference
     description: z.string().min(1, "Description is required"), // Make description required to match server validation
     journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
     supDocId: z.string().optional(),
@@ -270,7 +265,7 @@ function createFormSchema(existingEntries: any[] = [], currentEntryId?: number) 
 const FormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   reference: z.string().min(3, "Reference must be at least 3 characters"),
-  referenceNumber: z.string().min(3, "Reference Number must be at least 3 characters"),
+  referenceUserSuffix: z.string().optional(), // Optional user suffix for reference
   description: z.string().min(1, "Description is required"),
   journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
   supDocId: z.string().optional(),
@@ -1813,39 +1808,12 @@ function JournalEntryForm({
     // Verify and log attachment status for debugging
     logAttachmentStatus();
     
-    // Pre-check for reference number duplication before form validation
-    if (!saveAsDraft && journalData.referenceNumber && journalData.referenceNumber.length >= 3) {
-      if (isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id)) {
-        setFieldErrors({
-          ...fieldErrors,
-          referenceNumber: "This reference number is already used by another journal entry in this entity"
-        });
-        setFormError("Please choose a unique reference number for this journal entry.");
-        
-        // Scroll to the error
-        const refInput = document.getElementById("reference-number");
-        if (refInput) {
-          refInput.scrollIntoView({ behavior: "smooth", block: "center" });
-          refInput.focus();
-        }
-        
-        return;
-      }
-    }
-
+    // Build the complete reference from auto-generated prefix and optional user suffix
+    const fullReference = buildFullReference(autoReferencePrefix, journalData.referenceUserSuffix);
+    
     // Clear previous errors
     setFormError(null);
     setFieldErrors({});
-    
-    // First check for reference number validation - duplicate check is already done in pre-check
-    if (journalData.referenceNumber.trim().length < 3) {
-      setFieldErrors({
-        ...fieldErrors,
-        referenceNumber: "Reference number must be at least 3 characters"
-      });
-      setFormError("Please correct the errors in the form before submitting.");
-      return;
-    }
 
     // Prepare data for validation - only keep lines with account or debit/credit values
     const validLines = lines.filter(
@@ -1882,11 +1850,8 @@ function JournalEntryForm({
 
     // Only validate fully if we're not saving as draft (final intended state)
     if (!saveAsDraft) {
-      // Create a dynamic schema that includes reference number duplication check
-      const contextAwareSchema = createFormSchema(
-        existingEntries as any[], 
-        existingEntry?.id
-      );
+      // Create a dynamic schema for validation
+      const contextAwareSchema = createFormSchema();
       
       // Full validation for posting using context-aware schema
       const validation = validateForm(formData, contextAwareSchema);
@@ -1965,6 +1930,7 @@ function JournalEntryForm({
     
     const entryData = {
       ...journalData,
+      referenceNumber: fullReference, // Use the complete reference with auto-generated prefix + optional suffix
       date: journalData.date, // Use direct date string from input - already in YYYY-MM-DD format
       clientId: resolvedClientId,
       entityId,
@@ -2452,75 +2418,44 @@ function JournalEntryForm({
         </div>
 
         <div>
-          <Label htmlFor="reference-number">Reference</Label>
-          <div className="relative">
-            <Input
-              id="reference-number"
-              name="referenceNumber"
-              value={journalData.referenceNumber}
-              onChange={(e) => {
-                // Clear duplicate error when typing
-                if (fieldErrors.referenceNumber?.includes("already used")) {
-                  setFieldErrors(prev => {
-                    const updated = { ...prev };
-                    delete updated.referenceNumber;
-                    return updated;
-                  });
-                }
-                handleChange(e);
-              }}
-              placeholder="Invoice #, Check #, etc."
-              className={`mt-1 ${
-                fieldErrors.referenceNumber 
-                  ? "border-red-500 pr-10" 
-                  : journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
-                    !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) 
-                      ? "border-green-500 pr-10" 
-                      : ""
-              }`}
-            />
-            {fieldErrors.referenceNumber && (
+          <Label htmlFor="reference-prefix">Reference</Label>
+          <div className="space-y-2">
+            {/* Auto-generated prefix (read-only) */}
+            <div className="relative">
+              <Input
+                id="reference-prefix"
+                value={autoReferencePrefix}
+                readOnly
+                className="mt-1 bg-gray-50 text-gray-700 font-mono text-sm"
+                placeholder="Auto-generated unique prefix"
+              />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
-                <AlertCircle
-                  className="h-5 w-5 text-red-500"
-                  aria-hidden="true"
-                />
+                <Check className="h-4 w-4 text-green-500" />
               </div>
-            )}
-            {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
-             !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
-                <Check
-                  className="h-5 w-5 text-green-500"
-                  aria-hidden="true"
-                />
-              </div>
+            </div>
+            <p className="text-xs text-gray-600 flex items-center">
+              <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+              Auto-generated unique prefix (cannot be changed)
+            </p>
+            
+            {/* Optional user suffix */}
+            <div className="relative">
+              <Input
+                id="reference-suffix"
+                name="referenceUserSuffix"
+                value={journalData.referenceUserSuffix}
+                onChange={handleChange}
+                placeholder="Optional: Add custom suffix (e.g., ACCRUAL_ADJ, INV_001)"
+                className="mt-1"
+                maxLength={50}
+              />
+            </div>
+            {journalData.referenceUserSuffix && (
+              <p className="text-xs text-gray-600">
+                Full reference: <span className="font-mono text-sm">{buildFullReference(autoReferencePrefix, journalData.referenceUserSuffix)}</span>
+              </p>
             )}
           </div>
-          {fieldErrors.referenceNumber && (
-            <p className="text-red-500 text-sm mt-1 flex items-center">
-              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.referenceNumber}
-            </p>
-          )}
-          {/* Show live validation warnings for reference number */}
-          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length > 0 && 
-           journalData.referenceNumber.length < 3 && (
-            <p className="text-amber-500 text-sm mt-1 flex items-center">
-              <AlertCircle className="h-3 w-3 mr-1" /> Reference number must be at least 3 characters
-            </p>
-          )}
-          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
-           isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
-            <p className="text-red-500 text-sm mt-1 flex items-center">
-              <AlertCircle className="h-3 w-3 mr-1" /> This reference number is already in use
-            </p>
-          )}
-          {!fieldErrors.referenceNumber && journalData.referenceNumber && journalData.referenceNumber.length >= 3 && 
-           !isReferenceDuplicate(journalData.referenceNumber, existingEntries as any[], existingEntry?.id) && (
-            <p className="text-green-500 text-sm mt-1 flex items-center">
-              <Check className="h-3 w-3 mr-1" /> Reference number is valid and unique
-            </p>
-          )}
         </div>
       </div>
 
