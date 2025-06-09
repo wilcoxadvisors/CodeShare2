@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getJournalEntriesBaseUrl } from '@/api/urlHelpers';
 import { ymdToDisplay } from '@/utils/dateUtils';
 import { getDebit, getCredit, isClientFormatLine, isServerFormatLine, safeParseAmount } from '../utils/lineFormat';
+import { generateJournalEntryDisplayId } from '@/utils/journalIdUtils';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -507,10 +508,18 @@ function JournalEntries() {
                                 to={entryDetailLink}
                                 className="text-blue-600 hover:underline hover:text-blue-800"
                               >
-                                {entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`}
+                                {entry.displayId || generateJournalEntryDisplayId(
+                                  entityId || entry.entityId, 
+                                  entry.date.substring(0, 4), 
+                                  entry.id
+                                )}
                               </Link>
                             ) : (
-                              entry.displayId || `JE-${entry.date.substring(0, 4)}-${entry.id.toString().padStart(4, '0')}`
+                              entry.displayId || generateJournalEntryDisplayId(
+                                entityId || entry.entityId, 
+                                entry.date.substring(0, 4), 
+                                entry.id
+                              )
                             )}
                           </TableCell>
                           <TableCell className="font-medium">
