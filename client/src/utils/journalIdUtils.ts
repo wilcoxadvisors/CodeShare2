@@ -86,32 +86,40 @@ export function generateLegacyCompatibleId(
 
 /**
  * Generates a unique reference prefix that cannot be changed by users
- * Format: REF-{entityId}-{year}-{timestamp}
- * Example: REF-391-2025-1749509234567
+ * Format: {entityId}-{MM-DD}-{year}-{uniqueId}
+ * Example: 391-06-09-2025-1234
  * 
  * This ensures enterprise-scale uniqueness across:
  * - Multiple entities
- * - Multiple years
- * - High-frequency operations (timestamp precision)
+ * - Date-based organization
+ * - High-frequency operations (unique sequence)
  */
 export function generateUniqueReferencePrefix(
   entityId: number,
   year?: string | number
 ): string {
+  const now = new Date();
   const currentYear = year ? 
     (typeof year === 'string' ? year : year.toString()) : 
-    new Date().getFullYear().toString();
-  const timestamp = Date.now();
+    now.getFullYear().toString();
   
-  return `REF-${entityId}-${currentYear}-${timestamp}`;
+  // Format: MM-DD
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  const dateStr = `${month}-${day}`;
+  
+  // Use timestamp for uniqueness but make it shorter
+  const uniqueId = (Date.now() % 100000).toString().padStart(5, '0');
+  
+  return `${entityId}-${dateStr}-${currentYear}-${uniqueId}`;
 }
 
 /**
  * Combines the auto-generated prefix with optional user suffix
  * Format: {prefix}[:{userSuffix}]
  * Examples: 
- * - REF-391-2025-1749509234567 (no user suffix)
- * - REF-391-2025-1749509234567:ACCRUAL_ADJ (with user suffix)
+ * - 391-06-09-2025-12345 (no user suffix)
+ * - 391-06-09-2025-12345:ACCRUAL_ADJ (with user suffix)
  */
 export function buildFullReference(
   prefix: string,
@@ -134,21 +142,33 @@ export function parseFullReference(fullReference: string): {
   userSuffix?: string;
   entityId?: number;
   year?: string;
-  timestamp?: number;
+  uniqueId?: number;
 } | null {
   const parts = fullReference.split(':');
   const prefix = parts[0];
   const userSuffix = parts.length > 1 ? parts[1] : undefined;
   
-  // Parse prefix: REF-{entityId}-{year}-{timestamp}
-  const prefixMatch = prefix.match(/^REF-(\d+)-(\d{4})-(\d+)$/);
-  if (prefixMatch) {
+  // Parse new format: {entityId}-{MM-DD}-{year}-{uniqueId}
+  const newFormatMatch = prefix.match(/^(\d+)-(\d{2}-\d{2})-(\d{4})-(\d+)$/);
+  if (newFormatMatch) {
     return {
       prefix,
       userSuffix,
-      entityId: parseInt(prefixMatch[1]),
-      year: prefixMatch[2],
-      timestamp: parseInt(prefixMatch[3])
+      entityId: parseInt(newFormatMatch[1]),
+      year: newFormatMatch[3],
+      uniqueId: parseInt(newFormatMatch[4])
+    };
+  }
+  
+  // Legacy format: REF-{entityId}-{year}-{timestamp}
+  const legacyMatch = prefix.match(/^REF-(\d+)-(\d{4})-(\d+)$/);
+  if (legacyMatch) {
+    return {
+      prefix,
+      userSuffix,
+      entityId: parseInt(legacyMatch[1]),
+      year: legacyMatch[2],
+      uniqueId: parseInt(legacyMatch[3])
     };
   }
   
