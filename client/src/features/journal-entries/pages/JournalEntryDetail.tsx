@@ -735,7 +735,7 @@ function JournalEntryDetail() {
     setUploading(true);
     uploadFile.mutate(uniqueFiles);
   }, [uploadFile, entry?.files]);
-  
+
   // Setup for react-dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
