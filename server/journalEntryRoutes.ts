@@ -2437,6 +2437,61 @@ export function registerJournalEntryRoutes(app: Express) {
   );
 
   /**
+   * ---------------------------------------------------------------------------
+   * Hierarchical void route POST /api/clients/:clientId/entities/:entityId/journal-entries/:id/void
+   * ---------------------------------------------------------------------------
+   */
+  app.post(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id/void',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      const user = req.user as { id: number, role?: string };
+      const { voidReason } = req.body;
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity, or journal entry ID');
+      }
+
+      // Check for admin role
+      if (user.role !== 'admin') {
+        return throwForbidden('Only administrators can void posted journal entries.');
+      }
+
+      // Check for void reason
+      if (!voidReason) {
+        return throwBadRequest('A reason is required to void a posted journal entry.');
+      }
+
+      // Get the entry to be voided
+      const originalEntry = await journalEntryStorage.getJournalEntry(id);
+      if (!originalEntry || originalEntry.entityId !== entityId || originalEntry.clientId !== clientId) {
+        return throwNotFound('Journal Entry not found for the specified client and entity.');
+      }
+
+      // Only "posted" entries can be voided
+      if (originalEntry.status !== 'posted') {
+        return throwBadRequest(`Cannot void a journal entry with status '${originalEntry.status}'.`);
+      }
+
+      // Update the entry status to 'void'
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(id, {
+        status: 'void',
+        rejectionReason: voidReason, // Use rejectionReason field to store the void reason
+        rejectedBy: user.id, // Log who voided the entry
+        rejectedAt: new Date(),
+      });
+
+      res.status(200).json({
+        message: 'Journal entry has been voided successfully.',
+        entry: voidedEntry,
+      });
+    })
+  );
+
+  /**
    * Legacy redirect for journal entry detail route
    */
   app.get(

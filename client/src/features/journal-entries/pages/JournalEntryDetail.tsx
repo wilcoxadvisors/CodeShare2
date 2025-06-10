@@ -865,23 +865,32 @@ function JournalEntryDetail() {
       if (!clientId || !currentEntity?.id) {
         throw new Error('Client ID and Entity ID are required for journal entry operations');
       }
-      
-      // EMERGENCY FIX: Direct URL instead of helper function
-      return await apiRequest(`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}`, {
-        method: 'DELETE',
+
+      // Call the new hierarchical void endpoint
+      const voidUrl = `/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/void`;
+      return await apiRequest(voidUrl, {
+        method: 'POST',
         data: {
-          voidReason: voidReason
-        }
+          voidReason: voidReason, // Pass the reason from the dialog's state
+        },
       });
     },
     onSuccess: () => {
       setShowVoidDialog(false);
+      setVoidReason(''); // Clear the reason on success
       toast({
         title: 'Success',
         description: 'Journal entry has been voided',
       });
-      // Navigate back to list or refresh this entry
-      refetch();
+      
+      // Invalidate query to ensure journal entry list is fresh when user returns
+      if (clientId && currentEntity?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+        });
+      }
+      
+      refetch(); // Refetch the entry data to show the new status
     },
     onError: (error: any) => {
       setShowVoidDialog(false);
