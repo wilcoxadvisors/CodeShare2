@@ -27,6 +27,7 @@ import { ReportStorage, reportStorage, IReportStorage } from './storage/reportSt
 import { UserActivityStorage, userActivityStorage, IUserActivityStorage } from './storage/userActivityStorage';
 import { AuditLogStorage, auditLogStorage, memAuditLogStorage, IAuditLogStorage } from './storage/auditLogStorage';
 import { ContentStorage, contentStorage, IContentStorage } from './storage/contentStorage';
+import { DimensionStorage, dimensionStorage } from './storage/dimensionStorage';
 
 import { eq } from "drizzle-orm";
 import { db } from "./db";
@@ -53,6 +54,7 @@ export interface IStorage {
   journalEntry: IJournalEntryStorage;
   auditLogs: IAuditLogStorage;
   content: IContentStorage;
+  dimensions: DimensionStorage;
   
   // User-related shortcuts
   getUserById(id: number): Promise<User | undefined>;
@@ -110,6 +112,7 @@ export class DatabaseStorage implements IStorage {
     this.journalEntry = journalEntryStorage;
     this.auditLogs = auditLogStorage;
     this.content = contentStorage;
+    this.dimensions = dimensionStorage;
     // Verify modules assigned correctly
     console.log("DEBUG: this.accounts exists:", !!this.accounts);
     console.log("DEBUG: this.accounts has seedClientCoA:", !!(this.accounts && this.accounts.seedClientCoA));
