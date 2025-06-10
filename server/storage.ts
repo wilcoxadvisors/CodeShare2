@@ -90,6 +90,7 @@ export class DatabaseStorage implements IStorage {
   public journalEntry: IJournalEntryStorage;
   public auditLogs: IAuditLogStorage;
   public content: IContentStorage;
+  public dimensions: DimensionStorage;
   
   constructor() {
     // Assign specialized storage modules
