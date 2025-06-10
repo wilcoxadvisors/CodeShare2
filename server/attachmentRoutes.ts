@@ -227,10 +227,31 @@ export function registerAttachmentRoutes(app: Express) {
       const fileStorage = getFileStorage();
       
       try {
+        // Get existing files for this journal entry to check for duplicates
+        const existingFiles = await journalEntryStorage.getJournalEntryFiles(jeId);
+        console.log('ARCHITECT_DEBUG_UPLOAD_DUPLICATE_CHECK: Existing files count:', existingFiles.length);
+        
         // Process each file and store metadata in the database
         const savedFiles = [];
+        const duplicateFiles = [];
         
         for (const file of validFiles) {
+          // Check for duplicate files based on filename and size
+          const isDuplicate = existingFiles.some(existing => 
+            existing.filename === file.originalname && existing.size === file.size
+          );
+          
+          if (isDuplicate) {
+            console.log('ARCHITECT_DEBUG_UPLOAD_DUPLICATE_CHECK: Duplicate file detected:', file.originalname);
+            duplicateFiles.push({
+              filename: file.originalname,
+              reason: 'File with same name and size already exists'
+            });
+            continue;
+          }
+          
+          console.log('ARCHITECT_DEBUG_UPLOAD_DUPLICATE_CHECK: Saving new file:', file.originalname);
+          
           // Store the file in the database
           const savedFile = await journalEntryStorage.saveJournalEntryFile({
             journalEntryId: jeId,
@@ -264,15 +285,23 @@ export function registerAttachmentRoutes(app: Express) {
           }).catch(err => console.error('Error creating audit log for file upload:', err));
         }
         
-        // If there were any skipped files, include them in the response
-        if (skippedFiles.length > 0) {
+        // Combine skipped files (invalid type) and duplicate files for response
+        const allSkippedFiles = [
+          ...skippedFiles.map(f => ({ 
+            filename: f.originalname, 
+            reason: 'Unsupported file type' 
+          })),
+          ...duplicateFiles
+        ];
+        
+        // If there were any skipped files (type or duplicates), include them in the response
+        if (allSkippedFiles.length > 0) {
           res.status(207).json({
-            message: 'Some files were uploaded successfully, but others were skipped due to invalid file types',
+            message: savedFiles.length > 0 
+              ? 'Some files were uploaded successfully, but others were skipped'
+              : 'No files were uploaded - all were skipped',
             files: savedFiles,
-            skipped: skippedFiles.map(f => ({ 
-              filename: f.originalname, 
-              reason: 'Unsupported file type' 
-            }))
+            skipped: allSkippedFiles
           });
         }
         // If all files were saved, return a 201 Created

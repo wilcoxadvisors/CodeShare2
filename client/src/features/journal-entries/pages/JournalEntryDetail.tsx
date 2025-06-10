@@ -440,8 +440,34 @@ function JournalEntryDetail() {
       });
     }
     
+    // Check for duplicate files against existing attachments
+    const existingFiles = entry?.files || [];
+    const uniqueFiles = validFiles.filter(newFile => {
+      const isDuplicate = existingFiles.some(existingFile => 
+        existingFile.filename === newFile.name && existingFile.size === newFile.size
+      );
+      return !isDuplicate;
+    });
+    
+    if (uniqueFiles.length === 0) {
+      toast({
+        title: 'Duplicate files detected',
+        description: 'All selected files are already attached to this journal entry.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (uniqueFiles.length !== validFiles.length) {
+      toast({
+        title: 'Duplicate files skipped',
+        description: 'Some files were skipped as they appear to be duplicates of existing attachments.',
+        variant: 'default',
+      });
+    }
+    
     setUploading(true);
-    uploadFile.mutate(validFiles);
+    uploadFile.mutate(uniqueFiles);
   };
   
   // Handle file drop using react-dropzone
@@ -469,9 +495,35 @@ function JournalEntryDetail() {
       return;
     }
     
+    // Check for duplicate files against existing attachments
+    const existingFiles = entry?.files || [];
+    const uniqueFiles = validFiles.filter(newFile => {
+      const isDuplicate = existingFiles.some(existingFile => 
+        existingFile.filename === newFile.name && existingFile.size === newFile.size
+      );
+      return !isDuplicate;
+    });
+    
+    if (uniqueFiles.length === 0) {
+      toast({
+        title: 'Duplicate files detected',
+        description: 'All selected files are already attached to this journal entry.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (uniqueFiles.length !== validFiles.length) {
+      toast({
+        title: 'Duplicate files skipped',
+        description: 'Some files were skipped as they appear to be duplicates of existing attachments.',
+        variant: 'default',
+      });
+    }
+    
     setUploading(true);
-    uploadFile.mutate(validFiles);
-  }, [uploadFile]);
+    uploadFile.mutate(uniqueFiles);
+  }, [uploadFile, entry?.files]);
   
   // Setup for react-dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
