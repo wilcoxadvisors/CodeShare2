@@ -472,30 +472,7 @@ function JournalEntryDetail() {
   
 
   
-  // Setup for react-dropzone
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      // Images
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
-      // PDF
-      'application/pdf': ['.pdf'],
-      // Word documents
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      // Excel spreadsheets
-      'application/vnd.ms-excel': ['.xls', '.csv'],  // Some browsers send Excel MIME for CSV
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      // Text files
-      'text/plain': ['.txt'],
-      'text/csv': ['.csv'],
-      // Email formats
-      'message/rfc822': ['.eml'],  // RFC-822 email format
-      'application/vnd.ms-outlook': ['.msg']  // Outlook messages
-    },
-    maxSize: 10485760, // 10MB
-    multiple: true
-  });
+
   
   // Handle file download
   const handleFileDownload = (fileId: number) => {
@@ -758,6 +735,31 @@ function JournalEntryDetail() {
     setUploading(true);
     uploadFile.mutate(uniqueFiles);
   }, [uploadFile, entry?.files]);
+  
+  // Setup for react-dropzone
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      // Images
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
+      // PDF
+      'application/pdf': ['.pdf'],
+      // Word documents
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      // Excel spreadsheets
+      'application/vnd.ms-excel': ['.xls', '.csv'],  // Some browsers send Excel MIME for CSV
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      // Text files
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
+      // Email formats
+      'message/rfc822': ['.eml'],  // RFC-822 email format
+      'application/vnd.ms-outlook': ['.msg']  // Outlook messages
+    },
+    maxSize: 10485760, // 10MB
+    multiple: true
+  });
   
   // Format date for display without timezone shifts
   const formatDate = (dateString: string) => {

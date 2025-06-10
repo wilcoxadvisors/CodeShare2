@@ -1,0 +1,62 @@
+Instructions for Replit AI Agent
+Hello Agent. We need to fix the "Reverse Journal Entry" functionality.
+
+High-Level Goal:
+When a user clicks the "Reverse" button on a "Posted" journal entry, the system must create a new journal entry in "Draft" status with the debits and credits of the original entry flipped.
+
+Root Cause Analysis:
+The frontend is correctly attempting to make a POST request to /api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse to perform the reversal. However, this specific route is missing from server/journalEntryRoutes.ts, causing the request to fail with a 404 Not Found error.
+
+MANDATORY INSTRUCTIONS: Detailed Code Fix
+
+You must add the missing route to the backend API.
+
+File to Modify: server/journalEntryRoutes.ts
+
+Action:
+Add a new route handler for POST /api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse. This handler will validate the request and call the existing journalEntryStorage.reverseJournalEntry function.
+
+Locate the section in the file for other hierarchical routes, such as near the handler for .../:id/post.
+
+Add the following new route handler block in that area to implement the missing endpoint:
+
+TypeScript
+
+// In server/journalEntryRoutes.ts
+
+/**
+ * ---------------------------------------------------------------------------
+ * Hierarchical reverse route POST /api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse
+ * ---------------------------------------------------------------------------
+ */
+app.post(
+  '/api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse',
+  isAuthenticated,
+  asyncHandler(async (req: Request, res: Response) => {
+    const clientId = parseInt(req.params.clientId, 10);
+    const entityId = parseInt(req.params.entityId, 10);
+    const id = parseInt(req.params.id, 10);
+    const user = req.user as { id: number };
+
+    if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+      return throwBadRequest('Invalid client, entity, or journal entry ID');
+    }
+
+    // The business logic is already in the storage layer. We just need to call it.
+    const reversalOptions = {
+      date: req.body.date, // Optional date from request body
+      description: req.body.description, // Optional description from request body
+      createdBy: user.id,
+    };
+
+    const reversalEntry = await journalEntryStorage.reverseJournalEntry(id, reversalOptions);
+
+    res.status(201).json({
+      message: 'Journal entry reversed successfully. A new draft has been created.',
+      entry: reversalEntry,
+    });
+  })
+);
+Verification:
+
+After adding this route, go to a "Posted" journal entry and click the "Reverse" button. The action should now succeed, and you should be redirected to the newly created "Draft" reversal entry.
