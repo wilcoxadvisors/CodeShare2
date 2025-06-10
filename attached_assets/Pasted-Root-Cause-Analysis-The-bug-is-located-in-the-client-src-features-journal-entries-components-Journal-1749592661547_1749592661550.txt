@@ -1,0 +1,77 @@
+Root Cause Analysis
+The bug is located in the client/src/features/journal-entries/components/JournalEntryForm.tsx file. The application has two separate onSuccess handlers for the "create entry" action that are both executing, one after the other, during the "create-and-post" workflow.
+
+A generic onSuccess handler is defined inside the createEntry mutation hook. This handler is meant for simple "Save as Draft" actions.
+A specific onSuccess handler is defined inside the handleSubmit function for the special case where a user clicks "Post Entry" on a new JE.
+Both of these handlers contain logic to upload pending files. When you click "Post", both are running, and both are uploading the same file, causing the duplication.
+
+Instructions for Replit AI Agent
+The fix is to add a condition to the generic onSuccess handler so that it only runs its file-upload logic when a user is explicitly saving a draft, and not when they are trying to post.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action:
+You will modify the generic onSuccess handler within the createEntry = useMutation({ ... }) definition to be smarter about when it runs.
+
+Locate the createEntry = useMutation({ ... }) block (it's around line 1448).
+
+Find the onSuccess handler within that block.
+
+Completely replace the existing onSuccess handler with the following new, corrected version. This new version checks the variables of the mutation to see what the user's original intent was.
+
+This is the OLD onSuccess handler to be REMOVED:
+
+TypeScript
+
+onSuccess: async (result: JournalEntryResponse) => {
+  // ... (old logic that always runs)
+},
+This is the NEW, corrected onSuccess handler to INSERT in its place:
+
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+onSuccess: async (result: JournalEntryResponse, variables: any) => {
+  const newJournalEntryId = result?.id || (result?.entry && result.entry.id);
+
+  // This logic should ONLY run when the user's intent was to "Save as Draft".
+  // The more complex "Create and Post" workflow is handled by a separate onSuccess
+  // callback passed directly to the mutate function in handleSubmit.
+  if (variables.status === 'draft') {
+    const hasAttachments = pendingFiles.length > 0;
+
+    if (hasAttachments && newJournalEntryId && uploadPendingFilesRef.current) {
+      try {
+        setIsUploading(true);
+        await uploadPendingFilesRef.current(newJournalEntryId);
+        toast({
+          title: "Files attached",
+          description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+        });
+      } catch (fileError) {
+        console.error("Failed to upload pending files:", fileError);
+        toast({
+          title: "Note about files",
+          description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
+    toast({
+      title: "Journal entry created",
+      description: "The journal entry has been created successfully.",
+    });
+
+    setPendingFiles([]);
+    setPendingFilesMetadata([]);
+    invalidateJournalEntryQueries();
+    onSubmit();
+  }
+},
+Explanation of the Fix:
+
+This change prevents the generic "Save as Draft" onSuccess logic from running during the "Post Entry" workflow. This allows the specific onSuccess handler in handleSubmit to manage the file upload exclusively, which will stop the duplicate uploads.

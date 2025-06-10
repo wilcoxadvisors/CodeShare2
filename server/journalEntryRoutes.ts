@@ -1571,12 +1571,30 @@ export function registerJournalEntryRoutes(app: Express) {
       }
       
       try {
+        // Get existing files for this journal entry to check for duplicates
+        const existingFiles = await journalEntryStorage.getJournalEntryFiles(id);
+        console.log('DEBUG Attach BE: Existing files count:', existingFiles.length);
+        
         const savedFiles = [];
         const skippedFiles = [];
         
         // Process each file individually
         for (const file of req.files) {
           console.log('DEBUG Attach BE: Processing file:', file.originalname, 'size:', file.size);
+          
+          // Check for duplicate files based on filename and size
+          const isDuplicate = existingFiles.some(existing => 
+            existing.filename === file.originalname && existing.size === file.size
+          );
+          
+          if (isDuplicate) {
+            console.log('DEBUG Attach BE: Duplicate file detected:', file.originalname);
+            skippedFiles.push({
+              filename: file.originalname,
+              reason: 'File with same name and size already exists'
+            });
+            continue;
+          }
           
           try {
             // Add uploadedBy to the file data
@@ -1625,15 +1643,16 @@ export function registerJournalEntryRoutes(app: Express) {
         // If we have both saved and skipped files, return a 207 Multi-Status response
         if (savedFiles.length > 0 && skippedFiles.length > 0) {
           res.status(207).json({
-            message: 'Some files uploaded, some skipped as duplicates',
+            message: 'Some files uploaded successfully, others were skipped',
             files: savedFiles,
             skipped: skippedFiles
           });
         } 
-        // If all files were skipped, return a 409 Conflict
+        // If all files were skipped, return a 207 Multi-Status with no successful uploads
         else if (savedFiles.length === 0 && skippedFiles.length > 0) {
-          res.status(409).json({
-            message: 'All files were skipped as duplicates',
+          res.status(207).json({
+            message: 'No files were uploaded - all were skipped',
+            files: [],
             skipped: skippedFiles
           });
         }
