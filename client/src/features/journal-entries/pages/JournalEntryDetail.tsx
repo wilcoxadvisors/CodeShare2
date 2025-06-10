@@ -470,68 +470,7 @@ function JournalEntryDetail() {
     uploadFile.mutate(uniqueFiles);
   };
   
-  // Handle file drop using react-dropzone
-  const onDrop = useCallback((acceptedFiles: File[], rejected: any[]) => {
-    if (rejected.length > 0) {
-      setRejectedFiles(rejected);
-      toast({
-        title: 'Warning',
-        description: 'Some files were rejected because they are not of supported types.',
-        variant: 'default',
-      });
-    }
-    
-    if (acceptedFiles.length === 0) return;
-    
-    // Additional client-side validation
-    const validFiles = acceptedFiles.filter(isValidFile);
-    
-    if (validFiles.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, CSV, EML, or MSG files.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Check for duplicate files against existing attachments
-    // Extract files from data to avoid using entry before it's declared
-    let existingFiles: any[] = [];
-    if (data) {
-      if (typeof data === 'object' && 'journalEntry' in data && data.journalEntry) {
-        existingFiles = (data.journalEntry as any)?.files || [];
-      } else {
-        existingFiles = (data as any)?.files || [];
-      }
-    }
-    const uniqueFiles = validFiles.filter(newFile => {
-      const isDuplicate = existingFiles.some(existingFile => 
-        existingFile.filename === newFile.name && existingFile.size === newFile.size
-      );
-      return !isDuplicate;
-    });
-    
-    if (uniqueFiles.length === 0) {
-      toast({
-        title: 'Duplicate files detected',
-        description: 'All selected files are already attached to this journal entry.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    if (uniqueFiles.length !== validFiles.length) {
-      toast({
-        title: 'Duplicate files skipped',
-        description: 'Some files were skipped as they appear to be duplicates of existing attachments.',
-        variant: 'default',
-      });
-    }
-    
-    setUploading(true);
-    uploadFile.mutate(uniqueFiles);
-  }, [uploadFile, data]);
+
   
   // Setup for react-dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -764,6 +703,61 @@ function JournalEntryDetail() {
       "Unknown format");
     console.log("DEBUG - JournalEntryDetail - First line properties:", Object.keys(firstLine));
   }
+  
+  // Handle file drop using react-dropzone
+  const onDrop = useCallback((acceptedFiles: File[], rejected: any[]) => {
+    if (rejected.length > 0) {
+      setRejectedFiles(rejected);
+      toast({
+        title: 'Warning',
+        description: 'Some files were rejected because they are not of supported types.',
+        variant: 'default',
+      });
+    }
+    
+    if (acceptedFiles.length === 0) return;
+    
+    // Additional client-side validation
+    const validFiles = acceptedFiles.filter(isValidFile);
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No valid files selected. Please upload only PDF, JPG, PNG, GIF, DOC, DOCX, XLS, XLSX, TXT, CSV, EML, or MSG files.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check for duplicate files against existing attachments
+    const existingFiles = entry?.files || [];
+    const uniqueFiles = validFiles.filter(newFile => {
+      const isDuplicate = existingFiles.some(existingFile => 
+        existingFile.filename === newFile.name && existingFile.size === newFile.size
+      );
+      return !isDuplicate;
+    });
+    
+    if (uniqueFiles.length === 0) {
+      toast({
+        title: 'Duplicate files detected',
+        description: 'All selected files are already attached to this journal entry.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (uniqueFiles.length !== validFiles.length) {
+      toast({
+        title: 'Duplicate files skipped',
+        description: 'Some files were skipped as they appear to be duplicates of existing attachments.',
+        variant: 'default',
+      });
+    }
+    
+    setUploading(true);
+    uploadFile.mutate(uniqueFiles);
+  }, [uploadFile, entry?.files]);
   
   // Format date for display without timezone shifts
   const formatDate = (dateString: string) => {
