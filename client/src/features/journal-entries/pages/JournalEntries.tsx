@@ -55,6 +55,8 @@ function JournalEntries() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterYear, setFilterYear] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   
@@ -272,6 +274,21 @@ function JournalEntries() {
     }
   };
   
+  // Helper function to get available years from entries
+  const availableYears = React.useMemo(() => {
+    if (!entriesWithTotals.length) return [];
+    
+    const years = new Set<string>();
+    entriesWithTotals.forEach((entry: any) => {
+      if (entry.date) {
+        const year = new Date(entry.date).getFullYear().toString();
+        years.add(year);
+      }
+    });
+    
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+  }, [entriesWithTotals]);
+
   // Filter and search journal entries
   const filteredEntries = React.useMemo(() => {
     if (!entriesWithTotals.length) return [];
@@ -285,9 +302,22 @@ function JournalEntries() {
       
       const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
       
-      return matchesSearch && matchesStatus;
+      // Date filtering
+      let matchesDate = true;
+      if (entry.date && (filterMonth !== 'all' || filterYear !== 'all')) {
+        const entryDate = new Date(entry.date);
+        const entryMonth = entryDate.getMonth() + 1; // JavaScript months are 0-indexed
+        const entryYear = entryDate.getFullYear();
+        
+        const matchesMonth = filterMonth === 'all' || entryMonth.toString() === filterMonth;
+        const matchesYear = filterYear === 'all' || entryYear.toString() === filterYear;
+        
+        matchesDate = matchesMonth && matchesYear;
+      }
+      
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [entriesWithTotals, searchTerm, filterStatus]);
+  }, [entriesWithTotals, searchTerm, filterStatus, filterMonth, filterYear]);
   
   // Pagination
   const totalPages = Math.ceil((filteredEntries?.length || 0) / pageSize);
@@ -429,7 +459,7 @@ function JournalEntries() {
               
               <div className="flex space-x-2">
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[150px]">
                     <Filter className="mr-2 h-4 w-4" />
                     <span>{filterStatus === 'all' ? 'All Statuses' : filterStatus}</span>
                   </SelectTrigger>
@@ -441,6 +471,39 @@ function JournalEntries() {
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="posted">Posted</SelectItem>
                     <SelectItem value="void">Void</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterYear} onValueChange={setFilterYear}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {availableYears.map(year => (
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterMonth} onValueChange={setFilterMonth}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Months</SelectItem>
+                    <SelectItem value="1">January</SelectItem>
+                    <SelectItem value="2">February</SelectItem>
+                    <SelectItem value="3">March</SelectItem>
+                    <SelectItem value="4">April</SelectItem>
+                    <SelectItem value="5">May</SelectItem>
+                    <SelectItem value="6">June</SelectItem>
+                    <SelectItem value="7">July</SelectItem>
+                    <SelectItem value="8">August</SelectItem>
+                    <SelectItem value="9">September</SelectItem>
+                    <SelectItem value="10">October</SelectItem>
+                    <SelectItem value="11">November</SelectItem>
+                    <SelectItem value="12">December</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
