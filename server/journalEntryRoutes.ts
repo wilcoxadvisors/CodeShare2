@@ -2344,6 +2344,64 @@ export function registerJournalEntryRoutes(app: Express) {
   );
 
   /**
+   * ---------------------------------------------------------------------------
+   * Hierarchical reverse route POST /api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse
+   * ---------------------------------------------------------------------------
+   */
+  app.post(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      const user = req.user as { id: number };
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity, or journal entry ID');
+      }
+
+      // Validate: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      // Get the existing entry to verify it exists and belongs to this entity
+      const existingEntry = await journalEntryStorage.getJournalEntry(id);
+      
+      if (!existingEntry) {
+        return throwNotFound('Journal Entry');
+      }
+      
+      // Verify this entry belongs to the specified entity
+      if (existingEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+
+      // The business logic is already in the storage layer. We just need to call it.
+      const reversalOptions = {
+        date: req.body.date, // Optional date from request body
+        description: req.body.description, // Optional description from request body
+        createdBy: user.id,
+      };
+
+      const reversalEntry = await journalEntryStorage.reverseJournalEntry(id, reversalOptions);
+
+      res.status(201).json({
+        message: 'Journal entry reversed successfully. A new draft has been created.',
+        entry: reversalEntry,
+      });
+    })
+  );
+
+  /**
    * Legacy redirect for journal entry detail route
    */
   app.get(
