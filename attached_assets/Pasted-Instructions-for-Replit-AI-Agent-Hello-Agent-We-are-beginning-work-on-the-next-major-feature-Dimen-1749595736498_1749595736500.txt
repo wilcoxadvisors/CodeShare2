@@ -1,0 +1,110 @@
+Instructions for Replit AI Agent
+Hello Agent. We are beginning work on the next major feature: Dimensions & Smart Rules (Task B.2.1).
+
+High-Level Goal:
+
+Implement the foundational database schema for the Dimensions feature. This involves adding three new tables to shared/schema.ts to store dimension categories, their corresponding values, and the links to journal entry transactions.
+
+MANDATORY INSTRUCTIONS: Detailed Code Fix
+
+You will add three new table definitions and their corresponding relations to the shared/schema.ts file.
+
+File to Modify: shared/schema.ts
+
+Action:
+Add the following code blocks to the shared/schema.ts file. A good place for this new code is after the journalEntryLines table definition, but before the "Relations for journalEntries and journalEntryLines" section.
+
+Add the dimensions table:
+
+TypeScript
+
+// Dimensions table to define categories like Department, Location, etc.
+export const dimensions = pgTable("dimensions", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  isRequired: boolean("is_required").notNull().default(false),
+  allowCustomValues: boolean("allow_custom_values").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    dimensionCodeClientUnique: uniqueIndex('dimension_code_client_unique').on(table.clientId, table.code),
+  };
+});
+Add the dimension_values table:
+
+TypeScript
+
+// Dimension values table for the specific options within each dimension
+export const dimensionValues = pgTable("dimension_values", {
+  id: serial("id").primaryKey(),
+  dimensionId: integer("dimension_id").references(() => dimensions.id, { onDelete: 'cascade' }).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    dimensionValueCodeUnique: uniqueIndex('dimension_value_code_unique').on(table.dimensionId, table.code),
+  };
+});
+Add the tx_dimension_link junction table:
+
+TypeScript
+
+// Junction table to link journal entry lines to dimension values
+export const txDimensionLink = pgTable("tx_dimension_link", {
+  id: serial("id").primaryKey(),
+  journalEntryLineId: integer("journal_entry_line_id").references(() => journalEntryLines.id, { onDelete: 'cascade' }).notNull(),
+  dimensionId: integer("dimension_id").references(() => dimensions.id).notNull(),
+  dimensionValueId: integer("dimension_value_id").references(() => dimensionValues.id).notNull(),
+}, (table) => {
+  return {
+    lineDimensionUnique: uniqueIndex('line_dimension_unique').on(table.journalEntryLineId, table.dimensionId),
+  };
+});
+Add the Drizzle ORM relations for these new tables. Find the existing relations definitions in the file and add these new ones nearby.
+
+TypeScript
+
+// Add relations for the new dimension tables
+export const dimensionsRelations = relations(dimensions, ({ one, many }) => ({
+  client: one(clients, { fields: [dimensions.clientId], references: [clients.id] }),
+  values: many(dimensionValues),
+}));
+
+export const dimensionValuesRelations = relations(dimensionValues, ({ one }) => ({
+  dimension: one(dimensions, { fields: [dimensionValues.dimensionId], references: [dimensions.id] }),
+}));
+
+export const txDimensionLinkRelations = relations(txDimensionLink, ({ one }) => ({
+  journalEntryLine: one(journalEntryLines, { fields: [txDimensionLink.journalEntryLineId], references: [journalEntryLines.id] }),
+  dimension: one(dimensions, { fields: [txDimensionLink.dimensionId], references: [dimensions.id] }),
+  dimensionValue: one(dimensionValues, { fields: [txDimensionLink.dimensionValueId], references: [dimensionValues.id] }),
+}));
+Finally, update the existing journalEntryLinesRelations to be aware of its new connection to dimensions.
+
+Find the journalEntryLinesRelations definition.
+Add the dimensions: many(txDimensionLink) line inside it, like so:
+TypeScript
+
+export const journalEntryLinesRelations = relations(journalEntryLines, ({ one, many }) => ({
+  journalEntry: one(journalEntries, {
+    fields: [journalEntryLines.journalEntryId],
+    references: [journalEntries.id],
+    relationName: "journalEntryLines_journalEntry",
+  }),
+  account: one(accounts, {
+    fields: [journalEntryLines.accountId],
+    references: [accounts.id],
+    relationName: "journalEntryLines_account",
+  }),
+  dimensions: many(txDimensionLink), // <-- ADD THIS LINE
+}));
+Once these schema changes are applied, the next step will be to create and run a database migration to apply them to the database.
