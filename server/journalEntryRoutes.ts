@@ -2402,6 +2402,41 @@ export function registerJournalEntryRoutes(app: Express) {
   );
 
   /**
+   * ---------------------------------------------------------------------------
+   * Hierarchical delete route DELETE /api/clients/:clientId/entities/:entityId/journal-entries/:id
+   * ---------------------------------------------------------------------------
+   */
+  app.delete(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity, or journal entry ID');
+      }
+
+      // Validate: ensure entry belongs to the client/entity
+      const entry = await journalEntryStorage.getJournalEntry(id);
+      if (!entry || entry.clientId !== clientId || entry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this client and entity.');
+      }
+
+      // Only allow deletion of drafts
+      if (entry.status !== 'draft') {
+        return throwBadRequest(`Cannot delete a journal entry with status '${entry.status}'. You can only delete drafts.`);
+      }
+
+      // Call the storage function to perform the deletion
+      await journalEntryStorage.deleteJournalEntry(id);
+
+      res.status(204).send(); // 204 No Content is standard for a successful DELETE
+    })
+  );
+
+  /**
    * Legacy redirect for journal entry detail route
    */
   app.get(

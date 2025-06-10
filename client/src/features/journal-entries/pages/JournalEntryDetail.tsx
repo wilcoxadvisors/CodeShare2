@@ -916,9 +916,22 @@ function JournalEntryDetail() {
         title: 'Success',
         description: 'Journal entry has been reversed',
       });
+
+      // Invalidate query to ensure journal entry list is fresh when user returns
+      if (clientId && currentEntity?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+        });
+      }
       
       // Navigate to the new reversed entry if ID is provided in response
-      if (response && response.id) {
+      if (response && response.entry?.id) {
+        if (clientId && currentEntity?.id) {
+          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${response.entry.id}`);
+        } else {
+          navigate(`/journal-entries/${response.entry.id}`);
+        }
+      } else if (response && response.id) {
         if (clientId && currentEntity?.id) {
           navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${response.id}`);
         } else {
@@ -1921,9 +1934,29 @@ function JournalEntryDetail() {
                     id: entryId,
                     clientId,
                     entityId: currentEntity.id
+                  }, {
+                    onSuccess: () => {
+                      toast({
+                        title: "Success",
+                        description: "Journal entry has been deleted."
+                      });
+                      setShowDeleteDialog(false);
+                      // Invalidate query to refetch the list
+                      queryClient.invalidateQueries({
+                        queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+                      });
+                      // Navigate AFTER success
+                      navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
+                    },
+                    onError: (error: any) => {
+                      toast({
+                        title: "Error",
+                        description: `Failed to delete entry: ${error.message}`,
+                        variant: "destructive"
+                      });
+                      setShowDeleteDialog(false);
+                    }
                   });
-                  setShowDeleteDialog(false);
-                  navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries`);
                 }
               }}
             >
