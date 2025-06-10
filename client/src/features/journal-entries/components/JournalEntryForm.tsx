@@ -1473,103 +1473,45 @@ function JournalEntryForm({
         data: apiPayload,
       });
     },
-    onSuccess: async (result: JournalEntryResponse) => {
-      // Get the newly created journal entry ID from the response
-      // The result might be wrapped in an object or be the entry itself
-      const newJournalEntryId =
-        result?.id || (result?.entry && result.entry.id);
+    onSuccess: async (result: JournalEntryResponse, variables: any) => {
+      const newJournalEntryId = result?.id || (result?.entry && result.entry.id);
 
-      console.log(
-        "DEBUG: New journal entry created with ID:",
-        newJournalEntryId,
-        "Response:",
-        JSON.stringify(result, null, 2),
-      );
+      // This logic should ONLY run when the user's intent was to "Save as Draft".
+      // The more complex "Create and Post" workflow is handled by a separate onSuccess
+      // callback passed directly to the mutate function in handleSubmit.
+      if (variables.status === 'draft') {
+        const hasAttachments = pendingFiles.length > 0;
 
-      // EXPLICITLY ensure we have a valid journal entry ID before proceeding
-      if (!newJournalEntryId) {
-        console.error(
-          "ERROR: Failed to extract journal entry ID from API response",
-        );
+        if (hasAttachments && newJournalEntryId && uploadPendingFilesRef.current) {
+          try {
+            setIsUploading(true);
+            await uploadPendingFilesRef.current(newJournalEntryId);
+            toast({
+              title: "Files attached",
+              description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
+            });
+          } catch (fileError) {
+            console.error("Failed to upload pending files:", fileError);
+            toast({
+              title: "Note about files",
+              description: "Journal entry created, but some files could not be attached. Please try uploading them again.",
+              variant: "destructive",
+            });
+          } finally {
+            setIsUploading(false);
+          }
+        }
+
         toast({
-          title: "Warning",
-          description:
-            "Journal entry was created but there was an issue attaching files.",
-          variant: "destructive",
+          title: "Journal entry created",
+          description: "The journal entry has been created successfully.",
         });
 
-        // Even if there's an error, we should continue with the workflow
+        setPendingFiles([]);
+        setPendingFilesMetadata([]);
         invalidateJournalEntryQueries();
         onSubmit();
-        return;
       }
-
-      // EXPLICITLY show loading state for attachments uploads
-      const hasAttachments = pendingFiles?.length > 0;
-      if (hasAttachments) {
-        toast({
-          title: "Uploading attachments",
-          description: `Uploading ${pendingFiles.length} file(s) to journal entry...`,
-        });
-      }
-
-      // Upload pending files if there are any and we have a valid journal entry ID
-      // Only upload if files haven't already been uploaded in the two-phase workflow
-      if (hasAttachments && uploadPendingFilesRef.current && !filesAlreadyUploaded) {
-        try {
-          console.log(
-            `DEBUG: Attempting to upload ${pendingFiles.length} files to journal entry ${newJournalEntryId}`,
-          );
-
-          // EXPLICITLY set loading state for file uploads
-          setIsUploading(true);
-
-          // EXPLICITLY use the function from the AttachmentSection via ref to upload files
-          // EXPLICITLY await this to ensure files are uploaded before proceeding
-          await uploadPendingFilesRef.current(newJournalEntryId);
-
-          console.log(
-            "DEBUG: Uploaded pending files successfully to new journal entry",
-          );
-
-          // EXPLICITLY invalidate the journal entry query to refresh attachments
-          queryClient.invalidateQueries({
-            queryKey: [getJournalEntryUrl(clientId as number, entityId, newJournalEntryId)],
-          });
-
-          toast({
-            title: "Files attached",
-            description: `${pendingFiles.length} file(s) were attached to the journal entry.`,
-          });
-        } catch (fileError) {
-          console.error("Failed to upload pending files:", fileError);
-          toast({
-            title: "Note about files",
-            description:
-              "Journal entry created, but some files could not be attached. Please try uploading them again.",
-            variant: "destructive",
-          });
-        } finally {
-          // EXPLICITLY clear loading state
-          setIsUploading(false);
-        }
-      } else if (filesAlreadyUploaded) {
-        console.log("DEBUG: Skipping file upload - files already uploaded in two-phase workflow");
-      }
-
-      toast({
-        title: "Journal entry created",
-        description: "The journal entry has been created successfully.",
-      });
-
-      // Clear pending files after successful upload or if there were none
-      setPendingFiles([]);
-      setPendingFilesMetadata([]);
-      setFilesAlreadyUploaded(false); // Reset the flag for next entry
-
-      // Use our helper function to invalidate queries
-      invalidateJournalEntryQueries();
-      onSubmit();
     },
     onError: (error: any) => {
       // Handle structured API errors
