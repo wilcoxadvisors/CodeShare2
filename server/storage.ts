@@ -178,6 +178,7 @@ export class MemStorage implements IStorage {
   public journalEntry: IJournalEntryStorage;
   public auditLogs: IAuditLogStorage;
   public content: IContentStorage;
+  public dimensions: DimensionStorage;
   
   constructor() {
     // Assign specialized storage modules
@@ -196,6 +197,7 @@ export class MemStorage implements IStorage {
     this.journalEntry = journalEntryStorage;
     this.auditLogs = memAuditLogStorage;
     this.content = contentStorage;
+    this.dimensions = dimensionStorage;
   }
 
   // Helper methods to get various storage types

@@ -12,6 +12,7 @@ import { registerAttachmentRoutes } from "./attachmentRoutes";
 import blogRoutes from "./routes/blogRoutes";
 import contentRoutes from "./routes/contentRoutes";
 import { registerAIMLRoutes } from "./routes/aiMLRoutes";
+import dimensionRoutes from "./routes/dimensionRoutes";
 import { pool } from "./db";
 import { startEntityIdsMonitoring } from "../shared/deprecation-monitor";
 import * as fs from 'fs';
