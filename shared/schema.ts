@@ -257,6 +257,52 @@ export const journalEntryLines = pgTable("journal_entry_lines", {
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
 
+// Dimensions table to define categories like Department, Location, etc.
+export const dimensions = pgTable("dimensions", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  isRequired: boolean("is_required").notNull().default(false),
+  allowCustomValues: boolean("allow_custom_values").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    dimensionCodeClientUnique: uniqueIndex('dimension_code_client_unique').on(table.clientId, table.code),
+  };
+});
+
+// Dimension values table for the specific options within each dimension
+export const dimensionValues = pgTable("dimension_values", {
+  id: serial("id").primaryKey(),
+  dimensionId: integer("dimension_id").references(() => dimensions.id, { onDelete: 'cascade' }).notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    dimensionValueCodeUnique: uniqueIndex('dimension_value_code_unique').on(table.dimensionId, table.code),
+  };
+});
+
+// Junction table to link journal entry lines to dimension values
+export const txDimensionLink = pgTable("tx_dimension_link", {
+  id: serial("id").primaryKey(),
+  journalEntryLineId: integer("journal_entry_line_id").references(() => journalEntryLines.id, { onDelete: 'cascade' }).notNull(),
+  dimensionId: integer("dimension_id").references(() => dimensions.id).notNull(),
+  dimensionValueId: integer("dimension_value_id").references(() => dimensionValues.id).notNull(),
+}, (table) => {
+  return {
+    lineDimensionUnique: uniqueIndex('line_dimension_unique').on(table.journalEntryLineId, table.dimensionId),
+  };
+});
+
 // Relations for journalEntries and journalEntryLines
 export const journalEntriesRelations = relations(journalEntries, ({ one, many }) => ({
   client: one(clients, {
@@ -287,7 +333,7 @@ export const journalEntriesRelations = relations(journalEntries, ({ one, many })
   }),
 }));
 
-export const journalEntryLinesRelations = relations(journalEntryLines, ({ one }) => ({
+export const journalEntryLinesRelations = relations(journalEntryLines, ({ one, many }) => ({
   journalEntry: one(journalEntries, {
     fields: [journalEntryLines.journalEntryId],
     references: [journalEntries.id],
@@ -298,6 +344,7 @@ export const journalEntryLinesRelations = relations(journalEntryLines, ({ one })
     references: [accounts.id],
     relationName: "journalEntryLines_account",
   }),
+  dimensions: many(txDimensionLink),
 }));
 
 // Journal Entry File Blobs (for storing binary file content)
@@ -1066,6 +1113,22 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   locations: many(locations)
 }));
 
+// Add relations for the new dimension tables
+export const dimensionsRelations = relations(dimensions, ({ one, many }) => ({
+  client: one(clients, { fields: [dimensions.clientId], references: [clients.id] }),
+  values: many(dimensionValues),
+}));
+
+export const dimensionValuesRelations = relations(dimensionValues, ({ one }) => ({
+  dimension: one(dimensions, { fields: [dimensionValues.dimensionId], references: [dimensions.id] }),
+}));
+
+export const txDimensionLinkRelations = relations(txDimensionLink, ({ one }) => ({
+  journalEntryLine: one(journalEntryLines, { fields: [txDimensionLink.journalEntryLineId], references: [journalEntryLines.id] }),
+  dimension: one(dimensions, { fields: [txDimensionLink.dimensionId], references: [dimensions.id] }),
+  dimensionValue: one(dimensionValues, { fields: [txDimensionLink.dimensionValueId], references: [dimensionValues.id] }),
+}));
+
 // Schema for location insertion
 export const insertLocationSchema = createInsertSchema(locations).omit({
   id: true,
@@ -1076,3 +1139,27 @@ export const insertLocationSchema = createInsertSchema(locations).omit({
 // Types for locations
 export type Location = typeof locations.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
+
+// Zod schemas and types for dimension tables
+export const insertDimensionSchema = createInsertSchema(dimensions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertDimensionValueSchema = createInsertSchema(dimensionValues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertTxDimensionLinkSchema = createInsertSchema(txDimensionLink).omit({
+  id: true
+});
+
+export type Dimension = typeof dimensions.$inferSelect;
+export type InsertDimension = z.infer<typeof insertDimensionSchema>;
+export type DimensionValue = typeof dimensionValues.$inferSelect;
+export type InsertDimensionValue = z.infer<typeof insertDimensionValueSchema>;
+export type TxDimensionLink = typeof txDimensionLink.$inferSelect;
+export type InsertTxDimensionLink = z.infer<typeof insertTxDimensionLinkSchema>;
