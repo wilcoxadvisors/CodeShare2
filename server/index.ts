@@ -161,6 +161,11 @@ app.use((req, res, next) => {
     registerAIMLRoutes(app);
     log('✅ AI ML routes registered');
     
+    // Register dimension routes
+    log('Registering dimension routes...');
+    app.use('/api', dimensionRoutes);
+    log('✅ Dimension routes registered');
+    
     // Register hierarchical attachment routes
     log('Registering hierarchical attachment routes...');
     registerAttachmentRoutes(app);
