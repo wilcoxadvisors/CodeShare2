@@ -496,7 +496,15 @@ function JournalEntryDetail() {
     }
     
     // Check for duplicate files against existing attachments
-    const existingFiles = entry?.files || [];
+    // Extract files from data to avoid using entry before it's declared
+    let existingFiles: any[] = [];
+    if (data) {
+      if (typeof data === 'object' && 'journalEntry' in data && data.journalEntry) {
+        existingFiles = (data.journalEntry as any)?.files || [];
+      } else {
+        existingFiles = (data as any)?.files || [];
+      }
+    }
     const uniqueFiles = validFiles.filter(newFile => {
       const isDuplicate = existingFiles.some(existingFile => 
         existingFile.filename === newFile.name && existingFile.size === newFile.size
@@ -523,7 +531,7 @@ function JournalEntryDetail() {
     
     setUploading(true);
     uploadFile.mutate(uniqueFiles);
-  }, [uploadFile, entry?.files]);
+  }, [uploadFile, data]);
   
   // Setup for react-dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
