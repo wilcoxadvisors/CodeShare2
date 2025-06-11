@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -48,10 +48,19 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch fresh dimension data to ensure real-time updates
+  const { data: freshDimensions } = useQuery<Dimension[]>({
+    queryKey: ['dimensions', selectedClientId],
+    enabled: !!selectedClientId,
+  });
+
+  // Get the current dimension data from the fresh query
+  const currentDimension = freshDimensions?.find((d: Dimension) => d.id === dimension.id) || dimension;
+
   // Create dimension value mutation
   const createValueMutation = useMutation({
     mutationFn: (newValue: ValueFormData) => {
-      return apiRequest(`/api/dimensions/${dimension.id}/values`, {
+      return apiRequest(`/api/dimensions/${currentDimension.id}/values`, {
         method: 'POST',
         data: newValue,
       });
