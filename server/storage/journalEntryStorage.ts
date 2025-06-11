@@ -4,7 +4,8 @@ import {
   journalEntryFiles, journalEntryFileBlobs,
   accounts, Account, AccountType,
   entities, clients,
-  txDimensionLink, InsertTxDimensionLink
+  txDimensionLink, InsertTxDimensionLink,
+  dimensions, dimensionValues
 } from "../../shared/schema";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1237,6 +1238,37 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   
   async deleteJournal(id: number): Promise<boolean> {
     return this.deleteJournalEntry(id);
+  }
+
+  /**
+   * Create dimension tags for a journal entry line
+   */
+  async createDimensionTags(journalEntryLineId: number, tags: Array<{
+    dimensionId: number;
+    dimensionValueId: number;
+    dimensionName?: string;
+    dimensionValueName?: string;
+  }>): Promise<void> {
+    console.log(`Creating dimension tags for journal entry line ${journalEntryLineId}`);
+    try {
+      if (!tags || tags.length === 0) {
+        return;
+      }
+
+      // Prepare dimension link records based on the actual table structure
+      const dimensionLinks: InsertTxDimensionLink[] = tags.map(tag => ({
+        journalEntryLineId: journalEntryLineId,
+        dimensionId: tag.dimensionId,
+        dimensionValueId: tag.dimensionValueId
+      }));
+
+      // Insert dimension links
+      await db.insert(txDimensionLink).values(dimensionLinks);
+      
+      console.log(`Created ${dimensionLinks.length} dimension tags for journal entry line ${journalEntryLineId}`);
+    } catch (e) {
+      throw handleDbError(e, `creating dimension tags for journal entry line ${journalEntryLineId}`);
+    }
   }
 }
 
