@@ -122,6 +122,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
 
 // Define API response interface types for better type safety
 interface JournalEntryResponse {
@@ -1144,6 +1145,17 @@ function JournalEntryForm({
     enabled: !!effectiveClientId && !!entityId,
     staleTime: 30000, // Keep cache for 30 seconds
   });
+
+  // Fetch dimensions for tagging
+  const { data: dimensions = [] } = useQuery<any[]>({
+    queryKey: ['dimensions', effectiveClientId],
+    queryFn: async () => {
+      if (!effectiveClientId) return [];
+      return await apiRequest(`/api/clients/${effectiveClientId}/dimensions`);
+    },
+    enabled: !!effectiveClientId,
+    staleTime: 60000, // Keep cache for 1 minute
+  });
   
   // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
   const invalidateJournalEntryQueries = () => {
@@ -1377,6 +1389,27 @@ function JournalEntryForm({
     initializeExpandedState,
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // State for dimension tagging
+  const [tagPopoverOpen, setTagPopoverOpen] = useState<{ [lineIndex: number]: boolean }>({});
+
+  // Helper functions for dimension tagging
+  const updateLineTags = (lineIndex: number, tags: DimensionTag[]) => {
+    const updatedLines = [...lines];
+    updatedLines[lineIndex] = { ...updatedLines[lineIndex], tags };
+    setLines(updatedLines);
+  };
+
+  const toggleTagPopover = (lineIndex: number, open: boolean) => {
+    setTagPopoverOpen(prev => ({ ...prev, [lineIndex]: open }));
+  };
+
+  const getLineTagsDisplay = (tags: DimensionTag[] = []) => {
+    if (tags.length === 0) return "No tags";
+    return tags.map(tag => `${tag.dimensionName}: ${tag.dimensionValueName}`).join(", ");
+  };
+
+  const hasLineTags = (tags: DimensionTag[] = []) => tags.length > 0;
 
   // Calculate totals - memoized to avoid recalculation on every render
   const { totalDebit, totalCredit, difference, isBalanced } = useMemo(() => {
@@ -2494,6 +2527,12 @@ function JournalEntryForm({
               >
                 Credit
               </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Tags
+              </th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -3079,6 +3118,105 @@ function JournalEntryForm({
                       {fieldErrors[`line_${index}_credit`]}
                     </p>
                   )}
+                </td>
+
+                {/* Tags Column */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <Popover 
+                      open={tagPopoverOpen[index] || false} 
+                      onOpenChange={(open) => toggleTagPopover(index, open)}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`flex items-center gap-1 ${hasLineTags(line.tags) ? 'border-blue-500 text-blue-600' : 'text-gray-500'}`}
+                        >
+                          <Tag className="h-4 w-4" />
+                          {hasLineTags(line.tags) && (
+                            <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-4">
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm">Dimension Tags</h4>
+                          {dimensions.filter(dim => dim.isActive).map((dimension) => (
+                            <div key={dimension.id} className="space-y-2">
+                              <Label className="text-xs font-medium text-gray-700">
+                                {dimension.name}
+                              </Label>
+                              <Select
+                                value={line.tags?.find(tag => tag.dimensionId === dimension.id)?.dimensionValueId?.toString() || ""}
+                                onValueChange={(valueId) => {
+                                  const currentTags = line.tags || [];
+                                  let newTags = [...currentTags];
+                                  
+                                  if (valueId) {
+                                    const selectedValue = dimension.values?.find(v => v.id.toString() === valueId);
+                                    if (selectedValue) {
+                                      // Remove existing tag for this dimension if any
+                                      newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
+                                      // Add new tag
+                                      newTags.push({
+                                        dimensionId: dimension.id,
+                                        dimensionValueId: selectedValue.id,
+                                        dimensionName: dimension.name,
+                                        dimensionValueName: selectedValue.name
+                                      });
+                                    }
+                                  } else {
+                                    // Remove tag for this dimension
+                                    newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
+                                  }
+                                  
+                                  updateLineTags(index, newTags);
+                                }}
+                              >
+                                <SelectTrigger className="w-full h-8">
+                                  <SelectValue placeholder="Select value..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">None</SelectItem>
+                                  {dimension.values?.filter(value => value.isActive).map((value) => (
+                                    <SelectItem key={value.id} value={value.id.toString()}>
+                                      {value.name} ({value.code})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ))}
+                          {line.tags && line.tags.length > 0 && (
+                            <div className="pt-2 border-t">
+                              <div className="flex flex-wrap gap-1">
+                                {line.tags.map((tag, tagIndex) => (
+                                  <Badge key={tagIndex} variant="secondary" className="text-xs">
+                                    {tag.dimensionName}: {tag.dimensionValueName}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    {hasLineTags(line.tags) && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-blue-600 cursor-help">
+                              {line.tags?.length} tag{line.tags?.length !== 1 ? 's' : ''}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">{getLineTagsDisplay(line.tags)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
