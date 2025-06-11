@@ -30,7 +30,20 @@ const DimensionsPage = () => {
     queryKey: ['dimensions', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return [];
-      return apiRequest(`/api/clients/${selectedClientId}/dimensions`);
+      try {
+        const response = await apiRequest(`/api/clients/${selectedClientId}/dimensions`);
+        console.log('API Response:', response);
+        // Ensure we always return an array
+        if (Array.isArray(response)) {
+          return response;
+        } else {
+          console.warn('API response is not an array:', typeof response, response);
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching dimensions:', error);
+        throw error;
+      }
     },
     enabled: !!selectedClientId,
   });
@@ -69,32 +82,42 @@ const DimensionsPage = () => {
         )}
 
         {!isLoading && !error && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {dimensions.map((dimension) => (
-              <Card key={dimension.id}>
-                <CardHeader>
-                  <CardTitle className="flex justify-between items-center">
-                    <span>{dimension.name} ({dimension.code})</span>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${dimension.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {dimension.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{dimension.description || 'No description.'}</p>
-                  <h4 className="font-semibold mb-2">Values ({dimension.values.length}):</h4>
-                  <div className="space-y-1">
-                    {dimension.values.slice(0, 5).map(value => (
-                      <div key={value.id} className="text-sm p-2 bg-gray-50 rounded-md">
-                        {value.name} ({value.code})
+          <>
+            {dimensions && dimensions.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {dimensions.map((dimension) => (
+                  <Card key={dimension.id}>
+                    <CardHeader>
+                      <CardTitle className="flex justify-between items-center">
+                        <span>{dimension.name} ({dimension.code})</span>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dimension.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {dimension.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">{dimension.description || 'No description.'}</p>
+                      <h4 className="font-semibold mb-2">Values ({dimension.values?.length || 0}):</h4>
+                      <div className="space-y-1">
+                        {dimension.values?.length > 0 ? dimension.values.slice(0, 5).map(value => (
+                          <div key={value.id} className="text-sm p-2 bg-gray-50 rounded-md">
+                            {value.name} ({value.code})
+                          </div>
+                        )) : (
+                          <div className="text-sm text-muted-foreground p-2 text-center">No values created.</div>
+                        )}
+                        {dimension.values?.length > 5 && <div className="text-sm text-muted-foreground p-2">...and {dimension.values.length - 5} more.</div>}
                       </div>
-                    ))}
-                    {dimension.values.length > 5 && <div className="text-sm text-muted-foreground p-2">...and {dimension.values.length - 5} more.</div>}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No dimensions found. Create your first dimension to get started.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
