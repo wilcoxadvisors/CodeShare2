@@ -48,8 +48,18 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Use the dimension prop directly - cache invalidation will trigger parent refresh
-  const currentDimension = dimension;
+  // Fetch fresh dimension data to ensure real-time updates
+  const { data: freshDimensions, refetch: refetchDimensions } = useQuery<Dimension[]>({
+    queryKey: ['dimensions', selectedClientId],
+    enabled: !!selectedClientId,
+    staleTime: 0, // Always refetch to ensure fresh data
+    refetchOnWindowFocus: true,
+  });
+
+  // Get the current dimension data from the fresh query or fallback to prop
+  const currentDimension = (freshDimensions && Array.isArray(freshDimensions)) 
+    ? freshDimensions.find((d: Dimension) => d.id === dimension.id) || dimension
+    : dimension;
 
   // Create dimension value mutation
   const createValueMutation = useMutation({
@@ -66,7 +76,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
       
       // Force cache invalidation and refetch
       await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      await refetchDimensions();
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create dimension value.", variant: "destructive" });
@@ -88,7 +98,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
       
       // Force cache invalidation and refetch
       await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      await refetchDimensions();
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update dimension value.", variant: "destructive" });
@@ -108,7 +118,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
 
       // Force cache invalidation and refetch
       await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      await refetchDimensions();
     },
     onError: (error: any) => {
       toast({ 
