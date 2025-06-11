@@ -7,9 +7,11 @@ import PageHeader from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
-import { PlusCircle, Loader2, AlertCircle, Settings } from 'lucide-react';
+import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2 } from 'lucide-react';
 
 // Define type for a Dimension based on our schema
 interface Dimension {
@@ -33,6 +35,8 @@ const DimensionsPage = () => {
   const { selectedClientId } = useEntity();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
+  const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
+  const [deletingDimension, setDeletingDimension] = useState<Dimension | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -51,6 +55,41 @@ const DimensionsPage = () => {
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create dimension.", variant: "destructive" });
+    }
+  });
+
+  const updateDimensionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; code: string; description?: string; } }) => {
+      return apiRequest(`/api/dimensions/${id}`, {
+        method: 'PUT',
+        data,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Dimension updated successfully." });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      setEditingDimension(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update dimension.", variant: "destructive" });
+    }
+  });
+
+  const deleteDimensionMutation = useMutation({
+    mutationFn: (id: number) => {
+      return apiRequest(`/api/dimensions/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Dimension deleted successfully." });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      setDeletingDimension(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete dimension.", variant: "destructive" });
     }
   });
 
@@ -140,9 +179,31 @@ const DimensionsPage = () => {
                     <CardHeader>
                       <CardTitle className="flex justify-between items-center">
                         <span>{dimension.name} ({dimension.code})</span>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${dimension.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {dimension.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${dimension.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {dimension.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingDimension(dimension)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => setDeletingDimension(dimension)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -197,6 +258,58 @@ const DimensionsPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dimension Dialog */}
+      <Dialog open={!!editingDimension} onOpenChange={(open) => !open && setEditingDimension(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Dimension</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {editingDimension && (
+              <DimensionForm 
+                onSubmit={(values) => updateDimensionMutation.mutate({ id: editingDimension.id, data: values })}
+                isSubmitting={updateDimensionMutation.isPending}
+                initialValues={{
+                  name: editingDimension.name,
+                  code: editingDimension.code,
+                  description: editingDimension.description || ''
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingDimension} onOpenChange={(open) => !open && setDeletingDimension(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Dimension</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the dimension "{deletingDimension?.name}" ({deletingDimension?.code})? 
+              This action cannot be undone and will also delete all associated dimension values.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deletingDimension && deleteDimensionMutation.mutate(deletingDimension.id)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteDimensionMutation.isPending}
+            >
+              {deleteDimensionMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

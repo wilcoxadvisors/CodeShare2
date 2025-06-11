@@ -113,6 +113,26 @@ export class DimensionStorage {
   }
 
   /**
+   * Delete a dimension and all its associated values.
+   * @param id - The ID of the dimension to delete.
+   */
+  async deleteDimension(id: number) {
+    try {
+        // Delete the dimension (associated values will be deleted due to CASCADE)
+        const [deletedDimension] = await db.delete(dimensions)
+            .where(eq(dimensions.id, id))
+            .returning();
+        if (!deletedDimension) {
+            throw new ApiError(404, "Dimension not found.");
+        }
+        return deletedDimension;
+    } catch (error) {
+        console.error("Error deleting dimension:", error);
+        throw new ApiError(500, "Failed to delete dimension.");
+    }
+  }
+
+  /**
    * Update an existing dimension value.
    * @param id - The ID of the dimension value to update.
    * @param data - The data to update.

@@ -1,0 +1,45 @@
+Issue 2: Edit and Delete a Dimension (New Feature)
+This is a critical piece of missing functionality. You should absolutely be able to edit and delete the dimensions you create.
+
+Architect's Instruction for the Replit AI Agent:
+
+Agent, your next task is to implement "Edit" and "Delete" functionality for the main Dimension cards.
+
+Part 1: Backend - Add Delete Endpoint
+
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Add a new DELETE endpoint to handle dimension deletion. This route should be protected by authentication.
+TypeScript
+
+// Example DELETE route
+router.delete('/dimensions/:id', isAuthenticated, asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    // ... validation ...
+    await dimensionStorage.deleteDimension(id);
+    res.status(204).send();
+}));
+File to Modify: server/storage/dimensionStorage.ts
+Action: Create a corresponding deleteDimension(id: number) method in the DimensionStorage class. This method should delete the dimension and, importantly, all of its associated values and any links in tx_dimension_link. This should be handled by the onDelete: 'cascade' property in the dimensionValues schema, but it's good practice to be aware of it.
+Part 2: Frontend - Add UI Controls
+
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+Action: On each dimension card, next to the title, add a "..." icon button that opens a DropdownMenu.
+Dropdown Menu Items: The dropdown should contain two items: "Edit" and "Delete".
+Part 3: Frontend - Implement Edit/Delete Logic
+
+Edit Logic:
+When "Edit" is clicked, open a Dialog containing the DimensionForm component, pre-filled with the selected dimension's name, code, and description.
+Submitting this form should call a useMutation hook that makes a PUT request to /api/dimensions/:id.
+On success, invalidate the ['dimensions', selectedClientId] query to refresh the page.
+Delete Logic:
+When "Delete" is clicked, open an AlertDialog to confirm the action.
+On confirmation, call a useMutation hook that makes a DELETE request to the new /api/dimensions/:id endpoint.
+On success, invalidate the ['dimensions', selectedClientId] query.
+Agent, please begin with Part 1: Implementing the backend delete functionality.
+
+
+
+
+
+
+
