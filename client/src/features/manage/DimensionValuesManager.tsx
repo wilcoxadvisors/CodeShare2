@@ -55,8 +55,11 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
       });
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Dimension value created successfully." });
+      // Force immediate refetch of dimensions data
       queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      
+      toast({ title: "Success", description: "Dimension value created successfully." });
       setAddModalOpen(false);
       setFormData({ name: '', code: '', description: '' });
     },
@@ -74,8 +77,11 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
       });
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Dimension value updated successfully." });
+      // Force immediate refetch of dimensions data
       queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      
+      toast({ title: "Success", description: "Dimension value updated successfully." });
       setEditingValue(null);
       setFormData({ name: '', code: '', description: '' });
     },
