@@ -1,6 +1,8 @@
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
 ## Recent Changelog:
+- **2025-06-11**: Accrual Reversal Feature Specified. Added plan for auto-reversing journal entries.
+- **2025-06-11**: JE Module Stabilized & Dimensions Backend Complete. All P0 bugs for manual Journal Entry workflow (including attachments, reverse, void, delete) have been resolved. Backend foundation for Dimensions (Schema, Seeding, Storage, API) is complete. Initial frontend UI for listing and creating Dimensions is complete.
 - **2025-05-06**: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
 - **2025-05-06**: Hierarchical JE attachment routes implemented (Bug #7 in progress)
 - **2025-05-01**: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
@@ -146,10 +148,11 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
   - **Recent Fix:** ✅ **Fixed server crash during migrations by correcting the conditional check in `add-soft-deletion-and-audit-logs.ts` that was causing premature process termination.**
 - **Phase 2 (Guided Setup Flow):** COMPLETED. The 3-step "Add Client" modal flow (`SetupStepper.tsx` + Cards) accessed via `Dashboard.tsx` is now stable.
   - **Update:** All critical setup flow bugs have been fixed (Checkpoints through `f0cc5d4f`), including state management, navigation, and database persistence issues.
-- **Phase 3 (Core Accounting Features):** IN PROGRESS.
+- **Phase 3 (Core Accounting Features):** 🔄 IN PROGRESS.
 
-  - **Current Update:** Task B.1 (Chart of Accounts) is NEARLY COMPLETE. Fixed account update logic to allow name/active/parentId changes with transactions, while correctly blocking accountCode/type changes. Fixed UI to disable restricted fields when editing accounts with transactions. Still need to finalize UI/UX and ensure consistency across multiple entities.
-  - **Current Update:** Task B.2 (General Ledger / Journal Entries) is IN PROGRESS. Manual JE workflow now functional with Create, Edit, Post, Void, and Reverse operations working correctly. The current focus is on implementing/fixing the File Attachment functionality for journal entries (#7 - multi-file, drag-drop, list, download, delete). After this is complete, we will implement Dimensions & Smart Rules (B.2.1), and then proceed to Batch Journal Entry upload functionality.
+  - **Current Update:** Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
+  - **Current Update:** Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. The next planned enhancement is the Auto-Reversing Accrual feature.
+  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The backend foundation is complete (Database Schema, Seeding, Storage Layer, and API Endpoints). The initial frontend UI for listing and creating dimensions is also complete. Next steps involve building out the UI for managing dimension values and integrating dimensions into the JE form.
   - **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
     - **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
     - **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -285,17 +288,14 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     - 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
     - 🔄 UI location: Journal Entry Form (shown only in Edit mode)
     - 🔄 Need systematic debugging (backend save/list, frontend fetch/render)
-* **(Task B.2.1)** Dimensions & Smart Rules _(MUST PRECEDE BATCH JE UPLOAD)_
-
-  - Create client-level master-data tables in `shared/schema.ts`:
-    - **dimensions**: (id, entityId, code, name, description, isActive, isRequired, allowCustomValues)
-    - **dimension_values**: (id, dimensionId, code, name, description, isActive)
-    - **tx_dimension_link**: (id, journalEntryLineId, dimensionId, dimensionValueId)
-  - Seed system dimensions: **Department, Location, Customer, Vendor, Employee, Project, Class, Item**
-  - Add **Admin-only "Dimensions" management tab** in dashboard with:
-    - List/Create/Edit/Deactivate dimensions
-    - List/Create/Edit/Deactivate dimension values
-    - Assign default dimension values to accounts
+* **(Task B.2.1)** Dimensions & Smart Rules: **🔄 IN PROGRESS (Current Focus)**
+  - ✅ Create client-level master-data tables in `shared/schema.ts` (dimensions, dimension_values, tx_dimension_link).
+  - ✅ Seed system dimensions: Department, Location, Customer, etc.
+  - ✅ Build backend Storage Layer and API routes for CRUD operations.
+  - ✅ Build initial frontend UI to list existing dimensions and create new ones.
+  - 🔄 NEXT: Build UI to add/edit/deactivate values for each dimension (e.g., add "Sales" to the "Department" dimension).
+  - 🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
+  - 🔄 Implement a Smart Rules MVP (JSON validation).
   - Build **Client Portal read-only Dimensions tab** for reference
   - Implement a **Smart Rules MVP** (JSON validation):
     - Required dimensions by account type
@@ -688,3 +688,41 @@ Throughout every task explicitly:
 | **Smart Rule**      | JSON-based validation explicitly ensuring dimension/account compliance.                                                                                                      |
 
 (Keep this glossary alphabetised as new terms emerge.)
+
+## Newly Added Section: Resolved & Unresolved Issues
+
+### ✅ Recently Resolved Issues
+
+**P0: Journal ID / Reference Field Instability:** Resolved by implementing a backend-driven, sequential, and scalable referenceNumber.
+
+**P0: Cannot Delete Draft Entry:** Resolved by implementing the correct hierarchical DELETE route on the backend and fixing the frontend callback logic.
+
+**P0: Reverse Journal Entry Fails:** Resolved by adding the missing hierarchical /reverse API route.
+
+**P0: Void Journal Entry Fails:** Resolved by adding a dedicated hierarchical /void API route and connecting the UI.
+
+**Data Entry Bug:** Users can now correctly enter decimal values (cents) in Debit/Credit fields.
+
+**UX Bug:** After a "Reverse" action, the journal entry list now correctly refreshes without needing a manual page reload.
+
+**Attachment Bug #7 (and sub-issues):**
+- Existing attachments are now correctly displayed when editing a draft.
+- New attachments can be added to new journal entries.
+- Duplicate attachments during the "create-and-post" workflow is fixed.
+
+**Runtime Crash:** ReferenceError: Cannot access 'entry' before initialization on the JE Detail page has been fixed.
+
+### 🔄 Unresolved Issues / Next Steps
+
+**Dimensions UI (High Priority):**
+- Implement Create, Update, and Delete functionality for Dimension Values.
+- Build the UI to associate journal entry lines with dimensions.
+
+**P1 - UX Polish (Medium Priority):**
+- JE Form - Account Selector: Improve filtering when typing an account number; auto-close selector after selection.
+- JE Form - Button Behavior: Investigate and fix any strange "simultaneous behavior" between "Save as Draft" and "Post" buttons.
+- JE Update UX: Improve the perceived performance of the UI after a JE is updated.
+
+**Smart Rules MVP (Medium Priority):** Begin implementation of the JSON-based validation rule engine.
+
+**Batch JE Upload (Next Major Feature):** To be started after the Dimensions framework is integrated into the JE form.

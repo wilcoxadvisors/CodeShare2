@@ -1,0 +1,83 @@
+Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
+Recent Changelog:
+
+2025-06-11: JE Module Stabilized & Dimensions Backend Complete. All P0 bugs for manual Journal Entry workflow (including attachments, reverse, void, delete) have been resolved. Backend foundation for Dimensions (Schema, Seeding, Storage, API) is complete. Initial frontend UI for listing and creating Dimensions is complete.
+2025-05-06: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
+2025-05-06: Hierarchical JE attachment routes implemented (Bug #7 in progress)
+2025-05-01: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
+2025-04-29: Added Date & Attachment Reliability Guards; documented multi-file attachment CRUD test coverage
+1. Project Overview & Goal
+(No changes to this section)
+
+2. Business Model & Long-Term Vision
+(No changes to this section)
+
+3. Current Development Status
+Phase 1 (Stabilization & Migration): ✅ COMPLETE.
+
+Phase 2 (Guided Setup Flow): ✅ COMPLETE.
+
+Phase 3 (Core Accounting Features): 🔄 IN PROGRESS.
+
+Current Update: Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
+Current Update: Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. All critical attachment bugs (Bug #7) have been resolved. The underlying data handling for numbers and dates is stable.
+Current Update: Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The backend foundation is complete (Database Schema, Seeding, Storage Layer, and API Endpoints). The initial frontend UI for listing and creating dimensions is also complete. Next steps involve building out the UI for managing dimension values and integrating dimensions into the JE form.
+(No other changes to section 3)
+
+4. Overall Project Roadmap & Agent Tasks (Prioritized)
+Phase A: Stabilize Core Setup Flow: ✅ COMPLETED
+
+Phase B: Core Accounting Module: 🔄 IN PROGRESS
+
+(Task B.1) Customizable Chart of Accounts (CoA): ✅ NEARLY COMPLETE
+
+... (all sub-tasks are checked)
+🔄 Finalize UI/UX enhancements and document edge-case validations.
+🔄 Ensure consistency and verify hierarchical CoA across multiple entities.
+(Task B.2) General Ledger (GL) and Journal Entries (JE): ✅ COMPLETED / STABLE
+
+✅ Design/Finalize JE schema.
+✅ Implement backend CRUD API.
+✅ Build frontend UI for manual JE creation.
+✅ Manual JE workflow functional: Create, Edit, Post, Void, Reverse, Delete Draft.
+✅ UI updates correctly with state changes (including after reversals).
+✅ JE List display fixed.
+✅ JE Form UI fixed (Buttons, Decimal/Cents Input, Number formatting).
+✅ JE Edit route fixed.
+✅ Refactored frontend components.
+✅ RESOLVED: File Attachment functionality (Bug #7) is now stable.
+✅ RESOLVED: Journal ID (referenceNumber) is now auto-generated on the backend, sequential, and scalable.
+(Task B.2.1) Dimensions & Smart Rules: 🔄 IN PROGRESS (Current Focus)
+
+✅ Create client-level master-data tables in shared/schema.ts (dimensions, dimension_values, tx_dimension_link).
+✅ Seed system dimensions: Department, Location, Customer, etc.
+✅ Build backend Storage Layer and API routes for CRUD operations.
+✅ Build initial frontend UI to list existing dimensions and create new ones.
+🔄 NEXT: Build UI to add/edit/deactivate values for each dimension (e.g., add "Sales" to the "Department" dimension).
+🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
+🔄 Implement a Smart Rules MVP (JSON validation).
+(Task B.3) Accounting Modules: 📝 NOT STARTED
+
+Newly Added Section: Resolved & Unresolved Issues
+✅ Recently Resolved Issues
+P0: Journal ID / Reference Field Instability: Resolved by implementing a backend-driven, sequential, and scalable referenceNumber.
+P0: Cannot Delete Draft Entry: Resolved by implementing the correct hierarchical DELETE route on the backend and fixing the frontend callback logic.
+P0: Reverse Journal Entry Fails: Resolved by adding the missing hierarchical /reverse API route.
+P0: Void Journal Entry Fails: Resolved by adding a dedicated hierarchical /void API route and connecting the UI.
+Data Entry Bug: Users can now correctly enter decimal values (cents) in Debit/Credit fields.
+UX Bug: After a "Reverse" action, the journal entry list now correctly refreshes without needing a manual page reload.
+Attachment Bug #7 (and sub-issues):
+Existing attachments are now correctly displayed when editing a draft.
+New attachments can be added to new journal entries.
+Duplicate attachments during the "create-and-post" workflow is fixed.
+Runtime Crash: ReferenceError: Cannot access 'entry' before initialization on the JE Detail page has been fixed.
+🔄 Unresolved Issues / Next Steps
+Dimensions UI (High Priority):
+Implement Create, Update, and Delete functionality for Dimension Values.
+Build the UI to associate journal entry lines with dimensions.
+P1 - UX Polish (Medium Priority):
+JE Form - Account Selector: Improve filtering when typing an account number; auto-close selector after selection.
+JE Form - Button Behavior: Investigate and fix any strange "simultaneous behavior" between "Save as Draft" and "Post" buttons.
+JE Update UX: Improve the perceived performance of the UI after a JE is updated.
+Smart Rules MVP (Medium Priority): Begin implementation of the JSON-based validation rule engine.
+Batch JE Upload (Next Major Feature): To be started after the Dimensions framework is integrated into the JE form.

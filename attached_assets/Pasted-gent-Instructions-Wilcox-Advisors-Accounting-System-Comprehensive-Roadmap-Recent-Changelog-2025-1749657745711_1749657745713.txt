@@ -1,0 +1,70 @@
+gent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
+Recent Changelog:
+
+2025-06-11: Accrual Reversal Feature Specified. Added plan for auto-reversing journal entries.
+2025-06-11: JE Module Stabilized & Dimensions Backend Complete. All P0 bugs for manual Journal Entry workflow (including attachments, reverse, void, delete) have been resolved. Backend foundation for Dimensions (Schema, Seeding, Storage, API) is complete. Initial frontend UI for listing and creating Dimensions is complete.
+2025-05-06: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
+2025-05-06: Hierarchical JE attachment routes implemented (Bug #7 in progress)
+2025-05-01: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
+2025-04-29: Added Date & Attachment Reliability Guards; documented multi-file attachment CRUD test coverage
+(Sections 1 and 2 remain unchanged)
+
+3. Current Development Status
+Phase 3 (Core Accounting Features): 🔄 IN PROGRESS.
+
+Current Update: Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
+Current Update: Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. The next planned enhancement is the Auto-Reversing Accrual feature.
+Current Update: Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The backend foundation is complete (Database Schema, Seeding, Storage Layer, and API Endpoints). The initial frontend UI for listing and creating dimensions is also complete. Next steps involve building out the UI for managing dimension values and integrating dimensions into the JE form.
+(The rest of Section 3 remains unchanged)
+
+4. Overall Project Roadmap & Agent Tasks (Prioritized)
+Phase A: Stabilize Core Setup Flow: ✅ COMPLETED
+
+Phase B: Core Accounting Module: 🔄 IN PROGRESS
+
+(Task B.1) Customizable Chart of Accounts (CoA): ✅ NEARLY COMPLETE
+
+... (all sub-tasks are checked)
+🔄 Finalize UI/UX enhancements and document edge-case validations.
+🔄 Ensure consistency and verify hierarchical CoA across multiple entities.
+(Task B.2) General Ledger (GL) and Journal Entries (JE): ✅ COMPLETED / STABLE
+
+✅ Design/Finalize JE schema.
+✅ Implement backend CRUD API.
+✅ Build frontend UI for manual JE creation.
+✅ Manual JE workflow functional: Create, Edit, Post, Void, Reverse, Delete Draft.
+✅ RESOLVED: All major bugs related to attachments, data entry, and workflow.
+(Task B.2.1) Dimensions & Smart Rules: 🔄 IN PROGRESS (Current Focus)
+
+✅ Create client-level master-data tables in shared/schema.ts.
+✅ Seed system dimensions.
+✅ Build backend Storage Layer and API routes for CRUD operations.
+✅ Build initial frontend UI to list and create dimensions.
+🔄 NEXT: Build UI to add/edit/deactivate values for each dimension.
+🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
+🔄 Implement a Smart Rules MVP (JSON validation).
+(Task B.2.2) Automatic Accrual Reversals: 📝 NOT STARTED (New Priority)
+
+📝 Schema: Add isAccrual (boolean) and reversalForEntryId (integer) fields to the journalEntries table in shared/schema.ts.
+📝 Backend: Implement a createReversingEntryForAccrual function in journalEntryStorage.ts that creates a new, posted JE for the first day of the next month with flipped debits/credits.
+📝 Frontend: Add an "Auto-Reverse Accrual" toggle switch to the JournalEntryForm.tsx. When active, it should display the calculated reversal date to the user.
+📝 API: Update the journal entry creation logic to check the isAccrual flag and trigger the new backend reversal function upon successful posting of the original entry.
+(Task B.3) Accounting Modules: 📝 NOT STARTED
+
+Newly Added Section: Resolved & Unresolved Issues
+✅ Recently Resolved Issues
+P0: All critical bugs related to the manual Journal Entry workflow (ID Instability, Delete, Reverse, Void).
+Data Entry Bug: Corrected decimal/cents input in Debit/Credit fields.
+UX Bug: Data now correctly refreshes after a "Reverse" action.
+Attachment Bug #7: All major attachment issues are resolved.
+Runtime Crashes on the JE Detail page have been fixed.
+🔄 Unresolved Issues / Next Steps
+Accrual Reversal Feature (High Priority): Implement the newly specified auto-reversal feature.
+Dimensions UI (High Priority):
+Implement Create, Update, and Delete functionality for Dimension Values.
+Build the UI to associate journal entry lines with dimensions.
+P1 - UX Polish (Medium Priority):
+Improve filtering and behavior of the Account Selector on the JE Form.
+Investigate and fix any strange "simultaneous behavior" between JE form buttons.
+Smart Rules MVP (Medium Priority): Begin implementation of the JSON-based validation rule engine.
+Batch JE Upload (Next Major Feature): To be started after the Dimensions framework is integrated into the JE form.
