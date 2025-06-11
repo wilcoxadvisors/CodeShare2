@@ -2281,6 +2281,23 @@ export function registerJournalEntryRoutes(app: Express) {
         // Update the journal entry with lines
         const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
         
+        // Handle dimension tags if lines were updated
+        if (lines && lines.length > 0) {
+          // Get the updated lines to get their IDs
+          const updatedLines = await journalEntryStorage.getJournalEntryLines(id);
+          
+          // Update dimension tags for each line that has tags
+          for (let i = 0; i < lines.length; i++) {
+            const lineData = lines[i];
+            const updatedLine = updatedLines[i];
+            
+            if (updatedLine && lineData.tags) {
+              console.log(`Updating dimension tags for line ${updatedLine.id} with tags:`, lineData.tags);
+              await journalEntryStorage.updateDimensionTagsForLine(updatedLine.id, lineData.tags);
+            }
+          }
+        }
+        
         res.json(updatedEntry);
       } catch (error) {
         if (error instanceof ZodError) {

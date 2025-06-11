@@ -1242,6 +1242,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
 
   /**
    * Create dimension tags for a journal entry line
+   * Ensures data structure perfectly matches txDimensionLink schema
    */
   async createDimensionTags(journalEntryLineId: number, tags: Array<{
     dimensionId: number;
@@ -1250,24 +1251,126 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     dimensionValueName?: string;
   }>): Promise<void> {
     console.log(`Creating dimension tags for journal entry line ${journalEntryLineId}`);
+    
     try {
+      // Early return if no tags to process
       if (!tags || tags.length === 0) {
+        console.log(`No tags provided for journal entry line ${journalEntryLineId}`);
         return;
       }
 
-      // Prepare dimension link records based on the actual table structure
-      const dimensionLinks: InsertTxDimensionLink[] = tags.map(tag => ({
-        journalEntryLineId: journalEntryLineId,
-        dimensionId: tag.dimensionId,
-        dimensionValueId: tag.dimensionValueId
-      }));
+      // Validate that journalEntryLineId exists
+      if (!journalEntryLineId || journalEntryLineId <= 0) {
+        throw new Error(`Invalid journalEntryLineId: ${journalEntryLineId}`);
+      }
 
-      // Insert dimension links
+      // Prepare dimension link records matching InsertTxDimensionLink schema exactly
+      const dimensionLinks: InsertTxDimensionLink[] = tags.map(tag => {
+        // Validate required fields
+        if (!tag.dimensionId || !tag.dimensionValueId) {
+          throw new Error(`Invalid tag data: dimensionId=${tag.dimensionId}, dimensionValueId=${tag.dimensionValueId}`);
+        }
+
+        return {
+          journalEntryLineId: journalEntryLineId,
+          dimensionId: tag.dimensionId,
+          dimensionValueId: tag.dimensionValueId
+        };
+      });
+
+      console.log(`Inserting ${dimensionLinks.length} dimension tags for line ${journalEntryLineId}:`, 
+        dimensionLinks.map(link => `dimension:${link.dimensionId} -> value:${link.dimensionValueId}`).join(', '));
+
+      // Insert dimension links with proper error handling
       await db.insert(txDimensionLink).values(dimensionLinks);
       
-      console.log(`Created ${dimensionLinks.length} dimension tags for journal entry line ${journalEntryLineId}`);
+      console.log(`Successfully created ${dimensionLinks.length} dimension tags for journal entry line ${journalEntryLineId}`);
     } catch (e) {
+      console.error(`Error creating dimension tags for line ${journalEntryLineId}:`, e);
       throw handleDbError(e, `creating dimension tags for journal entry line ${journalEntryLineId}`);
+    }
+  }
+
+  /**
+   * Update dimension tags for a journal entry line
+   * Handles the complete delete-then-insert operation within a transaction
+   */
+  async updateDimensionTagsForLine(journalEntryLineId: number, tags: Array<{
+    dimensionId: number;
+    dimensionValueId: number;
+    dimensionName?: string;
+    dimensionValueName?: string;
+  }>): Promise<void> {
+    console.log(`Updating dimension tags for journal entry line ${journalEntryLineId}`);
+    
+    try {
+      // Validate journalEntryLineId
+      if (!journalEntryLineId || journalEntryLineId <= 0) {
+        throw new Error(`Invalid journalEntryLineId: ${journalEntryLineId}`);
+      }
+
+      // Execute delete-then-insert operation in a transaction for atomicity
+      await db.transaction(async (tx) => {
+        // Step 1: Delete all existing tags for this journal entry line
+        const deletedTags = await tx.delete(txDimensionLink)
+          .where(eq(txDimensionLink.journalEntryLineId, journalEntryLineId))
+          .returning();
+        
+        console.log(`Deleted ${deletedTags.length} existing dimension tags for line ${journalEntryLineId}`);
+
+        // Step 2: Insert new tags if any are provided
+        if (tags && tags.length > 0) {
+          // Validate and prepare new dimension links
+          const dimensionLinks: InsertTxDimensionLink[] = tags.map(tag => {
+            if (!tag.dimensionId || !tag.dimensionValueId) {
+              throw new Error(`Invalid tag data: dimensionId=${tag.dimensionId}, dimensionValueId=${tag.dimensionValueId}`);
+            }
+
+            return {
+              journalEntryLineId: journalEntryLineId,
+              dimensionId: tag.dimensionId,
+              dimensionValueId: tag.dimensionValueId
+            };
+          });
+
+          console.log(`Inserting ${dimensionLinks.length} new dimension tags for line ${journalEntryLineId}:`, 
+            dimensionLinks.map(link => `dimension:${link.dimensionId} -> value:${link.dimensionValueId}`).join(', '));
+
+          // Insert new tags
+          await tx.insert(txDimensionLink).values(dimensionLinks);
+          
+          console.log(`Successfully inserted ${dimensionLinks.length} new dimension tags for line ${journalEntryLineId}`);
+        } else {
+          console.log(`No new tags to insert for line ${journalEntryLineId}`);
+        }
+      });
+
+      console.log(`Successfully updated dimension tags for journal entry line ${journalEntryLineId}`);
+    } catch (e) {
+      console.error(`Error updating dimension tags for line ${journalEntryLineId}:`, e);
+      throw handleDbError(e, `updating dimension tags for journal entry line ${journalEntryLineId}`);
+    }
+  }
+
+  /**
+   * Delete all dimension tags for a journal entry line
+   */
+  async deleteDimensionTagsForLine(journalEntryLineId: number): Promise<void> {
+    console.log(`Deleting all dimension tags for journal entry line ${journalEntryLineId}`);
+    
+    try {
+      if (!journalEntryLineId || journalEntryLineId <= 0) {
+        throw new Error(`Invalid journalEntryLineId: ${journalEntryLineId}`);
+      }
+
+      const deletedTags = await db.delete(txDimensionLink)
+        .where(eq(txDimensionLink.journalEntryLineId, journalEntryLineId))
+        .returning();
+      
+      console.log(`Successfully deleted ${deletedTags.length} dimension tags for journal entry line ${journalEntryLineId}`);
+    } catch (e) {
+      console.error(`Error deleting dimension tags for line ${journalEntryLineId}:`, e);
+      throw handleDbError(e, `deleting dimension tags for journal entry line ${journalEntryLineId}`);
     }
   }
 }

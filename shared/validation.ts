@@ -69,6 +69,16 @@ export const batchUploadSchema = z.object({
 });
 
 /**
+ * Schema for dimension tags
+ */
+export const dimensionTagSchema = z.object({
+  dimensionId: z.number().int().positive({ message: "Valid Dimension ID required" }),
+  dimensionValueId: z.number().int().positive({ message: "Valid Dimension Value ID required" }),
+  dimensionName: z.string().optional(),
+  dimensionValueName: z.string().optional(),
+});
+
+/**
  * Schema for individual Journal Entry Lines
  */
 export const journalEntryLineSchema = z.object({
@@ -85,6 +95,8 @@ export const journalEntryLineSchema = z.object({
   fsliBucket: optionalString.nullable(),
   internalReportingBucket: optionalString.nullable(),
   item: optionalString.nullable(),
+  // Dimension tags support
+  tags: z.array(dimensionTagSchema).optional(),
 });
 
 /**
