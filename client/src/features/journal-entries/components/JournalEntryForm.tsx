@@ -1910,6 +1910,8 @@ function JournalEntryForm({
           // Only include one of debit or credit based on which has a value
           type: debitValue > 0 ? "debit" : "credit",
           amount: debitValue > 0 ? debitValue : creditValue,
+          // Include dimension tags if present
+          tags: line.tags || [],
         };
       });
 

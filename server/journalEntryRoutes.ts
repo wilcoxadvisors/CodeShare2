@@ -227,7 +227,7 @@ export function registerJournalEntryRoutes(app: Express) {
             console.log('DEBUG: Line already has type and amount:', line.type, line.amount);
             
             // Create the journal entry line
-            await journalEntryStorage.createJournalEntryLine({
+            const createdLine = await journalEntryStorage.createJournalEntryLine({
               journalEntryId: journalEntry.id,
               accountId: parseInt(line.accountId.toString()),
               type: line.type,
@@ -235,6 +235,12 @@ export function registerJournalEntryRoutes(app: Express) {
               description: line.description || '',
               entityCode: line.entityCode || ''
             });
+
+            // Handle dimension tags if present
+            if (line.tags && Array.isArray(line.tags) && line.tags.length > 0) {
+              console.log('DEBUG: Processing dimension tags for line:', createdLine.id, 'tags:', line.tags);
+              await journalEntryStorage.createDimensionTags(createdLine.id, line.tags);
+            }
             
             continue;
           }
@@ -266,7 +272,7 @@ export function registerJournalEntryRoutes(app: Express) {
           console.log('DEBUG: Adding line with', type, 'amount', amount, 'to account', line.accountId);
           
           // Create the journal entry line
-          await journalEntryStorage.createJournalEntryLine({
+          const createdLine = await journalEntryStorage.createJournalEntryLine({
             journalEntryId: journalEntry.id,
             accountId: parseInt(line.accountId.toString()),
             type,
@@ -274,6 +280,12 @@ export function registerJournalEntryRoutes(app: Express) {
             description: line.description || '',
             entityCode: line.entityCode || ''
           });
+
+          // Handle dimension tags if present
+          if (line.tags && Array.isArray(line.tags) && line.tags.length > 0) {
+            console.log('DEBUG: Processing dimension tags for line:', createdLine.id, 'tags:', line.tags);
+            await journalEntryStorage.createDimensionTags(createdLine.id, line.tags);
+          }
         }
         
         console.log('DEBUG: Finished adding lines to journal entry', journalEntry.id);

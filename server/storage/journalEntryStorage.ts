@@ -3,7 +3,8 @@ import {
   journalEntryLines, JournalEntryLine, InsertJournalEntryLine,
   journalEntryFiles, journalEntryFileBlobs,
   accounts, Account, AccountType,
-  entities, clients
+  entities, clients,
+  txDimensionLink, InsertTxDimensionLink
 } from "../../shared/schema";
 import * as fs from 'fs';
 import * as path from 'path';
