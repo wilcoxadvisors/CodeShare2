@@ -17,7 +17,8 @@ import {
   BarChart,
   Users,
   FolderOpen,
-  Briefcase
+  Briefcase,
+  Grid3X3
 } from 'lucide-react';
 
 function Sidebar() {

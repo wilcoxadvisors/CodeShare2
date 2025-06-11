@@ -24,6 +24,7 @@ import AIAnalytics from "@/pages/AIAnalytics";
 import BudgetForecastDashboard from "@/pages/BudgetForecastDashboard";
 import ClientOnboarding from "@/pages/ClientOnboarding";
 import ConsolidationManagement from "@/pages/ConsolidationManagement";
+import DimensionsPage from "@/pages/manage/DimensionsPage";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Home from "@/pages/Home";
@@ -426,6 +427,12 @@ function Router() {
       <Route path="/consolidation-management" element={
         <AppLayout>
           <ProtectedRoute component={ConsolidationManagement} />
+        </AppLayout>
+      } />
+
+      <Route path="/manage/dimensions" element={
+        <AppLayout>
+          <ProtectedRoute component={DimensionsPage} />
         </AppLayout>
       } />
       
