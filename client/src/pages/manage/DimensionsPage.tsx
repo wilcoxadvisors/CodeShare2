@@ -65,11 +65,14 @@ const DimensionsPage = () => {
       try {
         const response = await apiRequest(`/api/clients/${selectedClientId}/dimensions`);
         console.log('API Response:', response);
-        // Ensure we always return an array
-        if (Array.isArray(response)) {
-          return response;
+
+        // The actual array is nested inside the .data property of the response object.
+        const responseData = response.data; 
+
+        if (Array.isArray(responseData)) {
+          return responseData;
         } else {
-          console.warn('API response is not an array:', typeof response, response);
+          console.warn('API response data is not an array:', typeof responseData, responseData);
           return [];
         }
       } catch (error) {
