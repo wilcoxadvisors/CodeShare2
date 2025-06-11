@@ -134,6 +134,12 @@ function Sidebar() {
               label="Consolidation" 
             />
             
+            <NavItem 
+              path="/manage/dimensions" 
+              icon={<Grid3X3 className="h-5 w-5 mr-2" />} 
+              label="Dimensions" 
+            />
+            
             <div className="mt-6 border-t border-blue-700 pt-4">
               <Link
                 to="/settings"
