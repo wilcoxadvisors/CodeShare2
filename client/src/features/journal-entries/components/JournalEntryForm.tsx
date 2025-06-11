@@ -1151,7 +1151,19 @@ function JournalEntryForm({
     queryKey: ['dimensions', effectiveClientId],
     queryFn: async () => {
       if (!effectiveClientId) return [];
-      return await apiRequest(`/api/clients/${effectiveClientId}/dimensions`);
+      try {
+        const response = await apiRequest(`/api/clients/${effectiveClientId}/dimensions`);
+        // Ensure we always return an array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        // If the response is not an array, return an empty array to prevent render errors
+        console.warn('API response for dimensions is not an array:', response);
+        return [];
+      } catch (error) {
+        console.error('Failed to fetch dimensions:', error);
+        return []; // Return empty array on error
+      }
     },
     enabled: !!effectiveClientId,
     staleTime: 60000, // Keep cache for 1 minute
