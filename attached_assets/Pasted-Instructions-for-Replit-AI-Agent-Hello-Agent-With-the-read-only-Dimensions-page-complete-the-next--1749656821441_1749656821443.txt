@@ -1,0 +1,185 @@
+Instructions for Replit AI Agent
+Hello Agent. With the read-only Dimensions page complete, the next step is to add the ability to create new dimensions.
+
+High-Level Goal:
+Make the "New Dimension" button on the Dimensions page functional. When clicked, it should open a dialog (modal) containing a form to create a new dimension. Submitting this form should call the backend API and update the dimension list in real-time.
+
+MANDATORY INSTRUCTIONS
+
+Part 1: Create the Reusable Dimension Form Component
+First, we'll create the form itself as a new, reusable component.
+
+Create a new directory: client/src/features/manage/
+
+Create a new file inside that directory named DimensionForm.tsx.
+
+Add the following code to this new client/src/features/manage/DimensionForm.tsx file. This component defines the form fields and validation logic for a dimension.
+
+TypeScript
+
+// In client/src/features/manage/DimensionForm.tsx
+
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Loader2 } from 'lucide-react';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  code: z.string().min(2, { message: "Code must be at least 2 characters." }).max(20, { message: "Code cannot exceed 20 characters." }),
+  description: z.string().optional(),
+});
+
+type DimensionFormValues = z.infer<typeof formSchema>;
+
+interface DimensionFormProps {
+  onSubmit: (values: DimensionFormValues) => void;
+  isSubmitting: boolean;
+}
+
+export const DimensionForm: React.FC<DimensionFormProps> = ({ onSubmit, isSubmitting }) => {
+  const form = useForm<DimensionFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      code: '',
+      description: '',
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dimension Name</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Project" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dimension Code</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., PROJ" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Describe the purpose of this dimension" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isSubmitting ? 'Creating...' : 'Create Dimension'}
+        </Button>
+      </form>
+    </Form>
+  );
+};
+Part 2: Integrate the Form into the Dimensions Page
+Now, let's use the new form inside a dialog on our main page.
+
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+
+Action:
+You will add state to manage the dialog's visibility, import the new form, create the creation mutation, and render the form inside a dialog component.
+
+Add new imports to the top of the file:
+
+TypeScript
+
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DimensionForm } from '@/features/manage/DimensionForm';
+Inside the DimensionsPage component, add the state for the dialog and the mutation for creating a dimension. Place this code near the top of the component, right after the useEntity hook.
+
+TypeScript
+
+// In client/src/pages/manage/DimensionsPage.tsx
+
+const { selectedClientId } = useEntity();
+const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+const { toast } = useToast();
+const queryClient = useQueryClient();
+
+const createDimensionMutation = useMutation({
+  mutationFn: (newDimension: { name: string; code: string; description?: string; }) => {
+    if (!selectedClientId) throw new Error("Client not selected");
+    return apiRequest(`/api/clients/${selectedClientId}/dimensions`, {
+      method: 'POST',
+      data: newDimension,
+    });
+  },
+  onSuccess: () => {
+    toast({ title: "Success", description: "Dimension created successfully." });
+    queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+    setCreateModalOpen(false);
+  },
+  onError: (error: any) => {
+    toast({ title: "Error", description: error.message || "Failed to create dimension.", variant: "destructive" });
+  }
+});
+
+const handleCreateDimension = (values: { name: string; code: string; description?: string; }) => {
+    createDimensionMutation.mutate(values);
+};
+Update the JSX to include the Dialog component. Replace the existing read-only "New Dimension" button with this new, interactive version.
+
+Replace this simple button:
+TypeScript
+
+<Button>
+  <PlusCircle className="mr-2 h-4 w-4" />
+  New Dimension
+</Button>
+With this full Dialog component block:
+TypeScript
+
+<Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
+  <DialogTrigger asChild>
+    <Button>
+      <PlusCircle className="mr-2 h-4 w-4" />
+      New Dimension
+    </Button>
+  </DialogTrigger>
+  <DialogContent className="sm:max-w-[425px]">
+    <DialogHeader>
+      <DialogTitle>Create New Dimension</DialogTitle>
+    </DialogHeader>
+    <div className="py-4">
+      <DimensionForm 
+        onSubmit={handleCreateDimension} 
+        isSubmitting={createDimensionMutation.isPending} 
+      />
+    </div>
+  </DialogContent>
+</Dialog>
+These changes will add a fully functional "Create" workflow to your Dimensions page.

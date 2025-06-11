@@ -1,10 +1,13 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEntity } from '@/contexts/EntityContext';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DimensionForm } from '@/features/manage/DimensionForm';
 import { PlusCircle, Loader2, AlertCircle } from 'lucide-react';
 
 // Define type for a Dimension based on our schema
@@ -25,6 +28,31 @@ interface DimensionValue {
 
 const DimensionsPage = () => {
   const { selectedClientId } = useEntity();
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createDimensionMutation = useMutation({
+    mutationFn: (newDimension: { name: string; code: string; description?: string; }) => {
+      if (!selectedClientId) throw new Error("Client not selected");
+      return apiRequest(`/api/clients/${selectedClientId}/dimensions`, {
+        method: 'POST',
+        data: newDimension,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Dimension created successfully." });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      setCreateModalOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create dimension.", variant: "destructive" });
+    }
+  });
+
+  const handleCreateDimension = (values: { name: string; code: string; description?: string; }) => {
+      createDimensionMutation.mutate(values);
+  };
 
   const { data: dimensions = [], isLoading, error } = useQuery<Dimension[]>({
     queryKey: ['dimensions', selectedClientId],
@@ -54,10 +82,25 @@ const DimensionsPage = () => {
         title="Dimensions"
         description="Manage dimensions to categorize transactions for powerful reporting."
       >
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Dimension
-        </Button>
+        <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              New Dimension
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New Dimension</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <DimensionForm 
+                onSubmit={handleCreateDimension} 
+                isSubmitting={createDimensionMutation.isPending} 
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
