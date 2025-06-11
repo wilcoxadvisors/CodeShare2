@@ -43,6 +43,7 @@ interface ValueFormData {
 const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimension, selectedClientId }) => {
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [editingValue, setEditingValue] = useState<DimensionValue | null>(null);
+  const [deletingValue, setDeletingValue] = useState<DimensionValue | null>(null);
   const [formData, setFormData] = useState<ValueFormData>({ name: '', code: '', description: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -55,14 +56,14 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data: newValue,
       });
     },
-    onSuccess: () => {
-      // Force immediate refetch of dimensions data
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
-      
+    onSuccess: async () => {
       toast({ title: "Success", description: "Dimension value created successfully." });
       setAddModalOpen(false);
       setFormData({ name: '', code: '', description: '' });
+      
+      // Force cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create dimension value.", variant: "destructive" });
@@ -77,14 +78,14 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data,
       });
     },
-    onSuccess: () => {
-      // Force immediate refetch of dimensions data
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
-      
+    onSuccess: async () => {
       toast({ title: "Success", description: "Dimension value updated successfully." });
       setEditingValue(null);
       setFormData({ name: '', code: '', description: '' });
+      
+      // Force cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update dimension value.", variant: "destructive" });
@@ -98,12 +99,13 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         method: 'DELETE',
       });
     },
-    onSuccess: () => {
-      // Force immediate refetch of dimensions data
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
-      
+    onSuccess: async () => {
       toast({ title: "Success", description: "Dimension value deleted successfully." });
+      setDeletingValue(null); 
+
+      // Force cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      await queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
     },
     onError: (error: any) => {
       toast({ 
@@ -273,43 +275,18 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
                         <Power className="h-4 w-4" />
                       )}
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
-                        >
-                          {deleteValueMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Dimension Value</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{value.name}"? This action cannot be undone.
-                            {value.isActive && (
-                              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                                <strong>Note:</strong> If this value has been used in transactions, it cannot be deleted. Consider deactivating it instead.
-                              </div>
-                            )}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteValueMutation.mutate(value.id)}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeletingValue(value)}
+                      disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
+                    >
+                      {deleteValueMutation.isPending && deletingValue?.id === value.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -374,6 +351,32 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingValue} onOpenChange={(open) => !open && setDeletingValue(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Dimension Value</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingValue?.name}"? This action cannot be undone.
+              {deletingValue?.isActive && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                  <strong>Note:</strong> If this value has been used in transactions, it cannot be deleted. Consider deactivating it instead.
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingValue && deleteValueMutation.mutate(deletingValue.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
