@@ -296,6 +296,13 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
   - 🔄 NEXT: Build UI to add/edit/deactivate values for each dimension (e.g., add "Sales" to the "Department" dimension).
   - 🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
   - 🔄 Implement a Smart Rules MVP (JSON validation).
+
+* **(Task B.2.2)** Automatic Accrual Reversals: **📝 NOT STARTED (New Priority)**
+  - 📝 Schema: Add isAccrual (boolean) and reversalForEntryId (integer) fields to the journalEntries table in shared/schema.ts.
+  - 📝 Backend: Implement a createReversingEntryForAccrual function in journalEntryStorage.ts that creates a new, posted JE for the first day of the next month with flipped debits/credits.
+  - 📝 Frontend: Add an "Auto-Reverse Accrual" toggle switch to the JournalEntryForm.tsx. When active, it should display the calculated reversal date to the user.
+  - 📝 API: Update the journal entry creation logic to check the isAccrual flag and trigger the new backend reversal function upon successful posting of the original entry.
+
   - Build **Client Portal read-only Dimensions tab** for reference
   - Implement a **Smart Rules MVP** (JSON validation):
     - Required dimensions by account type
@@ -693,35 +700,27 @@ Throughout every task explicitly:
 
 ### ✅ Recently Resolved Issues
 
-**P0: Journal ID / Reference Field Instability:** Resolved by implementing a backend-driven, sequential, and scalable referenceNumber.
+**P0: All critical bugs related to the manual Journal Entry workflow** (ID Instability, Delete, Reverse, Void).
 
-**P0: Cannot Delete Draft Entry:** Resolved by implementing the correct hierarchical DELETE route on the backend and fixing the frontend callback logic.
+**Data Entry Bug:** Corrected decimal/cents input in Debit/Credit fields.
 
-**P0: Reverse Journal Entry Fails:** Resolved by adding the missing hierarchical /reverse API route.
+**UX Bug:** Data now correctly refreshes after a "Reverse" action.
 
-**P0: Void Journal Entry Fails:** Resolved by adding a dedicated hierarchical /void API route and connecting the UI.
+**Attachment Bug #7:** All major attachment issues are resolved.
 
-**Data Entry Bug:** Users can now correctly enter decimal values (cents) in Debit/Credit fields.
-
-**UX Bug:** After a "Reverse" action, the journal entry list now correctly refreshes without needing a manual page reload.
-
-**Attachment Bug #7 (and sub-issues):**
-- Existing attachments are now correctly displayed when editing a draft.
-- New attachments can be added to new journal entries.
-- Duplicate attachments during the "create-and-post" workflow is fixed.
-
-**Runtime Crash:** ReferenceError: Cannot access 'entry' before initialization on the JE Detail page has been fixed.
+**Runtime Crashes** on the JE Detail page have been fixed.
 
 ### 🔄 Unresolved Issues / Next Steps
+
+**Accrual Reversal Feature (High Priority):** Implement the newly specified auto-reversal feature.
 
 **Dimensions UI (High Priority):**
 - Implement Create, Update, and Delete functionality for Dimension Values.
 - Build the UI to associate journal entry lines with dimensions.
 
 **P1 - UX Polish (Medium Priority):**
-- JE Form - Account Selector: Improve filtering when typing an account number; auto-close selector after selection.
-- JE Form - Button Behavior: Investigate and fix any strange "simultaneous behavior" between "Save as Draft" and "Post" buttons.
-- JE Update UX: Improve the perceived performance of the UI after a JE is updated.
+- Improve filtering and behavior of the Account Selector on the JE Form.
+- Investigate and fix any strange "simultaneous behavior" between JE form buttons.
 
 **Smart Rules MVP (Medium Priority):** Begin implementation of the JSON-based validation rule engine.
 
