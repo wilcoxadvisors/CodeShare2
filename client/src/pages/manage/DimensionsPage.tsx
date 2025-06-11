@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DimensionForm } from '@/features/manage/DimensionForm';
-import { PlusCircle, Loader2, AlertCircle } from 'lucide-react';
+import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
+import { PlusCircle, Loader2, AlertCircle, Settings } from 'lucide-react';
 
 // Define type for a Dimension based on our schema
 interface Dimension {
@@ -24,11 +25,14 @@ interface DimensionValue {
   id: number;
   name: string;
   code: string;
+  description?: string | null;
+  isActive: boolean;
 }
 
 const DimensionsPage = () => {
   const { selectedClientId } = useEntity();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -141,16 +145,28 @@ const DimensionsPage = () => {
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">{dimension.description || 'No description.'}</p>
                       <h4 className="font-semibold mb-2">Values ({dimension.values?.length || 0}):</h4>
-                      <div className="space-y-1">
+                      <div className="space-y-1 mb-4">
                         {dimension.values?.length > 0 ? dimension.values.slice(0, 5).map(value => (
-                          <div key={value.id} className="text-sm p-2 bg-gray-50 rounded-md">
-                            {value.name} ({value.code})
+                          <div key={value.id} className={`text-sm p-2 bg-gray-50 rounded-md flex justify-between items-center ${!value.isActive ? 'opacity-60' : ''}`}>
+                            <span>{value.name} ({value.code})</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${value.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                              {value.isActive ? 'Active' : 'Inactive'}
+                            </span>
                           </div>
                         )) : (
                           <div className="text-sm text-muted-foreground p-2 text-center">No values created.</div>
                         )}
                         {dimension.values?.length > 5 && <div className="text-sm text-muted-foreground p-2">...and {dimension.values.length - 5} more.</div>}
                       </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => setManagingDimension(dimension)}
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        Manage Values
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -163,6 +179,21 @@ const DimensionsPage = () => {
           </>
         )}
       </div>
+
+      {/* Dimension Values Management Dialog */}
+      <Dialog open={!!managingDimension} onOpenChange={(open) => !open && setManagingDimension(null)}>
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Dimension Values</DialogTitle>
+          </DialogHeader>
+          {managingDimension && selectedClientId && (
+            <DimensionValuesManager 
+              dimension={managingDimension} 
+              selectedClientId={selectedClientId}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
