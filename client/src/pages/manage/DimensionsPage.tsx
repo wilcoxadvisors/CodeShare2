@@ -275,6 +275,7 @@ const DimensionsPage = () => {
                   code: editingDimension.code,
                   description: editingDimension.description || ''
                 }}
+                isEditing={true}
               />
             )}
           </div>

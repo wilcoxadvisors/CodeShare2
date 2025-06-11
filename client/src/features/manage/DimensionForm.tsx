@@ -21,15 +21,17 @@ type DimensionFormValues = z.infer<typeof formSchema>;
 interface DimensionFormProps {
   onSubmit: (values: DimensionFormValues) => void;
   isSubmitting: boolean;
+  initialValues?: Partial<DimensionFormValues>;
+  isEditing?: boolean;
 }
 
-export const DimensionForm: React.FC<DimensionFormProps> = ({ onSubmit, isSubmitting }) => {
+export const DimensionForm: React.FC<DimensionFormProps> = ({ onSubmit, isSubmitting, initialValues, isEditing = false }) => {
   const form = useForm<DimensionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      code: '',
-      description: '',
+      name: initialValues?.name || '',
+      code: initialValues?.code || '',
+      description: initialValues?.description || '',
     },
   });
 
@@ -77,7 +79,7 @@ export const DimensionForm: React.FC<DimensionFormProps> = ({ onSubmit, isSubmit
         />
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isSubmitting ? 'Creating...' : 'Create Dimension'}
+          {isSubmitting ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Dimension' : 'Create Dimension')}
         </Button>
       </form>
     </Form>
