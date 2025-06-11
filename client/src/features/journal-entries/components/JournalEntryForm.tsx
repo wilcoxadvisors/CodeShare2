@@ -1147,7 +1147,7 @@ function JournalEntryForm({
   });
 
   // Fetch dimensions for tagging
-  const { data: dimensions = [] } = useQuery<any[]>({
+  const { data: dimensionsData = [] } = useQuery<any[]>({
     queryKey: ['dimensions', effectiveClientId],
     queryFn: async () => {
       if (!effectiveClientId) return [];
@@ -1156,6 +1156,9 @@ function JournalEntryForm({
     enabled: !!effectiveClientId,
     staleTime: 60000, // Keep cache for 1 minute
   });
+
+  // Ensure dimensions is always an array
+  const dimensions = Array.isArray(dimensionsData) ? dimensionsData : [];
   
   // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
   const invalidateJournalEntryQueries = () => {
