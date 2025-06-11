@@ -29,15 +29,12 @@ export class DimensionStorage {
    */
   async getDimensionsByClient(clientId: number) {
     try {
-      return await db.query.dimensions.findMany({
+      const dims = await db.query.dimensions.findMany({
         where: eq(dimensions.clientId, clientId),
         orderBy: [desc(dimensions.name)],
-        with: {
-          values: {
-            orderBy: [desc(dimensionValues.name)],
-          },
-        },
       });
+      // Manually attach an empty values array for now
+      return dims.map(d => ({ ...d, values: [] }));
     } catch (error) {
       console.error("Error getting dimensions by client:", error);
       throw new ApiError(500, "Failed to retrieve dimensions.");
