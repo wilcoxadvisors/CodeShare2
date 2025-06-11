@@ -74,4 +74,14 @@ router.put('/dimension-values/:id', isAuthenticated, asyncHandler(async (req, re
     res.status(200).json(updatedValue);
 }));
 
+// DELETE an existing dimension value
+router.delete('/dimension-values/:id', isAuthenticated, asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+        return throwBadRequest('A valid dimension value ID is required.');
+    }
+    await dimensionStorage.deleteDimensionValue(id);
+    res.status(204).send();
+}));
+
 export default router;

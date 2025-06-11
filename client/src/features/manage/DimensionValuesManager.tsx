@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Power, PowerOff, Loader2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { PlusCircle, Edit, Power, PowerOff, Loader2, Trash2 } from 'lucide-react';
 
 interface DimensionValue {
   id: number;
@@ -87,6 +88,29 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update dimension value.", variant: "destructive" });
+    }
+  });
+
+  // Delete dimension value mutation
+  const deleteValueMutation = useMutation({
+    mutationFn: (id: number) => {
+      return apiRequest(`/api/dimension-values/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      // Force immediate refetch of dimensions data
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      
+      toast({ title: "Success", description: "Dimension value deleted successfully." });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete dimension value.", 
+        variant: "destructive" 
+      });
     }
   });
 
@@ -231,7 +255,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
                       variant="outline"
                       size="sm"
                       onClick={() => openEditModal(value)}
-                      disabled={updateValueMutation.isPending}
+                      disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -239,7 +263,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleActive(value)}
-                      disabled={updateValueMutation.isPending}
+                      disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
                     >
                       {updateValueMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -249,6 +273,43 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
                         <Power className="h-4 w-4" />
                       )}
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
+                        >
+                          {deleteValueMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Dimension Value</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{value.name}"? This action cannot be undone.
+                            {value.isActive && (
+                              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                                <strong>Note:</strong> If this value has been used in transactions, it cannot be deleted. Consider deactivating it instead.
+                              </div>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteValueMutation.mutate(value.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardContent>

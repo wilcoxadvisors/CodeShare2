@@ -1,7 +1,7 @@
 // In server/storage/dimensionStorage.ts
 
 import { db } from "../db";
-import { dimensions, dimensionValues, clients } from "../../shared/schema";
+import { dimensions, dimensionValues, clients, txDimensionLink } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
@@ -151,6 +151,41 @@ export class DimensionStorage {
     } catch (error) {
         console.error("Error updating dimension value:", error);
         throw new ApiError(500, "Failed to update dimension value.");
+    }
+  }
+
+  /**
+   * Delete a dimension value.
+   * @param id - The ID of the dimension value to delete.
+   */
+  async deleteDimensionValue(id: number) {
+    try {
+        // First, check if this dimension value is used in any transactions
+        const txLinks = await db.select()
+            .from(txDimensionLink)
+            .where(eq(txDimensionLink.dimensionValueId, id))
+            .limit(1);
+
+        if (txLinks.length > 0) {
+            throw new ApiError(409, "This value cannot be deleted because it has been used in transactions. Please make it inactive instead.");
+        }
+
+        // If no transaction links found, proceed with deletion
+        const [deletedValue] = await db.delete(dimensionValues)
+            .where(eq(dimensionValues.id, id))
+            .returning();
+        
+        if (!deletedValue) {
+            throw new ApiError(404, "Dimension value not found.");
+        }
+        
+        return deletedValue;
+    } catch (error) {
+        console.error("Error deleting dimension value:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(500, "Failed to delete dimension value.");
     }
   }
 }

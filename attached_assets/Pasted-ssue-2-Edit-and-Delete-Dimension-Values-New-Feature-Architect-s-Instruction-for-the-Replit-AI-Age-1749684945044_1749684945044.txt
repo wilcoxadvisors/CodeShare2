@@ -1,0 +1,41 @@
+ssue 2: Edit and Delete Dimension Values (New Feature)
+Architect's Instruction for the Replit AI Agent:
+
+Agent, your next task is to implement "Edit" and "Delete" functionality for the individual values inside the DimensionValuesManager component. This will complete the CRUD operations for our dimension system.
+
+Part 1: Backend - Add Delete Endpoint for Values
+
+File to Modify: server/routes/dimensionRoutes.ts
+
+Action: Add a new DELETE endpoint to handle the deletion of a single dimension value.
+
+TypeScript
+
+// Example DELETE route for a dimension value
+router.delete('/dimension-values/:id', isAuthenticated, asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    // ... validation ...
+    await dimensionStorage.deleteDimensionValue(id);
+    res.status(204).send();
+}));
+File to Modify: server/storage/dimensionStorage.ts
+
+Action: Create a new deleteDimensionValue(id: number) method.
+
+Crucial Logic: Inside this method, you must implement the safety check requested by the user:
+
+First, query the txDimensionLink table to check if the dimensionValueId (which is the id passed to this function) exists in any records.
+If the query finds one or more links, throw a 409 Conflict error with the message: "This value cannot be deleted because it has been used in transactions. Please make it inactive instead."
+If no links are found, proceed with deleting the dimension value from the dimensionValues table.
+Part 2: Frontend - Add UI and Logic for Values
+
+File to Modify: client/src/features/manage/DimensionValuesManager.tsx
+Action: For each value listed in the "Manage Values" dialog, add an "Edit" button and a "Delete" button.
+Edit Logic:
+When the "Edit" button for a value is clicked, the form fields at the top of the dialog should be populated with that value's data.
+The form's submission logic should be switched to "update" mode, calling the existing PUT /api/dimension-values/:id endpoint.
+Delete Logic:
+The "Delete" button should trigger a confirmation AlertDialog.
+On confirmation, a useMutation should call the new DELETE /api/dimension-values/:id endpoint.
+The mutation's onError handler must be able to catch the 409 Conflict error from the backend and display the specific error message in a toast.
+On success, invalidate the ['dimensions', selectedClientId] query to ensure the list refreshes instantly.
