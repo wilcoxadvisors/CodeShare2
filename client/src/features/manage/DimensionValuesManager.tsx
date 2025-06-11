@@ -48,14 +48,8 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch fresh dimension data to ensure real-time updates
-  const { data: freshDimensions } = useQuery<Dimension[]>({
-    queryKey: ['dimensions', selectedClientId],
-    enabled: !!selectedClientId,
-  });
-
-  // Get the current dimension data from the fresh query
-  const currentDimension = freshDimensions?.find((d: Dimension) => d.id === dimension.id) || dimension;
+  // Use the dimension prop directly - cache invalidation will trigger parent refresh
+  const currentDimension = dimension;
 
   // Create dimension value mutation
   const createValueMutation = useMutation({
@@ -176,9 +170,9 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
       {/* Header with Add Button */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Manage Values for {dimension.name}</h3>
+          <h3 className="text-lg font-semibold">Manage Values for {currentDimension.name}</h3>
           <p className="text-sm text-muted-foreground">
-            Add, edit, and manage values for the {dimension.name} dimension.
+            Add, edit, and manage values for the {currentDimension.name} dimension.
           </p>
         </div>
         <Dialog open={isAddModalOpen} onOpenChange={(open) => {
@@ -242,8 +236,8 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
 
       {/* Values List */}
       <div className="space-y-3">
-        {dimension.values && dimension.values.length > 0 ? (
-          dimension.values.map((value) => (
+        {currentDimension.values && currentDimension.values.length > 0 ? (
+          currentDimension.values.map((value) => (
             <Card key={value.id} className={`${!value.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
