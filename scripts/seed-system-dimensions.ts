@@ -4,14 +4,14 @@ import { dimensions, clients } from '../shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
 const SYSTEM_DIMENSIONS = [
-  { code: 'DEPARTMENT', name: 'Department', description: 'Departments for tracking costs and revenue.' },
-  { code: 'LOCATION', name: 'Location', description: 'Geographic locations or branches.' },
-  { code: 'CUSTOMER', name: 'Customer', description: 'Customers for tracking sales.' },
-  { code: 'VENDOR', name: 'Vendor', description: 'Vendors for tracking purchases.' },
-  { code: 'EMPLOYEE', name: 'Employee', description: 'Employees for tracking payroll and expenses.' },
-  { code: 'PROJECT', name: 'Project', description: 'Projects for tracking project-specific financials.' },
-  { code: 'CLASS', name: 'Class', description: 'A flexible segment for reporting, similar to QuickBooks Classes.' },
-  { code: 'ITEM', name: 'Item', description: 'Products or services sold or purchased.' },
+  { code: 'DEPARTMENT', name: 'Department', description: 'Departments for tracking costs and revenue.', isRequired: false, allowCustomValues: false },
+  { code: 'LOCATION', name: 'Location', description: 'Geographic locations or branches.', isRequired: false, allowCustomValues: false },
+  { code: 'CUSTOMER', name: 'Customer', description: 'Customers for tracking sales.', isRequired: false, allowCustomValues: false },
+  { code: 'VENDOR', name: 'Vendor', description: 'Vendors for tracking purchases.', isRequired: false, allowCustomValues: false },
+  { code: 'EMPLOYEE', name: 'Employee', description: 'Employees for tracking payroll and expenses.', isRequired: false, allowCustomValues: false },
+  { code: 'PROJECT', name: 'Project', description: 'Projects for tracking project-specific financials.', isRequired: false, allowCustomValues: false },
+  { code: 'CLASS', name: 'Class', description: 'A flexible segment for reporting, similar to QuickBooks Classes.', isRequired: false, allowCustomValues: false },
+  { code: 'ITEM', name: 'Item', description: 'Products or services sold or purchased.', isRequired: false, allowCustomValues: false },
 ];
 
 async function seedSystemDimensions() {
