@@ -29,14 +29,23 @@ export class DimensionStorage {
    */
   async getDimensionsByClient(clientId: number) {
     try {
-      const dims = await db.query.dimensions.findMany({
+      return await db.query.dimensions.findMany({
         where: eq(dimensions.clientId, clientId),
         orderBy: [desc(dimensions.name)],
+        with: {
+          values: {
+            orderBy: [desc(dimensionValues.name)],
+          },
+        },
       });
-      // Manually attach an empty values array for now
-      return dims.map(d => ({ ...d, values: [] }));
     } catch (error) {
-      console.error("Error getting dimensions by client:", error);
+      console.error("[Storage] FATAL ERROR in getDimensionsByClient:", error);
+      console.error("[Storage] Error details:", {
+        clientId,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        errorName: error instanceof Error ? error.name : 'Unknown error type'
+      });
       throw new ApiError(500, "Failed to retrieve dimensions.");
     }
   }
