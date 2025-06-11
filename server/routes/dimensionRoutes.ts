@@ -16,7 +16,7 @@ router.get('/clients/:clientId/dimensions', isAuthenticated, asyncHandler(async 
         return throwBadRequest('A valid client ID is required.');
     }
     const allDimensions = await dimensionStorage.getDimensionsByClient(clientId);
-    res.status(200).json(allDimensions);
+    res.status(200).json({ data: allDimensions });
 }));
 
 // POST (create) a new dimension for a client
