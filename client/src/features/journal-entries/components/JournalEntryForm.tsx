@@ -60,6 +60,8 @@ import {
   SendHorizontal,
   Save,
   Send,
+  Tag,
+  Tags,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +90,11 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -97,11 +104,6 @@ import { useEntity } from "@/contexts/EntityContext";
 import { useDebouncedCallback } from "@/hooks/useDebounce";
 import { z } from "zod";
 import { validateForm } from "@/lib/validation";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -247,6 +249,14 @@ interface JournalLine {
   description: string;
   debit: string;
   credit: string;
+  tags?: DimensionTag[];
+}
+
+interface DimensionTag {
+  dimensionId: number;
+  dimensionValueId: number;
+  dimensionName?: string;
+  dimensionValueName?: string;
 }
 
 // Form validation schema - dynamically created to include context-aware validation
