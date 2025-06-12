@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -48,18 +48,8 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch fresh dimension data to ensure real-time updates
-  const { data: freshDimensions, refetch: refetchDimensions } = useQuery<Dimension[]>({
-    queryKey: ['dimensions', selectedClientId],
-    enabled: !!selectedClientId,
-    staleTime: 0, // Always refetch to ensure fresh data
-    refetchOnWindowFocus: true,
-  });
-
-  // Get the current dimension data from the fresh query or fallback to prop
-  const currentDimension = (freshDimensions && Array.isArray(freshDimensions)) 
-    ? freshDimensions.find((d: Dimension) => d.id === dimension.id) || dimension
-    : dimension;
+  // Use the dimension passed as prop directly
+  const currentDimension = dimension;
 
   // Create dimension value mutation
   const createValueMutation = useMutation({
@@ -69,14 +59,15 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data: newValue,
       });
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({ title: "Success", description: "Dimension value created successfully." });
+
+      // This is the ONLY line needed to trigger a refresh.
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+
+      // Perform any necessary local state cleanup (e.g., closing a modal).
       setAddModalOpen(false);
       setFormData({ name: '', code: '', description: '' });
-      
-      // Force cache invalidation and refetch
-      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await refetchDimensions();
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create dimension value.", variant: "destructive" });
@@ -91,14 +82,15 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data,
       });
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({ title: "Success", description: "Dimension value updated successfully." });
+
+      // This is the ONLY line needed to trigger a refresh.
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+
+      // Perform any necessary local state cleanup (e.g., closing a modal).
       setEditingValue(null);
       setFormData({ name: '', code: '', description: '' });
-      
-      // Force cache invalidation and refetch
-      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await refetchDimensions();
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update dimension value.", variant: "destructive" });
@@ -112,13 +104,14 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         method: 'DELETE',
       });
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({ title: "Success", description: "Dimension value deleted successfully." });
-      setDeletingValue(null); 
 
-      // Force cache invalidation and refetch
-      await queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      await refetchDimensions();
+      // This is the ONLY line needed to trigger a refresh.
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+
+      // Perform any necessary local state cleanup (e.g., closing a modal).
+      setDeletingValue(null);
     },
     onError: (error: any) => {
       toast({ 

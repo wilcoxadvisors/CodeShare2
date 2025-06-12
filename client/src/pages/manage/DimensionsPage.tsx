@@ -97,30 +97,19 @@ const DimensionsPage = () => {
       createDimensionMutation.mutate(values);
   };
 
-  const { data: dimensions = [], isLoading, error } = useQuery<Dimension[]>({
+  const { data: dimensionsResponse, isLoading, error } = useQuery<any>({
     queryKey: ['dimensions', selectedClientId],
     queryFn: async () => {
-      if (!selectedClientId) return [];
-      try {
-        const response = await apiRequest(`/api/clients/${selectedClientId}/dimensions`);
-        console.log('API Response:', response);
-
-        // The actual array is nested inside the .data property of the response object.
-        const responseData = response.data; 
-
-        if (Array.isArray(responseData)) {
-          return responseData;
-        } else {
-          console.warn('API response data is not an array:', typeof responseData, responseData);
-          return [];
-        }
-      } catch (error) {
-        console.error('Error fetching dimensions:', error);
-        throw error;
-      }
+      if (!selectedClientId) return null;
+      return apiRequest(`/api/clients/${selectedClientId}/dimensions`);
     },
     enabled: !!selectedClientId,
   });
+
+  // Correctly and safely unwrap the nested data array
+  const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
+    ? dimensionsResponse.data
+    : [];
 
   return (
     <div className="py-6">
