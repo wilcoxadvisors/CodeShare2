@@ -514,16 +514,49 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             });
         }
 
-        // Step 4: Perform bulk upsert
-        console.log(`[Master Upload] Starting bulk upsert operation`);
-        const result = await dimensionStorage.bulkUpsertDimensionValues(processedRows);
+        // Step 4: Construct preview response instead of performing bulk upsert
+        console.log(`[Master Upload] Preparing preview response for ${processedRows.length} valid rows`);
         
-        console.log(`[Master Upload] Upload completed successfully:`, result);
+        const toCreate = [];
+        const toUpdate = [];
+        
+        processedRows.forEach(row => {
+            const valueObject = {
+                dimensionCode: row.dimensionCode,
+                valueCode: row.valueCode,
+                valueName: row.valueName,
+                valueDescription: row.valueDescription,
+                isActive: row.isActive,
+                rowIndex: row.rowIndex
+            };
+            
+            if (row.isUpdate) {
+                toUpdate.push({
+                    ...valueObject,
+                    existingValue: {
+                        id: row.existingValue.id,
+                        name: row.existingValue.name,
+                        description: row.existingValue.description,
+                        isActive: row.existingValue.isActive
+                    }
+                });
+            } else {
+                toCreate.push(valueObject);
+            }
+        });
+        
+        const preview = {
+            toCreate,
+            toUpdate,
+            errors: validationErrors.map(error => ({ message: error }))
+        };
+        
+        console.log(`[Master Upload] Preview prepared: ${toCreate.length} to create, ${toUpdate.length} to update, ${validationErrors.length} errors`);
         
         res.status(200).json({
             success: true,
-            message: 'Master upload completed successfully',
-            summary: result
+            message: 'File analyzed successfully',
+            preview
         });
 
     } catch (error) {

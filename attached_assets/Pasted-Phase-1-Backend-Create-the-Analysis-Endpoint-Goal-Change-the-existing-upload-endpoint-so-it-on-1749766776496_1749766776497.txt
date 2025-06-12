@@ -1,0 +1,36 @@
+Phase 1: Backend - Create the "Analysis" Endpoint
+Goal: Change the existing upload endpoint so it only analyzes the file and returns a preview, without saving anything.
+
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Modify the logic inside the existing POST /api/clients/:clientId/master-values-upload endpoint.
+New Logic:
+This endpoint should perform all the parsing and validation you've already built.
+It must determine which rows are new (CREATE) and which are updates to existing values (UPDATE).
+Instead of calling the bulkUpsertDimensionValues storage method, it must construct and return a detailed JSON response that categorizes the rows. For example:
+JSON
+
+{
+  "preview": {
+    "toCreate": [/* array of new value objects */],
+    "toUpdate": [/* array of updated value objects */],
+    "errors": [/* array of error objects with row number and message */]
+  }
+}
+Phase 2: Frontend - Build the Preview and Confirmation UI
+(To be performed after the backend analysis endpoint in Phase 1 is complete)
+
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+Action: After a user uploads a file, instead of just showing a success/fail message, you will now display the detailed preview object from the API in a new "Confirmation View".
+UI for Confirmation View:
+Display summary counts: "X values to create, Y values to update."
+Show a table with the proposed changes. Use icons or colors to distinguish between creates and updates.
+Each valid row in the table must have a checkbox. Add "Select All" / "Deselect All" buttons.
+Display a list of any rows that have errors and cannot be imported.
+Add a "Confirm and Process" button (disabled until there are changes to process) and a "Cancel" button.
+Phase 3: Backend - Create the "Confirmation" Endpoint
+(To be performed after the frontend preview UI in Phase 2 is complete)
+
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Create a new POST endpoint: /api/clients/:clientId/master-values-confirm.
+Logic: This endpoint will receive the array of user-approved toCreate and toUpdate objects from the frontend and will then call the bulkUpsertDimensionValues storage method to commit them to the database.
+Agent, please begin with Phase 1: Refactoring the existing backend upload endpoint to be an analysis-only endpoint that returns a preview.
