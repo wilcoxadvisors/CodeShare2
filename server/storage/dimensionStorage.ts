@@ -321,7 +321,18 @@ export class DimensionStorage {
         try {
           console.log(`[Storage] Attempting to delete: ${item.dimensionCode}|${item.valueCode}`);
           
-          // TODO: Add foreign key constraint checking when journal entry system is fully implemented
+          // Check for foreign key references before deletion
+          const usageCheck = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(txDimensionLink)
+            .where(eq(txDimensionLink.dimensionValueId, item.existingValue.id));
+
+          if (usageCheck[0]?.count > 0) {
+            console.log(`[Storage] Cannot delete ${item.valueCode}: Used in ${usageCheck[0].count} transactions`);
+            errors.push(`Cannot delete ${item.valueCode}: This value is used in ${usageCheck[0].count} journal entry transactions. Remove these references first.`);
+            skippedCount++;
+            continue;
+          }
 
           await db
             .delete(dimensionValues)

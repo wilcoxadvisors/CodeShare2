@@ -218,11 +218,31 @@ const DimensionsPage = () => {
       return response;
     },
     onSuccess: (result) => {
-      toast({
-        title: "Changes Processed Successfully",
-        description: `Created: ${result.result.created}, Updated: ${result.result.updated}, Deleted: ${result.result.deleted || 0}`,
-        variant: "default"
-      });
+      const { created, updated, deleted, skipped, errors } = result.result;
+      
+      if (errors && errors.length > 0) {
+        // Show detailed error information
+        toast({
+          title: "Changes Completed with Issues",
+          description: `Created: ${created}, Updated: ${updated}, Deleted: ${deleted || 0}, Skipped: ${skipped}. Some operations failed due to constraints.`,
+          variant: "destructive"
+        });
+        
+        // Show detailed error messages
+        errors.forEach((error: string) => {
+          toast({
+            title: "Operation Skipped",
+            description: error,
+            variant: "destructive"
+          });
+        });
+      } else {
+        toast({
+          title: "Changes Processed Successfully",
+          description: `Created: ${created}, Updated: ${updated}, Deleted: ${deleted || 0}`,
+          variant: "default"
+        });
+      }
       
       // Clear preview state and reset file input
       setUploadPreview(null);
