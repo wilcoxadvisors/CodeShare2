@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
 import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload, Download } from 'lucide-react';
@@ -291,7 +292,7 @@ const DimensionsPage = () => {
     }
   };
 
-  const handleInlineEdit = (category: 'toCreate' | 'toUpdate', index: number, field: 'valueName' | 'valueDescription', value: string) => {
+  const handleInlineEdit = (category: 'toCreate' | 'toUpdate', index: number, field: 'valueName' | 'valueDescription' | 'isActive', value: string | boolean) => {
     if (!uploadPreview) return;
     
     const newPreview = { ...uploadPreview };
@@ -509,7 +510,12 @@ const DimensionsPage = () => {
                                   placeholder="Description (optional)"
                                 />
                               </TableCell>
-                              <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell>
+                                <Switch
+                                  checked={item.isActive}
+                                  onCheckedChange={(checked) => handleInlineEdit('toCreate', index, 'isActive', checked)}
+                                />
+                              </TableCell>
                               <TableCell className="text-green-700 text-sm">New value</TableCell>
                             </TableRow>
                           ))}
