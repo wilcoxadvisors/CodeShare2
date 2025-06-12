@@ -56,6 +56,39 @@ interface UploadPreview {
       description?: string;
       isActive: boolean;
     };
+    changes?: {
+      name?: { from: string; to: string } | null;
+      description?: { from: string; to: string } | null;
+      isActive?: { from: boolean; to: boolean } | null;
+    };
+  }>;
+  toDelete: Array<{
+    dimensionCode: string;
+    valueCode: string;
+    valueName: string;
+    valueDescription?: string;
+    isActive: boolean;
+    rowIndex: number;
+    existingValue: {
+      id: number;
+      name: string;
+      description?: string;
+      isActive: boolean;
+    };
+  }>;
+  unchanged: Array<{
+    dimensionCode: string;
+    valueCode: string;
+    valueName: string;
+    valueDescription?: string;
+    isActive: boolean;
+    rowIndex: number;
+    existingValue: {
+      id: number;
+      name: string;
+      description?: string;
+      isActive: boolean;
+    };
   }>;
   errors: Array<{
     message: string;
@@ -148,7 +181,7 @@ const DimensionsPage = () => {
       // Store the preview data for user confirmation
       setUploadPreview(result.preview);
       
-      // Initialize selected changes - all items selected by default
+      // Initialize selected changes - all actionable items selected by default
       const initialSelection: {[key: string]: boolean} = {};
       result.preview.toCreate.forEach((item: any, index: number) => {
         initialSelection[`create-${index}`] = true;
@@ -156,6 +189,10 @@ const DimensionsPage = () => {
       result.preview.toUpdate.forEach((item: any, index: number) => {
         initialSelection[`update-${index}`] = true;
       });
+      result.preview.toDelete.forEach((item: any, index: number) => {
+        initialSelection[`delete-${index}`] = true;
+      });
+      // Note: unchanged items are not selected by default as they don't need processing
       setSelectedChanges(initialSelection);
     },
     onError: (error: any) => {

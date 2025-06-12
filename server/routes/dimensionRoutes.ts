@@ -312,7 +312,7 @@ router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHa
 
         // Prepare CSV data
         const csvData = [];
-        const headers = ['dimension_code', 'value_code', 'value_name', 'value_description'];
+        const headers = ['dimension_code', 'value_code', 'value_name', 'value_description', 'is_active', 'action'];
         csvData.push(headers);
 
         // Collect all dimension values
@@ -325,7 +325,9 @@ router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHa
                         dimension.code,
                         value.code,
                         value.name,
-                        value.description || ''
+                        value.description || '',
+                        value.isActive ? 'true' : 'false',
+                        'UPDATE'  // Default action for existing values
                     ];
                     csvData.push(row);
                 });
@@ -402,7 +404,7 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
 
         // Validate required headers
         const requiredHeaders = ['dimension_code', 'value_code', 'value_name'];
-        const optionalHeaders = ['value_description', 'is_active'];
+        const optionalHeaders = ['value_description', 'is_active', 'action'];
         const expectedHeaders = [...requiredHeaders, ...optionalHeaders];
         
         if (rows.length === 0) {
@@ -479,6 +481,16 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
                 isActive = activeStr === 'true' || activeStr === '1' || activeStr === 'yes' || activeStr === 'active';
             }
 
+            // Parse action with default to UPDATE
+            let action = 'UPDATE';
+            if (rowData.action && rowData.action.trim()) {
+                action = rowData.action.trim().toUpperCase();
+                if (!['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
+                    validationErrors.push(`Row ${rowIndex}: Invalid action '${action}'. Must be CREATE, UPDATE, or DELETE`);
+                    continue;
+                }
+            }
+
             // Validate dimension exists
             const dimension = dimensionCodeMap.get(dimensionCode);
             if (!dimension) {
@@ -490,6 +502,17 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             const existingValueKey = `${dimensionCode}|${valueCode}`;
             const existingValue = existingValueMap.get(existingValueKey);
 
+            // Validate action against existing data
+            if (action === 'CREATE' && existingValue) {
+                validationErrors.push(`Row ${rowIndex}: Cannot CREATE value '${valueCode}' - it already exists in dimension '${dimensionCode}'`);
+                continue;
+            }
+            
+            if ((action === 'UPDATE' || action === 'DELETE') && !existingValue) {
+                validationErrors.push(`Row ${rowIndex}: Cannot ${action} value '${valueCode}' - it does not exist in dimension '${dimensionCode}'`);
+                continue;
+            }
+
             processedRows.push({
                 rowIndex,
                 dimensionId: dimension.id,
@@ -498,8 +521,8 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
                 valueName,
                 valueDescription,
                 isActive,
-                existingValue,
-                isUpdate: !!existingValue
+                action,
+                existingValue
             });
         }
 
@@ -514,11 +537,13 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             });
         }
 
-        // Step 4: Construct preview response instead of performing bulk upsert
-        console.log(`[Master Upload] Preparing preview response for ${processedRows.length} valid rows`);
+        // Step 4: Construct enhanced preview response with proper change detection
+        console.log(`[Master Upload] Preparing enhanced preview response for ${processedRows.length} valid rows`);
         
         const toCreate = [];
         const toUpdate = [];
+        const toDelete = [];
+        const unchanged = [];
         
         processedRows.forEach(row => {
             const valueObject = {
@@ -530,8 +555,10 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
                 rowIndex: row.rowIndex
             };
             
-            if (row.isUpdate) {
-                toUpdate.push({
+            if (row.action === 'CREATE') {
+                toCreate.push(valueObject);
+            } else if (row.action === 'DELETE') {
+                toDelete.push({
                     ...valueObject,
                     existingValue: {
                         id: row.existingValue.id,
@@ -540,18 +567,53 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
                         isActive: row.existingValue.isActive
                     }
                 });
-            } else {
-                toCreate.push(valueObject);
+            } else if (row.action === 'UPDATE') {
+                // Detect if anything has actually changed
+                const existingValue = row.existingValue;
+                const hasNameChanged = row.valueName !== existingValue.name;
+                const hasDescriptionChanged = (row.valueDescription || '') !== (existingValue.description || '');
+                const hasActiveChanged = row.isActive !== existingValue.isActive;
+                
+                if (hasNameChanged || hasDescriptionChanged || hasActiveChanged) {
+                    // Actual changes detected
+                    toUpdate.push({
+                        ...valueObject,
+                        existingValue: {
+                            id: existingValue.id,
+                            name: existingValue.name,
+                            description: existingValue.description,
+                            isActive: existingValue.isActive
+                        },
+                        changes: {
+                            name: hasNameChanged ? { from: existingValue.name, to: row.valueName } : null,
+                            description: hasDescriptionChanged ? { from: existingValue.description || '', to: row.valueDescription || '' } : null,
+                            isActive: hasActiveChanged ? { from: existingValue.isActive, to: row.isActive } : null
+                        }
+                    });
+                } else {
+                    // No changes detected
+                    unchanged.push({
+                        ...valueObject,
+                        existingValue: {
+                            id: existingValue.id,
+                            name: existingValue.name,
+                            description: existingValue.description,
+                            isActive: existingValue.isActive
+                        }
+                    });
+                }
             }
         });
         
         const preview = {
             toCreate,
             toUpdate,
+            toDelete,
+            unchanged,
             errors: validationErrors.map(error => ({ message: error }))
         };
         
-        console.log(`[Master Upload] Preview prepared: ${toCreate.length} to create, ${toUpdate.length} to update, ${validationErrors.length} errors`);
+        console.log(`[Master Upload] Enhanced preview prepared: ${toCreate.length} to create, ${toUpdate.length} to update, ${toDelete.length} to delete, ${unchanged.length} unchanged, ${validationErrors.length} errors`);
         
         res.status(200).json({
             success: true,
