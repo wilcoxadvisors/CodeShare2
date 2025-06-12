@@ -205,6 +205,44 @@ const DimensionsPage = () => {
     },
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: async (payload: { toCreate: any[], toUpdate: any[], toDelete: any[] }) => {
+      if (!selectedClientId) throw new Error("Client not selected");
+      
+      const response = await apiRequest(`/api/clients/${selectedClientId}/master-values-confirm`, {
+        method: 'POST',
+        data: payload,
+      });
+      
+      return response;
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Changes Processed Successfully",
+        description: `Created: ${result.result.created}, Updated: ${result.result.updated}, Deleted: ${result.result.deleted || 0}`,
+        variant: "default"
+      });
+      
+      // Clear preview state and reset file input
+      setUploadPreview(null);
+      setSelectedChanges({});
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Invalidate dimensions cache to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Processing Failed",
+        description: error.message || "Failed to process changes.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleCreateDimension = (values: { name: string; code: string; description?: string; }) => {
       createDimensionMutation.mutate(values);
   };
@@ -517,19 +555,31 @@ const DimensionsPage = () => {
                         {getSelectedChangeCount()} changes selected
                       </span>
                       <Button 
-                        disabled={getSelectedChangeCount() === 0}
+                        disabled={getSelectedChangeCount() === 0 || confirmMutation.isPending}
                         className="flex items-center gap-2"
                         onClick={() => {
-                          // TODO: Phase 3 - Implement confirmation endpoint
-                          toast({
-                            title: "Feature In Progress",
-                            description: "Confirmation processing will be implemented in Phase 3",
-                            variant: "default"
-                          });
+                          if (!uploadPreview) return;
+                          
+                          // Gather selected changes
+                          const toCreate = uploadPreview.toCreate.filter((_, index) => 
+                            selectedChanges[`create-${index}`]
+                          );
+                          const toUpdate = uploadPreview.toUpdate.filter((_, index) => 
+                            selectedChanges[`update-${index}`]
+                          );
+                          const toDelete = uploadPreview.toDelete.filter((_, index) => 
+                            selectedChanges[`delete-${index}`]
+                          );
+                          
+                          confirmMutation.mutate({ toCreate, toUpdate, toDelete });
                         }}
                       >
-                        <Upload className="h-4 w-4" />
-                        Confirm and Process
+                        {confirmMutation.isPending ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        {confirmMutation.isPending ? 'Processing...' : 'Confirm and Process'}
                       </Button>
                     </div>
                   </div>
