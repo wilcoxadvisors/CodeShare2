@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
 import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload, Download } from 'lucide-react';
@@ -31,6 +34,34 @@ interface DimensionValue {
   isActive: boolean;
 }
 
+interface UploadPreview {
+  toCreate: Array<{
+    dimensionCode: string;
+    valueCode: string;
+    valueName: string;
+    valueDescription?: string;
+    isActive: boolean;
+    rowIndex: number;
+  }>;
+  toUpdate: Array<{
+    dimensionCode: string;
+    valueCode: string;
+    valueName: string;
+    valueDescription?: string;
+    isActive: boolean;
+    rowIndex: number;
+    existingValue: {
+      id: number;
+      name: string;
+      description?: string;
+      isActive: boolean;
+    };
+  }>;
+  errors: Array<{
+    message: string;
+  }>;
+}
+
 const DimensionsPage = () => {
   const { selectedClientId } = useEntity();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
@@ -38,6 +69,8 @@ const DimensionsPage = () => {
   const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
   const [deletingDimension, setDeletingDimension] = useState<Dimension | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
+  const [selectedChanges, setSelectedChanges] = useState<{[key: string]: boolean}>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -112,17 +145,18 @@ const DimensionsPage = () => {
       return response;
     },
     onSuccess: (result) => {
-      toast({
-        title: "Upload Complete",
-        description: `Created ${result.summary.created} new values, updated ${result.summary.updated} values${result.summary.skipped > 0 ? `, skipped ${result.summary.skipped}` : ''}`,
-      });
+      // Store the preview data for user confirmation
+      setUploadPreview(result.preview);
       
-      // Refresh all dimension data
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      // Initialize selected changes - all items selected by default
+      const initialSelection: {[key: string]: boolean} = {};
+      result.preview.toCreate.forEach((item: any, index: number) => {
+        initialSelection[`create-${index}`] = true;
+      });
+      result.preview.toUpdate.forEach((item: any, index: number) => {
+        initialSelection[`update-${index}`] = true;
+      });
+      setSelectedChanges(initialSelection);
     },
     onError: (error: any) => {
       toast({
@@ -151,6 +185,39 @@ const DimensionsPage = () => {
       // Trigger file selection
       fileInputRef.current?.click();
     }
+  };
+
+  const handleCancelPreview = () => {
+    setUploadPreview(null);
+    setSelectedChanges({});
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSelectAllChanges = (checked: boolean) => {
+    const newSelection: {[key: string]: boolean} = {};
+    if (uploadPreview) {
+      uploadPreview.toCreate.forEach((_, index) => {
+        newSelection[`create-${index}`] = checked;
+      });
+      uploadPreview.toUpdate.forEach((_, index) => {
+        newSelection[`update-${index}`] = checked;
+      });
+    }
+    setSelectedChanges(newSelection);
+  };
+
+  const handleRowSelectionChange = (key: string, checked: boolean) => {
+    setSelectedChanges(prev => ({
+      ...prev,
+      [key]: checked
+    }));
+  };
+
+  const getSelectedChangeCount = () => {
+    return Object.values(selectedChanges).filter(Boolean).length;
   };
 
   const { data: dimensionsResponse, isLoading, error } = useQuery<any>({

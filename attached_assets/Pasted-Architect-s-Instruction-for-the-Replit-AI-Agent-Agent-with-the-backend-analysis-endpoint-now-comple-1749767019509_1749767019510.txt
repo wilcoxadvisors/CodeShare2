@@ -1,0 +1,32 @@
+Architect's Instruction for the Replit AI Agent
+Agent, with the backend analysis endpoint now complete, your next task is to build the frontend UI that will display the preview of changes to the user for their approval.
+
+This is Phase 2 of the "COA-style" interactive upload.
+
+Goal: Create the Interactive Preview and Confirmation UI
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+
+State Management:
+
+Create a new state variable to hold the preview data returned from the API, e.g., const [uploadPreview, setUploadPreview] = useState(null);.
+Create another state variable to manage which rows the user has selected, e.g., const [selectedChanges, setSelectedChanges] = useState({});.
+Modify the Upload Mutation:
+
+Find the masterUploadMutation hook.
+In its onSuccess handler, instead of showing a simple toast, you will now take the preview object from the API response and save it to the uploadPreview state.
+Build the Conditional UI:
+
+The page should now have two states: the initial "upload" state and the "preview" state.
+Use the uploadPreview state variable to conditionally render the UI. If uploadPreview is null, show the "Download Template" and "Upload File" buttons.
+If uploadPreview is not null, hide the upload controls and instead render the new Preview UI.
+Build the Preview UI Component:
+
+This new UI should display the contents of the uploadPreview state.
+Summary: Show the counts clearly: "X values to create," "Y values to update," "Z errors found."
+Errors Table: If there are errors, display them in a simple list or table showing the row number and error message.
+Changes Table: Display the toCreate and toUpdate items in a table.
+Each row must have a checkbox. The state of these checkboxes will be controlled by the selectedChanges state variable.
+Add a "Select All" checkbox in the table header.
+Visually distinguish between "Create" and "Update" rows (e.g., with an icon or a colored badge).
+Action Buttons: Add two buttons at the bottom of the preview: a "Cancel" button that resets the state (setUploadPreview(null)) and a "Confirm and Process Changes" button.
+Agent, please begin by implementing the state management and conditional UI rendering. In the onSuccess handler of the upload mutation, store the API response in the new uploadPreview state.
