@@ -241,7 +241,7 @@ const DimensionsPage = () => {
           </DialogHeader>
           {managingDimension && selectedClientId && (
             <DimensionValuesManager 
-              dimension={managingDimension} 
+              dimension={dimensions.find(d => d.id === managingDimension.id) || managingDimension} 
               selectedClientId={selectedClientId}
             />
           )}
