@@ -204,4 +204,55 @@ router.post('/dimensions/:dimensionId/values/batch-upload',
     })
 );
 
+// GET (download) CSV template with existing dimension values
+router.get('/dimensions/:dimensionId/values/csv-template', 
+    isAuthenticated, 
+    asyncHandler(async (req, res) => {
+        const dimensionId = parseInt(req.params.dimensionId, 10);
+        if (isNaN(dimensionId)) {
+            return throwBadRequest('A valid dimension ID is required.');
+        }
+
+        // Get the dimension to verify it exists and get its name
+        const dimensions = await dimensionStorage.getDimensionsByClient(req.user!.clientId);
+        const dimension = dimensions.find(d => d.id === dimensionId);
+        
+        if (!dimension) {
+            return throwNotFound('Dimension not found');
+        }
+
+        // Get all existing values for this dimension
+        const existingValues = dimension.values || [];
+        
+        // Prepare data for CSV export
+        const csvData = existingValues.map(value => ({
+            code: value.code,
+            name: value.name,
+            description: value.description || ''
+        }));
+
+        // If no values exist, provide a sample template
+        if (csvData.length === 0) {
+            csvData.push({
+                code: 'SAMPLE01',
+                name: 'Sample Value 1',
+                description: 'This is a sample dimension value'
+            });
+        }
+
+        // Convert to CSV using Papa.parse unparse function
+        const csv = Papa.unparse(csvData, {
+            header: true,
+            columns: ['code', 'name', 'description']
+        });
+
+        // Set response headers for file download
+        const filename = `${dimension.name.toLowerCase().replace(/\s+/g, '_')}_values_template.csv`;
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        res.status(200).send(csv);
+    })
+);
+
 export default router;
