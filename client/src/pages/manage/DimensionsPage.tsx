@@ -140,53 +140,6 @@ const DimensionsPage = () => {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* Master Bulk Management Section */}
-        {!isLoading && !error && dimensions && dimensions.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Master Bulk Management
-              </CardTitle>
-              <CardDescription>
-                Download a template with all dimension values or upload a master CSV file to manage all dimensions at once.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    // TODO: Wire to new master template endpoint
-                    toast({
-                      title: "Coming Soon",
-                      description: "Master template download will be implemented next",
-                    });
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Download Master Template
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    // TODO: Wire to new master upload endpoint
-                    toast({
-                      title: "Coming Soon", 
-                      description: "Master file upload will be implemented next",
-                    });
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload Master File
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
         {isLoading && (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
