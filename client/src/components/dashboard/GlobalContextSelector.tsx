@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
@@ -52,6 +53,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Detect if we're on a client-only page (like dimensions)
+  const location = useLocation();
+  const isClientOnlyView = location.pathname.startsWith('/manage/dimensions');
+  
   // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
   // Track which clients are expanded - start collapsed, allow restoration for selected client
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
@@ -79,9 +84,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   // Determine the button text with enhanced display
   let buttonText: React.ReactNode = "Select Client...";
   
-  if (!showEntities) {
-    // Special case for Chart of Accounts (no entity selection needed)
+  if (!showEntities || isClientOnlyView) {
+    // Special case for Chart of Accounts and Dimensions (no entity selection needed)
     if (hasClientContext && selectedClient) {
+      const contextLabel = isClientOnlyView ? "Dimensions" : "Chart of Accounts";
       buttonText = (
         <div className="flex items-center overflow-hidden">
           <div className="flex-1 truncate flex flex-col">
@@ -90,16 +96,17 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
               {selectedClient.name}
             </span>
             <span className="text-xs text-muted-foreground truncate">
-              Chart of Accounts
+              {contextLabel}
             </span>
           </div>
         </div>
       );
     } else {
+      const contextLabel = isClientOnlyView ? "Dimensions" : "Chart of Accounts";
       buttonText = (
         <div className="flex items-center overflow-hidden">
           <Building className="h-4 w-4 inline mr-1 text-primary" />
-          <span>Select Client for Chart of Accounts</span>
+          <span>Select Client for {contextLabel}</span>
         </div>
       );
     }
@@ -180,7 +187,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     setSelectedClientId(clientId);
     setCurrentEntity(null);
     
-    if (!showEntities) { // Explicitly check if it's CoA mode
+    if (!showEntities || isClientOnlyView) { // Check for CoA mode or dimensions page
       setOpen(false);    // Close dropdown immediately
     }
   };
@@ -334,7 +341,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          {showEntities && (
+          {showEntities && !isClientOnlyView && (
             <div className="flex justify-end space-x-2 p-2 border-b">
               <Button
                 variant="link"
@@ -392,9 +399,9 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                         // Select the client in context
                         selectClient(id);
                         
-                        // If entities shouldn't be shown (Chart of Accounts case), close dropdown immediately
-                        if (!showEntities) {
-                          console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode) - closing dropdown after client selection');
+                        // If entities shouldn't be shown (Chart of Accounts case) or we're on dimensions page, close dropdown immediately
+                        if (!showEntities || isClientOnlyView) {
+                          console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode or dimensions page) - closing dropdown after client selection');
                           setOpen(false);
                         } else {
                           console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Keeping dropdown open for entity selection');
@@ -434,7 +441,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                        2. This client has entities to show
                        3. This client is explicitly expanded by user action 
                     */}
-                    {showEntities && filteredEntities.length > 0 && isExpanded && (
+                    {showEntities && !isClientOnlyView && filteredEntities.length > 0 && isExpanded && (
                       <div 
                         className="pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out max-h-[500px] opacity-100 translate-y-0"
                         aria-hidden="false"
