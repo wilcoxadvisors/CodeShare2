@@ -291,4 +291,74 @@ router.get('/dimensions/:dimensionId/values/csv-template',
     })
 );
 
+// GET master values template for all dimensions of a client
+router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHandler(async (req, res) => {
+    const clientId = parseInt(req.params.clientId, 10);
+    if (isNaN(clientId)) {
+        return throwBadRequest('A valid client ID is required.');
+    }
+
+    console.log(`[Master Template] Starting master template generation for client ${clientId}`);
+
+    try {
+        // Fetch all dimensions for the client
+        const dimensions = await dimensionStorage.getDimensionsByClient(clientId);
+        console.log(`[Master Template] Found ${dimensions.length} dimensions for client ${clientId}`);
+
+        if (!dimensions || dimensions.length === 0) {
+            console.log(`[Master Template] No dimensions found for client ${clientId}`);
+            return throwBadRequest('No dimensions found for this client.');
+        }
+
+        // Prepare CSV data
+        const csvData = [];
+        const headers = ['dimension_code', 'value_code', 'value_name', 'value_description'];
+        csvData.push(headers);
+
+        // Collect all dimension values
+        for (const dimension of dimensions) {
+            console.log(`[Master Template] Processing dimension: ${dimension.name} (${dimension.code}) with ${dimension.values?.length || 0} values`);
+            
+            if (dimension.values && dimension.values.length > 0) {
+                dimension.values.forEach(value => {
+                    const row = [
+                        dimension.code,
+                        value.code,
+                        value.name,
+                        value.description || ''
+                    ];
+                    csvData.push(row);
+                });
+            }
+        }
+
+        console.log(`[Master Template] Generated CSV data with ${csvData.length} rows (including header)`);
+
+        // Generate CSV using Papa.unparse
+        let csv;
+        try {
+            csv = Papa.unparse(csvData);
+            console.log(`[Master Template] Successfully created CSV with Papa.unparse`);
+            console.log(`[Master Template] CSV preview:`, csv.substring(0, 200));
+        } catch (error) {
+            console.error(`[Master Template] Error creating CSV with Papa.unparse:`, error);
+            throw new Error(`Failed to generate CSV: ${error.message}`);
+        }
+
+        // Set response headers for file download
+        const filename = `client_${clientId}_master_values_template.csv`;
+        console.log(`[Master Template] Setting response headers for download: ${filename}`);
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        console.log(`[Master Template] Sending CSV response (${csv.length} characters)`);
+        res.status(200).send(csv);
+
+    } catch (error) {
+        console.error(`[Master Template] Error generating master template:`, error);
+        throw new Error(`Failed to generate master template: ${error.message}`);
+    }
+}));
+
 export default router;

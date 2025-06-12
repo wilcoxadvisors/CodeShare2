@@ -140,6 +140,91 @@ const DimensionsPage = () => {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        {/* Master Bulk Management Section */}
+        {!isLoading && !error && selectedClientId && dimensions && dimensions.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Master Bulk Management
+              </CardTitle>
+              <CardDescription>
+                Download a template with all dimension values or upload a master CSV file to manage all dimensions at once for this client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/clients/${selectedClientId}/master-values-template`, {
+                        method: 'GET',
+                        credentials: 'include',
+                      });
+
+                      if (!response.ok) {
+                        throw new Error(`Failed to download template: ${response.status}`);
+                      }
+
+                      // Get the filename from the response headers
+                      const contentDisposition = response.headers.get('content-disposition');
+                      let filename = `client_${selectedClientId}_master_values_template.csv`;
+                      if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                        if (filenameMatch) {
+                          filename = filenameMatch[1];
+                        }
+                      }
+
+                      // Create blob and download
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+
+                      toast({
+                        title: "Success",
+                        description: "Master template downloaded successfully",
+                      });
+                    } catch (error) {
+                      console.error('Download error:', error);
+                      toast({
+                        title: "Download Failed",
+                        description: "Failed to download master template. Please try again.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Download Master Template
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    // TODO: Wire to master upload endpoint
+                    toast({
+                      title: "Coming Soon", 
+                      description: "Master file upload will be implemented next",
+                    });
+                  }}
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Master CSV
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {isLoading && (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
