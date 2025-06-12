@@ -551,7 +551,12 @@ const DimensionsPage = () => {
                                   placeholder="Description (optional)"
                                 />
                               </TableCell>
-                              <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell>
+                                <Switch
+                                  checked={item.isActive}
+                                  onCheckedChange={(checked) => handleInlineEdit('toUpdate', index, 'isActive', checked)}
+                                />
+                              </TableCell>
                               <TableCell className="text-orange-700 text-sm">
                                 <div className="space-y-1">
                                   {item.changes?.name && (
