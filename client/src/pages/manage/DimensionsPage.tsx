@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
-import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { BulkDimensionValueUpload } from '@/features/manage/BulkDimensionValueUpload';
+import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload } from 'lucide-react';
 
 // Define type for a Dimension based on our schema
 interface Dimension {
@@ -37,6 +39,7 @@ const DimensionsPage = () => {
   const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
   const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
   const [deletingDimension, setDeletingDimension] = useState<Dimension | null>(null);
+  const [selectedDimensionForBulk, setSelectedDimensionForBulk] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
