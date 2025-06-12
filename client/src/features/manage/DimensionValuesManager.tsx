@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { PlusCircle, Edit, Power, PowerOff, Loader2, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Power, PowerOff, Loader2, Trash2, Upload } from 'lucide-react';
+import { BulkDimensionValueUpload } from './BulkDimensionValueUpload';
 
 interface DimensionValue {
   id: number;
@@ -170,24 +172,33 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
 
   return (
     <div className="space-y-6">
-      {/* Header with Add Button */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Manage Values for {currentDimension.name}</h3>
-          <p className="text-sm text-muted-foreground">
-            Add, edit, and manage values for the {currentDimension.name} dimension.
-          </p>
-        </div>
-        <Dialog open={isAddModalOpen} onOpenChange={(open) => {
-          setAddModalOpen(open);
-          if (!open) resetAddForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Value
-            </Button>
-          </DialogTrigger>
+      {/* Header */}
+      <div>
+        <h3 className="text-lg font-semibold">Manage Values for {currentDimension.name}</h3>
+        <p className="text-sm text-muted-foreground">
+          Add, edit, and manage values for the {currentDimension.name} dimension.
+        </p>
+      </div>
+
+      {/* Tabs for Individual Add vs Bulk Upload */}
+      <Tabs defaultValue="individual" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="individual">Individual Management</TabsTrigger>
+          <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="individual" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={isAddModalOpen} onOpenChange={(open) => {
+              setAddModalOpen(open);
+              if (!open) resetAddForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Value
+                </Button>
+              </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Value</DialogTitle>
@@ -234,11 +245,11 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
               </div>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+            </Dialog>
+          </div>
 
-      {/* Values List */}
-      <div className="space-y-3">
+          {/* Values List */}
+          <div className="space-y-3">
         {currentDimension.values && currentDimension.values.length > 0 ? (
           currentDimension.values.map((value) => (
             <Card key={value.id} className={`${!value.isActive ? 'opacity-60' : ''}`}>
