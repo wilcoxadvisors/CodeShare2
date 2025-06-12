@@ -104,7 +104,7 @@ const DimensionsPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [selectedChanges, setSelectedChanges] = useState<{[key: string]: boolean}>({});
-  const [showUnchanged, setShowUnchanged] = useState(false);
+  const [showUnchanged, setShowUnchanged] = useState(false); // Hidden by default as requested
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();

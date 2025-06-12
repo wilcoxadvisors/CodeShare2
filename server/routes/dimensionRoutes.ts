@@ -310,9 +310,9 @@ router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHa
             return throwBadRequest('No dimensions found for this client.');
         }
 
-        // Prepare CSV data
+        // Prepare CSV data (removed action column)
         const csvData = [];
-        const headers = ['dimension_code', 'value_code', 'value_name', 'value_description', 'is_active', 'action'];
+        const headers = ['dimension_code', 'value_code', 'value_name', 'value_description', 'is_active'];
         csvData.push(headers);
 
         // Collect all dimension values
@@ -326,8 +326,7 @@ router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHa
                         value.code,
                         value.name,
                         value.description || '',
-                        value.isActive ? 'true' : 'false',
-                        'UPDATE'  // Default action for existing values
+                        value.isActive ? 'true' : 'false'
                     ];
                     csvData.push(row);
                 });
@@ -402,9 +401,9 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
         const rows = parsedData.data;
         console.log(`[Master Upload] Parsed ${rows.length} rows from CSV`);
 
-        // Validate required headers
+        // Validate required headers (removed action column)
         const requiredHeaders = ['dimension_code', 'value_code', 'value_name'];
-        const optionalHeaders = ['value_description', 'is_active', 'action'];
+        const optionalHeaders = ['value_description', 'is_active'];
         const expectedHeaders = [...requiredHeaders, ...optionalHeaders];
         
         if (rows.length === 0) {
@@ -492,29 +491,8 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             const existingValueKey = `${dimensionCode}|${valueCode}`;
             const existingValue = existingValueMap.get(existingValueKey);
 
-            // Parse action with intelligent defaults based on existing data
-            let action = 'UPDATE'; // Default action
-            if (rowData.action && rowData.action.trim()) {
-                action = rowData.action.trim().toUpperCase();
-                if (!['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
-                    validationErrors.push(`Row ${rowIndex}: Invalid action '${action}'. Must be CREATE, UPDATE, or DELETE`);
-                    continue;
-                }
-            } else {
-                // Auto-detect action if not specified
-                action = existingValue ? 'UPDATE' : 'CREATE';
-            }
-
-            // Validate action against existing data
-            if (action === 'CREATE' && existingValue) {
-                validationErrors.push(`Row ${rowIndex}: Cannot CREATE value '${valueCode}' - it already exists in dimension '${dimensionCode}'. Use UPDATE instead.`);
-                continue;
-            }
-            
-            if ((action === 'UPDATE' || action === 'DELETE') && !existingValue) {
-                validationErrors.push(`Row ${rowIndex}: Cannot ${action} value '${valueCode}' - it does not exist in dimension '${dimensionCode}'. Use CREATE instead.`);
-                continue;
-            }
+            // Determine action based on existence (no action column needed)
+            const action = existingValue ? 'UPDATE' : 'CREATE';
 
             processedRows.push({
                 rowIndex,
@@ -540,12 +518,48 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             });
         }
 
-        // Step 4: Construct enhanced preview response with proper change detection
+        // Step 4: Implement "delete by omission" logic
+        console.log(`[Master Upload] Implementing delete by omission logic...`);
+        
+        // Create a set of CSV value keys for quick lookup
+        const csvValueKeys = new Set();
+        processedRows.forEach(row => {
+            csvValueKeys.add(`${row.dimensionCode}|${row.valueCode}`);
+        });
+
+        console.log(`[Master Upload] CSV contains ${csvValueKeys.size} values`);
+        console.log(`[Master Upload] Database contains ${existingValueMap.size} values`);
+
+        // Find values that exist in DB but not in CSV (to be deleted by omission)
+        const valuesToDeleteByOmission = [];
+        existingValueMap.forEach((value, key) => {
+            if (!csvValueKeys.has(key)) {
+                const [dimensionCode, valueCode] = key.split('|');
+                const dimension = dimensionCodeMap.get(dimensionCode);
+                if (dimension) {
+                    valuesToDeleteByOmission.push({
+                        dimensionCode,
+                        valueCode,
+                        valueName: value.name,
+                        valueDescription: value.description,
+                        isActive: value.isActive,
+                        existingValue: value,
+                        dimensionId: dimension.id,
+                        rowIndex: -1 // Special marker for omission deletions
+                    });
+                    console.log(`[Master Upload] Marked for deletion by omission: ${dimensionCode}|${valueCode}`);
+                }
+            }
+        });
+
+        console.log(`[Master Upload] Found ${valuesToDeleteByOmission.length} values to delete by omission`);
+
+        // Step 5: Construct enhanced preview response with proper change detection
         console.log(`[Master Upload] Preparing enhanced preview response for ${processedRows.length} valid rows`);
         
         const toCreate = [];
         const toUpdate = [];
-        const toDelete = [];
+        const toDelete = [...valuesToDeleteByOmission]; // Start with omission deletions
         const unchanged = [];
         
         processedRows.forEach(row => {
@@ -645,13 +659,53 @@ router.post('/clients/:clientId/master-values-confirm', isAuthenticated, asyncHa
 
     console.log(`[Master Confirm] Starting confirmation processing for client ${clientId}`);
     console.log(`[Master Confirm] Processing: ${toCreate.length} creates, ${toUpdate.length} updates, ${toDelete.length} deletes`);
+    console.log(`[Master Confirm] DEBUG - Full payload:`, JSON.stringify({ toCreate, toUpdate, toDelete }, null, 2));
 
     try {
-        // Process the confirmed changes
+        // Fetch dimensions to validate dimension IDs exist
+        console.log(`[Master Confirm] Fetching dimensions for validation...`);
+        const existingDimensions = await dimensionStorage.getDimensionsByClient(clientId);
+        console.log(`[Master Confirm] Found ${existingDimensions.length} dimensions for client`);
+        
+        const dimensionCodeMap = new Map();
+        existingDimensions.forEach(dim => {
+            dimensionCodeMap.set(dim.code, dim);
+            console.log(`[Master Confirm] Dimension mapping: ${dim.code} -> ID ${dim.id}`);
+        });
+
+        // Validate and enhance payload with dimension IDs
+        const enhancedToCreate = toCreate.map(item => {
+            const dimension = dimensionCodeMap.get(item.dimensionCode);
+            if (!dimension) {
+                throw new Error(`Dimension with code '${item.dimensionCode}' not found for create operation`);
+            }
+            console.log(`[Master Confirm] Enhanced CREATE item:`, { ...item, dimensionId: dimension.id });
+            return { ...item, dimensionId: dimension.id };
+        });
+
+        const enhancedToUpdate = toUpdate.map(item => {
+            const dimension = dimensionCodeMap.get(item.dimensionCode);
+            if (!dimension) {
+                throw new Error(`Dimension with code '${item.dimensionCode}' not found for update operation`);
+            }
+            console.log(`[Master Confirm] Enhanced UPDATE item:`, { ...item, dimensionId: dimension.id });
+            return { ...item, dimensionId: dimension.id };
+        });
+
+        const enhancedToDelete = toDelete.map(item => {
+            const dimension = dimensionCodeMap.get(item.dimensionCode);
+            if (!dimension) {
+                throw new Error(`Dimension with code '${item.dimensionCode}' not found for delete operation`);
+            }
+            console.log(`[Master Confirm] Enhanced DELETE item:`, { ...item, dimensionId: dimension.id });
+            return { ...item, dimensionId: dimension.id };
+        });
+
+        // Process the confirmed changes with enhanced payload
         const result = await dimensionStorage.bulkUpsertDimensionValues(clientId, {
-            toCreate,
-            toUpdate,
-            toDelete
+            toCreate: enhancedToCreate,
+            toUpdate: enhancedToUpdate,
+            toDelete: enhancedToDelete
         });
 
         console.log(`[Master Confirm] Bulk operation completed successfully`);
