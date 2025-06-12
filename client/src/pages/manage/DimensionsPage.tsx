@@ -9,11 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
-import { BulkDimensionValueUpload } from '@/features/manage/BulkDimensionValueUpload';
-import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload } from 'lucide-react';
+import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload, Download } from 'lucide-react';
 
 // Define type for a Dimension based on our schema
 interface Dimension {
@@ -39,7 +37,7 @@ const DimensionsPage = () => {
   const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
   const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
   const [deletingDimension, setDeletingDimension] = useState<Dimension | null>(null);
-  const [selectedDimensionForBulk, setSelectedDimensionForBulk] = useState<string>('');
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -142,52 +140,50 @@ const DimensionsPage = () => {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* Bulk Upload Section */}
+        {/* Master Bulk Management Section */}
         {!isLoading && !error && dimensions && dimensions.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Bulk Upload Dimension Values
+                Master Bulk Management
               </CardTitle>
               <CardDescription>
-                Upload values to multiple dimensions efficiently. Select a dimension and upload a CSV file with values.
+                Download a template with all dimension values or upload a master CSV file to manage all dimensions at once.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-2 block">Select Dimension</label>
-                  <Select value={selectedDimensionForBulk} onValueChange={setSelectedDimensionForBulk}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a dimension to upload values to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dimensions.map((dimension) => (
-                        <SelectItem key={dimension.id} value={dimension.id.toString()}>
-                          {dimension.name} ({dimension.code}) - {dimension.values?.length || 0} values
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    // TODO: Wire to new master template endpoint
+                    toast({
+                      title: "Coming Soon",
+                      description: "Master template download will be implemented next",
+                    });
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Download Master Template
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    // TODO: Wire to new master upload endpoint
+                    toast({
+                      title: "Coming Soon", 
+                      description: "Master file upload will be implemented next",
+                    });
+                  }}
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Master File
+                </Button>
               </div>
-              
-              {selectedDimensionForBulk && (
-                <div className="border-t pt-4">
-                  <BulkDimensionValueUpload
-                    dimensionId={parseInt(selectedDimensionForBulk)}
-                    dimensionName={dimensions.find(d => d.id === parseInt(selectedDimensionForBulk))?.name || ''}
-                    onSuccess={() => {
-                      queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/dimensions`] });
-                      toast({
-                        title: "Upload Successful",
-                        description: "Dimension values have been uploaded successfully",
-                      });
-                    }}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
         )}

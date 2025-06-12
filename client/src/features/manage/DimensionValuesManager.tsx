@@ -9,10 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { PlusCircle, Edit, Power, PowerOff, Loader2, Trash2, Upload } from 'lucide-react';
-import { BulkDimensionValueUpload } from './BulkDimensionValueUpload';
+import { PlusCircle, Edit, Power, PowerOff, Loader2, Trash2 } from 'lucide-react';
 
 interface DimensionValue {
   id: number;
@@ -180,14 +178,8 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         </p>
       </div>
 
-      {/* Tabs for Individual Add vs Bulk Upload */}
-      <Tabs defaultValue="individual" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="individual">Individual Management</TabsTrigger>
-          <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="individual" className="space-y-4">
+      {/* Individual Value Management */}
+      <div className="space-y-4">
           <div className="flex justify-end">
             <Dialog open={isAddModalOpen} onOpenChange={(open) => {
               setAddModalOpen(open);
@@ -318,19 +310,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
           </Card>
         )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="bulk" className="space-y-4">
-          <BulkDimensionValueUpload 
-            dimensionId={dimension.id}
-            dimensionName={dimension.name}
-            onSuccess={() => {
-              // Refetch the dimension data to show new values
-              queryClient.invalidateQueries({ queryKey: ['/api/dimensions', selectedClientId] });
-            }}
-          />
-        </TabsContent>
-      </Tabs>
+        </div>
 
       {/* Edit Modal */}
       <Dialog open={!!editingValue} onOpenChange={(open) => !open && closeEditModal()}>
