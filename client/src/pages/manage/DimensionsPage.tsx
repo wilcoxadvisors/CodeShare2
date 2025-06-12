@@ -242,6 +242,10 @@ const DimensionsPage = () => {
       uploadPreview.toUpdate.forEach((_, index) => {
         newSelection[`update-${index}`] = checked;
       });
+      uploadPreview.toDelete.forEach((_, index) => {
+        newSelection[`delete-${index}`] = checked;
+      });
+      // Note: unchanged items are not included in select all as they don't need processing
     }
     setSelectedChanges(newSelection);
   };
@@ -318,14 +322,22 @@ const DimensionsPage = () => {
                   {/* Summary */}
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="font-semibold text-blue-900 mb-2">Upload Preview</h3>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-5 gap-4 text-sm">
                       <div>
                         <span className="font-medium text-green-700">{uploadPreview.toCreate.length}</span>
-                        <span className="text-gray-600"> values to create</span>
+                        <span className="text-gray-600"> to create</span>
                       </div>
                       <div>
                         <span className="font-medium text-orange-700">{uploadPreview.toUpdate.length}</span>
-                        <span className="text-gray-600"> values to update</span>
+                        <span className="text-gray-600"> to update</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-red-700">{uploadPreview.toDelete.length}</span>
+                        <span className="text-gray-600"> to delete</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">{uploadPreview.unchanged.length}</span>
+                        <span className="text-gray-600"> unchanged</span>
                       </div>
                       <div>
                         <span className="font-medium text-red-700">{uploadPreview.errors.length}</span>
@@ -350,7 +362,7 @@ const DimensionsPage = () => {
                   )}
 
                   {/* Changes Table */}
-                  {(uploadPreview.toCreate.length > 0 || uploadPreview.toUpdate.length > 0) && (
+                  {(uploadPreview.toCreate.length > 0 || uploadPreview.toUpdate.length > 0 || uploadPreview.toDelete.length > 0 || uploadPreview.unchanged.length > 0) && (
                     <div className="border rounded-lg">
                       <div className="p-4 border-b bg-gray-50">
                         <div className="flex items-center justify-between">
@@ -360,7 +372,7 @@ const DimensionsPage = () => {
                               checked={Object.values(selectedChanges).every(Boolean) && Object.keys(selectedChanges).length > 0}
                               onCheckedChange={handleSelectAllChanges}
                             />
-                            <label className="text-sm font-medium">Select All</label>
+                            <label className="text-sm font-medium">Select All (Actionable)</label>
                           </div>
                         </div>
                       </div>
@@ -421,17 +433,60 @@ const DimensionsPage = () => {
                               <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
                               <TableCell className="text-orange-700 text-sm">
                                 <div className="space-y-1">
-                                  {item.valueName !== item.existingValue.name && (
-                                    <div>Name: {item.existingValue.name} → {item.valueName}</div>
+                                  {item.changes?.name && (
+                                    <div>Name: {item.changes.name.from} → {item.changes.name.to}</div>
                                   )}
-                                  {item.valueDescription !== item.existingValue.description && (
-                                    <div>Desc: {item.existingValue.description || 'None'} → {item.valueDescription || 'None'}</div>
+                                  {item.changes?.description && (
+                                    <div>Desc: {item.changes.description.from || 'None'} → {item.changes.description.to || 'None'}</div>
                                   )}
-                                  {item.isActive !== item.existingValue.isActive && (
-                                    <div>Active: {item.existingValue.isActive ? 'Yes' : 'No'} → {item.isActive ? 'Yes' : 'No'}</div>
+                                  {item.changes?.isActive && (
+                                    <div>Active: {item.changes.isActive.from ? 'Yes' : 'No'} → {item.changes.isActive.to ? 'Yes' : 'No'}</div>
                                   )}
                                 </div>
                               </TableCell>
+                            </TableRow>
+                          ))}
+
+                          {uploadPreview.toDelete.map((item, index) => (
+                            <TableRow key={`delete-${index}`} className="bg-red-50">
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedChanges[`delete-${index}`] || false}
+                                  onCheckedChange={(checked) => handleRowSelectionChange(`delete-${index}`, checked as boolean)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="destructive" className="bg-red-100 text-red-800">
+                                  DELETE
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">{item.dimensionCode}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.valueCode}</TableCell>
+                              <TableCell className="line-through text-gray-500">{item.valueName}</TableCell>
+                              <TableCell className="line-through text-gray-500">{item.valueDescription || '-'}</TableCell>
+                              <TableCell className="line-through text-gray-500">{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell className="text-red-700 text-sm">Will be deleted</TableCell>
+                            </TableRow>
+                          ))}
+
+                          {uploadPreview.unchanged.map((item, index) => (
+                            <TableRow key={`unchanged-${index}`} className="bg-gray-50">
+                              <TableCell>
+                                <div className="w-4 h-4 flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">—</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-gray-100 text-gray-700">
+                                  UNCHANGED
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm text-gray-600">{item.dimensionCode}</TableCell>
+                              <TableCell className="font-mono text-sm text-gray-600">{item.valueCode}</TableCell>
+                              <TableCell className="text-gray-600">{item.valueName}</TableCell>
+                              <TableCell className="text-gray-500">{item.valueDescription || '-'}</TableCell>
+                              <TableCell className="text-gray-600">{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell className="text-gray-500 text-sm">No changes detected</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
