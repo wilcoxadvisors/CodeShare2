@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { DimensionForm } from '@/features/manage/DimensionForm';
 import DimensionValuesManager from '@/features/manage/DimensionValuesManager';
 import { PlusCircle, Loader2, AlertCircle, Settings, MoreVertical, Edit, Trash2, Upload, Download } from 'lucide-react';
