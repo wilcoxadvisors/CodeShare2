@@ -1,0 +1,40 @@
+Architect's Instruction for the Replit AI Agent
+Agent, your next task is to implement a feature that allows users to bulk-import Dimension Values from a CSV file.
+
+This will be a multi-part implementation. We will start with the backend first.
+
+Part 1: Backend - Batch Upload Endpoint
+Goal: Create a new API endpoint that can accept a CSV file, parse it, validate the data, and create multiple dimension values in a single operation.
+
+Create New API Route:
+
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Add a new POST route: /api/dimensions/:dimensionId/values/batch-upload.
+Middleware: This route must use multer to handle multipart/form-data file uploads. You can configure it to accept a single file with the field name file.
+Implement Route Handler Logic:
+
+The handler will receive the dimensionId from the URL parameters and the uploaded file in req.file.
+Parse CSV: Use the papaparse library to parse the CSV file buffer (req.file.buffer). The CSV should be expected to have code and name headers.
+Validate Data: Before inserting, you must validate the parsed data:
+Check for correct headers.
+Ensure no code or name values are empty in any row.
+Check for duplicate codes within the CSV file itself.
+Query the database to get all existing value codes for the dimensionId and ensure none of the new codes from the file conflict with existing ones.
+Return a meaningful error message if validation fails.
+Create New Storage Method:
+
+File to Modify: server/storage/dimensionStorage.ts
+Action: Create a new method: createManyDimensionValues(dimensionId: number, values: { code: string; name: string }[]).
+This method should use a database transaction (db.transaction(...)) to insert all the validated new values in a single, atomic operation.
+Send Response:
+
+After the storage method succeeds, the API route should send a 201 status with a JSON summary of the operation, for example:
+JSON
+
+{
+  "success": true,
+  "message": "Successfully imported dimension values.",
+  "createdCount": 50,
+  "skippedCount": 3 
+}
+Agent, please begin by creating the new API endpoint in dimensionRoutes.ts and setting up the multer middleware for the file upload.

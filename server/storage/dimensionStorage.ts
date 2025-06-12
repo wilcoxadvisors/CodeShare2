@@ -2,7 +2,7 @@
 
 import { db } from "../db";
 import { dimensions, dimensionValues, clients, txDimensionLink } from "../../shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Interface for creating a new Dimension
@@ -186,6 +186,76 @@ export class DimensionStorage {
             throw error;
         }
         throw new ApiError(500, "Failed to delete dimension value.");
+    }
+  }
+
+  /**
+   * Create multiple dimension values in a single transaction.
+   * @param dimensionId - The ID of the dimension.
+   * @param values - Array of values to create.
+   * @returns Object containing created count and any skipped items.
+   */
+  async createManyDimensionValues(dimensionId: number, values: { code: string; name: string; description?: string }[]) {
+    try {
+      // First, verify the dimension exists
+      const dimension = await db.select()
+        .from(dimensions)
+        .where(eq(dimensions.id, dimensionId))
+        .limit(1);
+      
+      if (dimension.length === 0) {
+        throw new ApiError(404, "Dimension not found.");
+      }
+
+      // Get existing codes for this dimension to check for duplicates
+      const existingValues = await db.select({ code: dimensionValues.code })
+        .from(dimensionValues)
+        .where(eq(dimensionValues.dimensionId, dimensionId));
+      
+      const existingCodes = new Set(existingValues.map(v => v.code));
+
+      // Filter out values that would create duplicates
+      const valuesToCreate = values.filter(value => !existingCodes.has(value.code));
+      const skippedCount = values.length - valuesToCreate.length;
+
+      if (valuesToCreate.length === 0) {
+        return {
+          success: true,
+          message: "No new values to create - all codes already exist.",
+          createdCount: 0,
+          skippedCount: skippedCount
+        };
+      }
+
+      // Use a transaction to ensure all or nothing
+      const result = await db.transaction(async (tx) => {
+        const insertData = valuesToCreate.map(value => ({
+          dimensionId,
+          code: value.code,
+          name: value.name,
+          description: value.description || null
+        }));
+
+        const createdValues = await tx.insert(dimensionValues)
+          .values(insertData)
+          .returning();
+
+        return createdValues;
+      });
+
+      return {
+        success: true,
+        message: "Successfully imported dimension values.",
+        createdCount: result.length,
+        skippedCount: skippedCount
+      };
+
+    } catch (error: any) {
+      console.error("Error creating multiple dimension values:", error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Failed to create dimension values in batch.");
     }
   }
 }
