@@ -19,7 +19,7 @@ const upload = multer({
     if (file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel') {
       cb(null, true);
     } else {
-      cb(new Error('Only CSV files are allowed'), false);
+      cb(new Error('Only CSV files are allowed'));
     }
   },
 });
@@ -118,25 +118,24 @@ router.post('/dimensions/:dimensionId/values/batch-upload',
         try {
             // Parse CSV file
             const csvText = req.file.buffer.toString('utf8');
-            const parseResult = Papa.parse(csvText, {
+            const parseResult = Papa.parse<Record<string, any>>(csvText, {
                 header: true,
                 skipEmptyLines: true,
-                trimHeaders: true,
-                transform: (value) => value.trim()
+                transform: (value: string) => value.trim()
             });
 
-            if (parseResult.errors.length > 0) {
+            if (parseResult.errors && parseResult.errors.length > 0) {
                 return throwBadRequest(`CSV parsing error: ${parseResult.errors[0].message}`);
             }
 
-            const data = parseResult.data as any[];
+            const data = parseResult.data;
             
             // Validate CSV headers
             const requiredHeaders = ['code', 'name'];
-            const headers = parseResult.meta.fields || [];
+            const headers = parseResult.meta?.fields || [];
             
             const missingHeaders = requiredHeaders.filter(header => 
-                !headers.some(h => h.toLowerCase() === header.toLowerCase())
+                !headers.some((h: string) => h.toLowerCase() === header.toLowerCase())
             );
             
             if (missingHeaders.length > 0) {
@@ -190,7 +189,7 @@ router.post('/dimensions/:dimensionId/values/batch-upload',
             const duplicatesInCsv = csvCodes.filter((code, index) => csvCodes.indexOf(code) !== index);
             
             if (duplicatesInCsv.length > 0) {
-                return throwBadRequest(`Duplicate codes found in CSV: ${[...new Set(duplicatesInCsv)].join(', ')}`);
+                return throwBadRequest(`Duplicate codes found in CSV: ${Array.from(new Set(duplicatesInCsv)).join(', ')}`);
             }
 
             // Create dimension values using storage method
