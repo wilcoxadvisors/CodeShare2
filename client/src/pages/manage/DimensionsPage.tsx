@@ -270,6 +270,21 @@ const DimensionsPage = () => {
     }
   };
 
+  const handleInlineEdit = (category: 'toCreate' | 'toUpdate', index: number, field: 'valueName' | 'valueDescription', value: string) => {
+    if (!uploadPreview) return;
+    
+    const newPreview = { ...uploadPreview };
+    if (category === 'toCreate') {
+      newPreview.toCreate = [...newPreview.toCreate];
+      newPreview.toCreate[index] = { ...newPreview.toCreate[index], [field]: value };
+    } else if (category === 'toUpdate') {
+      newPreview.toUpdate = [...newPreview.toUpdate];
+      newPreview.toUpdate[index] = { ...newPreview.toUpdate[index], [field]: value };
+    }
+    
+    setUploadPreview(newPreview);
+  };
+
   const handleSelectAllChanges = (checked: boolean) => {
     const newSelection: {[key: string]: boolean} = {};
     if (uploadPreview) {
@@ -457,8 +472,22 @@ const DimensionsPage = () => {
                               </TableCell>
                               <TableCell className="font-mono text-sm">{item.dimensionCode}</TableCell>
                               <TableCell className="font-mono text-sm">{item.valueCode}</TableCell>
-                              <TableCell>{item.valueName}</TableCell>
-                              <TableCell className="text-gray-600">{item.valueDescription || '-'}</TableCell>
+                              <TableCell>
+                                <Input
+                                  value={item.valueName}
+                                  onChange={(e) => handleInlineEdit('toCreate', index, 'valueName', e.target.value)}
+                                  className="min-w-[120px]"
+                                  placeholder="Value name"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={item.valueDescription || ''}
+                                  onChange={(e) => handleInlineEdit('toCreate', index, 'valueDescription', e.target.value)}
+                                  className="min-w-[150px]"
+                                  placeholder="Description (optional)"
+                                />
+                              </TableCell>
                               <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
                               <TableCell className="text-green-700 text-sm">New value</TableCell>
                             </TableRow>
@@ -479,8 +508,22 @@ const DimensionsPage = () => {
                               </TableCell>
                               <TableCell className="font-mono text-sm">{item.dimensionCode}</TableCell>
                               <TableCell className="font-mono text-sm">{item.valueCode}</TableCell>
-                              <TableCell>{item.valueName}</TableCell>
-                              <TableCell className="text-gray-600">{item.valueDescription || '-'}</TableCell>
+                              <TableCell>
+                                <Input
+                                  value={item.valueName}
+                                  onChange={(e) => handleInlineEdit('toUpdate', index, 'valueName', e.target.value)}
+                                  className="min-w-[120px]"
+                                  placeholder="Value name"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={item.valueDescription || ''}
+                                  onChange={(e) => handleInlineEdit('toUpdate', index, 'valueDescription', e.target.value)}
+                                  className="min-w-[150px]"
+                                  placeholder="Description (optional)"
+                                />
+                              </TableCell>
                               <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
                               <TableCell className="text-orange-700 text-sm">
                                 <div className="space-y-1">

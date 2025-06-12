@@ -2,7 +2,7 @@
 
 import { db } from "../db";
 import { dimensions, dimensionValues, clients, txDimensionLink } from "../../shared/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
 // Interface for creating a new Dimension
@@ -315,80 +315,78 @@ export class DimensionStorage {
       let skippedCount = 0;
       const errors: string[] = [];
 
-      // Use a transaction to ensure data integrity
-      await db.transaction(async (tx) => {
-        // Process deletions first (safer to delete before creating/updating)
-        for (const item of toDelete) {
-          try {
-            // Safety check for deletion can be added later when journal entry relations are established
+      // Process each operation individually to prevent transaction rollback
+      // Handle deletions with foreign key constraint checking
+      for (const item of toDelete) {
+        try {
+          console.log(`[Storage] Attempting to delete: ${item.dimensionCode}|${item.valueCode}`);
+          
+          // TODO: Add foreign key constraint checking when journal entry system is fully implemented
 
-            // Safe to delete
-            await tx
-              .delete(dimensionValues)
-              .where(
-                and(
-                  eq(dimensionValues.dimensionId, item.dimensionId),
-                  eq(dimensionValues.code, item.valueCode)
-                )
-              );
+          await db
+            .delete(dimensionValues)
+            .where(eq(dimensionValues.id, item.existingValue.id));
 
-            console.log(`[Storage] Deleted dimension value: ${item.valueCode}`);
-            deletedCount++;
-          } catch (error: any) {
-            console.error(`[Storage] Error deleting ${item.valueCode}:`, error);
-            errors.push(`Delete ${item.valueCode}: ${error.message}`);
-            skippedCount++;
-          }
+          console.log(`[Storage] Successfully deleted dimension value: ${item.valueCode}`);
+          deletedCount++;
+        } catch (error: any) {
+          console.error(`[Storage] Error deleting ${item.valueCode}:`, error);
+          errors.push(`Delete ${item.valueCode}: ${error.message}`);
+          skippedCount++;
         }
+      }
 
-        // Process updates
-        for (const item of toUpdate) {
-          try {
-            await tx
-              .update(dimensionValues)
-              .set({
-                name: item.valueName,
-                description: item.valueDescription || null,
-                isActive: item.isActive
-              })
-              .where(
-                and(
-                  eq(dimensionValues.dimensionId, item.dimensionId),
-                  eq(dimensionValues.code, item.valueCode)
-                )
-              );
+      // Process updates
+      for (const item of toUpdate) {
+        try {
+          console.log(`[Storage] Attempting to update: ${item.dimensionCode}|${item.valueCode}`);
+          
+          await db
+            .update(dimensionValues)
+            .set({
+              name: item.valueName,
+              description: item.valueDescription || null,
+              isActive: item.isActive
+            })
+            .where(
+              and(
+                eq(dimensionValues.dimensionId, item.dimensionId),
+                eq(dimensionValues.code, item.valueCode)
+              )
+            );
 
-            console.log(`[Storage] Updated dimension value: ${item.valueCode}`);
-            updatedCount++;
-          } catch (error: any) {
-            console.error(`[Storage] Error updating ${item.valueCode}:`, error);
-            errors.push(`Update ${item.valueCode}: ${error.message}`);
-            skippedCount++;
-          }
+          console.log(`[Storage] Successfully updated dimension value: ${item.valueCode}`);
+          updatedCount++;
+        } catch (error: any) {
+          console.error(`[Storage] Error updating ${item.valueCode}:`, error);
+          errors.push(`Update ${item.valueCode}: ${error.message}`);
+          skippedCount++;
         }
+      }
 
-        // Process creates
-        for (const item of toCreate) {
-          try {
-            await tx
-              .insert(dimensionValues)
-              .values({
-                dimensionId: item.dimensionId,
-                code: item.valueCode,
-                name: item.valueName,
-                description: item.valueDescription || null,
-                isActive: item.isActive
-              });
+      // Process creates
+      for (const item of toCreate) {
+        try {
+          console.log(`[Storage] Attempting to create: ${item.dimensionCode}|${item.valueCode}`);
+          
+          await db
+            .insert(dimensionValues)
+            .values({
+              dimensionId: item.dimensionId,
+              code: item.valueCode,
+              name: item.valueName,
+              description: item.valueDescription || null,
+              isActive: item.isActive
+            });
 
-            console.log(`[Storage] Created dimension value: ${item.valueCode}`);
-            createdCount++;
-          } catch (error: any) {
-            console.error(`[Storage] Error creating ${item.valueCode}:`, error);
-            errors.push(`Create ${item.valueCode}: ${error.message}`);
-            skippedCount++;
-          }
+          console.log(`[Storage] Successfully created dimension value: ${item.valueCode}`);
+          createdCount++;
+        } catch (error: any) {
+          console.error(`[Storage] Error creating ${item.valueCode}:`, error);
+          errors.push(`Create ${item.valueCode}: ${error.message}`);
+          skippedCount++;
         }
-      });
+      }
 
       const summary = {
         totalProcessed: toCreate.length + toUpdate.length + toDelete.length,
