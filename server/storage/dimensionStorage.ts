@@ -1,7 +1,7 @@
 // In server/storage/dimensionStorage.ts
 
 import { db } from "../db";
-import { dimensions, dimensionValues, clients, txDimensionLink } from "../../shared/schema";
+import { dimensions, dimensionValues, clients, txDimensionLink, journalEntries, journalEntryLines } from "../../shared/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { ApiError } from "../errorHandling";
 
@@ -321,15 +321,22 @@ export class DimensionStorage {
         try {
           console.log(`[Storage] Attempting to delete: ${item.dimensionCode}|${item.valueCode}`);
           
-          // Check for foreign key references before deletion
+          // Check for foreign key references within this client only
           const usageCheck = await db
             .select({ count: sql<number>`count(*)` })
             .from(txDimensionLink)
-            .where(eq(txDimensionLink.dimensionValueId, item.existingValue.id));
+            .innerJoin(journalEntryLines, eq(txDimensionLink.journalEntryLineId, journalEntryLines.id))
+            .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+            .where(
+              and(
+                eq(txDimensionLink.dimensionValueId, item.existingValue.id),
+                eq(journalEntries.clientId, clientId)
+              )
+            );
 
           if (usageCheck[0]?.count > 0) {
-            console.log(`[Storage] Cannot delete ${item.valueCode}: Used in ${usageCheck[0].count} transactions`);
-            errors.push(`Cannot delete ${item.valueCode}: This value is used in ${usageCheck[0].count} journal entry transactions. Remove these references first.`);
+            console.log(`[Storage] Cannot delete ${item.valueCode}: Used in ${usageCheck[0].count} transactions for this client`);
+            errors.push(`Cannot delete ${item.valueCode}: This value is used in ${usageCheck[0].count} journal entry transactions for this client. Remove these references first.`);
             skippedCount++;
             continue;
           }
