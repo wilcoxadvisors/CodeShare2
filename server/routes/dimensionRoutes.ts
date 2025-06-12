@@ -213,9 +213,8 @@ router.get('/dimensions/:dimensionId/values/csv-template',
             return throwBadRequest('A valid dimension ID is required.');
         }
 
-        // Get the dimension to verify it exists and get its name
-        const dimensions = await dimensionStorage.getDimensionsByClient((req as any).user.clientId);
-        const dimension = dimensions.find(d => d.id === dimensionId);
+        // Get the dimension directly by ID to verify it exists
+        const dimension = await dimensionStorage.getDimensionById(dimensionId);
         
         if (!dimension) {
             return res.status(404).json({ message: 'Dimension not found' });

@@ -41,7 +41,8 @@ export function BulkDimensionValueUpload({
       
       const response = await apiRequest(`/api/dimensions/${dimensionId}/values/batch-upload`, {
         method: 'POST',
-        body: formData,
+        data: formData,
+        isFormData: true,
       });
       
       return response;
@@ -116,6 +117,8 @@ export function BulkDimensionValueUpload({
 
   const downloadTemplate = async () => {
     try {
+      console.log(`Downloading template for dimension ${dimensionId}...`);
+      
       const response = await fetch(`/api/dimensions/${dimensionId}/values/csv-template`, {
         method: 'GET',
         credentials: 'include',
@@ -124,11 +127,19 @@ export function BulkDimensionValueUpload({
         },
       });
 
+      console.log(`Download response status: ${response.status}`);
+      console.log(`Download response headers:`, Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`Failed to download template: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`Download failed with status ${response.status}:`, errorText);
+        throw new Error(`Failed to download template (${response.status}): ${errorText}`);
       }
 
       const csvContent = await response.text();
+      console.log(`CSV content length: ${csvContent.length}`);
+      console.log(`CSV content preview:`, csvContent.substring(0, 200));
+      
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -145,6 +156,7 @@ export function BulkDimensionValueUpload({
         }
       }
       
+      console.log(`Downloading file as: ${filename}`);
       link.download = filename;
       document.body.appendChild(link);
       link.click();

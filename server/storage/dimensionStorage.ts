@@ -53,6 +53,33 @@ export class DimensionStorage {
   }
 
   /**
+   * Get a single dimension by ID with its values.
+   * @param dimensionId - The ID of the dimension.
+   * @returns A promise that resolves to the dimension or null if not found.
+   */
+  async getDimensionById(dimensionId: number) {
+    try {
+      console.log(`[Storage] Attempting to get dimension by ID: ${dimensionId}`);
+      
+      const result = await db.query.dimensions.findFirst({
+        where: eq(dimensions.id, dimensionId),
+        with: {
+          values: {
+            orderBy: [desc(dimensionValues.name)],
+          },
+        },
+      });
+
+      console.log(`[Storage] ${result ? 'Found' : 'Did not find'} dimension with ID: ${dimensionId}`);
+      return result || null;
+
+    } catch (error) {
+      console.error(`[Storage] Error getting dimension by ID ${dimensionId}:`, error);
+      throw new ApiError(500, "Failed to retrieve dimension from storage due to a server error.");
+    }
+  }
+
+  /**
    * Create a new dimension for a client.
    * @param data - The data for the new dimension.
    * @returns The newly created dimension.
