@@ -1,0 +1,7 @@
+dimension_code,value_code,value_name,value_description,is_active,action
+VENDOR,TEST1,Test Value 1,A test dimension value,true,CREATE
+VENDOR,TEST2,Test Value 2,Another test value,true,CREATE
+PROJECT,PROJ001,Project Alpha,Main project for Q1,true,CREATE
+PROJECT,PROJ002,Project Beta,Secondary project,false,CREATE
+DEPT,SALES,Sales Department,Revenue generation team,true,UPDATE
+DEPT,IT,IT Department,Technology support team,true,DELETE
