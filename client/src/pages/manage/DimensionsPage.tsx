@@ -275,83 +275,234 @@ const DimensionsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(`/api/clients/${selectedClientId}/master-values-template`, {
-                        method: 'GET',
-                        credentials: 'include',
-                      });
+              {uploadPreview ? (
+                // Preview UI
+                <div className="space-y-6">
+                  {/* Summary */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-semibold text-blue-900 mb-2">Upload Preview</h3>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-green-700">{uploadPreview.toCreate.length}</span>
+                        <span className="text-gray-600"> values to create</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-orange-700">{uploadPreview.toUpdate.length}</span>
+                        <span className="text-gray-600"> values to update</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-red-700">{uploadPreview.errors.length}</span>
+                        <span className="text-gray-600"> errors found</span>
+                      </div>
+                    </div>
+                  </div>
 
-                      if (!response.ok) {
-                        throw new Error(`Failed to download template: ${response.status}`);
-                      }
-
-                      // Get the filename from the response headers
-                      const contentDisposition = response.headers.get('content-disposition');
-                      let filename = `client_${selectedClientId}_master_values_template.csv`;
-                      if (contentDisposition) {
-                        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-                        if (filenameMatch) {
-                          filename = filenameMatch[1];
-                        }
-                      }
-
-                      // Create blob and download
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = filename;
-                      document.body.appendChild(a);
-                      a.click();
-                      window.URL.revokeObjectURL(url);
-                      document.body.removeChild(a);
-
-                      toast({
-                        title: "Success",
-                        description: "Master template downloaded successfully",
-                      });
-                    } catch (error) {
-                      console.error('Download error:', error);
-                      toast({
-                        title: "Download Failed",
-                        description: "Failed to download master template. Please try again.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Download Master Template
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  onClick={handleUploadMasterCSV}
-                  disabled={masterUploadMutation.isPending}
-                >
-                  {masterUploadMutation.isPending ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                  ) : (
-                    <Upload className="h-4 w-4" />
+                  {/* Errors */}
+                  {uploadPreview.errors.length > 0 && (
+                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <h4 className="font-semibold text-red-900 mb-2">Errors Found</h4>
+                      <ul className="space-y-1 text-sm text-red-800">
+                        {uploadPreview.errors.map((error, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            {error.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                  {selectedFile ? `Upload ${selectedFile.name}` : 'Upload Master CSV'}
-                </Button>
-              </div>
-              
-              {/* Hidden file input for master upload */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFileSelect}
-                style={{ display: 'none' }}
-              />
+
+                  {/* Changes Table */}
+                  {(uploadPreview.toCreate.length > 0 || uploadPreview.toUpdate.length > 0) && (
+                    <div className="border rounded-lg">
+                      <div className="p-4 border-b bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">Proposed Changes</h4>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={Object.values(selectedChanges).every(Boolean) && Object.keys(selectedChanges).length > 0}
+                              onCheckedChange={handleSelectAllChanges}
+                            />
+                            <label className="text-sm font-medium">Select All</label>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[50px]">Select</TableHead>
+                            <TableHead className="w-[80px]">Action</TableHead>
+                            <TableHead>Dimension</TableHead>
+                            <TableHead>Value Code</TableHead>
+                            <TableHead>Value Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Active</TableHead>
+                            <TableHead>Changes</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {uploadPreview.toCreate.map((item, index) => (
+                            <TableRow key={`create-${index}`}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedChanges[`create-${index}`] || false}
+                                  onCheckedChange={(checked) => handleRowSelectionChange(`create-${index}`, checked as boolean)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  CREATE
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">{item.dimensionCode}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.valueCode}</TableCell>
+                              <TableCell>{item.valueName}</TableCell>
+                              <TableCell className="text-gray-600">{item.valueDescription || '-'}</TableCell>
+                              <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell className="text-green-700 text-sm">New value</TableCell>
+                            </TableRow>
+                          ))}
+                          
+                          {uploadPreview.toUpdate.map((item, index) => (
+                            <TableRow key={`update-${index}`}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedChanges[`update-${index}`] || false}
+                                  onCheckedChange={(checked) => handleRowSelectionChange(`update-${index}`, checked as boolean)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                                  UPDATE
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">{item.dimensionCode}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.valueCode}</TableCell>
+                              <TableCell>{item.valueName}</TableCell>
+                              <TableCell className="text-gray-600">{item.valueDescription || '-'}</TableCell>
+                              <TableCell>{item.isActive ? 'Yes' : 'No'}</TableCell>
+                              <TableCell className="text-orange-700 text-sm">
+                                <div className="space-y-1">
+                                  {item.valueName !== item.existingValue.name && (
+                                    <div>Name: {item.existingValue.name} → {item.valueName}</div>
+                                  )}
+                                  {item.valueDescription !== item.existingValue.description && (
+                                    <div>Desc: {item.existingValue.description || 'None'} → {item.valueDescription || 'None'}</div>
+                                  )}
+                                  {item.isActive !== item.existingValue.isActive && (
+                                    <div>Active: {item.existingValue.isActive ? 'Yes' : 'No'} → {item.isActive ? 'Yes' : 'No'}</div>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between pt-4">
+                    <Button variant="outline" onClick={handleCancelPreview}>
+                      Cancel
+                    </Button>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-600">
+                        {getSelectedChangeCount()} changes selected
+                      </span>
+                      <Button 
+                        disabled={getSelectedChangeCount() === 0}
+                        className="flex items-center gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Confirm and Process Changes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Upload Controls
+                <div>
+                  <div className="flex items-center gap-4">
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-2"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`/api/clients/${selectedClientId}/master-values-template`, {
+                            method: 'GET',
+                            credentials: 'include',
+                          });
+
+                          if (!response.ok) {
+                            throw new Error(`Failed to download template: ${response.status}`);
+                          }
+
+                          // Get the filename from the response headers
+                          const contentDisposition = response.headers.get('content-disposition');
+                          let filename = `client_${selectedClientId}_master_values_template.csv`;
+                          if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                            if (filenameMatch) {
+                              filename = filenameMatch[1];
+                            }
+                          }
+
+                          // Create blob and download
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = filename;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+
+                          toast({
+                            title: "Success",
+                            description: "Master template downloaded successfully",
+                          });
+                        } catch (error) {
+                          console.error('Download error:', error);
+                          toast({
+                            title: "Download Failed",
+                            description: "Failed to download master template. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Master Template
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-2"
+                      onClick={handleUploadMasterCSV}
+                      disabled={masterUploadMutation.isPending}
+                    >
+                      {masterUploadMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      {selectedFile ? `Upload ${selectedFile.name}` : 'Upload Master CSV'}
+                    </Button>
+                  </div>
+                  
+                  {/* Hidden file input for master upload */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
