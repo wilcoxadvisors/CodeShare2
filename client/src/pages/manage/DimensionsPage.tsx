@@ -104,6 +104,7 @@ const DimensionsPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [selectedChanges, setSelectedChanges] = useState<{[key: string]: boolean}>({});
+  const [showUnchanged, setShowUnchanged] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -212,16 +213,14 @@ const DimensionsPage = () => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      // Automatically trigger analysis when file is selected
+      masterUploadMutation.mutate(file);
     }
   };
 
   const handleUploadMasterCSV = () => {
-    if (selectedFile) {
-      masterUploadMutation.mutate(selectedFile);
-    } else {
-      // Trigger file selection
-      fileInputRef.current?.click();
-    }
+    // Always trigger file selection - analysis happens automatically on selection
+    fileInputRef.current?.click();
   };
 
   const handleCancelPreview = () => {
@@ -319,30 +318,44 @@ const DimensionsPage = () => {
               {uploadPreview ? (
                 // Preview UI
                 <div className="space-y-6">
-                  {/* Summary */}
+                  {/* Enhanced Summary */}
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="font-semibold text-blue-900 mb-2">Upload Preview</h3>
-                    <div className="grid grid-cols-5 gap-4 text-sm">
-                      <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-blue-900">Upload Analysis Complete</h3>
+                      {uploadPreview.unchanged.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowUnchanged(!showUnchanged)}
+                          className="text-xs"
+                        >
+                          {showUnchanged ? 'Hide' : 'Show'} Unchanged ({uploadPreview.unchanged.length})
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-green-700">{uploadPreview.toCreate.length}</span>
-                        <span className="text-gray-600"> to create</span>
+                        <span className="text-gray-600">to create</span>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                         <span className="font-medium text-orange-700">{uploadPreview.toUpdate.length}</span>
-                        <span className="text-gray-600"> to update</span>
+                        <span className="text-gray-600">to update</span>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                         <span className="font-medium text-red-700">{uploadPreview.toDelete.length}</span>
-                        <span className="text-gray-600"> to delete</span>
+                        <span className="text-gray-600">to delete</span>
                       </div>
-                      <div>
-                        <span className="font-medium text-gray-700">{uploadPreview.unchanged.length}</span>
-                        <span className="text-gray-600"> unchanged</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-red-700">{uploadPreview.errors.length}</span>
-                        <span className="text-gray-600"> errors found</span>
-                      </div>
+                      {uploadPreview.errors.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-3 h-3 text-red-500" />
+                          <span className="font-medium text-red-700">{uploadPreview.errors.length}</span>
+                          <span className="text-gray-600">errors</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -469,7 +482,7 @@ const DimensionsPage = () => {
                             </TableRow>
                           ))}
 
-                          {uploadPreview.unchanged.map((item, index) => (
+                          {showUnchanged && uploadPreview.unchanged.map((item, index) => (
                             <TableRow key={`unchanged-${index}`} className="bg-gray-50">
                               <TableCell>
                                 <div className="w-4 h-4 flex items-center justify-center">
@@ -506,9 +519,17 @@ const DimensionsPage = () => {
                       <Button 
                         disabled={getSelectedChangeCount() === 0}
                         className="flex items-center gap-2"
+                        onClick={() => {
+                          // TODO: Phase 3 - Implement confirmation endpoint
+                          toast({
+                            title: "Feature In Progress",
+                            description: "Confirmation processing will be implemented in Phase 3",
+                            variant: "default"
+                          });
+                        }}
                       >
                         <Upload className="h-4 w-4" />
-                        Confirm and Process Changes
+                        Confirm and Process
                       </Button>
                     </div>
                   </div>
@@ -581,7 +602,7 @@ const DimensionsPage = () => {
                       ) : (
                         <Upload className="h-4 w-4" />
                       )}
-                      {selectedFile ? `Upload ${selectedFile.name}` : 'Upload Master CSV'}
+                      {masterUploadMutation.isPending ? 'Analyzing...' : 'Select & Analyze CSV'}
                     </Button>
                   </div>
                   

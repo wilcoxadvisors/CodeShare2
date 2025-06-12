@@ -481,16 +481,6 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
                 isActive = activeStr === 'true' || activeStr === '1' || activeStr === 'yes' || activeStr === 'active';
             }
 
-            // Parse action with default to UPDATE
-            let action = 'UPDATE';
-            if (rowData.action && rowData.action.trim()) {
-                action = rowData.action.trim().toUpperCase();
-                if (!['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
-                    validationErrors.push(`Row ${rowIndex}: Invalid action '${action}'. Must be CREATE, UPDATE, or DELETE`);
-                    continue;
-                }
-            }
-
             // Validate dimension exists
             const dimension = dimensionCodeMap.get(dimensionCode);
             if (!dimension) {
@@ -502,14 +492,27 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
             const existingValueKey = `${dimensionCode}|${valueCode}`;
             const existingValue = existingValueMap.get(existingValueKey);
 
+            // Parse action with intelligent defaults based on existing data
+            let action = 'UPDATE'; // Default action
+            if (rowData.action && rowData.action.trim()) {
+                action = rowData.action.trim().toUpperCase();
+                if (!['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
+                    validationErrors.push(`Row ${rowIndex}: Invalid action '${action}'. Must be CREATE, UPDATE, or DELETE`);
+                    continue;
+                }
+            } else {
+                // Auto-detect action if not specified
+                action = existingValue ? 'UPDATE' : 'CREATE';
+            }
+
             // Validate action against existing data
             if (action === 'CREATE' && existingValue) {
-                validationErrors.push(`Row ${rowIndex}: Cannot CREATE value '${valueCode}' - it already exists in dimension '${dimensionCode}'`);
+                validationErrors.push(`Row ${rowIndex}: Cannot CREATE value '${valueCode}' - it already exists in dimension '${dimensionCode}'. Use UPDATE instead.`);
                 continue;
             }
             
             if ((action === 'UPDATE' || action === 'DELETE') && !existingValue) {
-                validationErrors.push(`Row ${rowIndex}: Cannot ${action} value '${valueCode}' - it does not exist in dimension '${dimensionCode}'`);
+                validationErrors.push(`Row ${rowIndex}: Cannot ${action} value '${valueCode}' - it does not exist in dimension '${dimensionCode}'. Use CREATE instead.`);
                 continue;
             }
 

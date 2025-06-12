@@ -1,0 +1,54 @@
+Architect's Instruction for the Replit AI Agent
+Agent, the user has provided critical feedback on the Master Upload feature. The current implementation is incomplete and buggy. We will now refactor it to be an interactive, multi-step process, just like the COA import.
+
+This will be a multi-phase operation. We will start with the most critical logic fix on the backend.
+
+Phase 1: Refactor the Backend Analysis
+Goal: Change the existing upload endpoint so it only analyzes the file, correctly identifies actual changes, and supports a new action column for deletions.
+
+File to Modify: server/routes/dimensionRoutes.ts
+
+Action: In the POST /api/clients/:clientId/master-values-upload route handler, you must significantly enhance the row-processing logic.
+
+New CSV Format & Logic:
+
+Update Template: The downloadable template must now include a new column: action. The expected headers are dimension_code, value_code, value_name, value_description, is_active, and action. For existing items, this column should default to UPDATE.
+Enhance Analysis Logic: When processing the uploaded file:
+Handle action column: If the action for a row is DELETE, add that item to a toDelete array in your preview response.
+True "Update" Detection: For rows with an UPDATE action (or no action), you must find the corresponding value in the database and compare every single field (value_name, value_description, is_active).
+Only if there is a real difference should you add the item to the toUpdate array.
+If all fields are identical, add the item to a new unchanged array.
+Handle CREATE action: If the action is CREATE, add the item to the toCreate array.
+Update API Response: The JSON preview sent back to the frontend must now have this more detailed structure:
+JSON
+
+{
+  "preview": {
+    "toCreate": [...],
+    "toUpdate": [...],
+    "toDelete": [...],
+    "unchanged": [...],
+    "errors": [...]
+  }
+}
+Phase 2: Overhaul Frontend UX
+(To be performed after the backend logic in Phase 1 is complete)
+
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+Automatic Analysis: Change the file input so that the onChange event (when a user selects a file) immediately triggers the API call to the analysis endpoint. This eliminates the need for a second "upload" click.
+Interactive Preview Component:
+When the analysis is returned, display the new preview component.
+UI Elements:
+A summary showing counts for "To Create", "To Update", "To Delete", and "Errors".
+A toggle button to "Show/Hide Unchanged Items" (unchanged.length). Unchanged items should be hidden by default.
+An interactive table displaying all actionable items (Create, Update, Delete) with checkboxes.
+For "Update" rows, clearly display the specific fields that are changing (e.g., "Name: 'Old' -> 'New'").
+A "Confirm and Process" button.
+Phase 3: Backend Confirmation
+(To be performed after the frontend UI in Phase 2 is complete)
+
+File to Modify: server/storage/dimensionStorage.ts
+Action: The bulkUpsertDimensionValues method must be updated to handle a toDelete array, performing the deletions within the same database transaction as the creates and updates.
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Create a new POST endpoint (.../master-values-confirm) that accepts the user's approved list of changes from the frontend and passes it to the storage method for final processing.
+Agent, please begin with Phase 1: Refactoring the backend analysis endpoint.
