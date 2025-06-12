@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEntity } from '@/contexts/EntityContext';
 import { apiRequest } from '@/lib/queryClient';
@@ -37,6 +37,8 @@ const DimensionsPage = () => {
   const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
   const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
   const [deletingDimension, setDeletingDimension] = useState<Dimension | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -94,8 +96,61 @@ const DimensionsPage = () => {
     }
   });
 
+  const masterUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!selectedClientId) throw new Error("Client not selected");
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await apiRequest(`/api/clients/${selectedClientId}/master-values-upload`, {
+        method: 'POST',
+        data: formData,
+        isFormData: true,
+      });
+      
+      return response;
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Upload Complete",
+        description: `Created ${result.summary.created} new values, updated ${result.summary.updated} values${result.summary.skipped > 0 ? `, skipped ${result.summary.skipped}` : ''}`,
+      });
+      
+      // Refresh all dimension data
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload master CSV file",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateDimension = (values: { name: string; code: string; description?: string; }) => {
       createDimensionMutation.mutate(values);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadMasterCSV = () => {
+    if (selectedFile) {
+      masterUploadMutation.mutate(selectedFile);
+    } else {
+      // Trigger file selection
+      fileInputRef.current?.click();
+    }
   };
 
   const { data: dimensionsResponse, isLoading, error } = useQuery<any>({
@@ -210,18 +265,26 @@ const DimensionsPage = () => {
                 <Button 
                   variant="outline" 
                   className="flex items-center gap-2"
-                  onClick={() => {
-                    // TODO: Wire to master upload endpoint
-                    toast({
-                      title: "Coming Soon", 
-                      description: "Master file upload will be implemented next",
-                    });
-                  }}
+                  onClick={handleUploadMasterCSV}
+                  disabled={masterUploadMutation.isPending}
                 >
-                  <Upload className="h-4 w-4" />
-                  Upload Master CSV
+                  {masterUploadMutation.isPending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {selectedFile ? `Upload ${selectedFile.name}` : 'Upload Master CSV'}
                 </Button>
               </div>
+              
+              {/* Hidden file input for master upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
             </CardContent>
           </Card>
         )}
