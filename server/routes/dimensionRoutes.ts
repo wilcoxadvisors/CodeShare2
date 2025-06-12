@@ -214,11 +214,11 @@ router.get('/dimensions/:dimensionId/values/csv-template',
         }
 
         // Get the dimension to verify it exists and get its name
-        const dimensions = await dimensionStorage.getDimensionsByClient(req.user!.clientId);
+        const dimensions = await dimensionStorage.getDimensionsByClient((req as any).user.clientId);
         const dimension = dimensions.find(d => d.id === dimensionId);
         
         if (!dimension) {
-            return throwNotFound('Dimension not found');
+            return res.status(404).json({ message: 'Dimension not found' });
         }
 
         // Get all existing values for this dimension

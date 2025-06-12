@@ -114,17 +114,55 @@ export function BulkDimensionValueUpload({
     }
   };
 
-  const downloadTemplate = () => {
-    const csvContent = 'code,name,description\nDEPT001,Sales Department,Main sales division\nDEPT002,Marketing Department,Marketing and advertising division';
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'dimension_values_template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+  const downloadTemplate = async () => {
+    try {
+      const response = await fetch(`/api/dimensions/${dimensionId}/values/csv-template`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'text/csv',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download template: ${response.statusText}`);
+      }
+
+      const csvContent = await response.text();
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${dimensionName.toLowerCase().replace(/\s+/g, '_')}_template.csv`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Template Downloaded",
+        description: "CSV template has been downloaded successfully",
+      });
+    } catch (error) {
+      console.error('Template download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download CSV template. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
