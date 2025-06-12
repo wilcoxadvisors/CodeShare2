@@ -1,0 +1,21 @@
+Architect's Instruction for the Replit AI Agent
+Agent, the analysis and preview feature is complete. You will now implement the final phase: processing the user's confirmed changes.
+
+This involves creating a new backend endpoint to receive the approved changes and a new frontend mutation to send them.
+
+Phase 3: Implement the Confirmation and Processing Logic
+Create the Confirmation Backend Endpoint:
+
+File to Modify: server/routes/dimensionRoutes.ts
+Action: Create a new POST endpoint: /api/clients/:clientId/master-values-confirm.
+Logic: This endpoint will receive a payload from the frontend containing the arrays of items the user has approved, e.g., { toCreate: [...], toUpdate: [...], toDelete: [...] }. It will then pass this data to the bulkUpsertDimensionValues storage method for final processing.
+Finalize the Backend Storage Method:
+
+File to Modify: server/storage/dimensionStorage.ts
+Action: The bulkUpsertDimensionValues method's logic must now be fully implemented.
+Logic: It must receive the toCreate, toUpdate, and toDelete arrays. Within a single database transaction, it must perform all the necessary INSERT, UPDATE, and DELETE operations. Remember to include the safety check on deletions (do not delete if the value is in use).
+Implement the Frontend Confirmation Mutation:
+
+File to Modify: client/src/pages/manage/DimensionsPage.tsx
+Action: a. Create a new useMutation hook called confirmMutation. b. Wire this mutation to the "Confirm and Process Changes" button's onClick handler. c. This handler must gather all the user-selected items from the selectedChanges state and send them as the payload to the new /master-values-confirm endpoint. d. The onSuccess handler for confirmMutation should show a final success toast, clear the preview state (setUploadPreview(null)), and invalidate the ['dimensions', selectedClientId] query to refresh the page with the final, updated data.
+Agent, please begin by creating the new backend confirmation endpoint and finalizing the bulkUpsertDimensionValues storage method.

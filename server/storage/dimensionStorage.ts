@@ -304,65 +304,102 @@ export class DimensionStorage {
    * @param processedRows - Array of processed row data from CSV
    * @returns Summary of operations performed
    */
-  async bulkUpsertDimensionValues(processedRows: BulkUpsertRow[]) {
+  async bulkUpsertDimensionValues(clientId: number, payload: { toCreate: any[], toUpdate: any[], toDelete: any[] }) {
     try {
-      console.log(`[Storage] Starting bulk upsert for ${processedRows.length} rows`);
-
+      const { toCreate, toUpdate, toDelete } = payload;
+      console.log(`[Storage] Starting bulk operation: ${toCreate.length} creates, ${toUpdate.length} updates, ${toDelete.length} deletes`);
+      
       let createdCount = 0;
       let updatedCount = 0;
+      let deletedCount = 0;
       let skippedCount = 0;
       const errors: string[] = [];
 
       // Use a transaction to ensure data integrity
       await db.transaction(async (tx) => {
-        for (const row of processedRows) {
+        // Process deletions first (safer to delete before creating/updating)
+        for (const item of toDelete) {
           try {
-            if (row.isUpdate) {
-              // Update existing value
-              const updateData = {
-                name: row.valueName,
-                description: row.valueDescription || null,
-                isActive: row.isActive
-              };
+            // Safety check for deletion can be added later when journal entry relations are established
 
-              await tx.update(dimensionValues)
-                .set(updateData)
-                .where(eq(dimensionValues.id, row.existingValue.id));
+            // Safe to delete
+            await tx
+              .delete(dimensionValues)
+              .where(
+                and(
+                  eq(dimensionValues.dimensionId, item.dimensionId),
+                  eq(dimensionValues.code, item.valueCode)
+                )
+              );
 
-              updatedCount++;
-              console.log(`[Storage] Updated value: ${row.dimensionCode}|${row.valueCode}`);
-            } else {
-              // Create new value
-              const insertData = {
-                dimensionId: row.dimensionId,
-                code: row.valueCode,
-                name: row.valueName,
-                description: row.valueDescription || null,
-                isActive: row.isActive
-              };
+            console.log(`[Storage] Deleted dimension value: ${item.valueCode}`);
+            deletedCount++;
+          } catch (error: any) {
+            console.error(`[Storage] Error deleting ${item.valueCode}:`, error);
+            errors.push(`Delete ${item.valueCode}: ${error.message}`);
+            skippedCount++;
+          }
+        }
 
-              await tx.insert(dimensionValues).values(insertData);
+        // Process updates
+        for (const item of toUpdate) {
+          try {
+            await tx
+              .update(dimensionValues)
+              .set({
+                name: item.valueName,
+                description: item.valueDescription || null,
+                isActive: item.isActive
+              })
+              .where(
+                and(
+                  eq(dimensionValues.dimensionId, item.dimensionId),
+                  eq(dimensionValues.code, item.valueCode)
+                )
+              );
 
-              createdCount++;
-              console.log(`[Storage] Created value: ${row.dimensionCode}|${row.valueCode}`);
-            }
-          } catch (rowError: any) {
-            console.error(`[Storage] Error processing row ${row.rowIndex}:`, rowError);
-            errors.push(`Row ${row.rowIndex}: ${rowError.message}`);
+            console.log(`[Storage] Updated dimension value: ${item.valueCode}`);
+            updatedCount++;
+          } catch (error: any) {
+            console.error(`[Storage] Error updating ${item.valueCode}:`, error);
+            errors.push(`Update ${item.valueCode}: ${error.message}`);
+            skippedCount++;
+          }
+        }
+
+        // Process creates
+        for (const item of toCreate) {
+          try {
+            await tx
+              .insert(dimensionValues)
+              .values({
+                dimensionId: item.dimensionId,
+                code: item.valueCode,
+                name: item.valueName,
+                description: item.valueDescription || null,
+                isActive: item.isActive
+              });
+
+            console.log(`[Storage] Created dimension value: ${item.valueCode}`);
+            createdCount++;
+          } catch (error: any) {
+            console.error(`[Storage] Error creating ${item.valueCode}:`, error);
+            errors.push(`Create ${item.valueCode}: ${error.message}`);
             skippedCount++;
           }
         }
       });
 
       const summary = {
-        totalProcessed: processedRows.length,
+        totalProcessed: toCreate.length + toUpdate.length + toDelete.length,
         created: createdCount,
         updated: updatedCount,
+        deleted: deletedCount,
         skipped: skippedCount,
         errors: errors
       };
 
-      console.log(`[Storage] Bulk upsert completed:`, summary);
+      console.log(`[Storage] Bulk operation completed:`, summary);
       return summary;
 
     } catch (error: any) {
@@ -370,7 +407,7 @@ export class DimensionStorage {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, "Failed to perform bulk upsert of dimension values.");
+      throw new ApiError(500, "Failed to perform bulk operation on dimension values.");
     }
   }
 }

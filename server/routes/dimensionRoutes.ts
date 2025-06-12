@@ -630,4 +630,43 @@ router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.s
     }
 }));
 
+// POST confirmation endpoint for master values upload
+router.post('/clients/:clientId/master-values-confirm', isAuthenticated, asyncHandler(async (req, res) => {
+    const clientId = parseInt(req.params.clientId, 10);
+    if (isNaN(clientId)) {
+        return throwBadRequest('A valid client ID is required.');
+    }
+
+    const { toCreate, toUpdate, toDelete } = req.body;
+
+    if (!Array.isArray(toCreate) || !Array.isArray(toUpdate) || !Array.isArray(toDelete)) {
+        return throwBadRequest('Invalid payload: toCreate, toUpdate, and toDelete must be arrays.');
+    }
+
+    console.log(`[Master Confirm] Starting confirmation processing for client ${clientId}`);
+    console.log(`[Master Confirm] Processing: ${toCreate.length} creates, ${toUpdate.length} updates, ${toDelete.length} deletes`);
+
+    try {
+        // Process the confirmed changes
+        const result = await dimensionStorage.bulkUpsertDimensionValues(clientId, {
+            toCreate,
+            toUpdate,
+            toDelete
+        });
+
+        console.log(`[Master Confirm] Bulk operation completed successfully`);
+        console.log(`[Master Confirm] Result:`, result);
+
+        res.json({
+            success: true,
+            message: 'Changes processed successfully',
+            result
+        });
+
+    } catch (error) {
+        console.error(`[Master Confirm] Error processing confirmation:`, error);
+        throw new Error(`Failed to process confirmation: ${error.message}`);
+    }
+}));
+
 export default router;
