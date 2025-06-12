@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -250,44 +250,44 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
 
           {/* Values List */}
           <div className="space-y-3">
-        {currentDimension.values && currentDimension.values.length > 0 ? (
-          currentDimension.values.map((value) => (
-            <Card key={value.id} className={`${!value.isActive ? 'opacity-60' : ''}`}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium">{value.name}</h4>
-                      <Badge variant="outline" className="text-xs">
-                        {value.code}
-                      </Badge>
-                      <Badge variant={value.isActive ? "default" : "secondary"} className="text-xs">
-                        {value.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    {value.description && (
-                      <p className="text-sm text-muted-foreground">{value.description}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditModal(value)}
-                      disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(value)}
-                      disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
-                    >
-                      {updateValueMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : value.isActive ? (
-                        <PowerOff className="h-4 w-4" />
+            {currentDimension.values && currentDimension.values.length > 0 ? (
+              currentDimension.values.map((value) => (
+                <Card key={value.id} className={`${!value.isActive ? 'opacity-60' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{value.name}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {value.code}
+                          </Badge>
+                          <Badge variant={value.isActive ? "default" : "secondary"} className="text-xs">
+                            {value.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        {value.description && (
+                          <p className="text-sm text-muted-foreground">{value.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditModal(value)}
+                          disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(value)}
+                          disabled={updateValueMutation.isPending || deleteValueMutation.isPending}
+                        >
+                          {updateValueMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : value.isActive ? (
+                            <PowerOff className="h-4 w-4" />
                       ) : (
                         <Power className="h-4 w-4" />
                       )}
@@ -317,7 +317,20 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
             </CardContent>
           </Card>
         )}
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="bulk" className="space-y-4">
+          <BulkDimensionValueUpload 
+            dimensionId={dimension.id}
+            dimensionName={dimension.name}
+            onSuccess={() => {
+              // Refetch the dimension data to show new values
+              queryClient.invalidateQueries({ queryKey: ['/api/dimensions', selectedClientId] });
+            }}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Modal */}
       <Dialog open={!!editingValue} onOpenChange={(open) => !open && closeEditModal()}>
@@ -398,4 +411,5 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   );
 };
 
+export { DimensionValuesManager };
 export default DimensionValuesManager;
