@@ -5,7 +5,7 @@ import { asyncHandler, throwBadRequest } from '../errorHandling';
 import { dimensionStorage } from '../storage/dimensionStorage';
 import { isAuthenticated } from '../auth';
 import multer from 'multer';
-import * as Papa from 'papaparse';
+import Papa from 'papaparse';
 
 const router = Router();
 
@@ -208,17 +208,25 @@ router.post('/dimensions/:dimensionId/values/batch-upload',
 router.get('/dimensions/:dimensionId/values/csv-template', 
     isAuthenticated, 
     asyncHandler(async (req, res) => {
+        console.log(`[CSV Template] Starting download for dimension ID: ${req.params.dimensionId}`);
+        
         const dimensionId = parseInt(req.params.dimensionId, 10);
         if (isNaN(dimensionId)) {
+            console.error(`[CSV Template] Invalid dimension ID: ${req.params.dimensionId}`);
             return throwBadRequest('A valid dimension ID is required.');
         }
 
+        console.log(`[CSV Template] Fetching dimension ${dimensionId} from storage...`);
         // Get the dimension directly by ID to verify it exists
         const dimension = await dimensionStorage.getDimensionById(dimensionId);
         
         if (!dimension) {
+            console.error(`[CSV Template] Dimension ${dimensionId} not found in database`);
             return res.status(404).json({ message: 'Dimension not found' });
         }
+
+        console.log(`[CSV Template] Found dimension: ${dimension.name} (ID: ${dimension.id})`);
+        console.log(`[CSV Template] Dimension has ${dimension.values?.length || 0} existing values`);
 
         // Get all existing values for this dimension
         const existingValues = dimension.values || [];
@@ -230,8 +238,11 @@ router.get('/dimensions/:dimensionId/values/csv-template',
             description: value.description || ''
         }));
 
+        console.log(`[CSV Template] Prepared ${csvData.length} rows for CSV export`);
+
         // If no values exist, provide a sample template
         if (csvData.length === 0) {
+            console.log(`[CSV Template] No existing values, adding sample row`);
             csvData.push({
                 code: 'SAMPLE01',
                 name: 'Sample Value 1',
@@ -239,17 +250,43 @@ router.get('/dimensions/:dimensionId/values/csv-template',
             });
         }
 
-        // Convert to CSV using Papa.parse unparse function
-        const csv = Papa.unparse(csvData, {
-            header: true,
-            columns: ['code', 'name', 'description']
-        });
+        console.log(`[CSV Template] Sample CSV data:`, csvData.slice(0, 3));
+
+        // Convert to CSV - fix the Papa usage
+        let csv: string;
+        try {
+            console.log(`[CSV Template] Converting data to CSV using Papa.unparse...`);
+            
+            // Create CSV manually if Papa.unparse fails
+            const headers = ['code', 'name', 'description'];
+            const csvRows = [headers.join(',')];
+            
+            csvData.forEach(row => {
+                const csvRow = [
+                    `"${row.code.replace(/"/g, '""')}"`,
+                    `"${row.name.replace(/"/g, '""')}"`,
+                    `"${(row.description || '').replace(/"/g, '""')}"`
+                ].join(',');
+                csvRows.push(csvRow);
+            });
+            
+            csv = csvRows.join('\n');
+            console.log(`[CSV Template] Successfully created CSV with ${csvRows.length} rows (including header)`);
+            console.log(`[CSV Template] CSV preview:`, csv.substring(0, 200));
+            
+        } catch (error) {
+            console.error(`[CSV Template] Error creating CSV:`, error);
+            throw new Error(`Failed to generate CSV: ${error.message}`);
+        }
 
         // Set response headers for file download
         const filename = `${dimension.name.toLowerCase().replace(/\s+/g, '_')}_values_template.csv`;
+        console.log(`[CSV Template] Setting response headers for download: ${filename}`);
+        
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         
+        console.log(`[CSV Template] Sending CSV response (${csv.length} characters)`);
         res.status(200).send(csv);
     })
 );

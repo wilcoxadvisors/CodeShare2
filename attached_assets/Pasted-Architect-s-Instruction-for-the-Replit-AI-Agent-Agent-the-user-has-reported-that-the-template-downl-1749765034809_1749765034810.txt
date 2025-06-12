@@ -1,0 +1,31 @@
+Architect's Instruction for the Replit AI Agent
+Agent, the user has reported that the template download is failing and that the overall workflow needs to be changed to handle all dimensions at once. We will address this by first fixing the download mechanism and then redesigning the feature.
+
+Phase 1: Fix the Template Download Bug
+Goal: Diagnose and fix the error preventing the current "Download Template" button from working. This is a critical diagnostic step.
+
+File to Modify: server/routes/dimensionRoutes.ts
+
+Action: Add detailed logging to the GET .../csv-template endpoint to see if the server is generating the CSV correctly.
+
+Update the handler to include these logs:
+
+File to Modify: client/src/features/manage/BulkDimensionValueUpload.tsx
+
+Action: Add detailed logging to the downloadTemplate function on the frontend to see if it's receiving the data correctly from the API.
+
+Replace the downloadTemplate function with this diagnostic version:
+
+Agent, apply these logging fixes. Then, we will have the user trigger the download and we will check both the browser and server consoles to find the exact point of failure.
+
+Phase 2: Redesign for "Master" Bulk Management
+(To be performed after the download bug in Phase 1 is fixed)
+
+Once the download mechanism is proven to work, we will implement your new vision.
+
+UI Cleanup: The agent will remove the "Bulk Upload" card from the top of the DimensionsPage and remove the corresponding tab from the "Manage Values" dialog.
+New Backend Endpoints: The agent will create two new endpoints:
+GET /api/clients/:clientId/master-template: To download a single CSV for ALL dimensions, with a new dimension_code column.
+POST /api/clients/:clientId/master-upload: To upload and process this master CSV file.
+New Frontend UI: The agent will add a new, clean "Master Bulk Management" section to the DimensionsPage with just two buttons: "Download Master Template" and "Upload Master File", wired to the new endpoints.
+Let's proceed with Phase 1 first to get the feature into a working state.
