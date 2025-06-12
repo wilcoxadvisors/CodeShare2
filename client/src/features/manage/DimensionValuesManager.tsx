@@ -180,70 +180,70 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
 
       {/* Individual Value Management */}
       <div className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddModalOpen} onOpenChange={(open) => {
-              setAddModalOpen(open);
-              if (!open) resetAddForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Value
-                </Button>
-              </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Value</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddValue} className="space-y-4">
-              <div>
-                <Label htmlFor="add-name">Name *</Label>
-                <Input
-                  id="add-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter value name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="add-code">Code *</Label>
-                <Input
-                  id="add-code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="Enter value code"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="add-description">Description</Label>
-                <Textarea
-                  id="add-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter value description (optional)"
-                  rows={3}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createValueMutation.isPending}>
-                  {createValueMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add Value
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-            </Dialog>
-          </div>
+        <div className="flex justify-end">
+          <Dialog open={isAddModalOpen} onOpenChange={(open) => {
+            setAddModalOpen(open);
+            if (!open) resetAddForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Value
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Value</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddValue} className="space-y-4">
+                <div>
+                  <Label htmlFor="add-name">Name *</Label>
+                  <Input
+                    id="add-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter value name"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-code">Code *</Label>
+                  <Input
+                    id="add-code"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    placeholder="Enter value code"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-description">Description</Label>
+                  <Textarea
+                    id="add-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter value description (optional)"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createValueMutation.isPending}>
+                    {createValueMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Add Value
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-          {/* Values List */}
-          <div className="space-y-3">
-            {currentDimension.values && currentDimension.values.length > 0 ? (
-              currentDimension.values.map((value) => (
+        {/* Values List */}
+        <div className="space-y-3">
+          {currentDimension.values && currentDimension.values.length > 0 ? (
+            currentDimension.values.map((value) => (
                 <Card key={value.id} className={`${!value.isActive ? 'opacity-60' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start">
@@ -309,8 +309,8 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
             </CardContent>
           </Card>
         )}
-          </div>
         </div>
+      </div>
 
       {/* Edit Modal */}
       <Dialog open={!!editingValue} onOpenChange={(open) => !open && closeEditModal()}>
