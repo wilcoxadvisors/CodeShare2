@@ -21,6 +21,19 @@ interface CreateDimensionValueInput {
   description?: string;
 }
 
+// Interface for bulk upsert processed row
+interface BulkUpsertRow {
+  rowIndex: number;
+  dimensionId: number;
+  dimensionCode: string;
+  valueCode: string;
+  valueName: string;
+  valueDescription: string;
+  isActive: boolean;
+  existingValue?: any;
+  isUpdate: boolean;
+}
+
 export class DimensionStorage {
   /**
    * Get all dimensions for a specific client.
@@ -283,6 +296,81 @@ export class DimensionStorage {
         throw error;
       }
       throw new ApiError(500, "Failed to create dimension values in batch.");
+    }
+  }
+
+  /**
+   * Bulk upsert dimension values from master upload
+   * @param processedRows - Array of processed row data from CSV
+   * @returns Summary of operations performed
+   */
+  async bulkUpsertDimensionValues(processedRows: BulkUpsertRow[]) {
+    try {
+      console.log(`[Storage] Starting bulk upsert for ${processedRows.length} rows`);
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+      const errors: string[] = [];
+
+      // Use a transaction to ensure data integrity
+      await db.transaction(async (tx) => {
+        for (const row of processedRows) {
+          try {
+            if (row.isUpdate) {
+              // Update existing value
+              const updateData = {
+                name: row.valueName,
+                description: row.valueDescription || null,
+                isActive: row.isActive
+              };
+
+              await tx.update(dimensionValues)
+                .set(updateData)
+                .where(eq(dimensionValues.id, row.existingValue.id));
+
+              updatedCount++;
+              console.log(`[Storage] Updated value: ${row.dimensionCode}|${row.valueCode}`);
+            } else {
+              // Create new value
+              const insertData = {
+                dimensionId: row.dimensionId,
+                code: row.valueCode,
+                name: row.valueName,
+                description: row.valueDescription || null,
+                isActive: row.isActive
+              };
+
+              await tx.insert(dimensionValues).values(insertData);
+
+              createdCount++;
+              console.log(`[Storage] Created value: ${row.dimensionCode}|${row.valueCode}`);
+            }
+          } catch (rowError: any) {
+            console.error(`[Storage] Error processing row ${row.rowIndex}:`, rowError);
+            errors.push(`Row ${row.rowIndex}: ${rowError.message}`);
+            skippedCount++;
+          }
+        }
+      });
+
+      const summary = {
+        totalProcessed: processedRows.length,
+        created: createdCount,
+        updated: updatedCount,
+        skipped: skippedCount,
+        errors: errors
+      };
+
+      console.log(`[Storage] Bulk upsert completed:`, summary);
+      return summary;
+
+    } catch (error: any) {
+      console.error("Error in bulk upsert dimension values:", error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Failed to perform bulk upsert of dimension values.");
     }
   }
 }

@@ -361,4 +361,175 @@ router.get('/clients/:clientId/master-values-template', isAuthenticated, asyncHa
     }
 }));
 
+// POST master values upload for all dimensions of a client
+router.post('/clients/:clientId/master-values-upload', isAuthenticated, upload.single('file'), asyncHandler(async (req, res) => {
+    const clientId = parseInt(req.params.clientId, 10);
+    if (isNaN(clientId)) {
+        return throwBadRequest('A valid client ID is required.');
+    }
+
+    if (!req.file) {
+        return throwBadRequest('No file uploaded.');
+    }
+
+    console.log(`[Master Upload] Starting master upload for client ${clientId}`);
+    console.log(`[Master Upload] File info: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+    try {
+        // Step 1: Parse CSV
+        const csvText = req.file.buffer.toString('utf-8');
+        console.log(`[Master Upload] CSV content preview:`, csvText.substring(0, 200));
+        
+        let parsedData;
+        try {
+            parsedData = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: (header) => header.trim().toLowerCase()
+            });
+        } catch (parseError) {
+            console.error(`[Master Upload] CSV parsing error:`, parseError);
+            return throwBadRequest('Invalid CSV format. Please check your file.');
+        }
+
+        if (parsedData.errors && parsedData.errors.length > 0) {
+            console.error(`[Master Upload] CSV parsing errors:`, parsedData.errors);
+            return throwBadRequest(`CSV parsing errors: ${parsedData.errors.map(e => e.message).join(', ')}`);
+        }
+
+        const rows = parsedData.data;
+        console.log(`[Master Upload] Parsed ${rows.length} rows from CSV`);
+
+        // Validate required headers
+        const requiredHeaders = ['dimension_code', 'value_code', 'value_name'];
+        const optionalHeaders = ['value_description', 'is_active'];
+        const expectedHeaders = [...requiredHeaders, ...optionalHeaders];
+        
+        if (rows.length === 0) {
+            return throwBadRequest('CSV file is empty or contains no data rows.');
+        }
+
+        const csvHeaders = Object.keys(rows[0] || {});
+        const missingHeaders = requiredHeaders.filter(header => !csvHeaders.includes(header));
+        
+        if (missingHeaders.length > 0) {
+            return throwBadRequest(`Missing required headers: ${missingHeaders.join(', ')}`);
+        }
+
+        console.log(`[Master Upload] CSV headers validated: ${csvHeaders.join(', ')}`);
+
+        // Step 2: Pre-fetch existing dimensions and values
+        console.log(`[Master Upload] Fetching existing dimensions for client ${clientId}`);
+        const existingDimensions = await dimensionStorage.getDimensionsByClient(clientId);
+        console.log(`[Master Upload] Found ${existingDimensions.length} existing dimensions`);
+
+        // Create lookup maps for performance
+        const dimensionCodeMap = new Map();
+        const existingValueMap = new Map(); // key: "dimensionCode|valueCode", value: dimension value object
+
+        existingDimensions.forEach(dimension => {
+            dimensionCodeMap.set(dimension.code.toUpperCase(), dimension);
+            
+            if (dimension.values && dimension.values.length > 0) {
+                dimension.values.forEach(value => {
+                    const key = `${dimension.code.toUpperCase()}|${value.code.toUpperCase()}`;
+                    existingValueMap.set(key, value);
+                });
+            }
+        });
+
+        console.log(`[Master Upload] Created lookup maps: ${dimensionCodeMap.size} dimensions, ${existingValueMap.size} existing values`);
+
+        // Step 3: Validate and process rows
+        const validationErrors: string[] = [];
+        const processedRows: any[] = [];
+        let rowIndex = 0;
+
+        for (const row of rows) {
+            const rowData = row as any;
+            rowIndex++;
+            const errors: string[] = [];
+            
+            // Validate required fields
+            if (!rowData.dimension_code || !rowData.dimension_code.trim()) {
+                errors.push('dimension_code is required');
+            }
+            if (!rowData.value_code || !rowData.value_code.trim()) {
+                errors.push('value_code is required');
+            }
+            if (!rowData.value_name || !rowData.value_name.trim()) {
+                errors.push('value_name is required');
+            }
+
+            if (errors.length > 0) {
+                validationErrors.push(`Row ${rowIndex}: ${errors.join(', ')}`);
+                continue;
+            }
+
+            // Normalize data
+            const dimensionCode = rowData.dimension_code.trim().toUpperCase();
+            const valueCode = rowData.value_code.trim().toUpperCase();
+            const valueName = rowData.value_name.trim();
+            const valueDescription = rowData.value_description ? rowData.value_description.trim() : '';
+            
+            // Parse is_active with default to true
+            let isActive = true;
+            if (rowData.is_active !== undefined && rowData.is_active !== null && rowData.is_active !== '') {
+                const activeStr = rowData.is_active.toString().toLowerCase().trim();
+                isActive = activeStr === 'true' || activeStr === '1' || activeStr === 'yes' || activeStr === 'active';
+            }
+
+            // Validate dimension exists
+            const dimension = dimensionCodeMap.get(dimensionCode);
+            if (!dimension) {
+                validationErrors.push(`Row ${rowIndex}: Dimension with code '${dimensionCode}' not found`);
+                continue;
+            }
+
+            // Check if value already exists
+            const existingValueKey = `${dimensionCode}|${valueCode}`;
+            const existingValue = existingValueMap.get(existingValueKey);
+
+            processedRows.push({
+                rowIndex,
+                dimensionId: dimension.id,
+                dimensionCode,
+                valueCode,
+                valueName,
+                valueDescription,
+                isActive,
+                existingValue,
+                isUpdate: !!existingValue
+            });
+        }
+
+        console.log(`[Master Upload] Validation complete: ${processedRows.length} valid rows, ${validationErrors.length} errors`);
+
+        if (validationErrors.length > 0) {
+            console.error(`[Master Upload] Validation errors:`, validationErrors);
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: validationErrors
+            });
+        }
+
+        // Step 4: Perform bulk upsert
+        console.log(`[Master Upload] Starting bulk upsert operation`);
+        const result = await dimensionStorage.bulkUpsertDimensionValues(processedRows);
+        
+        console.log(`[Master Upload] Upload completed successfully:`, result);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Master upload completed successfully',
+            summary: result
+        });
+
+    } catch (error) {
+        console.error(`[Master Upload] Error during master upload:`, error);
+        throw new Error(`Master upload failed: ${error.message}`);
+    }
+}));
+
 export default router;
