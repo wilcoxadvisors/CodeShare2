@@ -2454,7 +2454,7 @@ function JournalEntryForm({
             <Input
               id="reference"
               name="reference"
-              value={existingEntry?.id ? `#${existingEntry.id}` : "New Entry"}
+              value={existingEntry?.id ? `JE-${new Date().getFullYear()}-${existingEntry.id}` : autoReferencePrefix}
               onChange={handleChange}
               className={`mt-1 bg-gray-50 font-mono ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
               readOnly
