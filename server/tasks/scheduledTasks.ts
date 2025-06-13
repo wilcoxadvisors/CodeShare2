@@ -9,6 +9,7 @@
 import { clientStorage } from '../storage/clientStorage';
 import { auditLogStorage } from '../storage/auditLogStorage';
 import { entityStorage } from '../storage/entityStorage';
+import { journalEntryStorage } from '../storage/journalEntryStorage';
 
 /**
  * System admin user ID for automated actions
@@ -113,6 +114,50 @@ export async function cleanupSoftDeletedClients(): Promise<{deleted: number, err
 }
 
 /**
+ * Process due accrual reversals for all clients
+ * This function finds and processes accrual journal entries that are due for automatic reversal
+ * 
+ * @returns {Promise<{successCount: number, failCount: number}>} Result summary
+ */
+export async function processAccrualReversals(): Promise<{successCount: number, failCount: number}> {
+  console.log('[ScheduledTasks] Starting automatic accrual reversal processing...');
+  
+  try {
+    // Use the journal entry storage's processDueAccrualReversals method
+    const result = await journalEntryStorage.processDueAccrualReversals();
+    
+    // Log the result
+    await auditLogStorage.createAuditLog({
+      action: 'accrual_reversal_scheduled_task',
+      performedBy: SYSTEM_USER_ID,
+      details: JSON.stringify({
+        successCount: result.successCount,
+        failCount: result.failCount,
+        processedAt: new Date().toISOString()
+      })
+    });
+    
+    console.log(`[ScheduledTasks] Accrual reversal processing completed. Success: ${result.successCount}, Failed: ${result.failCount}`);
+    return result;
+  } catch (error) {
+    const errorMsg = `Error in processAccrualReversals: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[ScheduledTasks] ${errorMsg}`);
+    
+    // Log the error
+    await auditLogStorage.createAuditLog({
+      action: 'accrual_reversal_scheduled_task_error',
+      performedBy: SYSTEM_USER_ID,
+      details: JSON.stringify({
+        error: errorMsg,
+        timestamp: new Date().toISOString()
+      })
+    });
+    
+    return { successCount: 0, failCount: 0 };
+  }
+}
+
+/**
  * Run all scheduled maintenance tasks
  * This function can be called by a cron job or other scheduling mechanism
  */
@@ -124,7 +169,9 @@ export async function runAllScheduledTasks(): Promise<void> {
     const clientCleanupResult = await cleanupSoftDeletedClients();
     console.log(`[ScheduledTasks] Client cleanup completed with ${clientCleanupResult.deleted} clients permanently deleted`);
     
-    // Add more scheduled tasks here as needed
+    // Run accrual reversal processing
+    const accrualReversalResult = await processAccrualReversals();
+    console.log(`[ScheduledTasks] Accrual reversal processing completed with ${accrualReversalResult.successCount} reversals processed`);
     
     console.log('[ScheduledTasks] All scheduled maintenance tasks completed successfully');
   } catch (error) {

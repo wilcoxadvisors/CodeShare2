@@ -1505,12 +1505,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         const reversalEntry = await this.reverseJournalEntry(entry.id, {
           date: entry.reversalDate ? new Date(entry.reversalDate) : new Date(),
           description: 'Automatic accrual reversal',
-          createdBy: entry.createdBy || 1 // Use original creator or system user as fallback
+          createdBy: entry.createdBy || 1, // Use original creator or system user as fallback
+          postAutomatically: true // Add new flag to force posting
         });
 
         if (reversalEntry) {
-          // Post the reversal entry automatically
-          await this.updateJournalEntry(reversalEntry.id, { status: 'posted' });
           console.log(`CRON JOB: Successfully reversed and posted accrual entry ${entry.id} -> ${reversalEntry.id}`);
           successCount++;
         } else {
