@@ -1381,6 +1381,7 @@ function JournalEntryForm({
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || "JE",
     supDocId: existingEntry?.supDocId || "",
+    isAccrual: existingEntry?.isAccrual || false,
     reversalDate: existingEntry?.reversalDate ?? "", // already "YYYY-MM-DD" or empty
   });
 
@@ -2601,7 +2602,7 @@ function JournalEntryForm({
                         }));
                       }
                     }}
-                    disabled={(date) => date <= new Date()}
+                    disabled={(date) => date < new Date()}
                     initialFocus
                   />
                 </PopoverContent>
