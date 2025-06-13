@@ -1370,15 +1370,27 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
-  // Generate stable preview ID for new entries
-  const previewId = useMemo(() => {
-    if (existingEntry?.id) return null;
-    const currentYear = new Date().getFullYear();
-    // Use entityId and current date to create a stable seed
-    const seed = entityId + currentYear;
-    const stableId = 1000 + (seed % 9000); // Ensures 4-digit number
-    return generateJournalEntryDisplayId(entityId, currentYear, stableId);
-  }, [existingEntry?.id, entityId]);
+  // State for stable display ID
+  const [displayId, setDisplayId] = useState('');
+
+  // useEffect to manage displayId state
+  useEffect(() => {
+    if (existingEntry?.id) {
+      // For an EXISTING entry, generate the permanent, scalable ID.
+      setDisplayId(
+        generateJournalEntryDisplayId(
+          existingEntry.clientId,
+          existingEntry.entityId,
+          existingEntry.date,
+          existingEntry.id
+        )
+      );
+    } else {
+      // For a NEW entry, use the stable, auto-generated reference prefix as the display ID.
+      // This is generated only once via useMemo and will not change on re-renders.
+      setDisplayId(autoReferencePrefix);
+    }
+  }, [existingEntry, autoReferencePrefix]);
 
 const [journalData, setJournalData] = useState({
     referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
@@ -2451,15 +2463,7 @@ const [journalData, setJournalData] = useState({
             <Input
               id="journalIdDisplay"
               name="journalIdDisplay"
-              value={
-                existingEntry?.id
-                  ? generateJournalEntryDisplayId(
-                      existingEntry.entityId,
-                      new Date(existingEntry.date).getFullYear(),
-                      existingEntry.id
-                    )
-                  : previewId || "Generating preview ID..."
-              }
+              value={displayId}
               className="mt-1 bg-gray-50 font-mono"
               readOnly
             />

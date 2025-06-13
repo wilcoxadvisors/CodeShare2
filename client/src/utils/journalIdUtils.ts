@@ -11,22 +11,31 @@ export interface JournalEntryIdComponents {
 
 /**
  * Generates a scalable journal entry display ID
- * Format: JE-{entityId}-{year}-{sequenceId}
- * Example: JE-391-2025-142857
+ * Format: JE-{clientId}-{entityId}-{MMDDYY}-{databaseId}
+ * Example: JE-250-391-061325-184
  * 
  * This format supports:
- * - Unlimited entities (entityId can be any number)
- * - Unlimited entries per entity per year
- * - Clear year-based organization
- * - Unique identification across the entire system
+ * - Client identification for multi-tenant systems
+ * - Entity identification within the client
+ * - Date-based organization with MMDDYY format
+ * - Unique database ID for scalability
  */
 export function generateJournalEntryDisplayId(
+  clientId: number,
   entityId: number,
-  year: string | number,
-  sequenceId: number
+  date: Date | string,
+  databaseId: number
 ): string {
-  const yearStr = typeof year === 'string' ? year : year.toString();
-  return `JE-${entityId}-${yearStr}-${sequenceId}`;
+  // Ensure we have a valid Date object to work with, handling timezone-safe strings
+  const jeDate = typeof date === 'string' ? new Date(date.replace(/-/g, '/')) : date;
+
+  const month = (jeDate.getMonth() + 1).toString().padStart(2, '0');
+  const day = jeDate.getDate().toString().padStart(2, '0');
+  const year = jeDate.getFullYear().toString().slice(-2); // Get last two digits of year
+  const mmddyy = `${month}${day}${year}`;
+
+  // The databaseId is a serial primary key, ensuring scalability.
+  return `JE-${clientId}-${entityId}-${mmddyy}-${databaseId}`;
 }
 
 /**
