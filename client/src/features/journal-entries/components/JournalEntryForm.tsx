@@ -1403,11 +1403,19 @@ function JournalEntryForm({
   useEffect(() => {
     if (existingEntry?.lines) {
       console.log("DEBUG: Syncing form state with loaded journal entry data, including dimension tags");
-      setLines(existingEntry.lines.map((line: any) => ({ 
-        ...line, 
-        _key: uuidv4(),
-        tags: line.tags || [] // Preserve dimension tags from the database
-      })));
+      console.log("DEBUG: Raw journal entry lines from API:", JSON.stringify(existingEntry.lines, null, 2));
+      
+      const processedLines = existingEntry.lines.map((line: any) => {
+        console.log(`DEBUG: Processing line ${line.id}, tags:`, line.tags);
+        return { 
+          ...line, 
+          _key: uuidv4(),
+          tags: line.tags || [] // Preserve dimension tags from the database
+        };
+      });
+      
+      console.log("DEBUG: Processed lines with tags:", processedLines.map(line => ({ id: line.id, tags: line.tags })));
+      setLines(processedLines);
     }
   }, [existingEntry?.lines]);
 
