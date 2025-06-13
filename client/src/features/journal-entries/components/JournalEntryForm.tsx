@@ -3191,7 +3191,10 @@ function JournalEntryForm({
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="">None</SelectItem>
-                                  {dimension.values?.filter(value => value.isActive).map((value) => (
+                                  {dimension.values
+                                    ?.filter(value => value.isActive)
+                                    .filter(value => value.code && String(value.code).trim() !== "") // Filters out values with null or empty codes
+                                    .map((value) => (
                                     <SelectItem key={value.id} value={value.id.toString()}>
                                       {value.name} ({value.code})
                                     </SelectItem>
