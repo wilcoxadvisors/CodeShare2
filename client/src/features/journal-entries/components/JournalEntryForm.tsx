@@ -3183,7 +3183,7 @@ function JournalEntryForm({
                             value={searchQuery}
                             onValueChange={setSearchQuery}
                           />
-                          <CommandEmpty>No dimension values found.</CommandEmpty>
+
                           <CommandGroup>
                             <CommandList className="max-h-[400px] overflow-auto">
                               {dimensions
