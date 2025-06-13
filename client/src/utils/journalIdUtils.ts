@@ -27,7 +27,21 @@ export function generateJournalEntryDisplayId(
   databaseId: number
 ): string {
   // Ensure we have a valid Date object to work with, handling timezone-safe strings
-  const jeDate = typeof date === 'string' ? new Date(date.replace(/-/g, '/')) : date;
+  let jeDate: Date;
+  
+  if (typeof date === 'string') {
+    jeDate = new Date(date.replace(/-/g, '/'));
+  } else if (date instanceof Date) {
+    jeDate = date;
+  } else {
+    // Fallback to current date if invalid
+    jeDate = new Date();
+  }
+  
+  // Check if the date is valid
+  if (isNaN(jeDate.getTime())) {
+    jeDate = new Date(); // Fallback to current date
+  }
 
   const month = (jeDate.getMonth() + 1).toString().padStart(2, '0');
   const day = jeDate.getDate().toString().padStart(2, '0');

@@ -573,15 +573,17 @@ function JournalEntries() {
                                 className="text-blue-600 hover:underline hover:text-blue-800"
                               >
                                 {entry.displayId || generateJournalEntryDisplayId(
-                                  entityId || entry.entityId, 
-                                  entry.date.substring(0, 4), 
+                                  entry.clientId, 
+                                  entry.entityId, 
+                                  entry.date, 
                                   entry.id
                                 )}
                               </Link>
                             ) : (
                               entry.displayId || generateJournalEntryDisplayId(
-                                entityId || entry.entityId, 
-                                entry.date.substring(0, 4), 
+                                entry.clientId, 
+                                entry.entityId, 
+                                entry.date, 
                                 entry.id
                               )
                             )}
