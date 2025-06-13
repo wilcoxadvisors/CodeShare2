@@ -3150,19 +3150,19 @@ function JournalEntryForm({
                                 {dimension.name}
                               </Label>
                               <Select
-                                value={line.tags?.find(tag => tag.dimensionId === dimension.id)?.dimensionValueId?.toString() || ""}
+                                value={line.tags?.find(tag => tag.dimensionId === dimension.id)?.dimensionValueId?.toString() || "none"}
                                 onValueChange={(valueId) => {
                                   const currentTags = line.tags || [];
                                   let newTags = [...currentTags];
 
-                                  // Explicitly handle clearing the selection for this dimension
-                                  if (valueId === "" || valueId === "none") {
+                                  // Explicitly handle clearing the selection when the user clicks "None"
+                                  if (valueId === "none") {
                                     newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
                                   } else {
-                                    // Handle selecting a new value
+                                    // Handle selecting a new, real value
                                     const selectedValue = dimension.values?.find(v => v.id.toString() === valueId);
                                     if (selectedValue) {
-                                      // First, remove any existing tag for this specific dimension
+                                      // First, remove any old tag for this specific dimension
                                       newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
                                       // Then, add the new tag
                                       newTags.push({
@@ -3181,7 +3181,7 @@ function JournalEntryForm({
                                   <SelectValue placeholder="Select value..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">None</SelectItem>
+                                  <SelectItem value="none">None</SelectItem>
                                   {dimension.values
                                     ?.filter(value => value && typeof value.id === 'number' && value.id > 0) // MANDATORY: Ensures value and its ID are valid
                                     .filter(value => value.isActive)
