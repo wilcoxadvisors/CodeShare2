@@ -1471,7 +1471,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
 
     // Find all journal entries that are accruals, are not yet reversed,
     // and have a reversal date on or before today.
-    const now = new Date();
+    const today = format(new Date(), 'yyyy-MM-dd');
     const dueEntries = await db.select({ 
       id: journalEntries.id, 
       createdBy: journalEntries.createdBy,
@@ -1483,7 +1483,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           eq(journalEntries.isAccrual, true),
           eq(journalEntries.status, 'posted'), // Only reverse posted entries
           isNull(journalEntries.reversedByEntryId), // Not already reversed
-          lte(journalEntries.reversalDate, now.toISOString().split('T')[0]) // Due for reversal
+          lte(journalEntries.reversalDate, today) // Due for reversal
         )
       );
 

@@ -208,7 +208,7 @@ export const journalEntries = pgTable("journal_entries", {
   // Additional fields for journal type and documentation
   journalType: text("journal_type", { enum: ['JE', 'AJ', 'SJ', 'CL'] }).notNull().default('JE'), // JE=General Journal, AJ=Adjusting Journal, SJ=Statistical Journal, CL=Closing Journal
   supDocId: text("sup_doc_id"), // Supporting document ID/reference
-  reversalDate: timestamp("reversal_date", { mode: 'date' }), // Date for reversing entries
+  reversalDate: date("reversal_date"), // Date for reversing entries
   
   // Accrual tracking fields
   isAccrual: boolean("is_accrual").default(false).notNull(), // Indicates this entry is an auto-reversing accrual

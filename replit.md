@@ -126,6 +126,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 ## Changelog
 - June 13, 2025. Initial setup
 - June 13, 2025. **Dimension Tagging System Completed** - Implemented comprehensive dimension tagging for journal entries with backend SQL joins, frontend data preservation, stable React keys, and view page display
+- June 13, 2025. **Automatic Accrual Reversals Architecture Refactored** - Replaced fragile in-memory setTimeout approach with robust cron job-based system. Created processDueAccrualReversals method, scheduled task script, and fixed database schema issues for production-ready daily processing
 
 ## User Preferences
 
