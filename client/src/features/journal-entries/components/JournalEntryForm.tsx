@@ -104,6 +104,7 @@ import { useEntity } from "@/contexts/EntityContext";
 import { useDebouncedCallback } from "@/hooks/useDebounce";
 import { z } from "zod";
 import { validateForm } from "@/lib/validation";
+import { cn } from "@/lib/utils";
 import {
   Command,
   CommandEmpty,
@@ -112,7 +113,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
@@ -3154,55 +3154,89 @@ function JournalEntryForm({
                           <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-80 p-4">
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm">Dimension Tags</h4>
-                          {dimensions.filter(dim => dim.isActive).map((dimension) => (
-                            <div key={dimension.id} className="space-y-2">
-                              <Label className="text-xs font-medium text-gray-700">
-                                {dimension.name}
-                              </Label>
-                              <Select
-                                value={line.tags?.find(tag => tag.dimensionId === dimension.id)?.dimensionValueId?.toString() || "none"}
-                                onValueChange={(valueId) => {
-                                  const currentTags = line.tags || [];
-                                  let newTags = [...currentTags];
-                                  if (valueId === "none") {
-                                    newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
-                                  } else {
-                                    const selectedValue = dimension.values?.find(v => v.id.toString() === valueId);
-                                    if (selectedValue) {
-                                      newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
-                                      newTags.push({
-                                        dimensionId: dimension.id,
-                                        dimensionValueId: selectedValue.id,
-                                        dimensionName: dimension.name,
-                                        dimensionValueName: selectedValue.name
-                                      });
-                                    }
-                                  }
-                                  updateLineTags(index, newTags);
-                                }}
-                              >
-                                <SelectTrigger className="w-full h-8">
-                                  <SelectValue placeholder="Select value..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">None</SelectItem>
-                                  {dimension.values
-                                    ?.filter(value => value && typeof value.id === 'number' && value.id > 0)
-                                    .filter(value => value.isActive)
-                                    .map((value) => (
-                                      <SelectItem key={value.id} value={String(value.id)}>
-                                        {value.name} ({value.code})
-                                      </SelectItem>
-                                    ))
-                                  }
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ))}
-                        </div>
+                      <PopoverContent className="w-80 p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search dimensions and values..."
+                            className="h-9"
+                          />
+                          <CommandEmpty>No dimension values found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandList className="max-h-[300px] overflow-auto">
+                              {dimensions
+                                .filter(dimension => dimension.isActive)
+                                .map((dimension) => {
+                                  const currentTag = line.tags?.find(tag => tag.dimensionId === dimension.id);
+                                  const hasSelection = !!currentTag;
+                                  
+                                  return (
+                                    <div key={dimension.id}>
+                                      {/* Dimension header */}
+                                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b">
+                                        {dimension.name}
+                                      </div>
+                                      
+                                      {/* Clear selection option */}
+                                      {hasSelection && (
+                                        <CommandItem
+                                          value={`clear-${dimension.id}`}
+                                          onSelect={() => {
+                                            const currentTags = line.tags || [];
+                                            const newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
+                                            updateLineTags(index, newTags);
+                                          }}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <X className="mr-2 h-4 w-4" />
+                                          Clear {dimension.name} selection
+                                        </CommandItem>
+                                      )}
+                                      
+                                      {/* Dimension values */}
+                                      {dimension.values
+                                        ?.filter(value => value && typeof value.id === 'number' && value.id > 0)
+                                        .filter(value => value.isActive)
+                                        .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+                                        .map((value) => {
+                                          const isSelected = currentTag?.dimensionValueId === value.id;
+                                          
+                                          return (
+                                            <CommandItem
+                                              key={value.id}
+                                              value={`${dimension.name} ${value.name} ${value.code}`}
+                                              onSelect={() => {
+                                                const currentTags = line.tags || [];
+                                                // Remove any existing tag for this dimension
+                                                let newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
+                                                // Add the new tag
+                                                newTags.push({
+                                                  dimensionId: dimension.id,
+                                                  dimensionValueId: value.id,
+                                                  dimensionName: dimension.name,
+                                                  dimensionValueName: value.name
+                                                });
+                                                updateLineTags(index, newTags);
+                                              }}
+                                              className="pl-6"
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  isSelected ? "opacity-100" : "opacity-0"
+                                                )}
+                                              />
+                                              <span className="font-medium">{value.code}</span>
+                                              {" - "}
+                                              {value.name}
+                                            </CommandItem>
+                                          );
+                                        })}
+                                    </div>
+                                  );
+                                })}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
                       </PopoverContent>
                     </Popover>
                   </div>
