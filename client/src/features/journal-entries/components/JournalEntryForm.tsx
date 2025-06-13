@@ -245,6 +245,7 @@ interface JournalEntryFormProps {
 
 interface JournalLine {
   id?: number;
+  _key?: string;
   accountId: string;
   entityCode: string; // Added for intercompany support
   description: string;
@@ -1364,22 +1365,10 @@ function JournalEntryForm({
   }, [entities, entityId]);
 
   const [lines, setLines] = useState<JournalLine[]>(
-    existingEntry?.lines || [
-      {
-        accountId: "",
-        entityCode: defaultEntityCode,
-        description: "",
-        debit: "",
-        credit: "",
-      },
-      {
-        accountId: "",
-        entityCode: defaultEntityCode,
-        description: "",
-        debit: "",
-        credit: "",
-      },
-    ],
+    (existingEntry?.lines?.map((line: any) => ({ ...line, _key: uuidv4() })) || [
+      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "" },
+      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "" },
+    ])
   );
 
   // Removed supportingDoc state as we're using the AttachmentSection component now
@@ -2278,6 +2267,7 @@ function JournalEntryForm({
     setLines([
       ...lines,
       {
+        _key: uuidv4(),
         accountId: "",
         entityCode: defaultEntityCode,
         description: "",
@@ -2553,7 +2543,7 @@ function JournalEntryForm({
 
           <tbody className="bg-white divide-y divide-gray-200">
             {lines.map((line, index) => (
-              <tr key={index}>
+              <tr key={line._key || line.id || index}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     {/* Combobox for searchable account dropdown */}
@@ -3164,13 +3154,17 @@ function JournalEntryForm({
                                 onValueChange={(valueId) => {
                                   const currentTags = line.tags || [];
                                   let newTags = [...currentTags];
-                                  
-                                  if (valueId) {
+
+                                  // Explicitly handle clearing the selection for this dimension
+                                  if (valueId === "" || valueId === "none") {
+                                    newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
+                                  } else {
+                                    // Handle selecting a new value
                                     const selectedValue = dimension.values?.find(v => v.id.toString() === valueId);
                                     if (selectedValue) {
-                                      // Remove existing tag for this dimension if any
+                                      // First, remove any existing tag for this specific dimension
                                       newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
-                                      // Add new tag
+                                      // Then, add the new tag
                                       newTags.push({
                                         dimensionId: dimension.id,
                                         dimensionValueId: selectedValue.id,
@@ -3178,11 +3172,8 @@ function JournalEntryForm({
                                         dimensionValueName: selectedValue.name
                                       });
                                     }
-                                  } else {
-                                    // Remove tag for this dimension
-                                    newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
                                   }
-                                  
+
                                   updateLineTags(index, newTags);
                                 }}
                               >
@@ -3190,7 +3181,7 @@ function JournalEntryForm({
                                   <SelectValue placeholder="Select value..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="">None</SelectItem>
                                   {dimension.values
                                     ?.filter(value => value && typeof value.id === 'number' && value.id > 0) // MANDATORY: Ensures value and its ID are valid
                                     .filter(value => value.isActive)
