@@ -127,6 +127,7 @@ export function registerJournalEntryRoutes(app: Express) {
     
     try {
       console.log('DETAILED DEBUGGING - CREATE JOURNAL ENTRY');
+      console.log('--- BACKEND ROUTE: RAW BODY ---', req.body);
       console.log('DEBUG BE Route: Received req.body:', JSON.stringify(req.body, null, 2));
       console.log('Request headers: ', JSON.stringify(req.headers));
       console.log('User ID from session: ', user.id);
@@ -161,6 +162,7 @@ export function registerJournalEntryRoutes(app: Express) {
       console.log('Validation input:', JSON.stringify(validationInput));
       
       const validatedData = createJournalEntrySchema.parse(validationInput);
+      console.log('--- BACKEND ROUTE: VALIDATED DATA ---', validatedData);
       console.log('Validation successful. Validated data: ', JSON.stringify(validatedData));
       
       // Double check that createdBy is set

@@ -1992,6 +1992,9 @@ function JournalEntryForm({
       JSON.stringify(entryData, null, 2),
     );
 
+    // ARCHITECT DEBUG: Log accrual data specifically before submission
+    console.log('--- FRONTEND SUBMISSION ---', entryData);
+
     if (isEditing) {
       // For existing entries, no need for special attachment handling
       updateEntry.mutate(entryData);
@@ -2584,7 +2587,7 @@ function JournalEntryForm({
                     } ${fieldErrors.reversalDate ? "border-red-500" : ""}`}
                   >
                     {journalData.reversalDate ? (
-                      format(new Date(journalData.reversalDate), "PPP")
+                      format(new Date(`${journalData.reversalDate}T00:00:00`), "PPP")
                     ) : (
                       <span>Select reversal date</span>
                     )}
@@ -2596,10 +2599,11 @@ function JournalEntryForm({
                     selected={journalData.reversalDate ? new Date(journalData.reversalDate) : undefined}
                     onSelect={(date) => {
                       if (date) {
-                        setJournalData(prev => ({
-                          ...prev,
-                          reversalDate: format(date, "yyyy-MM-dd")
-                        }));
+                        // Correctly handle timezone offset by creating date in UTC
+                        const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                        setJournalData((prev) => ({ ...prev, reversalDate: format(utcDate, 'yyyy-MM-dd') }));
+                      } else {
+                        setJournalData((prev) => ({ ...prev, reversalDate: '' }));
                       }
                     }}
                     disabled={(date) => {
