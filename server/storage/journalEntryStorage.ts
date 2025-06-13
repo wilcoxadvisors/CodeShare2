@@ -853,6 +853,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     description?: string;
     createdBy: number;
     referenceNumber?: string;
+    postAutomatically?: boolean;
   }): Promise<JournalEntry | undefined> {
     console.log(`Reversing journal entry ${journalEntryId} with options:`, options);
     try {
@@ -912,10 +913,12 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         description: reversalDescription,
         journalType: originalEntry.journalType,
         isSystemGenerated: false,
-        status: 'draft' as const,  // Use const assertion to ensure correct type
+        status: options.postAutomatically ? 'posted' as const : 'draft' as const,  // Use const assertion to ensure correct type
         createdBy: options.createdBy,
         isReversal: true,
-        reversedEntryId: originalEntry.id
+        reversedEntryId: originalEntry.id,
+        postedBy: options.postAutomatically ? options.createdBy : undefined,
+        postedAt: options.postAutomatically ? new Date() : undefined
       };
       
       console.log(`Creating reversal entry with data:`, JSON.stringify(reversalEntryData));

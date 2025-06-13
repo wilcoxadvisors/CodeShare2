@@ -2389,24 +2389,8 @@ export function registerJournalEntryRoutes(app: Express) {
         
         console.log(`POSTING DEBUG: Successfully posted journal entry ${id} with preserved dimension tags`);
         
-        // Schedule automatic reversal if this is an accrual entry
-        if (existingEntry.isAccrual && existingEntry.reversalDate) {
-          console.log(`ACCRUAL REVERSAL: Scheduling automatic reversal for journal entry ${id} on ${existingEntry.reversalDate}`);
-          
-          try {
-            // Import the scheduling function
-            const { scheduleAccrualReversal } = await import('./tasks/processReversals');
-            
-            // Schedule the reversal
-            await scheduleAccrualReversal(id, existingEntry.reversalDate);
-            
-            console.log(`ACCRUAL REVERSAL: Successfully scheduled reversal for journal entry ${id}`);
-          } catch (schedulingError) {
-            console.error(`ACCRUAL REVERSAL: Failed to schedule reversal for journal entry ${id}:`, schedulingError);
-            // Don't fail the posting operation, just log the error
-            // The daily cron job will catch missed reversals
-          }
-        }
+        // Note: Accrual reversals are now handled by the daily cron job
+        // The processDueAccrualReversals method will find and process all due reversals
         
         res.json(updatedEntry);
       } catch (error) {
