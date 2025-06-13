@@ -106,6 +106,8 @@ export function useEditJournalEntry() {
             description: line.description || '',
             debit: line.type === 'debit' ? formattedAmount : '0.00',
             credit: line.type === 'credit' ? formattedAmount : '0.00',
+            tags: line.tags || [], // Preserve dimension tags during conversion
+            id: line.id, // Preserve line ID for updates
           };
           
           console.log(`useEditJournalEntry - Line ${index + 1} converted from type='${line.type}', amount=${line.amount} to:`, 
