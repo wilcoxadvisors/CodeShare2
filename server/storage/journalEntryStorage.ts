@@ -588,51 +588,51 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async getJournalEntryLines(journalEntryId: number): Promise<any[]> {
     console.log(`Getting lines with dimension tags for journal entry ${journalEntryId}`);
     try {
-      const linesWithTags = await db.query.journalEntryLines.findMany({
-        where: eq(journalEntryLines.journalEntryId, journalEntryId),
-        orderBy: asc(journalEntryLines.id), // Ensure consistent line order
-        with: {
-          dimensions: { // This is the relation name from the schema: journalEntryLines -> txDimensionLink
-            with: {
-              dimension: {
-                columns: {
-                  id: true,
-                  name: true
-                }
-              },
-              dimensionValue: {
-                columns: {
-                  id: true,
-                  name: true
-                }
-              }
-            }
-          }
-        }
-      });
+      // First, get the basic journal entry lines
+      const lines = await db.select().from(journalEntryLines)
+        .where(eq(journalEntryLines.journalEntryId, journalEntryId))
+        .orderBy(asc(journalEntryLines.id));
 
-      // Transform the data into the format the frontend expects 
-      // (a 'tags' array on each line object)
-      const formattedLines = linesWithTags.map(line => {
-        const tags = line.dimensions.map(link => ({
-          dimensionId: link.dimension.id,
-          dimensionValueId: link.dimensionValue.id,
-          dimensionName: link.dimension.name,
-          dimensionValueName: link.dimensionValue.name
+      console.log(`DEBUG: Retrieved ${lines.length} lines for journal entry ${journalEntryId}`);
+
+      // For each line, get its dimension tags using a direct SQL join
+      const linesWithTags = await Promise.all(lines.map(async (line) => {
+        console.log(`DEBUG: Getting dimension tags for line ${line.id}`);
+        
+        const dimensionTags = await db.select({
+          dimensionId: dimensions.id,
+          dimensionName: dimensions.name,
+          dimensionValueId: dimensionValues.id,
+          dimensionValueName: dimensionValues.name
+        })
+        .from(txDimensionLink)
+        .innerJoin(dimensions, eq(txDimensionLink.dimensionId, dimensions.id))
+        .innerJoin(dimensionValues, eq(txDimensionLink.dimensionValueId, dimensionValues.id))
+        .where(eq(txDimensionLink.journalEntryLineId, line.id));
+
+        console.log(`DEBUG: Line ${line.id} dimension tags from DB:`, JSON.stringify(dimensionTags, null, 2));
+
+        const tags = dimensionTags.map(tag => ({
+          dimensionId: tag.dimensionId,
+          dimensionValueId: tag.dimensionValueId,
+          dimensionName: tag.dimensionName,
+          dimensionValueName: tag.dimensionValueName
         }));
 
-        // Exclude the raw 'dimensions' relation data from the final payload
-        const { dimensions, ...lineData } = line;
-
-        return {
-          ...lineData,
-          tags: tags,
+        const result = {
+          ...line,
+          tags: tags
         };
-      });
+        
+        console.log(`DEBUG: Line ${line.id} final result with tags:`, JSON.stringify(result, null, 2));
+        return result;
+      }));
 
-      return formattedLines;
+      console.log(`DEBUG: Returning ${linesWithTags.length} formatted lines with dimension tags`);
+      return linesWithTags;
 
     } catch (e) {
+      console.error(`ERROR getting lines with dimension tags:`, e);
       throw handleDbError(e, `getting lines with dimension tags for journal entry ${journalEntryId}`);
     }
   }
