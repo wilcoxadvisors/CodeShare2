@@ -2602,7 +2602,17 @@ function JournalEntryForm({
                         }));
                       }
                     }}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      // If no journal entry date is set yet, don't disable anything.
+                      if (!journalData.date) return false;
+
+                      // Create a clean date object from the journal entry date string to avoid timezone issues.
+                      // The journalData.date is 'YYYY-MM-DD'. Adding 'T00:00:00' makes the comparison reliable.
+                      const entryDate = new Date(`${journalData.date}T00:00:00`);
+
+                      // Disable all dates that are on or before the journal entry's date.
+                      return date <= entryDate;
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
