@@ -1423,7 +1423,6 @@ const [journalData, setJournalData] = useState({
   useEffect(() => {
     if (existingEntry) {
       setJournalData({
-        reference: existingEntry.reference || '',
         referenceNumber: existingEntry.referenceNumber || '',
         referenceUserSuffix: existingEntry.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
         date: existingEntry.date || getTodayYMD(),
