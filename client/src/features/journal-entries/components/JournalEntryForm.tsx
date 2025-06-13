@@ -2448,12 +2448,22 @@ const [journalData, setJournalData] = useState({
                       new Date(existingEntry.date).getFullYear(),
                       existingEntry.id
                     )
-                  : "Will be assigned upon creation"
+                  : (() => {
+                      // Generate a preview ID for new entries
+                      const currentYear = new Date().getFullYear();
+                      const previewId = Math.floor(Math.random() * 10000) + 1000;
+                      return generateJournalEntryDisplayId(entityId, currentYear, previewId);
+                    })()
               }
               className="mt-1 bg-gray-50 font-mono"
               readOnly
             />
           </div>
+          {!existingEntry?.id && (
+            <p className="text-xs text-gray-500 mt-1">
+              Preview ID - final ID will be assigned upon creation
+            </p>
+          )}
         </div>
 
         <div>
