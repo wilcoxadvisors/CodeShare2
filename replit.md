@@ -132,6 +132,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 - June 13, 2025. **Automatic Accrual Reversals - Complete Feature** - Final verification confirms frontend data submission correctly includes accrual fields in API payload. Full end-to-end feature ready for production use with robust cron job processing system
 - June 13, 2025. **Critical Date Validation Fix** - Fixed Calendar component to validate reversal dates against journal entry date instead of current date, enabling proper backdating for accounting workflows
 - June 13, 2025. **Automatic Accrual Reversals Architecture Pivot** - Replaced cron job system with immediate posting approach. When accrual entries are posted, reversal entries are automatically created and posted with the future effective date, providing more reliable and instant processing
+- June 13, 2025. **Critical Accrual Settings Preservation Fix** - Fixed user input preservation for accrual settings by implementing user modification tracking, preventing useEffect hooks from overwriting manual changes, and correcting calendar date selection off-by-one issue with proper local date parsing
 
 ## User Preferences
 

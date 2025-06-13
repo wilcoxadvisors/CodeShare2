@@ -1400,8 +1400,18 @@ function JournalEntryForm({
       isAccrual: journalData.isAccrual,
       reversalDate: journalData.reversalDate
     },
-    userHasModifiedAccrual
+    userHasModifiedAccrual,
+    isEditMode: !!existingEntry
   });
+
+  // DEBUG: Track when editing mode is active
+  if (existingEntry) {
+    console.log("ARCHITECT_DEBUG_EDIT_MODE: Component is in edit mode for entry:", existingEntry.id);
+    console.log("ARCHITECT_DEBUG_EDIT_MODE: Existing accrual data:", {
+      isAccrual: existingEntry.isAccrual,
+      reversalDate: existingEntry.reversalDate
+    });
+  }
 
   // Get default entity code from entities list based on current entityId
   const defaultEntityCode = React.useMemo(() => {
@@ -1455,7 +1465,7 @@ function JournalEntryForm({
         reversalDate: existingEntry.reversalDate || ""
       }));
     }
-  }, [existingEntry, userHasModifiedAccrual]);
+  }, [existingEntry?.id, existingEntry?.isAccrual, existingEntry?.reversalDate, userHasModifiedAccrual]);
 
   // Removed supportingDoc state as we're using the AttachmentSection component now
 
@@ -2643,7 +2653,10 @@ function JournalEntryForm({
                 <PopoverContent className="w-auto p-0">
                   <Calendar
                     mode="single"
-                    selected={journalData.reversalDate ? new Date(journalData.reversalDate) : undefined}
+                    selected={journalData.reversalDate ? (() => {
+                      const [year, month, day] = journalData.reversalDate.split('-');
+                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    })() : undefined}
                     onSelect={(date) => {
                       console.log("ARCHITECT_DEBUG_REVERSAL_DATE_CHANGE: User selecting reversal date:", date);
                       setUserHasModifiedAccrual(true); // Mark that user has manually changed accrual settings
