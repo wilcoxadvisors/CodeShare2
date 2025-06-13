@@ -2456,7 +2456,7 @@ function JournalEntryForm({
             <Input
               id="reference"
               name="reference"
-              value={existingEntry?.id ? `JE-${new Date().getFullYear()}-${existingEntry.id}` : "Will be assigned after creation"}
+              value={existingEntry?.id ? `JE-${new Date().getFullYear()}-${existingEntry.id}` : journalData.reference}
               onChange={handleChange}
               className={`mt-1 bg-gray-50 font-mono ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
               readOnly
