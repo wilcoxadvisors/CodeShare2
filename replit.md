@@ -134,7 +134,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 - June 13, 2025. **Automatic Accrual Reversals Architecture Pivot** - Replaced cron job system with immediate posting approach. When accrual entries are posted, reversal entries are automatically created and posted with the future effective date, providing more reliable and instant processing
 - June 13, 2025. **Critical Accrual Settings Preservation Fix** - Fixed user input preservation for accrual settings by implementing user modification tracking, preventing useEffect hooks from overwriting manual changes, and correcting calendar date selection off-by-one issue with proper local date parsing
 - June 13, 2025. **Definitive Accrual Bugs Fix** - Implemented architect's two-part definitive solution: Part 1 fixed calendar date handling with timezone-proof parsing using replace(/-/g, '/') and simplified onSelect logic; Part 2 replaced complex state management with single robust useEffect that only syncs form when existingEntry changes, eliminating data persistence issues
-- June 13, 2025. **Journal Entry ID Display Restored** - Fixed missing Journal Entry ID field that was accidentally removed during state management simplification. Now displays "#[ID]" for existing entries and "New Entry" for new entries
+- June 13, 2025. **Journal Entry ID Display Restored** - Fixed missing Journal Entry ID field and restored proper `journalData` initialization with `generateReference()` function. Now displays "JE-2025-[ID]" for existing entries and "Will be assigned after creation" for new entries, with complete reference number generation logic restored
 
 ## User Preferences
 

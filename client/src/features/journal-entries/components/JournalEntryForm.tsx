@@ -1370,18 +1370,20 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
-  // Replace the old useState and useEffect for journalData with this:
+  // Initialize journalData with proper defaults
   const [journalData, setJournalData] = useState({
-    reference: '',
-    referenceNumber: '',
-    referenceUserSuffix: '',
-    date: getTodayYMD(),
-    description: '',
-    status: JournalEntryStatus.DRAFT,
-    journalType: 'JE',
-    supDocId: '',
-    isAccrual: false,
-    reversalDate: '',
+    reference: existingEntry?.reference || generateReference(),
+    referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix, // Auto-generated prefix
+    referenceUserSuffix: existingEntry?.referenceNumber ? 
+      existingEntry.referenceNumber.split(':')[1] || "" : "", // Extract user suffix if exists
+    date: existingEntry?.date ?? // already "YYYY-MM-DD" 
+          getTodayYMD(), // Use our timezone-safe utility instead of Date()
+    description: existingEntry?.description || "",
+    status: existingEntry?.status || JournalEntryStatus.DRAFT,
+    journalType: existingEntry?.journalType || "JE",
+    supDocId: existingEntry?.supDocId || "",
+    isAccrual: existingEntry?.isAccrual || false,
+    reversalDate: existingEntry?.reversalDate || "",
   });
 
 
