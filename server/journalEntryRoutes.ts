@@ -2388,6 +2388,27 @@ export function registerJournalEntryRoutes(app: Express) {
         }, existingLines);
         
         console.log(`POSTING DEBUG: Successfully posted journal entry ${id} with preserved dimension tags`);
+        
+        // Schedule automatic reversal if this is an accrual entry
+        if (existingEntry.isAccrual && existingEntry.reversalDate) {
+          try {
+            const { scheduleAccrualReversal } = await import('../queues/reversalQueue');
+            
+            await scheduleAccrualReversal({
+              originalEntryId: id,
+              reversalDate: existingEntry.reversalDate,
+              clientId: clientId,
+              entityId: entityId
+            });
+            
+            console.log(`ACCRUAL DEBUG: Scheduled automatic reversal for entry ${id} on ${existingEntry.reversalDate}`);
+          } catch (reversalError) {
+            console.error(`ACCRUAL DEBUG: Failed to schedule reversal for entry ${id}:`, reversalError);
+            // Don't fail the posting operation if reversal scheduling fails
+            // Just log the error and continue
+          }
+        }
+        
         res.json(updatedEntry);
       } catch (error) {
         console.error(`POSTING DEBUG: Error posting journal entry ${id}:`, error);
