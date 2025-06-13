@@ -83,7 +83,7 @@ export interface IJournalEntryStorage {
   deleteJournal(id: number): Promise<boolean>;
   
   // Journal Entry Line operations
-  getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
+  getJournalEntryLines(journalEntryId: number): Promise<any[]>;
   createJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine>;
   addJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine>; // Alias for createJournalEntryLine
   updateJournalEntryLine(id: number, line: Partial<JournalEntryLine>): Promise<JournalEntryLine | undefined>;
@@ -559,14 +559,55 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
   }
   
-  async getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]> {
-    console.log(`Getting lines for journal entry ${journalEntryId}`);
+  async getJournalEntryLines(journalEntryId: number): Promise<any[]> {
+    console.log(`Getting lines with dimension tags for journal entry ${journalEntryId}`);
     try {
-      return await db.select()
-        .from(journalEntryLines)
-        .where(eq(journalEntryLines.journalEntryId, journalEntryId));
+      const linesWithTags = await db.query.journalEntryLines.findMany({
+        where: eq(journalEntryLines.journalEntryId, journalEntryId),
+        orderBy: asc(journalEntryLines.id), // Ensure consistent line order
+        with: {
+          dimensions: { // This is the relation name from the schema: journalEntryLines -> txDimensionLink
+            with: {
+              dimension: {
+                columns: {
+                  id: true,
+                  name: true
+                }
+              },
+              dimensionValue: {
+                columns: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Transform the data into the format the frontend expects 
+      // (a 'tags' array on each line object)
+      const formattedLines = linesWithTags.map(line => {
+        const tags = line.dimensions.map(link => ({
+          dimensionId: link.dimension.id,
+          dimensionValueId: link.dimensionValue.id,
+          dimensionName: link.dimension.name,
+          dimensionValueName: link.dimensionValue.name
+        }));
+
+        // Exclude the raw 'dimensions' relation data from the final payload
+        const { dimensions, ...lineData } = line;
+
+        return {
+          ...lineData,
+          tags: tags,
+        };
+      });
+
+      return formattedLines;
+
     } catch (e) {
-      throw handleDbError(e, `getting lines for journal entry ${journalEntryId}`);
+      throw handleDbError(e, `getting lines with dimension tags for journal entry ${journalEntryId}`);
     }
   }
   

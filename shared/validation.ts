@@ -82,22 +82,25 @@ export const dimensionTagSchema = z.object({
  * Schema for individual Journal Entry Lines
  */
 export const journalEntryLineSchema = z.object({
-  accountId: z.number().int().positive({ message: "Valid Account ID required" }),
-  amount: z.preprocess(
-    (val) => (typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : typeof val === 'number' ? val : undefined),
-    z.number({ invalid_type_error: "Amount must be a number" }).positive({ message: "Amount must be positive" })
-  ),
-  type: z.enum(['debit', 'credit'], { required_error: "Line type ('debit' or 'credit') is required" }),
-  // Entity code for intercompany transactions
-  entityCode: z.string().min(1, { message: "Entity code is required for intercompany support" }),
-  description: optionalString.nullable(),
+  accountId: z.union([z.string(), z.number()]),
+  type: z.enum(['debit', 'credit']),
+  amount: z.union([z.string(), z.number()]),
+  description: z.string().optional().nullable(),
+  entityCode: z.string().optional().nullable(),
+  
+  // ADD THE FOLLOWING DEFINITION FOR TAGS:
+  tags: z.array(z.object({
+    dimensionId: z.number(),
+    dimensionValueId: z.number(),
+    dimensionName: z.string().optional(),
+    dimensionValueName: z.string().optional(),
+  })).optional(),
+
   // Include fields moved from Account schema
   fsliBucket: optionalString.nullable(),
   internalReportingBucket: optionalString.nullable(),
   item: optionalString.nullable(),
-  // Dimension tags support
-  tags: z.array(dimensionTagSchema).optional(),
-});
+}).passthrough(); // Use passthrough to avoid stripping other potential fields
 
 /**
  * Schema for Creating a Journal Entry
