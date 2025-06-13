@@ -2395,7 +2395,7 @@ export function registerJournalEntryRoutes(app: Express) {
           
           try {
             // Import the scheduling function
-            const { scheduleAccrualReversal } = await import('../server/tasks/processReversals');
+            const { scheduleAccrualReversal } = await import('./tasks/processReversals');
             
             // Schedule the reversal
             await scheduleAccrualReversal(id, existingEntry.reversalDate);

@@ -549,6 +549,7 @@ function JournalEntries() {
                       <TableHead>Description</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Accrual</TableHead>
                       <TableHead className="text-right">Debit</TableHead>
                       <TableHead className="text-right">Credit</TableHead>
                     </TableRow>
@@ -617,6 +618,22 @@ function JournalEntries() {
                           <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
                           <TableCell>{entry.journalType || 'JE'}</TableCell>
                           <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                          <TableCell>
+                            {entry.isAccrual ? (
+                              <div className="space-y-1">
+                                <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+                                  Auto-Reversing
+                                </Badge>
+                                {entry.reversalDate && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Reverses: {formatDate(entry.reversalDate)}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             {new Intl.NumberFormat('en-US', {
                               style: 'currency',
