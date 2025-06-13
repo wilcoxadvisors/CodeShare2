@@ -125,6 +125,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 
 ## Changelog
 - June 13, 2025. Initial setup
+- June 13, 2025. **Dimension Tagging System Completed** - Implemented comprehensive dimension tagging for journal entries with backend SQL joins, frontend data preservation, stable React keys, and view page display
 
 ## User Preferences
 

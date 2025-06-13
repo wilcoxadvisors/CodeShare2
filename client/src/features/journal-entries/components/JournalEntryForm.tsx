@@ -1388,36 +1388,32 @@ function JournalEntryForm({
     return "";
   }, [entities, entityId]);
 
-  const [lines, setLines] = useState<JournalLine[]>(
-    (existingEntry?.lines?.map((line: any) => ({ 
-      ...line, 
-      _key: uuidv4(),
-      tags: line.tags || [] // Preserve dimension tags from the database
-    })) || [
-      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
-      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
-    ])
-  );
+  const [lines, setLines] = useState<JournalLine[]>([]);
 
-  // Sync form state when journal entry data changes
   useEffect(() => {
-    if (existingEntry?.lines) {
-      console.log("DEBUG: Syncing form state with loaded journal entry data, including dimension tags");
-      console.log("DEBUG: Raw journal entry lines from API:", JSON.stringify(existingEntry.lines, null, 2));
-      
-      const processedLines = existingEntry.lines.map((line: any) => {
-        console.log(`DEBUG: Processing line ${line.id}, tags:`, line.tags);
-        return { 
-          ...line, 
-          _key: uuidv4(),
-          tags: line.tags || [] // Preserve dimension tags from the database
-        };
-      });
-      
-      console.log("DEBUG: Processed lines with tags:", processedLines.map(line => ({ id: line.id, tags: line.tags })));
-      setLines(processedLines);
+    // This effect now correctly handles setting the lines for both new and existing entries.
+    if (existingEntry) {
+      // If we are editing an existing entry, map its lines.
+      // The database `id` is the perfect stable key.
+      console.log("DEBUG: Syncing form with existing entry data.");
+      setLines(
+        existingEntry.lines?.map((line: any) => ({
+          ...line,
+          // Use the database ID as the key. No need for a separate UUID for existing lines.
+          _key: line.id, 
+          tags: line.tags || [],
+        })) || []
+      );
+    } else {
+      // If this is a brand new entry, set up two default blank lines with UUIDs for keys.
+      console.log("DEBUG: Setting up default lines for new entry.");
+      setLines([
+        { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
+        { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
+      ]);
     }
-  }, [existingEntry?.lines]);
+  // This effect runs only when the entry itself changes, preventing unnecessary re-renders.
+  }, [existingEntry]);
 
   // Removed supportingDoc state as we're using the AttachmentSection component now
 
@@ -2596,7 +2592,7 @@ function JournalEntryForm({
 
           <tbody className="bg-white divide-y divide-gray-200">
             {lines.map((line, index) => (
-              <tr key={line._key || line.id || index}>
+              <tr key={line.id || line._key}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     {/* Combobox for searchable account dropdown */}
