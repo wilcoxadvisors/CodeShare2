@@ -1370,21 +1370,18 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
-  // Initialize journalData with proper defaults
-  const [journalData, setJournalData] = useState({
+const [journalData, setJournalData] = useState({
     reference: existingEntry?.reference || generateReference(),
-    referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix, // Auto-generated prefix
-    referenceUserSuffix: existingEntry?.referenceNumber ? 
-      existingEntry.referenceNumber.split(':')[1] || "" : "", // Extract user suffix if exists
-    date: existingEntry?.date ?? // already "YYYY-MM-DD" 
-          getTodayYMD(), // Use our timezone-safe utility instead of Date()
+    referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
+    referenceUserSuffix: existingEntry?.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
+    date: existingEntry?.date ?? getTodayYMD(),
     description: existingEntry?.description || "",
     status: existingEntry?.status || JournalEntryStatus.DRAFT,
     journalType: existingEntry?.journalType || "JE",
     supDocId: existingEntry?.supDocId || "",
     isAccrual: existingEntry?.isAccrual || false,
-    reversalDate: existingEntry?.reversalDate || "",
-  });
+    reversalDate: existingEntry?.reversalDate ?? "",
+});
 
 
 
@@ -2456,7 +2453,7 @@ function JournalEntryForm({
             <Input
               id="reference"
               name="reference"
-              value={existingEntry?.id ? `JE-${new Date().getFullYear()}-${existingEntry.id}` : journalData.reference}
+              value={journalData.reference}
               onChange={handleChange}
               className={`mt-1 bg-gray-50 font-mono ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
               readOnly
