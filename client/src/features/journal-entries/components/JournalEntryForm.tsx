@@ -98,16 +98,16 @@ import {
 } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEntity } from "@/contexts/EntityContext";
 import { useDebouncedCallback } from "@/hooks/useDebounce";
 import { z } from "zod";
 import { validateForm } from "@/lib/validation";
-import { cn } from "@/lib/utils";
 import {
   Command,
   CommandEmpty,
