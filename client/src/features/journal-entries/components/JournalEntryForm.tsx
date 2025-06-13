@@ -2236,6 +2236,14 @@ function JournalEntryForm({
     300,
   ); // 300ms debounce delay
 
+  // Handle removing a specific dimension tag from a line
+  const handleRemoveTag = (lineIndex: number, dimensionIdToRemove: number) => {
+    const line = lines[lineIndex];
+    if (!line || !line.tags) return;
+    const newTags = line.tags.filter(tag => tag.dimensionId !== dimensionIdToRemove);
+    updateLineTags(lineIndex, newTags);
+  };
+
   // Utility function for testing file attachments - logs state of pending files
   const logAttachmentStatus = () => {
     console.log("ATTACHMENT DEBUG: Current state of file attachments");
@@ -3125,20 +3133,25 @@ function JournalEntryForm({
                 {/* Tags Column */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    <Popover 
-                      open={tagPopoverOpen[index] || false} 
-                      onOpenChange={(open) => toggleTagPopover(index, open)}
-                    >
+                    <div className="flex flex-wrap items-center gap-1">
+                      {line.tags?.map((tag) => (
+                        <Badge key={tag.dimensionId} variant="secondary" className="flex items-center gap-1.5 pl-2 pr-1 py-1">
+                          <span className="text-xs font-medium">{tag.dimensionName?.substring(0, 4)}: {tag.dimensionValueName}</span>
+                          <button
+                            type="button"
+                            className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                            aria-label={`Remove ${tag.dimensionName} tag`}
+                            onClick={() => handleRemoveTag(index, tag.dimensionId)}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <Popover open={tagPopoverOpen[index] || false} onOpenChange={(open) => toggleTagPopover(index, open)}>
                       <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`flex items-center gap-1 ${hasLineTags(line.tags) ? 'border-blue-500 text-blue-600' : 'text-gray-500'}`}
-                        >
-                          <Tag className="h-4 w-4" />
-                          {hasLineTags(line.tags) && (
-                            <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
-                          )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-80 p-4">
@@ -3154,17 +3167,12 @@ function JournalEntryForm({
                                 onValueChange={(valueId) => {
                                   const currentTags = line.tags || [];
                                   let newTags = [...currentTags];
-
-                                  // Explicitly handle clearing the selection when the user clicks "None"
                                   if (valueId === "none") {
                                     newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
                                   } else {
-                                    // Handle selecting a new, real value
                                     const selectedValue = dimension.values?.find(v => v.id.toString() === valueId);
                                     if (selectedValue) {
-                                      // First, remove any old tag for this specific dimension
                                       newTags = newTags.filter(tag => tag.dimensionId !== dimension.id);
-                                      // Then, add the new tag
                                       newTags.push({
                                         dimensionId: dimension.id,
                                         dimensionValueId: selectedValue.id,
@@ -3173,7 +3181,6 @@ function JournalEntryForm({
                                       });
                                     }
                                   }
-
                                   updateLineTags(index, newTags);
                                 }}
                               >
@@ -3183,57 +3190,21 @@ function JournalEntryForm({
                                 <SelectContent>
                                   <SelectItem value="none">None</SelectItem>
                                   {dimension.values
-                                    ?.filter(value => value && typeof value.id === 'number' && value.id > 0) // MANDATORY: Ensures value and its ID are valid
+                                    ?.filter(value => value && typeof value.id === 'number' && value.id > 0)
                                     .filter(value => value.isActive)
-                                    .filter(value => value.code && String(value.code).trim() !== "")
-                                    .map((value) => {
-                                      // Defensively create the value for the item.
-                                      const itemValue = value && value.id ? String(value.id) : '';
-
-                                      // CRITICAL: Only render the item if the value is a valid, non-empty string.
-                                      if (itemValue) {
-                                        return (
-                                          <SelectItem key={value.id} value={itemValue}>
-                                            {value.name} ({value.code})
-                                          </SelectItem>
-                                        );
-                                      }
-
-                                      // If the value is invalid for any reason, render nothing. This prevents the crash.
-                                      return null;
-                                    })}
+                                    .map((value) => (
+                                      <SelectItem key={value.id} value={String(value.id)}>
+                                        {value.name} ({value.code})
+                                      </SelectItem>
+                                    ))
+                                  }
                                 </SelectContent>
                               </Select>
                             </div>
                           ))}
-                          {line.tags && line.tags.length > 0 && (
-                            <div className="pt-2 border-t">
-                              <div className="flex flex-wrap gap-1">
-                                {line.tags.map((tag, tagIndex) => (
-                                  <Badge key={tagIndex} variant="secondary" className="text-xs">
-                                    {tag.dimensionName}: {tag.dimensionValueName}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </PopoverContent>
                     </Popover>
-                    {hasLineTags(line.tags) && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-xs text-blue-600 cursor-help">
-                              {line.tags?.length} tag{line.tags?.length !== 1 ? 's' : ''}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-sm">{getLineTagsDisplay(line.tags)}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
                   </div>
                 </td>
 
