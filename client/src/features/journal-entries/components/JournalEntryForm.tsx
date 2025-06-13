@@ -28,7 +28,7 @@ import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { toLocalYMD, formatDisplayDate, ymdToDisplay, getTodayYMD } from "@/utils/dateUtils";
-import { generateUniqueReferencePrefix, buildFullReference } from "@/utils/journalIdUtils";
+import { generateUniqueReferencePrefix, buildFullReference, generateJournalEntryDisplayId } from "@/utils/journalIdUtils";
 import { 
   getJournalEntriesBaseUrl, 
   getJournalEntryUrl, 
@@ -1371,7 +1371,6 @@ function JournalEntryForm({
   }, [existingEntry, entityId]);
 
 const [journalData, setJournalData] = useState({
-    reference: existingEntry?.reference || generateReference(),
     referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
     referenceUserSuffix: existingEntry?.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
     date: existingEntry?.date ?? getTodayYMD(),
@@ -1526,17 +1525,7 @@ const [journalData, setJournalData] = useState({
     [getEntityBalances],
   );
 
-  function generateReference() {
-    // Use the current date in YYYY-MM-DD format
-    const today = getTodayYMD();
-    // Extract the year from the date string
-    const year = today.substring(0, 4);
-    // Generate a random number for uniqueness
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(4, "0");
-    return `JE-${year}-${randomNum}`;
-  }
+
 
   const createEntry = useMutation({
     mutationFn: async (data: any) => {
@@ -2448,30 +2437,24 @@ const [journalData, setJournalData] = useState({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <Label htmlFor="reference">Journal Entry ID</Label>
+          <Label htmlFor="journalIdDisplay">Journal Entry ID</Label>
           <div className="relative">
             <Input
-              id="reference"
-              name="reference"
-              value={journalData.reference}
-              onChange={handleChange}
-              className={`mt-1 bg-gray-50 font-mono ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
+              id="journalIdDisplay"
+              name="journalIdDisplay"
+              value={
+                existingEntry?.id
+                  ? generateJournalEntryDisplayId(
+                      existingEntry.entityId,
+                      new Date(existingEntry.date).getFullYear(),
+                      existingEntry.id
+                    )
+                  : "Will be assigned upon creation"
+              }
+              className="mt-1 bg-gray-50 font-mono"
               readOnly
             />
-            {fieldErrors.reference && (
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 pointer-events-none">
-                <AlertCircle
-                  className="h-5 w-5 text-red-500"
-                  aria-hidden="true"
-                />
-              </div>
-            )}
           </div>
-          {fieldErrors.reference && (
-            <p className="text-red-500 text-sm mt-1 flex items-center">
-              <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.reference}
-            </p>
-          )}
         </div>
 
         <div>

@@ -1,0 +1,45 @@
+Architect's Instruction for the Replit AI Agent
+Status Review: The user has correctly identified that the current Journal ID generation logic is not scalable and needs to be replaced with the industry-standard method we have already defined in our utils.
+
+Goal: Refactor the JournalEntryForm.tsx to use the correct, scalable generateJournalEntryDisplayId function for displaying the ID of existing entries, and provide clear messaging for new entries.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Step 1: Remove the Flawed generateReference Function
+
+Inside the JournalEntryForm component, find and delete the entire generateReference function. It is not scalable and will be replaced.
+Step 2: Update the journalData State Initialization
+
+Locate the useState hook for journalData.
+Remove the reference property from the initial state. The Display ID is not part of the form's state; it will be a derived value for display only.
+Step 3: Update the Journal ID Input Field
+
+In the JSX, locate the <Input> component for the "Journal Entry ID".
+You will replace its value prop with new logic that correctly handles both new and existing entries.
+Replace the entire <div> that wraps the Journal Entry ID Label and Input with the following code. This new version uses the proper utility function for existing entries and provides clear text for new ones.
+
+TypeScript
+
+<div>
+  <Label htmlFor="journalIdDisplay">Journal Entry ID</Label>
+  <div className="relative">
+    <Input
+      id="journalIdDisplay"
+      name="journalIdDisplay"
+      value={
+        existingEntry?.id
+          ? generateJournalEntryDisplayId(
+              existingEntry.entityId,
+              new Date(existingEntry.date).getFullYear(),
+              existingEntry.id
+            )
+          : "Will be assigned upon creation"
+      }
+      className="mt-1 bg-gray-50 font-mono"
+      readOnly
+    />
+  </div>
+</div>
+(Note: You will need to import generateJournalEntryDisplayId from @/utils/journalIdUtils at the top of the file.)
+
+Agent, this plan addresses the user's valid concerns about scalability and correctness. Please execute this refactoring now.
