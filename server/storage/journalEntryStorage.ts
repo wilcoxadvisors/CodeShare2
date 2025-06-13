@@ -883,10 +883,15 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       console.log(`Found ${originalLines.length} lines to reverse`);
       
       // Create a new journal entry for the reversal
-      // First, determine the date for the reversal (using current date if not specified)
-      // Always use consistent YYYY-MM-DD format to avoid timezone issues
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const formattedReversalDate = options.date ?? today;
+      // Use the provided date, or the original entry's reversalDate, or today's date
+      let reversalDate: string;
+      if (options.date) {
+        reversalDate = format(options.date, 'yyyy-MM-dd');
+      } else if (originalEntry.reversalDate) {
+        reversalDate = format(new Date(originalEntry.reversalDate), 'yyyy-MM-dd');
+      } else {
+        reversalDate = format(new Date(), 'yyyy-MM-dd');
+      }
       
       // Format the original entry date consistently
       const originalDateStr = format(new Date(originalEntry.date), 'yyyy-MM-dd');
@@ -900,7 +905,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       // Create a new entry data object for the reversal, explicitly selecting only the fields we need
       // This avoids potential issues with unknown fields or primary key conflicts
       const reversalEntryData = {
-        date: formattedReversalDate, // Use formatted string date to avoid timezone issues
+        date: reversalDate, // Use the determined reversal date
         clientId: originalEntry.clientId,
         entityId: originalEntry.entityId,
         referenceNumber: reversalReference,
@@ -1455,6 +1460,68 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       console.error(`Error deleting dimension tags for line ${journalEntryLineId}:`, e);
       throw handleDbError(e, `deleting dimension tags for journal entry line ${journalEntryLineId}`);
     }
+  }
+
+  /**
+   * Process due accrual reversals - finds all accrual entries that need to be reversed
+   * and creates their reversal entries automatically
+   */
+  async processDueAccrualReversals(): Promise<{ successCount: number; failCount: number; }> {
+    console.log('CRON JOB: Checking for due accrual reversals...');
+
+    // Find all journal entries that are accruals, are not yet reversed,
+    // and have a reversal date on or before today.
+    const now = new Date();
+    const dueEntries = await db.select({ 
+      id: journalEntries.id, 
+      createdBy: journalEntries.createdBy,
+      reversalDate: journalEntries.reversalDate
+    })
+      .from(journalEntries)
+      .where(
+        and(
+          eq(journalEntries.isAccrual, true),
+          eq(journalEntries.status, 'posted'), // Only reverse posted entries
+          isNull(journalEntries.reversedByEntryId), // Not already reversed
+          lte(journalEntries.reversalDate, now.toISOString().split('T')[0]) // Due for reversal
+        )
+      );
+
+    if (dueEntries.length === 0) {
+      console.log('CRON JOB: No accrual entries are due for reversal.');
+      return { successCount: 0, failCount: 0 };
+    }
+
+    console.log(`CRON JOB: Found ${dueEntries.length} accrual entries to reverse.`);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const entry of dueEntries) {
+      try {
+        // Use the existing reverseJournalEntry method to create the reversal
+        const reversalEntry = await this.reverseJournalEntry(entry.id, {
+          date: entry.reversalDate ? new Date(entry.reversalDate) : new Date(),
+          description: 'Automatic accrual reversal',
+          createdBy: entry.createdBy || 1 // Use original creator or system user as fallback
+        });
+
+        if (reversalEntry) {
+          // Post the reversal entry automatically
+          await this.updateJournalEntry(reversalEntry.id, { status: 'posted' });
+          console.log(`CRON JOB: Successfully reversed and posted accrual entry ${entry.id} -> ${reversalEntry.id}`);
+          successCount++;
+        } else {
+          console.error(`CRON JOB: Failed to create reversal entry for ${entry.id} - no entry returned`);
+          failCount++;
+        }
+      } catch (error) {
+        console.error(`CRON JOB: Failed to reverse accrual entry ID ${entry.id}:`, error);
+        failCount++;
+      }
+    }
+
+    console.log(`CRON JOB: Reversal process complete. Success: ${successCount}, Failed: ${failCount}`);
+    return { successCount, failCount };
   }
 }
 
