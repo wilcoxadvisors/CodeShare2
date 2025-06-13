@@ -1,0 +1,97 @@
+Architect's Instruction for the Replit AI Agent
+Status Review: The user has confirmed the frontend UI is now working correctly, but has identified the critical backend issue: dimension tags are not being saved or loaded from the database.
+
+Root Cause Analysis:
+
+Saving Failure: The backend validation schema is too strict and does not recognize the tags array sent by the frontend. It strips this data out before it can be saved.
+Loading Failure: The backend database query for fetching journal entry lines does not join the table containing the saved tags, so they are never sent back to the client.
+Your mission is to perform a definitive, two-part backend fix to make dimension tagging fully persistent.
+
+Part 1: Fix the Saving of New Tags
+File to Modify: shared/validation.ts
+
+Action: You will update the createJournalEntrySchema to correctly include the tags array in its definition, ensuring the data is not lost during validation.
+
+Open the file shared/validation.ts.
+
+Locate the createJournalEntrySchema.
+
+Inside that schema, you must ensure the schema for the lines array correctly defines the tags field and includes the .passthrough() modifier.
+
+Modify the lines schema to look exactly like this:
+
+TypeScript
+
+// Inside createJournalEntrySchema in shared/validation.ts
+// ...
+lines: z.array(
+  z.object({
+    accountId: z.union([z.string(), z.number()]),
+    type: z.enum(['debit', 'credit']),
+    amount: z.union([z.string(), z.number()]),
+    description: z.string().optional().nullable(),
+    entityCode: z.string().optional().nullable(),
+
+    // THIS DEFINITION FOR TAGS IS MANDATORY
+    tags: z.array(z.object({
+      dimensionId: z.number(),
+      dimensionValueId: z.number(),
+      dimensionName: z.string().optional(),
+      dimensionValueName: z.string().optional(),
+    })).optional()
+
+  }).passthrough() // <-- THIS IS CRITICAL to prevent stripping data
+),
+// ...
+Part 2: Fix the Loading of Existing Tags
+File to Modify: server/storage/journalEntryStorage.ts
+
+Action: You will replace the getJournalEntryLines method with a new version that correctly queries the database and retrieves all saved tags for each line.
+
+Update the IJournalEntryStorage Interface:
+
+In server/storage/journalEntryStorage.ts, find the IJournalEntryStorage interface definition.
+Find the line: getJournalEntryLines(journalEntryId: number): Promise<JournalEntryLine[]>;
+Change its return type to Promise<any[]>; to allow the tags array to be included.
+Replace the getJournalEntryLines Method:
+
+In the same file, find the getJournalEntryLines method within the JournalEntryStorage class.
+Replace its entire body with the following correct implementation:
+TypeScript
+
+async getJournalEntryLines(journalEntryId: number): Promise<any[]> {
+  console.log(`Getting lines WITH TAGS for journal entry ${journalEntryId}`);
+  try {
+    const linesWithTags = await db.query.journalEntryLines.findMany({
+      where: eq(journalEntryLines.journalEntryId, journalEntryId),
+      orderBy: asc(journalEntryLines.id),
+      with: {
+        dimensions: {
+          with: {
+            dimension: { columns: { id: true, name: true } },
+            dimensionValue: { columns: { id: true, name: true } }
+          }
+        }
+      }
+    });
+
+    const formattedLines = linesWithTags.map(line => {
+      const tags = line.dimensions.map(link => ({
+        dimensionId: link.dimension.id,
+        dimensionValueId: link.dimensionValue.id,
+        dimensionName: link.dimension.name,
+        dimensionValueName: link.dimensionValue.name
+      }));
+
+      const { dimensions, ...lineData } = line;
+
+      return { ...lineData, tags: tags };
+    });
+
+    return formattedLines;
+
+  } catch (e) {
+    throw handleDbError(e, `getting lines with dimension tags for journal entry ${journalEntryId}`);
+  }
+}
+Agent, these two backend fixes are mandatory. The frontend UI is complete, and this final step will make the entire feature work from end to end. Please execute this plan.

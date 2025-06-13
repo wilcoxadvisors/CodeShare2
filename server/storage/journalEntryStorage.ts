@@ -462,19 +462,45 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             .from(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
+          // Delete existing dimension links first (to maintain referential integrity)
+          const existingLineIds = existingLines.map(line => line.id);
+          if (existingLineIds.length > 0) {
+            await tx.delete(txDimensionLink)
+              .where(inArray(txDimensionLink.journalEntryLineId, existingLineIds));
+          }
+          
           // Delete existing lines for this journal entry
           await tx.delete(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
-          // Insert new lines
+          // Insert new lines with dimension tags
           for (const line of lines) {
-            await tx.insert(journalEntryLines)
+            // Extract tags from line data
+            const { tags, ...lineData } = line as any;
+            
+            // Insert the line first
+            const [insertedLine] = await tx.insert(journalEntryLines)
               .values({
-                ...line,
+                ...lineData,
                 journalEntryId: id,
                 // Ensure amount is a string
-                amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount
-              } as any);
+                amount: typeof lineData.amount === 'number' ? lineData.amount.toString() : lineData.amount
+              } as any)
+              .returning();
+            
+            // If tags exist, save dimension links
+            if (tags && Array.isArray(tags) && tags.length > 0) {
+              console.log(`Saving ${tags.length} dimension tags for line ${insertedLine.id}`);
+              
+              for (const tag of tags) {
+                await tx.insert(txDimensionLink)
+                  .values({
+                    journalEntryLineId: insertedLine.id,
+                    dimensionId: tag.dimensionId,
+                    dimensionValueId: tag.dimensionValueId
+                  });
+              }
+            }
           }
         }
         
