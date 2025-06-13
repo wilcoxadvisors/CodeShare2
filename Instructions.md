@@ -152,7 +152,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 
   - **Current Update:** Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
   - **Current Update:** Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. The next planned enhancement is the Auto-Reversing Accrual feature.
-  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The backend foundation is complete (Database Schema, Seeding, Storage Layer, and API Endpoints). The initial frontend UI for listing and creating dimensions is also complete. Next steps involve building out the UI for managing dimension values and integrating dimensions into the JE form.
+  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): ✅ COMPLETE. The Dimensions module is now feature-complete and stable with full CRUD functionality, COA-style Master Bulk Management, Journal Entry integration, and enhanced data integrity safeguards.
   - **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
     - **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
     - **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -171,6 +171,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     - **User Activity Storage:** ✅ Refactored user activity tracking to `server/storage/userActivityStorage.ts`.
     - **Audit Log Storage:** ✅ Implemented audit log functionality to `server/storage/auditLogStorage.ts`.
     - **Content Storage:** ✅ Implemented content storage for website content management to `server/storage/contentStorage.ts`.
+    - **Dimension Storage:** ✅ Implemented comprehensive dimension and dimension value storage with client isolation and bulk management capabilities to `server/storage/dimensionStorage.ts`.
 
 - **Phase 4 (Website Content Management):** IN PROGRESS (As of 2025-04-06).
   - **✅ Completed Tasks:**
@@ -193,6 +194,33 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     - Begin AI integration planning for automated blog content generation.
     - Begin implementing the accounting module, focusing first on file attachments, then Dimensions & Smart Rules (B.2.1), and finally batch journal entry uploads.
     - Plan for analytics dashboard to track website content performance.
+
+## Dimensions Module - Status: COMPLETE
+
+The Dimensions module is now feature-complete and stable. This includes a full suite of tools for creating, managing, and utilizing financial dimensions.
+
+### Key Completed Features:
+
+**Core CRUD Functionality:**
+- Full UI and backend support for creating, editing, and deleting Dimensions.
+- A dedicated "Manage Values" dialog for adding, editing, deactivating, and deleting dimension values.
+- Implemented safety checks to prevent deletion of any dimension or value that is currently in use in a transaction, ensuring data integrity.
+
+**COA-Style Master Bulk Management:**
+- A centralized "Master Bulk Management" feature is now available on the main Dimensions page.
+- Master Template Download: Users can download a single, clean CSV template pre-populated with all values for all dimensions for the selected client.
+- Interactive Upload & Preview: When a master CSV is uploaded, the system now performs an analysis and displays a detailed preview of all proposed changes (Creations, Updates, Deletions).
+- Inline Editing: The preview screen is fully interactive, allowing users to edit names, descriptions, and the active/inactive status of values before confirming.
+- Intelligent Sync Logic: The system uses "delete by omission," meaning any value not present in the uploaded file is automatically marked for deletion, allowing for true synchronization.
+- User Confirmation: All changes from a bulk upload are only applied to the database after explicit user confirmation from the preview screen.
+
+**Journal Entry Integration:**
+- The "Dimension Tagging" feature within the Journal Entry form is now fully functional.
+- All bugs related to fetching and displaying dimension data in the tagging popover have been resolved.
+
+**Data Integrity and Security:**
+- A critical cross-client data contamination issue was discovered and fully resolved.
+- The database has been hardened with new triggers and constraints to enforce strict client data isolation, preventing this category of bugs from occurring in the future.
 
 ### Verification Status (COMPLETED):
 
