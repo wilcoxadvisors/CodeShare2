@@ -1,0 +1,67 @@
+Architect's Instruction for the Replit AI Agent: The Final Persistence Fix
+Goal: Fix the /post endpoint to correctly preserve line items and their dimension tags when converting a draft to a posted entry.
+
+File to Modify: server/journalEntryRoutes.ts
+
+Action: You will find the two .../post endpoints (the legacy one and the hierarchical one) and modify them to use the updateJournalEntryWithLines method, which correctly handles lines and tags, instead of the simple updateJournalEntry method.
+
+Step 1: Locate and Fix the Hierarchical /post Endpoint
+
+In server/journalEntryRoutes.ts, find the PUT route for /api/clients/:clientId/entities/:entityId/journal-entries/:id/post.
+Inside this route, you will see a call to journalEntryStorage.updateJournalEntry(...). This is the source of the bug.
+Replace this entire logic block with the correct version below, which first fetches the existing lines (with their tags) and then calls the correct update function to preserve them.
+Replace this:
+TypeScript
+
+// This is the OLD, BUGGY code
+const updatedEntry = await journalEntryStorage.updateJournalEntry(id, {
+  status: JournalEntryStatus.POSTED,
+  postedBy: user.id,
+  postedAt: new Date(),
+  updatedBy: user.id
+});
+With this NEW, CORRECT code:
+TypeScript
+
+// Get the existing lines with their dimension tags before posting
+console.log(`POSTING DEBUG: Getting lines with dimension tags for journal entry ${id}`);
+const existingLines = await journalEntryStorage.getJournalEntryLines(id);
+console.log(`POSTING DEBUG: Found ${existingLines.length} lines with tags to preserve.`);
+
+// Update the status to POSTED while preserving the lines and their dimension tags
+const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+  status: JournalEntryStatus.POSTED,
+  postedBy: user.id,
+  postedAt: new Date(),
+  updatedBy: user.id
+}, existingLines); // Pass the existing lines to be preserved
+Step 2: Locate and Fix the Legacy /post Endpoint
+
+In the same file (server/journalEntryRoutes.ts), find the older, deprecated PUT route for /api/journal-entries/:id/post.
+It suffers from the exact same bug. You will apply the same fix.
+Replace this:
+
+TypeScript
+
+// This is the OLD, BUGGY code in the legacy route
+const postedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+  status: JournalEntryStatus.POSTED,
+  postedBy: user.id,
+  postedAt: new Date()
+}, existingEntry.lines);
+Note: This was an attempt to fix it, but existingEntry.lines may not have the tags. Fetching them fresh is the correct way.
+
+With this NEW, CORRECT code:
+
+TypeScript
+
+// Get the existing lines with their dimension tags before posting
+const existingLines = await journalEntryStorage.getJournalEntryLines(id);
+
+// Update the status to POSTED while preserving the lines and their dimension tags
+const postedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
+  status: JournalEntryStatus.POSTED,
+  postedBy: user.id,
+  postedAt: new Date()
+}, existingLines); // Pass the freshly fetched lines to be preserved
+Agent, these changes target the specific endpoint responsible for the data loss during the posting workflow. This will complete the end-to-end functionality for dimension tagging. Please execute this plan.

@@ -1262,13 +1262,25 @@ export function registerJournalEntryRoutes(app: Express) {
         journalEntryData
       );
       
-      // Add lines to the journal entry
+      // Add lines to the journal entry with dimension tags
       if (lines && lines.length > 0) {
         for (const line of lines) {
-          await journalEntryStorage.createJournalEntryLine({
-            ...line,
+          console.log(`CREATION DEBUG: Creating line with tags:`, JSON.stringify(line.tags || [], null, 2));
+          
+          // Create the line without the tags property (since it's not part of the line schema)
+          const { tags, ...lineData } = line;
+          const createdLine = await journalEntryStorage.createJournalEntryLine({
+            ...lineData,
             journalEntryId: journalEntry.id
           });
+          
+          // Create dimension tags for this line if they exist
+          if (tags && tags.length > 0) {
+            console.log(`CREATION DEBUG: Creating ${tags.length} dimension tags for line ${createdLine.id}`);
+            await journalEntryStorage.createDimensionTags(createdLine.id, tags);
+          } else {
+            console.log(`CREATION DEBUG: No dimension tags to create for line ${createdLine.id}`);
+          }
         }
       }
       
@@ -1377,13 +1389,25 @@ export function registerJournalEntryRoutes(app: Express) {
         journalEntryData
       );
       
-      // Add lines to the journal entry
+      // Add lines to the journal entry with dimension tags
       if (lines && lines.length > 0) {
         for (const line of lines) {
-          await journalEntryStorage.createJournalEntryLine({
-            ...line,
+          console.log(`LEGACY CREATION DEBUG: Creating line with tags:`, JSON.stringify(line.tags || [], null, 2));
+          
+          // Create the line without the tags property (since it's not part of the line schema)
+          const { tags, ...lineData } = line;
+          const createdLine = await journalEntryStorage.createJournalEntryLine({
+            ...lineData,
             journalEntryId: journalEntry.id
           });
+          
+          // Create dimension tags for this line if they exist
+          if (tags && tags.length > 0) {
+            console.log(`LEGACY CREATION DEBUG: Creating ${tags.length} dimension tags for line ${createdLine.id}`);
+            await journalEntryStorage.createDimensionTags(createdLine.id, tags);
+          } else {
+            console.log(`LEGACY CREATION DEBUG: No dimension tags to create for line ${createdLine.id}`);
+          }
         }
       }
       
