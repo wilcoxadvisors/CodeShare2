@@ -1146,31 +1146,26 @@ function JournalEntryForm({
     staleTime: 30000, // Keep cache for 30 seconds
   });
 
-  // Fetch dimensions for tagging
-  const { data: dimensionsData = [] } = useQuery<any[]>({
+  // Find and replace the existing dimensions query with this block
+  const { data: dimensionsResponse } = useQuery<any>({
     queryKey: ['dimensions', effectiveClientId],
     queryFn: async () => {
-      if (!effectiveClientId) return [];
+      if (!effectiveClientId) return null;
       try {
-        const response = await apiRequest(`/api/clients/${effectiveClientId}/dimensions`);
-        // Ensure we always return an array
-        if (Array.isArray(response)) {
-          return response;
-        }
-        // If the response is not an array, return an empty array to prevent render errors
-        console.warn('API response for dimensions is not an array:', response);
-        return [];
+        return await apiRequest(`/api/clients/${effectiveClientId}/dimensions`);
       } catch (error) {
-        console.error('Failed to fetch dimensions:', error);
-        return []; // Return empty array on error
+        console.error("Failed to fetch dimensions for JE form", error);
+        return null;
       }
     },
     enabled: !!effectiveClientId,
-    staleTime: 60000, // Keep cache for 1 minute
+    staleTime: 60 * 1000, // 1 minute
   });
 
-  // Ensure dimensions is always an array
-  const dimensions = Array.isArray(dimensionsData) ? dimensionsData : [];
+  // Correctly and safely unwrap the nested data array
+  const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
+    ? dimensionsResponse.data
+    : [];
   
   // Helper function to invalidate journal entry and general ledger queries with proper hierarchical URL pattern
   const invalidateJournalEntryQueries = () => {
