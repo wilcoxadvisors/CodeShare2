@@ -1325,6 +1325,28 @@ function JournalEntryForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  
+  // State for managing dimension expansion in tag selector
+  const [expandedDimensions, setExpandedDimensions] = useState<Record<string, boolean>>({});
+  
+  // State for managing tag popover visibility for each line
+  const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<number, boolean>>({});
+  
+  // Function to toggle dimension expansion
+  const toggleDimensionExpansion = useCallback((dimensionKey: string) => {
+    setExpandedDimensions(prev => ({
+      ...prev,
+      [dimensionKey]: !prev[dimensionKey]
+    }));
+  }, []);
+
+  // Function to toggle tag popover visibility
+  const toggleTagPopover = useCallback((lineIndex: number, open: boolean) => {
+    setTagPopoverOpen(prev => ({
+      ...prev,
+      [lineIndex]: open
+    }));
+  }, []);
 
   // Generate auto-reference prefix for new entries
   const autoReferencePrefix = useMemo(() => {
@@ -3154,7 +3176,7 @@ function JournalEntryForm({
                           <Plus className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0">
+                      <PopoverContent className="w-96 p-0">
                         <Command>
                           <CommandInput
                             placeholder="Search dimensions and values..."
@@ -3162,38 +3184,57 @@ function JournalEntryForm({
                           />
                           <CommandEmpty>No dimension values found.</CommandEmpty>
                           <CommandGroup>
-                            <CommandList className="max-h-[300px] overflow-auto">
+                            <CommandList className="max-h-[400px] overflow-auto">
                               {dimensions
                                 .filter(dimension => dimension.isActive)
                                 .map((dimension) => {
                                   const currentTag = line.tags?.find(tag => tag.dimensionId === dimension.id);
                                   const hasSelection = !!currentTag;
+                                  const dimensionKey = `dimension-${dimension.id}-${index}`;
+                                  const isExpanded = expandedDimensions[dimensionKey] !== false; // Default to expanded
                                   
                                   return (
                                     <div key={dimension.id}>
-                                      {/* Dimension header */}
-                                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50 border-b">
-                                        {dimension.name}
+                                      {/* Dimension header with expand/collapse */}
+                                      <div 
+                                        className="flex items-center justify-between px-2 py-2 text-sm font-medium text-foreground bg-muted/30 border-b hover:bg-muted/50 cursor-pointer"
+                                        onClick={() => toggleDimensionExpansion(dimensionKey)}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {isExpanded ? (
+                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                          <span>{dimension.name}</span>
+                                          {hasSelection && (
+                                            <div className="flex items-center gap-1">
+                                              <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                                              <span className="text-xs text-blue-600 font-medium">
+                                                {currentTag?.dimensionValueName}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {hasSelection && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const currentTags = line.tags || [];
+                                              const newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
+                                              updateLineTags(index, newTags);
+                                            }}
+                                            className="p-1 rounded-full hover:bg-red-100 text-red-600 hover:text-red-700"
+                                            title={`Clear ${dimension.name} selection`}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        )}
                                       </div>
                                       
-                                      {/* Clear selection option */}
-                                      {hasSelection && (
-                                        <CommandItem
-                                          value={`clear-${dimension.id}`}
-                                          onSelect={() => {
-                                            const currentTags = line.tags || [];
-                                            const newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
-                                            updateLineTags(index, newTags);
-                                          }}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          <X className="mr-2 h-4 w-4" />
-                                          Clear {dimension.name} selection
-                                        </CommandItem>
-                                      )}
-                                      
-                                      {/* Dimension values */}
-                                      {dimension.values
+                                      {/* Dimension values (collapsible) */}
+                                      {isExpanded && dimension.values
                                         ?.filter(value => value && typeof value.id === 'number' && value.id > 0)
                                         .filter(value => value.isActive)
                                         .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
@@ -3217,17 +3258,17 @@ function JournalEntryForm({
                                                 });
                                                 updateLineTags(index, newTags);
                                               }}
-                                              className="pl-6"
+                                              className="pl-8 py-2"
                                             >
                                               <Check
                                                 className={cn(
                                                   "mr-2 h-4 w-4",
-                                                  isSelected ? "opacity-100" : "opacity-0"
+                                                  isSelected ? "opacity-100 text-blue-600" : "opacity-0"
                                                 )}
                                               />
-                                              <span className="font-medium">{value.code}</span>
-                                              {" - "}
-                                              {value.name}
+                                              <span className="font-medium text-sm">{value.code}</span>
+                                              <span className="mx-1 text-muted-foreground">-</span>
+                                              <span className="text-sm">{value.name}</span>
                                             </CommandItem>
                                           );
                                         })}
