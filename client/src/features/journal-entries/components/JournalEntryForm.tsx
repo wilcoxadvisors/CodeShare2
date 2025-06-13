@@ -1588,7 +1588,7 @@ const [journalData, setJournalData] = useState({
         ...data,
         date: data.date, // Explicitly included date
         description: data.description, // Explicitly included description
-        reference: data.reference, // Explicitly included reference
+        reference: data.referenceNumber || data.reference, // Map referenceNumber to reference for API
       };
 
       // Use the hierarchical URL pattern for creating journal entries
@@ -1716,7 +1716,7 @@ const [journalData, setJournalData] = useState({
         ...data,
         date: data.date, // Explicitly included date
         description: data.description, // Explicitly included description
-        reference: data.reference, // Explicitly included reference
+        reference: data.referenceNumber || data.reference, // Map referenceNumber to reference for API
       };
 
       // We explicitly use the hierarchical URL pattern for the update operation
@@ -1946,7 +1946,12 @@ const [journalData, setJournalData] = useState({
       const contextAwareSchema = createFormSchema();
       
       // Full validation for posting using context-aware schema
-      const validation = validateForm(formData, contextAwareSchema);
+      // Map referenceNumber to reference for validation since the schema expects "reference"
+      const validationData = {
+        ...formData,
+        reference: formData.referenceNumber || "", // Map referenceNumber to reference for validation
+      };
+      const validation = validateForm(validationData, contextAwareSchema);
 
       if (!validation.valid) {
         setFieldErrors(validation.errors || {});
