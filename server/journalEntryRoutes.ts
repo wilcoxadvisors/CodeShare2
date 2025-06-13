@@ -137,6 +137,11 @@ export function registerJournalEntryRoutes(app: Express) {
         console.log('Lines count:', req.body.lines.length);
         if (req.body.lines.length > 0) {
           console.log('First line structure:', JSON.stringify(req.body.lines[0]));
+          if (req.body.lines[0].tags) {
+            console.log('TAGS DEBUG: First line has tags:', JSON.stringify(req.body.lines[0].tags));
+          } else {
+            console.log('TAGS DEBUG: First line has NO tags property');
+          }
         }
       } else {
         console.log('Warning: No lines in request body');
@@ -2340,16 +2345,23 @@ export function registerJournalEntryRoutes(app: Express) {
       }
       
       try {
-        // Update the status to POSTED
-        const updatedEntry = await journalEntryStorage.updateJournalEntry(id, {
+        // Get the existing lines with their dimension tags before posting
+        console.log(`POSTING DEBUG: Getting lines with dimension tags for journal entry ${id}`);
+        const existingLines = await journalEntryStorage.getJournalEntryLines(id);
+        console.log(`POSTING DEBUG: Found ${existingLines.length} lines with dimension tags`);
+        
+        // Update the status to POSTED while preserving the lines and their dimension tags
+        const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, {
           status: JournalEntryStatus.POSTED,
           postedBy: user.id,
           postedAt: new Date(),
           updatedBy: user.id
-        });
+        }, existingLines);
         
+        console.log(`POSTING DEBUG: Successfully posted journal entry ${id} with preserved dimension tags`);
         res.json(updatedEntry);
       } catch (error) {
+        console.error(`POSTING DEBUG: Error posting journal entry ${id}:`, error);
         throw error;
       }
     })
