@@ -2389,8 +2389,30 @@ export function registerJournalEntryRoutes(app: Express) {
         
         console.log(`POSTING DEBUG: Successfully posted journal entry ${id} with preserved dimension tags`);
         
-        // Note: Accrual reversals are now handled by the daily cron job
-        // The processDueAccrualReversals method will find and process all due reversals
+        // Check if the entry was an accrual and has a reversal date
+        if (updatedEntry.isAccrual && updatedEntry.reversalDate) {
+          try {
+            console.log(`ACCRUAL: Immediately creating and posting reversal for entry ${id} with reversal date ${updatedEntry.reversalDate}`);
+
+            // Call the reverseJournalEntry method with the new options
+            await journalEntryStorage.reverseJournalEntry(id, {
+              date: new Date(updatedEntry.reversalDate),
+              description: `Automatic reversal of: ${updatedEntry.description}`,
+              createdBy: user.id,
+              postAutomatically: true // This new flag ensures it's posted
+            });
+
+            console.log(`ACCRUAL: Successfully created and posted reversal for entry ${id}.`);
+
+            // Optionally, add a specific toast message or log for the user
+            // (This would require modifying the API response, can be a future enhancement)
+
+          } catch (reversalError) {
+            // Log an error if the automatic reversal fails, but don't fail the original transaction
+            console.error(`CRITICAL ERROR: Failed to create automatic reversal for posted accrual entry ${id}:`, reversalError);
+            // In a real system, we would add this failed job to a dead-letter queue for admin review.
+          }
+        }
         
         res.json(updatedEntry);
       } catch (error) {
