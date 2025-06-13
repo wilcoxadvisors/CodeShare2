@@ -3186,11 +3186,22 @@ function JournalEntryForm({
                                     ?.filter(value => value && typeof value.id === 'number' && value.id > 0) // MANDATORY: Ensures value and its ID are valid
                                     .filter(value => value.isActive)
                                     .filter(value => value.code && String(value.code).trim() !== "")
-                                    .map((value) => (
-                                    <SelectItem key={value.id} value={String(value.id)}> {/* Use String() for improved safety */}
-                                      {value.name} ({value.code})
-                                    </SelectItem>
-                                  ))}
+                                    .map((value) => {
+                                      // Defensively create the value for the item.
+                                      const itemValue = value && value.id ? String(value.id) : '';
+
+                                      // CRITICAL: Only render the item if the value is a valid, non-empty string.
+                                      if (itemValue) {
+                                        return (
+                                          <SelectItem key={value.id} value={itemValue}>
+                                            {value.name} ({value.code})
+                                          </SelectItem>
+                                        );
+                                      }
+
+                                      // If the value is invalid for any reason, render nothing. This prevents the crash.
+                                      return null;
+                                    })}
                                 </SelectContent>
                               </Select>
                             </div>
