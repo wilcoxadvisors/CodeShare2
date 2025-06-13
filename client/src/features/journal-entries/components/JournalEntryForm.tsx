@@ -3178,8 +3178,10 @@ function JournalEntryForm({
                       <PopoverContent className="w-96 p-0">
                         <Command>
                           <CommandInput
-                            placeholder="Search dimensions and values..."
+                            placeholder="Search dimension values..."
                             className="h-9"
+                            value={searchQuery}
+                            onValueChange={setSearchQuery}
                           />
                           <CommandEmpty>No dimension values found.</CommandEmpty>
                           <CommandGroup>
@@ -3191,6 +3193,25 @@ function JournalEntryForm({
                                   const hasSelection = !!currentTag;
                                   const dimensionKey = `dimension-${dimension.id}-${index}`;
                                   const isExpanded = expandedDimensions[dimensionKey] !== false; // Default to expanded
+                                  
+                                  // Filter values based on search query
+                                  const filteredValues = dimension.values
+                                    ?.filter((value: any) => value && typeof value.id === 'number' && value.id > 0)
+                                    .filter((value: any) => value.isActive)
+                                    .filter((value: any) => {
+                                      if (!searchQuery) return true;
+                                      const searchLower = searchQuery.toLowerCase();
+                                      return (
+                                        value.name?.toLowerCase().includes(searchLower) ||
+                                        value.code?.toLowerCase().includes(searchLower)
+                                      );
+                                    })
+                                    .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || '')) || [];
+                                  
+                                  // Hide dimension if no values match search and there's no current selection
+                                  if (searchQuery && filteredValues.length === 0 && !hasSelection) {
+                                    return null;
+                                  }
                                   
                                   return (
                                     <div key={dimension.id}>
@@ -3233,44 +3254,72 @@ function JournalEntryForm({
                                       </div>
                                       
                                       {/* Dimension values (collapsible) */}
-                                      {isExpanded && dimension.values
-                                        ?.filter((value: any) => value && typeof value.id === 'number' && value.id > 0)
-                                        .filter((value: any) => value.isActive)
-                                        .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || ''))
-                                        .map((value: any) => {
-                                          const isSelected = currentTag?.dimensionValueId === value.id;
-                                          
-                                          return (
+                                      {isExpanded && (
+                                        <>
+                                          {/* Show current selection even if it doesn't match search */}
+                                          {hasSelection && searchQuery && !filteredValues.some((v: any) => v.id === currentTag.dimensionValueId) && (
                                             <CommandItem
-                                              key={value.id}
-                                              value={`${dimension.name} ${value.name} ${value.code}`}
+                                              key={`current-${currentTag.dimensionValueId}`}
+                                              value={`${dimension.name} ${currentTag.dimensionValueName}`}
                                               onSelect={() => {
                                                 const currentTags = line.tags || [];
-                                                // Remove any existing tag for this dimension
-                                                let newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
-                                                // Add the new tag
-                                                newTags.push({
-                                                  dimensionId: dimension.id,
-                                                  dimensionValueId: value.id,
-                                                  dimensionName: dimension.name,
-                                                  dimensionValueName: value.name
-                                                });
+                                                const newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
                                                 updateLineTags(index, newTags);
+                                                toggleTagPopover(index, false);
                                               }}
-                                              className="pl-8 py-2"
+                                              className="pl-8 py-2 bg-accent/50"
                                             >
-                                              <Check
-                                                className={cn(
-                                                  "mr-2 h-4 w-4",
-                                                  isSelected ? "opacity-100 text-blue-600" : "opacity-0"
-                                                )}
-                                              />
-                                              <span className="font-medium text-sm">{value.code}</span>
+                                              <Check className="mr-2 h-4 w-4 opacity-100 text-blue-600" />
+                                              <span className="font-medium text-sm">{dimension.values?.find((v: any) => v.id === currentTag.dimensionValueId)?.code}</span>
                                               <span className="mx-1 text-muted-foreground">-</span>
-                                              <span className="text-sm">{value.name}</span>
+                                              <span className="text-sm">{currentTag.dimensionValueName}</span>
+                                              <span className="ml-2 text-xs text-muted-foreground">(current)</span>
                                             </CommandItem>
-                                          );
-                                        })}
+                                          )}
+                                          
+                                          {/* Show filtered values */}
+                                          {filteredValues.map((value: any) => {
+                                            const isSelected = currentTag?.dimensionValueId === value.id;
+                                            
+                                            return (
+                                              <CommandItem
+                                                key={value.id}
+                                                value={`${dimension.name} ${value.name} ${value.code}`}
+                                                onSelect={() => {
+                                                  const currentTags = line.tags || [];
+                                                  if (isSelected) {
+                                                    // Remove the tag if clicking on current selection
+                                                    const newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
+                                                    updateLineTags(index, newTags);
+                                                  } else {
+                                                    // Add/replace the tag
+                                                    let newTags = currentTags.filter(tag => tag.dimensionId !== dimension.id);
+                                                    newTags.push({
+                                                      dimensionId: dimension.id,
+                                                      dimensionValueId: value.id,
+                                                      dimensionName: dimension.name,
+                                                      dimensionValueName: value.name
+                                                    });
+                                                    updateLineTags(index, newTags);
+                                                  }
+                                                  toggleTagPopover(index, false);
+                                                }}
+                                                className={`pl-8 py-2 ${isSelected ? 'bg-accent' : ''}`}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    isSelected ? "opacity-100 text-blue-600" : "opacity-0"
+                                                  )}
+                                                />
+                                                <span className="font-medium text-sm">{value.code}</span>
+                                                <span className="mx-1 text-muted-foreground">-</span>
+                                                <span className="text-sm">{value.name}</span>
+                                              </CommandItem>
+                                            );
+                                          })}
+                                        </>
+                                      )}
                                     </div>
                                   );
                                 })}
