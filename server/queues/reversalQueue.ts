@@ -28,17 +28,18 @@ async function processReversalJob(data: ReversalJobData) {
     // Import the journal entry storage here to avoid circular dependencies
     const journalEntryStorage = await import('../storage/journalEntryStorage');
     
-    // Create the reversal entry
-    const reversalEntry = await journalEntryStorage.reverseJournalEntry(
+    // Create the reversal entry using the default storage instance
+    const { journalEntryStorage: storage } = await import('../storage');
+    const reversalEntry = await storage.reverseJournalEntry(
       data.originalEntryId,
       {
-        date: data.reversalDate,
+        date: new Date(data.reversalDate),
         description: `Automatic reversal of accrual entry`,
         createdBy: 1 // System user - could be made configurable
       }
     );
     
-    console.log(`Successfully created reversal entry ${reversalEntry.id} for original entry ${data.originalEntryId}`);
+    console.log(`Successfully created reversal entry ${reversalEntry?.id || 'unknown'} for original entry ${data.originalEntryId}`);
     return reversalEntry;
   } catch (error) {
     console.error(`Failed to process reversal job for entry ${data.originalEntryId}:`, error);
