@@ -386,6 +386,8 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         status: entryData.status || 'draft' // Default to draft if not specified
       };
       
+      console.log('--- DATABASE WRITE ---', insertData);
+      
       // Insert the journal entry
       const [journalEntry] = await db.insert(journalEntries)
         .values(insertData)

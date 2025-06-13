@@ -1228,6 +1228,8 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     try {
+      console.log('--- BACKEND ROUTE: RAW BODY ---', req.body);
+      
       // Add entityId and clientId to the request body
       const requestData = {
         ...req.body,
@@ -1238,6 +1240,7 @@ export function registerJournalEntryRoutes(app: Express) {
       
       // Validate with schema
       const validatedData = createJournalEntrySchema.parse(requestData);
+      console.log('--- BACKEND ROUTE: VALIDATED DATA ---', validatedData);
       
       // Extract lines from validated data
       const { lines, ...journalEntryData } = validatedData;
