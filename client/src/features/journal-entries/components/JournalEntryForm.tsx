@@ -1389,9 +1389,13 @@ function JournalEntryForm({
   }, [entities, entityId]);
 
   const [lines, setLines] = useState<JournalLine[]>(
-    (existingEntry?.lines?.map((line: any) => ({ ...line, _key: uuidv4() })) || [
-      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "" },
-      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "" },
+    (existingEntry?.lines?.map((line: any) => ({ 
+      ...line, 
+      _key: uuidv4(),
+      tags: line.tags || [] // Preserve dimension tags from the database
+    })) || [
+      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
+      { _key: uuidv4(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
     ])
   );
 
