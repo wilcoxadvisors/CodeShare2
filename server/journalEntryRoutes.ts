@@ -142,6 +142,11 @@ export function registerJournalEntryRoutes(app: Express) {
           } else {
             console.log('TAGS DEBUG: First line has NO tags property');
           }
+          
+          // Check each line for tags
+          req.body.lines.forEach((line, index) => {
+            console.log(`TAGS DEBUG: Line ${index} tags:`, line.tags || 'UNDEFINED');
+          });
         }
       } else {
         console.log('Warning: No lines in request body');

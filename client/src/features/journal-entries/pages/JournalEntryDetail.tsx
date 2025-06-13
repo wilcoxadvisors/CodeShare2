@@ -112,7 +112,8 @@ function JournalEntryDetail() {
           amount: line.debit.toString(),
           accountId: Number(line.accountId),
           entityCode: line.entityCode || null,
-          description: line.description || null
+          description: line.description || null,
+          tags: line.tags || [] // Include dimension tags
         };
       } else if (safeParseAmount(line.credit) > 0) {
         return {
@@ -120,7 +121,8 @@ function JournalEntryDetail() {
           amount: line.credit.toString(),
           accountId: Number(line.accountId),
           entityCode: line.entityCode || null,
-          description: line.description || null
+          description: line.description || null,
+          tags: line.tags || [] // Include dimension tags
         };
       }
       return null; // Skip invalid lines
@@ -131,7 +133,8 @@ function JournalEntryDetail() {
         amount: line.amount.toString(),
         accountId: Number(line.accountId),
         entityCode: line.entityCode || null,
-        description: line.description || null
+        description: line.description || null,
+        tags: line.tags || [] // Include dimension tags
       };
     }
     return null; // Skip unrecognized formats
