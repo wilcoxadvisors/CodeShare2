@@ -926,7 +926,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         reversalEntry = newReversalEntry;
         console.log(`Created new reversal entry with ID: ${reversalEntry.id}`);
         
-        // Create reversed lines (opposite debit/credit types)
+        // Create reversed lines (opposite debit/credit types) with dimension tags
         for (const line of originalLines) {
           const reversedType = line.type === 'debit' ? 'credit' : 'debit';
           const lineData = {
@@ -942,10 +942,26 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             reconciled: false // New reversal line is not reconciled
           };
           
-          await tx.insert(journalEntryLines)
-            .values(lineData);
+          // Insert the reversed line
+          const [insertedLine] = await tx.insert(journalEntryLines)
+            .values(lineData)
+            .returning();
             
           console.log(`Added reversed line for account ${line.accountId}: ${reversedType} ${line.amount}`);
+          
+          // Copy dimension tags from the original line
+          if (line.tags && Array.isArray(line.tags) && line.tags.length > 0) {
+            console.log(`Copying ${line.tags.length} dimension tags to reversed line ${insertedLine.id}`);
+            
+            for (const tag of line.tags) {
+              await tx.insert(txDimensionLink)
+                .values({
+                  journalEntryLineId: insertedLine.id,
+                  dimensionId: tag.dimensionId,
+                  dimensionValueId: tag.dimensionValueId
+                });
+            }
+          }
         }
         
         // Update the original entry to link to the reversal
