@@ -2449,14 +2449,14 @@ function JournalEntryForm({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <Label htmlFor="reference">Journal ID</Label>
+          <Label htmlFor="reference">Journal Entry ID</Label>
           <div className="relative">
             <Input
               id="reference"
               name="reference"
-              value={journalData.reference}
+              value={existingEntry?.id ? `#${existingEntry.id}` : "New Entry"}
               onChange={handleChange}
-              className={`mt-1 ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
+              className={`mt-1 bg-gray-50 font-mono ${fieldErrors.reference ? "border-red-500 pr-10" : ""}`}
               readOnly
             />
             {fieldErrors.reference && (
