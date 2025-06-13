@@ -1348,6 +1348,8 @@ function JournalEntryForm({
     }));
   }, []);
 
+
+
   // Generate auto-reference prefix for new entries
   const autoReferencePrefix = useMemo(() => {
     if (existingEntry?.referenceNumber) {
@@ -1412,7 +1414,6 @@ function JournalEntryForm({
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // State for dimension tagging
-  const [tagPopoverOpen, setTagPopoverOpen] = useState<{ [lineIndex: number]: boolean }>({});
 
   // Helper functions for dimension tagging
   const updateLineTags = (lineIndex: number, tags: DimensionTag[]) => {
@@ -1421,9 +1422,7 @@ function JournalEntryForm({
     setLines(updatedLines);
   };
 
-  const toggleTagPopover = (lineIndex: number, open: boolean) => {
-    setTagPopoverOpen(prev => ({ ...prev, [lineIndex]: open }));
-  };
+
 
   const getLineTagsDisplay = (tags: DimensionTag[] = []) => {
     if (tags.length === 0) return "No tags";
@@ -3186,8 +3185,8 @@ function JournalEntryForm({
                           <CommandGroup>
                             <CommandList className="max-h-[400px] overflow-auto">
                               {dimensions
-                                .filter(dimension => dimension.isActive)
-                                .map((dimension) => {
+                                .filter((dimension: any) => dimension.isActive)
+                                .map((dimension: any) => {
                                   const currentTag = line.tags?.find(tag => tag.dimensionId === dimension.id);
                                   const hasSelection = !!currentTag;
                                   const dimensionKey = `dimension-${dimension.id}-${index}`;
@@ -3235,10 +3234,10 @@ function JournalEntryForm({
                                       
                                       {/* Dimension values (collapsible) */}
                                       {isExpanded && dimension.values
-                                        ?.filter(value => value && typeof value.id === 'number' && value.id > 0)
-                                        .filter(value => value.isActive)
-                                        .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
-                                        .map((value) => {
+                                        ?.filter((value: any) => value && typeof value.id === 'number' && value.id > 0)
+                                        .filter((value: any) => value.isActive)
+                                        .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || ''))
+                                        .map((value: any) => {
                                           const isSelected = currentTag?.dimensionValueId === value.id;
                                           
                                           return (
@@ -3468,7 +3467,7 @@ function JournalEntryForm({
                   // Pass all required parameters to postJournalEntry (id, clientId, entityId)
                   postJournalEntry.mutate({
                     id: existingEntry.id,
-                    clientId: effectiveClientId,
+                    clientId: effectiveClientId || 0,
                     entityId: entityId
                   }, {
                     onSuccess: () => {
