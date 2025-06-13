@@ -1370,48 +1370,21 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
+  // Replace the old useState and useEffect for journalData with this:
   const [journalData, setJournalData] = useState({
-    reference: existingEntry?.reference || generateReference(),
-    referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix, // Auto-generated prefix
-    referenceUserSuffix: existingEntry?.referenceNumber ? 
-      existingEntry.referenceNumber.split(':')[1] || "" : "", // Extract user suffix if exists
-    date: existingEntry?.date ?? // already "YYYY-MM-DD" 
-          getTodayYMD(), // Use our timezone-safe utility instead of Date()
-    description: existingEntry?.description || "",
-    status: existingEntry?.status || JournalEntryStatus.DRAFT,
-    journalType: existingEntry?.journalType || "JE",
-    supDocId: existingEntry?.supDocId || "",
-    isAccrual: existingEntry?.isAccrual || false,
-    reversalDate: existingEntry?.reversalDate ?? "", // already "YYYY-MM-DD" or empty
+    reference: '',
+    referenceNumber: '',
+    referenceUserSuffix: '',
+    date: getTodayYMD(),
+    description: '',
+    status: JournalEntryStatus.DRAFT,
+    journalType: 'JE',
+    supDocId: '',
+    isAccrual: false,
+    reversalDate: '',
   });
 
-  // Track if user has manually changed accrual settings to prevent overwriting
-  const [userHasModifiedAccrual, setUserHasModifiedAccrual] = useState(false);
 
-  // COMPREHENSIVE DEBUG: Track component initialization and state changes
-  console.log("ARCHITECT_DEBUG_COMPONENT_INIT: JournalEntryForm initialized with:", {
-    existingEntry: existingEntry ? {
-      id: existingEntry.id,
-      isAccrual: existingEntry.isAccrual,
-      reversalDate: existingEntry.reversalDate,
-      status: existingEntry.status
-    } : null,
-    journalDataState: {
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.reversalDate
-    },
-    userHasModifiedAccrual,
-    isEditMode: !!existingEntry
-  });
-
-  // DEBUG: Track when editing mode is active
-  if (existingEntry) {
-    console.log("ARCHITECT_DEBUG_EDIT_MODE: Component is in edit mode for entry:", existingEntry.id);
-    console.log("ARCHITECT_DEBUG_EDIT_MODE: Existing accrual data:", {
-      isAccrual: existingEntry.isAccrual,
-      reversalDate: existingEntry.reversalDate
-    });
-  }
 
   // Get default entity code from entities list based on current entityId
   const defaultEntityCode = React.useMemo(() => {
@@ -1449,23 +1422,22 @@ function JournalEntryForm({
   // This effect runs only when the entry itself changes, preventing unnecessary re-renders.
   }, [existingEntry]);
 
-  // CRITICAL FIX: Preserve accrual settings when editing existing entries
   useEffect(() => {
-    if (existingEntry && !userHasModifiedAccrual) {
-      console.log("ARCHITECT_DEBUG_ACCRUAL_PRESERVATION: Preserving accrual settings from existing entry:", {
-        isAccrual: existingEntry.isAccrual,
-        reversalDate: existingEntry.reversalDate,
-        userHasModifiedAccrual
-      });
-      
-      // Only update if user hasn't manually modified accrual settings
-      setJournalData(prev => ({
-        ...prev,
+    if (existingEntry) {
+      setJournalData({
+        reference: existingEntry.reference || '',
+        referenceNumber: existingEntry.referenceNumber || '',
+        referenceUserSuffix: existingEntry.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
+        date: existingEntry.date || getTodayYMD(),
+        description: existingEntry.description || '',
+        status: existingEntry.status || JournalEntryStatus.DRAFT,
+        journalType: existingEntry.journalType || 'JE',
+        supDocId: existingEntry.supDocId || '',
         isAccrual: existingEntry.isAccrual || false,
-        reversalDate: existingEntry.reversalDate || ""
-      }));
+        reversalDate: existingEntry.reversalDate || '',
+      });
     }
-  }, [existingEntry?.id, existingEntry?.isAccrual, existingEntry?.reversalDate, userHasModifiedAccrual]);
+  }, [existingEntry]); // Only re-sync the form if the entire existingEntry prop changes.
 
   // Removed supportingDoc state as we're using the AttachmentSection component now
 
@@ -1938,12 +1910,11 @@ function JournalEntryForm({
       status: initialStatus,
     };
 
-    // COMPREHENSIVE DEBUG: Track accrual data flow
+    // DEBUG: Track accrual data flow
     console.log("ARCHITECT_DEBUG_FORM_SUBMISSION: Complete form data being submitted:", JSON.stringify(formData, null, 2));
     console.log("ARCHITECT_DEBUG_FORM_SUBMISSION: Accrual settings in submission:", {
       isAccrual: formData.isAccrual,
-      reversalDate: formData.reversalDate,
-      userHasModifiedAccrual: userHasModifiedAccrual
+      reversalDate: formData.reversalDate
     });
 
     console.log("DEBUG: Form data with initial status:", formData.status);
@@ -2614,14 +2585,11 @@ function JournalEntryForm({
             id="isAccrual"
             checked={journalData.isAccrual || false}
             onCheckedChange={(checked) => {
-              console.log("ARCHITECT_DEBUG_ACCRUAL_CHANGE: User toggling accrual switch to:", checked);
-              setUserHasModifiedAccrual(true); // Mark that user has manually changed accrual settings
               setJournalData(prev => ({
                 ...prev,
                 isAccrual: checked,
                 reversalDate: checked ? prev.reversalDate : ""
               }));
-              console.log("ARCHITECT_DEBUG_ACCRUAL_CHANGE: Accrual state updated, userHasModifiedAccrual set to true");
             }}
           />
           <Label htmlFor="isAccrual" className="font-medium">
@@ -2643,10 +2611,10 @@ function JournalEntryForm({
                       !journalData.reversalDate && "text-muted-foreground"
                     } ${fieldErrors.reversalDate ? "border-red-500" : ""}`}
                   >
-                    {journalData.reversalDate ? (
-                      format(new Date(`${journalData.reversalDate}T00:00:00`), "PPP")
+                    {journalData.reversalDate && journalData.reversalDate.length > 0 ? (
+                      format(new Date(journalData.reversalDate.replace(/-/g, '/')), "PPP")
                     ) : (
-                      <span>Select reversal date</span>
+                      <span>Pick a reversal date</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -2658,18 +2626,7 @@ function JournalEntryForm({
                       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                     })() : undefined}
                     onSelect={(date) => {
-                      console.log("ARCHITECT_DEBUG_REVERSAL_DATE_CHANGE: User selecting reversal date:", date);
-                      setUserHasModifiedAccrual(true); // Mark that user has manually changed accrual settings
-                      if (date) {
-                        // Correctly handle timezone offset by creating date in UTC
-                        const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-                        const formattedDate = format(utcDate, 'yyyy-MM-dd');
-                        setJournalData((prev) => ({ ...prev, reversalDate: formattedDate }));
-                        console.log("ARCHITECT_DEBUG_REVERSAL_DATE_CHANGE: Reversal date set to:", formattedDate);
-                      } else {
-                        setJournalData((prev) => ({ ...prev, reversalDate: '' }));
-                        console.log("ARCHITECT_DEBUG_REVERSAL_DATE_CHANGE: Reversal date cleared");
-                      }
+                      setJournalData((prev) => ({ ...prev, reversalDate: date ? format(date, 'yyyy-MM-dd') : '' }));
                     }}
                     disabled={(date) => {
                       // If no journal entry date is set yet, don't disable anything.
