@@ -1,0 +1,58 @@
+Architect's Instruction for the Replit AI Agent
+Status Review: The previous fixes were insufficient. The user has confirmed that saving accrual data is still failing for both drafts and posted entries.
+
+Your Mission: You will execute a precise, two-part fix targeting the identified bugs in the frontend state management and the backend creation logic.
+
+Part 1: Fix the Frontend State Synchronization Bug
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action: You will replace the flawed useEffect hook that is overwriting user input with a more intelligent version that only sets the initial state from the existingEntry once.
+
+Locate the useEffect hook that watches for changes in existingEntry.
+
+Replace the entire hook with the following implementation. This version uses a useRef to ensure it only populates the form from the prop once, allowing the user's subsequent changes to be preserved.
+
+TypeScript
+
+const isInitialLoad = useRef(true);
+
+useEffect(() => {
+  // Only set the form state from the prop on the initial load.
+  // After that, the component manages its own state.
+  if (existingEntry && isInitialLoad.current) {
+    console.log("DEBUG: Setting initial form state from existingEntry prop.");
+    setJournalData({
+      reference: existingEntry.referenceNumber || generateReference(),
+      referenceNumber: existingEntry.referenceNumber || autoReferencePrefix,
+      referenceUserSuffix: existingEntry.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
+      date: existingEntry.date ?? getTodayYMD(),
+      description: existingEntry.description || "",
+      status: existingEntry.status || JournalEntryStatus.DRAFT,
+      journalType: existingEntry.journalType || "JE",
+      supDocId: existingEntry.supDocId || "",
+      isAccrual: existingEntry.isAccrual || false,
+      reversalDate: existingEntry.reversalDate ?? ""
+    });
+    isInitialLoad.current = false;
+  }
+}, [existingEntry]); // Dependency on existingEntry is correct.
+Part 2: Fix the Backend Draft Saving Bug
+File to Modify: shared/validation.ts
+
+Action: You must ensure the Zod validation schema explicitly includes the isAccrual and reversalDate fields. The agent's logs claimed this was done, but we must be certain.
+
+Open shared/validation.ts and locate the createJournalEntrySchema.
+
+Verify or add the following fields to the schema definition.
+
+TypeScript
+
+// Inside createJournalEntrySchema
+const createJournalEntrySchema = z.object({
+    // ... other fields
+    description: z.string().min(1, "Description is required"),
+    isAccrual: z.boolean().optional(), // Ensure this exists
+    reversalDate: z.string().optional().nullable(), // Ensure this exists
+    // ...
+});
+Agent, these two fixes are precise and target the identified root causes. Implement them now. The user's time has been wasted, and we must resolve this.

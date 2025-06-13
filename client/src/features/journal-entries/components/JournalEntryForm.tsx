@@ -1385,6 +1385,9 @@ function JournalEntryForm({
     reversalDate: existingEntry?.reversalDate ?? "", // already "YYYY-MM-DD" or empty
   });
 
+  // Track if user has manually changed accrual settings to prevent overwriting
+  const [userHasModifiedAccrual, setUserHasModifiedAccrual] = useState(false);
+
   // Get default entity code from entities list based on current entityId
   const defaultEntityCode = React.useMemo(() => {
     if (entities && entities.length > 0) {
