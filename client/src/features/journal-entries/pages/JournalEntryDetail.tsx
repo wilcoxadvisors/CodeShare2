@@ -1699,6 +1699,7 @@ function JournalEntryDetail() {
                   <TableHead>Account</TableHead>
                   <TableHead>Entity</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Dimensions</TableHead>
                   <TableHead className="text-right">Debit</TableHead>
                   <TableHead className="text-right">Credit</TableHead>
                 </TableRow>
@@ -1722,6 +1723,19 @@ function JournalEntryDetail() {
                       <TableCell className="font-medium">{getAccountDisplay(line.accountId)}</TableCell>
                       <TableCell>{line.entityCode}</TableCell>
                       <TableCell>{line.description || '-'}</TableCell>
+                      <TableCell>
+                        {line.tags && line.tags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {line.tags.map((tag, tagIndex) => (
+                              <Badge key={tagIndex} variant="secondary" className="text-xs">
+                                {tag.dimensionName}: {tag.dimensionValueName}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         {debitValue !== 0 ? formatCurrency(debitValue) : '-'}
                       </TableCell>
@@ -1734,7 +1748,7 @@ function JournalEntryDetail() {
                 
                 {/* Totals row */}
                 <TableRow className="font-bold bg-gray-50">
-                  <TableCell colSpan={3} className="text-right">
+                  <TableCell colSpan={4} className="text-right">
                     Totals
                   </TableCell>
                   <TableCell className="text-right">
