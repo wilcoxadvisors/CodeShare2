@@ -1399,6 +1399,18 @@ function JournalEntryForm({
     ])
   );
 
+  // Sync form state when journal entry data changes
+  useEffect(() => {
+    if (existingEntry?.lines) {
+      console.log("DEBUG: Syncing form state with loaded journal entry data, including dimension tags");
+      setLines(existingEntry.lines.map((line: any) => ({ 
+        ...line, 
+        _key: uuidv4(),
+        tags: line.tags || [] // Preserve dimension tags from the database
+      })));
+    }
+  }, [existingEntry?.lines]);
+
   // Removed supportingDoc state as we're using the AttachmentSection component now
 
   // Track expanded/collapsed state of parent accounts
