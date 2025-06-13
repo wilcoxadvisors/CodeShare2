@@ -1370,6 +1370,16 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
+  // Generate stable preview ID for new entries
+  const previewId = useMemo(() => {
+    if (existingEntry?.id) return null;
+    const currentYear = new Date().getFullYear();
+    // Use entityId and current date to create a stable seed
+    const seed = entityId + currentYear;
+    const stableId = 1000 + (seed % 9000); // Ensures 4-digit number
+    return generateJournalEntryDisplayId(entityId, currentYear, stableId);
+  }, [existingEntry?.id, entityId]);
+
 const [journalData, setJournalData] = useState({
     referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
     referenceUserSuffix: existingEntry?.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
@@ -2448,12 +2458,7 @@ const [journalData, setJournalData] = useState({
                       new Date(existingEntry.date).getFullYear(),
                       existingEntry.id
                     )
-                  : (() => {
-                      // Generate a preview ID for new entries
-                      const currentYear = new Date().getFullYear();
-                      const previewId = Math.floor(Math.random() * 10000) + 1000;
-                      return generateJournalEntryDisplayId(entityId, currentYear, previewId);
-                    })()
+                  : previewId || "Generating preview ID..."
               }
               className="mt-1 bg-gray-50 font-mono"
               readOnly
