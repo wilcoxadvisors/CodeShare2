@@ -1373,25 +1373,6 @@ function JournalEntryForm({
   // State for stable display ID
   const [displayId, setDisplayId] = useState('');
 
-  // useEffect to manage displayId state
-  useEffect(() => {
-    if (existingEntry?.id) {
-      // For an EXISTING entry, generate the permanent, scalable ID.
-      setDisplayId(
-        generateJournalEntryDisplayId(
-          existingEntry.clientId,
-          existingEntry.entityId,
-          existingEntry.date,
-          existingEntry.id
-        )
-      );
-    } else {
-      // For a NEW entry, use the stable, auto-generated reference prefix as the display ID.
-      // This is generated only once via useMemo and will not change on re-renders.
-      setDisplayId(autoReferencePrefix);
-    }
-  }, [existingEntry, autoReferencePrefix]);
-
 const [journalData, setJournalData] = useState({
     referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
     referenceUserSuffix: existingEntry?.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
@@ -1404,7 +1385,34 @@ const [journalData, setJournalData] = useState({
     reversalDate: existingEntry?.reversalDate ?? "",
 });
 
-
+  // useEffect to manage displayId state for Journal Entry ID (separate from Reference Number)
+  useEffect(() => {
+    if (existingEntry?.id) {
+      // For an EXISTING entry, generate the permanent Journal Entry ID
+      setDisplayId(
+        generateJournalEntryDisplayId(
+          existingEntry.clientId,
+          existingEntry.entityId,
+          existingEntry.date,
+          existingEntry.id
+        )
+      );
+    } else {
+      // For a NEW entry, generate a preview Journal Entry ID with placeholder database ID
+      if (clientId && entityId) {
+        setDisplayId(
+          generateJournalEntryDisplayId(
+            clientId,
+            entityId,
+            journalData.date,
+            999999 // Placeholder database ID for preview
+          )
+        );
+      } else {
+        setDisplayId("Will be assigned after creation");
+      }
+    }
+  }, [existingEntry, clientId, entityId, journalData.date]);
 
   // Get default entity code from entities list based on current entityId
   const defaultEntityCode = React.useMemo(() => {
@@ -2470,7 +2478,7 @@ const [journalData, setJournalData] = useState({
           </div>
           {!existingEntry?.id && (
             <p className="text-xs text-gray-500 mt-1">
-              Preview ID - final ID will be assigned upon creation
+              Preview ID - actual database ID will replace 999999 upon creation
             </p>
           )}
         </div>
