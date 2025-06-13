@@ -3190,12 +3190,13 @@ function JournalEntryForm({
                                   <SelectValue placeholder="Select value..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">None</SelectItem>
+                                  <SelectItem value="none">None</SelectItem>
                                   {dimension.values
-                                    ?.filter(value => value.isActive)
-                                    .filter(value => value.code && String(value.code).trim() !== "") // Filters out values with null or empty codes
+                                    ?.filter(value => value && typeof value.id === 'number' && value.id > 0) // MANDATORY: Ensures value and its ID are valid
+                                    .filter(value => value.isActive)
+                                    .filter(value => value.code && String(value.code).trim() !== "")
                                     .map((value) => (
-                                    <SelectItem key={value.id} value={value.id.toString()}>
+                                    <SelectItem key={value.id} value={String(value.id)}> {/* Use String() for improved safety */}
                                       {value.name} ({value.code})
                                     </SelectItem>
                                   ))}
