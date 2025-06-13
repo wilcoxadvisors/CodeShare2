@@ -122,7 +122,24 @@ export const createJournalEntrySchema = z.object({
   description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
   status: z.enum(['draft', 'posted', 'pending_approval', 'approved', 'rejected', 'void']).optional(),
-  lines: z.array(journalEntryLineSchema).min(1, "Journal Entry must have at least one line"),
+  lines: z.array(
+    z.object({
+      accountId: z.union([z.string(), z.number()]),
+      type: z.enum(['debit', 'credit']),
+      amount: z.union([z.string(), z.number()]),
+      description: z.string().optional().nullable(),
+      entityCode: z.string().optional().nullable(),
+
+      // THIS DEFINITION FOR TAGS IS MANDATORY
+      tags: z.array(z.object({
+        dimensionId: z.number(),
+        dimensionValueId: z.number(),
+        dimensionName: z.string().optional(),
+        dimensionValueName: z.string().optional(),
+      })).optional()
+
+    }).passthrough()
+  ).min(1, "Journal Entry must have at least one line"),
 })
 // First refinement: Check overall balance (debits = credits)
 .refine(data => {
