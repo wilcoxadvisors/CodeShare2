@@ -3192,26 +3192,36 @@ function JournalEntryForm({
                                   const currentTag = line.tags?.find(tag => tag.dimensionId === dimension.id);
                                   const hasSelection = !!currentTag;
                                   const dimensionKey = `dimension-${dimension.id}-${index}`;
-                                  const isExpanded = expandedDimensions[dimensionKey] !== false; // Default to expanded
+                                  const isExpanded = expandedDimensions[dimensionKey] === true; // Default to collapsed
                                   
-                                  // Filter values based on search query
-                                  const filteredValues = dimension.values
+                                  // Get all active values for this dimension
+                                  const allValues = dimension.values
                                     ?.filter((value: any) => value && typeof value.id === 'number' && value.id > 0)
                                     .filter((value: any) => value.isActive)
-                                    .filter((value: any) => {
-                                      if (!searchQuery) return true;
-                                      const searchLower = searchQuery.toLowerCase();
-                                      return (
-                                        value.name?.toLowerCase().includes(searchLower) ||
-                                        value.code?.toLowerCase().includes(searchLower)
-                                      );
-                                    })
                                     .sort((a: any, b: any) => (a.code || '').localeCompare(b.code || '')) || [];
                                   
-                                  // Hide dimension if no values match search and there's no current selection
+                                  // Filter values based on search query
+                                  const filteredValues = allValues.filter((value: any) => {
+                                    if (!searchQuery) return true;
+                                    const searchLower = searchQuery.toLowerCase();
+                                    return (
+                                      value.name?.toLowerCase().includes(searchLower) ||
+                                      value.code?.toLowerCase().includes(searchLower)
+                                    );
+                                  });
+                                  
+                                  // Hide dimension if it has no values at all
+                                  if (allValues.length === 0) {
+                                    return null;
+                                  }
+                                  
+                                  // When searching, hide dimension if no values match and no current selection
                                   if (searchQuery && filteredValues.length === 0 && !hasSelection) {
                                     return null;
                                   }
+                                  
+                                  // When searching, auto-expand dimensions that have matching values
+                                  const shouldAutoExpand = searchQuery && filteredValues.length > 0;
                                   
                                   return (
                                     <div key={dimension.id}>
@@ -3254,7 +3264,7 @@ function JournalEntryForm({
                                       </div>
                                       
                                       {/* Dimension values (collapsible) */}
-                                      {isExpanded && (
+                                      {(isExpanded || shouldAutoExpand) && (
                                         <>
                                           {/* Show current selection even if it doesn't match search */}
                                           {hasSelection && searchQuery && !filteredValues.some((v: any) => v.id === currentTag.dimensionValueId) && (
