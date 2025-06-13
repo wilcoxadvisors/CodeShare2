@@ -122,6 +122,10 @@ export const createJournalEntrySchema = z.object({
   description: z.string().min(1, "Description is required").max(255, "Description cannot exceed 255 characters"),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).default('JE'),
   status: z.enum(['draft', 'posted', 'pending_approval', 'approved', 'rejected', 'void']).optional(),
+  
+  // Automatic Accrual Reversal fields
+  isAccrual: z.boolean().optional(),
+  reversalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Reversal date must be in YYYY-MM-DD format" }).optional().nullable(),
   lines: z.array(
     z.object({
       accountId: z.union([z.string(), z.number()]),
