@@ -98,6 +98,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEntity } from "@/contexts/EntityContext";
@@ -271,6 +273,7 @@ function createFormSchema() {
     description: z.string().min(1, "Description is required"), // Make description required to match server validation
     journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
     supDocId: z.string().optional(),
+    isAccrual: z.boolean().default(false),
     reversalDate: z.string().optional(),
   });
 }
@@ -283,6 +286,7 @@ const FormSchema = z.object({
   description: z.string().min(1, "Description is required"),
   journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
   supDocId: z.string().optional(),
+  isAccrual: z.boolean().default(false),
   reversalDate: z.string().optional(),
   lines: z
     .array(

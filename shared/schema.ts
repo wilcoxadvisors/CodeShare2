@@ -210,6 +210,9 @@ export const journalEntries = pgTable("journal_entries", {
   supDocId: text("sup_doc_id"), // Supporting document ID/reference
   reversalDate: timestamp("reversal_date", { mode: 'date' }), // Date for reversing entries
   
+  // Accrual tracking fields
+  isAccrual: boolean("is_accrual").default(false).notNull(), // Indicates this entry is an auto-reversing accrual
+  
   // Reversal tracking fields
   isReversal: boolean("is_reversal").default(false), // Indicates this entry is a reversal of another
   reversedEntryId: integer("reversed_entry_id"), // Will be set up with references after table creation
