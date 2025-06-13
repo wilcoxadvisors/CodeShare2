@@ -52,6 +52,7 @@
     "@typescript-eslint/parser": "^8.31.1",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
+    "bullmq": "^5.53.3",
     "chalk": "^5.4.1",
     "chart.js": "^4.4.8",
     "class-variance-authority": "^0.7.0",

@@ -2548,6 +2548,76 @@ function JournalEntryForm({
         )}
       </div>
 
+      {/* Accrual Settings */}
+      <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
+        <div className="flex items-center space-x-3 mb-3">
+          <Switch
+            id="isAccrual"
+            checked={journalData.isAccrual || false}
+            onCheckedChange={(checked) => {
+              setJournalData(prev => ({
+                ...prev,
+                isAccrual: checked,
+                reversalDate: checked ? prev.reversalDate : undefined
+              }));
+            }}
+          />
+          <Label htmlFor="isAccrual" className="font-medium">
+            Auto-Reversing Accrual
+          </Label>
+        </div>
+        
+        {journalData.isAccrual && (
+          <div className="mt-3">
+            <Label htmlFor="reversalDate" className="text-sm">
+              Reversal Date
+            </Label>
+            <div className="mt-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${
+                      !journalData.reversalDate && "text-muted-foreground"
+                    } ${fieldErrors.reversalDate ? "border-red-500" : ""}`}
+                  >
+                    {journalData.reversalDate ? (
+                      format(new Date(journalData.reversalDate), "PPP")
+                    ) : (
+                      <span>Select reversal date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={journalData.reversalDate ? new Date(journalData.reversalDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setJournalData(prev => ({
+                          ...prev,
+                          reversalDate: format(date, "yyyy-MM-dd")
+                        }));
+                      }
+                    }}
+                    disabled={(date) => date <= new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {fieldErrors.reversalDate && (
+                <p className="text-red-500 text-sm mt-1 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" /> {fieldErrors.reversalDate}
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              This entry will be automatically reversed on the selected date
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="overflow-x-auto mb-4">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
