@@ -1533,8 +1533,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
 
   async copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry> {
-    console.log(`ARCHITECT_DEBUG: FINAL ATTEMPT. Starting copy for original entry ID: ${originalEntryId}`);
+    console.log(`ARCHITECT_DEBUG: FINAL ATTEMPT V5. Starting copy for original entry ID: ${originalEntryId}`);
 
+    // Step 1: Get the original entry header
     const originalEntry = await db.query.journalEntries.findFirst({
         where: eq(schema.journalEntries.id, originalEntryId),
     });
@@ -1542,17 +1543,20 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     if (!originalEntry) {
         throw new Error(`Original journal entry with id ${originalEntryId} not found`);
     }
-    if (originalEntry.status === 'voided') {
-        throw new Error('Cannot copy a voided journal entry.');
+    if (originalEntry.status !== 'posted') {
+        throw new Error(`Cannot copy a non-posted journal entry. Status: ${originalEntry.status}`);
     }
 
+    // Step 2: Get the original lines and their dimensions in a separate query to avoid relation issues
     const originalLines = await db.query.journalEntryLines.findMany({
         where: eq(schema.journalEntryLines.journalEntryId, originalEntryId),
         with: { dimensions: true }
     });
 
     try {
+        // Step 3: Start the database transaction
         const newJournalEntry = await db.transaction(async (tx) => {
+            // Step 4: Insert the new journal entry header with only necessary fields
             const [copiedEntry] = await tx
                 .insert(schema.journalEntries)
                 .values({
@@ -1562,14 +1566,14 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                     description: `Copy of: ${originalEntry.description}`,
                     status: 'draft',
                     createdBy: newUserId,
-                    // referenceNumber and updatedBy are correctly omitted.
                 })
                 .returning();
 
             if (!copiedEntry) {
-                throw new Error('Failed to create the new journal entry header.');
+                throw new Error('V5 - Failed to create the new journal entry header inside transaction.');
             }
 
+            // Step 5: Loop through the original lines and create new ones
             for (const line of originalLines) {
                 const [newLine] = await tx
                     .insert(schema.journalEntryLines)
@@ -1583,14 +1587,15 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                     .returning();
 
                 if (!newLine) {
-                    throw new Error('Failed to create a new journal entry line.');
+                    throw new Error(`V5 - Failed to create a new line for account ${line.accountId}.`);
                 }
 
+                // Step 6: If the original line had dimensions, create them for the new line
                 if (line.dimensions && line.dimensions.length > 0) {
                     const newDimensionLinks = line.dimensions.map((dim) => ({
                         journalEntryLineId: newLine.id,
                         dimensionId: dim.dimensionId,
-                        valueId: dim.valueId,
+                        dimensionValueId: dim.dimensionValueId,
                     }));
                     await tx.insert(schema.txDimensionLink).values(newDimensionLinks);
                 }
@@ -1599,15 +1604,16 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             return copiedEntry;
         });
 
+        // Step 7: Refetch the complete new entry to return to the frontend
         const fullCopiedEntry = await this.getJournalEntry(newJournalEntry.id);
         if (!fullCopiedEntry) {
-            throw new Error("Could not retrieve the newly copied journal entry after transaction.");
+            throw new Error("V5 - Could not retrieve the newly copied journal entry after transaction.");
         }
 
         return fullCopiedEntry;
 
     } catch (error) {
-        console.error("ARCHITECT_DEBUG: Error during the final copy transaction:", error);
+        console.error("ARCHITECT_DEBUG: V5 - Error during the final copy transaction:", error);
         throw new Error(`Database error during copy of JE ${originalEntryId}`);
     }
   }
