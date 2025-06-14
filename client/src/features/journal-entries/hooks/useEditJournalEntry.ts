@@ -104,8 +104,8 @@ export function useEditJournalEntry() {
             accountId: line.accountId.toString(),
             entityCode: line.entityCode || '',
             description: line.description || '',
-            debit: line.type === 'debit' ? formattedAmount : '0.00',
-            credit: line.type === 'credit' ? formattedAmount : '0.00',
+            debit: line.type === 'debit' ? formattedAmount : '',
+            credit: line.type === 'credit' ? formattedAmount : '',
             tags: line.tags || [], // Preserve dimension tags during conversion
             id: line.id, // Preserve line ID for updates
           };
