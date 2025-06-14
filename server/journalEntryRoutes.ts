@@ -2332,6 +2332,67 @@ export function registerJournalEntryRoutes(app: Express) {
 
   /**
    * ---------------------------------------------------------------------------
+   *  Copy journal entry POST /api/clients/:clientId/entities/:entityId/journal-entries/:id/copy
+   * ---------------------------------------------------------------------------
+   */
+  app.post(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id/copy',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const originalEntryId = parseInt(req.params.id, 10);
+      const user = req.user as { id: number };
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(originalEntryId)) {
+        return throwBadRequest('Invalid client, entity or journal entry ID');
+      }
+
+      // Validate: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      // Get the original entry to validate it exists and belongs to this entity
+      const originalEntry = await journalEntryStorage.getJournalEntry(originalEntryId);
+      
+      if (!originalEntry) {
+        return throwNotFound('Journal entry not found');
+      }
+      
+      // Verify this entry belongs to the specified entity
+      if (originalEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+      
+      // Check if the original entry can be copied (prevent copying voided entries)
+      if (originalEntry.status === 'voided') {
+        return throwBadRequest('Voided journal entries cannot be copied');
+      }
+      
+      try {
+        // Use the storage method to copy the journal entry
+        const copiedEntry = await journalEntryStorage.copyJournalEntry(originalEntryId, user.id);
+        
+        console.log(`Successfully copied journal entry ${originalEntryId} to new entry ${copiedEntry.id}`);
+        
+        res.status(201).json(copiedEntry);
+      } catch (error) {
+        console.error('Error copying journal entry:', error);
+        throw error;
+      }
+    })
+  );
+
+  /**
+   * ---------------------------------------------------------------------------
    *  Hierarchical post route PUT /api/clients/:clientId/entities/:entityId/journal-entries/:id/post
    * ---------------------------------------------------------------------------
    */

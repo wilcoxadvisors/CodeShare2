@@ -110,6 +110,9 @@ export interface IJournalEntryStorage {
     referenceNumber?: string;
   }): Promise<JournalEntry | undefined>;
   
+  // Copy operations
+  copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry>;
+
   // Validation and helper methods
   validateJournalEntryBalance(id: number): Promise<boolean>;
   validateAccountIds(accountIds: number[], clientId: number): Promise<boolean>;
@@ -1526,6 +1529,139 @@ export class JournalEntryStorage implements IJournalEntryStorage {
 
     console.log(`CRON JOB: Reversal process complete. Success: ${successCount}, Failed: ${failCount}`);
     return { successCount, failCount };
+  }
+
+  async copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry> {
+    console.log(`Copying journal entry ${originalEntryId} for user ${newUserId}`);
+    
+    try {
+      // Fetch the original entry with all its lines and dimension tags
+      const originalEntry = await db.query.journalEntries.findFirst({
+        where: eq(journalEntries.id, originalEntryId),
+        with: {
+          lines: {
+            columns: {
+              id: true,
+              journalEntryId: true,
+              accountId: true,
+              type: true,
+              amount: true,
+              description: true,
+              entityCode: true,
+              fsliBucket: true,
+              internalReportingBucket: true,
+              item: true,
+              lineNo: true,
+              reference: true,
+              reconciled: true,
+              reconciledAt: true,
+              reconciledBy: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
+        }
+      });
+
+      if (!originalEntry) {
+        throw new ApiError(404, `Original journal entry with id ${originalEntryId} not found`);
+      }
+
+      // Start a database transaction to ensure data integrity
+      const newJournalEntry = await db.transaction(async (tx) => {
+        // Create the new journal entry with modified properties
+        const [copiedEntry] = await tx
+          .insert(journalEntries)
+          .values({
+            entityId: originalEntry.entityId,
+            clientId: originalEntry.clientId,
+            date: format(new Date(), 'yyyy-MM-dd'), // Use current date
+            status: 'draft', // Always create as draft
+            journalType: originalEntry.journalType,
+            referenceNumber: `COPY-${originalEntry.referenceNumber || ''}`,
+            description: `Copy of: ${originalEntry.description || ''}`,
+            totalAmount: originalEntry.totalAmount,
+            isAccrual: false, // Reset accrual settings for copies
+            reversalDate: null,
+            reversedEntryId: null,
+            createdBy: newUserId,
+            updatedBy: newUserId,
+            postedBy: null, // Clear posting information
+            postedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .returning();
+
+        if (!copiedEntry) {
+          throw new Error('Failed to create copied journal entry header');
+        }
+
+        // Copy all journal entry lines
+        for (const line of originalEntry.lines) {
+          // Get dimension tags for this line
+          const dimensionTags = await tx
+            .select({
+              dimensionId: txDimensionLink.dimensionId,
+              valueId: txDimensionLink.valueId
+            })
+            .from(txDimensionLink)
+            .where(eq(txDimensionLink.journalEntryLineId, line.id));
+
+          // Create the new line
+          const [newLine] = await tx
+            .insert(journalEntryLines)
+            .values({
+              journalEntryId: copiedEntry.id,
+              accountId: line.accountId,
+              type: line.type,
+              amount: line.amount,
+              description: line.description,
+              entityCode: line.entityCode,
+              fsliBucket: line.fsliBucket,
+              internalReportingBucket: line.internalReportingBucket,
+              item: line.item,
+              lineNo: line.lineNo,
+              reference: line.reference,
+              reconciled: false, // Reset reconciliation status
+              reconciledAt: null,
+              reconciledBy: null,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            })
+            .returning();
+
+          if (!newLine) {
+            throw new Error('Failed to create copied journal entry line');
+          }
+
+          // Copy dimension tags if they exist
+          if (dimensionTags && dimensionTags.length > 0) {
+            const newDimensionLinks = dimensionTags.map((tag) => ({
+              journalEntryLineId: newLine.id,
+              dimensionId: tag.dimensionId,
+              valueId: tag.valueId
+            }));
+            
+            await tx.insert(txDimensionLink).values(newDimensionLinks);
+          }
+        }
+
+        return copiedEntry;
+      });
+
+      // Refetch the complete entry with lines and dimension tags to return to the client
+      const fullCopiedEntry = await this.getJournalEntry(newJournalEntry.id);
+      if (!fullCopiedEntry) {
+        throw new Error("Could not retrieve the newly copied journal entry");
+      }
+      
+      console.log(`Successfully copied journal entry ${originalEntryId} to new entry ${newJournalEntry.id}`);
+      return fullCopiedEntry;
+      
+    } catch (e) {
+      throw handleDbError(e, `copying journal entry ${originalEntryId}`);
+    }
   }
 }
 
