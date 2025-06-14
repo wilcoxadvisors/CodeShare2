@@ -138,6 +138,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 - June 14, 2025. **Journal ID System Completely Refactored** - Implemented architect's three-part refactoring plan: Part 1 separated Journal Entry ID (read-only display) from Reference Number (user input field), Part 2 implemented proper JE-{clientId}-{entityId}-{MMDDYY}-{databaseId} format with preview functionality, Part 3 fixed validation schema to use referenceNumber field and ensured proper API payload mapping with both reference and referenceNumber fields for backend compatibility
 - June 14, 2025. **Client/Entity Navigation Fixed** - Resolved infinite redirect loop in Journal Entries module and restored proper client/entity switching functionality with stable navigation
 - June 14, 2025. **Default Date Timezone Fix** - Fixed Journal Entry default date initialization to use local date instead of UTC conversion, preventing tomorrow's date from appearing as default due to timezone shifts
+- June 14, 2025. **Entity Switching Stability Complete** - Fixed entity switching issues within same client by removing race conditions in EntityContext, stabilizing timing, and eliminating setTimeout delays that caused navigation conflicts
 
 ## User Preferences
 
