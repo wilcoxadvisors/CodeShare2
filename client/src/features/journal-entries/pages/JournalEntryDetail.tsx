@@ -1613,6 +1613,9 @@ function JournalEntryDetail() {
   
   const entityBalances = calculateEntityBalances();
   
+  // Diagnostic logging for button rendering
+  console.log("ARCHITECT_DEBUG: Entry data for button rendering:", { status: entry?.status, id: entry?.id });
+  
   return (
     <div className="py-6">
       <PageHeader
