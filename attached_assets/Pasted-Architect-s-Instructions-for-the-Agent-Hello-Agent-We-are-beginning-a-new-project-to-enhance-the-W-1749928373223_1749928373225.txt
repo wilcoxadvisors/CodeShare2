@@ -1,0 +1,29 @@
+Architect's Instructions for the Agent
+Hello, Agent. We are beginning a new project to enhance the Wilcox Advisors Accounting System. Your first major task will be to implement a "Copy Journal Entry" feature to improve user workflow.
+
+This is a high-priority feature. I am providing you with the complete, end-to-end implementation plan now so you have the full context. You will execute this plan one part at a time, awaiting my confirmation before proceeding to the next part.
+
+High-Level Goal: Allow a user to duplicate any existing journal entry. The system will create a new, identical entry in draft status and immediately open it in the form for the user to edit and post.
+
+Here is the implementation plan:
+
+Part 1: Backend Logic
+
+File: server/storage/journalEntryStorage.ts
+Action: Create a new method, copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry>.
+Logic:
+Fetch the original entry and its lines, including all dimension tags.
+In a transaction, create a new JournalEntry with a status of draft, a current date, a new unique reference number, and a description prefixed with "Copy of: ".
+Loop through the original lines and create new lines, copying the account, amount, type, description, and all dimension tags.
+Return the new journal entry object.
+Part 2: API Endpoint
+
+File: server/journalEntryRoutes.ts
+Action: Create a new POST route: /api/clients/:clientId/entities/:entityId/journal-entries/:id/copy.
+Logic: This route will call journalEntryStorage.copyJournalEntry and return the new draft entry.
+Part 3: Frontend UI and Navigation
+
+Files: client/src/features/journal-entries/pages/JournalEntryDetail.tsx and client/src/features/journal-entries/pages/JournalEntries.tsx.
+Action: Add a "Copy" button.
+Logic: Add a "Copy" button to the JournalEntryDetail page. When clicked, call the new /copy API endpoint. On success, navigate the user to the edit page for the new draft (/.../journal-entries/edit/:newId).
+Your first task is to begin with Part 1: Backend Logic. Modify the server/storage/journalEntryStorage.ts file according to the plan. Show me the code modification for review when you are done.
