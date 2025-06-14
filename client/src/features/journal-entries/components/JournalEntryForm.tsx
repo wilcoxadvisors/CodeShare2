@@ -269,7 +269,7 @@ interface DimensionTag {
 function createFormSchema() {
   return z.object({
     date: z.string().min(1, "Date is required"),
-    reference: z.string().min(3, "Reference must be at least 3 characters"),
+    referenceNumber: z.string().min(3, "Reference must be at least 3 characters"),
     referenceUserSuffix: z.string().optional(), // Optional user suffix for reference
     description: z.string().min(1, "Description is required"), // Make description required to match server validation
     journalType: z.enum(["JE", "AJ", "SJ", "CL"]).default("JE"),
@@ -1405,7 +1405,7 @@ const [journalData, setJournalData] = useState({
             clientId,
             entityId,
             journalData.date,
-            "..." // Placeholder for databaseId
+            999999 // Placeholder database ID for preview
           )
         );
       } else {
@@ -1946,12 +1946,7 @@ const [journalData, setJournalData] = useState({
       const contextAwareSchema = createFormSchema();
       
       // Full validation for posting using context-aware schema
-      // Map referenceNumber to reference for validation since the schema expects "reference"
-      const validationData = {
-        ...formData,
-        reference: formData.referenceNumber || "", // Map referenceNumber to reference for validation
-      };
-      const validation = validateForm(validationData, contextAwareSchema);
+      const validation = validateForm(formData, contextAwareSchema);
 
       if (!validation.valid) {
         setFieldErrors(validation.errors || {});
@@ -2024,7 +2019,8 @@ const [journalData, setJournalData] = useState({
     
     const entryData = {
       ...journalData,
-      referenceNumber: fullReference, // Use the complete reference with auto-generated prefix + optional suffix
+      reference: fullReference, // Backend expects "reference" field
+      referenceNumber: fullReference, // Keep both for compatibility
       date: journalData.date, // Use direct date string from input - already in YYYY-MM-DD format
       clientId: resolvedClientId,
       entityId,
