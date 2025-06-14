@@ -433,6 +433,19 @@ function JournalEntryDetail() {
     },
     onSuccess: (copiedEntry) => {
       console.log('Successfully copied journal entry:', copiedEntry);
+      
+      // PART 4 FIX: Invalidate journal entry list cache to show the new copied entry
+      if (clientId && currentEntity?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+        });
+        
+        // Also invalidate any general ledger queries that might be affected
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/general-ledger`]
+        });
+      }
+      
       toast({
         title: 'Journal Entry Copied',
         description: 'The journal entry has been copied successfully. You will now be redirected to edit the copy.',
@@ -1133,6 +1146,19 @@ function JournalEntryDetail() {
       postJournalEntry.mutate(postParams, {
         onSuccess: (result) => {
           console.log('DEBUG: Post success response:', JSON.stringify(result, null, 2));
+          
+          // PART 4 FIX: Invalidate journal entry list cache to show updated status
+          if (clientId && currentEntity?.id) {
+            queryClient.invalidateQueries({
+              queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+            });
+            
+            // Also invalidate general ledger queries that might be affected
+            queryClient.invalidateQueries({
+              queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/general-ledger`]
+            });
+          }
+          
           toast({
             title: "Journal Entry Posted",
             description: "The journal entry has been posted successfully.",
@@ -1256,6 +1282,13 @@ function JournalEntryDetail() {
                 lines: formattedLines
               }, {
                 onSuccess: () => {
+                  // PART 4 FIX: Invalidate journal entry list cache to show updated status
+                  if (clientId && currentEntity?.id) {
+                    queryClient.invalidateQueries({
+                      queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+                    });
+                  }
+                  
                   toast({
                     title: "Entry Submitted",
                     description: "Journal entry has been submitted for approval.",

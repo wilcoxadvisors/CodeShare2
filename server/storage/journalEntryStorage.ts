@@ -457,62 +457,81 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         updatedEntryData.date = formattedDate;
       }
       
-      // Start a transaction
+      // Start a transaction for atomic operations
       return await db.transaction(async (tx) => {
-        // Update the journal entry
+        // Update the journal entry header
         const [updatedEntry] = await tx.update(journalEntries)
           .set(updatedEntryData)
           .where(eq(journalEntries.id, id))
           .returning();
         
-        // If lines are provided, handle line updates
+        // If lines are provided, handle line updates with dimension tags
         if (lines && lines.length > 0) {
-          // Get existing lines
+          console.log(`Processing ${lines.length} lines with dimension tag updates`);
+          
+          // Step 1: Get all existing lines to delete their dimension links
           const existingLines = await tx.select()
             .from(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
-          // Delete existing dimension links first (to maintain referential integrity)
+          // Step 2: Delete all existing dimension links for this journal entry
           const existingLineIds = existingLines.map(line => line.id);
           if (existingLineIds.length > 0) {
+            console.log(`Deleting dimension links for ${existingLineIds.length} existing lines`);
             await tx.delete(txDimensionLink)
               .where(inArray(txDimensionLink.journalEntryLineId, existingLineIds));
           }
           
-          // Delete existing lines for this journal entry
+          // Step 3: Delete all existing lines for this journal entry
           await tx.delete(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
-          // Insert new lines with dimension tags
+          // Step 4: Insert new lines with their dimension tags
           for (const line of lines) {
-            // Extract tags from line data
+            // Extract tags from line data before inserting the line
             const { tags, ...lineData } = line as any;
             
-            // Insert the line first
+            console.log(`DIMENSION DEBUG: Processing line with tags:`, tags);
+            
+            // Insert the journal entry line first
             const [insertedLine] = await tx.insert(journalEntryLines)
               .values({
                 ...lineData,
                 journalEntryId: id,
-                // Ensure amount is a string
+                // Ensure amount is a string for database consistency
                 amount: typeof lineData.amount === 'number' ? lineData.amount.toString() : lineData.amount
               } as any)
               .returning();
             
-            // If tags exist, save dimension links
+            console.log(`DIMENSION DEBUG: Inserted line ${insertedLine.id}, processing ${tags?.length || 0} dimension tags`);
+            
+            // Step 5: Insert dimension tags for this line if they exist
             if (tags && Array.isArray(tags) && tags.length > 0) {
-              console.log(`Saving ${tags.length} dimension tags for line ${insertedLine.id}`);
+              console.log(`DIMENSION DEBUG: Inserting ${tags.length} dimension tags for line ${insertedLine.id}`);
               
               for (const tag of tags) {
-                await tx.insert(txDimensionLink)
-                  .values({
-                    journalEntryLineId: insertedLine.id,
-                    dimensionId: tag.dimensionId,
-                    dimensionValueId: tag.dimensionValueId
-                  });
+                if (tag.dimensionId && tag.dimensionValueId) {
+                  console.log(`DIMENSION DEBUG: Inserting tag - dimensionId: ${tag.dimensionId}, dimensionValueId: ${tag.dimensionValueId}`);
+                  
+                  await tx.insert(txDimensionLink)
+                    .values({
+                      journalEntryLineId: insertedLine.id,
+                      dimensionId: tag.dimensionId,
+                      dimensionValueId: tag.dimensionValueId
+                    });
+                } else {
+                  console.log(`DIMENSION DEBUG: Skipping invalid tag:`, tag);
+                }
               }
+              
+              console.log(`DIMENSION DEBUG: Successfully saved ${tags.length} dimension tags for line ${insertedLine.id}`);
+            } else {
+              console.log(`DIMENSION DEBUG: No dimension tags to save for line ${insertedLine.id}`);
             }
           }
         }
+        
+        console.log(`Successfully updated journal entry ${id} with all dimension tags`);
         
         // Return the updated entry
         return {
@@ -521,6 +540,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         };
       });
     } catch (e) {
+      console.error(`Error updating journal entry ${id} with lines:`, e);
       throw handleDbError(e, `updating journal entry ${id} with lines`);
     }
   }
