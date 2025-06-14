@@ -101,6 +101,10 @@ export default function EntitySelector() {
                     console.log("ARCHITECT_DEBUG_SELECTOR_COMMAND_ITEM: onSelect triggered for entity:", entity.id, entity.name);
                     handleSelectEntity(entity);
                   }}
+                  onClick={() => {
+                    console.log("ARCHITECT_DEBUG_SELECTOR_COMMAND_ITEM: onClick triggered for entity:", entity.id, entity.name);
+                    handleSelectEntity(entity);
+                  }}
                   className="cursor-pointer"
                 >
                   <Check
