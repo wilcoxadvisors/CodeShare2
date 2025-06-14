@@ -1,0 +1,31 @@
+Architect's Instruction for the Replit AI Agent
+Mission: Update the Instructions.md project roadmap to accurately reflect the completion of the "Automatic Accrual Reversals" feature and other critical fixes.
+
+File to Modify: Instructions.md
+
+Action: You will perform three targeted updates to the document.
+
+Part 1: Update the Changelog
+Navigate to the "Recent Changelog" section at the top of the Instructions.md file.
+Add a new entry to the top of the list for today's date to summarize the recent accomplishments.
+Add this new line:
+2025-06-14: Automatic Accrual Reversal Feature Complete & Core Fixes. Implemented industry-standard immediate-posting for accrual reversals. Corrected Journal ID generation to be scalable and fixed critical data persistence and UI state bugs.
+Part 2: Update the Automatic Accrual Reversals Task
+In the main roadmap, locate Task B.2.2 (Automatic Accrual Reversals).
+Change its status from 📝 NOT STARTED to ✅ COMPLETE.
+Replace the old, multi-step plan listed under that task with the following new summary that describes the final, simplified implementation.
+Replace the old description with this new summary:
+✅ COMPLETE. Implemented using an industry-standard, immediate-posting method. When a user posts an entry flagged as an accrual with a future reversal date, the system instantly creates and posts the corresponding reversal entry with that future date. This approach is simpler and more robust than a background scheduler. The frontend UI includes a switch and a date picker with correct timezone and date-validation logic.
+
+Part 3: Document Critical Fixes
+Navigate to the "Newly Added Section: Resolved & Unresolved Issues" section.
+Find the ✅ Recently Resolved Issues sub-section.
+Add the following new items to this list to document the important fixes that were also completed.
+Add these new bullet points:
+Journal ID System Refactored: Corrected the Journal ID generation to use the new, scalable format (JE-{clientId}-{entityId}-{MMDDYY}-{databaseId}). Fixed the UI to show a stable preview ID for new entries and the correct permanent ID for existing entries.
+
+Data Persistence Failures: Fixed a series of critical bugs preventing Accrual and Dimension Tag data from being correctly saved to the database and loaded back into the UI.
+
+UI State & Navigation Bugs: Resolved a major bug with unstable React keys that caused UI selections to not appear. Fixed a critical navigation bug that caused an infinite redirect loop when switching between clients/entities.
+
+Agent, please apply these documentation updates to the Instructions.md file now.

@@ -139,6 +139,7 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 - June 14, 2025. **Client/Entity Navigation Fixed** - Resolved infinite redirect loop in Journal Entries module and restored proper client/entity switching functionality with stable navigation
 - June 14, 2025. **Default Date Timezone Fix** - Fixed Journal Entry default date initialization to use local date instead of UTC conversion, preventing tomorrow's date from appearing as default due to timezone shifts
 - June 14, 2025. **Entity Switching Stability Complete** - Fixed entity switching issues within same client by removing race conditions in EntityContext, stabilizing timing, and eliminating setTimeout delays that caused navigation conflicts
+- June 14, 2025. **Global Entity Selector Fixed** - Resolved persistent entity switching bug by removing aggressive auto-selection logic in EntityContext that was fighting with user manual selections. GlobalContextSelector now properly respects user choices and navigates correctly between entities within the same client
 
 ## User Preferences
 

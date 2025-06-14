@@ -1,6 +1,7 @@
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
 ## Recent Changelog:
+- **2025-06-14**: Automatic Accrual Reversal Feature Complete & Core Fixes. Implemented industry-standard immediate-posting for accrual reversals. Corrected Journal ID generation to be scalable and fixed critical data persistence and UI state bugs.
 - **2025-06-11**: Accrual Reversal Feature Specified. Added plan for auto-reversing journal entries.
 - **2025-06-11**: JE Module Stabilized & Dimensions Backend Complete. All P0 bugs for manual Journal Entry workflow (including attachments, reverse, void, delete) have been resolved. Backend foundation for Dimensions (Schema, Seeding, Storage, API) is complete. Initial frontend UI for listing and creating Dimensions is complete.
 - **2025-05-06**: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
@@ -325,11 +326,9 @@ The Dimensions module is now feature-complete and stable. This includes a full s
   - 🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
   - 🔄 Implement a Smart Rules MVP (JSON validation).
 
-* **(Task B.2.2)** Automatic Accrual Reversals: **📝 NOT STARTED (New Priority)**
-  - 📝 Schema: Add isAccrual (boolean) and reversalForEntryId (integer) fields to the journalEntries table in shared/schema.ts.
-  - 📝 Backend: Implement a createReversingEntryForAccrual function in journalEntryStorage.ts that creates a new, posted JE for the first day of the next month with flipped debits/credits.
-  - 📝 Frontend: Add an "Auto-Reverse Accrual" toggle switch to the JournalEntryForm.tsx. When active, it should display the calculated reversal date to the user.
-  - 📝 API: Update the journal entry creation logic to check the isAccrual flag and trigger the new backend reversal function upon successful posting of the original entry.
+* **(Task B.2.2)** Automatic Accrual Reversals: **✅ COMPLETE**
+  
+  ✅ COMPLETE. Implemented using an industry-standard, immediate-posting method. When a user posts an entry flagged as an accrual with a future reversal date, the system instantly creates and posts the corresponding reversal entry with that future date. This approach is simpler and more robust than a background scheduler. The frontend UI includes a switch and a date picker with correct timezone and date-validation logic.
 
   - Build **Client Portal read-only Dimensions tab** for reference
   - Implement a **Smart Rules MVP** (JSON validation):
@@ -737,6 +736,12 @@ Throughout every task explicitly:
 **Attachment Bug #7:** All major attachment issues are resolved.
 
 **Runtime Crashes** on the JE Detail page have been fixed.
+
+**Journal ID System Refactored:** Corrected the Journal ID generation to use the new, scalable format (JE-{clientId}-{entityId}-{MMDDYY}-{databaseId}). Fixed the UI to show a stable preview ID for new entries and the correct permanent ID for existing entries.
+
+**Data Persistence Failures:** Fixed a series of critical bugs preventing Accrual and Dimension Tag data from being correctly saved to the database and loaded back into the UI.
+
+**UI State & Navigation Bugs:** Resolved a major bug with unstable React keys that caused UI selections to not appear. Fixed a critical navigation bug that caused an infinite redirect loop when switching between clients/entities.
 
 ### 🔄 Unresolved Issues / Next Steps
 
