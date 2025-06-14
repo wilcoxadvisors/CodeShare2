@@ -1,27 +1,18 @@
 import { useState } from "react";
 import { useEntity } from "../contexts/EntityContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { 
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
-  CommandList 
-} from "@/components/ui/command";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
 
 export default function EntitySelector() {
   const { entities, currentEntity, setCurrentEntity, selectedClientId } = useEntity();
-  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,13 +33,18 @@ export default function EntitySelector() {
   }) || [];
 
   // Handle entity selection
-  const handleSelectEntity = (entity: any) => {
+  const handleSelectEntity = (entityId: string) => {
+    const entity = filteredEntities.find(e => e.id.toString() === entityId);
+    if (!entity) {
+      console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity not found for ID:", entityId);
+      return;
+    }
+    
     console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: BEFORE entity selection - clientId:", entity.clientId, "entityId:", entity.id);
     console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Current location:", location.pathname);
     
     // Update the entity in context
     setCurrentEntity(entity);
-    setOpen(false);
     
     // Navigate to the journal entries for this entity if we're in the journal entries module
     if (location.pathname.includes('/journal-entries')) {
@@ -63,68 +59,59 @@ export default function EntitySelector() {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Select entity"
-          className="w-[200px] justify-between"
-          disabled={!selectedClientId}
-        >
-          {currentEntity 
-            ? currentEntity.name 
-            : (selectedClientId ? "Select entity" : "Select client first")}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
-        <Command>
-          <CommandInput 
-            placeholder="Search entities..." 
+    <div className="w-[300px]">
+      {/* Search filter for entities */}
+      {filteredEntities.length > 5 && (
+        <div className="relative mb-2">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search entities..."
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
           />
-          <CommandList>
-            <CommandEmpty>
+        </div>
+      )}
+      
+      {/* Entity selector */}
+      <Select 
+        value={currentEntity?.id?.toString() || ""} 
+        onValueChange={(value) => {
+          console.log("ARCHITECT_DEBUG_SELECTOR_SELECT_CHANGE: Value changed to:", value);
+          handleSelectEntity(value);
+        }}
+        disabled={!selectedClientId}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue 
+            placeholder={selectedClientId ? "Select entity" : "Select client first"} 
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {filteredEntities.length === 0 ? (
+            <div className="p-2 text-sm text-muted-foreground">
               {selectedClientId 
                 ? "No entities found for selected client." 
                 : "Please select a client first."}
-            </CommandEmpty>
-            <CommandGroup>
-              {filteredEntities.map((entity) => (
-                <CommandItem
-                  key={entity.id}
-                  value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`}
-                  onSelect={() => {
-                    console.log("ARCHITECT_DEBUG_SELECTOR_COMMAND_ITEM: onSelect triggered for entity:", entity.id, entity.name);
-                    handleSelectEntity(entity);
-                  }}
-                  onClick={() => {
-                    console.log("ARCHITECT_DEBUG_SELECTOR_COMMAND_ITEM: onClick triggered for entity:", entity.id, entity.name);
-                    handleSelectEntity(entity);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      currentEntity?.id === entity.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span>{entity.name}</span>
-                    {entity.code && (
-                      <span className="text-xs text-muted-foreground">{entity.code}</span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+            </div>
+          ) : (
+            filteredEntities.map((entity) => (
+              <SelectItem 
+                key={entity.id} 
+                value={entity.id.toString()}
+                className="cursor-pointer"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{entity.name}</span>
+                  {entity.code && (
+                    <span className="text-sm text-muted-foreground">{entity.code}</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
