@@ -282,7 +282,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
     }
   }, [queryIsLoading, isFetching, isAuthLoadingFromAuthContext, initialLoadComplete, isSuccess, isError, allEntities, isLoading]);
   
-  // When client selection changes, clear entity if needed
+  // When client selection changes, clear entity if needed - but debounce to prevent conflicts
   useEffect(() => {
     // Skip this effect when we're loading or don't have a client selected
     if (!selectedClientId) {
@@ -305,10 +305,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
       initialLoadComplete
     });
     
-    // Clear entity selection if it doesn't match the new client
+    // Only clear entity selection if it doesn't match the new client
     if (currentEntity && currentEntity.clientId !== selectedClientId) {
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Clearing current entity as it belongs to a different client");
       setCurrentEntity(null);
+      return; // Exit early to prevent immediate auto-selection
     }
     
     // Auto-select first entity when client changes but only if none is selected
@@ -330,7 +331,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
           name: clientEntities[0].name,
           clientId: clientEntities[0].clientId
         });
-        setCurrentEntity(clientEntities[0]);
+        
+        // Delay auto-selection to prevent conflicts
+        setTimeout(() => {
+          setCurrentEntity(clientEntities[0]);
+        }, 100);
       } else {
         console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No eligible entities found for client ${selectedClientId}`);
       }

@@ -75,20 +75,29 @@ function JournalEntries() {
     "total entities in context": entities.length
   });
   
-  // Update entity context if needed based on route params
+  // Update entity context if needed based on route params - with stability checks
   useEffect(() => {
     console.log("JournalEntries: Route params check - entityId:", entityId, 
                 "clientId:", clientId, 
                 "currentEntity:", currentEntity?.id);
     
-    if (entityId && (!currentEntity || currentEntity.id !== entityId)) {
+    // Only proceed if we have valid parameters and entities are loaded
+    if (!entityId || !clientId || entities.length === 0) {
+      return;
+    }
+    
+    // Only update if the current entity doesn't match the URL params
+    if (!currentEntity || currentEntity.id !== entityId || currentEntity.clientId !== clientId) {
       console.log("JournalEntries: Looking for entity with ID:", entityId, "in", entities.length, "entities");
-      const entity = entities.find(e => e.id === entityId);
+      const entity = entities.find(e => e.id === entityId && e.clientId === clientId);
       if (entity) {
         console.log("JournalEntries: Found entity in context, setting current entity:", entity.name);
-        setCurrentEntity(entity);
+        // Add a small delay to prevent race conditions with EntityContext
+        setTimeout(() => {
+          setCurrentEntity(entity);
+        }, 10);
       } else {
-        console.log("JournalEntries: Entity not found in context for ID:", entityId);
+        console.log("JournalEntries: Entity not found in context for ID:", entityId, "clientId:", clientId);
       }
     }
   }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
