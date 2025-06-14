@@ -416,6 +416,45 @@ function JournalEntryDetail() {
       });
     }
   });
+
+  // Copy journal entry mutation
+  const copyJournalEntry = useMutation({
+    mutationFn: async () => {
+      if (!entryId || !clientId || !currentEntity?.id) {
+        throw new Error('Journal entry ID, client ID, and entity ID are required');
+      }
+      
+      const copyUrl = `/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/copy`;
+      console.log(`Copying journal entry via URL: ${copyUrl}`);
+      
+      return await apiRequest(copyUrl, {
+        method: 'POST'
+      });
+    },
+    onSuccess: (copiedEntry) => {
+      console.log('Successfully copied journal entry:', copiedEntry);
+      toast({
+        title: 'Journal Entry Copied',
+        description: 'The journal entry has been copied successfully. You will now be redirected to edit the copy.',
+      });
+      
+      // Navigate to the edit page for the new copied entry
+      if (clientId && currentEntity?.id && copiedEntry.id) {
+        navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${copiedEntry.id}/edit`);
+      } else {
+        // Fallback to legacy route if needed
+        navigate(`/journal-entries/${copiedEntry.id}/edit`);
+      }
+    },
+    onError: (error: any) => {
+      console.error('Error copying journal entry:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to copy journal entry: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
   
   // Handle file input change from conventional file input
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1144,16 +1183,40 @@ function JournalEntryDetail() {
     
     // Define basic buttons (not available for posted or voided entries)
     const basicButtons = (
-      <Button variant="outline" onClick={() => {
-        if (clientId && currentEntity?.id && entryId) {
-          navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
-        } else {
-          navigate(`/journal-entries/${entryId}/edit`);
-        }
-      }}>
-        <Edit className="mr-2 h-4 w-4" />
-        Edit
-      </Button>
+      <div className="flex space-x-2">
+        <Button variant="outline" onClick={() => {
+          if (clientId && currentEntity?.id && entryId) {
+            navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
+          } else {
+            navigate(`/journal-entries/${entryId}/edit`);
+          }
+        }}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit
+        </Button>
+        
+        {/* Copy button - available for all entries except voided ones */}
+        {status !== 'voided' && status !== 'void' && (
+          <Button 
+            variant="outline" 
+            onClick={() => copyJournalEntry.mutate()}
+            disabled={copyJournalEntry.isPending}
+            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          >
+            {copyJournalEntry.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Copying...
+              </>
+            ) : (
+              <>
+                <FilePlus className="mr-2 h-4 w-4" />
+                Copy
+              </>
+            )}
+          </Button>
+        )}
+      </div>
     );
     
     // Conditionally show buttons based on status
