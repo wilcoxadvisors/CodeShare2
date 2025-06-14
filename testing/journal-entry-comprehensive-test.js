@@ -9,9 +9,20 @@ import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import { CookieJar } from 'tough-cookie';
+import { wrapper } from 'axios-cookiejar-support';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Create persistent HTTP client with cookie jar support
+const jar = new CookieJar();
+const httpClient = wrapper(axios.create({ 
+  jar,
+  timeout: 30000,
+  validateStatus: () => true // Don't throw errors on non-2xx status codes
+}));
 
 // Test configuration
 const TEST_CONFIG = {
@@ -44,49 +55,38 @@ const testResults = {
   integration: { passed: 0, failed: 0, errors: [] }
 };
 
-// Session management for authenticated requests
-let sessionCookies = '';
-
-// HTTP client utility
-async function makeRequest(method, url, data = null, headers = {}) {
-  const fetch = (await import('node-fetch')).default;
-  
-  const options = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sessionCookies && { 'Cookie': sessionCookies }),
-      ...headers
-    }
-  };
-  
-  if (data) {
-    options.body = JSON.stringify(data);
-  }
-  
+// HTTP client utility using persistent cookie-aware axios client
+async function makeRequest(method, url, data = null, additionalHeaders = {}) {
   try {
-    const response = await fetch(url, options);
+    const config = {
+      method,
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        ...additionalHeaders
+      }
+    };
     
-    // Capture session cookies from login response
-    if (response.headers.get('set-cookie')) {
-      sessionCookies = response.headers.get('set-cookie');
+    if (data && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
+      config.data = data;
     }
     
-    const responseData = await response.text();
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(responseData);
-    } catch {
-      parsedData = responseData;
-    }
+    const response = await httpClient(config);
     
     return {
       status: response.status,
-      data: parsedData,
+      data: response.data,
       headers: response.headers
     };
   } catch (error) {
+    // Handle axios errors
+    if (error.response) {
+      return {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      };
+    }
     throw new Error(`Request failed: ${error.message}`);
   }
 }
@@ -304,24 +304,39 @@ async function runIntegrationTests() {
     if (TEST_CONFIG.createdEntryId) {
       log('info', 'Integration Test: Copy Journal Entry');
       
-      // First, post the entry to make it copyable
+      // First, post the entry to make it copyable using PUT method
       const postUrl = `${TEST_CONFIG.baseUrl}/api/clients/${TEST_CONFIG.testClient.id}/entities/${TEST_CONFIG.testEntity.id}/journal-entries/${TEST_CONFIG.createdEntryId}/post`;
-      const postResponse = await makeRequest('POST', postUrl);
+      const postResponse = await makeRequest('PUT', postUrl);
       
       if (postResponse.status === 200) {
         log('info', '✅ Journal entry posted successfully');
         
-        // Now copy it
-        const copyUrl = `${TEST_CONFIG.baseUrl}/api/clients/${TEST_CONFIG.testClient.id}/entities/${TEST_CONFIG.testEntity.id}/journal-entries/${TEST_CONFIG.createdEntryId}/copy`;
-        const copyResponse = await makeRequest('POST', copyUrl);
+        // Wait for the status update to propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        if (copyResponse.status === 201 && copyResponse.data.description.includes('Copy of:')) {
-          testResults.integration.passed++;
-          log('info', '✅ Copy functionality working correctly', { copiedId: copyResponse.data.id });
+        // Verify the entry is actually posted by retrieving it
+        const verifyUrl = `${TEST_CONFIG.baseUrl}/api/clients/${TEST_CONFIG.testClient.id}/entities/${TEST_CONFIG.testEntity.id}/journal-entries/${TEST_CONFIG.createdEntryId}`;
+        const verifyResponse = await makeRequest('GET', verifyUrl);
+        
+        if (verifyResponse.status === 200 && verifyResponse.data.status === 'posted') {
+          log('info', '✅ Entry status verified as posted');
+          
+          // Now copy it
+          const copyUrl = `${TEST_CONFIG.baseUrl}/api/clients/${TEST_CONFIG.testClient.id}/entities/${TEST_CONFIG.testEntity.id}/journal-entries/${TEST_CONFIG.createdEntryId}/copy`;
+          const copyResponse = await makeRequest('POST', copyUrl);
+          
+          if (copyResponse.status === 201 && copyResponse.data.description && copyResponse.data.description.includes('Copy of:')) {
+            testResults.integration.passed++;
+            log('info', '✅ Copy functionality working correctly', { copiedId: copyResponse.data.id });
+          } else {
+            testResults.integration.failed++;
+            testResults.integration.errors.push(`Copy failed: ${copyResponse.status} - ${JSON.stringify(copyResponse.data)}`);
+            log('error', '❌ Copy functionality failed', copyResponse);
+          }
         } else {
           testResults.integration.failed++;
-          testResults.integration.errors.push(`Copy failed: ${copyResponse.status}`);
-          log('error', '❌ Copy functionality failed', copyResponse);
+          testResults.integration.errors.push(`Status verification failed: Entry status is ${verifyResponse.data?.status || 'unknown'}`);
+          log('error', '❌ Entry was not properly posted', verifyResponse.data);
         }
       } else {
         testResults.integration.failed++;

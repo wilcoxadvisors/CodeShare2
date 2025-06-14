@@ -1,19 +1,16 @@
 {
   "summary": {
-    "timestamp": "2025-06-14T21:45:25.712Z",
-    "totalTests": 7,
-    "totalPassed": 2,
-    "totalFailed": 5,
-    "successRate": "28.57%"
+    "timestamp": "2025-06-14T21:59:02.414Z",
+    "totalTests": 10,
+    "totalPassed": 7,
+    "totalFailed": 3,
+    "successRate": "70.00%"
   },
   "tiers": {
     "Tier 1 - Functional Integration": {
-      "passed": 1,
-      "failed": 2,
-      "errors": [
-        "Creation failed: 401",
-        "Balance validation failed: Expected 400, got 401"
-      ]
+      "passed": 5,
+      "failed": 0,
+      "errors": []
     },
     "Tier 2 - Property-Based Testing": {
       "passed": 0,
@@ -30,15 +27,14 @@
       ]
     },
     "Integration Testing": {
-      "passed": 0,
+      "passed": 1,
       "failed": 1,
       "errors": [
-        "E2E create failed: 401"
+        "Copy failed: 500 - {\"message\":\"Cannot copy a non-posted journal entry. Status: draft\"}"
       ]
     }
   },
   "recommendations": [
-    "Review basic API functionality and data validation",
     "Improve business logic validation for edge cases",
     "Review API contracts and mutation testing configuration",
     "Investigate end-to-end workflow issues"
