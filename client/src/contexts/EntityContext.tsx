@@ -312,34 +312,9 @@ function EntityProvider({ children }: { children: ReactNode }) {
       return; // Exit early to prevent immediate auto-selection
     }
     
-    // Auto-select first entity when client changes but only if none is selected
-    // AND we have received entity data from the server
-    if (!currentEntity && Array.isArray(allEntities) && allEntities.length > 0 && isSuccess) {
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Looking for entities to auto-select after client change");
-      
-      // Add null check for allEntities before filtering
-      const clientEntities = allEntities.filter(entity => 
-        entity && entity.clientId === selectedClientId
-      );
-      
-      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Found ${clientEntities.length} entities for client ${selectedClientId}:`, 
-        clientEntities.slice(0, 3).map(e => ({ id: e.id, name: e.name })));
-      
-      if (clientEntities && clientEntities.length > 0) {
-        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Auto-selecting first entity:`, {
-          id: clientEntities[0].id,
-          name: clientEntities[0].name,
-          clientId: clientEntities[0].clientId
-        });
-        
-        // Delay auto-selection to prevent conflicts
-        setTimeout(() => {
-          setCurrentEntity(clientEntities[0]);
-        }, 100);
-      } else {
-        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No eligible entities found for client ${selectedClientId}`);
-      }
-    }
+    // REMOVED: Auto-selection logic that was causing state battles
+    // The user's explicit selection from GlobalContextSelector should be the single source of truth
+    // Auto-selection has been disabled to prevent fighting with user selections
   }, [selectedClientId, currentEntity, allEntities, isLoading, queryIsLoading, isFetching, isSuccess, initialLoadComplete]);
 
   // Debug logs for tracking state changes
