@@ -1,0 +1,83 @@
+Architect's Instructions for the Agent
+Mission: Implement a comprehensive testing suite for the Journal Entry module.
+
+We will approach this in three parts, starting with the backend and moving to the frontend.
+
+Part 1: Backend Unit & Integration Tests
+Goal: Ensure the fundamental business logic and database operations in journalEntryStorage.ts are flawless.
+
+File to Create/Modify: tests/unit/journalEntryStorage.test.ts (Create this file if it doesn't exist, following the pattern of other tests in that directory).
+
+Test Scenarios to Implement:
+
+createJournalEntry:
+
+Should create a new journal entry with a draft status.
+Should correctly save all lines with their amounts, types, and descriptions.
+Should correctly save all dimension tags associated with each line.
+Should fail if the debits and credits are not equal.
+updateJournalEntry:
+
+Should successfully update the header fields (e.g., description, date).
+Should correctly add a new line to an existing draft entry.
+Should correctly remove a line from an existing draft entry.
+Crucially, should correctly update dimension tags:
+Test adding a new tag to a line.
+Test removing a tag from a line.
+Test changing a tag on a line.
+Verify that updating one entry's tags does not affect another's.
+postJournalEntry:
+
+Should change a draft entry's status to posted.
+Should fail to post an entry that is not balanced.
+voidJournalEntry:
+
+Should change a posted entry's status to voided.
+Should not be possible to void an entry that is already a draft.
+copyJournalEntry:
+
+Should create a new entry with a draft status.
+The new entry's description should be prefixed with "Copy of:".
+The new entry must have a new, unique referenceNumber that satisfies the NOT NULL constraint.
+Should perfectly duplicate all lines and their associated dimension tags from the original entry.
+Part 2: API Endpoint Tests
+Goal: Verify the API routes in journalEntryRoutes.ts for security, input validation, and correct responses.
+
+File to Create/Modify: tests/api/journalEntries.test.ts
+
+Test Scenarios to Implement:
+
+Authentication: For every endpoint, verify that a request without a valid authentication token returns a 401 Unauthorized error.
+Authorization: Create tests to ensure a user from clientId 1 CANNOT access, view, edit, or copy a journal entry belonging to clientId 2. This is critical for preventing data leakage.
+Input Validation:
+For the POST / and PUT /:id endpoints, send an unbalanced entry (debits != credits) and assert a 400 Bad Request response.
+Send requests with invalid data types (e.g., a string for an amount) and verify a 400 Bad Request response.
+Success Cases: For all endpoints, test the happy path with valid data and assert a 200 OK or 201 Created status, and verify the structure of the JSON response body.
+Part 3: Frontend End-to-End (E2E) Tests
+Goal: Simulate full user workflows in the browser to ensure a seamless user experience.
+
+File to Create/Modify: cypress/e2e/journalEntry.spec.cy.ts (Expand upon this existing file).
+
+User Workflows to Automate:
+
+Full Create-to-Post Flow:
+
+Login as a user.
+Navigate to the "New Journal Entry" page.
+Fill out the form, add at least two lines.
+Add at least one dimension tag to each line.
+Save the entry as a draft.
+From the journal entries list, find and open the draft.
+Verify all data is correct.
+Post the entry.
+Verify its status changes to "Posted" in the list.
+Copy and Modify Flow:
+
+Find the "Posted" entry from the previous test.
+Click the "Copy" button.
+Verify you are redirected to a new entry form in draft status.
+Change the description.
+On one line, remove a dimension tag.
+On another line, add a new dimension tag.
+Save the new draft.
+Re-open the new draft and verify all changes, including the dimension tag modifications, were saved correctly.

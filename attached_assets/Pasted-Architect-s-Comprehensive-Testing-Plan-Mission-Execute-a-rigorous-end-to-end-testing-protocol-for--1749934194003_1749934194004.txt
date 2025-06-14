@@ -1,0 +1,87 @@
+Architect's Comprehensive Testing Plan
+Mission: Execute a rigorous, end-to-end testing protocol for the Journal Entry (JE) module, covering all data fields, user actions, and edge cases across the entire application stack.
+
+Part 1: Backend Unit & Integration Tests (Expanded)
+Goal: Achieve 100% confidence in the backend business logic and data layer operations.
+
+Files to Create/Modify:
+
+tests/unit/journalEntryStorage.test.ts
+tests/unit/fileStorage.test.ts (or similar, for attachment-specific logic)
+Test Scenarios to Implement:
+
+journalEntryStorage.ts - Full Field Coverage:
+
+Create/Update: All tests must now verify every single field in shared/schema.ts for the journalEntries and journalEntryLines tables. This includes explicitly testing:
+journalType (e.g., 'JE', 'ADJ').
+isAccrual (true/false).
+reversalDate (ensuring it's saved correctly when isAccrual is true).
+All other nullable and default fields to ensure they behave as expected.
+journalEntryStorage.ts - Transactional Integrity:
+
+Create a complex test case for the updateJournalEntry method that, in a single transaction:
+Modifies the JE header description.
+Updates one existing line's amount.
+Deletes a second existing line.
+Adds a third, new line.
+Removes all dimension tags from the first line.
+Adds new dimension tags to the new third line.
+The test must verify that all of these changes are correctly persisted after the transaction is complete.
+fileStorage - Attachment Logic:
+
+File Association: Test that file records created are correctly associated with the correct journalEntryId.
+Deletion: Test that deleting a file record removes the association from the database but does not delete the file from the underlying storage (as it may be referenced elsewhere).
+Security: Test that a user cannot access or associate files with a Journal Entry belonging to another client.
+Part 2: API Endpoint Tests (Expanded)
+Goal: Harden all Journal Entry and Attachment API endpoints against invalid data and unauthorized access.
+
+Files to Create/Modify:
+
+tests/api/journalEntries.test.ts
+tests/api/attachments.test.ts
+Test Scenarios to Implement:
+
+Full Payload Tests:
+Expand POST /journal-entries and PUT /journal-entries/:id tests to use payloads containing every possible field to ensure they are correctly processed and not dropped.
+File Upload Endpoint (POST /.../journal-entries/:id/files):
+Success: Test uploading a valid file type (e.g., PDF, CSV).
+Invalid Type: Test uploading a disallowed file type (e.g., a .zip file) and assert a 400 Bad Request.
+Permissions: Test that a user cannot upload a file to a JE belonging to another client (assert 403 Forbidden or 404 Not Found).
+Posted Entry: Test that files CANNOT be attached to a JE that is already posted.
+File Deletion Endpoint (DELETE /.../files/:fileId):
+Success: Test deleting a file association from a draft JE.
+Permissions: Test that a user cannot delete a file association from another client's JE.
+Posted Entry: Test that file associations CANNOT be deleted from a JE that is already posted.
+Part 3: Frontend End-to-End (E2E) Tests (Expanded)
+Goal: Automate complex, multi-step user workflows to guarantee the UI is robust, intuitive, and bug-free.
+
+File to Create/Modify: cypress/e2e/comprehensive-journal-entry.spec.cy.ts (Create a new, dedicated spec file for this).
+
+User Workflow to Automate: "The Ultimate Journal Entry Lifecycle"
+
+Create Complex Draft:
+
+Log in and navigate to the "New Journal Entry" form.
+Fill out all header fields: Description, Reference #, toggle Accrual switch on, and select a future Reversal Date.
+Add three lines with different accounts and amounts.
+Add multiple dimension tags to all three lines.
+Upload two different files (e.g., invoice.pdf and receipt.png).
+Verify the files appear in the attachment list in the UI.
+Save the entry as a Draft.
+Verify Draft and Edit:
+
+Find the newly created draft in the journal entries list and open it.
+Assert that every single field, line, dimension tag, and both file attachments are present and correct.
+Delete receipt.png.
+Upload a new file, summary.csv.
+Change the description of the second line item.
+Remove one dimension tag from the first line item.
+Save the Draft again.
+Final Verification and Posting:
+
+Re-open the draft.
+Assert that invoice.pdf and summary.csv are the only attachments.
+Assert that the line description change and dimension tag removal were saved correctly.
+Click "Post Entry".
+Verify the entry's status is now "Posted".
+Verify that on the "Posted" entry view, the "Edit", "Save Draft", and file modification buttons are no longer visible.
