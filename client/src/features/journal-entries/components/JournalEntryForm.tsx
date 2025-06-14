@@ -1231,6 +1231,9 @@ function JournalEntryForm({
   // This ID is used for both existing entries and new entries with temporary IDs
   const effectiveJournalEntryId = existingEntry?.id ?? tempJournalEntryId;
 
+  // New state for Journal ID display (separate from reference field)
+  const [displayId, setDisplayId] = useState('New Entry');
+
   // State for pending file attachments
   // CRITICAL FIX: pendingFiles should only contain newly added File objects in current session
   // Existing files are handled by the attachments prop from useJournalEntryFiles
@@ -1370,9 +1373,6 @@ function JournalEntryForm({
     }
   }, [existingEntry, entityId]);
 
-  // State for stable display ID
-  const [displayId, setDisplayId] = useState('');
-
 const [journalData, setJournalData] = useState({
     referenceNumber: existingEntry?.referenceNumber || autoReferencePrefix,
     referenceUserSuffix: existingEntry?.referenceNumber ? existingEntry.referenceNumber.split(':')[1] || "" : "",
@@ -1405,7 +1405,7 @@ const [journalData, setJournalData] = useState({
             clientId,
             entityId,
             journalData.date,
-            999999 // Placeholder database ID for preview
+            "..." // Placeholder for databaseId
           )
         );
       } else {
