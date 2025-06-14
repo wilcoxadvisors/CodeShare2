@@ -382,12 +382,16 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         ? entryData.date // Already a string, keep as is
         : format(new Date(entryData.date), 'yyyy-MM-dd'); // Format to YYYY-MM-DD
         
+      // Generate reference number if not provided
+      const referenceNumber = entryData.referenceNumber || `JE-${clientId}-${entryData.entityId}-${formattedDate.replace(/-/g, '')}-${Date.now()}`;
+      
       const insertData = {
         ...entryData,
         date: formattedDate, // Use consistent date format
         clientId,
         createdBy: createdById,
-        status: entryData.status || 'draft' // Default to draft if not specified
+        status: entryData.status || 'draft', // Default to draft if not specified
+        referenceNumber // Ensure reference number is always set
       };
       
       console.log('--- DATABASE WRITE ---', insertData);
