@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEntity } from "../contexts/EntityContext";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Popover, 
   PopoverContent, 
@@ -22,6 +23,8 @@ export default function EntitySelector() {
   const { entities, currentEntity, setCurrentEntity, selectedClientId } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Filter entities based on selected client and search query
   const filteredEntities = entities?.filter(entity => {
@@ -40,8 +43,20 @@ export default function EntitySelector() {
 
   // Handle entity selection
   const handleSelectEntity = (entity: any) => {
+    console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: BEFORE entity selection - clientId:", entity.clientId, "entityId:", entity.id);
+    
+    // Update the entity in context
     setCurrentEntity(entity);
     setOpen(false);
+    
+    // Navigate to the journal entries for this entity if we're in the journal entries module
+    if (location.pathname.includes('/journal-entries')) {
+      const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
+      console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to:", newPath);
+      navigate(newPath);
+    }
+    
+    console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection completed - clientId:", entity.clientId, "entityId:", entity.id);
   };
 
   return (
