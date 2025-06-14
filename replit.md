@@ -136,6 +136,8 @@ This is a comprehensive financial management platform built for Wilcox Advisors,
 - June 13, 2025. **Definitive Accrual Bugs Fix** - Implemented architect's two-part definitive solution: Part 1 fixed calendar date handling with timezone-proof parsing using replace(/-/g, '/') and simplified onSelect logic; Part 2 replaced complex state management with single robust useEffect that only syncs form when existingEntry changes, eliminating data persistence issues
 - June 13, 2025. **Journal Entry ID Display Restored** - Fixed missing Journal Entry ID field and restored proper `journalData` initialization with `generateReference()` function. Now displays "JE-2025-[ID]" for existing entries and "Will be assigned after creation" for new entries, with complete reference number generation logic restored
 - June 14, 2025. **Journal ID System Completely Refactored** - Implemented architect's three-part refactoring plan: Part 1 separated Journal Entry ID (read-only display) from Reference Number (user input field), Part 2 implemented proper JE-{clientId}-{entityId}-{MMDDYY}-{databaseId} format with preview functionality, Part 3 fixed validation schema to use referenceNumber field and ensured proper API payload mapping with both reference and referenceNumber fields for backend compatibility
+- June 14, 2025. **Client/Entity Navigation Fixed** - Resolved infinite redirect loop in Journal Entries module and restored proper client/entity switching functionality with stable navigation
+- June 14, 2025. **Default Date Timezone Fix** - Fixed Journal Entry default date initialization to use local date instead of UTC conversion, preventing tomorrow's date from appearing as default due to timezone shifts
 
 ## User Preferences
 
