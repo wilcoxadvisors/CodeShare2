@@ -96,8 +96,11 @@ export default function EntitySelector() {
               {filteredEntities.map((entity) => (
                 <CommandItem
                   key={entity.id}
-                  value={entity.id.toString()}
-                  onSelect={() => handleSelectEntity(entity)}
+                  value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`}
+                  onSelect={() => {
+                    console.log("ARCHITECT_DEBUG_SELECTOR_COMMAND_ITEM: onSelect triggered for entity:", entity.id, entity.name);
+                    handleSelectEntity(entity);
+                  }}
                   className="cursor-pointer"
                 >
                   <Check
