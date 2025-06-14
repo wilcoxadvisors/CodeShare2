@@ -44,6 +44,7 @@ export default function EntitySelector() {
   // Handle entity selection
   const handleSelectEntity = (entity: any) => {
     console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: BEFORE entity selection - clientId:", entity.clientId, "entityId:", entity.id);
+    console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Current location:", location.pathname);
     
     // Update the entity in context
     setCurrentEntity(entity);
@@ -54,6 +55,8 @@ export default function EntitySelector() {
       const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
       console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to:", newPath);
       navigate(newPath);
+    } else {
+      console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Not navigating - not in journal-entries:", location.pathname);
     }
     
     console.log("ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection completed - clientId:", entity.clientId, "entityId:", entity.id);
