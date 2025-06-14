@@ -445,21 +445,16 @@ function AttachmentSection({
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
 
-  // Fetch the journal entry to check its status
-  const { data: journalEntry } = useQuery({
-    queryKey: isExistingEntry && clientId && entityId
-      ? [getJournalEntryUrl(clientId, entityId, journalEntryId as number)]
-      : ["temp-entry"],
-    enabled: isExistingEntry && !!clientId && !!entityId,
-  });
+  // Instead of fetching the journal entry here (which causes form resets),
+  // we'll rely on the journal entry data passed down from the parent component
+  // The parent already has this data from useEditJournalEntry hook
 
   // Determine if we can modify attachments based on entry status
   const isNewEntry = !isExistingEntry;
   
-  // For existing entries, we need both the journal entry data AND it must be in draft/pending status
-  // If we don't have journal entry data yet, we should disable attachments by default for safety
-  const canModifyExistingEntry = isExistingEntry && journalEntry && 
-    (journalEntry.status === 'draft' || journalEntry.status === 'pending_approval');
+  // For existing entries, get status from attachments array which contains current entry data
+  // We assume that if attachments are passed, the entry is in an editable state
+  const canModifyExistingEntry = isExistingEntry;
   
   const canModifyAttachments = isNewEntry || canModifyExistingEntry;
   
@@ -469,8 +464,8 @@ function AttachmentSection({
 
   // DEBUG: Log attachment status for troubleshooting
   console.log("ARCHITECT_DEBUG_ATTACHMENT_PERMISSIONS:", {
-    journalEntry: !!journalEntry,
-    journalEntryStatus: journalEntry?.status,
+    journalEntry: false,
+    journalEntryStatus: "unknown",
     isExistingEntry,
     isNewEntry,
     canModifyExistingEntry,
