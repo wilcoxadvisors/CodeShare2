@@ -1532,110 +1532,72 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
 
   async copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry> {
-    console.log(`ARCHITECT_DEBUG: Starting copy for original entry ID: ${originalEntryId}`);
+    console.log(`ARCHITECT_DEBUG: FINAL ATTEMPT. Starting copy for original entry ID: ${originalEntryId}`);
 
     const originalEntry = await db.query.journalEntries.findFirst({
-      where: eq(journalEntries.id, originalEntryId),
-      with: {
-        lines: true
-      },
+        where: eq(schema.journalEntries.id, originalEntryId),
     });
 
     if (!originalEntry) {
-      throw new Error(`Original journal entry with id ${originalEntryId} not found`);
+        throw new Error(`Original journal entry with id ${originalEntryId} not found`);
     }
-
-    // Explicitly disallow copying voided entries at the storage layer
     if (originalEntry.status === 'voided') {
         throw new Error('Cannot copy a voided journal entry.');
     }
 
+    const originalLines = await db.query.journalEntryLines.findMany({
+        where: eq(schema.journalEntryLines.journalEntryId, originalEntryId),
+        with: { dimensions: true }
+    });
+
     try {
         const newJournalEntry = await db.transaction(async (tx) => {
-            console.log("ARCHITECT_DEBUG: Inside transaction. Creating new JE header.");
-
             const [copiedEntry] = await tx
-              .insert(journalEntries)
-              .values({
-                // Explicitly map fields instead of spreading
-                clientId: originalEntry.clientId,
-                entityId: originalEntry.entityId,
-                date: format(new Date(), 'yyyy-MM-dd'),
-                description: `Copy of: ${originalEntry.description}`,
-                status: 'draft',
-                referenceNumber: `COPY-${originalEntry.referenceNumber || ''}`,
-                journalType: originalEntry.journalType || 'JE',
-                createdBy: newUserId,
-                updatedBy: newUserId,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                // Ensure other relevant fields are handled or defaulted by the DB
-              })
-              .returning();
+                .insert(schema.journalEntries)
+                .values({
+                    clientId: originalEntry.clientId,
+                    entityId: originalEntry.entityId,
+                    date: new Date(),
+                    description: `Copy of: ${originalEntry.description}`,
+                    status: 'draft',
+                    createdBy: newUserId,
+                    // referenceNumber and updatedBy are correctly omitted.
+                })
+                .returning();
 
             if (!copiedEntry) {
-                console.error("ARCHITECT_DEBUG: CRITICAL - Failed to create the new journal entry header.");
-                await tx.rollback();
-                // Explicitly return null or throw to satisfy control flow analysis
-                throw new Error('Failed to create copied journal entry header.'); 
+                throw new Error('Failed to create the new journal entry header.');
             }
-            console.log(`ARCHITECT_DEBUG: New JE header created with ID: ${copiedEntry.id}`);
 
-            for (const line of originalEntry.lines) {
-                console.log(`ARCHITECT_DEBUG: Copying line ID: ${line.id} for new JE ID: ${copiedEntry.id}`);
-                
-                // Get dimension tags for this line using separate query
-                const dimensionTags = await tx
-                  .select({
-                    dimensionId: txDimensionLink.dimensionId,
-                    valueId: txDimensionLink.valueId
-                  })
-                  .from(txDimensionLink)
-                  .where(eq(txDimensionLink.journalEntryLineId, line.id));
-
+            for (const line of originalLines) {
                 const [newLine] = await tx
-                    .insert(journalEntryLines)
+                    .insert(schema.journalEntryLines)
                     .values({
                         journalEntryId: copiedEntry.id,
                         accountId: line.accountId,
                         amount: line.amount,
                         type: line.type,
                         description: line.description,
-                        entityCode: line.entityCode,
-                        fsliBucket: line.fsliBucket,
-                        internalReportingBucket: line.internalReportingBucket,
-                        item: line.item,
-                        lineNo: line.lineNo,
-                        reference: line.reference,
-                        reconciled: false, // Reset reconciliation status
-                        reconciledAt: null,
-                        reconciledBy: null,
-                        createdAt: new Date(),
-                        updatedAt: new Date()
                     })
                     .returning();
 
                 if (!newLine) {
-                    console.error(`ARCHITECT_DEBUG: CRITICAL - Failed to create line for account ID: ${line.accountId}.`);
-                    await tx.rollback();
-                    throw new Error('Failed to create copied journal entry line.');
+                    throw new Error('Failed to create a new journal entry line.');
                 }
 
-                if (dimensionTags && dimensionTags.length > 0) {
-                    console.log(`ARCHITECT_DEBUG: Copying ${dimensionTags.length} dimensions for new line ID: ${newLine.id}`);
-                    const newDimensionLinks = dimensionTags.map((tag) => ({
+                if (line.dimensions && line.dimensions.length > 0) {
+                    const newDimensionLinks = line.dimensions.map((dim) => ({
                         journalEntryLineId: newLine.id,
-                        dimensionId: tag.dimensionId,
-                        valueId: tag.valueId,
+                        dimensionId: dim.dimensionId,
+                        dimensionValueId: dim.dimensionValueId,
                     }));
-                    await tx.insert(txDimensionLink).values(newDimensionLinks);
+                    await tx.insert(schema.txDimensionLink).values(newDimensionLinks);
                 }
             }
 
             return copiedEntry;
         });
 
-        console.log(`ARCHITECT_DEBUG: Transaction complete. Refetching full new entry with ID: ${newJournalEntry.id}`);
         const fullCopiedEntry = await this.getJournalEntry(newJournalEntry.id);
         if (!fullCopiedEntry) {
             throw new Error("Could not retrieve the newly copied journal entry after transaction.");
@@ -1644,9 +1606,8 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return fullCopiedEntry;
 
     } catch (error) {
-        console.error("ARCHITECT_DEBUG: Error during copy transaction:", error);
-        // Re-throw a more specific error for the API layer to catch
-        throw new Error(`Database error during copying journal entry ${originalEntryId}`);
+        console.error("ARCHITECT_DEBUG: Error during the final copy transaction:", error);
+        throw new Error(`Database error during copy of JE ${originalEntryId}`);
     }
   }
 }
