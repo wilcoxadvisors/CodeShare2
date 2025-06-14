@@ -460,17 +460,22 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                               key={`entity-${entity.id}`}
                               value={`entity-${entity.id}-${entity.name} ${entity.code || ''}`} // Use unique identifier + name/code for better search
                               onSelect={(currentValue) => {
+                                console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: onSelect triggered for:', currentValue);
                                 // Parse the entity ID from the value string
                                 const id = parseInt(currentValue.split('-')[1]);
                                 // Find the entity by ID
                                 const selectedEntity = entities.find(e => e.id === id);
                                 if (selectedEntity) {
-                                  console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selected, setting context:', 
+                                  console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: Entity selected, setting context:', 
                                     { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
                                   selectEntity(selectedEntity);
                                 } else {
-                                  console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
+                                  console.error(`ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
                                 }
+                              }}
+                              onClick={() => {
+                                console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONCLICK: onClick triggered for entity:', entity.id, entity.name);
+                                selectEntity(entity);
                               }}
                               className={`cursor-pointer pl-4 py-1 my-1 mx-2 rounded-sm border-l-2 hover:bg-muted/50 ${statusClasses}`}
                             >
