@@ -1992,6 +1992,7 @@ const [journalData, setJournalData] = useState({
 
         // Convert our UI format (debit/credit fields) to API format (type and amount)
         return {
+          ...(line.id && { id: line.id }), // Include line ID if it exists for updates
           accountId: Number(line.accountId), // Ensure accountId is a number
           entityCode: line.entityCode || defaultEntityCode,
           description: line.description,
