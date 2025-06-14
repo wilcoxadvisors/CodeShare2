@@ -306,33 +306,25 @@ export const txDimensionLink = pgTable("tx_dimension_link", {
   };
 });
 
-// Relations for journalEntries and journalEntryLines
 export const journalEntriesRelations = relations(journalEntries, ({ one, many }) => ({
+  lines: many(journalEntryLines), // The critical fix is to ensure this line is present
   client: one(clients, {
     fields: [journalEntries.clientId],
     references: [clients.id],
-    relationName: "journalEntries_client",
   }),
   entity: one(entities, {
     fields: [journalEntries.entityId],
     references: [entities.id],
-    relationName: "journalEntries_entity",
   }),
-  lines: many(journalEntryLines, {
-    fields: [journalEntries.id],
-    references: [journalEntryLines.journalEntryId],
-    relationName: "journalEntries_lines",
+  createdByUser: one(users, {
+    fields: [journalEntries.createdBy],
+    references: [users.id],
+    relationName: 'journal_entries_created_by_user',
   }),
-  // Self-references for reversal tracking
-  originalEntry: one(journalEntries, {
-    fields: [journalEntries.reversedEntryId],
-    references: [journalEntries.id],
-    relationName: "journalEntries_originalEntry",
-  }),
-  reversalEntry: one(journalEntries, {
-    fields: [journalEntries.reversedByEntryId],
-    references: [journalEntries.id],
-    relationName: "journalEntries_reversalEntry",
+  postedByUser: one(users, {
+    fields: [journalEntries.postedBy],
+    references: [users.id],
+    relationName: 'journal_entries_posted_by_user',
   }),
 }));
 
