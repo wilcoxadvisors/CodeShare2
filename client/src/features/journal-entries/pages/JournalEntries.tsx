@@ -75,23 +75,23 @@ function JournalEntries() {
     "total entities in context": entities.length
   });
   
-  // Update entity context if needed based on route params
+  // Update navigation when entity context changes
   useEffect(() => {
     console.log("JournalEntries: Route params check - entityId:", entityId, 
                 "clientId:", clientId, 
                 "currentEntity:", currentEntity?.id);
     
-    if (entityId && (!currentEntity || currentEntity.id !== entityId)) {
-      console.log("JournalEntries: Looking for entity with ID:", entityId, "in", entities.length, "entities");
-      const entity = entities.find(e => e.id === entityId);
-      if (entity) {
-        console.log("JournalEntries: Found entity in context, setting current entity:", entity.name);
-        setCurrentEntity(entity);
-      } else {
-        console.log("JournalEntries: Entity not found in context for ID:", entityId);
+    // If we have a current entity that doesn't match the URL, navigate to the correct URL
+    if (currentEntity && currentEntity.clientId && currentEntity.id) {
+      const expectedPath = `/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`;
+      const currentPath = location.pathname;
+      
+      if (currentPath !== expectedPath) {
+        console.log("JournalEntries: Navigating to correct path:", expectedPath);
+        navigate(expectedPath, { replace: true });
       }
     }
-  }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
+  }, [currentEntity, navigate, location.pathname]);
   
   // Use API helper function to construct URL
   const apiUrl = getJournalEntriesBaseUrl(clientId || 0, entityId || 0);
