@@ -1195,8 +1195,8 @@ function JournalEntryDetail() {
           Edit
         </Button>
         
-        {/* Copy button - available for all entries except voided ones */}
-        {status !== 'voided' && status !== 'void' && (
+        {/* Copy button - only available for posted entries */}
+        {status === 'posted' && (
           <Button 
             variant="outline" 
             onClick={() => copyJournalEntry.mutate()}
