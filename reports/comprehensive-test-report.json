@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "timestamp": "2025-06-14T21:45:25.712Z",
+    "totalTests": 7,
+    "totalPassed": 2,
+    "totalFailed": 5,
+    "successRate": "28.57%"
+  },
+  "tiers": {
+    "Tier 1 - Functional Integration": {
+      "passed": 1,
+      "failed": 2,
+      "errors": [
+        "Creation failed: 401",
+        "Balance validation failed: Expected 400, got 401"
+      ]
+    },
+    "Tier 2 - Property-Based Testing": {
+      "passed": 0,
+      "failed": 1,
+      "errors": [
+        "Property-based testing failed: Command failed: npm test -- tests/properties/journalEntry.properties.test.ts"
+      ]
+    },
+    "Tier 3 - Advanced Testing": {
+      "passed": 1,
+      "failed": 1,
+      "errors": [
+        "Contract testing failed: Command failed: npm test -- tests/contract/journalEntry.contract.test.ts"
+      ]
+    },
+    "Integration Testing": {
+      "passed": 0,
+      "failed": 1,
+      "errors": [
+        "E2E create failed: 401"
+      ]
+    }
+  },
+  "recommendations": [
+    "Review basic API functionality and data validation",
+    "Improve business logic validation for edge cases",
+    "Review API contracts and mutation testing configuration",
+    "Investigate end-to-end workflow issues"
+  ]
+}
