@@ -1563,6 +1563,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                     clientId: originalEntry.clientId,
                     entityId: originalEntry.entityId,
                     date: new Date(),
+                    referenceNumber: `Copy of ${originalEntry.referenceNumber}`,
                     description: `Copy of: ${originalEntry.description}`,
                     status: 'draft',
                     createdBy: newUserId,
