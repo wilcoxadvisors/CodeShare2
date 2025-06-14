@@ -7,6 +7,7 @@ import {
   txDimensionLink, InsertTxDimensionLink,
   dimensions, dimensionValues
 } from "../../shared/schema";
+import * as schema from "../../shared/schema";
 import * as fs from 'fs';
 import * as path from 'path';
 import { db } from "../db";
@@ -1589,7 +1590,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                     const newDimensionLinks = line.dimensions.map((dim) => ({
                         journalEntryLineId: newLine.id,
                         dimensionId: dim.dimensionId,
-                        dimensionValueId: dim.dimensionValueId,
+                        valueId: dim.valueId,
                     }));
                     await tx.insert(schema.txDimensionLink).values(newDimensionLinks);
                 }
