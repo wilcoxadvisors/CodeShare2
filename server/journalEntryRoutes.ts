@@ -1311,6 +1311,87 @@ export function registerJournalEntryRoutes(app: Express) {
   
   /**
    * ---------------------------------------------------------------------------
+   *  Hierarchical PATCH route PATCH /api/clients/:clientId/entities/:entityId/journal-entries/:id
+   * ---------------------------------------------------------------------------
+   */
+  app.patch(
+    '/api/clients/:clientId/entities/:entityId/journal-entries/:id',
+    isAuthenticated,
+    asyncHandler(async (req: Request, res: Response) => {
+      const clientId = parseInt(req.params.clientId, 10);
+      const entityId = parseInt(req.params.entityId, 10);
+      const id = parseInt(req.params.id, 10);
+      const user = req.user as { id: number };
+
+      if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
+        return throwBadRequest('Invalid client, entity or journal entry ID');
+      }
+
+      // Validate: ensure entity belongs to client
+      const entity = await db.query.entities.findFirst({
+        where: (entities, { eq, and }) => and(
+          eq(entities.id, entityId),
+          eq(entities.clientId, clientId)
+        )
+      });
+      
+      if (!entity) {
+        return throwNotFound('Entity not found for this client');
+      }
+
+      // Get the existing entry
+      const existingEntry = await journalEntryStorage.getJournalEntry(id);
+      
+      if (!existingEntry) {
+        return throwNotFound('Journal Entry');
+      }
+      
+      // Verify this entry belongs to the specified entity
+      if (existingEntry.entityId !== entityId) {
+        return throwNotFound('Journal entry not found for this entity');
+      }
+      
+      // Prevent updates to posted or void entries
+      if (existingEntry.status === JournalEntryStatus.POSTED || existingEntry.status === JournalEntryStatus.VOID) {
+        return throwBadRequest(`Cannot update a journal entry with status '${existingEntry.status}'`);
+      }
+      
+      try {
+        // Validate update data
+        const validatedData = updateJournalEntrySchema.parse({
+          ...req.body,
+          updatedBy: user.id
+        });
+        
+        // Extract lines from validated data
+        const { lines, ...entryData } = validatedData;
+        
+        // Update the journal entry with lines (dimension tags are handled automatically within this method)
+        const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
+        
+        res.json(updatedEntry);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return res.status(400).json({ errors: formatZodError(error) });
+        }
+        
+        // Check for database-specific errors
+        const errorMessage = String(error);
+        if (errorMessage.includes("unique constraint") || errorMessage.includes("duplicate key")) {
+          if (errorMessage.toLowerCase().includes("reference_number")) {
+            return res.status(400).json({ 
+              message: `Reference number is already in use. Please use a different reference number.` 
+            });
+          }
+        }
+        
+        throw error;
+      }
+    })
+  );
+
+  /**
+   * ---------------------------------------------------------------------------
    *  NEW 3-level list route
    *    GET /api/clients/:clientId/entities/:entityId/journal-entries
    * ---------------------------------------------------------------------------
