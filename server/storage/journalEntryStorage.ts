@@ -1548,9 +1548,21 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
 
     // Step 2: Get the original lines and their dimensions in a separate query to avoid relation issues
+    console.log(`ARCHITECT_DEBUG: V5 - Fetching lines for entry ${originalEntryId}`);
     const originalLines = await db.query.journalEntryLines.findMany({
         where: eq(schema.journalEntryLines.journalEntryId, originalEntryId),
         with: { dimensions: true }
+    });
+    console.log(`ARCHITECT_DEBUG: V5 - Found ${originalLines.length} lines for copy`);
+    
+    // Debug each line and its dimensions
+    originalLines.forEach((line, index) => {
+        console.log(`ARCHITECT_DEBUG: V5 - Line ${index}: id=${line.id}, dimensions=${line.dimensions?.length || 0}`);
+        if (line.dimensions && line.dimensions.length > 0) {
+            line.dimensions.forEach((dim, dimIndex) => {
+                console.log(`ARCHITECT_DEBUG: V5 - Line ${index} dim ${dimIndex}: dimensionId=${dim.dimensionId}, valueId=${dim.dimensionValueId}`);
+            });
+        }
     });
 
     try {
@@ -1593,12 +1605,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
 
                 // Step 6: If the original line had dimensions, create them for the new line
                 if (line.dimensions && line.dimensions.length > 0) {
-                    const newDimensionLinks = line.dimensions.map((dim) => ({
-                        journalEntryLineId: newLine.id,
-                        dimensionId: dim.dimensionId,
-                        dimensionValueId: dim.dimensionValueId,
-                    }));
-                    await tx.insert(schema.txDimensionLink).values(newDimensionLinks);
+                    console.log(`ARCHITECT_DEBUG: V5 - Copying ${line.dimensions.length} dimensions for line ${newLine.id}`);
+                    
+                    const newDimensionLinks = line.dimensions.map((dim) => {
+                        console.log(`ARCHITECT_DEBUG: V5 - Creating dimension link: lineId=${newLine.id}, dimensionId=${dim.dimensionId}, valueId=${dim.dimensionValueId}`);
+                        return {
+                            journalEntryLineId: newLine.id,
+                            dimensionId: dim.dimensionId,
+                            dimensionValueId: dim.dimensionValueId,
+                        };
+                    });
+                    
+                    try {
+                        await tx.insert(schema.txDimensionLink).values(newDimensionLinks);
+                        console.log(`ARCHITECT_DEBUG: V5 - Successfully inserted ${newDimensionLinks.length} dimension links`);
+                    } catch (dimError) {
+                        console.error(`ARCHITECT_DEBUG: V5 - Failed to insert dimension links:`, dimError);
+                        throw dimError;
+                    }
                 }
             }
 
