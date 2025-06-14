@@ -1,10 +1,10 @@
 {
   "summary": {
-    "timestamp": "2025-06-14T21:59:02.414Z",
+    "timestamp": "2025-06-14T22:00:14.598Z",
     "totalTests": 10,
-    "totalPassed": 7,
-    "totalFailed": 3,
-    "successRate": "70.00%"
+    "totalPassed": 8,
+    "totalFailed": 2,
+    "successRate": "80.00%"
   },
   "tiers": {
     "Tier 1 - Functional Integration": {
@@ -27,16 +27,13 @@
       ]
     },
     "Integration Testing": {
-      "passed": 1,
-      "failed": 1,
-      "errors": [
-        "Copy failed: 500 - {\"message\":\"Cannot copy a non-posted journal entry. Status: draft\"}"
-      ]
+      "passed": 2,
+      "failed": 0,
+      "errors": []
     }
   },
   "recommendations": [
     "Improve business logic validation for edge cases",
-    "Review API contracts and mutation testing configuration",
-    "Investigate end-to-end workflow issues"
+    "Review API contracts and mutation testing configuration"
   ]
 }
