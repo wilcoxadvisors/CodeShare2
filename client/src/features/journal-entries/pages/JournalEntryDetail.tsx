@@ -1194,28 +1194,6 @@ function JournalEntryDetail() {
           <Edit className="mr-2 h-4 w-4" />
           Edit
         </Button>
-        
-        {/* Copy button - only available for posted entries */}
-        {status === 'posted' && (
-          <Button 
-            variant="outline" 
-            onClick={() => copyJournalEntry.mutate()}
-            disabled={copyJournalEntry.isPending}
-            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-          >
-            {copyJournalEntry.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Copying...
-              </>
-            ) : (
-              <>
-                <FilePlus className="mr-2 h-4 w-4" />
-                Copy
-              </>
-            )}
-          </Button>
-        )}
       </div>
     );
     
@@ -1427,6 +1405,31 @@ function JournalEntryDetail() {
       );
     }
     
+    // Copy button - available for all users on posted entries
+    if (status === 'posted') {
+      actionButtons.push(
+        <Button 
+          key="copy"
+          variant="outline" 
+          onClick={() => copyJournalEntry.mutate()}
+          disabled={copyJournalEntry.isPending}
+          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-2"
+        >
+          {copyJournalEntry.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Copying...
+            </>
+          ) : (
+            <>
+              <FilePlus className="mr-2 h-4 w-4" />
+              Copy
+            </>
+          )}
+        </Button>
+      );
+    }
+
     // Only users with approval rights can reverse/void posted journals
     if (status === 'posted' && hasApprovalRights) {
       actionButtons.push(
@@ -1614,7 +1617,7 @@ function JournalEntryDetail() {
   const entityBalances = calculateEntityBalances();
   
   // Diagnostic logging for button rendering
-  console.log("ARCHITECT_DEBUG: Entry data for button rendering:", { status: entry?.status, id: entry?.id });
+  console.log(`ARCHITECT_DEBUG: Button visibility check. Entry ID: ${entry?.id}, Status: ${entry?.status}`);
   
   return (
     <div className="py-6">

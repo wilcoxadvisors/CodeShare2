@@ -1,0 +1,55 @@
+Architect's Instructions for the Agent
+Agent, I have reviewed the console logs. Your previous change to add logging was successful, and the logs have revealed the problem.
+
+Root Cause Analysis:
+
+The critical log message is:
+JournalEntryDetail.tsx:1617 ARCHITECT_DEBUG: Entry data for button rendering: Object
+
+While the log shows that the entry object exists, it crucially does not show the status property within that object. Looking at the surrounding logs, I can see a flurry of component re-renders and context updates. It appears the component is rendering once with entry as undefined, and then again with the entry object after the data is fetched.
+
+The most likely cause is that the initial render passes undefined to the button logic, and a subsequent render with the correct data is not correctly updating the button's visibility.
+
+To fix this definitively, we will make two changes:
+
+Make the diagnostic log more explicit to avoid object collapsing in the browser console.
+Add a defensive guard to the button rendering logic to ensure it only attempts to render when the entry data is fully loaded.
+Task: Implement the Definitive Fix
+
+Modify the Diagnostic Log:
+
+File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+Action: Find the ARCHITECT_DEBUG log you added and replace it with the following to make the status explicit:
+JavaScript
+
+console.log(`ARCHITECT_DEBUG: Button visibility check. Entry ID: ${entry?.id}, Status: ${entry?.status}`);
+Add a Guard to the Button UI:
+
+File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+
+Action: Find the JSX code that renders the action buttons (Edit, Copy, etc.). Wrap the entire button group in a conditional check that ensures entry exists before trying to render any buttons.
+
+Example Implementation:
+
+JavaScript
+
+// Find the existing button group, which might look something like this:
+<div className="flex space-x-2">
+    {/* ... existing buttons like Edit, Void, etc. ... */}
+    {status === 'posted' && (
+        <Button onClick={() => copyJournalEntry.mutate()}>Copy</Button>
+    )}
+</div>
+
+// Wrap it like this:
+{entry && (
+    <div className="flex space-x-2">
+        {/* ... existing buttons like Edit, Void, etc. ... */}
+        {entry.status === 'posted' && (
+            <Button onClick={() => copyJournalEntry.mutate()}>Copy</Button>
+        )}
+    </div>
+)}
+Self-correction: You must also change status to entry.status inside the button logic to reference the guarded entry object.
+
+After implementing these two changes, please confirm the fix and I will instruct the user to test again.
