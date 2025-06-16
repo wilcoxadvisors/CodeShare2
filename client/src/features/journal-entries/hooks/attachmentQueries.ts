@@ -191,15 +191,14 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       });
       
       if (journalEntryId) {
-        // Invalidate the attachments query to refresh the list
+        // CRITICAL FIX: Only invalidate the specific attachment query to prevent form resets
+        // Do NOT invalidate the main journal entry query which would cause form data to be refetched
         queryClient.invalidateQueries({ 
-          queryKey: ['journalEntryAttachments', journalEntryId] 
+          queryKey: ['journalEntryAttachments', journalEntryId],
+          exact: true // Only invalidate this exact query, not parent queries
         });
         
-        // Invalidate the hierarchical journal entry URL
-        queryClient.invalidateQueries({ 
-          queryKey: [getJournalEntryUrl(clientId, entityId, journalEntryId)] 
-        });
+        // Do NOT invalidate the journal entry URL as it causes form resets
       }
     },
     onError: (error: any) => {
@@ -298,15 +297,14 @@ export function useDeleteJournalEntryFile() {
         }
       );
       
-      // Invalidate the attachments query to refresh the list
+      // CRITICAL FIX: Only invalidate the specific attachment query to prevent form resets
+      // Do NOT invalidate the main journal entry query which would cause form data to be refetched
       queryClient.invalidateQueries({ 
-        queryKey: ['journalEntryAttachments', variables.journalEntryId] 
+        queryKey: ['journalEntryAttachments', variables.journalEntryId],
+        exact: true // Only invalidate this exact query, not parent queries
       });
       
-      // Invalidate the hierarchical journal entry URL
-      queryClient.invalidateQueries({ 
-        queryKey: [getJournalEntryUrl(variables.clientId, variables.entityId, variables.journalEntryId)] 
-      });
+      // Do NOT invalidate the journal entry URL as it causes form resets
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
