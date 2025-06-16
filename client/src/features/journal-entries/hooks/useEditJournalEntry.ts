@@ -54,7 +54,7 @@ export function useEditJournalEntry() {
     journalEntry ? Object.keys(journalEntry).join(', ') : 'null journalEntry');
   
   if (journalEntry) {
-    console.log("useEditJournalEntry - Journal entry status:", journalEntry.status);
+    console.log("useEditJournalEntry - Journal entry status:", (journalEntry as any).status);
   }
   
   // Convert server format lines (type/amount) to client format (debit/credit) if needed

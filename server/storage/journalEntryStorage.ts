@@ -1012,7 +1012,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           
           // Insert the reversed line
           const [insertedLine] = await tx.insert(journalEntryLines)
-            .values([lineData])
+            .values([lineData as any])
             .returning();
             
           console.log(`Added reversed line for account ${line.accountId}: ${reversedType} ${line.amount}`);
@@ -1052,7 +1052,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         throw new ApiError(500, `Failed to create reversal entry for journal entry ${journalEntryId}`);
       }
       
-      const entry = await this.getJournalEntry(reversalEntry.id);
+      const entry = await this.getJournalEntry((reversalEntry as any).id);
       console.log(`Returning reversal entry:`, JSON.stringify(entry));
       return entry;
     } catch (e) {
@@ -1616,12 +1616,12 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                 .values({
                     clientId: originalEntry.clientId,
                     entityId: originalEntry.entityId,
-                    date: new Date(),
+                    date: new Date().toISOString().split('T')[0],
                     referenceNumber: `Copy of ${originalEntry.referenceNumber}`,
                     description: `Copy of: ${originalEntry.description}`,
                     status: 'draft',
                     createdBy: newUserId,
-                })
+                } as any)
                 .returning();
 
             if (!copiedEntry) {
