@@ -185,11 +185,26 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     : [];
   
   const selectClient = (clientId: number) => {
-    setSelectedClientId(clientId);
-    setCurrentEntity(null);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client ${clientId}, current path: ${location.pathname}`);
+    
+    // Update URL-based navigation to ensure URL is the source of truth
+    const currentPath = location.pathname;
+    
+    // Check if we're on a client-specific page that needs URL update
+    if (currentPath.includes('/clients/')) {
+      // Replace the old client ID in the path with the new one
+      const newPath = currentPath.replace(/\/clients\/\d+/, `/clients/${clientId}`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating from ${currentPath} to ${newPath}`);
+      navigate(newPath);
+    } else {
+      // For non-client paths, just update context state
+      setSelectedClientId(clientId);
+      setCurrentEntity(null);
+    }
     
     if (!showEntities || isClientOnlyView) { // Check for CoA mode or dimensions page
       setOpen(false);    // Close dropdown immediately
+      console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode or dimensions page) - closing dropdown after client selection');
     }
   };
 
