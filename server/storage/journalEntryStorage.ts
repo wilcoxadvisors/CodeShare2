@@ -223,7 +223,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .from(journalEntries)
         .where(and(
           eq(journalEntries.entityId, entityId),
-          eq(journalEntries.status, status)
+          sql`${journalEntries.status} = ${status}`
         ))
         .orderBy(desc(journalEntries.date));
     } catch (e) {
@@ -260,7 +260,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       // Add filter for status if provided
       if (filters.status) {
-        conditions.push(eq(journalEntries.status, filters.status));
+        conditions.push(sql`${journalEntries.status} = ${filters.status}`);
       }
       
       // Add filter for journal type if provided
@@ -275,7 +275,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       // Apply all conditions to the query
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
       
       // Apply sorting
@@ -284,30 +284,30 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       switch (sortField) {
         case 'date':
-          query = query.orderBy(sortDirection(journalEntries.date));
+          query = query.orderBy(sortDirection(journalEntries.date)) as any;
           break;
         case 'referenceNumber':
-          query = query.orderBy(sortDirection(journalEntries.referenceNumber));
+          query = query.orderBy(sortDirection(journalEntries.referenceNumber)) as any;
           break;
         case 'description':
-          query = query.orderBy(sortDirection(journalEntries.description));
+          query = query.orderBy(sortDirection(journalEntries.description)) as any;
           break;
         // For other fields, default to date
         default:
-          query = query.orderBy(desc(journalEntries.date));
+          query = query.orderBy(desc(journalEntries.date)) as any;
       }
       
       // Apply pagination
       if (filters.limit !== undefined) {
-        query = query.limit(filters.limit);
+        query = query.limit(filters.limit) as any;
       }
       
       if (filters.offset !== undefined) {
-        query = query.offset(filters.offset);
+        query = query.offset(filters.offset) as any;
       }
     } else {
       // Default sorting by date descending if no filters provided
-      query = query.orderBy(desc(journalEntries.date));
+      query = query.orderBy(desc(journalEntries.date)) as any;
     }
     
     try {
@@ -710,11 +710,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       // Add date range conditions if provided
       if (options.startDate) {
-        conditions.push(gte(journalEntries.date, options.startDate));
+        conditions.push(sql`${journalEntries.date} >= ${options.startDate.toISOString().split('T')[0]}`);
       }
       
       if (options.endDate) {
-        conditions.push(lte(journalEntries.date, options.endDate));
+        conditions.push(sql`${journalEntries.date} <= ${options.endDate.toISOString().split('T')[0]}`);
       }
       
       // Get account information first for the client (needed for account details and filtering)
