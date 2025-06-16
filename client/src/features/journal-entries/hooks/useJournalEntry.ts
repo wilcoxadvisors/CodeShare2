@@ -77,23 +77,28 @@ export function useJournalEntry() {
         data: journalEntry
       });
     },
-    onSuccess: (data) => {
-      console.log('DEBUG: Create success response:', JSON.stringify(data, null, 2));
+    onSuccess: (data, variables) => {
+      console.log('ARCHITECT_FIX_PART3: Create success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry created successfully',
       });
       
-      // Invalidate journal entries queries with correct hierarchical URL pattern
-      if (currentEntity?.id && currentEntity?.clientId) {
-        // Use the hierarchical path structure for invalidation
+      // ARCHITECT FIX PART 3: Comprehensive cache invalidation with URL-based keys
+      const clientId = variables.clientId;
+      const entityId = variables.entityId;
+      
+      if (clientId && entityId) {
+        // Invalidate the journal entries list for this entity
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/clients/${currentEntity.clientId}/entities/${currentEntity.id}/journal-entries`] 
+          queryKey: ['journal-entries', clientId, entityId],
+          exact: true
         });
         
-        // Also invalidate any legacy URLs for backwards compatibility
+        // Invalidate entities list to refresh any counters
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/entities/${currentEntity.id}/journal-entries`] 
+          queryKey: ['/api/entities'],
+          exact: true
         });
       }
       
@@ -177,31 +182,34 @@ export function useJournalEntry() {
       });
     },
     onSuccess: (data, variables) => {
-      console.log('DEBUG: Update success response:', JSON.stringify(data, null, 2));
+      console.log('ARCHITECT_FIX_PART3: Update success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry updated successfully',
       });
       
-      // Get clientId and entityId from variables
+      // ARCHITECT FIX PART 3: Comprehensive cache invalidation with URL-based keys
       const clientId = variables.clientId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.clientId : null);
       const entityId = variables.entityId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.entityId : null);
       const id = variables.id;
       
       if (clientId && entityId && id) {
-        // EMERGENCY FIX: Invalidate using direct URLs
+        // Invalidate the specific journal entry
         queryClient.invalidateQueries({ 
-          queryKey: ["journal-entry", id]
+          queryKey: ['journal-entries', clientId, entityId, id],
+          exact: true
         });
         
-        // Invalidate detail route with direct URL
+        // Invalidate the journal entries list for this entity
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}`]
+          queryKey: ['journal-entries', clientId, entityId],
+          exact: true
         });
         
-        // Invalidate list route with direct URL
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries`]
+        // Invalidate attachment queries for this entry
+        queryClient.invalidateQueries({
+          queryKey: ['journalEntryAttachments', id],
+          exact: true
         });
       }
       
