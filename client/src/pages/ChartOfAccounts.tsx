@@ -139,7 +139,7 @@ function ChartOfAccounts() {
 
   // Get hierarchical account tree data using client-based API
   const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
-    queryKey: ['accounts-tree', selectedClientId],
+    queryKey: [`/api/clients/${selectedClientId}/accounts/tree`],
     enabled: !!selectedClientId
   });
   
@@ -1236,7 +1236,7 @@ function ChartOfAccounts() {
           clientName = client.name;
         }
       }
-      const fileName = `${entityName}_ChartOfAccounts_${date}.xlsx`;
+      const fileName = `${clientName}_ChartOfAccounts_${date}.xlsx`;
       
       // Download the file
       XLSX.writeFile(workbook, fileName);
@@ -2412,7 +2412,7 @@ function ChartOfAccounts() {
     }
   ];
 
-  if (!currentEntity) {
+  if (!selectedClientId) {
     return (
       <div className="py-6">
         <PageHeader 
