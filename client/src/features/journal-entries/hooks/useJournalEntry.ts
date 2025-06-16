@@ -343,19 +343,31 @@ export function useJournalEntry() {
       }
     },
     onSuccess: (data, params) => {
-      console.log('DEBUG: Post success response:', JSON.stringify(data, null, 2));
+      console.log('ARCHITECT_FIX_PART3: Post success response:', JSON.stringify(data, null, 2));
       toast({
         title: 'Success',
         description: 'Journal entry posted successfully',
       });
       
-      // EMERGENCY FIX: Invalidate using direct URLs
+      // ARCHITECT FIX PART 3: Comprehensive cache invalidation with URL-based keys
+      const { clientId, entityId, id } = params;
+      
+      // Invalidate the specific journal entry
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries/${params.id}`]
+        queryKey: ['journal-entries', clientId, entityId, id],
+        exact: true
       });
       
+      // Invalidate the journal entries list for this entity
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries`]
+        queryKey: ['journal-entries', clientId, entityId],
+        exact: true
+      });
+      
+      // Invalidate attachment queries for this entry
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', id],
+        exact: true
       });
       
       // Handle both response formats
