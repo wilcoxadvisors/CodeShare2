@@ -287,24 +287,17 @@ export function useDeleteJournalEntryFile() {
         description: 'File was successfully deleted.',
       });
       
-      // Immediately update UI by optimistically updating the cache
-      queryClient.setQueryData(
-        ['journalEntryAttachments', variables.journalEntryId],
-        (oldData: JournalEntryFile[] | undefined) => {
-          if (!oldData) return [];
-          // Filter out the deleted file
-          return oldData.filter(file => file.id !== variables.fileId);
-        }
-      );
-      
-      // CRITICAL FIX: Only invalidate the specific attachment query to prevent form resets
-      // Do NOT invalidate the main journal entry query which would cause form data to be refetched
-      queryClient.invalidateQueries({ 
+      // 1. Invalidate the specific query for the attachment list
+      queryClient.invalidateQueries({
         queryKey: ['journalEntryAttachments', variables.journalEntryId],
-        exact: true // Only invalidate this exact query, not parent queries
+        exact: true,
       });
-      
-      // Do NOT invalidate the journal entry URL as it causes form resets
+
+      // 2. ALSO invalidate the main query for the journal entry itself
+      // This ensures the `files` array within the JE object is updated.
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntryUrl(variables.clientId, variables.entityId, variables.journalEntryId)]
+      });
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';

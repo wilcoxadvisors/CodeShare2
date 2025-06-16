@@ -425,6 +425,8 @@ interface AttachmentSectionProps {
     ((entryId: number) => Promise<void>) | null
   >;
   attachments: JournalEntryFile[];
+  status?: JournalEntryStatus;
+  isInEditMode: boolean;
 }
 
 function AttachmentSection({
@@ -437,6 +439,8 @@ function AttachmentSection({
   setPendingFilesMetadata,
   onUploadToEntryRef,
   attachments,
+  status,
+  isInEditMode,
 }: AttachmentSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
