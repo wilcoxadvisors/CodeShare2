@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
@@ -47,7 +47,6 @@ import {
 
 function JournalEntries() {
   const navigate = useNavigate();
-  const location = useLocation();
   
   // PART 3: Use URL parameters directly for data fetching
   const { clientId: urlClientId, entityId: urlEntityId } = useParams<{ 

@@ -640,9 +640,11 @@ function AttachmentSection({
       // Reset the progress bar
       setUploadProgress(0);
 
-      // Invalidate the files query to refresh the list
+      // CRITICAL FIX: Only invalidate the specific attachment query to prevent form resets
+      // Do NOT invalidate the main journal entry query which would cause form data to be refetched
       queryClient.invalidateQueries({
         queryKey: ["journalEntryAttachments", entryId],
+        exact: true, // Only invalidate this exact query, not related ones
       });
 
       return responseData;

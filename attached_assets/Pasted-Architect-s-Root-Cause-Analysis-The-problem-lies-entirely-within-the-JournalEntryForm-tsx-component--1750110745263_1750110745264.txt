@@ -1,0 +1,57 @@
+Architect's Root Cause Analysis
+The problem lies entirely within the JournalEntryForm.tsx component, specifically in a child component that I can infer is named AttachmentSection.
+
+Independent Data Fetching: The AttachmentSection component is fetching the journal entry data on its own using a useQuery hook.
+Unnecessary Re-renders: When you upload or delete a file, the AttachmentSection's useQuery is invalidated and re-fetches the entire journal entry.
+Form Reset: When this new data arrives, it causes the parent JournalEntryForm component to re-render with the "original" data, wiping out any changes you had made to the form fields (description, amounts, lines, etc.).
+This creates a frustrating user experience where any file operation erases the user's work on the rest of the form.
+
+The Definitive Fix
+The AttachmentSection should not be an independent, data-fetching component. It should be a "dumb" component that simply receives its data as props from the parent JournalEntryForm, which already has all the necessary information.
+
+Instructions for the Agent
+Agent, the user has identified a critical bug where file operations are resetting the entire Journal Entry form. We will fix this now by refactoring the AttachmentSection component.
+
+Mission: Prevent form resets by eliminating redundant data fetching in the AttachmentSection.
+
+Plan:
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Locate Component: Find the AttachmentSection function component within this file.
+Refactor the Component:
+Remove Data Fetching: Delete the entire useQuery hook from the AttachmentSection that fetches the journal entry data.
+Accept Props: Modify the AttachmentSection's function signature to accept the journalEntry object and a canModifyAttachments boolean as props from its parent (JournalEntryForm).
+Update Parent Component: Find where <AttachmentSection /> is rendered within JournalEntryForm and pass down the required props. The JournalEntryForm already has this data.
+Example of the Required Change:
+
+Before (in AttachmentSection):
+
+JavaScript
+
+function AttachmentSection({ journalEntryId, ... }) {
+    // This query is causing the problem and must be deleted.
+    const { data: journalEntry } = useQuery(...); 
+    
+    const canModifyAttachments = ... // Logic using the fetched journalEntry
+    ...
+}
+After (in AttachmentSection):
+
+JavaScript
+
+// The component now receives the data it needs directly.
+function AttachmentSection({ journalEntry, canModifyAttachments, ... }) { 
+    // No more useQuery here!
+    ...
+}
+And in the parent JournalEntryForm:
+
+JavaScript
+
+// ... inside JournalEntryForm's render method ...
+<AttachmentSection 
+    journalEntry={existingEntry} 
+    canModifyAttachments={canModifyAttachments} 
+    ... 
+/>
+This change will ensure that file operations only affect the attachment list and do not trigger a full form reset. Please execute this refactoring and provide the updated code from JournalEntryForm.tsx for review.
