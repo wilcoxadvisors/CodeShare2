@@ -75,15 +75,15 @@ export function useEditJournalEntry() {
     return withDecimals.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
   
-  if (journalEntry && journalEntry.lines && Array.isArray(journalEntry.lines)) {
-    console.log("useEditJournalEntry - Journal entry lines count:", journalEntry.lines.length);
+  if (journalEntry && (journalEntry as any).lines && Array.isArray((journalEntry as any).lines)) {
+    console.log("useEditJournalEntry - Journal entry lines count:", (journalEntry as any).lines.length);
     
-    if (journalEntry.lines.length > 0) {
-      const firstLine = journalEntry.lines[0];
+    if ((journalEntry as any).lines.length > 0) {
+      const firstLine = (journalEntry as any).lines[0];
       console.log("useEditJournalEntry - First line structure:", 
         firstLine ? Object.keys(firstLine).join(', ') : 'empty line');
       console.log("useEditJournalEntry - Journal entry lines sample:", 
-        JSON.stringify(journalEntry.lines.slice(0, 2), null, 2));
+        JSON.stringify((journalEntry as any).lines.slice(0, 2), null, 2));
       
       // Check if the first line is in server format
       const isServerFormat = firstLine && 'type' in firstLine && 'amount' in firstLine;
@@ -93,8 +93,8 @@ export function useEditJournalEntry() {
         console.log("useEditJournalEntry - Converting server format to client format");
         
         // Convert server format to client format
-        const convertedLines = journalEntry.lines.map((line, index) => {
-          console.log(`useEditJournalEntry - Converting line ${index + 1} of ${journalEntry.lines.length}:`, 
+        const convertedLines = (journalEntry as any).lines.map((line: any, index: number) => {
+          console.log(`useEditJournalEntry - Converting line ${index + 1} of ${(journalEntry as any).lines.length}:`, 
             JSON.stringify(line, null, 2));
           
           // Format the amount with commas and 2 decimal places
@@ -125,7 +125,7 @@ export function useEditJournalEntry() {
       } else {
         // Even if not in server format, ensure accountId is a string 
         // and format debit/credit values properly
-        const normalizedLines = journalEntry.lines.map(line => ({
+        const normalizedLines = (journalEntry as any).lines.map((line: any) => ({
           ...line,
           accountId: line.accountId ? line.accountId.toString() : '',
           debit: formatNumberWithSeparator(line.debit || 0),
@@ -139,8 +139,8 @@ export function useEditJournalEntry() {
       }
     }
     
-    if (processedEntry && processedEntry.lines) {
-      console.log("useEditJournalEntry - Processed entry lines:", processedEntry.lines);
+    if (processedEntry && (processedEntry as any).lines) {
+      console.log("useEditJournalEntry - Processed entry lines:", (processedEntry as any).lines);
     }
   } else {
     console.log("useEditJournalEntry - No lines found in journal entry");
@@ -150,15 +150,15 @@ export function useEditJournalEntry() {
   // Bug fix #1 - ensure files are preserved when editing a journal entry
   if (processedEntry) {
     // Log the files data for debugging
-    console.log("useEditJournalEntry - Files in processedEntry:", processedEntry.files);
-    console.log("useEditJournalEntry - Raw data has files:", data && 'files' in data ? data.files : 'no files in data');
+    console.log("useEditJournalEntry - Files in processedEntry:", (processedEntry as any).files);
+    console.log("useEditJournalEntry - Raw data has files:", data && typeof data === 'object' && data !== null && 'files' in (data as any) ? (data as any).files : 'no files in data');
     
     processedEntry = {
       ...processedEntry,
-      files: processedEntry.files ?? [] // Preserve files array
+      files: (processedEntry as any).files ?? [] // Preserve files array
     };
     
-    console.log("useEditJournalEntry - Final processedEntry.files:", processedEntry.files);
+    console.log("useEditJournalEntry - Final processedEntry.files:", (processedEntry as any).files);
   }
 
   return {
