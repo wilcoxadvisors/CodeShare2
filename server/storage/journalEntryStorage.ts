@@ -457,51 +457,71 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         updatedEntryData.date = formattedDate;
       }
       
-      // Start a transaction for atomic operations
+      // Start a database transaction for atomic operations
       return await db.transaction(async (tx) => {
-        // Update the journal entry header
+        console.log(`DIMENSION TRANSACTION: Starting transaction for journal entry ${id}`);
+        
+        // If lines are provided, handle dimension tag updates first
+        if (lines && lines.length > 0) {
+          console.log(`DIMENSION TRANSACTION: Processing ${lines.length} lines with dimension tag updates`);
+          
+          // Step 1: Collect all line IDs from the incoming request
+          const incomingLineIds = lines
+            .map(line => line.id)
+            .filter(id => id !== undefined) as number[];
+          
+          console.log(`DIMENSION TRANSACTION: Found ${incomingLineIds.length} existing line IDs to process`);
+          
+          // Step 2: Delete all existing dimension links for ALL lines in this journal entry
+          // This ensures we start with a clean slate for dimension tags
+          if (incomingLineIds.length > 0) {
+            console.log(`DIMENSION TRANSACTION: Deleting dimension links for line IDs: ${incomingLineIds.join(', ')}`);
+            await tx.delete(txDimensionLink)
+              .where(inArray(txDimensionLink.journalEntryLineId, incomingLineIds));
+          }
+          
+          // Also clean up dimension links for any lines that might be removed
+          const allExistingLines = await tx.select({ id: journalEntryLines.id })
+            .from(journalEntryLines)
+            .where(eq(journalEntryLines.journalEntryId, id));
+          
+          const allExistingLineIds = allExistingLines.map(line => line.id);
+          if (allExistingLineIds.length > 0) {
+            console.log(`DIMENSION TRANSACTION: Cleaning up dimension links for all existing lines: ${allExistingLineIds.join(', ')}`);
+            await tx.delete(txDimensionLink)
+              .where(inArray(txDimensionLink.journalEntryLineId, allExistingLineIds));
+          }
+        }
+        
+        // Step 3: Update the journal entry header
+        console.log(`DIMENSION TRANSACTION: Updating journal entry header`);
         const [updatedEntry] = await tx.update(journalEntries)
           .set(updatedEntryData)
           .where(eq(journalEntries.id, id))
           .returning();
         
-        // If lines are provided, handle line updates with dimension tags
+        // Step 4: Update the journal entry lines
         if (lines && lines.length > 0) {
-          console.log(`Processing ${lines.length} lines with dimension tag updates`);
+          console.log(`DIMENSION TRANSACTION: Updating ${lines.length} journal entry lines`);
           
-          // Step 1: Get all existing lines to delete their dimension links
-          const existingLines = await tx.select()
-            .from(journalEntryLines)
-            .where(eq(journalEntryLines.journalEntryId, id));
-          
-          // Step 2: Delete all existing dimension links for this journal entry
-          const existingLineIds = existingLines.map(line => line.id);
-          if (existingLineIds.length > 0) {
-            console.log(`Deleting dimension links for ${existingLineIds.length} existing lines`);
-            await tx.delete(txDimensionLink)
-              .where(inArray(txDimensionLink.journalEntryLineId, existingLineIds));
-          }
-          
-          // Step 3: Delete all existing lines for this journal entry
+          // Delete all existing lines for this journal entry
           await tx.delete(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
-          // Step 4: Insert new lines with their dimension tags
+          // Insert new lines and their dimension tags
           for (const line of lines) {
             // Extract tags from line data with proper fallback handling
             const lineData = line as any;
-            
-            // More comprehensive tag extraction - check multiple possible locations
             const tags = lineData.tags || lineData.dimensionTags || lineData.dimensions || [];
             
-            console.log(`DIMENSION DEBUG: Raw line data received:`, JSON.stringify(lineData, null, 2));
-            console.log(`DIMENSION DEBUG: Extracted tags (${tags.length} found):`, JSON.stringify(tags, null, 2));
-            console.log(`DIMENSION DEBUG: Line data keys:`, Object.keys(lineData));
+            console.log(`DIMENSION TRANSACTION: Processing line with ${tags.length} dimension tags`);
+            console.log(`DIMENSION TRANSACTION: Line data keys:`, Object.keys(lineData));
+            console.log(`DIMENSION TRANSACTION: Extracted tags:`, JSON.stringify(tags, null, 2));
             
             // Prepare clean line data for database insertion (exclude tags)
-            const { tags: _, ...cleanLineData } = lineData;
+            const { tags: _, dimensionTags: __, dimensions: ___, ...cleanLineData } = lineData;
             
-            // Insert the journal entry line first
+            // Insert the journal entry line
             const [insertedLine] = await tx.insert(journalEntryLines)
               .values({
                 ...cleanLineData,
@@ -511,15 +531,15 @@ export class JournalEntryStorage implements IJournalEntryStorage {
               } as any)
               .returning();
             
-            console.log(`DIMENSION DEBUG: Inserted line ${insertedLine.id}, processing ${tags?.length || 0} dimension tags`);
+            console.log(`DIMENSION TRANSACTION: Inserted line ${insertedLine.id}`);
             
-            // Step 5: Insert dimension tags for this line if they exist
+            // Step 5: Insert new dimension tags for this line
             if (tags && Array.isArray(tags) && tags.length > 0) {
-              console.log(`DIMENSION DEBUG: Inserting ${tags.length} dimension tags for line ${insertedLine.id}`);
+              console.log(`DIMENSION TRANSACTION: Inserting ${tags.length} dimension tags for line ${insertedLine.id}`);
               
               for (const tag of tags) {
                 if (tag.dimensionId && tag.dimensionValueId) {
-                  console.log(`DIMENSION DEBUG: Inserting tag - dimensionId: ${tag.dimensionId}, dimensionValueId: ${tag.dimensionValueId}`);
+                  console.log(`DIMENSION TRANSACTION: Inserting tag - dimensionId: ${tag.dimensionId}, dimensionValueId: ${tag.dimensionValueId}`);
                   
                   await tx.insert(txDimensionLink)
                     .values({
@@ -528,18 +548,18 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                       dimensionValueId: tag.dimensionValueId
                     });
                 } else {
-                  console.log(`DIMENSION DEBUG: Skipping invalid tag:`, tag);
+                  console.log(`DIMENSION TRANSACTION: Skipping invalid tag (missing dimensionId or dimensionValueId):`, tag);
                 }
               }
               
-              console.log(`DIMENSION DEBUG: Successfully saved ${tags.length} dimension tags for line ${insertedLine.id}`);
+              console.log(`DIMENSION TRANSACTION: Successfully saved ${tags.length} dimension tags for line ${insertedLine.id}`);
             } else {
-              console.log(`DIMENSION DEBUG: No dimension tags to save for line ${insertedLine.id}`);
+              console.log(`DIMENSION TRANSACTION: No dimension tags to save for line ${insertedLine.id}`);
             }
           }
         }
         
-        console.log(`Successfully updated journal entry ${id} with all dimension tags`);
+        console.log(`DIMENSION TRANSACTION: Successfully completed transaction for journal entry ${id}`);
         
         // Return the updated entry
         return {
@@ -548,7 +568,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         };
       });
     } catch (e) {
-      console.error(`Error updating journal entry ${id} with lines:`, e);
+      console.error(`DIMENSION TRANSACTION ERROR: Failed to update journal entry ${id} with lines:`, e);
       throw handleDbError(e, `updating journal entry ${id} with lines`);
     }
   }
