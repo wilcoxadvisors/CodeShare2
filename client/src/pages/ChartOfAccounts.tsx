@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { useEntity } from "../contexts/EntityContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import PageHeader from "../components/PageHeader";
@@ -61,7 +62,10 @@ interface AccountTreeNode {
 }
 
 function ChartOfAccounts() {
-  const { selectedClientId } = useEntity();
+  // PART 3: Use URL parameters directly for data fetching
+  const { clientId: urlClientId } = useParams<{ clientId: string }>();
+  const selectedClientId = urlClientId ? parseInt(urlClientId) : null;
+  
   const { toast } = useToast();
   
 

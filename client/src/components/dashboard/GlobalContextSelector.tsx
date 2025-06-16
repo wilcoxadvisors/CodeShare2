@@ -187,25 +187,32 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const selectClient = (clientId: number) => {
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client ${clientId}, current path: ${location.pathname}`);
     
-    // Update URL-based navigation to ensure URL is the source of truth
+    // URL-BASED NAVIGATION: Update URL to drive state changes
     const currentPath = location.pathname;
     
-    // Check if we're on a client-specific page that needs URL update
-    if (currentPath.includes('/clients/')) {
-      // Replace the old client ID in the path with the new one
-      const newPath = currentPath.replace(/\/clients\/\d+/, `/clients/${clientId}`);
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating from ${currentPath} to ${newPath}`);
+    // Navigate to the appropriate URL based on current page
+    if (currentPath.includes('/chart-of-accounts')) {
+      const newPath = `/clients/${clientId}/chart-of-accounts`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to chart of accounts: ${newPath}`);
+      navigate(newPath);
+    } else if (currentPath.includes('/manage/dimensions')) {
+      const newPath = `/clients/${clientId}/manage/dimensions`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to dimensions: ${newPath}`);
+      navigate(newPath);
+    } else if (currentPath.includes('/journal-entries')) {
+      // Need to navigate to client level and let user select entity
+      const newPath = `/clients/${clientId}`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to client dashboard: ${newPath}`);
       navigate(newPath);
     } else {
-      // For non-client paths, just update context state
-      setSelectedClientId(clientId);
-      setCurrentEntity(null);
+      // Default to client dashboard
+      const newPath = `/clients/${clientId}`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Default navigation to client dashboard: ${newPath}`);
+      navigate(newPath);
     }
     
-    if (!showEntities || isClientOnlyView) { // Check for CoA mode or dimensions page
-      setOpen(false);    // Close dropdown immediately
-      console.log('ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode or dimensions page) - closing dropdown after client selection');
-    }
+    // Close popover immediately
+    setOpen(false);
   };
 
   const toggleClientExpansion = (e: React.MouseEvent, clientId: number) => {
@@ -246,49 +253,28 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       return;
     }
     
-    // Find client name for logging
-    const clientName = clients.find(c => c.id === entity.clientId)?.name || 'Unknown';
-    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting context to entity: ${entity.id} (${entity.name}), client: ${entity.clientId} (${clientName})`);
+    // URL-BASED NAVIGATION: Update URL to drive state changes
+    const currentPath = location.pathname;
+    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Current path: ${currentPath}`);
     
-    // Show detailed debugging for prior state
-    console.log('ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: BEFORE entity selection - Current state:', {
-      selectedClientId,
-      currentEntity: currentEntity ? {
-        id: currentEntity.id,
-        name: currentEntity.name,
-        clientId: currentEntity.clientId
-      } : null
-    });
-    
-    // Critical - only set the client ID if it's different from current 
-    if (selectedClientId !== entity.clientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Updating client context to: ${entity.clientId} (${clientName})`);
-      setSelectedClientId(entity.clientId);
+    // Navigate to the appropriate URL based on current page
+    if (currentPath.includes('/journal-entries')) {
+      const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to journal entries: ${newPath}`);
+      navigate(newPath);
+    } else if (currentPath.includes('/chart-of-accounts')) {
+      const newPath = `/clients/${entity.clientId}/chart-of-accounts`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to chart of accounts: ${newPath}`);
+      navigate(newPath);
     } else {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Client context already set to: ${entity.clientId}, skipping update`);
+      // Default to journal entries for the selected entity
+      const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Default navigation to journal entries: ${newPath}`);
+      navigate(newPath);
     }
-    
-    // CRITICAL FIX: Force a complete re-render cycle by first clearing the entity
-    // This ensures that all components dependent on the entity context are notified of the change
-    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Clearing current entity to force re-render cycle`);
-    setCurrentEntity(null);
-    
-    // Then set entity context with a delay to ensure the null state is processed
-    setTimeout(() => {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Setting entity context to:`, {
-        id: entity.id,
-        name: entity.name, 
-        clientId: entity.clientId
-      });
-      setCurrentEntity(entity);
-      
-      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection completed - clientId: ${entity.clientId}, entityId: ${entity.id}`);
-    }, 50); // Short timeout to ensure state update is processed
     
     // Close popover immediately
     setOpen(false);
-    
-    console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: AFTER entity selection initiated - clientId: ${entity.clientId}, entityId: ${entity.id}`);
   };
 
 
