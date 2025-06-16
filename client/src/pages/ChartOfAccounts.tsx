@@ -477,7 +477,7 @@ function ChartOfAccounts() {
         }
       }
     }
-  }, [accountData.type, isEditMode, currentEntity, allFlattenedAccounts]);
+  }, [accountData.type, isEditMode, selectedClientId, allFlattenedAccounts]);
 
   // Custom hook for adding an account
   const useAddAccount = () => {
@@ -730,13 +730,13 @@ function ChartOfAccounts() {
     return useMutation({
       mutationFn: async (id: number) => {
         console.log("DEBUG: useDeleteAccount - Mutate called with id:", id);
-        if (!currentEntity?.clientId) {
+        if (!selectedClientId) {
           console.log("DEBUG: useDeleteAccount - Error: No client selected");
           throw new Error("No client selected");
         }
-        console.log(`DEBUG: useDeleteAccount - Sending DELETE to /api/clients/${currentEntity.clientId}/accounts/${id}`);
+        console.log(`DEBUG: useDeleteAccount - Sending DELETE to /api/clients/${selectedClientId}/accounts/${id}`);
         return await apiRequest(
-          `/api/clients/${currentEntity.clientId}/accounts/${id}`, 
+          `/api/clients/${selectedClientId}/accounts/${id}`, 
           {
             method: 'DELETE'
           }
@@ -787,7 +787,7 @@ function ChartOfAccounts() {
             });
             
             // Get full account details before showing the form
-            apiRequest(`/api/clients/${currentEntity?.clientId}/accounts/${accountToDelete.id}`)
+            apiRequest(`/api/clients/${selectedClientId}/accounts/${accountToDelete.id}`)
               .then((accountDetails: any) => {
                 setAccountData(prev => ({
                   ...prev,
@@ -830,8 +830,6 @@ function ChartOfAccounts() {
     
     // Enhanced validation that a client is selected with detailed logging
     console.log("VERIFICATION TEST - handleSubmit - Client validation:", { 
-      currentEntity, 
-      selectedClientId,
       selectedClientId,
       selectedClientIdType: typeof selectedClientId
     });
@@ -1230,14 +1228,12 @@ function ChartOfAccounts() {
       
       // Generate filename with entity name and current date
       const date = new Date().toISOString().split('T')[0];
-      // Get entity name from the selected client context
-      let entityName = 'Entity';
-      if (currentEntity?.name) {
-        entityName = currentEntity.name;
-      } else if (selectedClientId && Array.isArray(clients)) {
+      // Get client name from the selected client context
+      let clientName = 'Client';
+      if (selectedClientId && Array.isArray(clients)) {
         const client = clients.find((c: any) => c.id === selectedClientId);
         if (client?.name) {
-          entityName = client.name;
+          clientName = client.name;
         }
       }
       const fileName = `${entityName}_ChartOfAccounts_${date}.xlsx`;
