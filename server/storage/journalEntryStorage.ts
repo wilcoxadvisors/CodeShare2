@@ -488,18 +488,26 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           
           // Step 4: Insert new lines with their dimension tags
           for (const line of lines) {
-            // Extract tags from line data before inserting the line
-            const { tags, ...lineData } = line as any;
+            // Extract tags from line data with proper fallback handling
+            const lineData = line as any;
             
-            console.log(`DIMENSION DEBUG: Processing line with tags:`, tags);
+            // More comprehensive tag extraction - check multiple possible locations
+            const tags = lineData.tags || lineData.dimensionTags || lineData.dimensions || [];
+            
+            console.log(`DIMENSION DEBUG: Raw line data received:`, JSON.stringify(lineData, null, 2));
+            console.log(`DIMENSION DEBUG: Extracted tags (${tags.length} found):`, JSON.stringify(tags, null, 2));
+            console.log(`DIMENSION DEBUG: Line data keys:`, Object.keys(lineData));
+            
+            // Prepare clean line data for database insertion (exclude tags)
+            const { tags: _, ...cleanLineData } = lineData;
             
             // Insert the journal entry line first
             const [insertedLine] = await tx.insert(journalEntryLines)
               .values({
-                ...lineData,
+                ...cleanLineData,
                 journalEntryId: id,
                 // Ensure amount is a string for database consistency
-                amount: typeof lineData.amount === 'number' ? lineData.amount.toString() : lineData.amount
+                amount: typeof cleanLineData.amount === 'number' ? cleanLineData.amount.toString() : cleanLineData.amount
               } as any)
               .returning();
             
