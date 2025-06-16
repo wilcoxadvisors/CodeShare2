@@ -1211,8 +1211,8 @@ function JournalEntryDetail() {
     const basicButtons = (
       <div className="flex space-x-2">
         <Button variant="outline" onClick={() => {
-          if (clientId && currentEntity?.id && entryId) {
-            navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
+          if (clientIdParam && entityIdParam && entryId) {
+            navigate(`/clients/${clientIdParam}/entities/${entityIdParam}/journal-entries/${entryId}/edit`);
           } else {
             navigate(`/journal-entries/${entryId}/edit`);
           }
@@ -1424,8 +1424,8 @@ function JournalEntryDetail() {
           key="resubmit"
           variant="outline" 
           onClick={() => {
-            if (clientId && currentEntity?.id && entryId) {
-              navigate(`/clients/${clientId}/entities/${currentEntity.id}/journal-entries/${entryId}/edit`);
+            if (clientIdParam && entityIdParam && entryId) {
+              navigate(`/clients/${clientIdParam}/entities/${entityIdParam}/journal-entries/${entryId}/edit`);
             } else {
               navigate(`/journal-entries/${entryId}/edit`);
             }

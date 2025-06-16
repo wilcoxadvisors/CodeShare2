@@ -287,11 +287,16 @@ export function useDeleteJournalEntryFile() {
         description: 'File was successfully deleted.',
       });
       
-      // ARCHITECT FIX PART 3: Only invalidate the specific attachment query to prevent form resets
-      // Do NOT invalidate the main journal entry query which would cause form data to be refetched
+      // PART 3 FIX: Invalidate both the attachment list and the main journal entry
+      // 1. Invalidate the specific attachment query
       queryClient.invalidateQueries({
         queryKey: ['journalEntryAttachments', variables.journalEntryId],
-        exact: true // Only invalidate this exact query, not parent queries
+        exact: true
+      });
+      
+      // 2. Invalidate the main journal entry to update its internal files array
+      queryClient.invalidateQueries({
+        queryKey: [getJournalEntryUrl(variables.clientId, variables.entityId, variables.journalEntryId)]
       });
     },
     onError: (error: any) => {
