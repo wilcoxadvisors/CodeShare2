@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntity } from '@/contexts/EntityContext';
 import { useToast } from '@/hooks/use-toast';
-import { getJournalEntriesBaseUrl } from '@/api/urlHelpers';
+
 import { ymdToDisplay } from '@/utils/dateUtils';
 import { getDebit, getCredit, isClientFormatLine, isServerFormatLine, safeParseAmount } from '../utils/lineFormat';
 import { generateJournalEntryDisplayId } from '@/utils/journalIdUtils';
@@ -48,8 +48,14 @@ import {
 function JournalEntries() {
   const navigate = useNavigate();
   const location = useLocation();
-  const params = useParams<{ clientId: string; entityId: string }>();
-  const { currentEntity, setCurrentEntity, entities } = useEntity();
+  
+  // PART 3: Use URL parameters directly for data fetching
+  const { clientId: urlClientId, entityId: urlEntityId } = useParams<{ 
+    clientId: string; 
+    entityId: string; 
+  }>();
+  
+  const { currentEntity } = useEntity();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -60,80 +66,32 @@ function JournalEntries() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   
-  // Extract and convert route params
-  const clientId = params?.clientId ? parseInt(params.clientId) : (currentEntity?.clientId || null);
-  const entityId = params?.entityId ? parseInt(params.entityId) : (currentEntity?.id || null);
+  // PART 3: Convert URL params to numbers for API calls
+  const clientId = urlClientId ? parseInt(urlClientId) : null;
+  const entityId = urlEntityId ? parseInt(urlEntityId) : null;
   
-  // Log detailed entity context information
-  console.log("JournalEntries: Detailed context check", {
-    "params.clientId": params?.clientId,
-    "params.entityId": params?.entityId,
-    "currentEntity?.clientId": currentEntity?.clientId,
-    "currentEntity?.id": currentEntity?.id,
-    "calculated clientId": clientId,
-    "calculated entityId": entityId,
-    "total entities in context": entities.length
-  });
-  
-  // Update entity context if needed based on route params - with stability checks
-  useEffect(() => {
-    console.log("JournalEntries: Route params check - entityId:", entityId, 
-                "clientId:", clientId, 
-                "currentEntity:", currentEntity?.id);
-    
-    // Only proceed if we have valid parameters and entities are loaded
-    if (!entityId || !clientId || entities.length === 0) {
-      return;
-    }
-    
-    // Only update if the current entity doesn't match the URL params
-    if (!currentEntity || currentEntity.id !== entityId || currentEntity.clientId !== clientId) {
-      console.log("JournalEntries: Looking for entity with ID:", entityId, "in", entities.length, "entities");
-      const entity = entities.find(e => e.id === entityId && e.clientId === clientId);
-      if (entity) {
-        console.log("JournalEntries: Found entity in context, setting current entity:", entity.name);
-        // Add a small delay to prevent race conditions with EntityContext
-        setTimeout(() => {
-          setCurrentEntity(entity);
-        }, 10);
-      } else {
-        console.log("JournalEntries: Entity not found in context for ID:", entityId, "clientId:", clientId);
-      }
-    }
-  }, [entityId, clientId, currentEntity, entities, setCurrentEntity]);
-  
-  // Use API helper function to construct URL
-  const apiUrl = getJournalEntriesBaseUrl(clientId || 0, entityId || 0);
-  
-  // Log the constructed URL for debugging
-  console.log(`DEBUG: Constructing journal entries API URL: ${apiUrl}`);
-  console.log(`DEBUG: Query will be enabled: ${!!clientId && !!entityId}`);
-  
-  // Fetch journal entries for the entity using hierarchical URL pattern
+  // PART 3: Simplified data fetching tied directly to URL
   const {
     data,
     isLoading,
     error,
     refetch
   } = useQuery({
-    queryKey: [apiUrl, clientId, entityId],
+    queryKey: ['journal-entries', clientId, entityId],
+    queryFn: () => {
+      const apiUrl = `/api/clients/${clientId}/entities/${entityId}/journal-entries`;
+      console.log(`DEBUG: Fetching journal entries from: ${apiUrl}`);
+      return fetch(apiUrl, { credentials: 'include' }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      });
+    },
     enabled: !!clientId && !!entityId,
-    retry: 3, // Retry up to 3 times if the query fails
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    refetchOnWindowFocus: false // Don't refetch when window regains focus
+    retry: 3,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
-  
-  useEffect(() => {
-    console.log("JournalEntries Data:", data);
-    console.log("JournalEntries Error:", error);
-    console.log("JournalEntries Loading:", isLoading);
-    
-    if (!isLoading && !data && !error && entityId && clientId) {
-      console.log("Journal entries query not running despite entityId and clientId being set");
-      console.log("QueryKey:", getJournalEntriesBaseUrl(clientId, entityId));
-      console.log("Current entity:", currentEntity);
-    }
-  }, [data, error, isLoading, entityId, clientId, currentEntity]);
+
   
   // We imported the helper functions from lineFormat at the top of the file
   
