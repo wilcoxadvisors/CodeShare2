@@ -61,16 +61,12 @@ interface AccountTreeNode {
 }
 
 function ChartOfAccounts() {
-  const { currentEntity, selectedClientId } = useEntity();
+  const { selectedClientId } = useEntity();
   const { toast } = useToast();
   
 
   
   console.log("DEBUG - ChartOfAccounts rendering with context:", {
-    hasEntity: !!currentEntity,
-    entityId: currentEntity?.id,
-    entityName: currentEntity?.name,
-    entityClientId: currentEntity?.clientId,
     selectedClientId,
     timestamp: new Date().toISOString()
   });
@@ -142,12 +138,9 @@ function ChartOfAccounts() {
   });
 
   // Get hierarchical account tree data using client-based API
-  // Use selectedClientId as fallback when no entity is selected
-  const clientIdToUse = currentEntity?.clientId || selectedClientId;
-  
   const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
-    queryKey: clientIdToUse ? [`/api/clients/${clientIdToUse}/accounts/tree`] : ["no-client-selected"],
-    enabled: !!clientIdToUse
+    queryKey: ['accounts-tree', selectedClientId],
+    enabled: !!selectedClientId
   });
   
   // Fetch clients data for export functionality
@@ -156,26 +149,22 @@ function ChartOfAccounts() {
     enabled: true
   });
   
-  // Debug output for entity context and refresh data when client selection changes
+  // Debug output for client context and refresh data when client selection changes
   useEffect(() => {
-    console.log("DEBUG: Entity context in ChartOfAccounts", { 
-      entityExists: !!currentEntity,
-      currentEntity,
-      clientId: currentEntity?.clientId,
+    console.log("DEBUG: Client context in ChartOfAccounts", { 
       selectedClientId,
-      clientIdToUse,
       time: new Date().toISOString()
     });
     
-    // Refetch account data when client or entity changes
-    if (clientIdToUse) {
-      console.log("DEBUG: Triggering account data refetch due to client/entity change", { clientIdToUse });
+    // Refetch account data when client changes
+    if (selectedClientId) {
+      console.log("DEBUG: Triggering account data refetch due to client change", { selectedClientId });
       // Using a small timeout to ensure the client context is fully updated
       setTimeout(() => {
         refetch();
       }, 100);
     }
-  }, [currentEntity, selectedClientId, clientIdToUse, refetch]);
+  }, [selectedClientId, refetch]);
   
   // Extract the actual accounts array from the response
   const accountTreeData = accountsTree?.data || [];
@@ -186,7 +175,7 @@ function ChartOfAccounts() {
     extractedData: accountTreeData,
     count: accountTreeData.length,
     sample: accountTreeData.length > 0 ? accountTreeData[0] : null,
-    clientId: clientIdToUse,
+    clientId: selectedClientId,
     timestamp: new Date().toISOString()
   });
   
@@ -419,7 +408,7 @@ function ChartOfAccounts() {
 
   // Auto-generate account code based on type selection
   useEffect(() => {
-    if (!isEditMode && accountData.type && currentEntity) {
+    if (!isEditMode && accountData.type && selectedClientId) {
       // Define account code prefixes
       const typePrefixes: Record<string, string> = {
         'asset': "1",
@@ -545,9 +534,9 @@ function ChartOfAccounts() {
         setShowAccountForm(false);
         
         // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
+        if (selectedClientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
@@ -717,9 +706,9 @@ function ChartOfAccounts() {
         setShowAccountForm(false);
         
         // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
+        if (selectedClientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts/tree`] });
         }
       },
       onError: (error: Error) => {
@@ -766,10 +755,10 @@ function ChartOfAccounts() {
         setShowAccountForm(false); // Close the edit dialog too
         
         // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${clientIdToUse}`);
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
+        if (selectedClientId) {
+          console.log(`DEBUG: useDeleteAccount - Invalidating queries for clientId: ${selectedClientId}`);
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
@@ -843,11 +832,11 @@ function ChartOfAccounts() {
     console.log("VERIFICATION TEST - handleSubmit - Client validation:", { 
       currentEntity, 
       selectedClientId,
-      clientIdToUse,
-      clientIdToUseType: typeof clientIdToUse
+      selectedClientId,
+      selectedClientIdType: typeof selectedClientId
     });
     
-    if (!clientIdToUse) {
+    if (!selectedClientId) {
       console.error("VERIFICATION TEST - handleSubmit - No client ID available");
       toast({
         title: "Client required",
@@ -857,8 +846,8 @@ function ChartOfAccounts() {
       return;
     }
     
-    if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
-      console.error("VERIFICATION TEST - handleSubmit - Invalid client ID:", clientIdToUse);
+    if (typeof selectedClientId !== 'number' || isNaN(selectedClientId) || selectedClientId <= 0) {
+      console.error("VERIFICATION TEST - handleSubmit - Invalid client ID:", selectedClientId);
       toast({
         title: "Invalid client",
         description: "The selected client appears to be invalid. Please try selecting a different client.",
@@ -897,7 +886,7 @@ function ChartOfAccounts() {
     console.log("DEBUG - handleSubmit - parentId after:", submitData.parentId, "type:", typeof submitData.parentId);
     
     console.log("DEBUG - handleSubmit - Submitting account data:", {
-      clientId: clientIdToUse,
+      clientId: selectedClientId,
       submitData,
       isEditMode
     });
@@ -907,12 +896,12 @@ function ChartOfAccounts() {
         // For edit mode, ensure we have a valid ID and it's not null
         
         // Fetch the original account data to compare what actually changed
-        apiRequest(`/api/clients/${clientIdToUse}/accounts/${submitData.id}`)
+        apiRequest(`/api/clients/${selectedClientId}/accounts/${submitData.id}`)
           .then((originalAccountData: any) => {
             console.log('DEBUG CoA Update: Original account data:', JSON.stringify(originalAccountData, null, 2));
             
             // First check if the account has transactions
-            apiRequest(`/api/clients/${clientIdToUse}/accounts/transactions-check/${submitData.id}`)
+            apiRequest(`/api/clients/${selectedClientId}/accounts/transactions-check/${submitData.id}`)
               .then((transactionCheckResult: any) => {
                 console.log('DEBUG CoA Update: Transaction check result:', JSON.stringify(transactionCheckResult, null, 2));
                 
@@ -922,7 +911,7 @@ function ChartOfAccounts() {
                 // Create a base update object with required fields
                 const baseUpdateData = {
                   id: submitData.id as number,
-                  clientId: clientIdToUse,
+                  clientId: selectedClientId,
                 };
                 
                 // Only include fields that were actually changed
@@ -1047,7 +1036,7 @@ function ChartOfAccounts() {
                 // Create a base update object with required fields (the same as used in the success path)
                 const baseUpdateData = {
                   id: submitData.id as number,
-                  clientId: clientIdToUse,
+                  clientId: selectedClientId,
                 };
                 
                 // Combine base fields with changed fields
@@ -1085,12 +1074,12 @@ function ChartOfAccounts() {
         // For create mode
         console.log("VERIFICATION TEST - handleSubmit - Creating new account with data:", JSON.stringify({
           ...submitData,
-          clientId: clientIdToUse
+          clientId: selectedClientId
         }, null, 2));
         
         createAccount.mutate({
           ...submitData,
-          clientId: clientIdToUse
+          clientId: selectedClientId
         });
       }
     } catch (error) {
@@ -1128,7 +1117,7 @@ function ChartOfAccounts() {
   // Excel export functionality
   // Function to fetch all accounts for export (not just visible ones)
   const fetchAllAccountsForExport = async () => {
-    if (!clientIdToUse) {
+    if (!selectedClientId) {
       toast({
         title: "No client selected",
         description: "Please select a client to export accounts.",
@@ -1139,7 +1128,7 @@ function ChartOfAccounts() {
     
     try {
       // Use the regular accounts API to get all accounts for the client
-      const response = await fetch(`/api/clients/${clientIdToUse}/accounts`);
+      const response = await fetch(`/api/clients/${selectedClientId}/accounts`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch accounts for export: ${response.status} ${response.statusText}`);
@@ -1245,8 +1234,8 @@ function ChartOfAccounts() {
       let entityName = 'Entity';
       if (currentEntity?.name) {
         entityName = currentEntity.name;
-      } else if (clientIdToUse && Array.isArray(clients)) {
-        const client = clients.find((c: any) => c.id === clientIdToUse);
+      } else if (selectedClientId && Array.isArray(clients)) {
+        const client = clients.find((c: any) => c.id === selectedClientId);
         if (client?.name) {
           entityName = client.name;
         }
@@ -1885,20 +1874,20 @@ function ChartOfAccounts() {
   const useImportAccounts = () => {
     return useMutation({
       mutationFn: async (payload: any) => {
-        console.log("DEBUG: useImportAccounts - Starting import with clientIdToUse:", clientIdToUse);
+        console.log("DEBUG: useImportAccounts - Starting import with selectedClientId:", selectedClientId);
         
         // Enhanced client validation
-        if (!clientIdToUse) {
+        if (!selectedClientId) {
           console.error("DEBUG: useImportAccounts - No client ID available");
           throw new Error("No client selected. Please select a client before importing accounts.");
         }
         
-        if (typeof clientIdToUse !== 'number' || isNaN(clientIdToUse) || clientIdToUse <= 0) {
-          console.error("DEBUG: useImportAccounts - Invalid client ID:", clientIdToUse);
-          throw new Error(`Invalid client ID: ${clientIdToUse}. Please select a valid client.`);
+        if (typeof selectedClientId !== 'number' || isNaN(selectedClientId) || selectedClientId <= 0) {
+          console.error("DEBUG: useImportAccounts - Invalid client ID:", selectedClientId);
+          throw new Error(`Invalid client ID: ${selectedClientId}. Please select a valid client.`);
         }
         
-        console.log(`DEBUG: useImportAccounts - Using endpoint /api/clients/${clientIdToUse}/accounts/import`);
+        console.log(`DEBUG: useImportAccounts - Using endpoint /api/clients/${selectedClientId}/accounts/import`);
         
         // Check if payload is already FormData (from handleImportConfirm)
         let formData;
@@ -1923,7 +1912,7 @@ function ChartOfAccounts() {
         
         try {
           // Use fetch directly since apiRequest doesn't handle FormData
-          const response = await fetch(`/api/clients/${clientIdToUse}/accounts/import`, {
+          const response = await fetch(`/api/clients/${selectedClientId}/accounts/import`, {
             method: 'POST',
             body: formData,
             credentials: 'include' // Include cookies for authentication
@@ -2039,9 +2028,9 @@ function ChartOfAccounts() {
         }
         
         // Invalidate relevant queries to refresh UI
-        if (clientIdToUse) {
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts`] });
-          queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientIdToUse}/accounts/tree`] });
+        if (selectedClientId) {
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/clients/${selectedClientId}/accounts/tree`] });
         }
       },
       onError: (error: any) => {
@@ -2484,10 +2473,10 @@ function ChartOfAccounts() {
                 variant="outline"
                 className="inline-flex items-center text-sm font-medium text-gray-700"
                 onClick={() => {
-                  console.log("DEBUG: CSV export button clicked, clientIdToUse =", clientIdToUse);
-                  if (clientIdToUse) {
-                    console.log(`DEBUG: Initiating CSV export to /api/clients/${clientIdToUse}/accounts/export`);
-                    window.location.href = `/api/clients/${clientIdToUse}/accounts/export`;
+                  console.log("DEBUG: CSV export button clicked, selectedClientId =", selectedClientId);
+                  if (selectedClientId) {
+                    console.log(`DEBUG: Initiating CSV export to /api/clients/${selectedClientId}/accounts/export`);
+                    window.location.href = `/api/clients/${selectedClientId}/accounts/export`;
                     toast({
                       title: "Export initiated",
                       description: "Your CSV file download should begin shortly.",
