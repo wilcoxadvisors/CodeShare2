@@ -717,6 +717,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         conditions.push(sql`${journalEntries.date} <= ${options.endDate.toISOString().split('T')[0]}`);
       }
       
+      // Add account filter if provided
+      if (options.accountId) {
+        conditions.push(eq(journalEntryLines.accountId, options.accountId));
+      }
+      
       // Get account information first for the client (needed for account details and filtering)
       const clientAccounts = await db.select({
         id: accounts.id,
@@ -748,10 +753,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       .where(and(...conditions))
       .orderBy(asc(journalEntries.date), asc(journalEntries.id));
       
-      // Apply account filter if provided
-      if (options.accountId) {
-        query.where(eq(journalEntryLines.accountId, options.accountId));
-      }
+      // Account filter is already included in conditions array above
       
       // Execute the query
       const results = await query;
@@ -788,7 +790,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         // Create GeneralLedgerEntry
         entries.push({
           id: row.lineId,
-          date: row.entryDate,
+          date: new Date(row.entryDate),
           referenceNumber: row.referenceNumber,
           description: row.description || row.lineDescription,
           accountId: row.accountId,
@@ -998,19 +1000,19 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           const lineData = {
             journalEntryId: reversalEntry.id,
             accountId: line.accountId,
-            type: reversedType,
-            amount: line.amount,
+            type: reversedType as 'debit' | 'credit',
+            amount: String(line.amount),
             description: line.description || null,
-            entityCode: line.entityCode || null, // Include entityCode from original line
-            fsliBucket: line.fsliBucket || null, // Copy reporting fields as well
+            entityCode: line.entityCode || null,
+            fsliBucket: line.fsliBucket || null,
             internalReportingBucket: line.internalReportingBucket || null,
             item: line.item || null,
-            reconciled: false // New reversal line is not reconciled
+            reconciled: false
           };
           
           // Insert the reversed line
           const [insertedLine] = await tx.insert(journalEntryLines)
-            .values(lineData)
+            .values([lineData])
             .returning();
             
           console.log(`Added reversed line for account ${line.accountId}: ${reversedType} ${line.amount}`);
