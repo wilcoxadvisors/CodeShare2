@@ -461,11 +461,10 @@ function AttachmentSection({
   // Determine if we can modify attachments based on entry status
   const isNewEntry = !isExistingEntry;
   
-  // For existing entries, get status from attachments array which contains current entry data
-  // We assume that if attachments are passed, the entry is in an editable state
-  const canModifyExistingEntry = isExistingEntry;
-  
-  const canModifyAttachments = isNewEntry || canModifyExistingEntry;
+  // CRITICAL FIX: File modification should only be allowed when:
+  // 1. User is actively editing (isInEditMode is true)
+  // 2. AND the journal entry status is 'draft'
+  const canModifyAttachments = isInEditMode && (isNewEntry || status === 'draft');
   
   // Set disable conditions correctly
   const isAttachmentsDisabled = !canModifyAttachments;
@@ -473,11 +472,10 @@ function AttachmentSection({
 
   // DEBUG: Log attachment status for troubleshooting
   console.log("ARCHITECT_DEBUG_ATTACHMENT_PERMISSIONS:", {
-    journalEntry: false,
-    journalEntryStatus: "unknown",
+    journalEntryStatus: status,
     isExistingEntry,
     isNewEntry,
-    canModifyExistingEntry,
+    isInEditMode,
     canModifyAttachments,
     isAttachmentsDisabled,
     isFileDeletionDisabled,
@@ -3618,6 +3616,8 @@ const [journalData, setJournalData] = useState({
           setPendingFilesMetadata={setPendingFilesMetadata}
           onUploadToEntryRef={uploadPendingFilesRef}
           attachments={existingEntry?.files || []}
+          status={existingEntry?.status}
+          isInEditMode={!!existingEntry}
         />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
