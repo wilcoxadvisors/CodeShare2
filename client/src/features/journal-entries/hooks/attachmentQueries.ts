@@ -191,14 +191,17 @@ export function useUploadJournalEntryFile(journalEntryId: number | undefined | n
       });
       
       if (journalEntryId) {
-        // CRITICAL FIX: Only invalidate the specific attachment query to prevent form resets
-        // Do NOT invalidate the main journal entry query which would cause form data to be refetched
+        // PART 3 FIX: Invalidate both the attachment list and the main journal entry
+        // 1. Invalidate the specific attachment query
         queryClient.invalidateQueries({ 
           queryKey: ['journalEntryAttachments', journalEntryId],
-          exact: true // Only invalidate this exact query, not parent queries
+          exact: true
         });
         
-        // Do NOT invalidate the journal entry URL as it causes form resets
+        // 2. Invalidate the main journal entry to update its internal files array
+        queryClient.invalidateQueries({
+          queryKey: [getJournalEntryUrl(clientId, entityId, journalEntryId)]
+        });
       }
     },
     onError: (error: any) => {
