@@ -1,0 +1,58 @@
+Instructions for the Agent
+Agent, the user has identified a critical bug where file attachments are not being displayed, and file operations are failing on the Journal Entry edit page.
+
+Mission: Fix the data flow to ensure the AttachmentSection component receives the correct data for the journal entry being edited.
+
+Plan:
+
+File to Modify: client/src/features/journal-entries/hooks/useEditJournalEntry.ts
+
+Action: This hook is correctly fetching the data, including the files array. No changes are likely needed here, but you must verify that the returned object from this hook includes the files.
+File to Modify: client/src/features/journal-entries/pages/JournalEntryDetail.tsx (or whichever component uses the useEditJournalEntry hook).
+
+Action: This component receives the complete journalEntry object (with files) from the hook. Ensure it is passing the entire journalEntry object as a prop to the JournalEntryForm component.
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action: This component receives the journalEntry prop. It must then pass the journalEntry.files array as a prop to the <AttachmentSection /> component. It must also pass the journalEntry.status so the AttachmentSection can determine if attachments can be modified.
+Example of Correct Prop Drilling:
+
+TypeScript
+
+// In JournalEntryDetail.tsx
+const { journalEntry } = useEditJournalEntry();
+return <JournalEntryForm existingEntry={journalEntry} />;
+
+// In JournalEntryForm.tsx
+function JournalEntryForm({ existingEntry }) {
+    // ...
+    return (
+        //...
+        <AttachmentSection 
+            files={existingEntry?.files || []} 
+            status={existingEntry?.status}
+            journalEntryId={existingEntry?.id}
+        />
+        //...
+    );
+}
+
+// In AttachmentSection in JournalEntryForm.tsx
+function AttachmentSection({ files, status, journalEntryId }) {
+    // This component now receives the files directly.
+    // It should NOT have its own useQuery.
+    
+    const canModifyAttachments = status === 'draft';
+
+    return (
+        <div>
+            {/* List existing files from the `files` prop */}
+            {files.map(file => (
+                <div key={file.id}>{file.fileName}</div>
+            ))}
+
+            {/* The dropzone for adding new files */}
+            {canModifyAttachments && <Dropzone ... />}
+        </div>
+    );
+}
+Please trace this data flow from the useEditJournalEntry hook down to the AttachmentSection. Ensure the files prop is being passed correctly at each stage and remove any redundant data-fetching that might be causing conflicts.

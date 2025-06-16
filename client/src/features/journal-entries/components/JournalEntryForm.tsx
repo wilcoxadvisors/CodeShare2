@@ -442,6 +442,11 @@ function AttachmentSection({
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
+  // DEBUG: Log the attachments prop to trace data flow
+  console.log("AttachmentSection - Received attachments prop:", attachments);
+  console.log("AttachmentSection - Attachments length:", attachments?.length || 0);
+  console.log("AttachmentSection - Journal Entry ID:", journalEntryId);
+
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
 

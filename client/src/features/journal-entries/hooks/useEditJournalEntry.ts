@@ -149,10 +149,16 @@ export function useEditJournalEntry() {
   // Ensure we return files if they exist in the journal entry
   // Bug fix #1 - ensure files are preserved when editing a journal entry
   if (processedEntry) {
+    // Log the files data for debugging
+    console.log("useEditJournalEntry - Files in processedEntry:", processedEntry.files);
+    console.log("useEditJournalEntry - Raw data has files:", data && 'files' in data ? data.files : 'no files in data');
+    
     processedEntry = {
       ...processedEntry,
       files: processedEntry.files ?? [] // Preserve files array
     };
+    
+    console.log("useEditJournalEntry - Final processedEntry.files:", processedEntry.files);
   }
 
   return {
