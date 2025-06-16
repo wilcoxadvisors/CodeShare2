@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
@@ -55,6 +55,7 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   
   // Detect if we're on a client-only page (like dimensions)
   const location = useLocation();
+  const navigate = useNavigate();
   const isClientOnlyView = location.pathname.startsWith('/manage/dimensions');
   
   // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
@@ -466,16 +467,22 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
                                 // Find the entity by ID
                                 const selectedEntity = entities.find(e => e.id === id);
                                 if (selectedEntity) {
-                                  console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: Entity selected, setting context:', 
+                                  console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: Entity selected, navigating to URL:', 
                                     { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
-                                  selectEntity(selectedEntity);
+                                  
+                                  // PART 1: Use URL navigation as single source of truth
+                                  navigate(`/clients/${selectedEntity.clientId}/entities/${selectedEntity.id}/journal-entries`);
+                                  setOpen(false);
                                 } else {
                                   console.error(`ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
                                 }
                               }}
                               onClick={() => {
                                 console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONCLICK: onClick triggered for entity:', entity.id, entity.name);
-                                selectEntity(entity);
+                                
+                                // PART 1: Use URL navigation as single source of truth
+                                navigate(`/clients/${entity.clientId}/entities/${entity.id}/journal-entries`);
+                                setOpen(false);
                               }}
                               className={`cursor-pointer pl-4 py-1 my-1 mx-2 rounded-sm border-l-2 hover:bg-muted/50 ${statusClasses}`}
                             >

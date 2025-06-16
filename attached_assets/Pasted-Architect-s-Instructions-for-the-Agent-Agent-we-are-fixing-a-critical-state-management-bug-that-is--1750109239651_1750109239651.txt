@@ -1,0 +1,29 @@
+Architect's Instructions for the Agent
+Agent, we are fixing a critical state management bug that is causing application-wide instability. You will refactor the entity selection logic to use the URL as the single source of truth.
+
+Part 1: Centralize Navigation
+
+Goal: The entity selector dropdown should change the URL, not the context directly.
+File: client/src/components/dashboard/GlobalContextSelector.tsx
+Action:
+Get the Maps function from the useNavigate hook (from react-router-dom).
+Find the onSelect handler for entity selection (the function ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT).
+Delete the existing logic within this handler that calls setClient and setEntity.
+Replace it with a single call to Maps. The new URL should be /clients/:newClientId/entities/:newEntityId/journal-entries.
+Part 2: Make Context React to URL
+
+Goal: The EntityContext should listen for URL changes and update itself accordingly.
+File: client/src/contexts/EntityContext.tsx
+Action:
+Use the useParams hook from react-router-dom to get the clientId and entityId from the URL.
+Create a useEffect hook that runs whenever the clientId or entityId from useParams changes.
+Move the logic that sets the selectedClient, currentEntity, and saves to localStorage inside this useEffect hook. This ensures the context always reflects the state of the URL.
+Part 3: Simplify Page Components
+
+Goal: All pages should derive their context from the URL, not from a mix of sources.
+File: client/src/features/journal-entries/pages/JournalEntries.tsx
+Action:
+Use useParams to get the clientId and entityId.
+Use these IDs directly in your useQuery key for fetching the list of journal entries. For example: queryKey: ['journal-entries', clientId, entityId].
+Remove any complex logic that tries to find the current entity from the list. The EntityContext will now provide this reliably.
+Your first task is to execute Part 1: Centralize Navigation. Modify the GlobalContextSelector component as instructed. I will await your response to review the code change.
