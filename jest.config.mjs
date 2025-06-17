@@ -9,6 +9,10 @@ const config = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/client/src/$1',
+    //
+    // ARCHITECT'S FIX: Add the line below to resolve backend path aliases
+    //
+    '^@shared/(.*)$': '<rootDir>/shared/$1'
   },
   testPathIgnorePatterns: [
     '/node_modules/',

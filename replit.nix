@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.nspr
     pkgs.xorg.xauth
     pkgs.alsa-lib
     pkgs.nss
