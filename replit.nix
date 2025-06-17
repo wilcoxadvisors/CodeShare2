@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.dbus
     pkgs.nspr
     pkgs.xorg.xauth
     pkgs.alsa-lib
