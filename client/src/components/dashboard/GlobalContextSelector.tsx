@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Check, ChevronsUpDown, Building, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { 
   Popover, 
@@ -56,7 +56,11 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // Detect if we're on a client-only page (like dimensions or chart of accounts)
   const location = useLocation();
   const navigate = useNavigate();
+  const params = useParams();
   const isClientOnlyView = location.pathname.includes('/chart-of-accounts') || location.pathname.includes('/manage/dimensions');
+  
+  // Get the actual client ID from URL parameters for client-only pages
+  const urlClientId = params.clientId ? parseInt(params.clientId, 10) : null;
   
   // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
   // Track which clients are expanded - start collapsed, allow restoration for selected client
@@ -77,8 +81,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   const hasClientContext = selectedClientId !== null;
   const hasEntityContext = currentEntity !== null;
   
-  // Simplified display logic that reads directly from context
-  const selectedClientName = useMemo(() => clients.find(c => c.id === selectedClientId)?.name, [clients, selectedClientId]);
+  // Display logic that uses URL client ID for client-only pages
+  const displayClientId = isClientOnlyView ? urlClientId : selectedClientId;
+  const selectedClientName = useMemo(() => clients.find(c => c.id === displayClientId)?.name, [clients, displayClientId]);
   const currentEntityName = useMemo(() => entities.find(e => e.id === currentEntity?.id)?.name, [entities, currentEntity]);
 
   let buttonText: React.ReactNode = "Select Client...";
