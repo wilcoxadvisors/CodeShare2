@@ -806,7 +806,7 @@ const DimensionsPage = () => {
                       <p className="text-sm text-muted-foreground mb-4">{dimension.description || 'No description.'}</p>
                       <h4 className="font-semibold mb-2">Values ({dimension.values?.length || 0}):</h4>
                       <div className="space-y-1 mb-4">
-                        {dimension.values?.length > 0 ? dimension.values.slice(0, 5).map(value => (
+                        {dimension.values?.length > 0 ? dimension.values.slice(0, 5).map((value: DimensionValue) => (
                           <div key={value.id} className={`text-sm p-2 bg-gray-50 rounded-md flex justify-between items-center ${!value.isActive ? 'opacity-60' : ''}`}>
                             <span>{value.name} ({value.code})</span>
                             <span className={`text-xs px-1.5 py-0.5 rounded-full ${value.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -848,7 +848,7 @@ const DimensionsPage = () => {
           </DialogHeader>
           {managingDimension && selectedClientId && (
             <DimensionValuesManager 
-              dimension={dimensions.find(d => d.id === managingDimension.id) || managingDimension} 
+              dimension={dimensions.find((d: Dimension) => d.id === managingDimension.id) || managingDimension} 
               selectedClientId={selectedClientId}
             />
           )}

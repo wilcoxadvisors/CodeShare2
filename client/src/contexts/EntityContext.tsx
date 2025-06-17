@@ -293,13 +293,30 @@ function EntityProvider({ children }: { children: ReactNode }) {
     }
   }, [queryIsLoading, isFetching, isAuthLoadingFromAuthContext, initialLoadComplete, isSuccess, isError, allEntities, isLoading]);
   
-  // When client selection changes, clear entity if needed - but debounce to prevent conflicts
+  // When client selection changes, clear entity if needed and invalidate related queries
   useEffect(() => {
     // Skip this effect when we're loading or don't have a client selected
     if (!selectedClientId) {
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic");
       return;
     }
+
+    // CRITICAL FIX: Invalidate client-dependent queries when client changes
+    console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to ${selectedClientId}, invalidating related queries`);
+    
+    // Import queryClient dynamically to avoid circular dependency
+    import('@/lib/queryClient').then(({ queryClient }) => {
+      // Invalidate dimensions queries
+      queryClient.invalidateQueries({ queryKey: ['dimensions'] });
+      
+      // Invalidate chart of accounts queries
+      queryClient.invalidateQueries({ queryKey: ['accounts-tree'] });
+      
+      // Invalidate journal entries queries
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      
+      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client ${selectedClientId}`);
+    });
     
     if (isLoading || queryIsLoading || isFetching) {
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic:", {
