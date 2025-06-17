@@ -2046,13 +2046,7 @@ const [journalData, setJournalData] = useState({
       entityId,
       status: initialStatus, // Use our determined initial status
       createdBy: user?.id,
-      lines: formattedLines,
-      // ARCHITECT_PART2_FIX: Add files array to enable backend synchronization
-      files: pendingFiles.map(file => ({
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type
-      }))
+      lines: formattedLines
     };
 
     // Debug logging for the API payload
@@ -2065,8 +2059,16 @@ const [journalData, setJournalData] = useState({
     console.log('--- FRONTEND SUBMISSION ---', entryData);
 
     if (isEditing) {
-      // For existing entries, no need for special attachment handling
-      updateEntry.mutate(entryData);
+      // ARCHITECT_MANDATORY_FIX: Preserve existing files to prevent data loss
+      const existingFiles = existingEntry?.files?.filter((f: any) => f.id) || [];
+      
+      // For existing entries, include existing files in the payload
+      const updateEntryData = {
+        ...entryData,
+        files: existingFiles,
+      };
+      
+      updateEntry.mutate(updateEntryData);
     } else {
       // For new entries
       // IMPROVED IMPLEMENTATION: Always use a two-step process for creating and posting entries
