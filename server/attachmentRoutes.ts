@@ -328,8 +328,8 @@ export function registerAttachmentRoutes(app: Express) {
    */
   router.get('/', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
-    const entityId = parseInt(req.params.eId);
-    const clientId = parseInt(req.params.cId);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
     
     console.log('DEBUG Attach BE: Get files for journal entry ID:', { jeId, entityId, clientId });
     
@@ -370,8 +370,8 @@ export function registerAttachmentRoutes(app: Express) {
    */
   router.get('/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
-    const entityId = parseInt(req.params.eId);
-    const clientId = parseInt(req.params.cId);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
     const fileId = parseInt(req.params.fileId);
     
     if (isNaN(jeId) || isNaN(entityId) || isNaN(clientId) || isNaN(fileId)) {
@@ -459,8 +459,8 @@ export function registerAttachmentRoutes(app: Express) {
    */
   router.get('/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
-    const entityId = parseInt(req.params.eId);
-    const clientId = parseInt(req.params.cId);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
     const fileId = parseInt(req.params.fileId);
     
     if (isNaN(jeId) || isNaN(entityId) || isNaN(clientId) || isNaN(fileId)) {

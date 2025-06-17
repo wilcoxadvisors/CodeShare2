@@ -111,6 +111,11 @@ app.use((req, res, next) => {
     }
     log('✅ Uploads directories created');
     
+    // Register hierarchical attachment routes FIRST to ensure they're processed before Vite catch-all
+    log('Registering hierarchical attachment routes...');
+    registerAttachmentRoutes(app);
+    log('✅ Hierarchical attachment routes registered');
+    
     // Register API routes
     log('Registering API routes...');
     const server = await registerRoutes(app);
@@ -165,11 +170,6 @@ app.use((req, res, next) => {
     log('Registering dimension routes...');
     app.use('/api', dimensionRoutes);
     log('✅ Dimension routes registered');
-    
-    // Register hierarchical attachment routes
-    log('Registering hierarchical attachment routes...');
-    registerAttachmentRoutes(app);
-    log('✅ Hierarchical attachment routes registered');
 
     // importantly set up vite or static serving before 404 handler
     // so frontend routes are properly handled
