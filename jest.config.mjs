@@ -17,6 +17,7 @@ export default {
     '<rootDir>/testing/**/*.test.js'
   ],
   testEnvironment: 'node',
+  globalSetup: '<rootDir>/tests/api/setup.ts',
 
   collectCoverageFrom: [
     'server/**/*.{ts,js}',

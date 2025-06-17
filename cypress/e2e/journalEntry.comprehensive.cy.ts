@@ -25,7 +25,7 @@ describe('Journal Entry - Comprehensive E2E Workflow Tests', () => {
   });
 
   beforeEach(() => {
-    cy.login('admin@example.com', 'password');
+    cy.login(); // Use default admin credentials
     Cypress.on('uncaught:exception', (err) => {
       cy.log(`Uncaught exception: ${err.message}`);
       return false;

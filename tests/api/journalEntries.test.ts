@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import request from 'supertest';
-import { app } from '../../server/app';
-import { db } from '../../server/db';
-import { journalEntries, journalEntryLines, accounts, entities, clients, users } from '../../shared/schema';
+import { apiHelper } from './apiTestHelper.js';
+import { db } from '../../server/db.js';
+import { journalEntries, journalEntryLines, accounts, entities, clients, users } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 describe('Journal Entries API', () => {
