@@ -39,8 +39,6 @@ interface Entity {
 }
 
 interface GlobalContextSelectorProps {
-  clients: Client[];
-  entities: Entity[];
   /** 
    * Set to false to hide entity selection - useful for features like Chart of Accounts
    * where the entities under a client share the same chart
@@ -48,8 +46,8 @@ interface GlobalContextSelectorProps {
   showEntities?: boolean;
 }
 
-export default function GlobalContextSelector({ clients, entities, showEntities = true }: GlobalContextSelectorProps) {
-  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity } = useEntity();
+export default function GlobalContextSelector({ showEntities = true }: GlobalContextSelectorProps) {
+  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, allEntities: entities } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   

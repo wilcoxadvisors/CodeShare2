@@ -31,13 +31,11 @@ interface Entity {
 }
 
 interface MobileContextSelectorProps {
-  clients: Client[];
-  entities: Entity[];
   onSelect?: () => void; // Callback to close the drawer when selection is made
 }
 
-export default function MobileContextSelector({ clients, entities, onSelect }: MobileContextSelectorProps) {
-  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity } = useEntity();
+export default function MobileContextSelector({ onSelect }: MobileContextSelectorProps) {
+  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, allEntities: entities } = useEntity();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
 

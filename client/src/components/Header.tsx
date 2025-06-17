@@ -125,16 +125,16 @@ function Header() {
               {/* Financial Reports Section Tabs */}
               {currentBaseSection === '/reports' && (
                 <>
-                  <a href="/reports" className={`${location === '/reports' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/reports" className={`${pathname === '/reports' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Overview
                   </a>
-                  <a href="/reports/balance-sheet" className={`${location === '/reports/balance-sheet' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/reports/balance-sheet" className={`${pathname === '/reports/balance-sheet' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Balance Sheet
                   </a>
-                  <a href="/reports/income-statement" className={`${location === '/reports/income-statement' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/reports/income-statement" className={`${pathname === '/reports/income-statement' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Income Statement
                   </a>
-                  <a href="/reports/cash-flow" className={`${location === '/reports/cash-flow' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/reports/cash-flow" className={`${pathname === '/reports/cash-flow' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Cash Flow
                   </a>
                 </>
@@ -243,8 +243,6 @@ function Header() {
             {!hideSelectorRoutes.includes(pathname) && (
               <div className="relative mr-3 hidden md:block">
                 <GlobalContextSelector 
-                  clients={clients} 
-                  entities={allEntities} 
                   showEntities={!clientOnlyRoutes.includes(pathname)}
                 />
               </div>
@@ -282,9 +280,6 @@ function Header() {
                     </DrawerHeader>
                     <div className="p-4 overflow-y-auto flex-1">
                       <MobileContextSelector 
-                        clients={clients} 
-                        entities={allEntities}
-                        showEntities={!clientOnlyRoutes.includes(pathname)} 
                         onSelect={() => setMobileContextOpen(false)} 
                       />
                     </div>
@@ -322,8 +317,6 @@ function Header() {
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-sm font-medium text-gray-500 mb-2">Select Client</h2>
               <GlobalContextSelector 
-                clients={clients} 
-                entities={allEntities} 
                 showEntities={!clientOnlyRoutes.includes(pathname)}
               />
             </div>
