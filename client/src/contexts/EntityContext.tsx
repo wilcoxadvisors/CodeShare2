@@ -187,43 +187,71 @@ function EntityProvider({ children }: { children: ReactNode }) {
     ? allEntities.filter((entity: any) => entity.clientId === selectedClientId)
     : [];
     
-  // PART 2: URL-reactive useEffect - makes context listen to URL changes
+  // PART 2: URL-reactive useEffect - makes context listen to URL changes IMMEDIATELY
   useEffect(() => {
-    console.log('ARCHITECT_DEBUG_URL_REACTIVE: URL params changed:', { urlClientId, urlEntityId });
+    console.log('ARCHITECT_DEBUG_URL_REACTIVE: URL params changed:', { 
+      urlClientId, 
+      urlEntityId,
+      currentEntityId: currentEntity?.id,
+      selectedClientId,
+      entitiesLoaded: allEntities.length > 0
+    });
     
     if (urlClientId && urlEntityId && allEntities.length > 0) {
       const clientId = parseInt(urlClientId);
       const entityId = parseInt(urlEntityId);
       
-      console.log('ARCHITECT_DEBUG_URL_REACTIVE: Looking for entity ID:', entityId, 'in', allEntities.length, 'entities');
+      console.log('ARCHITECT_DEBUG_URL_REACTIVE: Processing URL change - Client:', clientId, 'Entity:', entityId);
+      
+      // IMMEDIATE CLIENT UPDATE - don't wait for entity lookup
+      if (selectedClientId !== clientId) {
+        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Immediate client sync from URL:', clientId);
+        setSelectedClientIdState(clientId);
+        localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
+      }
       
       // Find the entity by ID
       const entity = allEntities.find((e: any) => e.id === entityId);
       
-      if (entity && entity.clientId === clientId) {
-        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Setting context from URL:', {
-          clientId: entity.clientId,
-          entityId: entity.id,
-          entityName: entity.name
-        });
-        
-        // Update context to match URL
-        setSelectedClientIdState(entity.clientId);
-        setCurrentEntityState(entity);
-        
-        // Persist to localStorage
-        localStorage.setItem(STORAGE_KEY_CLIENT, entity.clientId.toString());
-        localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
-        
-        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Context updated and persisted to localStorage');
+      if (entity) {
+        // IMMEDIATE ENTITY UPDATE regardless of client match - fix cross-client navigation
+        if (currentEntity?.id !== entityId) {
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Immediate entity sync from URL:', {
+            entityId: entity.id,
+            entityName: entity.name,
+            entityClientId: entity.clientId
+          });
+          
+          // Update both client and entity to match the entity's actual client
+          setSelectedClientIdState(entity.clientId);
+          setCurrentEntityState(entity);
+          
+          // Persist both
+          localStorage.setItem(STORAGE_KEY_CLIENT, entity.clientId.toString());
+          localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
+          
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Full context synchronized with URL');
+        } else {
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Entity already matches URL, no update needed');
+        }
       } else {
-        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Entity not found or client mismatch');
+        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Entity not found in loaded data, keeping URL client');
+        // Keep the client selection from URL even if entity not found
+        if (selectedClientId !== clientId) {
+          setSelectedClientIdState(clientId);
+          localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
+        }
       }
     } else if (!urlClientId && !urlEntityId) {
-      // Clear context when not on an entity-specific route
       console.log('ARCHITECT_DEBUG_URL_REACTIVE: No URL params, clearing context if needed');
+      // Only clear if we're actually on a non-entity route
+      if (currentEntity) {
+        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Clearing entity context for non-entity route');
+        setCurrentEntityState(null);
+        localStorage.removeItem(STORAGE_KEY_ENTITY);
+      }
     }
-  }, [urlClientId, urlEntityId, allEntities]);
+  }, [urlClientId, urlEntityId, allEntities, currentEntity?.id, selectedClientId]);
   
   // Update loading state based on queries and auth state
   useEffect(() => {

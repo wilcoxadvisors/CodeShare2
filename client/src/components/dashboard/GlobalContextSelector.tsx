@@ -200,10 +200,21 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to dimensions: ${newPath}`);
       navigate(newPath);
     } else if (currentPath.includes('/journal-entries')) {
-      // Need to navigate to client level and let user select entity
-      const newPath = `/clients/${clientId}`;
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to client dashboard: ${newPath}`);
-      navigate(newPath);
+      // Preserve entity context when switching clients - stay on journal entries
+      const pathParts = currentPath.split('/');
+      const entityIndex = pathParts.findIndex(part => part === 'entities');
+      if (entityIndex !== -1 && pathParts[entityIndex + 1]) {
+        // Try to find equivalent entity in new client, otherwise go to client dashboard
+        const currentEntityId = pathParts[entityIndex + 1];
+        const newPath = `/clients/${clientId}/entities/${currentEntityId}/journal-entries`;
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Preserving entity context: ${newPath}`);
+        navigate(newPath);
+      } else {
+        // Fall back to client dashboard if no entity context
+        const newPath = `/clients/${clientId}`;
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to client dashboard: ${newPath}`);
+        navigate(newPath);
+      }
     } else {
       // Default to client dashboard
       const newPath = `/clients/${clientId}`;
