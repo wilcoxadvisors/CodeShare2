@@ -125,7 +125,13 @@ export const createJournalEntrySchema = z.object({
   
   // Automatic Accrual Reversal fields
   isAccrual: z.boolean().optional(),
-  reversalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Reversal date must be in YYYY-MM-DD format" }).optional().nullable(),
+  reversalDate: z.string().optional().nullable().transform(val => {
+    if (!val || val === '') return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      throw new Error("Reversal date must be in YYYY-MM-DD format");
+    }
+    return val;
+  }),
   lines: z.array(
     z.object({
       accountId: z.union([z.string(), z.number()]),

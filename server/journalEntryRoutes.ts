@@ -1344,7 +1344,7 @@ export function registerJournalEntryRoutes(app: Express) {
       const user = req.user as { id: number };
 
       if (Number.isNaN(clientId) || Number.isNaN(entityId) || Number.isNaN(id)) {
-        return throwBadRequest('Invalid client, entity or journal entry ID');
+        return throwBadRequest('Invalid ID provided - Journal Entry, Entity, or Client ID is not a number');
       }
 
       // Validate: ensure entity belongs to client
@@ -2561,6 +2561,10 @@ export function registerJournalEntryRoutes(app: Express) {
         }, existingLines);
         
         console.log(`POSTING DEBUG: Successfully posted journal entry ${id} with preserved dimension tags`);
+        
+        // Debug the accrual reversal detection logic
+        console.log(`ACCRUAL DEBUG: Entry ${id} - isAccrual: ${updatedEntry.isAccrual}, reversalDate: ${updatedEntry.reversalDate}`);
+        console.log(`ACCRUAL DEBUG: Full updated entry:`, JSON.stringify(updatedEntry, null, 2));
         
         // Check if the entry was an accrual and has a reversal date
         if (updatedEntry.isAccrual && updatedEntry.reversalDate) {
