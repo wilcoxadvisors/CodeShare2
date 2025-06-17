@@ -1,0 +1,88 @@
+Architect's Root Cause Analysis
+The previous fix failed because the EntityContext provider itself exists outside of the application's routing structure. Therefore, when it calls useParams() to get the client ID from the URL, it gets undefined because it has no concept of the route it's on.
+
+The core architectural principle—URL as the single source of truth—is correct, but our implementation was flawed. The context cannot pull the state from the URL; another component inside the routing structure must push the URL state into the context.
+
+This single failure is the cause of both issues. We will now fix it correctly.
+
+Definitive Fix Plan: The Final State Management Fix
+This plan will correct the architectural flaw and permanently stabilize the application's state.
+
+Mission: Create a dedicated component to synchronize the URL parameters with the EntityContext, ensuring the context is always a perfect reflection of the URL.
+
+Instructions for the Agent:
+
+You will execute this three-part fix precisely.
+
+Part 1: Remove the Broken Logic
+
+Open the File: Access client/src/contexts/EntityContext.tsx.
+Remove Ineffective Code: Delete the entire useEffect hook that was added in the last attempt (the one that tried to use useParams to get urlClientId). It does not work and must be removed.
+Part 2: Create a URL Synchronization Component
+
+Create a New File: Create a new file at client/src/components/EntityUrlSync.tsx.
+
+Add the Following Code: Paste the following code into the new file. This component's sole purpose is to listen to the URL and update the context.
+
+TypeScript
+
+import { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useEntity } from '../contexts/EntityContext';
+
+const EntityUrlSync = () => {
+  const { clientId, entityId } = useParams<{ clientId: string; entityId: string }>();
+  const { setClientById, setEntityById, selectedClient, currentEntity } = useEntity();
+
+  useEffect(() => {
+    const numericClientId = clientId ? parseInt(clientId, 10) : null;
+    if (numericClientId && numericClientId !== selectedClient?.id) {
+      setClientById(numericClientId);
+    }
+  }, [clientId, selectedClient, setClientById]);
+
+  useEffect(() => {
+    const numericEntityId = entityId ? parseInt(entityId, 10) : null;
+    if (numericEntityId && numericEntityId !== currentEntity?.id) {
+      setEntityById(numericEntityId);
+    }
+  }, [entityId, currentEntity, setEntityById]);
+
+  return null; // This component does not render anything
+};
+
+export default EntityUrlSync;
+Part 3: Place the Synchronization Component in the Layout
+
+Open the Layout File: Access client/src/components/AppLayout.tsx.
+
+Import the New Component: Add this import statement to the top of the file:
+
+TypeScript
+
+import EntityUrlSync from './EntityUrlSync';
+Render the Component: Inside the main div of the AppLayout component's return statement, add the new <EntityUrlSync /> component. A good place is right before the <Header /> component.
+
+TypeScript
+
+// ... imports
+
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  // ... existing code
+
+  return (
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+      <EntityUrlSync />
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AppLayout;
+This new approach is architecturally sound. It creates a component that is guaranteed to be within the router's scope, allowing it to correctly read the URL parameters and push them into the EntityContext. This will resolve both the UI issue in the GlobalContextSelector and the data-loading issue in the Dimensions module.
