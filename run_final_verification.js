@@ -335,13 +335,12 @@ async function step7_reverseEntry() {
   logStep(7, 'Reverse a Posted Entry');
   
   try {
-    // First create a new entry to reverse
+    // First create a new entry to reverse (as draft)
     const jeData = {
       date: new Date().toISOString().split('T')[0],
       referenceNumber: `REVERSE-TEST-${Date.now()}`,
       description: 'Entry to be reversed',
       journalType: 'JE',
-      status: 'posted',
       lines: [
         {
           type: 'debit',
@@ -361,6 +360,12 @@ async function step7_reverseEntry() {
     const originalJe = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries`, jeData);
     log(`Created entry to reverse with ID: ${originalJe.id}`);
 
+    // Post the entry first
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${originalJe.id}`, {
+      status: 'posted'
+    });
+    log(`Posted entry ${originalJe.id} for reversal`);
+
     // Now reverse it
     const reversalData = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${originalJe.id}/reverse`);
     
@@ -377,8 +382,38 @@ async function step8_copyEntry() {
   logStep(8, 'Copy an Entry');
   
   try {
-    // Use the voided entry for copying
-    const copiedData = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.voidedJeId}/copy`);
+    // Create a new posted entry specifically for copying (can't copy voided entries)
+    const jeData = {
+      date: new Date().toISOString().split('T')[0],
+      referenceNumber: `COPY-SOURCE-${Date.now()}`,
+      description: 'Entry to be copied',
+      journalType: 'JE',
+      lines: [
+        {
+          type: 'debit',
+          accountId: 7072,
+          amount: '750.00',
+          description: 'Amount to copy'
+        },
+        {
+          type: 'credit',
+          accountId: 7073,
+          amount: '750.00',
+          description: 'Amount to copy'
+        }
+      ]
+    };
+
+    const sourceJe = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries`, jeData);
+    
+    // Post the entry so it can be copied
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${sourceJe.id}`, {
+      status: 'posted'
+    });
+    log(`Created and posted source entry ${sourceJe.id} for copying`);
+
+    // Now copy the posted entry
+    const copiedData = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${sourceJe.id}/copy`);
     
     testData.copiedJeId = copiedData.id;
     log(`Created copy with ID: ${testData.copiedJeId}`);

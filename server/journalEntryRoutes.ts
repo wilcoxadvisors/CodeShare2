@@ -778,6 +778,26 @@ export function registerJournalEntryRoutes(app: Express) {
       postedAt: new Date()
     }, existingEntry.lines);
     
+    // Check if the entry was an accrual and has a reversal date - trigger automatic reversal
+    if (postedEntry && postedEntry.isAccrual && postedEntry.reversalDate) {
+      try {
+        console.log(`ACCRUAL: Immediately creating and posting reversal for entry ${id} with reversal date ${postedEntry.reversalDate}`);
+
+        // Call the reverseJournalEntry method with automatic posting
+        await journalEntryStorage.reverseJournalEntry(id, {
+          date: new Date(postedEntry.reversalDate),
+          description: `Automatic reversal of: ${postedEntry.description}`,
+          createdBy: user.id,
+          postAutomatically: true // This flag ensures it's posted immediately
+        });
+
+        console.log(`ACCRUAL: Successfully created and posted reversal for entry ${id}.`);
+      } catch (reversalError) {
+        // Log error but don't fail the original transaction
+        console.error(`CRITICAL ERROR: Failed to create automatic reversal for posted accrual entry ${id}:`, reversalError);
+      }
+    }
+    
     res.json({
       message: 'Journal entry posted successfully',
       entry: postedEntry
