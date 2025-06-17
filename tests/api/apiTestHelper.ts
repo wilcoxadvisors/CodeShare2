@@ -52,7 +52,7 @@ export async function authenticateTestUser(): Promise<void> {
   try {
     const response = await apiClient.post('/api/auth/login', {
       username: 'admin',
-      password: 'password'
+      password: 'password123'
     });
 
     if (response.status === 200) {

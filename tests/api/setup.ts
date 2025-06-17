@@ -1,4 +1,4 @@
-import { authenticateTestUser } from './apiTestHelper.js';
+import { authenticateTestUser } from './apiTestHelper';
 
 /**
  * Global setup for API tests

@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 // Login command using API request for better reliability
-Cypress.Commands.add('login', (username = 'admin', password = 'password') => {
+Cypress.Commands.add('login', (username = 'admin', password = 'password123') => {
   cy.request({
     method: 'POST',
     url: '/api/auth/login',
