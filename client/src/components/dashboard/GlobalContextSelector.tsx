@@ -51,6 +51,17 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Debug logging to track data availability
+  useEffect(() => {
+    console.log('ARCHITECT_DEBUG_SELECTOR_DATA_FLOW:', {
+      clientsLength: clients?.length || 0,
+      entitiesLength: entities?.length || 0,
+      selectedClientId,
+      currentEntity: currentEntity?.id,
+      timestamp: new Date().toISOString()
+    });
+  }, [clients, entities, selectedClientId, currentEntity]);
+  
   // Detect if we're on a client-only page (like dimensions or chart of accounts)
   const location = useLocation();
   const navigate = useNavigate();

@@ -125,14 +125,14 @@ function EntityProvider({ children }: { children: ReactNode }) {
     !!user, 'AuthNotLoading=', !isAuthLoadingFromAuthContext, 'QueryEnabled=', 
     !!user && !isAuthLoadingFromAuthContext);
   
-  // Add clients query for full object exposure
+  // Add clients query for full object exposure - use standard /api/clients endpoint
   const { data: clientsData = [] } = useQuery<Client[]>({
-    queryKey: ['/api/admin/clients'],
+    queryKey: ['/api/clients'],
     queryFn: () => {
       if (isGuestUser) {
         return Promise.resolve([]);
       }
-      return fetch('/api/admin/clients', {
+      return fetch('/api/clients', {
         credentials: 'include',
         headers: {
           'Accept': 'application/json',
@@ -141,6 +141,13 @@ function EntityProvider({ children }: { children: ReactNode }) {
       }).then(res => {
         if (!res.ok) throw new Error(`Clients fetch failed: ${res.status}`);
         return res.json();
+      }).then(data => {
+        // Extract clients array from the API response
+        const clientsArray = Array.isArray(data) ? data : (data?.data || data?.clients || []);
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: Fetched clients length:', clientsArray?.length);
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: First few clients:', 
+          clientsArray?.slice(0, 2).map((c: any) => ({ id: c.id, name: c.name })));
+        return clientsArray;
       });
     },
     enabled: !!user && !isAuthLoadingFromAuthContext,
