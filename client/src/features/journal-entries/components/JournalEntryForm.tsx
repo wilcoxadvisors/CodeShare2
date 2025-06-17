@@ -454,9 +454,24 @@ function AttachmentSection({
   // Determine if we have a numeric journal entry ID (real entry) or not
   const isExistingEntry = typeof journalEntryId === "number";
 
-  // Instead of fetching the journal entry here (which causes form resets),
-  // we'll rely on the journal entry data passed down from the parent component
-  // The parent already has this data from useEditJournalEntry hook
+  // CRITICAL FIX: Use the proper useJournalEntryFiles hook to fetch attachments
+  // This ensures consistent data structure and proper query management
+  const attachmentQuery = useJournalEntryFiles(
+    isExistingEntry ? (journalEntryId as number) : null,
+    entityId,
+    clientId
+  );
+
+  // Use the fetched attachments from the query instead of props for consistency
+  const actualAttachments = isExistingEntry ? (attachmentQuery.data || []) : [];
+  
+  console.log("ARCHITECT_DEBUG_ATTACHMENT_DATA_SOURCE:", {
+    isExistingEntry,
+    propsAttachments: attachments?.length || 0,
+    queryAttachments: actualAttachments?.length || 0,
+    queryLoading: attachmentQuery.isLoading,
+    queryError: attachmentQuery.error
+  });
 
   // Determine if we can modify attachments based on entry status
   const isNewEntry = !isExistingEntry;
@@ -771,11 +786,11 @@ function AttachmentSection({
         // Check for duplicate files
         let duplicatesFound = false;
         const uniqueFiles = acceptedFiles.filter((newFile) => {
-          // Compare with existing attachments from server
+          // Compare with existing attachments from server using proper data source
           const isDuplicateWithExisting =
-            Array.isArray(attachments) &&
-            attachments.length > 0 &&
-            attachments.some(
+            Array.isArray(actualAttachments) &&
+            actualAttachments.length > 0 &&
+            actualAttachments.some(
               (existingFile) =>
                 existingFile.filename === newFile.name &&
                 existingFile.size === newFile.size,
@@ -949,7 +964,7 @@ function AttachmentSection({
                 </TableHeader>
                 <TableBody>
                   {/* Debug: Show table structure */}
-                  {!Array.isArray(attachments) && !Array.isArray(pendingFilesMetadata) && (
+                  {!Array.isArray(actualAttachments) && !Array.isArray(pendingFilesMetadata) && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground">
                         No files attached yet
@@ -1018,7 +1033,7 @@ function AttachmentSection({
                   ))}
 
                   {/* Existing files (for saved entries) - Force display if data exists */}
-                  {(Array.isArray(attachments) ? attachments : []).map((file: JournalEntryFile) => (
+                  {(Array.isArray(actualAttachments) ? actualAttachments : []).map((file: JournalEntryFile) => (
                       <TableRow key={file.id}>
                         <TableCell className="flex items-center">
                           {getFileIcon(file.mimeType)}
