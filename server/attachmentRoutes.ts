@@ -669,7 +669,7 @@ export function registerAttachmentRoutes(app: Express) {
   }));
 
   // Set up the hierarchical attachment routes
-  app.use('/api/clients/:cId/entities/:eId/journal-entries/:jeId/files', router);
+  app.use('/api/clients/:clientId/entities/:entityId/journal-entries/:jeId/attachments', router);
   
   console.log('Registered hierarchical attachment routes for journal entry files');
 }
