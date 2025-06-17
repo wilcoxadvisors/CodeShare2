@@ -1,0 +1,47 @@
+Architect's Final Verification Plan
+We will now use a single, comprehensive end-to-end verification script. This is a pragmatic, industry-standard approach for cutting through environmental issues and testing the application's logic directly. This script will perform the most critical user workflow tests against the live, running application.
+
+Mission: Create and execute a comprehensive E2E API verification script that validates the entire Journal Entry lifecycle.
+
+Instructions for the Agent:
+
+STOP attempting to fix the Jest and Cypress configuration files.
+
+You will create and execute a single script to perform the final validation.
+
+Create a New Test Script: Create a new file named run_final_verification.js.
+
+Implement the Verification Logic: In this new file, you will write a Node.js script that performs the following actions in sequence. You will reuse the apiTestHelper.ts we created for authentication.
+
+Step 1: Authenticate. Log in as the admin user and store the session cookie.
+Step 2: Create a Draft JE with an Attachment.
+POST a new journal entry.
+Assert the response is successful (201).
+Extract the new id.
+POST a file to the /files endpoint for that new id.
+Assert the response is successful (201).
+Log success or failure.
+Step 3: Edit the Draft.
+GET the entry from the previous step to ensure it has one attachment.
+PUT an update to the entry, changing the description and providing the same attachment from the GET request in the files array.
+Assert the response is successful (200).
+GET the entry again and verify the description has changed AND that the attachment is still present.
+Log success or failure.
+Step 4: Post the Entry.
+PUT to the /post endpoint for the entry.
+Assert the response is successful and the status is now "Posted".
+Log success or failure.
+Step 5: Attempt to Edit a Posted Entry.
+PUT an update to the "Posted" entry.
+Assert that the response is a failure (400 Bad Request), as posted entries cannot be edited.
+Log success or failure.
+Step 6: Void the Entry.
+POST to the /void endpoint with a reason.
+Assert the response is successful and the status is now "Void".
+Log success or failure.
+Execute the Script:
+
+Bash
+
+node run_final_verification.js
+Provide the Full Output: Provide the complete, raw, and un-summarized terminal output from the script.
