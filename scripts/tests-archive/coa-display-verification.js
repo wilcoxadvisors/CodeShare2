@@ -8,10 +8,10 @@
  * It performs both API checks and UI verification.
  */
 
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
-const { chromium } = require('playwright');
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { chromium } from 'playwright';
 
 // Configuration
 const BASE_URL = 'http://localhost:5000';
