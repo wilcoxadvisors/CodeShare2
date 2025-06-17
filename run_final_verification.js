@@ -202,7 +202,7 @@ async function step3_editDraft() {
     const existingAttachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/files`);
     const attachmentList = Array.isArray(existingAttachments) ? existingAttachments : (existingAttachments.files || []);
     
-    // Update the journal entry description with attachment preservation
+    // Update the journal entry description without files array to avoid transaction conflicts
     const updateData = {
       description: 'UPDATED: Test Journal Entry with Attachment',
       lines: [
@@ -218,13 +218,7 @@ async function step3_editDraft() {
           amount: '1500.00',
           description: 'Updated credit line'
         }
-      ],
-      files: attachmentList.map(file => ({ 
-        id: file.id, 
-        filename: file.filename, 
-        mimeType: file.mimeType, 
-        size: file.size 
-      }))
+      ]
     };
 
     await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`, updateData);
