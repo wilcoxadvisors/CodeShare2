@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -98,7 +99,8 @@ interface UploadPreview {
 }
 
 const DimensionsPage = () => {
-  const { selectedClientId } = useEntity();
+  const params = useParams();
+  const clientId = params.clientId ? parseInt(params.clientId, 10) : null;
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [managingDimension, setManagingDimension] = useState<Dimension | null>(null);
   const [editingDimension, setEditingDimension] = useState<Dimension | null>(null);
@@ -114,15 +116,15 @@ const DimensionsPage = () => {
 
   const createDimensionMutation = useMutation({
     mutationFn: (newDimension: { name: string; code: string; description?: string; }) => {
-      if (!selectedClientId) throw new Error("Client not selected");
-      return apiRequest(`/api/clients/${selectedClientId}/dimensions`, {
+      if (!clientId) throw new Error("Client not selected");
+      return apiRequest(`/api/clients/${clientId}/dimensions`, {
         method: 'POST',
         data: newDimension,
       });
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension created successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
       setCreateModalOpen(false);
     },
     onError: (error: any) => {
@@ -139,8 +141,8 @@ const DimensionsPage = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension updated successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', clientId] });
       setEditingDimension(null);
     },
     onError: (error: any) => {
@@ -156,8 +158,8 @@ const DimensionsPage = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension deleted successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+      queryClient.refetchQueries({ queryKey: ['dimensions', clientId] });
       setDeletingDimension(null);
     },
     onError: (error: any) => {
@@ -167,12 +169,12 @@ const DimensionsPage = () => {
 
   const masterUploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!selectedClientId) throw new Error("Client not selected");
+      if (!clientId) throw new Error("Client not selected");
       
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await apiRequest(`/api/clients/${selectedClientId}/master-values-upload`, {
+      const response = await apiRequest(`/api/clients/${clientId}/master-values-upload`, {
         method: 'POST',
         data: formData,
         isFormData: true,
@@ -209,9 +211,9 @@ const DimensionsPage = () => {
 
   const confirmMutation = useMutation({
     mutationFn: async (payload: { toCreate: any[], toUpdate: any[], toDelete: any[] }) => {
-      if (!selectedClientId) throw new Error("Client not selected");
+      if (!clientId) throw new Error("Client not selected");
       
-      const response = await apiRequest(`/api/clients/${selectedClientId}/master-values-confirm`, {
+      const response = await apiRequest(`/api/clients/${clientId}/master-values-confirm`, {
         method: 'POST',
         data: payload,
       });
@@ -254,7 +256,7 @@ const DimensionsPage = () => {
       }
       
       // Invalidate dimensions cache to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
     },
     onError: (error: any) => {
       toast({
@@ -336,13 +338,13 @@ const DimensionsPage = () => {
   };
 
   const { data: dimensionsResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ['dimensions', selectedClientId],
+    queryKey: ['dimensions', clientId],
     queryFn: async () => {
-      if (!selectedClientId) return null;
-      console.log(`DIMENSIONS_DEBUG: Fetching dimensions for client ${selectedClientId}`);
-      return apiRequest(`/api/clients/${selectedClientId}/dimensions`);
+      if (!clientId) return null;
+      console.log(`DIMENSIONS_DEBUG: Fetching dimensions for client ${clientId}`);
+      return apiRequest(`/api/clients/${clientId}/dimensions`);
     },
-    enabled: !!selectedClientId,
+    enabled: !!clientId,
     staleTime: 0, // Always refetch when client changes
   });
 
@@ -380,7 +382,7 @@ const DimensionsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         {/* Master Bulk Management Section */}
-        {!isLoading && !error && selectedClientId && dimensions && dimensions.length > 0 && (
+        {!isLoading && !error && clientId && dimensions && dimensions.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -670,7 +672,7 @@ const DimensionsPage = () => {
                       className="flex items-center gap-2"
                       onClick={async () => {
                         try {
-                          const response = await fetch(`/api/clients/${selectedClientId}/master-values-template`, {
+                          const response = await fetch(`/api/clients/${clientId}/master-values-template`, {
                             method: 'GET',
                             credentials: 'include',
                           });
@@ -681,7 +683,7 @@ const DimensionsPage = () => {
 
                           // Get the filename from the response headers
                           const contentDisposition = response.headers.get('content-disposition');
-                          let filename = `client_${selectedClientId}_master_values_template.csv`;
+                          let filename = `client_${clientId}_master_values_template.csv`;
                           if (contentDisposition) {
                             const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
                             if (filenameMatch) {
@@ -846,10 +848,10 @@ const DimensionsPage = () => {
           <DialogHeader>
             <DialogTitle>Manage Dimension Values</DialogTitle>
           </DialogHeader>
-          {managingDimension && selectedClientId && (
+          {managingDimension && clientId && (
             <DimensionValuesManager 
               dimension={dimensions.find((d: Dimension) => d.id === managingDimension.id) || managingDimension} 
-              selectedClientId={selectedClientId}
+              clientId={clientId}
             />
           )}
         </DialogContent>
