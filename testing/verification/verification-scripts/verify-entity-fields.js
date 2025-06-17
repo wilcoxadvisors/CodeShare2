@@ -5,9 +5,9 @@
  * are correctly saved to the database and can be retrieved.
  * Also verifies that the inactive and soft-delete functionality works as expected.
  */
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 // Base URL for the API
 const API_URL = 'http://localhost:5000/api/verification';

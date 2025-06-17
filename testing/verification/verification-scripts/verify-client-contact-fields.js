@@ -4,9 +4,9 @@
  * This script verifies that all client contact fields (name, email, phone)
  * are correctly saved to the database and can be retrieved.
  */
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 // Base URL for the API
 const API_URL = 'http://localhost:5000/api/verification';

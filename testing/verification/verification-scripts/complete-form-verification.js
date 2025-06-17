@@ -16,9 +16,9 @@
  * - Comprehensive output for verification status
  */
 
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs-extra';
+import path from 'path';
 
 // Configuration
 const API_URL = 'http://localhost:5000/api';

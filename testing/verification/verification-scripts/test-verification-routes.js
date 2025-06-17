@@ -4,9 +4,9 @@
  * This script tests that the verification routes are working properly
  * without requiring authentication.
  */
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 // Base URL for the API
 const API_URL = 'http://localhost:5000/api/verification';

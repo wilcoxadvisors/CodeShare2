@@ -5,9 +5,9 @@
  * for verification testing if one doesn't already exist.
  */
 
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs-extra';
+import path from 'path';
 
 const API_URL = 'http://localhost:5000/api';
 const LOG_DIR = path.join(__dirname, 'logs');
