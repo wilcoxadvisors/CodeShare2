@@ -342,11 +342,13 @@ export function registerAttachmentRoutes(app: Express) {
     
     if (!journalEntry) {
       throwNotFound('Journal Entry');
+      return; // TypeScript doesn't know throwNotFound throws
     }
     
     // Verify that the journal entry belongs to the specified entity
     if (journalEntry.entityId !== entityId) {
       throwForbidden('Journal entry does not belong to the specified entity');
+      return; // TypeScript doesn't know throwForbidden throws
     }
     
     // Get the files for this journal entry
@@ -381,6 +383,7 @@ export function registerAttachmentRoutes(app: Express) {
     
     if (!journalEntry) {
       throwNotFound('Journal Entry');
+      return; // TypeScript doesn't know throwNotFound throws
     }
     
     // Verify that the journal entry belongs to the specified entity
@@ -467,6 +470,7 @@ export function registerAttachmentRoutes(app: Express) {
     
     if (!journalEntry) {
       throwNotFound('Journal Entry');
+      return; // TypeScript doesn't know throwNotFound throws
     }
     
     // Verify that the journal entry belongs to the specified entity
