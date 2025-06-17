@@ -1,0 +1,35 @@
+Architect's Plan
+Mission: Update the Instructions.md project roadmap to accurately reflect the successful completion of the Journal Entry, Attachments, Dimensions, Accrual, and UX Polish tasks, and to clarify the next set of priorities.
+
+Instructions for the Agent:
+
+You will perform a text replacement in the Instructions.md file to bring it up to date.
+
+Open the File: Instructions.md.
+
+Locate the Section: Find the "Newly Added Section: Resolved & Unresolved Issues" at the bottom of the document.
+
+Replace the Content: Delete the entire content under that section header and replace it with the following new, accurate status report:
+
+Markdown
+
+## Newly Added Section: Resolved & Unresolved Issues
+
+### ✅ Recently Completed
+
+* **Journal Entry Editing Workflow: COMPLETE.** All parts of the definitive fix plan have been successfully implemented. The backend data persistence is non-destructive, the attachment data flow is correct, and the frontend UI updates reliably.
+* **File Attachment Bug #7: COMPLETE.** The end-to-end workflow for attachments is now stable. Users can add and delete files from draft entries, the changes persist correctly, and the UI provides immediate feedback without resetting the form.
+* **Automatic Accrual Reversal Feature: COMPLETE.** The feature to create and post automatic reversals for accrual entries is fully implemented on the frontend and backend.
+* **Dimensions UI: COMPLETE.** The UI to create, edit, and manage dimension values is functional. The integration of dimension tagging into the journal entry form is also complete.
+* **UX Polish: COMPLETE.** The Account Selector in the JE form has been improved with advanced filtering and display, and the action buttons now have robust logic to prevent conflicts.
+
+### 🔄 Next Steps
+
+**Batch JE Upload (High Priority):**
+- **Status:** NOT STARTED
+- **Goal:** Implement the "Batch Journal-Entry Upload" feature. This is the next major feature to be developed. It will allow users to upload a CSV/XLSX file to create multiple journal entries at once.
+
+**Smart Rules MVP (Medium Priority):**
+- **Status:** NOT STARTED
+- **Goal:** Begin implementation of the JSON-based validation rule engine for Smart Rules.
+This update will synchronize our documentation with reality and provide a clear and accurate roadmap for our next steps.

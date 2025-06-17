@@ -728,61 +728,20 @@ Throughout every task explicitly:
 
 ## Newly Added Section: Resolved & Unresolved Issues
 
-### ✅ Recently Resolved Issues
+### ✅ Recently Completed
 
-**P0: All critical bugs related to the manual Journal Entry workflow** (ID Instability, Delete, Reverse, Void).
+* **Journal Entry Editing Workflow: COMPLETE.** All parts of the definitive fix plan have been successfully implemented. The backend data persistence is non-destructive, the attachment data flow is correct, and the frontend UI updates reliably.
+* **File Attachment Bug #7: COMPLETE.** The end-to-end workflow for attachments is now stable. Users can add and delete files from draft entries, the changes persist correctly, and the UI provides immediate feedback without resetting the form.
+* **Automatic Accrual Reversal Feature: COMPLETE.** The feature to create and post automatic reversals for accrual entries is fully implemented on the frontend and backend.
+* **Dimensions UI: COMPLETE.** The UI to create, edit, and manage dimension values is functional. The integration of dimension tagging into the journal entry form is also complete.
+* **UX Polish: COMPLETE.** The Account Selector in the JE form has been improved with advanced filtering and display, and the action buttons now have robust logic to prevent conflicts.
 
-**Data Entry Bug:** Corrected decimal/cents input in Debit/Credit fields.
+### 🔄 Next Steps
 
-**UX Bug:** Data now correctly refreshes after a "Reverse" action.
+**Batch JE Upload (High Priority):**
+- **Status:** NOT STARTED
+- **Goal:** Implement the "Batch Journal-Entry Upload" feature. This is the next major feature to be developed. It will allow users to upload a CSV/XLSX file to create multiple journal entries at once.
 
-**Runtime Crashes** on the JE Detail page have been fixed.
-
-**Journal ID System Refactored:** Corrected the Journal ID generation to use the new, scalable format (JE-{clientId}-{entityId}-{MMDDYY}-{databaseId}). Fixed the UI to show a stable preview ID for new entries and the correct permanent ID for existing entries.
-
-**Data Persistence Failures:** Fixed a series of critical bugs preventing Accrual and Dimension Tag data from being correctly saved to the database and loaded back into the UI.
-
-**UI State & Navigation Bugs:** Resolved a major bug with unstable React keys that caused UI selections to not appear. Fixed a critical navigation bug that caused an infinite redirect loop when switching between clients/entities.
-
-### 🔄 Unresolved Issues / Next Steps
-
-**File Attachment Bug #7 (Critical Priority):**
-- **Status:** 🔄 REQUIRES IMMEDIATE ATTENTION
-- **Issue:** File attachment functionality broken across multiple areas: multi-upload, list, download, delete, and persistence
-- **Requirements:** Multi-file support, drag-drop interface, delete functionality, specific file types (PDF, images, office docs, txt, csv)
-- **UI Location:** Journal Entry Form (shown only in Edit mode)
-- **Action Required:** Systematic debugging of backend save/list operations and frontend fetch/render functionality
-
-**Journal Entry Editing Workflow - Definitive Fix Plan (High Priority):**
-
-This document tracks the progress on the definitive fix plan for the Journal Entry module.
-
-**Mission:** Fix the Journal Entry editing workflow to ensure all data, including attachments and dimensions, is persisted correctly and the UI updates reliably.
-
-#### Tasks
-
-- [ ] **Part 1: Fix Backend Update Logic** `(Status: In Progress)`
-    - **Goal:** Correct the `updateJournalEntryWithLines` method in `server/storage/journalEntryStorage.ts` so it is non-destructive and correctly handles dimension tags.
-    - **Action:** Rewrite the method to use a "delete-then-insert" pattern for dimension tags within a transaction, while ensuring it does not touch the `journalEntryFiles` table.
-
-- [ ] **Part 2: Fix Attachment Data Flow** `(Status: To Do)`
-    - **Goal:** Ensure the `AttachmentSection` component always receives the correct list of files.
-    - **Action:** Trace the `files` array prop from the `useEditJournalEntry` hook down through `JournalEntryDetail.tsx` and `JournalEntryForm.tsx` to the `AttachmentSection`, correcting any point where the data is dropped.
-
-- [ ] **Part 3: Fix Stale Data on the Frontend** `(Status: To Do)`
-    - **Goal:** Ensure the UI updates instantly after any action.
-    - **Action:** Review all mutations in `attachmentQueries.ts` and `useJournalEntry.ts`. The `onSuccess` callback for every mutation that changes data must correctly invalidate all relevant queries to force a UI refresh.
-
-**Accrual Reversal Feature (High Priority):** Implement the newly specified auto-reversal feature.
-
-**Dimensions UI (High Priority):**
-- Implement Create, Update, and Delete functionality for Dimension Values.
-- Build the UI to associate journal entry lines with dimensions.
-
-**P1 - UX Polish (Medium Priority):**
-- Improve filtering and behavior of the Account Selector on the JE Form.
-- Investigate and fix any strange "simultaneous behavior" between JE form buttons.
-
-**Smart Rules MVP (Medium Priority):** Begin implementation of the JSON-based validation rule engine.
-
-**Batch JE Upload (Next Major Feature):** To be started after the Dimensions framework is integrated into the JE form.
+**Smart Rules MVP (Medium Priority):**
+- **Status:** NOT STARTED
+- **Goal:** Begin implementation of the JSON-based validation rule engine for Smart Rules.
