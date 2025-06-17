@@ -192,7 +192,11 @@ async function step3_editDraft() {
   logStep(3, 'Edit Draft and verify attachment preservation');
   
   try {
-    // Update the journal entry description
+    // First get existing attachments to preserve them
+    const existingAttachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
+    const attachmentList = Array.isArray(existingAttachments) ? existingAttachments : (existingAttachments.files || []);
+    
+    // Update the journal entry description with attachment preservation
     const updateData = {
       description: 'UPDATED: Test Journal Entry with Attachment',
       lines: [
@@ -208,7 +212,13 @@ async function step3_editDraft() {
           amount: '1500.00',
           description: 'Updated credit line'
         }
-      ]
+      ],
+      files: attachmentList.map(file => ({ 
+        id: file.id, 
+        filename: file.filename, 
+        mimeType: file.mimeType, 
+        size: file.size 
+      }))
     };
 
     await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`, updateData);

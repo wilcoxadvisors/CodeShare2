@@ -220,6 +220,14 @@ export const updateJournalEntrySchema = z.object({
   // Accrual fields
   isAccrual: z.boolean().optional(),
   reversalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Reversal date must be in YYYY-MM-DD format" }).optional(),
+  
+  // File attachments for preservation during updates
+  files: z.array(z.object({
+    id: z.number().int().positive(),
+    filename: z.string().optional(),
+    mimeType: z.string().optional(),
+    size: z.number().optional()
+  })).optional(),
 })
 // First refinement: Check overall balance (debits = credits) only when lines are provided
 .refine(data => {
