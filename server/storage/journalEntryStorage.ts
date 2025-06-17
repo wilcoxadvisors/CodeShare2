@@ -545,7 +545,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           }
         }
         
-        // Step 3: Handle file attachments if provided
+        // Step 3: Handle file attachments - preserve existing files unless explicitly provided
         if (files !== undefined) {
           console.log(`ARCHITECT_ROBUST_UPDATE: Processing file attachments synchronization`);
           
@@ -577,6 +577,8 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           }
           
           console.log(`ARCHITECT_ROBUST_UPDATE: File synchronization completed - preserved ${incomingFileIds.size} files, deleted ${filesToDelete.length} files`);
+        } else {
+          console.log(`ARCHITECT_ROBUST_UPDATE: No files array provided - preserving existing attachments`);
         }
         
         console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);

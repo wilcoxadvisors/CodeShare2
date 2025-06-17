@@ -233,18 +233,28 @@ async function step3_editDraft() {
       throw new Error('Description was not updated');
     }
 
-    // Check attachments
+    // Check attachments with proper response handling
     const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/files`);
     
-    // Handle different response formats
-    const updatedAttachmentList = Array.isArray(attachments) ? attachments : (attachments.files || []);
+    // Handle different response formats - ensure we get the actual array
+    let updatedAttachmentList = [];
+    if (Array.isArray(attachments)) {
+      updatedAttachmentList = attachments;
+    } else if (attachments && Array.isArray(attachments.files)) {
+      updatedAttachmentList = attachments.files;
+    } else if (attachments && typeof attachments === 'object') {
+      // Handle case where response might be wrapped
+      updatedAttachmentList = Object.values(attachments).find(Array.isArray) || [];
+    }
+    
+    log(`Found ${updatedAttachmentList.length} attachments after edit`);
     
     if (updatedAttachmentList.length > 0 && updatedAttachmentList.some(att => att.id === testData.attachmentId)) {
       log('Attachment preservation verified');
       logSuccess('Draft edit with attachment preservation completed');
       return true;
     } else {
-      throw new Error('Attachment was not preserved during edit');
+      throw new Error(`Attachment was not preserved during edit. Expected attachment ID: ${testData.attachmentId}, Found: ${updatedAttachmentList.map(a => a.id).join(', ')}`);
     }
   } catch (error) {
     logFailure(`Failed to edit draft: ${error.message}`);
