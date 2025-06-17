@@ -199,7 +199,7 @@ async function step3_editDraft() {
   
   try {
     // First get existing attachments to preserve them
-    const existingAttachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
+    const existingAttachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/files`);
     const attachmentList = Array.isArray(existingAttachments) ? existingAttachments : (existingAttachments.files || []);
     
     // Update the journal entry description with attachment preservation
@@ -240,7 +240,7 @@ async function step3_editDraft() {
     }
 
     // Check attachments
-    const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
+    const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/files`);
     
     // Handle different response formats
     const updatedAttachmentList = Array.isArray(attachments) ? attachments : (attachments.files || []);

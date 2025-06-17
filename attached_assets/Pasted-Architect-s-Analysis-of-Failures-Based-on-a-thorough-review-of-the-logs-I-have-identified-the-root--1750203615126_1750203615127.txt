@@ -1,0 +1,60 @@
+Architect's Analysis of Failures
+Based on a thorough review of the logs, I have identified the root cause for both issues. They stem from logic errors within the JournalEntryForm.tsx component.
+
+File Upload Failure:
+
+User Report: The upload area for a new entry incorrectly shows "Files can't be added once the entry is posted".
+Root Cause: The logs show the AttachmentSection component is receiving an incorrect isInEditMode prop.
+Evidence: The log ARCHITECT_DEBUG_ATTACHMENT_PERMISSIONS shows isInEditMode: false for a new entry. The permission check canModifyAttachments requires isInEditMode to be true. Since it's false, the component incorrectly believes it's in a read-only state and displays the wrong message, disabling uploads.
+Save/Post Failure:
+
+User Report: Cannot save a draft or post a new entry because the system incorrectly demands an accrual date.
+Root Cause: The form validation logic in handleSubmit is applying the wrong validation schema. It is using a schema that requires accrual information even when the "Auto-Reversing Accrual" switch is off.
+Evidence: The logs show that when "Save" is clicked, the handleSubmit function proceeds to the validateForm step, but the user feedback indicates this validation is failing on the reversalDate field, which should only be required if isAccrual is true.
+Definitive Fix Plan
+Both of these critical bugs will be fixed by making targeted changes to JournalEntryForm.tsx.
+
+Mission: Repair the new journal entry workflow by correcting the state logic for attachment permissions and the validation logic for form submission.
+
+Instructions for the Agent:
+
+Part 1: Fix Attachment Permissions for New Entries
+
+Open the File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+
+Locate the AttachmentSection Component: Find where the <AttachmentSection ... /> component is rendered in the JSX.
+
+Correct the isInEditMode Prop: The isInEditMode prop is being set incorrectly for new entries. Change the prop to correctly reflect the form's state. When creating a new entry, the form is effectively in "edit mode" until it's saved.
+
+Change this: isInEditMode={!!existingEntry}
+To this: isInEditMode={true}
+(Note: A better long-term solution is a more descriptive prop like isEditable, but for an immediate fix, this is the most direct solution.)
+Part 2: Fix Form Validation Logic
+
+Still in JournalEntryForm.tsx, locate the handleSubmit function.
+Correct the Validation Flow: The validation logic is being applied incorrectly.
+Find the if (!saveAsDraft) block. Inside this block is where the full form validation occurs.
+Add a conditional check: The validation for reversalDate must only run if journalData.isAccrual is true. Modify the schema or the validation call to respect this condition. The simplest fix is to adjust the Zod schema's refinement logic.
+Open shared/validation.ts and find createFormSchema.
+Add a refined validation to the schema:
+TypeScript
+
+// In shared/validation.ts
+function createFormSchema() {
+  return z.object({
+    // ... other fields
+    isAccrual: z.boolean().default(false),
+    reversalDate: z.string().optional(),
+  }).refine(data => {
+    // If isAccrual is true, reversalDate must be present.
+    if (data.isAccrual) {
+      return !!data.reversalDate;
+    }
+    // Otherwise, we don't care about reversalDate.
+    return true;
+  }, {
+    message: "Reversal date is required for accrual entries",
+    path: ["reversalDate"], // specify the path of the error
+  });
+}
+These two fixes will correctly enable the attachment section for new entries and ensure the form validates properly, allowing new drafts to be saved and posted.
