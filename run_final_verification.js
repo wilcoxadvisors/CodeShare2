@@ -69,14 +69,24 @@ function cleanupTestFile(filePath) {
   }
 }
 
-// Create axios instance with cookie jar support
-const axiosInstance = axios.create({
+// Cookie jar for session management
+import tough from 'tough-cookie';
+const { CookieJar } = tough;
+import { wrapper } from 'axios-cookiejar-support';
+
+// Setup axios with cookie jar support
+const cookieJar = new CookieJar();
+const client = wrapper(axios.create({
   baseURL: BASE_URL,
+  jar: cookieJar,
   withCredentials: true,
   validateStatus: function (status) {
     return status >= 200 && status < 600; // Don't throw for any status code
   }
-});
+}));
+
+// Create axios instance with cookie jar support
+const axiosInstance = client;
 
 // API helper functions
 async function makeRequest(method, url, data = null, headers = {}) {
