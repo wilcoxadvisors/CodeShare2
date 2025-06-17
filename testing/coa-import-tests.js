@@ -26,7 +26,7 @@ import Papa from 'papaparse';
 
 // Get the directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname_coa = path.dirname(__filename);
 
 // Test configuration
 const config = {

@@ -2,17 +2,18 @@
 const config = {
   verbose: true,
   testEnvironment: 'node',
-  // REMOVED ts-jest preset
+  preset: 'ts-jest/presets/default-esm',
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   transform: {
-    // ADDED SWC transformation for TS/JS files
-    '^.+\\.(t|j)sx?$': '@swc/jest',
+    '^.+\\.(t|j)sx?$': ['ts-jest', {
+      useESM: true,
+      isolatedModules: true,
+    }],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/client/src/$1',
-    //
-    // ARCHITECT'S FIX: Add the line below to resolve backend path aliases
-    //
-    '^@shared/(.*)$': '<rootDir>/shared/$1'
+    '^@shared/(.*)$': '<rootDir>/shared/$1',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testPathIgnorePatterns: [
     '/node_modules/',
@@ -20,6 +21,11 @@ const config = {
     '/cypress/'
   ],
   testTimeout: 30000,
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
 };
 
 export default config;
