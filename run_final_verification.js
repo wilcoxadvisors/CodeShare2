@@ -175,7 +175,8 @@ async function step2_createDraftWithAttachment() {
       formData
     );
     
-    testData.attachmentId = attachmentResponse.id;
+    // Handle different response formats from attachment endpoint
+    testData.attachmentId = attachmentResponse.id || (attachmentResponse.files && attachmentResponse.files[0] && attachmentResponse.files[0].id);
     log(`Uploaded attachment with ID: ${testData.attachmentId}`);
     cleanupTestFile(testFilePath);
 
@@ -225,7 +226,10 @@ async function step3_editDraft() {
     // Check attachments
     const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
     
-    if (attachments.length > 0 && attachments.some(att => att.id === testData.attachmentId)) {
+    // Handle different response formats
+    const attachmentList = Array.isArray(attachments) ? attachments : (attachments.files || []);
+    
+    if (attachmentList.length > 0 && attachmentList.some(att => att.id === testData.attachmentId)) {
       log('Attachment preservation verified');
       logSuccess('Draft edit with attachment preservation completed');
       return true;
