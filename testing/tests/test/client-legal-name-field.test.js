@@ -4,10 +4,10 @@
  * This test verifies that the legalName field is properly saved when creating or updating clients.
  */
 
-import { db } from '../server/db.js'; 
-import { clientStorage } from '../server/storage/clientStorage.js';
+import { db } from '../../../server/db.js'; 
+import { clientStorage } from '../../../server/storage/clientStorage.js';
 import { eq } from 'drizzle-orm';
-import { clients } from '../shared/schema.js';
+import { clients } from '../../../shared/schema.js';
 
 // Test data
 const testClient = {
