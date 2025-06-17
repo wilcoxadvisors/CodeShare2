@@ -24,6 +24,7 @@ interface Client {
 interface EntityContextType {
   entities: Entity[];
   allEntities: Entity[];
+  clients: Client[];
   currentEntity: Entity | null;
   selectedClient: Client | null;
   setCurrentEntity: (entity: Entity | null) => void;
@@ -223,8 +224,14 @@ function EntityProvider({ children }: { children: ReactNode }) {
 
   // Expose full objects using useMemo for reliability
   const clients = Array.isArray(clientsData) ? clientsData : [];
-  const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId), [clients, selectedClientId]);
-  const currentEntity = useMemo(() => entities.find(e => e.id === currentEntityId), [entities, currentEntityId]);
+  const selectedClient = useMemo(() => {
+    const found = clients.find(c => c.id === selectedClientId);
+    return found || null;
+  }, [clients, selectedClientId]);
+  const currentEntity = useMemo(() => {
+    const found = entities.find(e => e.id === currentEntityId);
+    return found || null;
+  }, [entities, currentEntityId]);
     
 
   
@@ -395,8 +402,10 @@ function EntityProvider({ children }: { children: ReactNode }) {
       entities,
       allEntities,
       currentEntity,
+      selectedClient,
       setCurrentEntity,
       setCurrentEntityById,
+      setSelectedClient,
       isLoading,
       isInitialLoading: !initialLoadComplete,
       selectedClientId,

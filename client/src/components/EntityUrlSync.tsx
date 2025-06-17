@@ -4,21 +4,23 @@ import { useEntity } from '../contexts/EntityContext';
 
 const EntityUrlSync = () => {
   const { clientId, entityId } = useParams<{ clientId: string; entityId: string }>();
-  const { setSelectedClientId, setCurrentEntityById, selectedClientId, currentEntity } = useEntity();
+  const { clients, entities, setSelectedClient, setCurrentEntity } = useEntity();
 
   useEffect(() => {
     const numericClientId = clientId ? parseInt(clientId, 10) : null;
-    if (numericClientId && numericClientId !== selectedClientId) {
-      setSelectedClientId(numericClientId);
+    if (numericClientId) {
+      const clientToSet = clients.find(c => c.id === numericClientId);
+      if (clientToSet) setSelectedClient(clientToSet);
     }
-  }, [clientId, selectedClientId, setSelectedClientId]);
+  }, [clientId, clients, setSelectedClient]);
 
   useEffect(() => {
     const numericEntityId = entityId ? parseInt(entityId, 10) : null;
-    if (numericEntityId && numericEntityId !== currentEntity?.id) {
-      setCurrentEntityById(numericEntityId);
+    if (numericEntityId) {
+      const entityToSet = entities.find(e => e.id === numericEntityId);
+      if (entityToSet) setCurrentEntity(entityToSet);
     }
-  }, [entityId, currentEntity, setCurrentEntityById]);
+  }, [entityId, entities, setCurrentEntity]);
 
   return null; // This component does not render anything
 };
