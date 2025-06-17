@@ -1,0 +1,57 @@
+Architect's Root Cause Analysis
+Based on a thorough review of the logs, I have identified the root causes for both issues.
+
+File Upload Failure on New Entries:
+
+User Report: The upload area for a new entry incorrectly shows "Files can't be added once the entry is posted."
+Root Cause: The AttachmentSection component, which controls the upload UI, is being told that it is not in "edit mode" when the form is for a new entry.
+Evidence: The log ARCHITECT_DEBUG_ATTACHMENT_PERMISSIONS shows isInEditMode: false for the new entry form. The permission check canModifyAttachments requires isInEditMode to be true. Since it's false, the component incorrectly believes it's in a read-only state and displays the wrong message, disabling uploads. This is a logic flaw in JournalEntryForm.tsx.
+Save/Post Failure (Accrual Date Error):
+
+User Report: Cannot save a draft or post a new entry because the system incorrectly demands an accrual date, even when the accrual feature is not enabled.
+Root Cause: The backend API is incorrectly applying validation rules. The Zod validation schema (updateJournalEntrySchema) being used for the PUT and POST requests requires the reversalDate field, even when isAccrual is false.
+Evidence: The console log clearly shows the API request failing with a 400 Bad Request error:
+DEBUG: Journal entry update error: Error: API request failed with status 400 Bad Request
+Details: { "errors": { "reversalDate": "Reversal date must be in YYYY-MM-DD format" } }
+This proves the backend is validating the reversalDate field unconditionally, which is incorrect.
+Definitive Fix Plan
+Both of these critical bugs will be fixed by making targeted changes to the frontend form logic and the backend validation schema.
+
+Mission: Repair the new journal entry workflow by correcting the UI state logic for attachment permissions and the backend validation logic for accrual-related fields.
+
+Instructions for the Agent:
+
+Part 1: Fix Attachment Permissions for New Entries
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Action: Locate the <AttachmentSection ... /> component in the JSX. You must correct the value being passed to the isInEditMode prop. A new entry form should always be considered editable.
+Change this: isInEditMode={!!existingEntry}
+To this: isInEditMode={!existingEntry || existingEntry.status === 'draft'}
+This correctly sets the mode to true for new entries (!existingEntry) and for drafts, while correctly setting it to false for posted entries.
+Part 2: Fix Conditional Form Validation
+
+File to Modify: shared/validation.ts.
+Locate updateJournalEntrySchema: Find the Zod schema used for validating journal entry updates.
+Action: The schema must be modified so that reversalDate is only required if isAccrual is true. You will use Zod's refine method for this conditional validation.
+Modify the schema definition:
+TypeScript
+
+// In shared/validation.ts
+
+export const updateJournalEntrySchema = z.object({
+  // ... other fields
+  isAccrual: z.boolean().optional(),
+  reversalDate: z.string().optional(),
+  // ... other fields
+}).refine(data => {
+    // If isAccrual is true, reversalDate must be a valid date string.
+    if (data.isAccrual) {
+      return data.reversalDate && /^\d{4}-\d{2}-\d{2}$/.test(data.reversalDate);
+    }
+    // Otherwise, we don't need to validate reversalDate.
+    return true;
+  }, {
+    message: "Reversal date is required for accrual entries and must be in YYYY-MM-DD format.",
+    path: ["reversalDate"], // Specify the path of the error.
+});
+These two fixes will correctly enable the attachment section for new entries and ensure the form validates properly, allowing new drafts to be saved and posted without error.

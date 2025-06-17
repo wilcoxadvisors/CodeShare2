@@ -171,9 +171,11 @@ async function step2_createDraftWithAttachment() {
     formData.append('files', fs.createReadStream(testFilePath));
 
     const attachmentResponse = await makeRequest('POST', 
-      `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`, 
+      `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/files`, 
       formData
     );
+    
+    console.log('DEBUG: Full attachment upload response:', JSON.stringify(attachmentResponse, null, 2));
     
     // Handle different response formats from attachment endpoint
     if (attachmentResponse.files && attachmentResponse.files.length > 0) {
@@ -181,6 +183,7 @@ async function step2_createDraftWithAttachment() {
     } else if (attachmentResponse.id) {
       testData.attachmentId = attachmentResponse.id;
     } else {
+      console.log('DEBUG: Attachment response structure:', attachmentResponse);
       throw new Error('No attachment ID returned from upload');
     }
     log(`Uploaded attachment with ID: ${testData.attachmentId}`);
