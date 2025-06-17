@@ -187,11 +187,42 @@ function EntityProvider({ children }: { children: ReactNode }) {
     ? allEntities.filter((entity: any) => entity.clientId === selectedClientId)
     : [];
     
-  // PART 2: URL-reactive useEffect - STABILIZED to prevent constant switching
+  // CRITICAL FIX: URL-reactive client selection - synchronize clientId from URL
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      console.log('ARCHITECT_DEBUG_URL_REACTIVE: Processing URL change after debounce:', { 
+        urlClientId, 
+        selectedClientId,
+        entitiesLoaded: allEntities.length > 0
+      });
+      
+      // Handle client-only routes (like /clients/:clientId/chart-of-accounts)
+      if (urlClientId) {
+        const clientId = parseInt(urlClientId);
+        
+        if (!isNaN(clientId) && selectedClientId !== clientId) {
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE: URL contains clientId, updating context to match:', {
+            urlClientId: clientId,
+            currentSelectedClientId: selectedClientId
+          });
+          
+          // Update the context to match the URL
+          setSelectedClientIdState(clientId);
+          localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
+          
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Context synchronized with URL clientId');
+        }
+      }
+    }, 50); // Small debounce to prevent rapid state changes
+    
+    return () => clearTimeout(timeoutId);
+  }, [urlClientId, selectedClientId]);
+
+  // PART 2: URL-reactive entity selection - STABILIZED to prevent constant switching
   useEffect(() => {
     // Debounce rapid URL changes to prevent oscillation
     const timeoutId = setTimeout(() => {
-      console.log('ARCHITECT_DEBUG_URL_REACTIVE: Processing URL change after debounce:', { 
+      console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Processing entity URL change after debounce:', { 
         urlClientId, 
         urlEntityId,
         currentEntityId: currentEntity?.id,
@@ -212,7 +243,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
           const needsEntityUpdate = currentEntity?.id !== entityId;
           
           if (needsClientUpdate || needsEntityUpdate) {
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE: Updating context to match valid URL:', {
+            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Updating context to match valid URL:', {
               entityId: entity.id,
               entityName: entity.name,
               entityClientId: entity.clientId,
@@ -231,22 +262,22 @@ function EntityProvider({ children }: { children: ReactNode }) {
               localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
             }
             
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE: Context synchronized with URL');
+            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Context synchronized with URL');
           } else {
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE: Context already matches URL, no update needed');
+            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Context already matches URL, no update needed');
           }
         } else {
-          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Invalid URL or entity not found, maintaining current state');
+          console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Invalid URL or entity not found, maintaining current state');
         }
       } else if (!urlClientId && !urlEntityId && currentEntity) {
-        console.log('ARCHITECT_DEBUG_URL_REACTIVE: Clearing entity context for non-entity route');
+        console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Clearing entity context for non-entity route');
         setCurrentEntityState(null);
         localStorage.removeItem(STORAGE_KEY_ENTITY);
       }
     }, 50); // Small debounce to prevent rapid state changes
     
     return () => clearTimeout(timeoutId);
-  }, [urlClientId, urlEntityId, allEntities.length]);
+  }, [urlClientId, urlEntityId, allEntities.length, selectedClientId, currentEntity?.id]);
   
   // Update loading state based on queries and auth state
   useEffect(() => {

@@ -1,0 +1,40 @@
+Architect's Analysis
+You are correct on both points.
+
+Global Selector UI is incorrect: The dropdown shows "Select client" because our central state manager, EntityContext, is not being updated when the URL changes. The log DEBUG: Entities context state: ... - Selected client: null confirms that the context believes no client is selected, even though the URL contains the client's ID.
+Dimensions Module is empty: The DimensionsPage relies on the EntityContext to know which client's data to fetch. Because the context is not being updated, the Dimensions page never receives a clientId and therefore never fetches the data, resulting in an empty table.
+Root Cause: The EntityContext is failing to adhere to our most critical architectural principle: The URL is the single source of truth. The context is not "listening" to the URL. When the path changes to /clients/235/chart-of-accounts, the context is not reacting to the 235 in the URL and updating its own state. This is why the ChartOfAccounts page does work; it is correctly coded to get the ID directly from the URL, bypassing the broken context.
+
+Definitive Fix Plan
+We will fix the EntityContext so that it correctly derives its state from the URL at all times. This single fix will resolve both issues you reported.
+
+Mission: Refactor the EntityContext to be fully URL-reactive, ensuring it becomes a passive listener to the URL and correctly reflects the clientId present in the path.
+
+Instructions for the Agent:
+
+You will modify the entity context file at client/src/contexts/EntityContext.tsx.
+
+Open the File: Access client/src/contexts/EntityContext.tsx.
+
+Import useParams: Add the useParams hook from react-router-dom to the import statements.
+
+Make the Context URL-Aware: Inside the EntityProvider component, get the clientId from the URL using useParams:
+
+TypeScript
+
+const { clientId } = useParams<{ clientId: string }>();
+Synchronize State from URL: Create a useEffect hook that runs whenever the clientId from the URL changes. Inside this effect, you will update the context's internal state to match the URL.
+
+TypeScript
+
+useEffect(() => {
+  const numericClientId = clientId ? parseInt(clientId, 10) : null;
+  if (numericClientId && numericClientId !== selectedClient?.id) {
+    // Find the client object from the full list and set it
+    const clientToSelect = clients.find(c => c.id === numericClientId);
+    if (clientToSelect) {
+      setSelectedClient(clientToSelect);
+    }
+  }
+}, [clientId, clients, selectedClient]);
+This change enforces our architectural pattern. The EntityContext will now correctly reflect the client ID from the URL, which will, in turn, fix the GlobalContextSelector's display and provide the DimensionsPage with the ID it needs to fetch its data.
