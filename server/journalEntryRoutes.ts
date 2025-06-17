@@ -2421,11 +2421,11 @@ export function registerJournalEntryRoutes(app: Express) {
           updatedBy: user.id
         });
         
-        // Extract lines from validated data
-        const { lines, ...entryData } = validatedData;
+        // Extract lines and files from validated data
+        const { lines, files, ...entryData } = validatedData;
         
-        // Update the journal entry with lines (dimension tags are handled automatically within this method)
-        const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
+        // Update the journal entry with lines and files (dimension tags are handled automatically within this method)
+        const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines, files);
         
         res.json(updatedEntry);
       } catch (error) {
