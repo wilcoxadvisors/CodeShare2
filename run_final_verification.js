@@ -168,7 +168,7 @@ async function step2_createDraftWithAttachment() {
     // Now upload an attachment
     const testFilePath = createTestFile();
     const formData = new FormData();
-    formData.append('file', fs.createReadStream(testFilePath));
+    formData.append('files', fs.createReadStream(testFilePath));
 
     const attachmentResponse = await makeRequest('POST', 
       `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`, 
