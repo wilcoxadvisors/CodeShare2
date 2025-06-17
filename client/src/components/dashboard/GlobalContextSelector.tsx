@@ -187,39 +187,39 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const selectClient = (clientId: number) => {
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client ${clientId}, current path: ${location.pathname}`);
     
-    // URL-BASED NAVIGATION: Update URL to drive state changes
+    // CONTEXT-AWARE NAVIGATION: Intelligent routing based on current page
     const currentPath = location.pathname;
     
-    // Navigate to the appropriate URL based on current page
+    // Navigate to the appropriate URL based on current page context
     if (currentPath.includes('/chart-of-accounts')) {
+      // Rule 1: Chart of Accounts page - navigate to Chart of Accounts for new client
       const newPath = `/clients/${clientId}/chart-of-accounts`;
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to chart of accounts: ${newPath}`);
       navigate(newPath);
     } else if (currentPath.includes('/manage/dimensions')) {
+      // Rule 2: Dimensions page - navigate to Dimensions for new client
       const newPath = `/clients/${clientId}/manage/dimensions`;
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to dimensions: ${newPath}`);
       navigate(newPath);
-    } else if (currentPath.includes('/journal-entries')) {
-      // Preserve entity context when switching clients - stay on journal entries
-      const pathParts = currentPath.split('/');
-      const entityIndex = pathParts.findIndex(part => part === 'entities');
-      if (entityIndex !== -1 && pathParts[entityIndex + 1]) {
-        // Try to find equivalent entity in new client, otherwise go to client dashboard
-        const currentEntityId = pathParts[entityIndex + 1];
-        const newPath = `/clients/${clientId}/entities/${currentEntityId}/journal-entries`;
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Preserving entity context: ${newPath}`);
+    } else {
+      // Rule 3: All other cases - find first entity and navigate to Journal Entries
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Finding first entity for client ${clientId}`);
+      
+      // Filter entities for the selected client
+      const clientEntities = entities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
+      
+      if (clientEntities.length > 0) {
+        // Navigate to first entity's Journal Entries page
+        const firstEntity = clientEntities[0];
+        const newPath = `/clients/${clientId}/entities/${firstEntity.id}/journal-entries`;
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to first entity's journal entries: ${newPath} (Entity: ${firstEntity.name})`);
         navigate(newPath);
       } else {
-        // Fall back to client dashboard if no entity context
+        // Fallback: no entities found, navigate to client dashboard
         const newPath = `/clients/${clientId}`;
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to client dashboard: ${newPath}`);
+        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: No entities found, navigating to client dashboard: ${newPath}`);
         navigate(newPath);
       }
-    } else {
-      // Default to client dashboard
-      const newPath = `/clients/${clientId}`;
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Default navigation to client dashboard: ${newPath}`);
-      navigate(newPath);
     }
     
     // Close popover immediately
