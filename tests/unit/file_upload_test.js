@@ -5,11 +5,16 @@
  * uploaded to journal entries alongside other accepted file types.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const axios = require('axios');
-const FormData = require('form-data');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import axios from 'axios';
+import FormData from 'form-data';
+import { fileURLToPath } from 'url';
+
+// Get the directory name for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Constants
 const API_BASE_URL = 'http://localhost:5000/api';

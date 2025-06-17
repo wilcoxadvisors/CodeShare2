@@ -1,0 +1,115 @@
+{
+  "consumer": {
+    "name": "JournalEntryFrontend"
+  },
+  "interactions": [
+    {
+      "description": "a request for a specific journal entry",
+      "providerState": "journal entry exists",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/clients/251/entities/392/journal-entries/200"
+      },
+      "response": {
+        "body": {
+          "clientId": 251,
+          "date": "2025-06-14",
+          "description": "Test journal entry",
+          "entityId": 392,
+          "id": 200,
+          "lines": [
+            {
+              "amount": "100.0000",
+              "description": "Test debit line",
+              "id": 534,
+              "type": "debit"
+            },
+            {
+              "amount": "100.0000",
+              "description": "Test credit line",
+              "id": 535,
+              "type": "credit"
+            }
+          ],
+          "referenceNumber": "JE-251-392-20250614-200",
+          "status": "draft"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create a journal entry",
+      "providerState": "client and entity exist",
+      "request": {
+        "body": {
+          "date": "2025-06-14",
+          "description": "Contract test entry",
+          "lines": [
+            {
+              "accountId": 7980,
+              "amount": "100.00",
+              "description": "Test debit",
+              "type": "debit"
+            },
+            {
+              "accountId": 8011,
+              "amount": "100.00",
+              "description": "Test credit",
+              "type": "credit"
+            }
+          ]
+        },
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/clients/251/entities/392/journal-entries"
+      },
+      "response": {
+        "body": {
+          "id": 999,
+          "lines": [
+            {
+              "amount": "100.0000",
+              "id": 1001,
+              "type": "debit"
+            },
+            {
+              "amount": "100.0000",
+              "id": 1002,
+              "type": "credit"
+            }
+          ],
+          "status": "draft"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 201
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "15.0.1"
+    },
+    "pactRust": {
+      "ffi": "0.4.22",
+      "models": "1.2.3"
+    },
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  },
+  "provider": {
+    "name": "JournalEntryAPI"
+  }
+}
