@@ -1,5 +1,4 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { tough } from 'tough-cookie';
 
 // Global authentication state
 let authCookie: string | null = null;
@@ -7,9 +6,6 @@ let isAuthenticated = false;
 
 // Base URL for API requests
 const BASE_URL = 'http://localhost:5000';
-
-// Cookie jar for session management
-const cookieJar = new tough.CookieJar();
 
 // Configure axios instance with cookie support
 const apiClient = axios.create({
