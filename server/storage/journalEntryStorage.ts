@@ -439,7 +439,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
   
   async updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[]): Promise<JournalEntry | undefined> {
-    console.log(`ARCHITECT_FIX_PART2: Updating journal entry ${id} with ${lines?.length || 0} lines`);
+    console.log(`ARCHITECT_ROBUST_UPDATE: Updating journal entry ${id} with ${lines?.length || 0} lines using selective update approach`);
     
     try {
       // Check if entry exists
@@ -458,9 +458,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         updatedEntryData.date = formattedDate;
       }
       
-      // ARCHITECT FIX PART 2: Transaction-wrapped, non-destructive update
+      // ROBUST UPDATE: Transaction-wrapped selective update preserving data integrity
       return await db.transaction(async (tx) => {
-        console.log(`ARCHITECT_FIX_PART2: Starting atomic transaction for journal entry ${id}`);
+        console.log(`ARCHITECT_ROBUST_UPDATE: Starting atomic transaction for journal entry ${id}`);
         
         // Step 1: Update the journal entry header
         const [updatedEntry] = await tx.update(journalEntries)
@@ -468,32 +468,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           .where(eq(journalEntries.id, id))
           .returning();
         
-        console.log(`ARCHITECT_FIX_PART2: Updated journal entry header`);
+        console.log(`ARCHITECT_ROBUST_UPDATE: Updated journal entry header`);
         
-        // Step 2: Handle lines if provided
+        // Step 2: Handle lines if provided using selective update approach
         if (lines && lines.length > 0) {
-          console.log(`ARCHITECT_FIX_PART2: Processing ${lines.length} lines with dimension updates`);
+          console.log(`ARCHITECT_ROBUST_UPDATE: Processing ${lines.length} lines with selective updates`);
           
-          // Step 2a: Delete existing dimension links for ALL lines in this journal entry
-          // This ensures clean dimension state before recreation
-          const existingLines = await tx.select({ id: journalEntryLines.id })
+          // Get existing lines for comparison
+          const existingLines = await tx.select()
             .from(journalEntryLines)
             .where(eq(journalEntryLines.journalEntryId, id));
           
-          const existingLineIds = existingLines.map(line => line.id);
-          if (existingLineIds.length > 0) {
-            console.log(`ARCHITECT_FIX_PART2: Deleting dimension links for ${existingLineIds.length} existing lines`);
-            await tx.delete(txDimensionLink)
-              .where(inArray(txDimensionLink.journalEntryLineId, existingLineIds));
-          }
+          console.log(`ARCHITECT_ROBUST_UPDATE: Found ${existingLines.length} existing lines`);
           
-          // Step 2b: Delete all existing lines for this journal entry
-          await tx.delete(journalEntryLines)
-            .where(eq(journalEntryLines.journalEntryId, id));
+          // Create maps for efficient lookup
+          const existingLinesMap = new Map(existingLines.map(line => [line.id, line]));
+          const incomingLineIds = new Set(lines.filter(line => line.id).map(line => line.id!));
           
-          console.log(`ARCHITECT_FIX_PART2: Deleted existing lines, inserting new ones`);
-          
-          // Step 2c: Insert new lines and their dimension tags
+          // Step 2a: Update or insert lines
           for (const line of lines) {
             const lineData = line as any;
             const tags = lineData.tags || lineData.dimensionTags || lineData.dimensions || [];
@@ -501,37 +493,59 @@ export class JournalEntryStorage implements IJournalEntryStorage {
             // Prepare clean line data (exclude dimension tag fields)
             const { tags: _, dimensionTags: __, dimensions: ___, ...cleanLineData } = lineData;
             
-            // Insert the journal entry line
-            const [insertedLine] = await tx.insert(journalEntryLines)
-              .values({
-                ...cleanLineData,
-                journalEntryId: id,
-                amount: typeof cleanLineData.amount === 'number' 
-                  ? cleanLineData.amount.toString() 
-                  : cleanLineData.amount
-              } as any)
-              .returning();
-            
-            console.log(`ARCHITECT_FIX_PART2: Inserted line ${insertedLine.id} with ${tags.length} dimension tags`);
-            
-            // Step 2d: Insert dimension tags for this line
-            if (tags && Array.isArray(tags) && tags.length > 0) {
-              for (const tag of tags) {
-                if (tag.dimensionId && tag.dimensionValueId) {
-                  await tx.insert(txDimensionLink)
-                    .values({
-                      journalEntryLineId: insertedLine.id,
-                      dimensionId: tag.dimensionId,
-                      dimensionValueId: tag.dimensionValueId
-                    });
-                }
-              }
-              console.log(`ARCHITECT_FIX_PART2: Saved ${tags.length} dimension tags for line ${insertedLine.id}`);
+            if (cleanLineData.id && existingLinesMap.has(cleanLineData.id)) {
+              // Update existing line
+              console.log(`ARCHITECT_ROBUST_UPDATE: Updating existing line ${cleanLineData.id}`);
+              
+              await tx.update(journalEntryLines)
+                .set({
+                  ...cleanLineData,
+                  amount: typeof cleanLineData.amount === 'number' 
+                    ? cleanLineData.amount.toString() 
+                    : cleanLineData.amount
+                })
+                .where(eq(journalEntryLines.id, cleanLineData.id));
+              
+              // Update dimension tags for this line
+              await this.updateLineDimensionTags(tx, cleanLineData.id, tags);
+              
+            } else {
+              // Insert new line
+              console.log(`ARCHITECT_ROBUST_UPDATE: Inserting new line`);
+              
+              const [insertedLine] = await tx.insert(journalEntryLines)
+                .values({
+                  ...cleanLineData,
+                  journalEntryId: id,
+                  amount: typeof cleanLineData.amount === 'number' 
+                    ? cleanLineData.amount.toString() 
+                    : cleanLineData.amount
+                } as any)
+                .returning();
+              
+              console.log(`ARCHITECT_ROBUST_UPDATE: Inserted line ${insertedLine.id} with ${tags.length} dimension tags`);
+              
+              // Insert dimension tags for this line
+              await this.updateLineDimensionTags(tx, insertedLine.id, tags);
             }
+          }
+          
+          // Step 2b: Delete lines that are no longer present
+          const linesToDelete = existingLines.filter(line => !incomingLineIds.has(line.id));
+          for (const lineToDelete of linesToDelete) {
+            console.log(`ARCHITECT_ROBUST_UPDATE: Deleting removed line ${lineToDelete.id}`);
+            
+            // Delete dimension links first
+            await tx.delete(txDimensionLink)
+              .where(eq(txDimensionLink.journalEntryLineId, lineToDelete.id));
+            
+            // Delete the line
+            await tx.delete(journalEntryLines)
+              .where(eq(journalEntryLines.id, lineToDelete.id));
           }
         }
         
-        console.log(`ARCHITECT_FIX_PART2: Transaction completed successfully for journal entry ${id}`);
+        console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
         
         // IMPORTANT: File attachments are NOT handled here - they are managed by separate endpoints
         // This ensures no existing file attachments are affected by journal entry updates
@@ -539,8 +553,32 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         return updatedEntry;
       });
     } catch (e) {
-      console.error(`ARCHITECT_FIX_PART2: Transaction failed for journal entry ${id}:`, e);
+      console.error(`ARCHITECT_ROBUST_UPDATE: Transaction failed for journal entry ${id}:`, e);
       throw handleDbError(e, `updating journal entry ${id} with lines`);
+    }
+  }
+
+  // Helper method to update dimension tags for a line
+  private async updateLineDimensionTags(tx: any, lineId: number, tags: any[]) {
+    console.log(`ARCHITECT_ROBUST_UPDATE: Updating dimension tags for line ${lineId}`);
+    
+    // Remove existing dimension tags
+    await tx.delete(txDimensionLink)
+      .where(eq(txDimensionLink.journalEntryLineId, lineId));
+    
+    // Insert new dimension tags
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      for (const tag of tags) {
+        if (tag.dimensionId && tag.dimensionValueId) {
+          await tx.insert(txDimensionLink)
+            .values({
+              journalEntryLineId: lineId,
+              dimensionId: tag.dimensionId,
+              dimensionValueId: tag.dimensionValueId
+            });
+        }
+      }
+      console.log(`ARCHITECT_ROBUST_UPDATE: Saved ${tags.length} dimension tags for line ${lineId}`);
     }
   }
   
