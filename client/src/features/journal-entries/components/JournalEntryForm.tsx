@@ -2047,6 +2047,12 @@ const [journalData, setJournalData] = useState({
       status: initialStatus, // Use our determined initial status
       createdBy: user?.id,
       lines: formattedLines,
+      // ARCHITECT_PART2_FIX: Add files array to enable backend synchronization
+      files: pendingFiles.map(file => ({
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type
+      }))
     };
 
     // Debug logging for the API payload
