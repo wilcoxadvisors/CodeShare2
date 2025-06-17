@@ -383,6 +383,116 @@ describe('Journal Entry - Comprehensive E2E Workflow Tests', () => {
   });
 
   /**
+   * Critical User Story 5: Accrual Reversal Feature End-to-End Test
+   * 
+   * This test verifies the complete lifecycle of an auto-reversing accrual entry
+   * as specified by the architect to meet Odoo/Sage Intacct standards.
+   */
+  describe('Accrual Reversal Feature E2E Test', () => {
+    it('should create accrual entry, post it, and automatically create posted reversal entry', () => {
+      // Step 1: Create Accrual - Navigate to Journal Entry form and create new entry
+      cy.visit(`/clients/${testClientId}/entities/${testEntityId}/journal-entries/new`);
+      cy.wait(1000);
+      
+      cy.get('input[name="description"]').type('Auto-Reversing Accrual Test Entry');
+      cy.get('input[name="date"]').clear().type('2025-06-17');
+      
+      // Add balanced lines for the accrual
+      cy.get('[data-testid="add-line-button"]').click();
+      cy.get('[data-testid="line-0"] select[name="accountId"]').select('1');
+      cy.get('[data-testid="line-0"] select[name="type"]').select('debit');
+      cy.get('[data-testid="line-0"] input[name="amount"]').type('2000.00');
+      cy.get('[data-testid="line-0"] input[name="description"]').type('Accrual debit line');
+      
+      cy.get('[data-testid="add-line-button"]').click();
+      cy.get('[data-testid="line-1"] select[name="accountId"]').select('2');
+      cy.get('[data-testid="line-1"] select[name="type"]').select('credit');
+      cy.get('[data-testid="line-1"] input[name="amount"]').type('2000.00');
+      cy.get('[data-testid="line-1"] input[name="description"]').type('Accrual credit line');
+      
+      // Step 2: Set Accrual Data - Toggle switch ON and select future date
+      cy.get('[data-testid="accrual-switch"]').click(); // Toggle ON
+      cy.get('[data-testid="accrual-switch"]').should('be.checked');
+      
+      // Select specific future date (July 15, 2025)
+      cy.get('[data-testid="reversal-date-picker"]').click();
+      cy.get('input[name="reversalDate"]').clear().type('2025-07-15');
+      
+      // Save as draft first
+      cy.get('[data-testid="save-draft-button"]').click();
+      cy.wait(2000);
+      
+      // Extract original entry ID from URL
+      let originalEntryId: string;
+      cy.url().then((url) => {
+        originalEntryId = url.split('/').pop() || '';
+      });
+      
+      // Step 3: Post the accrual entry
+      cy.get('[data-testid="post-button"]').click();
+      cy.get('[data-testid="confirm-post-button"]').click();
+      cy.wait(3000); // Allow time for reversal creation
+      
+      // Step 4: Verify Original Entry properties
+      cy.contains('Status: Posted').should('be.visible');
+      cy.get('[data-testid="status-badge"]').should('contain', 'Posted');
+      
+      // Verify accrual flag is true
+      cy.contains('Auto-Reversing Accrual').should('be.visible');
+      cy.get('[data-testid="accrual-indicator"]').should('be.visible');
+      
+      // Step 5: Verify Reversal Entry was automatically created
+      // Navigate to journal entries list to find the reversal
+      cy.visit(`/clients/${testClientId}/entities/${testEntityId}/journal-entries`);
+      cy.wait(2000);
+      
+      // Look for the reversal entry (should have "Reversal of" in description)
+      cy.contains('Reversal of Auto-Reversing Accrual Test Entry').should('be.visible');
+      cy.contains('Reversal of Auto-Reversing Accrual Test Entry').click();
+      cy.wait(1000);
+      
+      // Verify reversal entry properties
+      // Date should be the reversal date (July 15, 2025)
+      cy.contains('07/15/2025').should('be.visible');
+      
+      // Status should be "Posted"
+      cy.contains('Status: Posted').should('be.visible');
+      cy.get('[data-testid="status-badge"]').should('contain', 'Posted');
+      
+      // Verify isReversal flag is true
+      cy.contains('Reversal Entry').should('be.visible');
+      cy.get('[data-testid="reversal-indicator"]').should('be.visible');
+      
+      // Step 6: Verify line items are exact inverse
+      cy.get('[data-testid="journal-lines"]').within(() => {
+        // Original debit line should become credit in reversal
+        cy.contains('Accrual debit line').parent().should('contain', 'Credit');
+        cy.contains('Accrual debit line').parent().should('contain', '$2,000.00');
+        
+        // Original credit line should become debit in reversal
+        cy.contains('Accrual credit line').parent().should('contain', 'Debit');
+        cy.contains('Accrual credit line').parent().should('contain', '$2,000.00');
+      });
+      
+      // Verify reversal is linked to original entry
+      cy.contains('Reversal of Entry').should('be.visible');
+      cy.get('[data-testid="original-entry-link"]').should('contain', originalEntryId);
+      
+      // Step 7: Final verification - navigate back to original entry
+      cy.get('[data-testid="original-entry-link"]').click();
+      cy.wait(1000);
+      
+      // Verify original entry shows reversal link
+      cy.contains('Reversed by Entry').should('be.visible');
+      cy.get('[data-testid="reversal-entry-link"]').should('be.visible');
+      
+      // Verify complete accrual lifecycle is documented
+      cy.contains('Auto-Reversing Accrual').should('be.visible');
+      cy.contains('Reversal Date: 07/15/2025').should('be.visible');
+    });
+  });
+
+  /**
    * Integration Test: Complete End-to-End User Journey
    * 
    * This test simulates a complete user workflow combining all features
