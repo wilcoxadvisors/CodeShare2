@@ -9,6 +9,10 @@ export default defineConfig({
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/e2e.ts',
   },
+  //
+  // ARCHITECT'S FIX: CI environment compatibility
+  //
   video: false,
+  browser: 'electron',
   screenshotOnRunFailure: true,
 });

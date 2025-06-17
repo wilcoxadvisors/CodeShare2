@@ -1,0 +1,52 @@
+Definitive Plan: Final Test Environment Fixes
+Mission: Complete the test environment setup by modernizing the last legacy Jest test and configuring Cypress to run successfully in a resource-constrained environment.
+
+Instructions for the Agent:
+
+Part 1: Modernize the Final Legacy Jest Test
+
+Open the File: testing/coa-import-tests.js.
+Update Syntax: This file uses require. You must refactor it to use modern ES Module import syntax.
+Find all require statements (e.g., const { ... } = require('...');) and convert them to their import { ... } from '...'; or import module from '...'; equivalents.
+Part 2: Configure Cypress for CI/CD Environments
+
+The timeout error indicates Cypress is struggling to launch the full browser GUI. We will configure it to use the built-in, lighter-weight Electron browser and disable some resource-intensive features.
+
+Open the Cypress Config File: cypress.config.ts.
+
+Add CI/CD Configuration: Update the e2e configuration block with the following properties. This tells Cypress to use the less demanding Electron browser and turns off video recording, which is unnecessary for our purposes.
+
+TypeScript
+
+// Inside cypress.config.ts
+export default defineConfig({
+  e2e: {
+    baseUrl: 'http://localhost:5173',
+    setupNodeEvents(on, config) {
+      // implement node event listeners here
+    },
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+    supportFile: 'cypress/support/e2e.ts',
+  },
+  //
+  // ARCHITECT'S FIX: Add the lines below for CI environment compatibility
+  //
+  video: false,
+  browser: 'electron',
+  //
+  //
+  screenshotOnRunFailure: true,
+});
+Part 3: Final Validation Run
+
+This is the definitive run. After completing Parts 1 and 2, the entire testing suite must execute successfully.
+
+Run All Backend Tests:
+Bash
+
+npx jest
+Run All E2E Tests:
+Bash
+
+npx cypress run
+I expect the complete and raw terminal output from both commands, showing a full suite of passing tests. This will be the final quality gate before we proceed with new feature development.
