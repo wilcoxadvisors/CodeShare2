@@ -1,0 +1,34 @@
+Mission: Create a robust, stable, and predictable attachment workflow by fixing the backend persistence logic, the frontend data payload, and the frontend cache management.
+
+Part 1: Fix Backend Logic (Highest Priority)
+
+Goal: Ensure the backend update function correctly preserves attachments.
+Instructions:
+Modify Function Signature: In server/storage/journalEntryStorage.ts, update the updateJournalEntryWithLines function to accept a files array.
+Add File Sync Logic: Inside the function's transaction block, add logic to compare the incoming file IDs with the file IDs in the database and delete any that are no longer present.
+Update Route Handler: In server/journalEntryRoutes.ts, update the PUT route to extract the files from the request and pass them to the storage function.
+Part 2: Fix Frontend Data Payload (Crucial)
+
+Goal: Ensure the frontend sends the complete list of existing files when saving.
+Instructions:
+Modify handleSubmit: In client/src/features/journal-entries/components/JournalEntryForm.tsx, find the handleSubmit function.
+Add files to Payload: When building the entryData object for an updateEntry mutation, add the files: existingEntry?.files || [] property to ensure the complete list of attachments is always sent.
+Part 3: Fix Frontend UI & Caching (The Final Polish)
+
+Goal: Ensure the UI updates instantly and correctly after adding or deleting a file, without resetting the form.
+Instructions:
+Locate Attachment Hooks: Open client/src/features/journal-entries/hooks/attachmentQueries.ts.
+
+Implement Surgical Invalidation: Find the useUploadJournalEntryFile and useDeleteJournalEntryFile mutations. In the onSuccess callback for both, ensure the only query that gets invalidated is the one for the attachments themselves. This prevents the entire form from reloading.
+
+TypeScript
+
+// Correct cache invalidation
+onSuccess: (data, variables) => {
+  queryClient.invalidateQueries({
+    queryKey: ['journalEntryAttachments', variables.journalEntryId],
+    exact: true // This is critical
+  });
+  // DO NOT invalidate the main journal entry query here.
+},
+This comprehensive, three-part plan will resolve the data loss, fix the UI update issues, and ensure the business rules for draft vs. posted entries are enforced correctly. Once this is complete, the attachment system will be fully stable.
