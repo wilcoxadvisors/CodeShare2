@@ -1,0 +1,41 @@
+Architect's State-of-the-Art Testing Strategy
+The industry standard for this level of quality is a multi-layered "Testing Pyramid" approach. We will use this to build confidence in our module from the inside out.
+
+Mission: Execute a rigorous, multi-layered, end-to-end testing protocol for the Journal Entry module, covering data integrity, UI behavior, and all user workflows.
+
+Part 1: Backend Unit & Integration Testing (The Foundation)
+Goal: Verify that the individual functions in our backend storage layer and the API endpoints behave exactly as expected, especially concerning data integrity.
+My Plan: I will start by reviewing our existing tests in tests/unit/journalEntryStorage.test.ts and tests/api/journalEntries.test.ts. I will then provide instructions for the agent to enhance these tests to cover the following critical logic:
+Data Integrity: Ensure the updateJournalEntryWithLines function correctly preserves, adds, and deletes lines, dimension tags, and files within a single transaction.
+Edge Cases: Test the reverseJournalEntry and copyJournalEntry functions to confirm they handle all data correctly.
+API Validation: Add tests to ensure the API routes correctly reject invalid data (e.g., unbalanced entries, requests to modify posted entries).
+Part 2: Frontend End-to-End (E2E) Workflow Testing (The User Simulation)
+Goal: Simulate a real user interacting with the application in a browser to guarantee the entire workflow is seamless, from UI interaction to data persistence and back.
+
+My Plan: This is the most critical part. I will provide a detailed plan to expand our Cypress E2E test suite in cypress/e2e/journalEntry.spec.cy.ts. The agent will be instructed to write automated tests that cover these exact user stories:
+
+Create & Edit Draft:
+
+Create a new JE, add lines, and attach File A. Save as draft.
+Verify the entry exists and File A is present.
+Edit the draft. Change the description, add a new line, delete an old line.
+Upload File B and delete File A.
+Save the changes.
+Verification: Confirm the description and line changes are saved, File B is present, and File A is gone.
+Post & Void Workflow:
+
+Create and save a draft JE.
+Post the entry. Verify its status changes to "Posted".
+Attempt to edit the posted entry and confirm all fields and buttons are disabled.
+Void the posted entry. Verify its status changes to "Void".
+Reversal Workflow:
+
+Post a journal entry.
+Reverse the posted entry.
+Verification: Confirm that a new draft JE is created, that it has the opposite debit/credit values, and that it is correctly linked to the original entry.
+Copy Workflow:
+
+Create and post a JE with specific lines, dimension tags, and attachments.
+Copy this entry.
+Verification: Confirm that a new draft JE is created with the identical description, lines, and dimension tags, but with no attachments (as per standard security practice).
+This comprehensive testing will give us the highest possible confidence in the stability of the Journal Entry module. I will now begin by reviewing the existing test files to identify gaps and prepare the first set of instructions for the agent, starting with Part 1.

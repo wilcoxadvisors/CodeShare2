@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { JournalEntryStorage } from '../../server/storage/journalEntryStorage';
 import { db } from '../../server/db';
-import { journalEntries, journalEntryLines, accounts, entities, clients, users } from '../../shared/schema';
+import { journalEntries, journalEntryLines, accounts, entities, clients, users, dimensionValues, dimensions } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 describe('JournalEntryStorage', () => {
@@ -564,6 +564,373 @@ describe('JournalEntryStorage', () => {
         expect(correspondingReversalLine!.type).toBe(
           originalLine.type === 'debit' ? 'credit' : 'debit'
         );
+      }
+    });
+
+    it('should fail to reverse a non-posted journal entry', async () => {
+      // Create a draft entry
+      const draftData = {
+        date: '2025-06-14',
+        description: 'Draft Entry',
+        entityId: testEntityId,
+        journalType: 'JE' as const,
+        lines: [
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '100.00',
+            description: 'Draft debit',
+            entityCode: 'TEST-001'
+          },
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '100.00',
+            description: 'Draft credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const draftEntry = await storage.createJournalEntry(testClientId, testUserId, draftData);
+
+      const reversalOptions = {
+        date: new Date('2025-06-15'),
+        description: 'Attempted reversal',
+        createdBy: testUserId,
+        referenceNumber: 'REV-FAIL'
+      };
+
+      await expect(storage.reverseJournalEntry(draftEntry.id, reversalOptions))
+        .rejects
+        .toThrow();
+    });
+  });
+
+  // Enhanced Data Integrity Tests for Architect's Strategy
+  describe('Data Integrity - updateJournalEntryWithLines', () => {
+    let testJournalId: number;
+    let dimensionValueId: number;
+
+    beforeEach(async () => {
+      // Create test dimension first
+      const [dimension] = await db.insert(dimensions).values({
+        name: 'Department',
+        code: 'DEPT',
+        clientId: testClientId,
+        active: true
+      }).returning();
+      
+      // Create test dimension value for testing
+      const [dimValue] = await db.insert(dimensionValues).values({
+        name: 'Test Department',
+        code: 'TEST_DEPT',
+        dimensionId: dimension.id,
+        clientId: testClientId,
+        active: true
+      }).returning();
+      dimensionValueId = dimValue.id;
+
+      const entryData = {
+        date: '2025-06-14',
+        description: 'Data Integrity Test Entry',
+        entityId: testEntityId,
+        journalType: 'JE' as const,
+        lines: [
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '500.00',
+            description: 'Original debit with dimension',
+            entityCode: 'TEST-001'
+          },
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '500.00',
+            description: 'Original credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const journal = await storage.createJournalEntry(testClientId, testUserId, entryData);
+      testJournalId = journal.id;
+    });
+
+    it('should preserve existing lines while adding new ones in atomic transaction', async () => {
+      const originalLines = await storage.getJournalEntryLines(testJournalId);
+      expect(originalLines).toHaveLength(2);
+
+      const updateData = {
+        description: 'Updated with additional line',
+        lines: [
+          // Keep first line unchanged
+          {
+            id: originalLines[0].id,
+            accountId: originalLines[0].accountId,
+            type: originalLines[0].type,
+            amount: originalLines[0].amount,
+            description: originalLines[0].description,
+            entityCode: originalLines[0].entityCode
+          },
+          // Keep second line unchanged
+          {
+            id: originalLines[1].id,
+            accountId: originalLines[1].accountId,
+            type: originalLines[1].type,
+            amount: originalLines[1].amount,
+            description: originalLines[1].description,
+            entityCode: originalLines[1].entityCode
+          },
+          // Add new debit line
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '200.00',
+            description: 'Additional debit',
+            entityCode: 'TEST-001'
+          },
+          // Add new credit line to balance
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '200.00',
+            description: 'Additional credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const result = await storage.updateJournalEntryWithLines(testJournalId, updateData, updateData.lines);
+
+      expect(result).toBeDefined();
+      expect(result!.description).toBe('Updated with additional line');
+
+      const updatedLines = await storage.getJournalEntryLines(testJournalId);
+      expect(updatedLines).toHaveLength(4);
+
+      // Verify original lines are preserved
+      const preservedLine1 = updatedLines.find(l => l.id === originalLines[0].id);
+      const preservedLine2 = updatedLines.find(l => l.id === originalLines[1].id);
+      
+      expect(preservedLine1).toBeDefined();
+      expect(preservedLine2).toBeDefined();
+      expect(preservedLine1!.description).toBe(originalLines[0].description);
+      expect(preservedLine2!.description).toBe(originalLines[1].description);
+
+      // Verify new lines exist
+      const newLines = updatedLines.filter(l => !originalLines.some(ol => ol.id === l.id));
+      expect(newLines).toHaveLength(2);
+    });
+
+    it('should properly delete lines within transaction', async () => {
+      const originalLines = await storage.getJournalEntryLines(testJournalId);
+      expect(originalLines).toHaveLength(2);
+
+      const updateData = {
+        description: 'Updated with line deletion',
+        lines: [
+          // Keep only one line, effectively deleting the other
+          {
+            id: originalLines[0].id,
+            accountId: originalLines[0].accountId,
+            type: originalLines[0].type,
+            amount: '300.00', // Also modify amount
+            description: 'Modified and preserved line',
+            entityCode: originalLines[0].entityCode
+          },
+          // Add a new balancing credit line
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '300.00',
+            description: 'New balancing credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const result = await storage.updateJournalEntryWithLines(testJournalId, updateData, updateData.lines);
+
+      expect(result).toBeDefined();
+      
+      const updatedLines = await storage.getJournalEntryLines(testJournalId);
+      expect(updatedLines).toHaveLength(2);
+
+      // Verify the preserved line was modified
+      const modifiedLine = updatedLines.find(l => l.id === originalLines[0].id);
+      expect(modifiedLine).toBeDefined();
+      expect(modifiedLine!.amount).toBe('300.0000');
+      expect(modifiedLine!.description).toBe('Modified and preserved line');
+
+      // Verify the original second line was deleted
+      const deletedLine = updatedLines.find(l => l.id === originalLines[1].id);
+      expect(deletedLine).toBeUndefined();
+
+      // Verify new line exists
+      const newLine = updatedLines.find(l => l.description === 'New balancing credit');
+      expect(newLine).toBeDefined();
+    });
+
+    it('should handle dimension tag updates correctly', async () => {
+      const originalLines = await storage.getJournalEntryLines(testJournalId);
+      const lineToUpdate = originalLines[0];
+
+      const updateData = {
+        description: 'Entry with dimension tags',
+        lines: [
+          {
+            id: lineToUpdate.id,
+            accountId: lineToUpdate.accountId,
+            type: lineToUpdate.type,
+            amount: lineToUpdate.amount,
+            description: lineToUpdate.description,
+            entityCode: lineToUpdate.entityCode,
+            dimensionTags: [
+              {
+                dimensionValueId: dimensionValueId,
+                amount: lineToUpdate.amount
+              }
+            ]
+          },
+          // Keep second line as is
+          {
+            id: originalLines[1].id,
+            accountId: originalLines[1].accountId,
+            type: originalLines[1].type,
+            amount: originalLines[1].amount,
+            description: originalLines[1].description,
+            entityCode: originalLines[1].entityCode
+          }
+        ]
+      };
+
+      const result = await storage.updateJournalEntryWithLines(testJournalId, updateData, updateData.lines);
+
+      expect(result).toBeDefined();
+
+      // Verify dimension tags were properly saved
+      const linesWithTags = await storage.getJournalEntryLinesWithDimensions(testJournalId);
+      const lineWithTag = linesWithTags.find(l => l.id === lineToUpdate.id);
+      
+      expect(lineWithTag).toBeDefined();
+      expect(lineWithTag!.dimensionTags).toHaveLength(1);
+      expect(lineWithTag!.dimensionTags[0].dimensionValueId).toBe(dimensionValueId);
+    });
+  });
+
+  describe('Edge Cases and Business Rules', () => {
+    it('should reject unbalanced journal entry creation', async () => {
+      const unbalancedEntryData = {
+        date: '2025-06-14',
+        description: 'Unbalanced Entry',
+        entityId: testEntityId,
+        journalType: 'JE' as const,
+        lines: [
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '500.00',
+            description: 'Debit line',
+            entityCode: 'TEST-001'
+          },
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '300.00', // Unbalanced!
+            description: 'Credit line',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      await expect(storage.createJournalEntry(testClientId, testUserId, unbalancedEntryData))
+        .rejects
+        .toThrow();
+    });
+
+    it('should prevent modification of posted entries', async () => {
+      const entryData = {
+        date: '2025-06-14',
+        description: 'Posted Entry',
+        entityId: testEntityId,
+        journalType: 'JE' as const,
+        lines: [
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '100.00',
+            description: 'Debit',
+            entityCode: 'TEST-001'
+          },
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '100.00',
+            description: 'Credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const journal = await storage.createJournalEntry(testClientId, testUserId, entryData);
+      
+      // Update to posted status
+      await db.update(journalEntries)
+        .set({ status: 'posted' })
+        .where(eq(journalEntries.id, journal.id));
+
+      const updateData = {
+        description: 'Attempted update to posted entry'
+      };
+
+      await expect(storage.updateJournalEntry(journal.id, updateData))
+        .rejects
+        .toThrow();
+    });
+
+    it('should maintain referential integrity across all related tables', async () => {
+      const entryData = {
+        date: '2025-06-14',
+        description: 'Referential Integrity Test',
+        entityId: testEntityId,
+        journalType: 'JE' as const,
+        lines: [
+          {
+            accountId: testAccountDebit,
+            type: 'debit' as const,
+            amount: '750.00',
+            description: 'Integrity test debit',
+            entityCode: 'TEST-001'
+          },
+          {
+            accountId: testAccountCredit,
+            type: 'credit' as const,
+            amount: '750.00',
+            description: 'Integrity test credit',
+            entityCode: 'TEST-001'
+          }
+        ]
+      };
+
+      const journal = await storage.createJournalEntry(testClientId, testUserId, entryData);
+      
+      // Verify all related records exist
+      const journalRecord = await storage.getJournalEntry(journal.id);
+      const lines = await storage.getJournalEntryLines(journal.id);
+      
+      expect(journalRecord).toBeDefined();
+      expect(lines).toHaveLength(2);
+      
+      // Verify foreign key relationships
+      expect(journalRecord!.clientId).toBe(testClientId);
+      expect(journalRecord!.entityId).toBe(testEntityId);
+      expect(journalRecord!.createdBy).toBe(testUserId);
+      
+      for (const line of lines) {
+        expect(line.journalEntryId).toBe(journal.id);
+        expect([testAccountDebit, testAccountCredit]).toContain(line.accountId);
       }
     });
   });
