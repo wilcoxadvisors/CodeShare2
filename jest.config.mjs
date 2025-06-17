@@ -1,23 +1,23 @@
-/** @type {import('ts-jest').JestConfigWithTsJest} */
-export default {
-  preset: 'ts-jest',
+/** @type {import('jest').Config} */
+const config = {
+  verbose: true,
   testEnvironment: 'node',
-  testTimeout: 60000,
-  roots: ['<rootDir>/tests', '<rootDir>/testing'],
-  testMatch: [
-    '**/tests/**/*.test.[jt]s?(x)',
-    '**/testing/**/*.test.[jt]s?(x)',
-    '**/__tests__/**/*.[jt]s?(x)',
-    '**/?(*.)+(spec|test).[tj]s?(x)'
-  ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  preset: 'ts-jest',
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest'
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: 'tsconfig.json',
+    }],
   },
-  collectCoverageFrom: [
-    'server/**/*.{ts,js}',
-    'client/**/*.{ts,tsx}',
-    '!**/*.d.ts',
-    '!**/node_modules/**'
-  ]
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/client/src/$1',
+  },
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/cypress/'
+  ],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  testTimeout: 30000,
 };
+
+export default config;
