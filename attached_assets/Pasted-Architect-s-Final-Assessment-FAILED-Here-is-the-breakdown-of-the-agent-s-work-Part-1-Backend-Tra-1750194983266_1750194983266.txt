@@ -1,0 +1,47 @@
+Architect's Final Assessment: FAILED
+Here is the breakdown of the agent's work:
+
+Part 1: Backend Transaction Safety (journalEntryStorage.ts) - FAILED
+
+The agent was instructed to perform file deletion within the database transaction. It did not. It implemented the deletion of the physical file but removed the corresponding deletion of the database record from the transaction.
+Architectural Consequence: This is a critical failure of transactional integrity. If the transaction were to fail for any other reason after the physical file was deleted, our database would be left with "ghost" records pointing to files that no longer exist. This is a severe data corruption bug.
+Part 2: Frontend Data Payload (JournalEntryForm.tsx) - PASSED
+
+The agent correctly implemented the logic to ensure the frontend sends the full, correct list of existing files when updating an entry. This part of the fix is sound.
+Comparison to Industry Standards (Odoo/Sage Intacct)
+To be unequivocally clear: the agent's backend implementation is the opposite of an industry-standard, enterprise-grade solution.
+
+The absolute, non-negotiable principle for systems like Odoo and Sage Intacct is data integrity through atomicity. An operation must either succeed completely or fail completely, leaving the database in its original, consistent state. The agent's implementation violates this core principle and is therefore unacceptable.
+
+Final Mandatory Rework
+This is no longer a suggestion. The agent has repeatedly failed to implement this correctly.
+
+Mission: Correct the critical transaction safety violation in updateJournalEntryWithLines.
+
+Instructions for the Agent:
+
+Open the file server/storage/journalEntryStorage.ts.
+
+Navigate to the updateJournalEntryWithLines function.
+
+Find this loop: for (const fileToDelete of filesToDelete).
+
+Replace the entire contents of the loop with the following correct and transaction-safe implementation. This is the final change.
+
+TypeScript
+
+// This loop is inside the db.transaction block
+for (const fileToDelete of filesToDelete) {
+    console.log(`ARCHITECT_MANDATORY_REWORK: Deleting orphaned file. ID: ${fileToDelete.id}, Key: ${fileToDelete.storageKey}`);
+
+    // Step 1: Delete the physical file from storage.
+    if (fileToDelete.storageKey) {
+        const fileStorage = getFileStorage();
+        await fileStorage.delete(fileToDelete.storageKey);
+    }
+
+    // Step 2: Delete the database record from within the transaction.
+    // This ensures that if the transaction rolls back, this deletion is also undone.
+    await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileToDelete.id));
+}
+Do not mark this task as complete until this block of code is implemented exactly as specified.

@@ -561,16 +561,18 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           
           // Delete files that are no longer present in the incoming list
           const filesToDelete = existingFiles.filter(file => !incomingFileIds.has(file.id));
+          // This loop is inside the db.transaction block
           for (const fileToDelete of filesToDelete) {
-            console.log(`ARCHITECT_ROBUST_UPDATE: Deleting removed file ${fileToDelete.id}`);
-            
-            // First, get the file details to delete from physical storage
-            if (fileToDelete?.storageKey) {
+            console.log(`ARCHITECT_MANDATORY_REWORK: Deleting orphaned file. ID: ${fileToDelete.id}, Key: ${fileToDelete.storageKey}`);
+
+            // Step 1: Delete the physical file from storage.
+            if (fileToDelete.storageKey) {
               const fileStorage = getFileStorage();
               await fileStorage.delete(fileToDelete.storageKey);
             }
-            
-            // Then, delete the record from the database within the transaction
+
+            // Step 2: Delete the database record from within the transaction.
+            // This ensures that if the transaction rolls back, this deletion is also undone.
             await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileToDelete.id));
           }
           
