@@ -325,6 +325,18 @@ export const updateJournalEntrySchema = z.object({
 }, {
   message: "Each entity's debits must equal credits for intercompany transactions",
   path: ["lines"],
+})
+// Third refinement: Conditional validation for accrual reversals
+.refine(data => {
+  // If isAccrual is true, reversalDate must be a valid date string
+  if (data.isAccrual) {
+    return data.reversalDate && /^\d{4}-\d{2}-\d{2}$/.test(data.reversalDate);
+  }
+  // Otherwise, we don't need to validate reversalDate
+  return true;
+}, {
+  message: "Reversal date is required for accrual entries and must be in YYYY-MM-DD format",
+  path: ["reversalDate"],
 });
 
 // This section was removed as it was part of an unused schema
