@@ -66,6 +66,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "connect-pg-simple": "^10.0.0",
+    "cross-env": "^7.0.3",
     "csv-parser": "^3.2.0",
     "cypress": "^14.3.2",
     "cypress-image-diff-js": "^2.4.0",
