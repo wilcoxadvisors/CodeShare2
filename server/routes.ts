@@ -97,8 +97,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       store: new MemoryStore({
         checkPeriod: 86400000, // prune expired entries every 24h
       }),
-      resave: false,
-      saveUninitialized: false,
+      resave: true, // Force session save to prevent loss
+      saveUninitialized: true, // Save uninitialized sessions
       secret: process.env.SESSION_SECRET || "wilcox-accounting-secret",
     })
   );
