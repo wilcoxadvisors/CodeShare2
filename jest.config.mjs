@@ -2,11 +2,10 @@
 const config = {
   verbose: true,
   testEnvironment: 'node',
-  preset: 'ts-jest',
+  // REMOVED ts-jest preset
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
-    }],
+    // ADDED SWC transformation for TS/JS files
+    '^.+\\.(t|j)sx?$': '@swc/jest',
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/client/src/$1',

@@ -1,5 +1,9 @@
 {pkgs}: {
   deps = [
+    pkgs.xorg.xauth
+    pkgs.alsa-lib
+    pkgs.nss
+    pkgs.libnotify
     pkgs.gtk3
     pkgs.glib
     pkgs.jq
