@@ -176,7 +176,13 @@ async function step2_createDraftWithAttachment() {
     );
     
     // Handle different response formats from attachment endpoint
-    testData.attachmentId = attachmentResponse.id || (attachmentResponse.files && attachmentResponse.files[0] && attachmentResponse.files[0].id);
+    if (attachmentResponse.files && attachmentResponse.files.length > 0) {
+      testData.attachmentId = attachmentResponse.files[0].id;
+    } else if (attachmentResponse.id) {
+      testData.attachmentId = attachmentResponse.id;
+    } else {
+      throw new Error('No attachment ID returned from upload');
+    }
     log(`Uploaded attachment with ID: ${testData.attachmentId}`);
     cleanupTestFile(testFilePath);
 
@@ -237,9 +243,9 @@ async function step3_editDraft() {
     const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
     
     // Handle different response formats
-    const attachmentList = Array.isArray(attachments) ? attachments : (attachments.files || []);
+    const updatedAttachmentList = Array.isArray(attachments) ? attachments : (attachments.files || []);
     
-    if (attachmentList.length > 0 && attachmentList.some(att => att.id === testData.attachmentId)) {
+    if (updatedAttachmentList.length > 0 && updatedAttachmentList.some(att => att.id === testData.attachmentId)) {
       log('Attachment preservation verified');
       logSuccess('Draft edit with attachment preservation completed');
       return true;
@@ -303,20 +309,21 @@ async function step6_voidEntry() {
   logStep(6, 'Void the Entry');
   
   try {
-    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}`, {
-      status: 'voided'
+    // Use the proper hierarchical void endpoint
+    await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}/void`, {
+      voidReason: 'Test void operation for verification script'
     });
     
     // Verify status change
     const voidedJe = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}`);
     
-    if (voidedJe.status === 'voided') {
+    if (voidedJe.status === 'void') {
       testData.voidedJeId = testData.postedJeId;
       log(`Journal entry ${testData.voidedJeId} successfully voided`);
       logSuccess('Entry voiding completed');
       return true;
     } else {
-      throw new Error(`Expected status 'voided', got '${voidedJe.status}'`);
+      throw new Error(`Expected status 'void', got '${voidedJe.status}'`);
     }
   } catch (error) {
     logFailure(`Failed to void entry: ${error.message}`);
