@@ -402,6 +402,7 @@ export function registerAttachmentRoutes(app: Express) {
     // Verify that the file belongs to the journal entry
     if (file.journalEntryId !== jeId) {
       throwForbidden('File does not belong to the specified journal entry');
+      return; // TypeScript doesn't know throwForbidden throws
     }
     
     // Get the file storage implementation
@@ -489,6 +490,7 @@ export function registerAttachmentRoutes(app: Express) {
     
     // Verify that the file belongs to the journal entry
     if (file.journalEntryId !== jeId) {
+      return; // TypeScript doesn't know throwForbidden throws
       throwForbidden('File does not belong to the specified journal entry');
     }
     
