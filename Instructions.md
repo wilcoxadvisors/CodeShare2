@@ -1,9 +1,10 @@
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
 ## Recent Changelog:
+- **2025-06-17**: Critical Documentation Inconsistencies Resolved. Fixed conflicting status reports for Dimensions module (corrected from "COMPLETE" to "IN PROGRESS") and File Attachment Bug #7 (moved from "RESOLVED" to "CRITICAL PRIORITY"). Added Journal Entry Editing Workflow Definitive Fix Plan with three-part mission tracking.
 - **2025-06-14**: Automatic Accrual Reversal Feature Complete & Core Fixes. Implemented industry-standard immediate-posting for accrual reversals. Corrected Journal ID generation to be scalable and fixed critical data persistence and UI state bugs.
 - **2025-06-11**: Accrual Reversal Feature Specified. Added plan for auto-reversing journal entries.
-- **2025-06-11**: JE Module Stabilized & Dimensions Backend Complete. All P0 bugs for manual Journal Entry workflow (including attachments, reverse, void, delete) have been resolved. Backend foundation for Dimensions (Schema, Seeding, Storage, API) is complete. Initial frontend UI for listing and creating Dimensions is complete.
+- **2025-06-11**: JE Module Stabilized & Dimensions Backend Complete. Backend foundation for Dimensions (Schema, Seeding, Storage, API) complete. Initial frontend UI for listing and creating Dimensions complete. Note: Critical attachment issues still require resolution.
 - **2025-05-06**: Quick-cleanup complete (removed throw-away files; moved stray tests → tests/unit; moved verify-storage-modules.js → scripts)
 - **2025-05-06**: Hierarchical JE attachment routes implemented (Bug #7 in progress)
 - **2025-05-01**: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema

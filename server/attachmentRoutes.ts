@@ -294,21 +294,26 @@ export function registerAttachmentRoutes(app: Express) {
           ...duplicateFiles
         ];
         
+        // CRITICAL FIX: Ensure consistent response format for file uploads
         // If there were any skipped files (type or duplicates), include them in the response
         if (allSkippedFiles.length > 0) {
           res.status(207).json({
+            success: true,
             message: savedFiles.length > 0 
               ? 'Some files were uploaded successfully, but others were skipped'
               : 'No files were uploaded - all were skipped',
             files: savedFiles,
-            skipped: allSkippedFiles
+            skipped: allSkippedFiles,
+            count: savedFiles.length
           });
         }
         // If all files were saved, return a 201 Created
         else {
           res.status(201).json({
+            success: true,
             message: 'Files uploaded successfully',
-            files: savedFiles
+            files: savedFiles,
+            count: savedFiles.length
           });
         }
       } catch (error) {
@@ -348,9 +353,14 @@ export function registerAttachmentRoutes(app: Express) {
     const files = await journalEntryStorage.getJournalEntryFiles(jeId);
     
     console.log('DEBUG Attach BE: Files retrieved for entry', jeId, ':', files?.length || 0);
+    console.log('DEBUG Attach BE: First file structure:', files?.[0]);
     
-    // Always return an array (even if empty) to avoid "attachments.map is not a function" error
-    res.json(files || []);
+    // CRITICAL FIX: Ensure consistent response format that matches frontend expectations
+    // Frontend expects { files: [...] } format, not just an array
+    res.json({
+      files: files || [],
+      count: files?.length || 0
+    });
   }));
 
   /**
