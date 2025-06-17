@@ -335,13 +335,16 @@ const DimensionsPage = () => {
     return Object.values(selectedChanges).filter(Boolean).length;
   };
 
-  const { data: dimensionsResponse, isLoading, error } = useQuery<any>({
+  const { data: dimensionsResponse, isLoading, error, refetch } = useQuery<any>({
     queryKey: ['dimensions', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return null;
+      console.log(`DIMENSIONS_DEBUG: Fetching dimensions for client ${selectedClientId}`);
       return apiRequest(`/api/clients/${selectedClientId}/dimensions`);
     },
     enabled: !!selectedClientId,
+    staleTime: 0, // Always refetch when client changes
+    gcTime: 0, // Don't cache old client data (v5 syntax)
   });
 
   // Correctly and safely unwrap the nested data array

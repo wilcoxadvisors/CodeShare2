@@ -143,8 +143,21 @@ function ChartOfAccounts() {
 
   // Get hierarchical account tree data using client-based API
   const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
-    queryKey: [`/api/clients/${selectedClientId}/accounts/tree`],
-    enabled: !!selectedClientId
+    queryKey: ['accounts-tree', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return { status: "", data: [] };
+      console.log(`CHART_OF_ACCOUNTS_DEBUG: Fetching accounts for client ${selectedClientId}`);
+      const response = await fetch(`/api/clients/${selectedClientId}/accounts/tree`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch accounts: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: !!selectedClientId,
+    staleTime: 0, // Always refetch when client changes
+    gcTime: 0, // Don't cache old client data (v5 syntax)
   });
   
   // Fetch clients data for export functionality
