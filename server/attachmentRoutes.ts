@@ -668,8 +668,9 @@ export function registerAttachmentRoutes(app: Express) {
     res.json({ message: 'File deleted successfully' });
   }));
 
-  // Set up the hierarchical attachment routes
+  // Set up the hierarchical attachment routes - register for both /attachments and /files endpoints
   app.use('/api/clients/:clientId/entities/:entityId/journal-entries/:jeId/attachments', router);
+  app.use('/api/clients/:clientId/entities/:entityId/journal-entries/:jeId/files', router);
   
   console.log('Registered hierarchical attachment routes for journal entry files');
 }
