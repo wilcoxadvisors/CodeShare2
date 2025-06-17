@@ -142,7 +142,7 @@ function ChartOfAccounts() {
   });
 
   // Get hierarchical account tree data using client-based API
-  const { data: accountsTree = { status: "", data: [] }, isLoading, refetch } = useQuery<{ status: string, data: AccountTreeNode[] }>({
+  const { data: accountsTree, isLoading, refetch } = useQuery({
     queryKey: ['accounts-tree', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return { status: "", data: [] };
@@ -157,7 +157,6 @@ function ChartOfAccounts() {
     },
     enabled: !!selectedClientId,
     staleTime: 0, // Always refetch when client changes
-    gcTime: 0, // Don't cache old client data (v5 syntax)
   });
   
   // Fetch clients data for export functionality
@@ -183,8 +182,8 @@ function ChartOfAccounts() {
     }
   }, [selectedClientId, refetch]);
   
-  // Extract the actual accounts array from the response
-  const accountTreeData = accountsTree?.data || [];
+  // Extract the actual accounts array from the response - handle both wrapped and direct data
+  const accountTreeData = accountsTree?.data || accountsTree || [];
   
   // Debug output to understand the account tree structure
   console.log("DEBUG: Account Tree Data", {
@@ -199,13 +198,13 @@ function ChartOfAccounts() {
   // Extra verification logging for Step 3 display testing
   console.log("VERIFICATION STEP 3: Account Tree Structure", {
     totalNodes: accountTreeData.length,
-    rootNodes: accountTreeData.filter(node => !node.parentId).length,
-    activeAccounts: accountTreeData.filter(node => node.active).length,
-    accountTypeBreakdown: accountTreeData.reduce((acc, node) => {
+    rootNodes: accountTreeData.filter((node: AccountTreeNode) => !node.parentId).length,
+    activeAccounts: accountTreeData.filter((node: AccountTreeNode) => node.active).length,
+    accountTypeBreakdown: accountTreeData.reduce((acc: Record<string, number>, node: AccountTreeNode) => {
       acc[node.type] = (acc[node.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
-    hierarchyDepth: accountTreeData.reduce((maxDepth, node) => {
+    hierarchyDepth: accountTreeData.reduce((maxDepth: number, node: AccountTreeNode) => {
       // Simple function to check max depth in a tree node
       const getNodeDepth = (node: AccountTreeNode): number => {
         if (!node.children || node.children.length === 0) return 0;

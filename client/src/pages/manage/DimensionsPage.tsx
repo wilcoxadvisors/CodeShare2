@@ -335,7 +335,7 @@ const DimensionsPage = () => {
     return Object.values(selectedChanges).filter(Boolean).length;
   };
 
-  const { data: dimensionsResponse, isLoading, error, refetch } = useQuery<any>({
+  const { data: dimensionsResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['dimensions', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return null;
@@ -344,13 +344,12 @@ const DimensionsPage = () => {
     },
     enabled: !!selectedClientId,
     staleTime: 0, // Always refetch when client changes
-    gcTime: 0, // Don't cache old client data (v5 syntax)
   });
 
-  // Correctly and safely unwrap the nested data array
-  const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
+  // Correctly and safely unwrap the nested data array - handle both wrapped and direct data
+  const dimensions = (dimensionsResponse?.data && Array.isArray(dimensionsResponse.data))
     ? dimensionsResponse.data
-    : [];
+    : (Array.isArray(dimensionsResponse) ? dimensionsResponse : []);
 
   return (
     <div className="py-6">
@@ -771,7 +770,7 @@ const DimensionsPage = () => {
           <>
             {dimensions && dimensions.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {dimensions.map((dimension) => (
+                {dimensions.map((dimension: Dimension) => (
                   <Card key={dimension.id}>
                     <CardHeader>
                       <CardTitle className="flex justify-between items-center">

@@ -254,13 +254,20 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     setExpandedClients({}); // Reset to all collapsed
   }, [showEntities]);
 
-  // Handle entity selection
+  // Handle entity selection with stabilized navigation
   const selectEntity = (entity: Entity) => {
     console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Entity selection triggered - entityId: ${entity.id}, clientId: ${entity.clientId}`);
     
     // CRITICAL - Verify entity has valid clientId
     if (!entity.clientId) {
       console.error(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: ERROR - Entity ${entity.id} (${entity.name}) has no clientId!`);
+      return;
+    }
+
+    // STABILIZED NAVIGATION - prevent rapid state changes
+    if (currentEntity?.id === entity.id) {
+      console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Same entity selected, ignoring to prevent oscillation`);
+      setOpen(false);
       return;
     }
     
@@ -272,16 +279,16 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
     if (currentPath.includes('/journal-entries')) {
       const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
       console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to journal entries: ${newPath}`);
-      navigate(newPath);
+      navigate(newPath, { replace: true }); // Use replace to prevent back/forward issues
     } else if (currentPath.includes('/chart-of-accounts')) {
       const newPath = `/clients/${entity.clientId}/chart-of-accounts`;
       console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Navigating to chart of accounts: ${newPath}`);
-      navigate(newPath);
+      navigate(newPath, { replace: true });
     } else {
       // Default to journal entries for the selected entity
       const newPath = `/clients/${entity.clientId}/entities/${entity.id}/journal-entries`;
       console.log(`ARCHITECT_DEBUG_SELECTOR_ENTITY_CHANGE: Default navigation to journal entries: ${newPath}`);
-      navigate(newPath);
+      navigate(newPath, { replace: true });
     }
     
     // Close popover immediately
