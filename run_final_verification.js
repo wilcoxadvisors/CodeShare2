@@ -100,7 +100,8 @@ async function makeRequest(method, url, data = null, headers = {}) {
     };
 
     if (data) {
-      if (data instanceof FormData) {
+      if (data && typeof data.getHeaders === 'function') {
+        // Handle form-data package
         config.data = data;
         config.headers = { ...config.headers, ...data.getHeaders() };
       } else {
@@ -153,7 +154,7 @@ async function step1_authenticate() {
 async function step2_createDraftWithAttachment() {
   logStep(2, 'Create Draft JE with Attachment');
   
-  // Create journal entry with real account IDs from the system
+  // Create journal entry with actual account IDs from the database
   const journalEntryData = {
     date: new Date().toISOString().split('T')[0],
     referenceNumber: `TEST-JE-${Date.now()}`,
@@ -161,13 +162,13 @@ async function step2_createDraftWithAttachment() {
     lines: [
       {
         type: 'debit',
-        accountId: 1001, // Using standard chart of accounts ID
+        accountId: 7074, // Cash account from client 235
         amount: '1000.00',
         description: 'Test debit line'
       },
       {
         type: 'credit',
-        accountId: 2001, // Using standard chart of accounts ID  
+        accountId: 7075, // Accounts Receivable from client 235
         amount: '1000.00',
         description: 'Test credit line'
       }
@@ -186,10 +187,16 @@ async function step2_createDraftWithAttachment() {
   
   // Create and upload attachment
   const testFilePath = createTestFile();
+  const FormData = (await import('form-data')).default;
   const formData = new FormData();
-  formData.append('file', fs.createReadStream(testFilePath));
+  formData.append('file', fs.createReadStream(testFilePath), {
+    filename: 'test-document.txt',
+    contentType: 'text/plain'
+  });
   
-  const uploadResponse = await makeRequest('POST', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}/files`, formData);
+  const uploadResponse = await makeRequest('POST', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}/files`, formData, {
+    ...formData.getHeaders()
+  });
   
   cleanupTestFile(testFilePath);
   
