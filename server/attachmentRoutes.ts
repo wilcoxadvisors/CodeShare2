@@ -389,6 +389,7 @@ export function registerAttachmentRoutes(app: Express) {
     // Verify that the journal entry belongs to the specified entity
     if (journalEntry.entityId !== entityId) {
       throwForbidden('Journal entry does not belong to the specified entity');
+      return; // TypeScript doesn't know throwForbidden throws
     }
     
     // Get the file metadata
@@ -476,6 +477,7 @@ export function registerAttachmentRoutes(app: Express) {
     // Verify that the journal entry belongs to the specified entity
     if (journalEntry.entityId !== entityId) {
       throwForbidden('Journal entry does not belong to the specified entity');
+      return; // TypeScript doesn't know throwForbidden throws
     }
     
     // Get the file metadata
