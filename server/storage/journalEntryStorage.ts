@@ -593,14 +593,21 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   private async updateLineDimensionTags(tx: any, lineId: number, tags: any[]) {
     console.log(`ARCHITECT_ROBUST_UPDATE: Updating dimension tags for line ${lineId}`);
     
-    // Remove existing dimension tags
-    await tx.delete(txDimensionLink)
-      .where(eq(txDimensionLink.journalEntryLineId, lineId));
-    
-    // Insert new dimension tags
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      for (const tag of tags) {
-        if (tag.dimensionId && tag.dimensionValueId) {
+    try {
+      // Validate inputs
+      if (!lineId || lineId <= 0) {
+        throw new Error(`Invalid lineId: ${lineId}`);
+      }
+      
+      // Remove existing dimension tags
+      await tx.delete(txDimensionLink)
+        .where(eq(txDimensionLink.journalEntryLineId, lineId));
+      
+      // Insert new dimension tags
+      if (tags && Array.isArray(tags) && tags.length > 0) {
+        const validTags = tags.filter(tag => tag.dimensionId && tag.dimensionValueId);
+        
+        for (const tag of validTags) {
           await tx.insert(txDimensionLink)
             .values({
               journalEntryLineId: lineId,
@@ -608,8 +615,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
               dimensionValueId: tag.dimensionValueId
             });
         }
+        console.log(`ARCHITECT_ROBUST_UPDATE: Saved ${validTags.length} dimension tags for line ${lineId}`);
       }
-      console.log(`ARCHITECT_ROBUST_UPDATE: Saved ${tags.length} dimension tags for line ${lineId}`);
+    } catch (e) {
+      console.error(`ARCHITECT_ROBUST_UPDATE: Error updating dimension tags for line ${lineId}:`, e);
+      throw e; // Re-throw to bubble up to transaction handler
     }
   }
   

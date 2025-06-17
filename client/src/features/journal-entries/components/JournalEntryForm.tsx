@@ -3640,7 +3640,7 @@ const [journalData, setJournalData] = useState({
           onUploadToEntryRef={uploadPendingFilesRef}
           attachments={existingEntry?.files || []}
           status={existingEntry?.status}
-          isInEditMode={!!existingEntry}
+          isInEditMode={true}
         />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">

@@ -206,6 +206,18 @@ export const createJournalEntrySchema = z.object({
 }, {
   message: "Each entity's debits must equal credits for intercompany transactions",
   path: ["lines"],
+})
+// Third refinement: Check accrual reversal date requirement
+.refine(data => {
+  // If isAccrual is true, reversalDate must be present and valid
+  if (data.isAccrual) {
+    return !!data.reversalDate;
+  }
+  // Otherwise, we don't care about reversalDate
+  return true;
+}, {
+  message: "Reversal date is required for accrual entries",
+  path: ["reversalDate"],
 });
 
 /**
