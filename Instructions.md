@@ -153,7 +153,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 
   - **Current Update:** Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
   - **Current Update:** Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. The next planned enhancement is the Auto-Reversing Accrual feature.
-  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): ✅ COMPLETE. The Dimensions module is now feature-complete and stable with full CRUD functionality, COA-style Master Bulk Management, Journal Entry integration, and enhanced data integrity safeguards.
+  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. Backend foundation complete, frontend UI for listing/creating dimensions complete. Next: Build UI to add/edit/deactivate dimension values and integrate tagging into Journal Entry form.
   - **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
     - **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
     - **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -196,28 +196,30 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
     - Begin implementing the accounting module, focusing first on file attachments, then Dimensions & Smart Rules (B.2.1), and finally batch journal entry uploads.
     - Plan for analytics dashboard to track website content performance.
 
-## Dimensions Module - Status: COMPLETE
+## Dimensions Module - Status: IN PROGRESS
 
-The Dimensions module is now feature-complete and stable. This includes a full suite of tools for creating, managing, and utilizing financial dimensions.
+The Dimensions module has solid backend foundation with partial frontend implementation.
 
-### Key Completed Features:
+### Completed Features:
 
-**Core CRUD Functionality:**
-- Full UI and backend support for creating, editing, and deleting Dimensions.
-- A dedicated "Manage Values" dialog for adding, editing, deactivating, and deleting dimension values.
-- Implemented safety checks to prevent deletion of any dimension or value that is currently in use in a transaction, ensuring data integrity.
+**Backend Foundation:**
+- Database schema implemented with client-level master-data tables (dimensions, dimension_values, tx_dimension_link)
+- System dimensions seeded: Department, Location, Customer, etc.
+- Complete backend Storage Layer and API routes for CRUD operations
+- Dimension storage module with client isolation and bulk management capabilities
 
-**COA-Style Master Bulk Management:**
-- A centralized "Master Bulk Management" feature is now available on the main Dimensions page.
-- Master Template Download: Users can download a single, clean CSV template pre-populated with all values for all dimensions for the selected client.
-- Interactive Upload & Preview: When a master CSV is uploaded, the system now performs an analysis and displays a detailed preview of all proposed changes (Creations, Updates, Deletions).
-- Inline Editing: The preview screen is fully interactive, allowing users to edit names, descriptions, and the active/inactive status of values before confirming.
-- Intelligent Sync Logic: The system uses "delete by omission," meaning any value not present in the uploaded file is automatically marked for deletion, allowing for true synchronization.
-- User Confirmation: All changes from a bulk upload are only applied to the database after explicit user confirmation from the preview screen.
+**Initial Frontend UI:**
+- Basic UI for listing existing dimensions and creating new ones
+- Foundation for dimension management interface
 
-**Journal Entry Integration:**
-- The "Dimension Tagging" feature within the Journal Entry form is now fully functional.
-- All bugs related to fetching and displaying dimension data in the tagging popover have been resolved.
+### Remaining Work:
+
+**Critical Missing Features:**
+- UI to add/edit/deactivate values for each dimension (e.g., add "Sales" to the "Department" dimension)
+- Integration of dimension tagging into the Journal Entry form
+- "Manage Values" dialog functionality
+- COA-style Master Bulk Management features
+- Template download and upload with preview functionality
 
 **Data Integrity and Security:**
 - A critical cross-client data contamination issue was discovered and fully resolved.
@@ -733,8 +735,6 @@ Throughout every task explicitly:
 
 **UX Bug:** Data now correctly refreshes after a "Reverse" action.
 
-**Attachment Bug #7:** All major attachment issues are resolved.
-
 **Runtime Crashes** on the JE Detail page have been fixed.
 
 **Journal ID System Refactored:** Corrected the Journal ID generation to use the new, scalable format (JE-{clientId}-{entityId}-{MMDDYY}-{databaseId}). Fixed the UI to show a stable preview ID for new entries and the correct permanent ID for existing entries.
@@ -744,6 +744,33 @@ Throughout every task explicitly:
 **UI State & Navigation Bugs:** Resolved a major bug with unstable React keys that caused UI selections to not appear. Fixed a critical navigation bug that caused an infinite redirect loop when switching between clients/entities.
 
 ### 🔄 Unresolved Issues / Next Steps
+
+**File Attachment Bug #7 (Critical Priority):**
+- **Status:** 🔄 REQUIRES IMMEDIATE ATTENTION
+- **Issue:** File attachment functionality broken across multiple areas: multi-upload, list, download, delete, and persistence
+- **Requirements:** Multi-file support, drag-drop interface, delete functionality, specific file types (PDF, images, office docs, txt, csv)
+- **UI Location:** Journal Entry Form (shown only in Edit mode)
+- **Action Required:** Systematic debugging of backend save/list operations and frontend fetch/render functionality
+
+**Journal Entry Editing Workflow - Definitive Fix Plan (High Priority):**
+
+This document tracks the progress on the definitive fix plan for the Journal Entry module.
+
+**Mission:** Fix the Journal Entry editing workflow to ensure all data, including attachments and dimensions, is persisted correctly and the UI updates reliably.
+
+#### Tasks
+
+- [ ] **Part 1: Fix Backend Update Logic** `(Status: In Progress)`
+    - **Goal:** Correct the `updateJournalEntryWithLines` method in `server/storage/journalEntryStorage.ts` so it is non-destructive and correctly handles dimension tags.
+    - **Action:** Rewrite the method to use a "delete-then-insert" pattern for dimension tags within a transaction, while ensuring it does not touch the `journalEntryFiles` table.
+
+- [ ] **Part 2: Fix Attachment Data Flow** `(Status: To Do)`
+    - **Goal:** Ensure the `AttachmentSection` component always receives the correct list of files.
+    - **Action:** Trace the `files` array prop from the `useEditJournalEntry` hook down through `JournalEntryDetail.tsx` and `JournalEntryForm.tsx` to the `AttachmentSection`, correcting any point where the data is dropped.
+
+- [ ] **Part 3: Fix Stale Data on the Frontend** `(Status: To Do)`
+    - **Goal:** Ensure the UI updates instantly after any action.
+    - **Action:** Review all mutations in `attachmentQueries.ts` and `useJournalEntry.ts`. The `onSuccess` callback for every mutation that changes data must correctly invalidate all relevant queries to force a UI refresh.
 
 **Accrual Reversal Feature (High Priority):** Implement the newly specified auto-reversal feature.
 
