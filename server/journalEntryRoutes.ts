@@ -1556,8 +1556,14 @@ export function registerJournalEntryRoutes(app: Express) {
       // Extract lines from validated data
       const { lines, ...entryData } = validatedData;
       
-      // Update the journal entry with lines
-      const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
+      // Update the journal entry - use lines method only if lines are provided
+      let updatedEntry;
+      if (lines && Array.isArray(lines) && lines.length > 0) {
+        updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(id, entryData, lines);
+      } else {
+        // Status-only or metadata-only update
+        updatedEntry = await journalEntryStorage.updateJournalEntry(id, entryData);
+      }
       
       res.json(updatedEntry);
     } catch (error) {

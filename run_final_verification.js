@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Comprehensive End-to-End API Verification Script
  * 
@@ -10,12 +8,15 @@
  * 4. Post the Entry
  * 5. Attempt to Edit Posted Entry (should fail)
  * 6. Void the Entry
+ * 7. Reverse a Posted Entry
+ * 8. Copy an Entry
+ * 9. Test Accrual Reversal
  */
 
-import axios from 'axios';
-import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
+import FormData from 'form-data';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,18 +24,27 @@ const __dirname = path.dirname(__filename);
 
 // Configuration
 const BASE_URL = 'http://localhost:5000';
-const TEST_CREDENTIALS = {
+const CLIENT_ID = 235;
+const ENTITY_ID = 376;
+
+// Test credentials
+const credentials = {
   username: 'admin',
   password: 'password123'
 };
 
 // Global state
-let sessionCookie = '';
-let testJournalEntryId = null;
-let testClientId = null;
-let testEntityId = null;
+let authCookies = '';
+let testData = {
+  draftJeId: null,
+  postedJeId: null,
+  voidedJeId: null,
+  copiedJeId: null,
+  accrualJeId: null,
+  reversalJeId: null,
+  attachmentId: null
+};
 
-// Utility functions
 function log(message, type = 'INFO') {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${type}: ${message}`);
@@ -47,61 +57,44 @@ function logStep(stepNumber, description) {
 }
 
 function logSuccess(message) {
-  log(`✅ SUCCESS: ${message}`, 'PASS');
+  console.log(`✅ PASSED: ${message}`);
 }
 
 function logFailure(message) {
-  log(`❌ FAILURE: ${message}`, 'FAIL');
+  console.log(`❌ FAILED: ${message}`);
 }
 
-// Create a test file for attachment
 function createTestFile() {
-  const testFilePath = path.join(__dirname, 'test_attachment.txt');
-  const testContent = 'This is a test attachment file for Journal Entry verification.';
-  fs.writeFileSync(testFilePath, testContent);
-  return testFilePath;
+  const testContent = 'This is a test file for journal entry attachment verification.';
+  const filePath = path.join(__dirname, 'test-attachment.txt');
+  fs.writeFileSync(filePath, testContent);
+  return filePath;
 }
 
-// Clean up test file
 function cleanupTestFile(filePath) {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      log('Cleaned up test file');
+    }
+  } catch (error) {
+    log(`Error cleaning up test file: ${error.message}`, 'WARN');
   }
 }
 
-// Cookie jar for session management
-import tough from 'tough-cookie';
-const { CookieJar } = tough;
-import { wrapper } from 'axios-cookiejar-support';
-
-// Setup axios with cookie jar support
-const cookieJar = new CookieJar();
-const client = wrapper(axios.create({
-  baseURL: BASE_URL,
-  jar: cookieJar,
-  withCredentials: true,
-  validateStatus: function (status) {
-    return status >= 200 && status < 600; // Don't throw for any status code
-  }
-}));
-
-// Create axios instance with cookie jar support
-const axiosInstance = client;
-
-// API helper functions
 async function makeRequest(method, url, data = null, headers = {}) {
   try {
     const config = {
       method,
-      url,
+      url: `${BASE_URL}${url}`,
       headers: {
+        'Cookie': authCookies,
         ...headers
       }
     };
 
     if (data) {
-      if (data && typeof data.getHeaders === 'function') {
-        // Handle form-data package
+      if (data instanceof FormData) {
         config.data = data;
         config.headers = { ...config.headers, ...data.getHeaders() };
       } else {
@@ -110,288 +103,399 @@ async function makeRequest(method, url, data = null, headers = {}) {
       }
     }
 
-    const response = await axiosInstance(config);
-    return { success: response.status >= 200 && response.status < 300, status: response.status, data: response.data };
+    const response = await axios(config);
+    return response.data;
   } catch (error) {
-    return {
-      success: false,
-      status: error.response?.status || 0,
-      data: error.response?.data || error.message,
-      error: error.message
-    };
+    if (error.response) {
+      throw new Error(`${error.response.status}: ${JSON.stringify(error.response.data)}`);
+    }
+    throw error;
   }
 }
 
-// Step 1: Authentication
 async function step1_authenticate() {
-  logStep(1, 'Authenticate');
+  logStep(1, 'Authenticate as admin user');
   
-  const response = await makeRequest('POST', '/api/auth/login', TEST_CREDENTIALS);
-  
-  if (!response.success || response.status !== 200) {
-    logFailure(`Authentication failed: ${response.error || 'Unknown error'}`);
-    process.exit(1);
-  }
-  
-  logSuccess('User authenticated successfully');
-  
-  // Get available clients and entities
-  const clientsResponse = await makeRequest('GET', '/api/clients');
-  if (clientsResponse.success && clientsResponse.data.length > 0) {
-    testClientId = clientsResponse.data[0].id;
-    log(`Using test client ID: ${testClientId}`);
+  try {
+    const response = await axios.post(`${BASE_URL}/api/auth/login`, credentials);
     
-    // Use known working entity ID from the system
-    testEntityId = 376; // Entity "TY" from client 235
-    log(`Using test entity ID: ${testEntityId}`);
-  } else {
-    logFailure('No clients available for testing');
-    process.exit(1);
+    if (response.headers['set-cookie']) {
+      authCookies = response.headers['set-cookie'].join('; ');
+      log('Authentication successful');
+      logSuccess('Authentication completed');
+      return true;
+    } else {
+      logFailure('No cookies received from authentication');
+      return false;
+    }
+  } catch (error) {
+    logFailure(`Authentication failed: ${error.message}`);
+    return false;
   }
 }
 
-// Step 2: Create Draft JE with Attachment
 async function step2_createDraftWithAttachment() {
   logStep(2, 'Create Draft JE with Attachment');
   
-  // Create journal entry with actual account IDs from the database
-  const journalEntryData = {
-    date: new Date().toISOString().split('T')[0],
-    referenceNumber: `TEST-JE-${Date.now()}`,
-    description: 'Test Journal Entry for E2E Verification',
-    lines: [
-      {
-        type: 'debit',
-        accountId: 7074, // Cash account from client 235
-        amount: '1000.00',
-        description: 'Test debit line'
-      },
-      {
-        type: 'credit',
-        accountId: 7075, // Accounts Receivable from client 235
-        amount: '1000.00',
-        description: 'Test credit line'
-      }
-    ]
-  };
-  
-  const jeResponse = await makeRequest('POST', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries`, journalEntryData);
-  
-  if (!jeResponse.success || jeResponse.status !== 201) {
-    logFailure(`Failed to create journal entry: ${jeResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  testJournalEntryId = jeResponse.data.id;
-  logSuccess(`Journal entry created with ID: ${testJournalEntryId}`);
-  
-  // Create and upload attachment
-  const testFilePath = createTestFile();
-  const FormData = (await import('form-data')).default;
-  const formData = new FormData();
-  formData.append('file', fs.createReadStream(testFilePath), {
-    filename: 'test-document.txt',
-    contentType: 'text/plain'
-  });
-  
-  const uploadResponse = await makeRequest('POST', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}/files`, formData, {
-    ...formData.getHeaders()
-  });
-  
-  cleanupTestFile(testFilePath);
-  
-  if (!uploadResponse.success || uploadResponse.status !== 201) {
-    logFailure(`Failed to upload attachment: ${uploadResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  logSuccess('Attachment uploaded successfully');
-  return true;
-}
+  try {
+    // First, create the journal entry
+    const jeData = {
+      date: new Date().toISOString().split('T')[0],
+      referenceNumber: `TEST-${Date.now()}`,
+      description: 'Test Journal Entry with Attachment',
+      journalType: 'JE',
+      status: 'draft',
+      lines: [
+        {
+          type: 'debit',
+          accountId: 7072,
+          amount: '1000.00',
+          description: 'Test debit line'
+        },
+        {
+          type: 'credit',
+          accountId: 7073,
+          amount: '1000.00',
+          description: 'Test credit line'
+        }
+      ]
+    };
 
-// Step 3: Edit the Draft
-async function step3_editDraft() {
-  logStep(3, 'Edit the Draft');
-  
-  // Get current entry
-  const getResponse = await makeRequest('GET', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`);
-  
-  if (!getResponse.success || getResponse.status !== 200) {
-    logFailure(`Failed to get journal entry: ${getResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  const currentEntry = getResponse.data;
-  log(`Current entry has ${currentEntry.files?.length || 0} attachment(s)`);
-  
-  if (!currentEntry.files || currentEntry.files.length === 0) {
-    logFailure('Expected 1 attachment, but found none');
-    return false;
-  }
-  
-  // Update entry
-  const updatedData = {
-    ...currentEntry,
-    description: 'UPDATED: Test Journal Entry for E2E Verification',
-    files: currentEntry.files // Preserve existing attachments
-  };
-  
-  const updateResponse = await makeRequest('PUT', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`, updatedData);
-  
-  if (!updateResponse.success || updateResponse.status !== 200) {
-    logFailure(`Failed to update journal entry: ${updateResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  // Verify changes
-  const verifyResponse = await makeRequest('GET', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`);
-  
-  if (!verifyResponse.success) {
-    logFailure(`Failed to verify updated journal entry: ${verifyResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  const updatedEntry = verifyResponse.data;
-  const descriptionUpdated = updatedEntry.description.includes('UPDATED:');
-  const attachmentPreserved = updatedEntry.files && updatedEntry.files.length > 0;
-  
-  if (descriptionUpdated && attachmentPreserved) {
-    logSuccess('Draft updated successfully - description changed and attachment preserved');
+    const jeResponse = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries`, jeData);
+    testData.draftJeId = jeResponse.id;
+    log(`Created draft JE with ID: ${testData.draftJeId}`);
+
+    // Now upload an attachment
+    const testFilePath = createTestFile();
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(testFilePath));
+
+    const attachmentResponse = await makeRequest('POST', 
+      `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`, 
+      formData
+    );
+    
+    testData.attachmentId = attachmentResponse.id;
+    log(`Uploaded attachment with ID: ${testData.attachmentId}`);
+    cleanupTestFile(testFilePath);
+
+    logSuccess('Draft JE with attachment created successfully');
     return true;
-  } else {
-    logFailure(`Update verification failed - Description updated: ${descriptionUpdated}, Attachment preserved: ${attachmentPreserved}`);
+  } catch (error) {
+    logFailure(`Failed to create draft JE with attachment: ${error.message}`);
     return false;
   }
 }
 
-// Step 4: Post the Entry
+async function step3_editDraft() {
+  logStep(3, 'Edit Draft and verify attachment preservation');
+  
+  try {
+    // Update the journal entry description
+    const updateData = {
+      description: 'UPDATED: Test Journal Entry with Attachment',
+      lines: [
+        {
+          type: 'debit',
+          accountId: 7072,
+          amount: '1500.00',
+          description: 'Updated debit line'
+        },
+        {
+          type: 'credit',
+          accountId: 7073,
+          amount: '1500.00',
+          description: 'Updated credit line'
+        }
+      ]
+    };
+
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`, updateData);
+    log('Updated journal entry description and amounts');
+
+    // Verify the update and attachment preservation
+    const updatedJe = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`);
+    
+    if (updatedJe.description.includes('UPDATED:')) {
+      log('Description update verified');
+    } else {
+      throw new Error('Description was not updated');
+    }
+
+    // Check attachments
+    const attachments = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}/attachments`);
+    
+    if (attachments.length > 0 && attachments.some(att => att.id === testData.attachmentId)) {
+      log('Attachment preservation verified');
+      logSuccess('Draft edit with attachment preservation completed');
+      return true;
+    } else {
+      throw new Error('Attachment was not preserved during edit');
+    }
+  } catch (error) {
+    logFailure(`Failed to edit draft: ${error.message}`);
+    return false;
+  }
+}
+
 async function step4_postEntry() {
   logStep(4, 'Post the Entry');
   
-  const postResponse = await makeRequest('PUT', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}/post`);
-  
-  if (!postResponse.success || postResponse.status !== 200) {
-    logFailure(`Failed to post journal entry: ${postResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  // Verify status
-  const verifyResponse = await makeRequest('GET', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`);
-  
-  if (!verifyResponse.success) {
-    logFailure(`Failed to verify posted entry: ${verifyResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  const postedEntry = verifyResponse.data;
-  if (postedEntry.status === 'posted') {
-    logSuccess('Journal entry posted successfully');
-    return true;
-  } else {
-    logFailure(`Expected status 'posted', got '${postedEntry.status}'`);
+  try {
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`, {
+      status: 'posted'
+    });
+    
+    // Verify status change
+    const postedJe = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.draftJeId}`);
+    
+    if (postedJe.status === 'posted') {
+      testData.postedJeId = testData.draftJeId;
+      log(`Journal entry ${testData.postedJeId} successfully posted`);
+      logSuccess('Entry posting completed');
+      return true;
+    } else {
+      throw new Error(`Expected status 'posted', got '${postedJe.status}'`);
+    }
+  } catch (error) {
+    logFailure(`Failed to post entry: ${error.message}`);
     return false;
   }
 }
 
-// Step 5: Attempt to Edit Posted Entry (should fail)
 async function step5_attemptEditPosted() {
   logStep(5, 'Attempt to Edit Posted Entry (should fail)');
   
-  const updateData = {
-    description: 'This update should fail - entry is posted'
-  };
-  
-  const updateResponse = await makeRequest('PUT', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`, updateData);
-  
-  if (updateResponse.success && updateResponse.status === 200) {
-    logFailure('Posted entry was updated - this should not be allowed');
+  try {
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}`, {
+      description: 'This should fail'
+    });
+    
+    logFailure('Posted entry edit should have failed but succeeded');
     return false;
-  } else if (updateResponse.status === 400 || updateResponse.status === 403) {
-    logSuccess('Posted entry correctly rejected update attempt');
-    return true;
-  } else {
-    logFailure(`Unexpected response: ${updateResponse.status} - ${updateResponse.error || 'Unknown error'}`);
-    return false;
+  } catch (error) {
+    if (error.message.includes('400') || error.message.includes('403') || error.message.includes('Cannot edit')) {
+      log('Edit attempt correctly rejected');
+      logSuccess('Posted entry edit protection working');
+      return true;
+    } else {
+      logFailure(`Unexpected error: ${error.message}`);
+      return false;
+    }
   }
 }
 
-// Step 6: Void the Entry
 async function step6_voidEntry() {
   logStep(6, 'Void the Entry');
   
-  const voidData = {
-    reason: 'E2E Test Verification - Voiding for test completion'
-  };
-  
-  const voidResponse = await makeRequest('POST', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}/void`, voidData);
-  
-  if (!voidResponse.success || voidResponse.status !== 200) {
-    logFailure(`Failed to void journal entry: ${voidResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  // Verify status
-  const verifyResponse = await makeRequest('GET', `/api/clients/${testClientId}/entities/${testEntityId}/journal-entries/${testJournalEntryId}`);
-  
-  if (!verifyResponse.success) {
-    logFailure(`Failed to verify voided entry: ${verifyResponse.error || 'Unknown error'}`);
-    return false;
-  }
-  
-  const voidedEntry = verifyResponse.data;
-  if (voidedEntry.status === 'voided') {
-    logSuccess('Journal entry voided successfully');
-    return true;
-  } else {
-    logFailure(`Expected status 'voided', got '${voidedEntry.status}'`);
+  try {
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}`, {
+      status: 'voided'
+    });
+    
+    // Verify status change
+    const voidedJe = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.postedJeId}`);
+    
+    if (voidedJe.status === 'voided') {
+      testData.voidedJeId = testData.postedJeId;
+      log(`Journal entry ${testData.voidedJeId} successfully voided`);
+      logSuccess('Entry voiding completed');
+      return true;
+    } else {
+      throw new Error(`Expected status 'voided', got '${voidedJe.status}'`);
+    }
+  } catch (error) {
+    logFailure(`Failed to void entry: ${error.message}`);
     return false;
   }
 }
 
-// Main execution function
-async function runVerification() {
-  console.log('🚀 Starting Comprehensive E2E API Verification');
-  console.log(`Target URL: ${BASE_URL}`);
-  console.log(`Test User: ${TEST_CREDENTIALS.username}`);
-  
-  let passedSteps = 0;
-  const totalSteps = 6;
+async function step7_reverseEntry() {
+  logStep(7, 'Reverse a Posted Entry');
   
   try {
-    // Execute all steps
-    await step1_authenticate();
-    passedSteps++;
+    // First create a new entry to reverse
+    const jeData = {
+      date: new Date().toISOString().split('T')[0],
+      referenceNumber: `REVERSE-TEST-${Date.now()}`,
+      description: 'Entry to be reversed',
+      journalType: 'JE',
+      status: 'posted',
+      lines: [
+        {
+          type: 'debit',
+          accountId: 7072,
+          amount: '500.00',
+          description: 'Amount to reverse'
+        },
+        {
+          type: 'credit',
+          accountId: 7073,
+          amount: '500.00',
+          description: 'Amount to reverse'
+        }
+      ]
+    };
+
+    const originalJe = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries`, jeData);
+    log(`Created entry to reverse with ID: ${originalJe.id}`);
+
+    // Now reverse it
+    const reversalData = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${originalJe.id}/reverse`);
     
-    if (await step2_createDraftWithAttachment()) passedSteps++;
-    if (await step3_editDraft()) passedSteps++;
-    if (await step4_postEntry()) passedSteps++;
-    if (await step5_attemptEditPosted()) passedSteps++;
-    if (await step6_voidEntry()) passedSteps++;
+    log(`Created reversal entry with ID: ${reversalData.id}`);
+    logSuccess('Entry reversal completed');
+    return true;
+  } catch (error) {
+    logFailure(`Failed to reverse entry: ${error.message}`);
+    return false;
+  }
+}
+
+async function step8_copyEntry() {
+  logStep(8, 'Copy an Entry');
+  
+  try {
+    // Use the voided entry for copying
+    const copiedData = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.voidedJeId}/copy`);
+    
+    testData.copiedJeId = copiedData.id;
+    log(`Created copy with ID: ${testData.copiedJeId}`);
+
+    // Verify the copy
+    const copiedJe = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.copiedJeId}`);
+    
+    if (copiedJe.status === 'draft' && copiedJe.referenceNumber.includes('Copy of')) {
+      log('Copy verification successful');
+      logSuccess('Entry copying completed');
+      return true;
+    } else {
+      throw new Error('Copy does not have expected properties');
+    }
+  } catch (error) {
+    logFailure(`Failed to copy entry: ${error.message}`);
+    return false;
+  }
+}
+
+async function step9_testAccrualReversal() {
+  logStep(9, 'Test Accrual Reversal');
+  
+  try {
+    // Create an accrual entry
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 30);
+    
+    const accrualData = {
+      date: new Date().toISOString().split('T')[0],
+      referenceNumber: `ACCRUAL-TEST-${Date.now()}`,
+      description: 'Test Accrual Entry',
+      journalType: 'JE',
+      status: 'draft',
+      isAccrual: true,
+      reversalDate: futureDate.toISOString().split('T')[0],
+      lines: [
+        {
+          type: 'debit',
+          accountId: 7072,
+          amount: '2000.00',
+          description: 'Accrual debit'
+        },
+        {
+          type: 'credit',
+          accountId: 7073,
+          amount: '2000.00',
+          description: 'Accrual credit'
+        }
+      ]
+    };
+
+    const accrualJe = await makeRequest('POST', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries`, accrualData);
+    testData.accrualJeId = accrualJe.id;
+    log(`Created accrual entry with ID: ${testData.accrualJeId}`);
+
+    // Post the accrual entry (this should trigger reversal creation)
+    await makeRequest('PATCH', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries/${testData.accrualJeId}`, {
+      status: 'posted'
+    });
+    
+    log('Posted accrual entry');
+
+    // Check if reversal entry was created
+    const journalEntries = await makeRequest('GET', `/api/clients/${CLIENT_ID}/entities/${ENTITY_ID}/journal-entries?limit=20`);
+    
+    const reversalEntry = journalEntries.find(je => 
+      je.reversedEntryId === testData.accrualJeId && 
+      je.status === 'posted'
+    );
+
+    if (reversalEntry) {
+      testData.reversalJeId = reversalEntry.id;
+      log(`Found auto-created reversal entry with ID: ${testData.reversalJeId}`);
+      logSuccess('Accrual reversal system working correctly');
+      return true;
+    } else {
+      throw new Error('Automatic reversal entry was not created');
+    }
+  } catch (error) {
+    logFailure(`Failed accrual reversal test: ${error.message}`);
+    return false;
+  }
+}
+
+async function runVerification() {
+  console.log('🚀 Starting Comprehensive E2E API Verification');
+  console.log(`Target: ${BASE_URL}`);
+  console.log(`Client ID: ${CLIENT_ID}, Entity ID: ${ENTITY_ID}`);
+  console.log(`Timestamp: ${new Date().toISOString()}`);
+  
+  const results = [];
+  
+  try {
+    results.push(await step1_authenticate());
+    results.push(await step2_createDraftWithAttachment());
+    results.push(await step3_editDraft());
+    results.push(await step4_postEntry());
+    results.push(await step5_attemptEditPosted());
+    results.push(await step6_voidEntry());
+    results.push(await step7_reverseEntry());
+    results.push(await step8_copyEntry());
+    results.push(await step9_testAccrualReversal());
     
   } catch (error) {
-    logFailure(`Unexpected error during verification: ${error.message}`);
+    log(`Verification failed with error: ${error.message}`, 'ERROR');
   }
-  
-  // Final results
+
+  // Final Results
   console.log(`\n${'='.repeat(60)}`);
   console.log('FINAL VERIFICATION RESULTS');
   console.log(`${'='.repeat(60)}`);
-  console.log(`Total Steps: ${totalSteps}`);
-  console.log(`Passed Steps: ${passedSteps}`);
-  console.log(`Failed Steps: ${totalSteps - passedSteps}`);
-  console.log(`Success Rate: ${Math.round((passedSteps / totalSteps) * 100)}%`);
   
-  if (passedSteps === totalSteps) {
-    console.log('🎉 ALL TESTS PASSED - Journal Entry system is fully operational!');
-    process.exit(0);
+  const passedTests = results.filter(Boolean).length;
+  const totalTests = results.length;
+  
+  console.log(`✅ Passed: ${passedTests}/${totalTests} tests`);
+  console.log(`❌ Failed: ${totalTests - passedTests}/${totalTests} tests`);
+  console.log(`📊 Success Rate: ${Math.round((passedTests / totalTests) * 100)}%`);
+  
+  if (passedTests === totalTests) {
+    console.log('\n🎉 ALL TESTS PASSED - JOURNAL ENTRY MODULE IS STABLE');
   } else {
-    console.log('⚠️  Some tests failed - Review the logs above for details');
-    process.exit(1);
+    console.log('\n⚠️  SOME TESTS FAILED - REVIEW REQUIRED');
   }
+
+  console.log('\nTest Data Summary:');
+  console.log(`- Draft JE ID: ${testData.draftJeId}`);
+  console.log(`- Posted JE ID: ${testData.postedJeId}`);
+  console.log(`- Voided JE ID: ${testData.voidedJeId}`);
+  console.log(`- Copied JE ID: ${testData.copiedJeId}`);
+  console.log(`- Accrual JE ID: ${testData.accrualJeId}`);
+  console.log(`- Reversal JE ID: ${testData.reversalJeId}`);
+  console.log(`- Attachment ID: ${testData.attachmentId}`);
 }
 
-// Execute verification
+// Execute the verification
 runVerification().catch(error => {
-  logFailure(`Fatal error: ${error.message}`);
+  console.error('Verification script failed:', error);
   process.exit(1);
 });

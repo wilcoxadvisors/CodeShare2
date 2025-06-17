@@ -215,19 +215,24 @@ export const updateJournalEntrySchema = z.object({
   description: z.string().max(255, "Description cannot exceed 255 characters").optional().nullable(),
   journalType: z.enum(['JE', 'AJ', 'SJ', 'CL']).optional(),
   status: z.enum(['draft', 'posted', 'pending_approval', 'approved', 'rejected', 'void']).optional(),
-  lines: z.array(journalEntryLineSchema).min(1, "Journal Entry update must include at least one line"),
+  lines: z.array(journalEntryLineSchema).optional(), // Make lines optional for status-only updates
+  
+  // Accrual fields
+  isAccrual: z.boolean().optional(),
+  reversalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Reversal date must be in YYYY-MM-DD format" }).optional(),
 })
-// First refinement: Check overall balance (debits = credits)
+// First refinement: Check overall balance (debits = credits) only when lines are provided
 .refine(data => {
-  // Also validate balance for updates
+  // Skip balance validation if no lines are provided (status-only update)
+  if (!data.lines || !Array.isArray(data.lines) || data.lines.length === 0) {
+    return true;
+  }
+  
   let totalDebits = 0;
   let totalCredits = 0;
   
-  // Ensure lines is treated as an array
-  const lines = Array.isArray(data.lines) ? data.lines : [];
-  
-  lines.forEach((line: any) => {
-    const amount = line?.amount || 0;
+  data.lines.forEach((line: any) => {
+    const amount = parseFloat(line?.amount || 0);
     if (line?.type === 'debit') totalDebits += amount;
     if (line?.type === 'credit') totalCredits += amount;
   });
@@ -235,7 +240,29 @@ export const updateJournalEntrySchema = z.object({
   const tolerance = 0.0001;
   return Math.abs(totalDebits - totalCredits) < tolerance;
 }, {
-  message: "Overall debits must equal credits in update",
+  message: "Overall debits must equal credits when lines are provided",
+  path: ["lines"],
+})
+// Second refinement: Ensure lines are provided for content updates (not status-only)
+.refine(data => {
+  // If updating content fields (date, description, referenceNumber) but not status, require lines
+  const hasContentUpdates = data.date || data.description || data.referenceNumber;
+  const hasStatusUpdate = data.status;
+  const hasLines = data.lines && Array.isArray(data.lines) && data.lines.length > 0;
+  
+  // Allow pure status updates without lines
+  if (hasStatusUpdate && !hasContentUpdates) {
+    return true;
+  }
+  
+  // Require lines for content updates
+  if (hasContentUpdates && !hasLines) {
+    return false;
+  }
+  
+  return true;
+}, {
+  message: "Lines are required when updating journal entry content",
   path: ["lines"],
 })
 // Second refinement: Check balance within each entity
