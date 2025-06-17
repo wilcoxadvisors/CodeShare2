@@ -1,5 +1,9 @@
 {pkgs}: {
   deps = [
+    pkgs.xorg.libX11
+    pkgs.cairo
+    pkgs.pango
+    pkgs.libdrm
     pkgs.cups
     pkgs.atk
     pkgs.dbus
