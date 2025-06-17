@@ -1,0 +1,51 @@
+Architect's Definitive Plan (Surgical Refactor)
+We will perform a surgical refactoring of GlobalContextSelector.tsx. We will keep the valuable UX features (search, expand/collapse, etc.) but fix the underlying state and navigation logic that is causing the bugs.
+
+Mission: Refactor GlobalContextSelector.tsx to correctly and reliably derive its display state and navigation behavior from the EntityContext and the URL, fixing all reported bugs while preserving all existing features.
+
+Instructions for the Agent:
+
+You will modify client/src/components/dashboard/GlobalContextSelector.tsx. Do NOT replace the entire file. You will perform the following specific modifications:
+
+1. Fix the Display Logic (buttonText variable):
+The primary UI bug is that the button label is wrong. This is because the logic to create it is flawed.
+
+Action: Find the let buttonText: React.ReactNode = "Select Client..."; line. Delete the entire if/else if/else block that calculates the buttonText and replace it with this new, simpler, and correct logic that reads directly from the context:
+
+TypeScript
+
+const selectedClientName = useMemo(() => clients.find(c => c.id === selectedClientId)?.name, [clients, selectedClientId]);
+const currentEntityName = useMemo(() => entities.find(e => e.id === currentEntity?.id)?.name, [entities, currentEntity]);
+
+let buttonText: React.ReactNode = "Select Client...";
+
+if (isClientOnlyView) {
+  const contextLabel = location.pathname.includes('/chart-of-accounts') ? "Chart of Accounts" : "Dimensions";
+  if (selectedClientName) {
+    buttonText = `${selectedClientName} / ${contextLabel}`;
+  } else {
+    buttonText = `Select Client for ${contextLabel}`;
+  }
+} else {
+  if (currentEntityName && selectedClientName) {
+    buttonText = `${selectedClientName} / ${currentEntityName}`;
+  } else if (selectedClientName) {
+    buttonText = `${selectedClientName} / Select Entity...`;
+  }
+}
+2. Fix the Data Loading for the Dimensions Page:
+The DimensionsPage is not loading data because it is not being properly re-rendered when the client context changes. The EntityUrlSync component we created should handle this, but to be certain the page reacts, we will ensure it's using the correct data hook.
+
+Action: Open the file client/src/pages/manage/DimensionsPage.tsx. Find where it fetches data (it should be a useQuery hook). Ensure the queryKey for that hook includes the selectedClient.id and that the query is enabled only when a client is selected.
+
+TypeScript
+
+// Example of what to look for in DimensionsPage.tsx
+const { selectedClient } = useEntity();
+
+const { data: dimensions, isLoading } = useQuery({
+  queryKey: ['dimensions', selectedClient?.id], // Ensure client ID is in the key
+  queryFn: () => fetchDimensions(selectedClient!.id), // Fetch data
+  enabled: !!selectedClient, // IMPORTANT: Only run query when a client is selected
+});
+These two surgical fixes will address all the issues you've reported. The first fix corrects the display and labeling of the selector button. The second ensures that the Dimensions page correctly identifies the selected client and fetches its data.

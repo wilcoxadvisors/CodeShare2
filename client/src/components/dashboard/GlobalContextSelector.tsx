@@ -77,72 +77,25 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const hasClientContext = selectedClientId !== null;
   const hasEntityContext = currentEntity !== null;
   
-  // Find the current client's name if a client is selected
-  const selectedClient = Array.isArray(clients) 
-    ? clients.find(client => client.id === selectedClientId)
-    : undefined;
-  
-  // Determine the button text with enhanced display
+  // Simplified display logic that reads directly from context
+  const selectedClientName = useMemo(() => clients.find(c => c.id === selectedClientId)?.name, [clients, selectedClientId]);
+  const currentEntityName = useMemo(() => entities.find(e => e.id === currentEntity?.id)?.name, [entities, currentEntity]);
+
   let buttonText: React.ReactNode = "Select Client...";
-  
-  if (!showEntities || isClientOnlyView) {
-    // Special case for Chart of Accounts and Dimensions (no entity selection needed)
-    if (hasClientContext && selectedClient) {
-      const contextLabel = isClientOnlyView ? "Dimensions" : "Chart of Accounts";
-      buttonText = (
-        <div className="flex items-center overflow-hidden">
-          <div className="flex-1 truncate flex flex-col">
-            <span className="font-medium truncate">
-              <Building className="h-4 w-4 inline mr-1" />
-              {selectedClient.name}
-            </span>
-            <span className="text-xs text-muted-foreground truncate">
-              {contextLabel}
-            </span>
-          </div>
-        </div>
-      );
+
+  if (isClientOnlyView) {
+    const contextLabel = location.pathname.includes('/chart-of-accounts') ? "Chart of Accounts" : "Dimensions";
+    if (selectedClientName) {
+      buttonText = `${selectedClientName} / ${contextLabel}`;
     } else {
-      const contextLabel = isClientOnlyView ? "Dimensions" : "Chart of Accounts";
-      buttonText = (
-        <div className="flex items-center overflow-hidden">
-          <Building className="h-4 w-4 inline mr-1 text-primary" />
-          <span>Select Client for {contextLabel}</span>
-        </div>
-      );
+      buttonText = `Select Client for ${contextLabel}`;
     }
-  } else if (hasEntityContext && currentEntity) {
-    // Standard case with entity selection
-    buttonText = (
-      <div className="flex items-center overflow-hidden">
-        <div className="flex-1 truncate flex flex-col">
-          <span className="font-medium truncate">
-            <Layers className="h-4 w-4 inline mr-1" />
-            {currentEntity.name}
-          </span>
-          <span className="text-xs text-muted-foreground truncate">
-            <Building className="h-3 w-3 inline mr-1" />
-            {selectedClient?.name || 'Unknown Client'}
-            {currentEntity.code && ` • Code: ${currentEntity.code}`}
-          </span>
-        </div>
-      </div>
-    );
-  } else if (hasClientContext && selectedClient) {
-    // Client selected but no entity yet
-    buttonText = (
-      <div className="flex items-center overflow-hidden">
-        <div className="flex-1 truncate flex flex-col">
-          <span className="font-medium truncate">
-            <Building className="h-4 w-4 inline mr-1" />
-            {selectedClient.name}
-          </span>
-          <span className="text-xs text-muted-foreground truncate">
-            {showEntities ? "No entity selected" : ""}
-          </span>
-        </div>
-      </div>
-    );
+  } else {
+    if (currentEntityName && selectedClientName) {
+      buttonText = `${selectedClientName} / ${currentEntityName}`;
+    } else if (selectedClientName) {
+      buttonText = `${selectedClientName} / Select Entity...`;
+    }
   }
   
   // Filter function for search
