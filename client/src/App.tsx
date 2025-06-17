@@ -370,6 +370,19 @@ function Router() {
         </AppLayout>
       } />
       
+      {/* Client-specific Chart of Accounts and Dimensions routes */}
+      <Route path="/clients/:clientId/chart-of-accounts" element={
+        <AppLayout>
+          <ProtectedRoute component={ChartOfAccounts} />
+        </AppLayout>
+      } />
+      
+      <Route path="/clients/:clientId/manage/dimensions" element={
+        <AppLayout>
+          <ProtectedRoute component={DimensionsPage} />
+        </AppLayout>
+      } />
+      
       <Route path="/reports" element={
         <AppLayout>
           <ProtectedRoute component={Reports} />
