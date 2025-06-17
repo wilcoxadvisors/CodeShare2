@@ -564,9 +564,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           for (const fileToDelete of filesToDelete) {
             console.log(`ARCHITECT_ROBUST_UPDATE: Deleting removed file ${fileToDelete.id}`);
             
-            // Delete file blob first
-            await tx.delete(journalEntryFileBlobs)
-              .where(eq(journalEntryFileBlobs.fileId, fileToDelete.id));
+            // Delete file blob first (if it exists)
+            if (fileToDelete.storageKey) {
+              await tx.delete(journalEntryFileBlobs)
+                .where(eq(journalEntryFileBlobs.id, fileToDelete.storageKey));
+            }
             
             // Delete file record
             await tx.delete(journalEntryFiles)
