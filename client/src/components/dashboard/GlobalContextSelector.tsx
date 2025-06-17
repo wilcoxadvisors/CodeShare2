@@ -53,10 +53,10 @@ export default function GlobalContextSelector({ clients, entities, showEntities 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Detect if we're on a client-only page (like dimensions)
+  // Detect if we're on a client-only page (like dimensions or chart of accounts)
   const location = useLocation();
   const navigate = useNavigate();
-  const isClientOnlyView = location.pathname.startsWith('/manage/dimensions');
+  const isClientOnlyView = location.pathname.includes('/chart-of-accounts') || location.pathname.includes('/manage/dimensions');
   
   // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
   // Track which clients are expanded - start collapsed, allow restoration for selected client

@@ -1,0 +1,72 @@
+Architect's Root Cause Analysis
+The core of the new problem lies entirely within the GlobalContextSelector.tsx component. Its internal logic does not properly account for the distinction between "Client-level" pages (like Chart of Accounts and Dimensions) and "Entity-level" pages (like Journal Entries).
+
+When you are on a client-level page, the component should:
+
+Navigate to the new client-level page when a new client is selected.
+Disable or hide the entity selector entirely.
+The current logic fails to do this, resulting in the "weird" behavior you've described. It incorrectly allows entity selection, which then wrongly navigates you away from the client-level page to an entity-level page.
+
+Definitive Fix Plan
+We will make the GlobalContextSelector "module-aware." It will inspect the current URL to determine which module is active and change its behavior accordingly.
+
+Mission: Refactor GlobalContextSelector.tsx to correctly handle navigation and UI state for client-level modules (Chart of Accounts, Dimensions) versus entity-level modules.
+
+Instructions for the Agent:
+
+You will perform a surgical fix on client/src/components/dashboard/GlobalContextSelector.tsx.
+
+Open the File: Access client/src/components/dashboard/GlobalContextSelector.tsx.
+
+Make the Component Location-Aware: Import the useLocation hook from react-router-dom.
+
+TypeScript
+
+import { useLocation, useNavigate } from 'react-router-dom';
+Inside the GlobalContextSelector component, get the current URL path:
+
+TypeScript
+
+const location = useLocation();
+Implement Correct Navigation Logic: Find the handleClientSelect function (or the onValueChange handler for the client selection Select component). Replace the existing navigation logic with the following architecturally-sound logic. This ensures that if you are in the Chart of Accounts, you stay in the Chart of Accounts for the newly selected client.
+
+TypeScript
+
+const handleClientSelect = (clientId: string) => {
+  const numericClientId = parseInt(clientId, 10);
+
+  // Determine if we are on a client-level page
+  const isOnChartOfAccounts = location.pathname.includes('/chart-of-accounts');
+  const isOnDimensions = location.pathname.includes('/manage/dimensions');
+
+  if (isOnChartOfAccounts) {
+    navigate(`/clients/${numericClientId}/chart-of-accounts`);
+  } else if (isOnDimensions) {
+    navigate(`/clients/${numericClientId}/manage/dimensions`);
+  } else {
+    // Default behavior: find the first entity and navigate to its journal entries
+    const firstEntity = entities.find(e => e.clientId === numericClientId);
+    if (firstEntity) {
+      navigate(`/clients/<span class="math-inline">\{numericClientId\}/entities/</span>{firstEntity.id}/journal-entries`);
+    }
+  }
+};
+Implement Correct UI Logic: Find the JSX that renders the Entity selector. It is likely a second Select component. Wrap this entire component in a conditional check so that it does not render on client-level pages.
+
+TypeScript
+
+{/* Create a flag to determine if the page is client-level */}
+const isClientLevelPage = location.pathname.includes('/chart-of-accounts') || location.pathname.includes('/manage/dimensions');
+
+{/* ... other JSX ... */}
+
+{/* Only show the Entity selector if it's NOT a client-level page */}
+{!isClientLevelPage && (
+  <Select
+    value={currentEntity ? `entity-${currentEntity.id}` : ''}
+    onValueChange={handleEntitySelect}
+  >
+    {/* ... existing entity options ... */}
+  </Select>
+)}
+This two-part fix will force the component to respect the application's module structure, correcting both the navigation and the user interface bugs.
