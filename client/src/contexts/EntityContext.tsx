@@ -40,6 +40,7 @@ interface EntityContextType {
 const EntityContext = createContext<EntityContextType>({
   entities: [],
   allEntities: [],
+  clients: [],
   currentEntity: null,
   selectedClient: null,
   setCurrentEntity: () => {},
@@ -397,20 +398,23 @@ function EntityProvider({ children }: { children: ReactNode }) {
   };
 
   // Provide all the required values to the context
+  const contextValue: EntityContextType = {
+    entities,
+    allEntities,
+    clients,
+    currentEntity,
+    selectedClient,
+    setCurrentEntity,
+    setCurrentEntityById,
+    setSelectedClient,
+    isLoading,
+    isInitialLoading: !initialLoadComplete,
+    selectedClientId,
+    setSelectedClientId
+  };
+
   return (
-    <EntityContext.Provider value={{
-      entities,
-      allEntities,
-      currentEntity,
-      selectedClient,
-      setCurrentEntity,
-      setCurrentEntityById,
-      setSelectedClient,
-      isLoading,
-      isInitialLoading: !initialLoadComplete,
-      selectedClientId,
-      setSelectedClientId
-    }}>
+    <EntityContext.Provider value={contextValue}>
       {children}
     </EntityContext.Provider>
   );
