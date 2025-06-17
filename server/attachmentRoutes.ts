@@ -95,8 +95,8 @@ export function registerAttachmentRoutes(app: Express) {
     upload.array('files', 10), // Support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
       const jeId = parseInt(req.params.jeId);
-      const entityId = parseInt(req.params.eId);
-      const clientId = parseInt(req.params.cId);
+      const entityId = parseInt(req.params.entityId);
+      const clientId = parseInt(req.params.clientId);
       const user = req.user as { id: number };
       
       console.log('ARCHITECT_DEBUG_UPLOAD_ROUTE_START: File upload request received:', {
