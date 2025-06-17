@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 interface Entity {
@@ -56,12 +55,6 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: isAuthLoadingFromAuthContext, isGuestUser } = useAuth();
   const [currentEntity, setCurrentEntityState] = useState<Entity | null>(null);
   const [selectedClientId, setSelectedClientIdState] = useState<number | null>(null);
-  
-  // PART 2: Get clientId and entityId from URL parameters
-  const { clientId: urlClientId, entityId: urlEntityId } = useParams<{
-    clientId: string;
-    entityId: string;
-  }>();
   
   // Our own loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -187,97 +180,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
     ? allEntities.filter((entity: any) => entity.clientId === selectedClientId)
     : [];
     
-  // CRITICAL FIX: URL-reactive client selection - synchronize clientId from URL
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      console.log('ARCHITECT_DEBUG_URL_REACTIVE: Processing URL change after debounce:', { 
-        urlClientId, 
-        selectedClientId,
-        entitiesLoaded: allEntities.length > 0
-      });
-      
-      // Handle client-only routes (like /clients/:clientId/chart-of-accounts)
-      if (urlClientId) {
-        const clientId = parseInt(urlClientId);
-        
-        if (!isNaN(clientId) && selectedClientId !== clientId) {
-          console.log('ARCHITECT_DEBUG_URL_REACTIVE: URL contains clientId, updating context to match:', {
-            urlClientId: clientId,
-            currentSelectedClientId: selectedClientId
-          });
-          
-          // Update the context to match the URL
-          setSelectedClientIdState(clientId);
-          localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
-          
-          console.log('ARCHITECT_DEBUG_URL_REACTIVE: Context synchronized with URL clientId');
-        }
-      }
-    }, 50); // Small debounce to prevent rapid state changes
-    
-    return () => clearTimeout(timeoutId);
-  }, [urlClientId, selectedClientId]);
 
-  // PART 2: URL-reactive entity selection - STABILIZED to prevent constant switching
-  useEffect(() => {
-    // Debounce rapid URL changes to prevent oscillation
-    const timeoutId = setTimeout(() => {
-      console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Processing entity URL change after debounce:', { 
-        urlClientId, 
-        urlEntityId,
-        currentEntityId: currentEntity?.id,
-        selectedClientId,
-        entitiesLoaded: allEntities.length > 0
-      });
-      
-      if (urlClientId && urlEntityId && allEntities.length > 0) {
-        const clientId = parseInt(urlClientId);
-        const entityId = parseInt(urlEntityId);
-        
-        // Find the entity by ID first to validate the URL
-        const entity = allEntities.find((e: any) => e.id === entityId);
-        
-        if (entity && entity.clientId === clientId) {
-          // Only update if there's an actual mismatch to prevent loops
-          const needsClientUpdate = selectedClientId !== clientId;
-          const needsEntityUpdate = currentEntity?.id !== entityId;
-          
-          if (needsClientUpdate || needsEntityUpdate) {
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Updating context to match valid URL:', {
-              entityId: entity.id,
-              entityName: entity.name,
-              entityClientId: entity.clientId,
-              needsClientUpdate,
-              needsEntityUpdate
-            });
-            
-            // Batch the updates to prevent intermediate renders
-            if (needsClientUpdate) {
-              setSelectedClientIdState(entity.clientId);
-              localStorage.setItem(STORAGE_KEY_CLIENT, entity.clientId.toString());
-            }
-            
-            if (needsEntityUpdate) {
-              setCurrentEntityState(entity);
-              localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
-            }
-            
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Context synchronized with URL');
-          } else {
-            console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Context already matches URL, no update needed');
-          }
-        } else {
-          console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Invalid URL or entity not found, maintaining current state');
-        }
-      } else if (!urlClientId && !urlEntityId && currentEntity) {
-        console.log('ARCHITECT_DEBUG_URL_REACTIVE_ENTITY: Clearing entity context for non-entity route');
-        setCurrentEntityState(null);
-        localStorage.removeItem(STORAGE_KEY_ENTITY);
-      }
-    }, 50); // Small debounce to prevent rapid state changes
-    
-    return () => clearTimeout(timeoutId);
-  }, [urlClientId, urlEntityId, allEntities.length, selectedClientId, currentEntity?.id]);
   
   // Update loading state based on queries and auth state
   useEffect(() => {
