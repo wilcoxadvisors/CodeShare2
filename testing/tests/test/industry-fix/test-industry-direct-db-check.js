@@ -1,7 +1,7 @@
 /**
  * This script checks the database schema and directly verifies industry column values
  */
-const { Client } = require('pg');
+import { Client } from 'pg';
 
 async function checkDatabaseSchema() {
   try {

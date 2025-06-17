@@ -6,7 +6,7 @@
  */
 
 // Import the required libraries
-const axios = require('axios');
+import axios from 'axios';
 
 // Base API URL (using local development server)
 const API_URL = 'http://localhost:5000/api';

@@ -14,8 +14,8 @@
 
 // Use global fetch which is available in newer Node.js versions
 // If running in an older Node.js version, you may need: const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 const BASE_URL = 'http://localhost:5000/api/verification';
 const TEST_PREFIX = 'Entity-States-Test-';
