@@ -5,10 +5,10 @@
  * and outputs the expected message indicating that models were trained.
  */
 
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const path = require('path');
-const fs = require('fs');
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const execPromise = promisify(exec);
 
