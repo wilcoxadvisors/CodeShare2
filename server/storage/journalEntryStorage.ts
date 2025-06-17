@@ -69,7 +69,7 @@ export interface IJournalEntryStorage {
   getJournalEntriesByStatus(entityId: number, status: JournalEntryStatus): Promise<JournalEntry[]>;
   listJournalEntries(filters?: ListJournalEntriesFilters): Promise<JournalEntry[]>;
   updateJournalEntry(id: number, entryData: Partial<JournalEntry>): Promise<JournalEntry | undefined>;
-  updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[]): Promise<JournalEntry | undefined>;
+  updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[], files?: any[]): Promise<JournalEntry | undefined>;
   deleteJournalEntry(id: number): Promise<boolean>;
   
   // General Ledger operations
@@ -438,7 +438,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
   }
   
-  async updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[]): Promise<JournalEntry | undefined> {
+  async updateJournalEntryWithLines(id: number, entryData: Partial<JournalEntry>, lines?: Partial<JournalEntryLine>[], files?: any[]): Promise<JournalEntry | undefined> {
     console.log(`ARCHITECT_ROBUST_UPDATE: Updating journal entry ${id} with ${lines?.length || 0} lines using selective update approach`);
     
     try {
@@ -545,10 +545,38 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           }
         }
         
-        console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
+        // Step 3: Handle file attachments if provided
+        if (files !== undefined) {
+          console.log(`ARCHITECT_ROBUST_UPDATE: Processing file attachments synchronization`);
+          
+          // Get existing files for comparison
+          const existingFiles = await tx.select()
+            .from(journalEntryFiles)
+            .where(eq(journalEntryFiles.journalEntryId, id));
+          
+          console.log(`ARCHITECT_ROBUST_UPDATE: Found ${existingFiles.length} existing files, ${files.length} files in payload`);
+          
+          // Create set of file IDs that should remain
+          const incomingFileIds = new Set(files.map(file => file.id).filter(Boolean));
+          
+          // Delete files that are no longer present in the incoming list
+          const filesToDelete = existingFiles.filter(file => !incomingFileIds.has(file.id));
+          for (const fileToDelete of filesToDelete) {
+            console.log(`ARCHITECT_ROBUST_UPDATE: Deleting removed file ${fileToDelete.id}`);
+            
+            // Delete file blob first
+            await tx.delete(journalEntryFileBlobs)
+              .where(eq(journalEntryFileBlobs.fileId, fileToDelete.id));
+            
+            // Delete file record
+            await tx.delete(journalEntryFiles)
+              .where(eq(journalEntryFiles.id, fileToDelete.id));
+          }
+          
+          console.log(`ARCHITECT_ROBUST_UPDATE: File synchronization completed - preserved ${incomingFileIds.size} files, deleted ${filesToDelete.length} files`);
+        }
         
-        // IMPORTANT: File attachments are NOT handled here - they are managed by separate endpoints
-        // This ensures no existing file attachments are affected by journal entry updates
+        console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
         
         return updatedEntry;
       });
