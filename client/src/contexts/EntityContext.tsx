@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 
@@ -25,8 +25,10 @@ interface EntityContextType {
   entities: Entity[];
   allEntities: Entity[];
   currentEntity: Entity | null;
+  selectedClient: Client | null;
   setCurrentEntity: (entity: Entity | null) => void;
   setCurrentEntityById: (entityId: number) => void;
+  setSelectedClient: (client: Client | null) => void;
   isLoading: boolean;
   isInitialLoading: boolean;
   selectedClientId: number | null;
@@ -38,8 +40,10 @@ const EntityContext = createContext<EntityContextType>({
   entities: [],
   allEntities: [],
   currentEntity: null,
+  selectedClient: null,
   setCurrentEntity: () => {},
   setCurrentEntityById: () => {},
+  setSelectedClient: () => {},
   isLoading: true,
   isInitialLoading: true,
   selectedClientId: null,
@@ -53,8 +57,17 @@ const STORAGE_KEY_ENTITY = 'selected_entity_id';
 function EntityProvider({ children }: { children: ReactNode }) {
   // Updated to use isGuestUser directly from AuthContext
   const { user, isLoading: isAuthLoadingFromAuthContext, isGuestUser } = useAuth();
-  const [currentEntity, setCurrentEntityState] = useState<Entity | null>(null);
-  const [selectedClientId, setSelectedClientIdState] = useState<number | null>(null);
+  
+  // Strengthen state initialization with localStorage persistence
+  const [selectedClientId, setSelectedClientIdState] = useState<number | null>(() => {
+    const savedId = localStorage.getItem('selectedClientId');
+    return savedId ? parseInt(savedId, 10) : null;
+  });
+
+  const [currentEntityId, setCurrentEntityIdState] = useState<number | null>(() => {
+    const savedId = localStorage.getItem('currentEntityId');
+    return savedId ? parseInt(savedId, 10) : null;
+  });
   
   // Our own loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -78,18 +91,22 @@ function EntityProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Enhanced setter for entity that persists to localStorage
-  const setCurrentEntity = (entity: Entity | null) => {
-    console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Setting entity to ${entity?.id || 'null'}`);
-    setCurrentEntityState(entity);
-    
-    // Persist to localStorage when value is not null
-    if (entity !== null) {
-      localStorage.setItem(STORAGE_KEY_ENTITY, entity.id.toString());
-      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved entity ID ${entity.id} to localStorage`);
+  // Create reliable setters with persistence
+  const setSelectedClient = (client: Client | null) => {
+    setSelectedClientIdState(client?.id ?? null);
+    if (client) {
+      localStorage.setItem('selectedClientId', String(client.id));
     } else {
-      localStorage.removeItem(STORAGE_KEY_ENTITY);
-      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Cleared entity ID from localStorage`);
+      localStorage.removeItem('selectedClientId');
+    }
+  };
+
+  const setCurrentEntity = (entity: Entity | null) => {
+    setCurrentEntityIdState(entity?.id ?? null);
+    if (entity) {
+      localStorage.setItem('currentEntityId', String(entity.id));
+    } else {
+      localStorage.removeItem('currentEntityId');
     }
   };
   
@@ -106,6 +123,30 @@ function EntityProvider({ children }: { children: ReactNode }) {
     !!user, 'AuthNotLoading=', !isAuthLoadingFromAuthContext, 'QueryEnabled=', 
     !!user && !isAuthLoadingFromAuthContext);
   
+  // Add clients query for full object exposure
+  const { data: clientsData = [] } = useQuery<Client[]>({
+    queryKey: ['/api/admin/clients'],
+    queryFn: () => {
+      if (isGuestUser) {
+        return Promise.resolve([]);
+      }
+      return fetch('/api/admin/clients', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      }).then(res => {
+        if (!res.ok) throw new Error(`Clients fetch failed: ${res.status}`);
+        return res.json();
+      });
+    },
+    enabled: !!user && !isAuthLoadingFromAuthContext,
+    retry: isGuestUser ? 0 : 2,
+    retryDelay: 1000,
+    staleTime: 30000
+  });
+
   // CRITICAL FIX: Special handling for guest users
   // Since guest users (ID=0) will get 401 errors when trying to access entities,
   // we need to skip the actual API call but still maintain the query structure
@@ -179,6 +220,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
   const entities = selectedClientId && allEntities && allEntities.length > 0
     ? allEntities.filter((entity: any) => entity.clientId === selectedClientId)
     : [];
+
+  // Expose full objects using useMemo for reliability
+  const clients = Array.isArray(clientsData) ? clientsData : [];
+  const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId), [clients, selectedClientId]);
+  const currentEntity = useMemo(() => entities.find(e => e.id === currentEntityId), [entities, currentEntityId]);
     
 
   

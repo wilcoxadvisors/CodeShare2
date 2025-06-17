@@ -1,0 +1,94 @@
+Architect's Final Root Cause Analysis
+After reviewing all previous attempts and the latest logs, the root cause is now painfully obvious:
+
+State Initialization Race Condition: The EntityContext initializes its state from localStorage (selectedClientId: null initially), but the EntityUrlSync component, which reads the actual client ID from the URL, runs after the initial render. This causes the GlobalContextSelector to render with a null client, showing "Select Client...", before quickly re-rendering when the context finally updates. This race condition is the source of the UI flicker and instability.
+State Spread Inconsistency: The DimensionsPage is not updating because the selectedClient object itself (not just the ID) is not being reliably passed down. Components are getting a mix of stale and fresh props, leading to a state where the page has the ID but not the full client object needed to render correctly, or vice-versa.
+The Final, Uncompromising Fix
+We will fortify the EntityContext to be completely self-reliant and eliminate all race conditions. The EntityUrlSync component will now be the single driver of context changes from the URL, and we will add robust persistence logic directly into the context provider.
+
+Mission: Eradicate the state synchronization bugs by refactoring EntityContext to be fully self-contained, robustly persistent, and driven by a single, reliable URL-syncing mechanism.
+
+Instructions for the Agent:
+
+This is the definitive and final set of instructions to fix this issue. You will follow them precisely.
+
+Part 1: Fortify EntityContext.tsx
+
+Open the File: client/src/contexts/EntityContext.tsx.
+
+Strengthen State Initialization: Modify the useState calls to initialize their values from localStorage immediately. This eliminates the page-refresh bug.
+
+TypeScript
+
+// At the top of the EntityProvider component
+const [selectedClientId, setSelectedClientIdState] = useState<number | null>(() => {
+    const savedId = localStorage.getItem('selectedClientId');
+    return savedId ? parseInt(savedId, 10) : null;
+});
+
+const [currentEntityId, setCurrentEntityIdState] = useState<number | null>(() => {
+    const savedId = localStorage.getItem('currentEntityId');
+    return savedId ? parseInt(savedId, 10) : null;
+});
+Create Reliable Setters with Persistence: Replace the simple setSelectedClient and setCurrentEntity functions with new versions that automatically save to localStorage upon being called.
+
+TypeScript
+
+const setSelectedClient = (client: Client | null) => {
+  setSelectedClientIdState(client?.id ?? null);
+  if (client) {
+    localStorage.setItem('selectedClientId', String(client.id));
+  } else {
+    localStorage.removeItem('selectedClientId');
+  }
+};
+
+const setCurrentEntity = (entity: Entity | null) => {
+  setCurrentEntityIdState(entity?.id ?? null);
+  if (entity) {
+    localStorage.setItem('currentEntityId', String(entity.id));
+  } else {
+    localStorage.removeItem('currentEntityId');
+  }
+};
+Expose Full Objects: Ensure the context value provider exposes the full selectedClient and currentEntity objects, not just the IDs, by deriving them with useMemo. This will fix the DimensionsPage.
+
+TypeScript
+
+const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId), [clients, selectedClientId]);
+const currentEntity = useMemo(() => entities.find(e => e.id === currentEntityId), [entities, currentEntityId]);
+Part 2: Correct EntityUrlSync.tsx
+
+Open the File: client/src/components/EntityUrlSync.tsx.
+
+Use the New Setters: Modify the useEffect hooks to call the new, correct setter functions from the context.
+
+TypeScript
+
+// Inside the EntityUrlSync component
+const { clients, entities, setSelectedClient, setCurrentEntity } = useEntity();
+
+useEffect(() => {
+    const numericClientId = clientId ? parseInt(clientId, 10) : null;
+    if (numericClientId) {
+        const clientToSet = clients.find(c => c.id === numericClientId);
+        if(clientToSet) setSelectedClient(clientToSet);
+    }
+}, [clientId, clients, setSelectedClient]);
+
+// A similar useEffect for the entity...
+Part 3: Final GlobalContextSelector Simplification
+
+Open the File: client/src/components/dashboard/GlobalContextSelector.tsx.
+
+Trust the Context: The value prop for the client Select component must derive its value directly from the context's selectedClientId.
+
+TypeScript
+
+const { selectedClientId } = useEntity();
+// ...
+<Select
+    value={selectedClientId ? String(selectedClientId) : ''}
+    // ...
+>
+This three-part plan is not a suggestion. It is the architectural standard that will be implemented now. The race conditions will be eliminated, the state will be reliably persisted, and the UI will finally reflect the true state of the application.
