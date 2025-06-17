@@ -16,7 +16,6 @@ const config = {
     '/dist/',
     '/cypress/'
   ],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
 };
 
