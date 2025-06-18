@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Outlet, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useEntity } from "@/contexts/EntityContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Spinner from "@/components/Spinner";
@@ -20,6 +20,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     entities, 
     allEntities, 
     currentEntity, 
+    selectedClientId,
     isInitialLoading, 
     isLoading, 
     setCurrentEntityById 
@@ -27,6 +28,7 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
   const { isLoading: isAuthLoading, user, isGuestUser } = useAuth();
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   
   // Comprehensive debug log capturing essential state for redirector
   console.log('ARCHITECT_DEBUG_REDIRECTOR_STATE:', { 
@@ -93,6 +95,26 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       console.log('ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: No entity ID in URL parameters');
     }
   }, [params.entityId, currentEntity, isAuthLoading, isLoading, allEntities, user, setCurrentEntityById]);
+
+  // SMART SESSION NAVIGATION: Auto-redirect to client-specific pages when session has active client
+  useEffect(() => {
+    // Only proceed if we have a selected client from the session, but no client in the URL
+    if (selectedClientId && !params.clientId && !isAuthLoading && !isLoading) {
+      const currentPath = location.pathname;
+      
+      // Check if we are on a base module path that should be redirected
+      const isGenericModulePath = currentPath === '/journal-entries' || 
+                                 currentPath === '/chart-of-accounts' || 
+                                 currentPath === '/manage/dimensions';
+      
+      if (isGenericModulePath) {
+        const targetPath = `/clients/${selectedClientId}${currentPath}`;
+        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting from ${currentPath} to ${targetPath} for active client ${selectedClientId}`);
+        navigate(targetPath, { replace: true });
+        return;
+      }
+    }
+  }, [selectedClientId, params.clientId, location.pathname, navigate, isAuthLoading, isLoading]);
 
   // Decision tree for rendering - with detailed logs at each step
   

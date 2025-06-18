@@ -366,9 +366,11 @@ function Router() {
       
       <Route path="/chart-of-accounts" element={
         <AppLayout>
-          <ProtectedRoute component={ChartOfAccounts} />
+          <JournalRedirector />
         </AppLayout>
-      } />
+      }>
+        <Route index element={<ProtectedRoute component={ChartOfAccounts} />} />
+      </Route>
       
       {/* Client-specific Chart of Accounts and Dimensions routes */}
       <Route path="/clients/:clientId/chart-of-accounts" element={
@@ -445,9 +447,11 @@ function Router() {
 
       <Route path="/manage/dimensions" element={
         <AppLayout>
-          <ProtectedRoute component={DimensionsPage} />
+          <JournalRedirector />
         </AppLayout>
-      } />
+      }>
+        <Route index element={<ProtectedRoute component={DimensionsPage} />} />
+      </Route>
       
       {/* Redirect to the consolidated JournalEntryForm implementation */}
       <Route path="/journal-entries/create" element={

@@ -1,0 +1,58 @@
+Architect's Mission: Implement Smart Session Navigation
+1. Goal:
+
+Refactor the application's routing logic to create a "sticky" client selection within a single user session. If a user has selected a client, any subsequent navigation to a top-level module (like Chart of Accounts or Dimensions) should automatically redirect to the page for that specific client. This persistence must not survive a page refresh or a new session.
+
+2. Root Cause Analysis & Architectural Plan:
+
+The current system correctly holds the active selectedClientId in the EntityContext during a session. However, when the user navigates to a generic route like /chart-of-accounts, the application does not use this information and simply shows the "Select a Client" page.
+
+We will fix this by enhancing our redirector component. This component will inspect the context upon loading. If an active client is found in the session state, it will perform an automatic, client-side redirect to the correct client-specific URL. This provides the seamless experience of systems like Sage Intacct without re-introducing the localStorage bugs.
+
+3. Definitive Fix Plan:
+
+The primary change will occur in the component responsible for handling generic module routes. Based on the codebase, this is JournalRedirector.tsx.
+
+File to Modify: client/src/components/JournalRedirector.tsx
+Action:
+Access the EntityContext: Inside the JournalRedirector component, ensure you are using the useEntity hook to get the selectedClientId.
+Create a Redirect useEffect: Add a new useEffect hook that runs when the component mounts or when the selectedClientId changes.
+Implement Smart Redirect Logic: Inside this hook, add the following logic:
+Check if a selectedClientId exists in the context.
+Check if the current URL path is a generic module path (e.g., /journal-entries or /chart-of-accounts) that does not already have a client ID.
+If both conditions are true, use the useNavigate hook from react-router-dom to automatically redirect the user. For example, if the user is on /chart-of-accounts and selectedClientId is 73, navigate to /clients/73/chart-of-accounts.
+Example Implementation in JournalRedirector.tsx:
+
+TypeScript
+
+import { useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEntity } from '@/contexts/EntityContext';
+
+// ... inside the component
+const { selectedClientId } = useEntity();
+const navigate = useNavigate();
+const location = useLocation();
+const params = useParams();
+
+useEffect(() => {
+  // If we have a selected client from the session, but no client in the URL...
+  if (selectedClientId && !params.clientId) {
+    // And we are on a base module path...
+    if (location.pathname === '/journal-entries' || location.pathname === '/chart-of-accounts' || location.pathname === '/manage/dimensions') {
+      // Automatically redirect to the client-specific version of that path.
+      console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Redirecting to ${location.pathname} for client ${selectedClientId}`);
+      navigate(`/clients/${selectedClientId}${location.pathname}`);
+    }
+  }
+}, [selectedClientId, params.clientId, location.pathname, navigate]);
+4. Expected Outcome:
+
+A user starts a new session. No client is selected. They navigate to /journal-entries and select "Client A". They are redirected to /clients/ClientA/entities/EntityX/journal-entries.
+They then click the "Chart of Accounts" link in the sidebar, which points to the generic /chart-of-accounts route.
+The JournalRedirector component will load. Its new useEffect will fire.
+It will see that selectedClientId is "ClientA" but the URL has no client ID.
+It will instantly and automatically redirect the user to /clients/ClientA/chart-of-accounts.
+The user experiences a seamless transition between modules without having to re-select their client.
+If the user refreshes the page, the EntityContext state is cleared, the selectedClientId is null, and the redirect does not happen, correctly showing the "Select a Client" page.
+This delivers the exact "sticky session" behavior you have specified, providing a superior user experience that is both intelligent and architecturally sound.

@@ -70,28 +70,17 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
 
-  // CLEAN SLATE ENFORCEMENT: Clear all internal state when on module pages without context
+  // SESSION-AWARE STATE MANAGEMENT: Only clear state on route changes to client-only pages
   useEffect(() => {
-    // If we're on a module page but have no URL client context, ensure clean state
-    const isOnModulePage = location.pathname.includes('/journal-entries') || 
-                          location.pathname.includes('/chart-of-accounts') || 
-                          location.pathname.includes('/manage/dimensions');
+    // Clear expanded clients when navigating to client-only pages to prevent phantom checkmarks
+    const isOnClientOnlyPage = location.pathname.includes('/chart-of-accounts') || 
+                              location.pathname.includes('/manage/dimensions');
     
-    const hasUrlContext = params.clientId || params.entityId;
-    
-    if (isOnModulePage && !hasUrlContext) {
-      console.log('ARCHITECT_DEBUG_CLEAN_SLATE: On module page without URL context - clearing all state');
+    if (isOnClientOnlyPage) {
+      console.log('ARCHITECT_DEBUG_SESSION_AWARE: On client-only page - clearing expansion state to prevent phantom UI');
       setExpandedClients({});
-      setInitialClientAutoSelectedDone(false);
-      // Clear any persisted context if we're starting fresh
-      if (selectedClientId !== null) {
-        setSelectedClientId(null);
-      }
-      if (currentEntity !== null) {
-        setCurrentEntity(null);
-      }
     }
-  }, [location.pathname, params.clientId, params.entityId, selectedClientId, currentEntity, setSelectedClientId, setCurrentEntity]);
+  }, [location.pathname]);
 
 
 
