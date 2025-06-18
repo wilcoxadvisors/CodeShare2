@@ -136,6 +136,7 @@ export function JournalEntryLinesTable({
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
   const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
   const [expandedDimensions, setExpandedDimensions] = useState<Record<number, boolean>>({});
+  const [dimensionSearchQuery, setDimensionSearchQuery] = useState("");
 
   // Initialize expanded state
   const initializeExpandedState = (): ExpandedState => {
@@ -383,6 +384,47 @@ export function JournalEntryLinesTable({
   // Safeguard: Ensure dimensions is always an array and filter empty dimensions
   const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
   const filteredDimensions = safeDimensions.filter(dimension => dimension.values && dimension.values.length > 0);
+
+  // Intelligent filtering based on search query
+  const searchFilteredDimensions = useMemo(() => {
+    if (!dimensionSearchQuery.trim()) {
+      return filteredDimensions;
+    }
+
+    const query = dimensionSearchQuery.toLowerCase();
+    return filteredDimensions.map(dimension => {
+      const matchingValues = dimension.values?.filter(value => 
+        value.name.toLowerCase().includes(query) || 
+        (value.code && value.code.toLowerCase().includes(query))
+      ) || [];
+
+      return matchingValues.length > 0 ? {
+        ...dimension,
+        values: matchingValues
+      } : null;
+    }).filter((dimension): dimension is NonNullable<typeof dimension> => dimension !== null);
+  }, [filteredDimensions, dimensionSearchQuery]);
+
+  // Auto-expansion for search results
+  const autoExpandedDimensions = useMemo(() => {
+    if (!dimensionSearchQuery.trim()) {
+      return {};
+    }
+
+    const autoExpanded: Record<number, boolean> = {};
+    searchFilteredDimensions.forEach(dimension => {
+      if (dimension) {
+        autoExpanded[dimension.id] = true;
+      }
+    });
+    return autoExpanded;
+  }, [searchFilteredDimensions, dimensionSearchQuery]);
+
+  // Combined expansion state
+  const combinedExpandedDimensions = useMemo(() => ({
+    ...expandedDimensions,
+    ...autoExpandedDimensions
+  }), [expandedDimensions, autoExpandedDimensions]);
 
   return (
     <div className="overflow-x-auto mb-4">
@@ -640,9 +682,16 @@ export function JournalEntryLinesTable({
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0">
                       <Command>
+                        <CommandInput 
+                          placeholder="Search dimension values..." 
+                          value={dimensionSearchQuery}
+                          onValueChange={setDimensionSearchQuery}
+                        />
                         <CommandList className="max-h-64">
-                          {filteredDimensions.map((dimension) => {
-                            const isExpanded = expandedDimensions[dimension.id];
+                          {searchFilteredDimensions.map((dimension) => {
+                            if (!dimension) return null;
+                            
+                            const isExpanded = combinedExpandedDimensions[dimension.id];
                             return (
                               <div key={dimension.id}>
                                 {/* Dimension header (non-selectable parent) */}
@@ -659,7 +708,7 @@ export function JournalEntryLinesTable({
                                 </div>
                                 
                                 {/* Dimension values (selectable children) */}
-                                {isExpanded && (dimension as any).values?.map((value: DimensionValue) => {
+                                {isExpanded && dimension.values?.map((value: DimensionValue) => {
                                   const isSelected = line.tags?.some(
                                     tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
                                   );
