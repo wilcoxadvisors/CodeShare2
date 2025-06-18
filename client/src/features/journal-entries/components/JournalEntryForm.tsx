@@ -173,18 +173,15 @@ function JournalEntryForm({
   const params = useParams();
   const effectiveClientId = clientId || parseInt(params.clientId || "0");
   
-  const [lines, setLines] = useState<JournalLine[]>([]);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
 
-  // State for search and expansion
+  // State for search and expansion (not form-related)
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
 
-  // Journal data with local storage fallback and proper default values
+  // Generate default reference number
   const generateReference = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -193,33 +190,30 @@ function JournalEntryForm({
     return `JE-${year}${month}${day}-${nanoid(6).toUpperCase()}`;
   };
 
-  // Create form with proper schema
-  const form = useForm({
-    resolver: zodResolver(createFormSchema()),
+  // Default entity code for new lines
+  const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
+
+  // Initialize react-hook-form with the shared schema
+  const form = useForm<JournalEntryFormData>({
+    resolver: zodResolver(journalEntryFormSchema),
     defaultValues: {
-      date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : getTodayYMD(),
       referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || "",
       description: existingEntry?.description || "",
-      lines: [],
       isAccrual: existingEntry?.isAccrual || false,
       reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
+      lines: existingEntry?.lines || [
+        { _key: nanoid(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] },
+        { _key: nanoid(), accountId: "", entityCode: defaultEntityCode, description: "", debit: "", credit: "", tags: [] }
+      ]
     },
   });
 
-  // Watch form values for validation
-  const watchedLines = form.watch("lines");
-  const watchedDate = form.watch("date");
-  const watchedReferenceNumber = form.watch("referenceNumber");
-
-  // Initialize form data
-  const [journalData, setJournalData] = useState(() => ({
-    date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-    referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || generateReference(),
-    referenceUserSuffix: existingEntry?.referenceUserSuffix || "",
-    description: existingEntry?.description || "",
-    isAccrual: existingEntry?.isAccrual || false,
-    reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
-  }));
+  // useFieldArray for dynamic lines management
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "lines"
+  });
 
   // Query for existing journal entries to check for duplicate reference numbers
   const { data: existingJournalEntries = [] } = useQuery({
@@ -364,7 +358,18 @@ function JournalEntryForm({
     return state;
   };
 
-  // Initialize lines from existing entry
+  // Watch form values for calculations
+  const watchedLines = form.watch("lines");
+  
+  // Calculate totals from form data
+  const { totalDebit, totalCredit, isBalanced } = useMemo(() => {
+    const totalDebit = watchedLines.reduce((sum, line) => sum + parseFloat(line?.debit || "0"), 0);
+    const totalCredit = watchedLines.reduce((sum, line) => sum + parseFloat(line?.credit || "0"), 0);
+    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+    return { totalDebit, totalCredit, isBalanced };
+  }, [watchedLines]);
+
+  // Initialize lines from existing entry using form setValue
   useEffect(() => {
     if (existingEntry?.lines) {
       const processedLines = existingEntry.lines.map((line: any) => ({
@@ -377,36 +382,44 @@ function JournalEntryForm({
         credit: line.credit?.toString() || "",
         tags: line.tags || [],
       }));
-      setLines(processedLines);
-    } else {
-      // Add initial two empty lines for new entries (standard accounting practice)
-      const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
-      setLines([
-        {
-          _key: nanoid(),
-          accountId: "",
-          entityCode: defaultEntityCode,
-          description: "",
-          debit: "",
-          credit: "",
-          tags: [],
-        },
-        {
-          _key: nanoid(),
-          accountId: "",
-          entityCode: defaultEntityCode,
-          description: "",
-          debit: "",
-          credit: "",
-          tags: [],
-        },
-      ]);
+      form.setValue("lines", processedLines);
     }
-  }, [existingEntry, entities]);
+  }, [existingEntry, entities, form]);
 
-  // Line management functions
+  // New react-hook-form onSubmit function
+  const onFormSubmit = async (values: JournalEntryFormData) => {
+    try {
+      // Prepare the data for submission
+      const payload = {
+        ...values,
+        clientId: effectiveClientId,
+        entityId: entityId,
+        lines: values.lines.map(line => ({
+          ...line,
+          accountId: parseInt(line.accountId),
+          debit: parseFloat(line.debit || "0"),
+          credit: parseFloat(line.credit || "0")
+        }))
+      };
+
+      if (existingEntry) {
+        updateEntry.mutate(payload);
+      } else {
+        createEntry.mutate(payload);
+      }
+    } catch (error) {
+      console.error("Form submission error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit journal entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // useFieldArray-based line management functions
   const addLine = () => {
-    const newLine: JournalLine = {
+    const newLine = {
       _key: nanoid(),
       accountId: "",
       entityCode: entities.length > 0 ? entities[0].code : "",
@@ -415,40 +428,26 @@ function JournalEntryForm({
       credit: "",
       tags: [],
     };
-    setLines([...lines, newLine]);
+    append(newLine);
   };
 
   const removeLine = (index: number) => {
-    if (lines.length > 1) {
-      setLines(lines.filter((_, i) => i !== index));
+    if (fields.length > 1) {
+      remove(index);
     }
   };
 
-  const handleLineChange = (index: number, field: keyof JournalLine, value: string) => {
-    const updatedLines = [...lines];
-    updatedLines[index] = { ...updatedLines[index], [field]: value };
-    setLines(updatedLines);
-  };
-
-  // Function to update line tags
+  // Function to update line tags using form setValue
   const updateLineTags = (lineIndex: number, tags: DimensionTag[]) => {
-    const updatedLines = [...lines];
-    updatedLines[lineIndex] = { ...updatedLines[lineIndex], tags };
-    setLines(updatedLines);
+    form.setValue(`lines.${lineIndex}.tags`, tags);
   };
-
-  // Calculate totals and balance
-  const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-  const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
-  const difference = Math.abs(totalDebit - totalCredit);
-  const isBalanced = difference < 0.01; // Allow for small rounding differences
 
   // Calculate entity balances for intercompany validation
   const entityBalances = useMemo(() => {
     const balances: Record<string, EntityBalance> = {};
 
-    lines.forEach((line) => {
-      if (!line.entityCode) return;
+    watchedLines.forEach((line) => {
+      if (!line?.entityCode) return;
 
       if (!balances[line.entityCode]) {
         balances[line.entityCode] = {
@@ -460,8 +459,8 @@ function JournalEntryForm({
         };
       }
 
-      balances[line.entityCode].debit += parseFloat(line.debit) || 0;
-      balances[line.entityCode].credit += parseFloat(line.credit) || 0;
+      balances[line.entityCode].debit += parseFloat(line.debit || "0");
+      balances[line.entityCode].credit += parseFloat(line.credit || "0");
     });
 
     // Calculate difference and balanced status for each entity
@@ -471,7 +470,7 @@ function JournalEntryForm({
     });
 
     return Object.values(balances);
-  }, [lines]);
+  }, [watchedLines]);
 
   // Validation function
   const validateForm = () => {
