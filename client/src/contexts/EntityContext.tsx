@@ -49,6 +49,7 @@ const EntityContext = createContext<EntityContextType>({
   setSelectedClient: () => {},
   isLoading: true,
   isInitialLoading: true,
+  initialLoadComplete: false,
   selectedClientId: null,
   setSelectedClientId: () => {}
 });
@@ -391,6 +392,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
     setSelectedClient,
     isLoading,
     isInitialLoading: !initialLoadComplete,
+    initialLoadComplete,
     selectedClientId,
     setSelectedClientId
   };
