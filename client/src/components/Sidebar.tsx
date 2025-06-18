@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntity } from '../contexts/EntityContext';
 import {
   LayoutDashboard,
   BookOpen,
@@ -25,8 +26,16 @@ function Sidebar() {
   const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { selectedClientId, currentEntity } = useEntity();
 
   const isActive = (path: string) => {
+    // Handle dynamic client-specific paths
+    if (path.includes('/journal-entries') && location.pathname.includes('/journal-entries')) {
+      return true;
+    }
+    if (path.includes('/chart-of-accounts') && location.pathname.includes('/chart-of-accounts')) {
+      return true;
+    }
     return location.pathname === path;
   };
 
@@ -67,15 +76,15 @@ function Sidebar() {
             
             {/* General Ledger moved to Reports tab */}
             
-            {/* Journal Entries link - gets dynamically redirected if entity context exists */}
+            {/* Journal Entries link - uses client/entity context when available */}
             <NavItem 
-              path="/journal-entries" 
+              path={currentEntity ? `/clients/${selectedClientId}/entities/${currentEntity.id}/journal-entries` : "/journal-entries"} 
               icon={<ClipboardEdit className="h-5 w-5 mr-2" />} 
               label="Journal Entries" 
             />
             
             <NavItem 
-              path="/chart-of-accounts" 
+              path={selectedClientId ? `/clients/${selectedClientId}/chart-of-accounts` : "/chart-of-accounts"} 
               icon={<BarChart2 className="h-5 w-5 mr-2" />} 
               label="Chart of Accounts" 
             />
