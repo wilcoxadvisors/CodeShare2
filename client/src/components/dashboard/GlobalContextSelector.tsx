@@ -57,6 +57,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   const params = useParams();
   const isClientOnlyView = location.pathname.includes('/chart-of-accounts') || location.pathname.includes('/manage/dimensions');
   
+  // Route awareness: Determine if current page requires entity selection
+  const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
+  
   // Get the actual client ID from URL parameters for client-only pages
   const urlClientId = params.clientId ? parseInt(params.clientId, 10) : null;
   
@@ -381,8 +384,8 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                       className="cursor-pointer font-medium bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/70 rounded-sm mb-1"
                     >
                       <div className="flex items-center w-full overflow-hidden">
-                        {/* Only show expansion controls when showEntities is true */}
-                        {showEntities ? (
+                        {/* Only show expansion controls when showEntities is true AND we're in an entity selection view */}
+                        {showEntities && isEntitySelectionView ? (
                           <div 
                             onClick={(e) => toggleClientExpansion(e, client.id)}
                             className="mr-2 flex-shrink-0 p-1 hover:bg-primary/30 rounded-md cursor-pointer border border-primary/40 transition-colors duration-200"
@@ -461,7 +464,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                                     <span className="text-xs text-muted-foreground truncate">{entity.code}</span>
                                   )}
                                 </div>
-                                {currentEntity?.id === entity.id && (
+                                {currentEntity?.id === entity.id && isEntitySelectionView && (
                                   <Check className="ml-auto h-4 w-4" />
                                 )}
                               </div>
