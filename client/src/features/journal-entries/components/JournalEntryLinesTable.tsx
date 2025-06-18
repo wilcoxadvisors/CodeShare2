@@ -373,6 +373,9 @@ export function JournalEntryLinesTable({
     });
   };
 
+  // Safeguard: Ensure dimensions is always an array
+  const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+
   return (
     <div className="overflow-x-auto mb-4">
       <table className="min-w-full divide-y divide-gray-200">
@@ -631,7 +634,7 @@ export function JournalEntryLinesTable({
                       <div className="p-4">
                         <h4 className="font-semibold text-sm mb-3">Add Dimension Tags</h4>
                         <div className="space-y-3">
-                          {dimensions.map((dimension) => (
+                          {safeDimensions.map((dimension) => (
                             <div key={dimension.id} className="space-y-2">
                               <div className="text-sm font-medium text-gray-700">
                                 {dimension.name}

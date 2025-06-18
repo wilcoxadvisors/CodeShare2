@@ -244,12 +244,20 @@ function JournalEntryForm({
     enabled: !!effectiveClientId && !!entityId,
   });
 
-  // Query for dimensions
-  const { data: dimensions = [] } = useQuery({
+  // Query for dimensions with robust error handling
+  const { data: dimensionsResponse } = useQuery({
     queryKey: ["dimensions", effectiveClientId],
     queryFn: () => apiRequest(`/api/clients/${effectiveClientId}/dimensions`),
     enabled: !!effectiveClientId,
   });
+
+  console.log("ARCHITECT_DEBUG_DIMENSION_RESPONSE:", dimensionsResponse);
+
+  const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
+    ? dimensionsResponse.data
+    : Array.isArray(dimensionsResponse)
+      ? dimensionsResponse
+      : []; // Always default to an empty array
 
   // Post journal entry mutation
   const postJournalEntry = useMutation({
