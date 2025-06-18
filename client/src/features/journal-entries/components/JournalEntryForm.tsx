@@ -231,6 +231,7 @@ function JournalEntryForm({
   const [journalData, setJournalData] = useState(() => ({
     date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || generateReference(),
+    referenceUserSuffix: existingEntry?.referenceUserSuffix || "",
     description: existingEntry?.description || "",
     isAccrual: existingEntry?.isAccrual || false,
     reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
@@ -667,8 +668,8 @@ function JournalEntryForm({
         setJournalData={setJournalData}
         fieldErrors={fieldErrors}
         existingEntry={existingEntry}
-        effectiveClientId={effectiveClientId}
-        entityId={entityId}
+        autoReferencePrefix={`JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`}
+        displayId={existingEntry?.id ? `JE-${effectiveClientId}-${entityId}-${format(new Date(existingEntry.date), 'MMddyy')}-${existingEntry.id}` : "Will be assigned after creation"}
       />
 
       {/* Journal Entry Lines Table Section */}
