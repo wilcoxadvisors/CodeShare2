@@ -1,14 +1,21 @@
 import { Express, Request, Response, Router } from 'express';
 import { asyncHandler, throwBadRequest, throwForbidden, throwNotFound } from './errorHandling';
-// Use the auth middleware directly to avoid import issues
-const isAuthenticated = (req: Request, res: Response, next: Function) => {
-  // If user exists in session, they're authenticated
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    return next();
-  }
+import { isAuthenticated } from './auth';
+
+// Enhanced authentication middleware with detailed logging for debugging
+const debugAuthenticated = (req: Request, res: Response, next: Function) => {
+  console.log('ARCHITECT_DEBUG_AUTH: File upload authentication check:', {
+    isAuthenticatedExists: !!req.isAuthenticated,
+    isAuthenticatedResult: req.isAuthenticated ? req.isAuthenticated() : false,
+    userExists: !!req.user,
+    userId: req.user ? (req.user as any).id : null,
+    sessionExists: !!req.session,
+    sessionId: req.session ? req.session.id : null,
+    cookies: req.headers.cookie,
+    userAgent: req.headers['user-agent']
+  });
   
-  // No authenticated user
-  return res.status(401).json({ message: "Unauthorized" });
+  return isAuthenticated(req, res, next);
 };
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';

@@ -17,19 +17,41 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import FormData from 'form-data';
-import tough from 'tough-cookie';
-import { wrapper } from 'axios-cookiejar-support';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Set up axios with persistent cookie jar for session management
-const cookieJar = new tough.CookieJar();
-const httpClient = wrapper(axios.create({ 
-  jar: cookieJar,
-  withCredentials: true
-}));
+// Create a shared axios instance with interceptors for authentication
+const httpClient = axios.create({
+  withCredentials: true,
+  timeout: 30000
+});
+
+// Store authentication cookies globally
+let sessionCookies = '';
+
+// Request interceptor to add authentication cookies
+httpClient.interceptors.request.use(
+  (config) => {
+    if (sessionCookies) {
+      config.headers['Cookie'] = sessionCookies;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor to capture and store session cookies
+httpClient.interceptors.response.use(
+  (response) => {
+    if (response.headers['set-cookie']) {
+      sessionCookies = response.headers['set-cookie'].join('; ');
+    }
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Configuration
 const BASE_URL = 'http://localhost:5000';
