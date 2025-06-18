@@ -167,7 +167,7 @@ function Header() {
               {/* Chart of Accounts Section Tabs */}
               {currentBaseSection === '/chart-of-accounts' && (
                 <>
-                  <a href="/chart-of-accounts" className={`${location === '/chart-of-accounts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/chart-of-accounts" className={`${pathname === '/chart-of-accounts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     All Accounts
                   </a>
                 </>
@@ -176,16 +176,16 @@ function Header() {
               {/* Accounts Payable Section Tabs */}
               {currentBaseSection === '/accounts-payable' && (
                 <>
-                  <a href="/accounts-payable" className={`${location === '/accounts-payable' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-payable" className={`${pathname === '/accounts-payable' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Overview
                   </a>
-                  <a href="/accounts-payable/vendors" className={`${location === '/accounts-payable/vendors' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-payable/vendors" className={`${pathname === '/accounts-payable/vendors' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Vendors
                   </a>
-                  <a href="/accounts-payable/bills" className={`${location === '/accounts-payable/bills' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-payable/bills" className={`${pathname === '/accounts-payable/bills' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Bills
                   </a>
-                  <a href="/accounts-payable/payments" className={`${location === '/accounts-payable/payments' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-payable/payments" className={`${pathname === '/accounts-payable/payments' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Payments
                   </a>
                 </>
@@ -194,16 +194,16 @@ function Header() {
               {/* Accounts Receivable Section Tabs */}
               {currentBaseSection === '/accounts-receivable' && (
                 <>
-                  <a href="/accounts-receivable" className={`${location === '/accounts-receivable' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-receivable" className={`${pathname === '/accounts-receivable' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Overview
                   </a>
-                  <a href="/accounts-receivable/customers" className={`${location === '/accounts-receivable/customers' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-receivable/customers" className={`${pathname === '/accounts-receivable/customers' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Customers
                   </a>
-                  <a href="/accounts-receivable/invoices" className={`${location === '/accounts-receivable/invoices' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-receivable/invoices" className={`${pathname === '/accounts-receivable/invoices' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Invoices
                   </a>
-                  <a href="/accounts-receivable/receipts" className={`${location === '/accounts-receivable/receipts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/accounts-receivable/receipts" className={`${pathname === '/accounts-receivable/receipts' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Receipts
                   </a>
                 </>
@@ -212,13 +212,13 @@ function Header() {
               {/* Fixed Assets Section Tabs */}
               {currentBaseSection === '/fixed-assets' && (
                 <>
-                  <a href="/fixed-assets" className={`${location === '/fixed-assets' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/fixed-assets" className={`${pathname === '/fixed-assets' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     All Assets
                   </a>
-                  <a href="/fixed-assets/add" className={`${location === '/fixed-assets/add' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/fixed-assets/add" className={`${pathname === '/fixed-assets/add' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Add Asset
                   </a>
-                  <a href="/fixed-assets/depreciation" className={`${location === '/fixed-assets/depreciation' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/fixed-assets/depreciation" className={`${pathname === '/fixed-assets/depreciation' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Depreciation
                   </a>
                 </>
@@ -227,10 +227,10 @@ function Header() {
               {/* Document Analysis Section Tabs */}
               {currentBaseSection === '/document-analysis' && (
                 <>
-                  <a href="/document-analysis" className={`${location === '/document-analysis' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/document-analysis" className={`${pathname === '/document-analysis' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Document Analysis
                   </a>
-                  <a href="/document-analysis/history" className={`${location === '/document-analysis/history' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/document-analysis/history" className={`${pathname === '/document-analysis/history' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Analysis History
                   </a>
                 </>
@@ -324,7 +324,7 @@ function Header() {
         
           <div className="pt-2 pb-3 space-y-1">
             {/* Main navigation */}
-            <a href="/dashboard" className={`${location === '/dashboard' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+            <a href="/dashboard" className={`${pathname === '/dashboard' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
               Dashboard
             </a>
             
@@ -371,10 +371,10 @@ function Header() {
                 Reports & Analysis
               </div>
               
-              <a href="/reports" className={`${location === '/reports' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-6 pr-4 py-2 border-l-4 text-sm font-medium`}>
+              <a href="/reports" className={`${pathname === '/reports' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-6 pr-4 py-2 border-l-4 text-sm font-medium`}>
                 Financial Reports
               </a>
-              <a href="/document-analysis" className={`${location === '/document-analysis' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-6 pr-4 py-2 border-l-4 text-sm font-medium`}>
+              <a href="/document-analysis" className={`${pathname === '/document-analysis' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-6 pr-4 py-2 border-l-4 text-sm font-medium`}>
                 Document Analysis
               </a>
             </div>
