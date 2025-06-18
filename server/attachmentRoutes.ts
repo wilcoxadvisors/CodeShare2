@@ -3,7 +3,7 @@ import { asyncHandler, throwBadRequest, throwForbidden, throwNotFound } from './
 import { isAuthenticated } from './auth';
 
 // Enhanced authentication middleware with detailed logging for debugging
-const debugAuthenticated = (req: Request, res: Response, next: Function) => {
+const debugAuthenticated = (req: Request, res: Response, next: any) => {
   console.log('ARCHITECT_DEBUG_AUTH: File upload authentication check:', {
     isAuthenticatedExists: !!req.isAuthenticated,
     isAuthenticatedResult: req.isAuthenticated ? req.isAuthenticated() : false,
@@ -97,7 +97,7 @@ export function registerAttachmentRoutes(app: Express) {
    * Upload file(s) to a journal entry - hierarchical route
    */
   router.post('/', 
-    isAuthenticated,
+    debugAuthenticated,
     uploadLimiter,
     upload.array('files', 10), // Support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
