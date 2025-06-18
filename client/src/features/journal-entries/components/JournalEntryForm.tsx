@@ -332,7 +332,7 @@ function JournalEntryForm({
       // Upload pending files if any (handled by AttachmentSection)
       if (uploadPendingFilesRef.current) {
         try {
-          await uploadPendingFilesRef.current(existingEntry?.id);
+          await uploadPendingFilesRef.current(existingEntry?.id!);
         } catch (error) {
           console.error("Error uploading files:", error);
           toast({
@@ -552,6 +552,7 @@ function JournalEntryForm({
       date: journalData.date,
       reference: journalData.referenceNumber,
       referenceNumber: journalData.referenceNumber,
+      referenceUserSuffix: "",
       description: journalData.description,
       status: "draft" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
@@ -589,6 +590,7 @@ function JournalEntryForm({
       date: journalData.date,
       reference: journalData.referenceNumber,
       referenceNumber: journalData.referenceNumber,
+      referenceUserSuffix: "",
       description: journalData.description,
       status: "pending_approval" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
@@ -628,6 +630,7 @@ function JournalEntryForm({
       date: journalData.date,
       reference: journalData.referenceNumber,
       referenceNumber: journalData.referenceNumber,
+      referenceUserSuffix: "",
       description: journalData.description,
       status: "posted" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
