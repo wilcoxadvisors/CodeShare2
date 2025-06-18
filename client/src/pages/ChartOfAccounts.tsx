@@ -166,21 +166,7 @@ function ChartOfAccounts() {
   });
   
   // Debug output for client context and refresh data when client selection changes
-  useEffect(() => {
-    console.log("DEBUG: Client context in ChartOfAccounts", { 
-      selectedClientId,
-      time: new Date().toISOString()
-    });
-    
-    // Refetch account data when client changes
-    if (selectedClientId) {
-      console.log("DEBUG: Triggering account data refetch due to client change", { selectedClientId });
-      // Using a small timeout to ensure the client context is fully updated
-      setTimeout(() => {
-        refetch();
-      }, 100);
-    }
-  }, [selectedClientId, refetch]);
+
   
   // Extract the actual accounts array from the response - handle both wrapped and direct data
   const accountTreeData = accountsTree?.data || accountsTree || [];
