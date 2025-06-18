@@ -281,7 +281,7 @@ function JournalEntryForm({
     mutationFn: async (data: any) => {
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries`, {
         method: "POST",
-        body: JSON.stringify(data),
+        data: data,
       });
     },
     onSuccess: async (result: JournalEntryResponse, variables: any) => {
@@ -290,7 +290,7 @@ function JournalEntryForm({
       // Upload pending files if any (handled by AttachmentSection)
       if (uploadPendingFilesRef.current) {
         try {
-          await uploadPendingFilesRef.current(entryId);
+          await uploadPendingFilesRef.current(entryId!);
         } catch (error) {
           console.error("Error uploading files:", error);
           toast({
@@ -325,12 +325,12 @@ function JournalEntryForm({
     mutationFn: async (data: any) => {
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`, {
         method: "PATCH",
-        body: JSON.stringify(data),
+        data: data,
       });
     },
     onSuccess: async (response: JournalEntryResponse) => {
-      // Upload pending files if any
-      if (pendingFiles.length > 0 && uploadPendingFilesRef.current) {
+      // Upload pending files if any (handled by AttachmentSection)
+      if (uploadPendingFilesRef.current) {
         try {
           await uploadPendingFilesRef.current(existingEntry?.id);
         } catch (error) {
@@ -622,14 +622,7 @@ function JournalEntryForm({
       return;
     }
 
-    if (pendingFiles.length > 0) {
-      toast({
-        title: "Error",
-        description: "Please upload or remove pending files before posting",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Pending files validation is now handled by AttachmentSection
 
     const formData = {
       date: journalData.date,
@@ -693,14 +686,9 @@ function JournalEntryForm({
         entityId={entityId}
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
-        pendingFiles={pendingFiles}
-        setPendingFiles={setPendingFiles}
-        pendingFilesMetadata={pendingFilesMetadata}
-        setPendingFilesMetadata={setPendingFilesMetadata}
-        onUploadToEntryRef={uploadPendingFilesRef}
-        attachments={existingEntry?.files || []}
         status={existingEntry?.status}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
+        onUploadToEntryRef={uploadPendingFilesRef}
       />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
