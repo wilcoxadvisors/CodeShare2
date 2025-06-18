@@ -10,6 +10,7 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
+import { UseFormReturn, FieldArrayWithId } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,7 +34,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import { AccountType } from "@shared/schema";
+import { AccountType, type JournalEntryFormData } from "@shared/schema";
 import { safeParseAmount } from "../utils/lineFormat";
 
 // Interface for journal entry lines
@@ -108,27 +109,33 @@ interface ExpandedState {
 }
 
 interface JournalEntryLinesTableProps {
-  lines: JournalLine[];
-  setLines: React.Dispatch<React.SetStateAction<JournalLine[]>>;
+  form: UseFormReturn<JournalEntryFormData>;
+  fields: FieldArrayWithId<JournalEntryFormData, "lines", "id">[];
   accounts: Account[];
   entities?: Entity[];
   dimensions?: Dimension[];
-  fieldErrors: Record<string, string>;
-  isBalanced: boolean;
+  append: (value: any) => void;
+  remove: (index: number) => void;
+  updateLineTags: (lineIndex: number, tags: DimensionTag[]) => void;
   totalDebit: number;
   totalCredit: number;
+  isBalanced: boolean;
+  entityBalances: EntityBalance[];
 }
 
 export function JournalEntryLinesTable({
-  lines,
-  setLines,
+  form,
+  fields,
   accounts,
   entities = [],
   dimensions = [],
-  fieldErrors,
-  isBalanced,
+  append,
+  remove,
+  updateLineTags,
   totalDebit,
   totalCredit,
+  isBalanced,
+  entityBalances,
 }: JournalEntryLinesTableProps) {
   // State for line item management
   const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
@@ -150,55 +157,14 @@ export function JournalEntryLinesTable({
   // Calculate difference
   const difference = totalDebit - totalCredit;
 
-  // Calculate entity balances for intercompany validation
-  const entityBalances = useMemo(() => {
-    const entityCodesArray = lines.map((line) => line.entityCode);
-    const uniqueEntityCodes = entityCodesArray.filter(
-      (code, index) => entityCodesArray.indexOf(code) === index,
-    );
-
-    if (uniqueEntityCodes.length <= 1) {
-      return [];
-    }
-
-    return uniqueEntityCodes.map((entityCode) => {
-      const entityLines = lines.filter((line) => line.entityCode === entityCode);
-      const entityDebit = entityLines.reduce(
-        (sum, line) => sum + safeParseAmount(line.debit),
-        0,
-      );
-      const entityCredit = entityLines.reduce(
-        (sum, line) => sum + safeParseAmount(line.credit),
-        0,
-      );
-      const entityDifference = entityDebit - entityCredit;
-
-      return {
-        entityCode,
-        debit: entityDebit,
-        credit: entityCredit,
-        difference: entityDifference,
-        balanced: Math.abs(entityDifference) < 0.001,
-      };
-    });
-  }, [lines]);
-
   // Toggle function for dimension expansion
   const toggleDimensionExpansion = (dimensionId: number) => {
     setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
   };
 
-  // Handler functions
-  const handleLineChange = (index: number, field: string, value: string) => {
-    setLines((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  };
-
+  // Add line function using react-hook-form append
   const addLine = () => {
-    const newLine: JournalLine = {
+    const newLine = {
       _key: `new-${Date.now()}`,
       accountId: "",
       entityCode: entities.length > 0 ? entities[0].code : "",
@@ -207,19 +173,7 @@ export function JournalEntryLinesTable({
       credit: "",
       tags: [],
     };
-    setLines((prev) => [...prev, newLine]);
-  };
-
-  const removeLine = (index: number) => {
-    setLines((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updateLineTags = (lineIndex: number, newTags: DimensionTag[]) => {
-    setLines((prev) => {
-      const updated = [...prev];
-      updated[lineIndex] = { ...updated[lineIndex], tags: newTags };
-      return updated;
-    });
+    append(newLine);
   };
 
   // Build hierarchical account tree

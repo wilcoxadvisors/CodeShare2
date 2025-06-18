@@ -476,178 +476,37 @@ function JournalEntryForm({
     <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-6">
-          {/* Journal Entry Header - Using temporary individual form fields */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="text-lg font-semibold">Journal Entry Details</h3>
-            
-            {/* Date Field */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  {...form.register("date")}
-                  className="mt-1"
-                />
-                {form.formState.errors.date && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.date.message}</p>
-                )}
-              </div>
+          <JournalEntryHeader
+            form={form}
+            existingEntry={existingEntry}
+            entities={entities}
+            existingJournalEntries={existingJournalEntries}
+          />
 
-              {/* Reference Number Field */}
-              <div>
-                <Label htmlFor="referenceNumber">Reference Number *</Label>
-                <Input
-                  id="referenceNumber"
-                  {...form.register("referenceNumber")}
-                  placeholder="Auto-generated if empty"
-                  className="mt-1"
-                />
-                {form.formState.errors.referenceNumber && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.referenceNumber.message}</p>
-                )}
-              </div>
+          <JournalEntryLinesTable
+            form={form}
+            fields={fields}
+            accounts={accounts}
+            entities={entities}
+            dimensions={safeDimensions}
+            append={append}
+            remove={remove}
+            updateLineTags={updateLineTags}
+            totalDebit={totalDebit}
+            totalCredit={totalCredit}
+            isBalanced={isBalanced}
+            entityBalances={entityBalances}
+          />
 
-              {/* Accrual Switch */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isAccrual"
-                  {...form.register("isAccrual")}
-                />
-                <Label htmlFor="isAccrual">Auto-reverse accrual</Label>
-              </div>
-            </div>
-
-            {/* Description Field */}
-            <div>
-              <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                {...form.register("description")}
-                placeholder="Enter journal entry description"
-                className="mt-1"
-              />
-              {form.formState.errors.description && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.description.message}</p>
-              )}
-            </div>
-
-            {/* Reversal Date - Show only if accrual is enabled */}
-            {form.watch("isAccrual") && (
-              <div>
-                <Label htmlFor="reversalDate">Reversal Date</Label>
-                <Input
-                  id="reversalDate"
-                  type="date"
-                  {...form.register("reversalDate")}
-                  className="mt-1"
-                />
-                {form.formState.errors.reversalDate && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.reversalDate.message}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Journal Entry Lines Table - Using temporary simplified table */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Journal Entry Lines</h3>
-              <Button type="button" onClick={addLine}>Add Line</Button>
-            </div>
-
-            {fields.map((field, index) => (
-              <div key={field.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded">
-                {/* Account Selection */}
-                <div>
-                  <Label>Account *</Label>
-                  <select {...form.register(`lines.${index}.accountId`)} className="w-full p-2 border rounded">
-                    <option value="">Select Account</option>
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {account.accountCode} - {account.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Entity Code */}
-                <div>
-                  <Label>Entity</Label>
-                  <select {...form.register(`lines.${index}.entityCode`)} className="w-full p-2 border rounded">
-                    {entities.map((entity) => (
-                      <option key={entity.id} value={entity.code}>
-                        {entity.code} - {entity.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <Label>Description *</Label>
-                  <Input {...form.register(`lines.${index}.description`)} />
-                </div>
-
-                {/* Debit */}
-                <div>
-                  <Label>Debit</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...form.register(`lines.${index}.debit`)}
-                  />
-                </div>
-
-                {/* Credit */}
-                <div>
-                  <Label>Credit</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...form.register(`lines.${index}.credit`)}
-                  />
-                </div>
-
-                {/* Remove Button */}
-                <div className="flex items-end">
-                  {fields.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeLine(index)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Balance Summary */}
-            <div className="mt-4 p-4 bg-gray-50 rounded">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>Total Debit: ${totalDebit.toFixed(2)}</div>
-                <div>Total Credit: ${totalCredit.toFixed(2)}</div>
-                <div className={isBalanced ? "text-green-600" : "text-red-600"}>
-                  {isBalanced ? "✓ Balanced" : "⚠ Not Balanced"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* File Attachments - Using temporary simplified section */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="text-lg font-semibold">File Attachments</h3>
-            <p className="text-sm text-gray-600">File attachment functionality temporarily simplified for react-hook-form integration</p>
-            {existingEntry?.files && existingEntry.files.length > 0 && (
-              <div>
-                <p className="text-sm font-medium">Existing files: {existingEntry.files.length}</p>
-              </div>
-            )}
-          </div>
+          <AttachmentSection
+            attachments={existingEntry?.files || []}
+            status={existingEntry?.status || "draft"}
+            isInEditMode={!!existingEntry}
+            uploadPendingFilesRef={uploadPendingFilesRef}
+            clientId={effectiveClientId}
+            entityId={entityId}
+            journalEntryId={existingEntry?.id}
+          />
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-2">
