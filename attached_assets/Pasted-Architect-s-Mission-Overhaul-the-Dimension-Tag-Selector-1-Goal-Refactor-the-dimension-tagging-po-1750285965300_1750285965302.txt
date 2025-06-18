@@ -1,0 +1,32 @@
+Architect's Mission: Overhaul the Dimension Tag Selector
+1. Goal:
+
+Refactor the dimension tagging popover in JournalEntryLinesTable.tsx to exactly mimic the functionality and user experience of the hierarchical account selector.
+
+2. Core Requirements:
+
+Hierarchical Display: Dimensions (e.g., "Department") will act as expandable parent categories. Dimension Values (e.g., "Sales") will be listed as selectable children underneath them.
+Filter Empty Dimensions: The selector must only show dimensions that have at least one value defined. Empty dimensions will be hidden to prevent clutter and confusion.
+Expand/Collapse Functionality: Each dimension row will have a chevron icon to allow users to expand and collapse the list of its values without closing the popover.
+Multi-Tag Logic: The underlying logic must continue to support selecting multiple different dimensions for a single journal entry line.
+3. Definitive Fix Plan:
+
+All changes will be focused within client/src/features/journal-entries/components/JournalEntryLinesTable.tsx.
+
+Filter Empty Dimensions:
+
+Locate the safeDimensions variable. Before the .map() function that renders the list, insert a .filter() call.
+The condition must be: dimension => dimension.values && dimension.values.length > 0.
+Implement Expand/Collapse State:
+
+Create a new state variable to manage which dimensions are expanded: const [expandedDimensions, setExpandedDimensions] = useState<Record<number, boolean>>({});
+Create a toggle function: const toggleDimensionExpansion = (dimensionId: number) => setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
+Rebuild the Popover UI:
+
+The JSX inside the CommandList must be restructured. It will now map over the filtered safeDimensions.
+For each dimension, render a non-selectable parent div that contains the dimension's name and a <ChevronRight /> or <ChevronDown /> icon. The onClick for this div will call toggleDimensionExpansion(dimension.id).
+Below this parent div, conditionally render the list of dimension.values. This list should only be rendered if expandedDimensions[dimension.id] is true.
+Each dimension value should be rendered as a selectable CommandItem with an indent to show it is a child. The onSelect logic for these items should remain as we previously corrected it to allow for multi-dimension tagging.
+4. Expected Outcome:
+
+The "Add Tag" button will open a popover that functions identically to the new account selector. A user will see a clean list of dimensions (like "Department" and "Location"), click one to expand it, see the available values ("Sales", "Marketing"), and make a selection. This provides a consistent, intuitive, and powerful user experience that meets our "best-in-class" standard.

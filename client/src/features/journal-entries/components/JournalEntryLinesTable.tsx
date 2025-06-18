@@ -135,6 +135,7 @@ export function JournalEntryLinesTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
   const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
+  const [expandedDimensions, setExpandedDimensions] = useState<Record<number, boolean>>({});
 
   // Initialize expanded state
   const initializeExpandedState = (): ExpandedState => {
@@ -180,6 +181,11 @@ export function JournalEntryLinesTable({
       };
     });
   }, [lines]);
+
+  // Toggle function for dimension expansion
+  const toggleDimensionExpansion = (dimensionId: number) => {
+    setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
+  };
 
   // Handler functions
   const handleLineChange = (index: number, field: string, value: string) => {
@@ -374,8 +380,9 @@ export function JournalEntryLinesTable({
     });
   };
 
-  // Safeguard: Ensure dimensions is always an array
+  // Safeguard: Ensure dimensions is always an array and filter empty dimensions
   const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+  const filteredDimensions = safeDimensions.filter(dimension => dimension.values && dimension.values.length > 0);
 
   return (
     <div className="overflow-x-auto mb-4">
@@ -632,27 +639,35 @@ export function JournalEntryLinesTable({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0">
-                      <div className="p-4">
-                        <h4 className="font-semibold text-sm mb-3">Add Dimension Tags</h4>
-                        <div className="space-y-3">
-                          {safeDimensions.map((dimension) => (
-                            <div key={dimension.id} className="space-y-2">
-                              <div className="text-sm font-medium text-gray-700">
-                                {dimension.name}
-                              </div>
-                              <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
-                                {(dimension as any).values?.map((value: DimensionValue) => {
+                      <Command>
+                        <CommandList className="max-h-64">
+                          {filteredDimensions.map((dimension) => {
+                            const isExpanded = expandedDimensions[dimension.id];
+                            return (
+                              <div key={dimension.id}>
+                                {/* Dimension header (non-selectable parent) */}
+                                <div
+                                  className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                                  onClick={() => toggleDimensionExpansion(dimension.id)}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 mr-2" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 mr-2 transform -rotate-90" />
+                                  )}
+                                  <span className="font-medium">{dimension.name}</span>
+                                </div>
+                                
+                                {/* Dimension values (selectable children) */}
+                                {isExpanded && (dimension as any).values?.map((value: DimensionValue) => {
                                   const isSelected = line.tags?.some(
                                     tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
                                   );
                                   
                                   return (
-                                    <Button
+                                    <CommandItem
                                       key={value.id}
-                                      variant={isSelected ? "default" : "ghost"}
-                                      size="sm"
-                                      className="justify-start text-xs h-7"
-                                      onClick={() => {
+                                      onSelect={() => {
                                         const existingTags = line.tags || [];
                                         
                                         if (isSelected) {
@@ -675,17 +690,18 @@ export function JournalEntryLinesTable({
                                           updateLineTags(index, newTags);
                                         }
                                       }}
+                                      className="pl-8 text-sm"
                                     >
-                                      {isSelected && <Check className="h-3 w-3 mr-1" />}
+                                      {isSelected && <Check className="h-3 w-3 mr-2" />}
                                       {value.name}
-                                    </Button>
+                                    </CommandItem>
                                   );
                                 })}
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                            );
+                          })}
+                        </CommandList>
+                      </Command>
                     </PopoverContent>
                   </Popover>
                 </div>
