@@ -1,0 +1,22 @@
+Architect's Mission: Decompose the Journal Entry Form
+Phase 1, Step 3: Finalize Decomposition
+
+1. Goal:
+
+Complete the first phase of our refactoring by ensuring the AttachmentSection is a fully independent and reusable component, finalizing the decomposition of the JournalEntryForm.
+
+2. Root Cause Analysis:
+
+The JournalEntryForm still contains a significant amount of state and logic related to managing file attachments (pendingFiles, uploadPendingFilesRef, etc.). To achieve a truly modular architecture, this logic must be fully encapsulated within the AttachmentSection itself. The parent form should not need to manage the internal state of its children.
+
+3. Definitive Plan:
+
+Isolate Attachment Logic: Move all state and logic related to file attachments from JournalEntryForm.tsx and place it inside the existing AttachmentSection component in that same file. (Note: It seems AttachmentSection is already defined within JournalEntryForm.tsx. We are making it fully self-contained before potentially moving it to its own file later).
+Encapsulate State: The pendingFiles and pendingFilesMetadata state, along with the uploadPendingFilesRef, should now be managed internally by the AttachmentSection.
+Refine the Interface: The AttachmentSection should expose a simple, clear interface to the parent form. Instead of passing down multiple state setters, the parent should only need to provide the journalEntryId, entityId, and clientId. The AttachmentSection will handle its own data fetching and state internally based on those IDs.
+4. Expected Outcome:
+
+The JournalEntryForm.tsx will be almost completely free of presentation logic, acting purely as a high-level state coordinator and submission handler.
+The AttachmentSection will be a fully encapsulated, self-contained component that can be easily understood, tested, and reused elsewhere in the application.
+This will mark the successful completion of Phase 1: Component Decomposition. We will then be prepared to begin Phase 2: Adopt a Form State Management Library.
+Please proceed.
