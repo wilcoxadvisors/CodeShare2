@@ -1,26 +1,18 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nanoid } from "nanoid";
-import { z } from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Calendar, Plus, X, Check, ChevronDown, Tag, Tags } from "lucide-react";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 import { apiRequest } from "@/lib/queryClient";
 import { AccountType, JournalEntryStatus, journalEntryFormSchema, type JournalEntryFormData } from "@shared/schema";
@@ -38,7 +30,7 @@ interface JournalEntryResponse {
 
 interface Account {
   id: number;
-  accountCode: string; // Use accountCode to match the server schema
+  accountCode: string;
   name: string;
   entityId: number;
   type: AccountType;
@@ -50,32 +42,6 @@ interface Account {
   subledgerType?: string | null;
   parentId?: number | null;
   [key: string]: any;
-}
-
-/** Returns true when the proposed referenceNumber is already used
- *  in another journal entry that belongs to the same entity.
- *  Compares case-insensitively and ignores leading/trailing whitespace. */
-function isReferenceDuplicate(
-  referenceNumber: string,
-  entityId: number,
-  existingEntries: any[],
-  currentEntryId?: number,
-): boolean {
-  if (!referenceNumber?.trim()) return false;
-
-  const normalizedRef = referenceNumber.trim().toLowerCase();
-
-  return existingEntries.some((entry) => {
-    // Skip the current entry we're editing
-    if (currentEntryId && entry.id === currentEntryId) return false;
-
-    // Only check entries from the same entity
-    if (entry.entityId !== entityId) return false;
-
-    // Compare normalized reference numbers
-    const entryRef = entry.reference || entry.referenceNumber;
-    return entryRef?.trim().toLowerCase() === normalizedRef;
-  });
 }
 
 interface Location {
@@ -120,24 +86,13 @@ interface ExpandedState {
 
 interface JournalEntryFormProps {
   entityId: number;
-  clientId?: number; // Added clientId support
+  clientId?: number;
   accounts: Account[];
-  locations?: Location[]; // Kept for interface compatibility but not used
+  locations?: Location[];
   onSubmit: () => void;
   onCancel: () => void;
   existingEntry?: any;
   entities?: Entity[];
-}
-
-interface JournalLine {
-  id?: number;
-  _key?: string;
-  accountId: string;
-  entityCode: string; // Added for intercompany support
-  description: string;
-  debit: string;
-  credit: string;
-  tags?: DimensionTag[];
 }
 
 interface DimensionTag {
@@ -152,7 +107,21 @@ function getTodayYMD() {
   return format(new Date(), "yyyy-MM-dd");
 }
 
-
+// Returns true when the proposed referenceNumber is already used
+function isReferenceDuplicate(
+  referenceNumber: string,
+  entityId: number,
+  existingEntries: any[],
+  excludeId?: number
+): boolean {
+  const trimmedRef = referenceNumber.trim().toLowerCase();
+  return existingEntries.some(
+    (entry) =>
+      entry.entityId === entityId &&
+      entry.id !== excludeId &&
+      entry.reference?.trim().toLowerCase() === trimmedRef
+  );
+}
 
 /**
  * JournalEntryForm Component
@@ -175,20 +144,6 @@ function JournalEntryForm({
   
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
-
-  // State for search and expansion (not form-related)
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
-  const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
-
-  // Generate default reference number
-  const generateReference = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `JE-${year}${month}${day}-${nanoid(6).toUpperCase()}`;
-  };
 
   // Default entity code for new lines
   const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
@@ -232,11 +187,14 @@ function JournalEntryForm({
   const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
     ? dimensionsResponse.data
     : Array.isArray(dimensionsResponse)
-      ? dimensionsResponse
-      : []; // Always default to an empty array
+    ? dimensionsResponse
+    : [];
 
-  // Post journal entry mutation
-  const postJournalEntry = useMutation({
+  // Safe dimensions for props
+  const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+
+  // Post entry mutation
+  const postEntry = useMutation({
     mutationFn: async (entryId: number) => {
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/post`, {
         method: "PATCH",
@@ -349,14 +307,6 @@ function JournalEntryForm({
       });
     },
   });
-
-  const initializeExpandedState = (): ExpandedState => {
-    const state: ExpandedState = {};
-    accounts.forEach((account) => {
-      state[account.id] = false; // All accounts collapsed by default
-    });
-    return state;
-  };
 
   // Watch form values for calculations
   const watchedLines = form.watch("lines");
@@ -472,322 +422,257 @@ function JournalEntryForm({
     return Object.values(balances);
   }, [watchedLines]);
 
-  // Validation function
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    // Validate basic fields
-    if (!journalData.date) {
-      errors.date = "Date is required";
-    }
-
-    if (!journalData.referenceNumber?.trim()) {
-      errors.referenceNumber = "Reference number is required";
-    } else if (isReferenceDuplicate(journalData.referenceNumber, entityId, existingJournalEntries, existingEntry?.id)) {
-      errors.referenceNumber = "This reference number is already used";
-    }
-
-    if (!journalData.description?.trim()) {
-      errors.description = "Description is required";
-    }
-
-    // Validate accrual reversal date
-    if (journalData.isAccrual && !journalData.reversalDate) {
-      errors.reversalDate = "Reversal date is required for accrual entries";
-    }
-
-    if (journalData.isAccrual && journalData.reversalDate) {
-      const entryDate = new Date(journalData.date);
-      const reversalDate = new Date(journalData.reversalDate);
-      
-      if (reversalDate <= entryDate) {
-        errors.reversalDate = "Reversal date must be after the journal entry date";
-      }
-    }
-
-    // Validate lines
-    lines.forEach((line, index) => {
-      if (!line.accountId) {
-        errors[`line_${index}_accountId`] = "Account is required";
-      }
-      if (!line.entityCode) {
-        errors[`line_${index}_entityCode`] = "Entity code is required";
-      }
-      if (!line.description?.trim()) {
-        errors[`line_${index}_description`] = "Line description is required";
-      }
-      
-      const debit = parseFloat(line.debit) || 0;
-      const credit = parseFloat(line.credit) || 0;
-      
-      if (debit === 0 && credit === 0) {
-        errors[`line_${index}_debit`] = "Either debit or credit must be greater than 0";
-        errors[`line_${index}_credit`] = "Either debit or credit must be greater than 0";
-      }
-      
-      if (debit > 0 && credit > 0) {
-        errors[`line_${index}_debit`] = "A line cannot have both debit and credit amounts";
-        errors[`line_${index}_credit`] = "A line cannot have both debit and credit amounts";
-      }
-      
-      if (debit < 0 || credit < 0) {
-        if (debit < 0) errors[`line_${index}_debit`] = "Amount cannot be negative";
-        if (credit < 0) errors[`line_${index}_credit`] = "Amount cannot be negative";
-      }
-    });
-
-    // Validate entry balance
-    if (!isBalanced) {
-      errors.balance = "Journal entry must be balanced (total debits = total credits)";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Form submission handlers
-  const handleSaveDraft = () => {
-    if (!validateForm()) return;
-
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "draft" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
-    };
-
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
-    }
-  };
-
-  const handleSubmitForApproval = () => {
-    if (!validateForm()) return;
-    if (!isBalanced) {
+  // Handle post entry
+  const handlePost = async () => {
+    // Use form validation instead of manual validation
+    const isValid = await form.trigger();
+    if (!isValid) {
       toast({
-        title: "Error",
-        description: "Journal entry must be balanced before submitting for approval",
+        title: "Validation Error",
+        description: "Please fix the form errors before posting",
         variant: "destructive",
       });
       return;
     }
 
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "pending_approval" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
-    };
+    const values = form.getValues();
+    
+    try {
+      const payload = {
+        ...values,
+        clientId: effectiveClientId,
+        entityId: entityId,
+        lines: values.lines.map(line => ({
+          ...line,
+          accountId: parseInt(line.accountId),
+          debit: parseFloat(line.debit || "0"),
+          credit: parseFloat(line.credit || "0")
+        }))
+      };
 
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
-    }
-  };
-
-  const handlePostEntry = () => {
-    if (!validateForm()) return;
-    if (!isBalanced) {
+      if (existingEntry) {
+        await updateEntry.mutateAsync(payload);
+        if (existingEntry.id) {
+          postEntry.mutate(existingEntry.id);
+        }
+      } else {
+        const result = await createEntry.mutateAsync(payload);
+        const entryId = result.id || result.entry?.id;
+        if (entryId) {
+          postEntry.mutate(entryId);
+        }
+      }
+    } catch (error) {
+      console.error("Error posting entry:", error);
       toast({
         title: "Error",
-        description: "Journal entry must be balanced before posting",
+        description: "Failed to post journal entry",
         variant: "destructive",
       });
-      return;
-    }
-
-    // Pending files validation is now handled by AttachmentSection
-
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "posted" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
-    };
-
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
     }
   };
-
-  const tempJournalEntryId = existingEntry?.id;
-  const isUploading = false; // Add this state if needed for upload progress
-
-  // Check if user has admin role
-  const user = { role: 'admin' }; // This should come from your auth context
 
   return (
     <div className="space-y-6">
-      {/* Journal Entry Header Section */}
-      <JournalEntryHeader
-        journalData={journalData}
-        setJournalData={setJournalData}
-        fieldErrors={fieldErrors}
-        existingEntry={existingEntry}
-        autoReferencePrefix={`JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`}
-        displayId={existingEntry?.id ? `JE-${effectiveClientId}-${entityId}-${format(new Date(existingEntry.date), 'MMddyy')}-${existingEntry.id}` : "Will be assigned after creation"}
-      />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-6">
+          {/* Journal Entry Header - Using temporary individual form fields */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="text-lg font-semibold">Journal Entry Details</h3>
+            
+            {/* Date Field */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  {...form.register("date")}
+                  className="mt-1"
+                />
+                {form.formState.errors.date && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.date.message}</p>
+                )}
+              </div>
 
-      {/* Journal Entry Lines Table Section */}
-      <JournalEntryLinesTable
-        lines={lines}
-        setLines={setLines}
-        accounts={accounts}
-        entities={entities}
-        dimensions={dimensions}
-        fieldErrors={fieldErrors}
-        isBalanced={isBalanced}
-        totalDebit={totalDebit}
-        totalCredit={totalCredit}
-      />
+              {/* Reference Number Field */}
+              <div>
+                <Label htmlFor="referenceNumber">Reference Number *</Label>
+                <Input
+                  id="referenceNumber"
+                  {...form.register("referenceNumber")}
+                  placeholder="Auto-generated if empty"
+                  className="mt-1"
+                />
+                {form.formState.errors.referenceNumber && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.referenceNumber.message}</p>
+                )}
+              </div>
 
-      {/* Attachment Section */}
-      <AttachmentSection
-        entityId={entityId}
-        clientId={effectiveClientId as number}
-        journalEntryId={tempJournalEntryId}
-        status={existingEntry?.status}
-        isInEditMode={!existingEntry || existingEntry.status === 'draft'}
-        onUploadToEntryRef={uploadPendingFilesRef}
-      />
-
-      <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          disabled={createEntry.isPending || updateEntry.isPending}
-        >
-          Cancel
-        </Button>
-
-        <div className="grid grid-cols-2 gap-2">
-          {/* Save as Draft button - for all users */}
-          <Button
-            onClick={handleSaveDraft}
-            disabled={createEntry.isPending || updateEntry.isPending || isUploading}
-            variant="outline"
-          >
-            {createEntry.isPending || updateEntry.isPending || isUploading
-              ? "Saving..."
-              : "Save Draft"}
-          </Button>
-
-          {/* Submit for Approval button - for non-admin users */}
-          {user.role !== 'admin' && (
-            <Button
-              onClick={handleSubmitForApproval}
-              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading}
-              className={!isBalanced ? "bg-gray-400 cursor-not-allowed" : ""}
-            >
-              {createEntry.isPending || updateEntry.isPending || isUploading
-                ? "Submitting..."
-                : "Submit for Approval"}
-            </Button>
-          )}
-
-          {/* Post button - for admin users only */}
-          {user.role === 'admin' && (
-            <Button
-              onClick={handlePostEntry}
-              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading}
-              className={!isBalanced ? "bg-gray-400 cursor-not-allowed" : ""}
-            >
-              {createEntry.isPending || updateEntry.isPending || isUploading
-                ? "Posting..."
-                : "Post Entry"}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Balance validation message */}
-      {!isBalanced && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <AlertCircle className="h-5 w-5 text-red-400" />
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Entry is not balanced</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>
-                  Total debits ({totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) 
-                  must equal total credits ({totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).
-                  Difference: {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
+              {/* Accrual Switch */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isAccrual"
+                  {...form.register("isAccrual")}
+                />
+                <Label htmlFor="isAccrual">Auto-reverse accrual</Label>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Intercompany balance validation */}
-      {entityBalances.some((balance) => !balance.balanced) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <div className="flex">
-            <AlertCircle className="h-5 w-5 text-yellow-400" />
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">Intercompany entries not balanced</h3>
-              <div className="mt-2 text-sm text-yellow-700">
-                <p>Some entities in this intercompany transaction are not individually balanced:</p>
-                <ul className="mt-1 list-disc list-inside">
-                  {entityBalances
-                    .filter((balance) => !balance.balanced)
-                    .map((balance) => (
-                      <li key={balance.entityCode}>
-                        Entity {balance.entityCode}: Difference of {balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </li>
+            {/* Description Field */}
+            <div>
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                {...form.register("description")}
+                placeholder="Enter journal entry description"
+                className="mt-1"
+              />
+              {form.formState.errors.description && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.description.message}</p>
+              )}
+            </div>
+
+            {/* Reversal Date - Show only if accrual is enabled */}
+            {form.watch("isAccrual") && (
+              <div>
+                <Label htmlFor="reversalDate">Reversal Date</Label>
+                <Input
+                  id="reversalDate"
+                  type="date"
+                  {...form.register("reversalDate")}
+                  className="mt-1"
+                />
+                {form.formState.errors.reversalDate && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.reversalDate.message}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Journal Entry Lines Table - Using temporary simplified table */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Journal Entry Lines</h3>
+              <Button type="button" onClick={addLine}>Add Line</Button>
+            </div>
+
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded">
+                {/* Account Selection */}
+                <div>
+                  <Label>Account *</Label>
+                  <select {...form.register(`lines.${index}.accountId`)} className="w-full p-2 border rounded">
+                    <option value="">Select Account</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.accountCode} - {account.name}
+                      </option>
                     ))}
-                </ul>
+                  </select>
+                </div>
+
+                {/* Entity Code */}
+                <div>
+                  <Label>Entity</Label>
+                  <select {...form.register(`lines.${index}.entityCode`)} className="w-full p-2 border rounded">
+                    {entities.map((entity) => (
+                      <option key={entity.id} value={entity.code}>
+                        {entity.code} - {entity.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <Label>Description *</Label>
+                  <Input {...form.register(`lines.${index}.description`)} />
+                </div>
+
+                {/* Debit */}
+                <div>
+                  <Label>Debit</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...form.register(`lines.${index}.debit`)}
+                  />
+                </div>
+
+                {/* Credit */}
+                <div>
+                  <Label>Credit</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...form.register(`lines.${index}.credit`)}
+                  />
+                </div>
+
+                {/* Remove Button */}
+                <div className="flex items-end">
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeLine(index)}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Balance Summary */}
+            <div className="mt-4 p-4 bg-gray-50 rounded">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>Total Debit: ${totalDebit.toFixed(2)}</div>
+                <div>Total Credit: ${totalCredit.toFixed(2)}</div>
+                <div className={isBalanced ? "text-green-600" : "text-red-600"}>
+                  {isBalanced ? "✓ Balanced" : "⚠ Not Balanced"}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+
+          {/* File Attachments - Using temporary simplified section */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="text-lg font-semibold">File Attachments</h3>
+            <p className="text-sm text-gray-600">File attachment functionality temporarily simplified for react-hook-form integration</p>
+            {existingEntry?.files && existingEntry.files.length > 0 && (
+              <div>
+                <p className="text-sm font-medium">Existing files: {existingEntry.files.length}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={createEntry.isPending || updateEntry.isPending}
+            >
+              {existingEntry ? "Update" : "Save"} Draft
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePost}
+              disabled={!isBalanced || postEntry.isPending}
+            >
+              {existingEntry ? "Update & Post" : "Save & Post"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }
 
 export default JournalEntryForm;
+export { JournalEntryForm };
