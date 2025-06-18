@@ -4,11 +4,8 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
-  Tag,
   Tags,
   Check,
-  AlertCircle,
 } from "lucide-react";
 import { UseFormReturn, FieldArrayWithId } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -35,19 +32,6 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { AccountType, type JournalEntryFormData } from "@shared/schema";
-import { safeParseAmount } from "../utils/lineFormat";
-
-// Interface for journal entry lines
-interface JournalLine {
-  id?: number;
-  _key?: string;
-  accountId: string;
-  entityCode: string;
-  description: string;
-  debit: string;
-  credit: string;
-  tags?: DimensionTag[];
-}
 
 interface DimensionTag {
   dimensionId: number;
@@ -56,22 +40,6 @@ interface DimensionTag {
   dimensionValueName?: string;
 }
 
-interface DimensionValue {
-  id: number;
-  name: string;
-  code?: string;
-  description?: string;
-}
-
-interface Dimension {
-  id: number;
-  name: string;
-  description?: string;
-  values?: DimensionValue[];
-  dimensionValues?: DimensionValue[]; // Keep for backward compatibility
-}
-
-// Account interface
 interface Account {
   id: number;
   accountCode: string;
@@ -104,8 +72,22 @@ interface EntityBalance {
   balanced: boolean;
 }
 
-interface ExpandedState {
-  [accountId: number]: boolean;
+interface Dimension {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string | null;
+  active: boolean;
+  values: DimensionValue[];
+}
+
+interface DimensionValue {
+  id: number;
+  dimensionId: number;
+  name: string;
+  code?: string;
+  description?: string | null;
+  active: boolean;
 }
 
 interface JournalEntryLinesTableProps {
@@ -137,22 +119,12 @@ export function JournalEntryLinesTable({
   isBalanced,
   entityBalances,
 }: JournalEntryLinesTableProps) {
-  // State for line item management
-  const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
   const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
   const [expandedDimensions, setExpandedDimensions] = useState<Record<number, boolean>>({});
   const [dimensionSearchQuery, setDimensionSearchQuery] = useState("");
-
-  // Initialize expanded state
-  const initializeExpandedState = (): ExpandedState => {
-    const state: ExpandedState = {};
-    accounts.forEach((account) => {
-      state[account.id] = false;
-    });
-    return state;
-  };
 
   // Calculate difference
   const difference = totalDebit - totalCredit;
@@ -160,20 +132,6 @@ export function JournalEntryLinesTable({
   // Toggle function for dimension expansion
   const toggleDimensionExpansion = (dimensionId: number) => {
     setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
-  };
-
-  // Add line function using react-hook-form append
-  const addLine = () => {
-    const newLine = {
-      _key: `new-${Date.now()}`,
-      accountId: "",
-      entityCode: entities.length > 0 ? entities[0].code : "",
-      description: "",
-      debit: "",
-      credit: "",
-      tags: [],
-    };
-    append(newLine);
   };
 
   // Build hierarchical account tree
@@ -204,628 +162,228 @@ export function JournalEntryLinesTable({
     return rootAccounts;
   }, [accounts]);
 
-  // Filter and search in hierarchical structure
+  // Filter accounts based on search query
   const filteredAccountTree = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return accountTree;
-    }
+    if (!searchQuery.trim()) return accountTree;
 
-    const lowerQuery = searchQuery.toLowerCase();
-    
-    const filterRecursive = (account: Account & { children: any[] }): (Account & { children: any[] }) | null => {
-      const matchesSearch = 
-        account.accountCode.toLowerCase().includes(lowerQuery) ||
-        account.name.toLowerCase().includes(lowerQuery);
+    const filterAccounts = (accounts: any[]): any[] => {
+      return accounts.reduce((filtered, account) => {
+        const matchesSearch = 
+          account.accountCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          account.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const filteredChildren = account.children
-        .map(child => filterRecursive(child))
-        .filter(Boolean) as (Account & { children: any[] })[];
+        const filteredChildren = filterAccounts(account.children);
 
-      // Include account if it matches search OR has matching children
-      if (matchesSearch || filteredChildren.length > 0) {
-        return { ...account, children: filteredChildren };
-      }
+        if (matchesSearch || filteredChildren.length > 0) {
+          filtered.push({
+            ...account,
+            children: filteredChildren
+          });
+        }
 
-      return null;
+        return filtered;
+      }, []);
     };
 
-    return accountTree
-      .map(account => filterRecursive(account))
-      .filter(Boolean) as (Account & { children: any[] })[];
+    return filterAccounts(accountTree);
   }, [accountTree, searchQuery]);
 
-  // Auto-expand parents when searching
+  // Auto-expand parents when search matches children
   const autoExpandedAccounts = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return {};
-    }
-
-    const expanded: ExpandedState = {};
+    if (!searchQuery.trim()) return {};
     
-    const expandParents = (account: Account & { children: any[] }) => {
-      if (account.children.length > 0) {
-        expanded[account.id] = true;
-        account.children.forEach(child => expandParents(child));
-      }
+    const expansions: Record<number, boolean> = {};
+    
+    const expandParentsWithMatchingChildren = (accounts: any[]) => {
+      accounts.forEach(account => {
+        if (account.children.length > 0) {
+          const hasMatchingChild = account.children.some((child: any) => 
+            child.accountCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            child.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+          
+          if (hasMatchingChild) {
+            expansions[account.id] = true;
+          }
+          
+          expandParentsWithMatchingChildren(account.children);
+        }
+      });
     };
-
-    filteredAccountTree.forEach(account => expandParents(account));
-    return expanded;
+    
+    expandParentsWithMatchingChildren(filteredAccountTree);
+    return expansions;
   }, [filteredAccountTree, searchQuery]);
 
-  // Get combined expanded state (manual + auto-expanded from search)
-  const combinedExpandedState = useMemo(() => {
-    return { ...expandedAccounts, ...autoExpandedAccounts };
-  }, [expandedAccounts, autoExpandedAccounts]);
+  // Combine manual and auto expansions
+  const combinedExpansions = { ...expandedAccounts, ...autoExpandedAccounts };
 
-  // Toggle account expansion
-  const toggleAccountExpansion = (accountId: number) => {
-    setExpandedAccounts(prev => ({
-      ...prev,
-      [accountId]: !prev[accountId]
-    }));
+  // Add line function using react-hook-form append
+  const addLine = () => {
+    const newLine = {
+      _key: `new-${Date.now()}`,
+      accountId: "",
+      entityCode: entities.length > 0 ? entities[0].code : "",
+      description: "",
+      debit: "",
+      credit: "",
+      tags: [],
+    };
+    append(newLine);
   };
 
-  // Render hierarchical account tree
-  const renderAccountTree = (accounts: (Account & { children: any[] })[], level = 0, lineIndex: number) => {
-    return accounts.map((account) => {
-      const hasChildren = account.children.length > 0;
-      const isExpanded = combinedExpandedState[account.id];
-      const isSelected = lines[lineIndex]?.accountId === account.id.toString();
-      const canSelect = !hasChildren; // Only leaf accounts are selectable
-      
-      return (
-        <div key={account.id}>
-          {/* Parent/Child Account Item */}
-          <div
-            className={`flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer ${canSelect ? 'hover:bg-blue-50' : 'hover:bg-gray-100'}`}
-            onClick={() => {
-              if (hasChildren) {
-                toggleAccountExpansion(account.id);
-              } else {
-                handleLineChange(lineIndex, "accountId", account.id.toString());
-                setAccountPopoverOpen(prev => ({
-                  ...prev,
-                  [`line_${lineIndex}`]: false
-                }));
-              }
-            }}
-          >
-            {/* Indentation for hierarchy */}
-            <div style={{ width: level * 16 }} />
-            
-            {/* Expand/Collapse chevron for parent accounts */}
-            {hasChildren && (
-              <div className="flex items-center justify-center w-4 h-4 mr-1">
-                {isExpanded ? (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 text-gray-400" />
-                )}
+  return (
+    <div className="space-y-4 p-4 border rounded-lg">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Journal Entry Lines</h3>
+        <Button type="button" onClick={addLine}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Line
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {fields.map((field, index) => (
+          <div key={field.id} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded bg-gray-50">
+            {/* Account Selection */}
+            <div>
+              <label className="text-sm font-medium">Account *</label>
+              <select 
+                {...form.register(`lines.${index}.accountId`)} 
+                className="w-full p-2 border rounded mt-1"
+              >
+                <option value="">Select Account</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.accountCode} - {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Entity Code */}
+            <div>
+              <label className="text-sm font-medium">Entity</label>
+              <select 
+                {...form.register(`lines.${index}.entityCode`)} 
+                className="w-full p-2 border rounded mt-1"
+              >
+                {entities.map((entity) => (
+                  <option key={entity.id} value={entity.code}>
+                    {entity.code} - {entity.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-sm font-medium">Description *</label>
+              <Input 
+                {...form.register(`lines.${index}.description`)} 
+                className="mt-1"
+                placeholder="Line description"
+              />
+            </div>
+
+            {/* Debit */}
+            <div>
+              <label className="text-sm font-medium">Debit</label>
+              <Input
+                type="number"
+                step="0.01"
+                {...form.register(`lines.${index}.debit`)}
+                className="mt-1"
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Credit */}
+            <div>
+              <label className="text-sm font-medium">Credit</label>
+              <Input
+                type="number"
+                step="0.01"
+                {...form.register(`lines.${index}.credit`)}
+                className="mt-1"
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="text-sm font-medium">Tags</label>
+              <div className="mt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <Tags className="h-4 w-4 mr-2" />
+                  Add Tags
+                </Button>
               </div>
-            )}
-            
-            {/* Account content */}
-            <div className="flex-1 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className={`font-medium text-sm ${hasChildren ? 'text-gray-700 font-semibold' : 'text-gray-900'}`}>
-                  {account.accountCode}
-                </span>
-                <span className="text-gray-400">-</span>
-                <span className={`text-sm ${hasChildren ? 'text-gray-600 font-medium' : 'text-gray-700'}`}>
-                  {account.name}
-                </span>
-              </div>
-              
-              {/* Selection indicator for leaf accounts */}
-              {canSelect && isSelected && (
-                <Check className="h-4 w-4 text-blue-600" />
+            </div>
+
+            {/* Remove Button */}
+            <div className="flex items-end">
+              {fields.length > 1 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => remove(index)}
+                  className="w-full"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               )}
             </div>
           </div>
-          
-          {/* Render children if expanded */}
-          {hasChildren && isExpanded && (
-            <div>
-              {renderAccountTree(account.children, level + 1, lineIndex)}
-            </div>
-          )}
+        ))}
+      </div>
+
+      {/* Balance Summary */}
+      <div className="mt-4 p-4 bg-gray-50 rounded border">
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <span className="font-medium">Total Debit:</span> ${totalDebit.toFixed(2)}
+          </div>
+          <div>
+            <span className="font-medium">Total Credit:</span> ${totalCredit.toFixed(2)}
+          </div>
+          <div className={isBalanced ? "text-green-600" : "text-red-600"}>
+            <span className="font-medium">
+              {isBalanced ? "✓ Balanced" : "⚠ Not Balanced"}
+            </span>
+            {!isBalanced && (
+              <div className="text-xs">
+                Difference: ${Math.abs(difference).toFixed(2)}
+              </div>
+            )}
+          </div>
         </div>
-      );
-    });
-  };
+      </div>
 
-  // Safeguard: Ensure dimensions is always an array and filter empty dimensions
-  const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
-  const filteredDimensions = safeDimensions.filter(dimension => dimension.values && dimension.values.length > 0);
-
-  // Intelligent filtering based on search query
-  const searchFilteredDimensions = useMemo(() => {
-    if (!dimensionSearchQuery.trim()) {
-      return filteredDimensions;
-    }
-
-    const query = dimensionSearchQuery.toLowerCase();
-    return filteredDimensions.map(dimension => {
-      const matchingValues = dimension.values?.filter(value => 
-        value.name.toLowerCase().includes(query) || 
-        (value.code && value.code.toLowerCase().includes(query))
-      ) || [];
-
-      return matchingValues.length > 0 ? {
-        ...dimension,
-        values: matchingValues
-      } : null;
-    }).filter((dimension): dimension is NonNullable<typeof dimension> => dimension !== null);
-  }, [filteredDimensions, dimensionSearchQuery]);
-
-  // Auto-expansion for search results
-  const autoExpandedDimensions = useMemo(() => {
-    if (!dimensionSearchQuery.trim()) {
-      return {};
-    }
-
-    const autoExpanded: Record<number, boolean> = {};
-    searchFilteredDimensions.forEach(dimension => {
-      if (dimension) {
-        autoExpanded[dimension.id] = true;
-      }
-    });
-    return autoExpanded;
-  }, [searchFilteredDimensions, dimensionSearchQuery]);
-
-  // Combined expansion state
-  const combinedExpandedDimensions = useMemo(() => ({
-    ...expandedDimensions,
-    ...autoExpandedDimensions
-  }), [expandedDimensions, autoExpandedDimensions]);
-
-  return (
-    <div className="overflow-x-auto mb-4">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Account
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Entity Code
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Description
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Debit
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Credit
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Tags
-            </th>
-            <th scope="col" className="relative px-6 py-3">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-
-        <tbody className="bg-white divide-y divide-gray-200">
-          {lines.map((line, index) => (
-            <tr key={line.id || line._key}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div>
-                  {/* Hierarchical Account Selector */}
-                  <Popover
-                    open={accountPopoverOpen[`line_${index}`] || false}
-                    onOpenChange={(open) => {
-                      setAccountPopoverOpen(prev => ({
-                        ...prev,
-                        [`line_${index}`]: open
-                      }));
-                      // Reset expanded state and search query when dropdown is closed
-                      if (!open) {
-                        setExpandedAccounts({});
-                        setSearchQuery("");
-                      }
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className={`w-full justify-between ${fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}`}
-                      >
-                        {line.accountId &&
-                        accounts.some(
-                          (account) =>
-                            account.id.toString() === line.accountId,
-                        )
-                          ? `${accounts.find((account) => account.id.toString() === line.accountId)?.accountCode} - ${accounts.find((account) => account.id.toString() === line.accountId)?.name}`
-                          : "Select account..."}
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[500px] p-0" side="bottom" align="start">
-                      <div className="border-b px-3 py-2">
-                        <div className="flex items-center border rounded-md px-3">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 text-gray-400 mr-2"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                          </svg>
-                          <input
-                            type="text"
-                            placeholder="Search accounts..."
-                            className="flex-1 py-2 bg-transparent outline-none text-sm"
-                            value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="max-h-[400px] overflow-y-auto">
-                        {filteredAccountTree.length === 0 ? (
-                          <div className="px-3 py-4 text-center text-sm text-gray-500">
-                            No accounts found
-                          </div>
-                        ) : (
-                          <div className="py-2">
-                            {renderAccountTree(filteredAccountTree, 0, index)}
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {fieldErrors[`line_${index}_accountId`] && (
-                    <p className="text-red-500 text-sm mt-1 flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      {fieldErrors[`line_${index}_accountId`]}
-                    </p>
-                  )}
+      {/* Entity Balances */}
+      {entityBalances.length > 0 && (
+        <div className="mt-4 p-4 bg-blue-50 rounded border">
+          <h4 className="text-sm font-medium mb-2">Entity Balances (Intercompany)</h4>
+          <div className="space-y-1">
+            {entityBalances.map((balance) => (
+              <div key={balance.entityCode} className="text-xs grid grid-cols-4 gap-2">
+                <div className="font-medium">{balance.entityCode}</div>
+                <div>Debit: ${balance.debit.toFixed(2)}</div>
+                <div>Credit: ${balance.credit.toFixed(2)}</div>
+                <div className={balance.balanced ? "text-green-600" : "text-orange-600"}>
+                  {balance.balanced ? "✓ Balanced" : `Diff: $${Math.abs(balance.difference).toFixed(2)}`}
                 </div>
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Select
-                  value={line.entityCode}
-                  onValueChange={(value) =>
-                    handleLineChange(index, "entityCode", value)
-                  }
-                >
-                  <SelectTrigger
-                    className={`w-full ${fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}`}
-                  >
-                    <SelectValue placeholder="Select entity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entities.map((entity) => (
-                      <SelectItem key={entity.id} value={entity.code}>
-                        {entity.code} - {entity.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors[`line_${index}_entityCode`] && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {fieldErrors[`line_${index}_entityCode`]}
-                  </p>
-                )}
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Input
-                  type="text"
-                  value={line.description}
-                  onChange={(e) =>
-                    handleLineChange(index, "description", e.target.value)
-                  }
-                  placeholder="Line description"
-                  className={`w-full ${fieldErrors[`line_${index}_description`] ? "border-red-500" : ""}`}
-                />
-                {fieldErrors[`line_${index}_description`] && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {fieldErrors[`line_${index}_description`]}
-                  </p>
-                )}
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={line.debit}
-                  onChange={(e) =>
-                    handleLineChange(index, "debit", e.target.value)
-                  }
-                  placeholder="0.00"
-                  className={`w-full ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
-                />
-                {fieldErrors[`line_${index}_debit`] && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {fieldErrors[`line_${index}_debit`]}
-                  </p>
-                )}
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={line.credit}
-                  onChange={(e) =>
-                    handleLineChange(index, "credit", e.target.value)
-                  }
-                  placeholder="0.00"
-                  className={`w-full ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
-                />
-                {fieldErrors[`line_${index}_credit`] && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {fieldErrors[`line_${index}_credit`]}
-                  </p>
-                )}
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-wrap gap-1 items-center">
-                  {line.tags && line.tags.length > 0 && 
-                    line.tags.map((tag, tagIndex) => (
-                      <Badge key={tagIndex} variant="secondary" className="text-xs flex items-center gap-1">
-                        {tag.dimensionName}: {tag.dimensionValueName}
-                        <X 
-                          className="h-3 w-3 cursor-pointer hover:text-red-600" 
-                          onClick={() => {
-                            const newTags = line.tags?.filter((_, i) => i !== tagIndex) || [];
-                            updateLineTags(index, newTags);
-                          }}
-                        />
-                      </Badge>
-                    ))
-                  }
-                  
-                  {/* Add Tag Button with Popover */}
-                  <Popover 
-                    open={tagPopoverOpen[`line_${index}`] || false}
-                    onOpenChange={(open) => {
-                      setTagPopoverOpen(prev => ({
-                        ...prev,
-                        [`line_${index}`]: open
-                      }));
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs flex items-center gap-1"
-                      >
-                        <Tags className="h-3 w-3" />
-                        Add Tag
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0">
-                      <Command>
-                        <CommandInput 
-                          placeholder="Search dimension values..." 
-                          value={dimensionSearchQuery}
-                          onValueChange={setDimensionSearchQuery}
-                        />
-                        <CommandList className="max-h-64">
-                          {searchFilteredDimensions.map((dimension) => {
-                            if (!dimension) return null;
-                            
-                            const isExpanded = combinedExpandedDimensions[dimension.id];
-                            return (
-                              <div key={dimension.id}>
-                                {/* Dimension header (non-selectable parent) */}
-                                <div
-                                  className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100"
-                                  onClick={() => toggleDimensionExpansion(dimension.id)}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4 mr-2" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4 mr-2 transform -rotate-90" />
-                                  )}
-                                  <span className="font-medium">{dimension.name}</span>
-                                </div>
-                                
-                                {/* Dimension values (selectable children) */}
-                                {isExpanded && dimension.values?.map((value: DimensionValue) => {
-                                  const isSelected = line.tags?.some(
-                                    tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
-                                  );
-                                  
-                                  return (
-                                    <CommandItem
-                                      key={value.id}
-                                      onSelect={() => {
-                                        const existingTags = line.tags || [];
-                                        
-                                        if (isSelected) {
-                                          // Remove tag
-                                          const newTags = existingTags.filter(
-                                            tag => !(tag.dimensionId === dimension.id && tag.dimensionValueId === value.id)
-                                          );
-                                          updateLineTags(index, newTags);
-                                        } else {
-                                          // Add tag (remove any existing tag for this dimension first)
-                                          const newTags = existingTags.filter(
-                                            tag => tag.dimensionId !== dimension.id
-                                          );
-                                          newTags.push({
-                                            dimensionId: dimension.id,
-                                            dimensionValueId: value.id,
-                                            dimensionName: dimension.name,
-                                            dimensionValueName: value.name
-                                          });
-                                          updateLineTags(index, newTags);
-                                        }
-                                      }}
-                                      className="pl-8 text-sm"
-                                    >
-                                      {isSelected && <Check className="h-3 w-3 mr-2" />}
-                                      {value.name}
-                                    </CommandItem>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </td>
-
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  className="text-red-600 hover:text-red-900"
-                  onClick={() => removeLine(index)}
-                  aria-label="Remove line"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-
-        <tfoot>
-          <tr>
-            <td colSpan={6} className="px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addLine}
-                className="inline-flex items-center"
-              >
-                <Plus className="-ml-0.5 mr-2 h-4 w-4" />
-                Add Line
-              </Button>
-            </td>
-          </tr>
-
-          <tr className="bg-gray-50">
-            <td
-              colSpan={3}
-              className="px-6 py-4 text-right text-sm font-medium text-gray-900"
-            >
-              Totals:
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {totalDebit.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {totalCredit.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
-            <td className="px-6 py-4"></td>
-          </tr>
-
-          <tr className="bg-gray-50">
-            <td
-              colSpan={3}
-              className="px-6 py-4 text-right text-sm font-medium text-gray-900"
-            >
-              Difference:
-            </td>
-            <td
-              colSpan={2}
-              className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isBalanced ? "text-green-600" : "text-red-600"}`}
-            >
-              {difference.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
-            <td className="px-6 py-4"></td>
-          </tr>
-
-          {/* Entity Balance Summary Section - Intercompany Validation */}
-          {entityBalances.length > 1 && (
-            <>
-              <tr className="bg-gray-100">
-                <td
-                  colSpan={6}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Entity Balance Summary (Intercompany)
-                </td>
-              </tr>
-              {entityBalances.map((balance: EntityBalance) => (
-                <tr key={balance.entityCode} className="bg-gray-50">
-                  <td
-                    colSpan={2}
-                    className="px-6 py-2 text-right text-xs font-medium text-gray-900"
-                  >
-                    Entity {balance.entityCode}:
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                    DR:{" "}
-                    {balance.debit.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                    CR:{" "}
-                    {balance.credit.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td
-                    colSpan={2}
-                    className={`px-6 py-2 whitespace-nowrap text-xs font-medium ${balance.balanced ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {balance.balanced
-                      ? "Balanced"
-                      : `Difference: ${balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                  </td>
-                </tr>
-              ))}
-            </>
-          )}
-        </tfoot>
-      </table>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
