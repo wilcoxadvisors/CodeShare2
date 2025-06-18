@@ -29,11 +29,14 @@ function Sidebar() {
   const { selectedClientId, currentEntity } = useEntity();
 
   const isActive = (path: string) => {
-    // Handle dynamic client-specific paths
-    if (path.includes('/journal-entries') && location.pathname.includes('/journal-entries')) {
+    // Handle both generic and client-specific paths for these modules
+    if (path === '/journal-entries' && location.pathname.includes('/journal-entries')) {
       return true;
     }
-    if (path.includes('/chart-of-accounts') && location.pathname.includes('/chart-of-accounts')) {
+    if (path === '/chart-of-accounts' && location.pathname.includes('/chart-of-accounts')) {
+      return true;
+    }
+    if (path === '/manage/dimensions' && location.pathname.includes('/manage/dimensions')) {
       return true;
     }
     return location.pathname === path;
@@ -76,15 +79,15 @@ function Sidebar() {
             
             {/* General Ledger moved to Reports tab */}
             
-            {/* Journal Entries link - uses client/entity context when available */}
+            {/* Journal Entries link - always starts fresh for explicit client selection */}
             <NavItem 
-              path={currentEntity ? `/clients/${selectedClientId}/entities/${currentEntity.id}/journal-entries` : "/journal-entries"} 
+              path="/journal-entries" 
               icon={<ClipboardEdit className="h-5 w-5 mr-2" />} 
               label="Journal Entries" 
             />
             
             <NavItem 
-              path={selectedClientId ? `/clients/${selectedClientId}/chart-of-accounts` : "/chart-of-accounts"} 
+              path="/chart-of-accounts" 
               icon={<BarChart2 className="h-5 w-5 mr-2" />} 
               label="Chart of Accounts" 
             />
