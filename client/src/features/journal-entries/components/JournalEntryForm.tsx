@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 import { apiRequest } from "@/lib/queryClient";
-import { AccountType, JournalEntryStatus } from "@shared/schema";
+import { AccountType, JournalEntryStatus, journalEntryFormSchema, type JournalEntryFormData } from "@shared/schema";
 
 // Import the new components
 import { JournalEntryHeader } from "./JournalEntryHeader";
@@ -146,26 +147,9 @@ interface DimensionTag {
   dimensionValueName?: string;
 }
 
-function createFormSchema() {
-  return z.object({
-    date: z.string().min(1, "Date is required"),
-    referenceNumber: z.string().min(1, "Reference number is required"),
-    description: z.string().min(1, "Description is required"),
-    lines: z
-      .array(
-        z.object({
-          accountId: z.string().min(1, "Account is required"),
-          entityCode: z.string().min(1, "Entity code is required"),
-          description: z.string().min(1, "Line description is required"),
-          debit: z.string(),
-          credit: z.string(),
-          tags: z.array(z.any()).optional(),
-        }),
-      )
-      .min(1, "At least one line is required"),
-    isAccrual: z.boolean().optional(),
-    reversalDate: z.string().optional(),
-  });
+// Helper function to get today's date in YYYY-MM-DD format
+function getTodayYMD() {
+  return format(new Date(), "yyyy-MM-dd");
 }
 
 

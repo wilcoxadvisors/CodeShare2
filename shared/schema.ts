@@ -1158,3 +1158,64 @@ export type DimensionValue = typeof dimensionValues.$inferSelect;
 export type InsertDimensionValue = z.infer<typeof insertDimensionValueSchema>;
 export type TxDimensionLink = typeof txDimensionLink.$inferSelect;
 export type InsertTxDimensionLink = z.infer<typeof insertTxDimensionLinkSchema>;
+
+// Journal Entry Form Validation Schema
+export const journalEntryLineSchema = z.object({
+  _key: z.string().optional(),
+  id: z.number().optional(),
+  accountId: z.string().min(1, "Account is required"),
+  entityCode: z.string().min(1, "Entity is required"),
+  description: z.string().min(1, "Description is required"),
+  debit: z.string().refine((val) => {
+    if (!val) return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0;
+  }, "Invalid debit amount"),
+  credit: z.string().refine((val) => {
+    if (!val) return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0;
+  }, "Invalid credit amount"),
+  tags: z.array(z.object({
+    dimensionId: z.number(),
+    dimensionValueId: z.number(),
+    dimensionName: z.string(),
+    dimensionValueName: z.string()
+  })).optional()
+}).refine((data) => {
+  const debit = parseFloat(data.debit || "0");
+  const credit = parseFloat(data.credit || "0");
+  return (debit > 0) !== (credit > 0); // XOR: either debit OR credit, not both
+}, {
+  message: "Each line must have either a debit or credit amount, but not both",
+  path: ["debit"] // Show error on debit field
+});
+
+export const journalEntryFormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  referenceNumber: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  isAccrual: z.boolean().default(false),
+  reversalDate: z.string().optional(),
+  lines: z.array(journalEntryLineSchema).min(2, "At least two lines are required")
+}).refine((data) => {
+  // Validate balanced entry
+  const totalDebit = data.lines.reduce((sum, line) => sum + parseFloat(line.debit || "0"), 0);
+  const totalCredit = data.lines.reduce((sum, line) => sum + parseFloat(line.credit || "0"), 0);
+  return Math.abs(totalDebit - totalCredit) < 0.01;
+}, {
+  message: "Journal entry must be balanced (total debits must equal total credits)",
+  path: ["lines"]
+}).refine((data) => {
+  // Validate accrual reversal date
+  if (data.isAccrual && !data.reversalDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Reversal date is required for accrual entries",
+  path: ["reversalDate"]
+});
+
+export type JournalEntryFormData = z.infer<typeof journalEntryFormSchema>;
+export type JournalEntryLineData = z.infer<typeof journalEntryLineSchema>;
