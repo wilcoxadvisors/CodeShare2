@@ -375,6 +375,9 @@ export function JournalEntryLinesTable({
 
   // Safeguard: Ensure dimensions is always an array
   const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+  
+  console.log("ARCHITECT_DEBUG_LINES_TABLE_DIMENSIONS:", safeDimensions);
+  console.log("ARCHITECT_DEBUG_LINES_TABLE_FIRST_DIM_VALUES:", safeDimensions[0]?.values);
 
   return (
     <div className="overflow-x-auto mb-4">
