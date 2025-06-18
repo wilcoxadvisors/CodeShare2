@@ -55,6 +55,20 @@ interface DimensionTag {
   dimensionValueName?: string;
 }
 
+interface DimensionValue {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+}
+
+interface Dimension {
+  id: number;
+  name: string;
+  description?: string;
+  dimensionValues?: DimensionValue[];
+}
+
 // Account interface
 interface Account {
   id: number;
@@ -97,7 +111,7 @@ interface JournalEntryLinesTableProps {
   setLines: React.Dispatch<React.SetStateAction<JournalLine[]>>;
   accounts: Account[];
   entities?: Entity[];
-  dimensions?: any[];
+  dimensions?: Dimension[];
   fieldErrors: Record<string, string>;
   isBalanced: boolean;
   totalDebit: number;
@@ -449,16 +463,99 @@ export function JournalEntryLinesTable({
               </td>
 
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-wrap gap-1">
-                  {line.tags && line.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1 items-center">
+                  {line.tags && line.tags.length > 0 && 
                     line.tags.map((tag, tagIndex) => (
-                      <Badge key={tagIndex} variant="secondary" className="text-xs">
+                      <Badge key={tagIndex} variant="secondary" className="text-xs flex items-center gap-1">
                         {tag.dimensionName}: {tag.dimensionValueName}
+                        <X 
+                          className="h-3 w-3 cursor-pointer hover:text-red-600" 
+                          onClick={() => {
+                            const newTags = line.tags?.filter((_, i) => i !== tagIndex) || [];
+                            updateLineTags(index, newTags);
+                          }}
+                        />
                       </Badge>
                     ))
-                  ) : (
-                    <span className="text-gray-400 text-sm">No tags</span>
-                  )}
+                  }
+                  
+                  {/* Add Tag Button with Popover */}
+                  <Popover 
+                    open={tagPopoverOpen[`line_${index}`] || false}
+                    onOpenChange={(open) => {
+                      setTagPopoverOpen(prev => ({
+                        ...prev,
+                        [`line_${index}`]: open
+                      }));
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs flex items-center gap-1"
+                      >
+                        <Tags className="h-3 w-3" />
+                        Add Tag
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0">
+                      <div className="p-4">
+                        <h4 className="font-semibold text-sm mb-3">Add Dimension Tags</h4>
+                        <div className="space-y-3">
+                          {dimensions.map((dimension) => (
+                            <div key={dimension.id} className="space-y-2">
+                              <div className="text-sm font-medium text-gray-700">
+                                {dimension.name}
+                              </div>
+                              <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
+                                {dimension.dimensionValues?.map((value: DimensionValue) => {
+                                  const isSelected = line.tags?.some(
+                                    tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
+                                  );
+                                  
+                                  return (
+                                    <Button
+                                      key={value.id}
+                                      variant={isSelected ? "default" : "ghost"}
+                                      size="sm"
+                                      className="justify-start text-xs h-7"
+                                      onClick={() => {
+                                        const existingTags = line.tags || [];
+                                        
+                                        if (isSelected) {
+                                          // Remove tag
+                                          const newTags = existingTags.filter(
+                                            tag => !(tag.dimensionId === dimension.id && tag.dimensionValueId === value.id)
+                                          );
+                                          updateLineTags(index, newTags);
+                                        } else {
+                                          // Add tag (remove any existing tag for this dimension first)
+                                          const newTags = existingTags.filter(
+                                            tag => tag.dimensionId !== dimension.id
+                                          );
+                                          newTags.push({
+                                            dimensionId: dimension.id,
+                                            dimensionValueId: value.id,
+                                            dimensionName: dimension.name,
+                                            dimensionValueName: value.name
+                                          });
+                                          updateLineTags(index, newTags);
+                                        }
+                                      }}
+                                    >
+                                      {isSelected && <Check className="h-3 w-3 mr-1" />}
+                                      {value.name}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </td>
 
