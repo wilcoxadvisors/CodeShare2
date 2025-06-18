@@ -1,0 +1,35 @@
+Next Mission: Restore and Enhance Core Functionality
+We will now address the final and most complex piece of feedback you provided.
+
+Priority 3: Overhaul the Account Selector
+
+1. Goal:
+
+Completely overhaul the account selector dropdown in the JournalEntryLinesTable to be best-in-class. It must be fast, intuitive, and provide clear hierarchical context to the user, similar to the functionality we had before the refactor.
+
+2. Analysis:
+
+Your feedback that the selector "looks like shit and do not work like they did" is clear. The current implementation is a basic dropdown that does not properly display the hierarchical nature of the Chart of Accounts. An accountant needs to see the parent-child relationships between accounts to select the correct one.
+
+3. Definitive Fix Plan:
+
+The work will be focused inside the new JournalEntryLinesTable.tsx component.
+
+Hierarchical Display:
+
+The dropdown, when opened, must render the accounts in their proper tree structure. Parent accounts (e.g., "Assets") should be visually distinct from child accounts (e.g., "Cash").
+Child accounts should be indented under their parents to make the hierarchy obvious.
+Expand/Collapse Functionality:
+
+Parent accounts must have a chevron icon (">") next to them.
+Clicking a parent account should expand or collapse its children directly within the dropdown list, without closing the popover.
+Intelligent Search:
+
+The search bar inside the popover must filter the list effectively.
+When a user searches, the list should show all matching accounts and automatically expand the parent accounts so the user can see the context of the matched accounts.
+Clear Selection Indicator:
+
+When an account is selected for a line, it should be clearly marked with a checkmark inside the dropdown. Only selectable child accounts should show a checkmark, not parent accounts.
+4. Expected Outcome:
+
+The account selector will be transformed from a basic dropdown into a powerful, interactive component. A user will be able to open the selector, see the full Chart of Accounts hierarchy, expand and collapse parent accounts, search for a specific account, and confidently select the correct one, seeing its context within the hierarchy. This is a critical usability feature for any accounting professional.

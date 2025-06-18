@@ -133,6 +133,7 @@ export function JournalEntryLinesTable({
   const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
 
   // Initialize expanded state
   const initializeExpandedState = (): ExpandedState => {
@@ -213,34 +214,164 @@ export function JournalEntryLinesTable({
     });
   };
 
-  // Filter accounts based on search query
-  const filteredAccounts = useMemo(() => {
+  // Build hierarchical account tree
+  const accountTree = useMemo(() => {
+    const accountMap = new Map<number, Account & { children: (Account & { children: any[] })[] }>();
+    const rootAccounts: (Account & { children: any[] })[] = [];
+
+    // Initialize all accounts with children array
+    accounts.forEach(account => {
+      accountMap.set(account.id, { ...account, children: [] });
+    });
+
+    // Build tree structure
+    accounts.forEach(account => {
+      const accountWithChildren = accountMap.get(account.id)!;
+      if (account.parentId) {
+        const parent = accountMap.get(account.parentId);
+        if (parent) {
+          parent.children.push(accountWithChildren);
+        } else {
+          rootAccounts.push(accountWithChildren);
+        }
+      } else {
+        rootAccounts.push(accountWithChildren);
+      }
+    });
+
+    return rootAccounts;
+  }, [accounts]);
+
+  // Filter and search in hierarchical structure
+  const filteredAccountTree = useMemo(() => {
     if (!searchQuery.trim()) {
-      return accounts;
+      return accountTree;
     }
 
     const lowerQuery = searchQuery.toLowerCase();
-    return accounts.filter(
-      (account) =>
-        account.accountCode.toLowerCase().includes(lowerQuery) ||
-        account.name.toLowerCase().includes(lowerQuery),
-    );
-  }, [accounts, searchQuery]);
-
-  // Group accounts by type and parent relationships
-  const groupedAccounts = useMemo(() => {
-    const grouped: Record<string, Account[]> = {};
     
-    filteredAccounts.forEach((account) => {
-      const type = account.type || 'Other';
-      if (!grouped[type]) {
-        grouped[type] = [];
-      }
-      grouped[type].push(account);
-    });
+    const filterRecursive = (account: Account & { children: any[] }): (Account & { children: any[] }) | null => {
+      const matchesSearch = 
+        account.accountCode.toLowerCase().includes(lowerQuery) ||
+        account.name.toLowerCase().includes(lowerQuery);
 
-    return grouped;
-  }, [filteredAccounts]);
+      const filteredChildren = account.children
+        .map(child => filterRecursive(child))
+        .filter(Boolean) as (Account & { children: any[] })[];
+
+      // Include account if it matches search OR has matching children
+      if (matchesSearch || filteredChildren.length > 0) {
+        return { ...account, children: filteredChildren };
+      }
+
+      return null;
+    };
+
+    return accountTree
+      .map(account => filterRecursive(account))
+      .filter(Boolean) as (Account & { children: any[] })[];
+  }, [accountTree, searchQuery]);
+
+  // Auto-expand parents when searching
+  const autoExpandedAccounts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return {};
+    }
+
+    const expanded: ExpandedState = {};
+    
+    const expandParents = (account: Account & { children: any[] }) => {
+      if (account.children.length > 0) {
+        expanded[account.id] = true;
+        account.children.forEach(child => expandParents(child));
+      }
+    };
+
+    filteredAccountTree.forEach(account => expandParents(account));
+    return expanded;
+  }, [filteredAccountTree, searchQuery]);
+
+  // Get combined expanded state (manual + auto-expanded from search)
+  const combinedExpandedState = useMemo(() => {
+    return { ...expandedAccounts, ...autoExpandedAccounts };
+  }, [expandedAccounts, autoExpandedAccounts]);
+
+  // Toggle account expansion
+  const toggleAccountExpansion = (accountId: number) => {
+    setExpandedAccounts(prev => ({
+      ...prev,
+      [accountId]: !prev[accountId]
+    }));
+  };
+
+  // Render hierarchical account tree
+  const renderAccountTree = (accounts: (Account & { children: any[] })[], level = 0, lineIndex: number) => {
+    return accounts.map((account) => {
+      const hasChildren = account.children.length > 0;
+      const isExpanded = combinedExpandedState[account.id];
+      const isSelected = lines[lineIndex]?.accountId === account.id.toString();
+      const canSelect = !hasChildren; // Only leaf accounts are selectable
+      
+      return (
+        <div key={account.id}>
+          {/* Parent/Child Account Item */}
+          <div
+            className={`flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer ${canSelect ? 'hover:bg-blue-50' : 'hover:bg-gray-100'}`}
+            onClick={() => {
+              if (hasChildren) {
+                toggleAccountExpansion(account.id);
+              } else {
+                handleLineChange(lineIndex, "accountId", account.id.toString());
+                setAccountPopoverOpen(prev => ({
+                  ...prev,
+                  [`line_${lineIndex}`]: false
+                }));
+              }
+            }}
+          >
+            {/* Indentation for hierarchy */}
+            <div style={{ width: level * 16 }} />
+            
+            {/* Expand/Collapse chevron for parent accounts */}
+            {hasChildren && (
+              <div className="flex items-center justify-center w-4 h-4 mr-1">
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-gray-400" />
+                )}
+              </div>
+            )}
+            
+            {/* Account content */}
+            <div className="flex-1 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className={`font-medium text-sm ${hasChildren ? 'text-gray-700 font-semibold' : 'text-gray-900'}`}>
+                  {account.accountCode}
+                </span>
+                <span className="text-gray-400">-</span>
+                <span className={`text-sm ${hasChildren ? 'text-gray-600 font-medium' : 'text-gray-700'}`}>
+                  {account.name}
+                </span>
+              </div>
+              
+              {/* Selection indicator for leaf accounts */}
+              {canSelect && isSelected && (
+                <Check className="h-4 w-4 text-blue-600" />
+              )}
+            </div>
+          </div>
+          
+          {/* Render children if expanded */}
+          {hasChildren && isExpanded && (
+            <div>
+              {renderAccountTree(account.children, level + 1, lineIndex)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
 
   return (
     <div className="overflow-x-auto mb-4">
@@ -294,13 +425,18 @@ export function JournalEntryLinesTable({
             <tr key={line.id || line._key}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div>
-                  {/* Combobox for searchable account dropdown */}
+                  {/* Hierarchical Account Selector */}
                   <Popover
+                    open={accountPopoverOpen[`line_${index}`] || false}
                     onOpenChange={(open) => {
+                      setAccountPopoverOpen(prev => ({
+                        ...prev,
+                        [`line_${index}`]: open
+                      }));
                       // Reset expanded state and search query when dropdown is closed
                       if (!open) {
-                        setExpandedAccounts(initializeExpandedState());
-                        setSearchQuery(""); // Clear search query
+                        setExpandedAccounts({});
+                        setSearchQuery("");
                       }
                     }}
                   >
@@ -320,53 +456,45 @@ export function JournalEntryLinesTable({
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0">
-                      <Command>
-                        <div className="relative">
-                          <CommandInput
-                            placeholder="Search account..."
-                            className="h-9 pr-8"
+                    <PopoverContent className="w-[500px] p-0" side="bottom" align="start">
+                      <div className="border-b px-3 py-2">
+                        <div className="flex items-center border rounded-md px-3">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-gray-400 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder="Search accounts..."
+                            className="flex-1 py-2 bg-transparent outline-none text-sm"
                             value={searchQuery}
-                            onValueChange={(value) => {
-                              setSearchQuery(value);
-                              if (!value.trim()) {
-                                setExpandedAccounts({});
-                              }
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
                             }}
                           />
                         </div>
-                        <CommandList>
-                          <CommandEmpty>No account found.</CommandEmpty>
-                          <CommandGroup>
-                            {Object.entries(groupedAccounts).map(([type, accountsInType]) => (
-                              <div key={type}>
-                                <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                  {type}
-                                </div>
-                                {accountsInType.map((account) => (
-                                  <CommandItem
-                                    key={account.id}
-                                    value={`${account.accountCode} ${account.name}`}
-                                    onSelect={() => {
-                                      handleLineChange(index, "accountId", account.id.toString());
-                                    }}
-                                    className="flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center space-x-2">
-                                      <span className="font-medium text-sm">{account.accountCode}</span>
-                                      <span className="mx-1 text-muted-foreground">-</span>
-                                      <span className="text-sm">{account.name}</span>
-                                    </div>
-                                    {line.accountId === account.id.toString() && (
-                                      <Check className="h-4 w-4" />
-                                    )}
-                                  </CommandItem>
-                                ))}
-                              </div>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
+                      </div>
+                      <div className="max-h-[400px] overflow-y-auto">
+                        {filteredAccountTree.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-sm text-gray-500">
+                            No accounts found
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            {renderAccountTree(filteredAccountTree, 0, index)}
+                          </div>
+                        )}
+                      </div>
                     </PopoverContent>
                   </Popover>
                   {fieldErrors[`line_${index}_accountId`] && (
