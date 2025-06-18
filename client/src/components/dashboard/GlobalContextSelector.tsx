@@ -358,6 +358,8 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
               const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
               const isExpanded = isEntitySelectionView && !!expandedClients[client.id];
               
+              console.log(`ARCHITECT_DEBUG_PHANTOM: Client ${client.id} (${client.name}) - isEntitySelectionView: ${isEntitySelectionView}, expandedClients[${client.id}]: ${!!expandedClients[client.id]}, isExpanded: ${isExpanded}, path: ${location.pathname}`);
+              
               return (
                 <div key={`client-group-${client.id}`}>
                   <CommandGroup heading={client.name}>
@@ -414,7 +416,11 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                        3. This client is explicitly expanded by user action 
                        4. We are in an entity selection view (not Chart of Accounts or Dimensions)
                     */}
-                    {showEntities && filteredEntities.length > 0 && isExpanded && isEntitySelectionView && (
+                    {(() => {
+                      const shouldShowEntities = showEntities && filteredEntities.length > 0 && isExpanded && isEntitySelectionView;
+                      console.log(`ARCHITECT_DEBUG_ENTITY_LIST: Client ${client.id} - showEntities: ${showEntities}, filteredEntities: ${filteredEntities.length}, isExpanded: ${isExpanded}, isEntitySelectionView: ${isEntitySelectionView}, shouldShow: ${shouldShowEntities}`);
+                      return shouldShowEntities;
+                    })() && (
                       <div 
                         className="pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out max-h-[500px] opacity-100 translate-y-0"
                         aria-hidden="false"
