@@ -1,0 +1,139 @@
+Architect's Definitive Plan: Phase 2 - State Management & Validation Overhaul (Detailed)
+
+1. Goal:
+
+Refactor the entire JournalEntryForm and its child components (JournalEntryHeader, JournalEntryLinesTable) to use the react-hook-form library for all form state management and validation. This will replace the current system of multiple useState hooks and manual validation logic, making the components more robust, maintainable, and performant.
+
+2. Definitive Plan:
+
+Stage 1: Refactor JournalEntryForm.tsx to Use Child Components
+
+Objective: The parent JournalEntryForm.tsx is currently using a temporary, hardcoded UI. We will replace this with the actual, decomposed child components.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Actions:
+
+Delete Temporary UI: In the return statement of JournalEntryForm, find the comment // Journal Entry Header - Using temporary individual form fields around line 523. Delete the entire block of JSX from this point down to the closing </div> just before the // Form Actions comment (approx. line 662).
+Render Real Components: In the place of the deleted code, insert the actual child components. This will connect the form's structure, though we will fix the props in the next stage.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryForm.tsx
+// Replace the deleted temporary UI with this:
+
+      <JournalEntryHeader
+        form={form}
+        existingEntry={existingEntry}
+        entities={entities}
+        existingJournalEntries={existingJournalEntries}
+      />
+
+      <JournalEntryLinesTable
+        form={form}
+        fields={fields}
+        accounts={accounts}
+        entities={entities}
+        dimensions={safeDimensions}
+        append={append}
+        remove={remove}
+        updateLineTags={updateLineTags}
+        totalDebit={totalDebit}
+        totalCredit={totalCredit}
+        isBalanced={isBalanced}
+        entityBalances={entityBalances}
+      />
+
+      <AttachmentSection
+        attachments={existingEntry?.files || []}
+        status={existingEntry?.status || "draft"}
+        isInEditMode={!!existingEntry}
+        uploadPendingFilesRef={uploadPendingFilesRef}
+        clientId={effectiveClientId}
+        entityId={entityId}
+        journalEntryId={existingEntry?.id}
+      />
+Stage 2: Refactor JournalEntryHeader.tsx
+
+Objective: Convert the header from using manual useState props to being fully controlled by the react-hook-form instance from its parent.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryHeader.tsx
+
+Actions:
+
+Update Props: Modify the JournalEntryHeaderProps interface. Remove journalData, setJournalData, and fieldErrors. Add a form prop.
+Remove State Logic: Delete the handleChange function entirely.
+Convert Inputs: Replace every standard input with a FormField wrapper from @/components/ui/form.
+Example: Refactoring the Description Textarea:
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryHeader.tsx
+
+// --- BEFORE ---
+<Textarea
+  id="description"
+  name="description"
+  value={journalData.description}
+  onChange={handleChange}
+  //...
+/>
+{fieldErrors.description && ( /* ... error display ... */ )}
+
+// --- AFTER ---
+<FormField
+  control={form.control}
+  name="description"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Description</FormLabel>
+      <FormControl>
+        <Textarea
+          placeholder="Enter a description for this journal entry"
+          {...field}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+Apply this same pattern to the Date input, Reference input, isAccrual switch, and reversalDate calendar.
+Stage 3: Refactor JournalEntryLinesTable.tsx
+
+Objective: Convert the lines table to be fully controlled by the useFieldArray instance from JournalEntryForm.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Update Props: Modify the JournalEntryLinesTableProps interface. Remove lines, setLines, and fieldErrors. Ensure it accepts form, fields, append, and remove.
+Update Table Iteration: Change the main tbody mapping from lines.map(...) to fields.map((field, index) => ... ). The key should now be field.id.
+Remove State Logic: Delete the handleLineChange, addLine, removeLine, and updateLineTags functions that manually modify state.
+Connect Inputs: Use form.register to connect each input to the form state within the loop.
+Connect Buttons:
+The "Add Line" button's onClick must now call append({ ...new_line_default_values... }).
+The "Remove" button's onClick for each row must call remove(index).
+Example: Refactoring a Line's Debit Input:
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+// --- BEFORE ---
+<Input
+  type="number"
+  value={line.debit}
+  onChange={(e) => handleLineChange(index, "debit", e.target.value)}
+  //...
+/>
+
+// --- AFTER ---
+<Input
+  type="number"
+  step="0.01"
+  placeholder="0.00"
+  {...form.register(`lines.${index}.debit`)}
+/>
+3. Expected Outcome:
+
+The monolithic state management within the Journal Entry module will be eliminated.
+The JournalEntryForm will act as a clean container, orchestrating its child components.
+State will flow unidirectionally from the react-hook-form instance to the controlled child components.
+Validation will be robust, centralized, and automatically handled by the Zod schema.
