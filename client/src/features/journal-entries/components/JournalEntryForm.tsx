@@ -123,6 +123,7 @@ import {
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { JournalEntryHeader } from "./JournalEntryHeader";
+import { JournalEntryLinesTable } from "./JournalEntryLinesTable";
 
 // Define API response interface types for better type safety
 interface JournalEntryResponse {
@@ -2499,15 +2500,17 @@ const [journalData, setJournalData] = useState({
         displayId={displayId}
       />
 
-      <div className="overflow-x-auto mb-4">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Account
+      <JournalEntryLinesTable
+        lines={lines}
+        setLines={setLines}
+        accounts={accounts}
+        entities={entities}
+        dimensions={dimensions}
+        fieldErrors={fieldErrors}
+        isBalanced={isBalanced}
+        totalDebit={totalDebit}
+        totalCredit={totalCredit}
+      />
               </th>
               <th
                 scope="col"
