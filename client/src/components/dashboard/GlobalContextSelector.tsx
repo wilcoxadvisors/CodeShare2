@@ -252,17 +252,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
 
   useEffect(() => {
     if (selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - checking if expansion needed`);
-      
-      // Only automatically expand the selected client IF isEntitySelectionView is true
-      if (isEntitySelectionView) {
-        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Expanding client on entity-view page.');
-        setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
-      } else {
-        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Skipping expansion on client-only page.');
-      }
+      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
-  }, [selectedClientId, isEntitySelectionView]);
+  }, [selectedClientId]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
@@ -362,7 +354,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                 return null;
               }
               
-              const isExpanded = expandedClients[client.id] || false;
+              // DECLARATIVE UI STATE: Make expansion a pure function of URL
+              const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
+              const isExpanded = isEntitySelectionView && !!expandedClients[client.id];
               
               return (
                 <div key={`client-group-${client.id}`}>

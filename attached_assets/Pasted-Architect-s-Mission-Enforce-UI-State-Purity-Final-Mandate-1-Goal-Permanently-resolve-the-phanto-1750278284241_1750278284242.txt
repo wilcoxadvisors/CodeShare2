@@ -1,0 +1,59 @@
+Architect's Mission: Enforce UI State Purity (Final Mandate)
+1. Goal
+
+Permanently resolve the phantom checkmark bug by implementing a definitive, declarative fix. The GlobalContextSelector's UI must become a pure function of the URL, eliminating all state conflicts and race conditions.
+
+2. Root Cause Analysis
+
+This bug has persisted because we have been fighting symptoms. The true root cause is a state management conflict within GlobalContextSelector.tsx. Multiple pieces of logic (useEffect hooks, click handlers) are fighting to control a single piece of state (expandedClients).
+
+The log ARCHITECT_DEBUG_AUTO_EXPAND: Skipping expansion on client-only page followed by your screenshot which clearly shows an expanded client is undeniable proof of this conflict. One piece of logic is being correctly suppressed, but another is still firing and setting the state incorrectly.
+
+The only way to guarantee a fix is to stop managing this with imperative effects and instead declaratively render the UI based on the route.
+
+3. Definitive Fix Plan (The Declarative Approach)
+
+We will make one critical change inside client/src/components/dashboard/GlobalContextSelector.tsx to make its rendering logic immutable and directly dependent on the URL.
+
+Locate the Client map Function: Find the .map() function that iterates over the clients array to render each client row.
+
+Redefine the isExpanded Variable: Inside this map function, you will find a line that determines if the current client is expanded. It will look something like this:
+const isExpanded = !!expandedClients[client.id];
+This line is the source of the bug because it trusts the stale state. We will override it.
+
+Apply the Unbreakable Rule: The isExpanded variable must always be false if the current route is a client-only page, regardless of what the expandedClients state object contains.
+
+Replace the existing isExpanded declaration with the following architecturally sound logic:
+
+TypeScript
+
+// Inside clients.map(client => { ...
+
+const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
+const isExpanded = isEntitySelectionView && !!expandedClients[client.id];
+
+Cleanup and Simplify: To prevent future conflicts, we will now remove the logic that failed in our previous attempts.
+
+Remove the state-reset useEffect: Delete the entire useEffect hook that watches location.pathname and calls setExpandedClients({}). It is now redundant.
+
+Simplify the auto-expand useEffect: Find the useEffect that watches selectedClientId and revert it to its original, simple form. It no longer needs a conditional check because our new isExpanded variable provides a definitive override during rendering.
+
+Revert the auto-expand useEffect to this:
+
+TypeScript
+
+useEffect(() => {
+  if (selectedClientId) {
+    setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+  }
+}, [selectedClientId]);
+4. Expected Outcome
+
+This declarative approach is superior because it is stateless and calculated on every render. There is no dependency on the timing of effects.
+
+A user navigates from the JE module to the Chart of Accounts page for Client 73.
+The GlobalContextSelector begins to render the row for Client 73.
+The isExpanded variable is calculated. The isEntitySelectionView flag will be false.
+The entire expression isEntitySelectionView && !!expandedClients[client.id] is therefore guaranteed to be false.
+The component renders the Client 73 row in a collapsed state because isExpanded is false. The entity list is never rendered. The checkmark cannot appear.
+This resolves the bug at its core by making the view a pure, predictable function of the URL, which is the highest standard of frontend architecture.
