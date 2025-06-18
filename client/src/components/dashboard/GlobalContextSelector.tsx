@@ -70,19 +70,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
 
-  // CRITICAL STATE RESET: Route-aware expansion state management
-  // This prevents phantom checkmarks by clearing expansion state on client-only pages
-  useEffect(() => {
-    // Re-calculate this inside the effect to ensure it has the latest location
-    const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
 
-    if (!isEntitySelectionView) {
-      // This is the critical state reset that was missing.
-      // If we are on a client-only page, clear all expansions.
-      console.log('ARCHITECT_DEBUG_STATE_RESET: Clearing expansion state for client-only page:', location.pathname);
-      setExpandedClients({});
-    }
-  }, [location.pathname]); // This effect MUST run every time the user navigates.
 
   // Determine what context is selected for display
   const hasClientContext = selectedClientId !== null;
@@ -264,12 +252,17 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
 
   useEffect(() => {
     if (selectedClientId) {
-      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - ensuring it's expanded`);
+      console.log(`ARCHITECT_DEBUG_SELECTOR_UI: Selected client changed to ${selectedClientId} - checking if expansion needed`);
       
-      // Only ensure the selected client is expanded, leave others in user-controlled state
-      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+      // Only automatically expand the selected client IF isEntitySelectionView is true
+      if (isEntitySelectionView) {
+        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Expanding client on entity-view page.');
+        setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
+      } else {
+        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Skipping expansion on client-only page.');
+      }
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, isEntitySelectionView]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
