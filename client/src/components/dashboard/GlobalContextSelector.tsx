@@ -167,24 +167,25 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to dimensions: ${newPath}`);
       navigate(newPath);
     } else {
-      // Rule 3: All other cases - find first entity and navigate to Journal Entries
-      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Finding first entity for client ${clientId}`);
+      // Rule 3: All other cases - update context first, then let smart redirect handle navigation
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Setting client context for client ${clientId}, current entity: ${currentEntity?.id}`);
       
-      // Filter entities for the selected client
-      const clientEntities = entities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
+      // First update the context
+      setSelectedClientId(clientId);
       
-      if (clientEntities.length > 0) {
-        // Navigate to first entity's Journal Entries page
-        const firstEntity = clientEntities[0];
-        const newPath = `/clients/${clientId}/entities/${firstEntity.id}/journal-entries`;
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to first entity's journal entries: ${newPath} (Entity: ${firstEntity.name})`);
-        navigate(newPath);
-      } else {
-        // Fallback: no entities found, navigate to client dashboard
-        const newPath = `/clients/${clientId}`;
-        console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: No entities found, navigating to client dashboard: ${newPath}`);
-        navigate(newPath);
+      // If we're on journal entries and need an entity, select the first available one
+      if (currentPath.includes('/journal-entries')) {
+        const clientEntities = entities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
+        
+        if (clientEntities.length > 0 && (!currentEntity || currentEntity.clientId !== clientId)) {
+          const firstEntity = clientEntities[0];
+          console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Setting entity for journal entries: ${firstEntity.name} (ID: ${firstEntity.id})`);
+          setCurrentEntity(firstEntity);
+        }
       }
+      
+      // Let the smart redirect logic handle the actual navigation
+      console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Context updated, smart redirect will handle navigation`);
     }
     
     // Close popover immediately

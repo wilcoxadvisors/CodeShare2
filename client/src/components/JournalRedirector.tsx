@@ -108,13 +108,37 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
                                  currentPath === '/manage/dimensions';
       
       if (isGenericModulePath) {
-        const targetPath = `/clients/${selectedClientId}${currentPath}`;
-        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting from ${currentPath} to ${targetPath} for active client ${selectedClientId}`);
-        navigate(targetPath, { replace: true });
-        return;
+        // For Journal Entries, we need to check if we have both client and entity
+        if (currentPath === '/journal-entries') {
+          if (currentEntity && currentEntity.clientId === selectedClientId) {
+            // We have matching client and entity - redirect to full path
+            const targetPath = `/clients/${selectedClientId}/entities/${currentEntity.id}/journal-entries`;
+            console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting to entity-specific journal entries: ${targetPath}`);
+            navigate(targetPath, { replace: true });
+            return;
+          } else if (allEntities && allEntities.length > 0) {
+            // Find first entity for the selected client
+            const clientEntities = allEntities.filter(e => e.clientId === selectedClientId && e.active);
+            if (clientEntities.length > 0) {
+              const firstEntity = clientEntities[0];
+              const targetPath = `/clients/${selectedClientId}/entities/${firstEntity.id}/journal-entries`;
+              console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-selecting first entity and redirecting: ${targetPath}`);
+              navigate(targetPath, { replace: true });
+              return;
+            }
+          }
+          // If no entity available, stay on generic page to show entity selection
+          console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: No suitable entity found for journal entries, staying on generic page`);
+        } else {
+          // For client-only pages (Chart of Accounts, Dimensions)
+          const targetPath = `/clients/${selectedClientId}${currentPath}`;
+          console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting from ${currentPath} to ${targetPath} for active client ${selectedClientId}`);
+          navigate(targetPath, { replace: true });
+          return;
+        }
       }
     }
-  }, [selectedClientId, params.clientId, location.pathname, navigate, isAuthLoading, isLoading]);
+  }, [selectedClientId, currentEntity, allEntities, params.clientId, location.pathname, navigate, isAuthLoading, isLoading]);
 
   // Decision tree for rendering - with detailed logs at each step
   
