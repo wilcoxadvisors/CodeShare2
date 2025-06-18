@@ -389,17 +389,28 @@ function JournalEntryForm({
       }));
       setLines(processedLines);
     } else {
-      // Add initial empty line for new entries
-      const newLine: JournalLine = {
-        _key: nanoid(),
-        accountId: "",
-        entityCode: entities.length > 0 ? entities[0].code : "",
-        description: "",
-        debit: "",
-        credit: "",
-        tags: [],
-      };
-      setLines([newLine]);
+      // Add initial two empty lines for new entries (standard accounting practice)
+      const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
+      setLines([
+        {
+          _key: nanoid(),
+          accountId: "",
+          entityCode: defaultEntityCode,
+          description: "",
+          debit: "",
+          credit: "",
+          tags: [],
+        },
+        {
+          _key: nanoid(),
+          accountId: "",
+          entityCode: defaultEntityCode,
+          description: "",
+          debit: "",
+          credit: "",
+          tags: [],
+        },
+      ]);
     }
   }, [existingEntry, entities]);
 
