@@ -42,6 +42,8 @@ import {
   FileUp,
   AlertCircle,
   Loader2,
+  CheckCircle2,
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -94,8 +96,6 @@ import {
 } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
