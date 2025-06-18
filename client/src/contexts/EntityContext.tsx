@@ -32,6 +32,7 @@ interface EntityContextType {
   setSelectedClient: (client: Client | null) => void;
   isLoading: boolean;
   isInitialLoading: boolean;
+  initialLoadComplete: boolean;
   selectedClientId: number | null;
   setSelectedClientId: (clientId: number | null) => void;
 }
@@ -60,16 +61,9 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Updated to use isGuestUser directly from AuthContext
   const { user, isLoading: isAuthLoadingFromAuthContext, isGuestUser } = useAuth();
   
-  // Strengthen state initialization with localStorage persistence
-  const [selectedClientId, setSelectedClientIdState] = useState<number | null>(() => {
-    const savedId = localStorage.getItem('selectedClientId');
-    return savedId ? parseInt(savedId, 10) : null;
-  });
-
-  const [currentEntityId, setCurrentEntityIdState] = useState<number | null>(() => {
-    const savedId = localStorage.getItem('currentEntityId');
-    return savedId ? parseInt(savedId, 10) : null;
-  });
+  // Initialize state to null - no localStorage persistence
+  const [selectedClientId, setSelectedClientIdState] = useState<number | null>(null);
+  const [currentEntityId, setCurrentEntityIdState] = useState<number | null>(null);
   
   // Our own loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -78,38 +72,19 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Use a useRef to track whether we've tried to fetch entities after auth
   const entityFetchAttempted = React.useRef(false);
   
-  // Enhanced setter for client ID that persists to localStorage
+  // Simple setter for client ID - no localStorage persistence
   const setSelectedClientId = (clientId: number | null) => {
-    console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Setting client ID to ${clientId}`);
+    console.log(`ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to ${clientId}`);
     setSelectedClientIdState(clientId);
-    
-    // Persist to localStorage when value is not null
-    if (clientId !== null) {
-      localStorage.setItem(STORAGE_KEY_CLIENT, clientId.toString());
-      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Saved client ID ${clientId} to localStorage`);
-    } else {
-      localStorage.removeItem(STORAGE_KEY_CLIENT);
-      console.log(`ARCHITECT_DEBUG_SELECTOR_PERSISTENCE: Cleared client ID from localStorage`);
-    }
   };
   
-  // Create reliable setters with persistence
+  // Simple setters - no localStorage persistence
   const setSelectedClient = (client: Client | null) => {
     setSelectedClientIdState(client?.id ?? null);
-    if (client) {
-      localStorage.setItem('selectedClientId', String(client.id));
-    } else {
-      localStorage.removeItem('selectedClientId');
-    }
   };
 
   const setCurrentEntity = (entity: Entity | null) => {
     setCurrentEntityIdState(entity?.id ?? null);
-    if (entity) {
-      localStorage.setItem('currentEntityId', String(entity.id));
-    } else {
-      localStorage.removeItem('currentEntityId');
-    }
   };
   
   // Log detailed auth and entity state information

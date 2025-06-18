@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { useEntity } from '@/contexts/EntityContext';
 import AppLayout from '@/components/AppLayout';
+import NoEntitySelected from '@/components/NoEntitySelected';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,19 +17,19 @@ const FullPageSpinner = () => (
 );
 
 /**
- * Wraps every "entity-scoped" route.
- *  – Reads :clientId / :entityId from the URL
- *  – Pushes the matching entity into EntityContext
- *  – Shows child routes (<Outlet/>) inside the normal AppLayout shell
- *  – Critically: waits until entities are loaded before rendering children
+ * Enhanced EntityLayout implementing industry-standard context selection
+ * Handles three distinct scenarios:
+ * A) Context Loading: Show spinner while initial data loads
+ * B) No Client/Entity in URL: Show NoEntitySelected component
+ * C) Context Ready: Render the target page
  */
 export default function EntityLayout() {
   const { clientId, entityId } = useParams();
-  const { entities, isLoading, setCurrentEntity, setSelectedClientId } = useEntity();
+  const { entities, isLoading, initialLoadComplete, setCurrentEntity, setSelectedClientId } = useEntity();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Set client ID from URL params for better context coordination
+  // Set client ID from URL params for context coordination
   useEffect(() => {
     if (clientId) {
       console.log("EntityLayout: Setting client ID from URL params:", clientId);
@@ -56,50 +57,45 @@ export default function EntityLayout() {
     }
   }, [isError, error, toast]);
 
+  // Set current entity when found
   useEffect(() => {
-    console.log("EntityLayout: Current entities", entities.length, "Looking for entity ID:", entityId);
-    console.log("EntityLayout: Client ID from params:", clientId);
-    
-    // First try to find entity in the already loaded entities
     if (!isLoading && entities.length && entityId) {
       const found = entities.find(e => e.id === Number(entityId));
       if (found) {
         console.log("EntityLayout: Found entity in loaded entities, setting current entity:", found.name);
         setCurrentEntity(found);
-      } else {
-        console.log("EntityLayout: Entity not found in loaded entities, trying direct fetch");
-        
-        // If we have direct entity data from the backup query
-        if (entityData && typeof entityData === 'object' && 'id' in entityData) {
-          console.log("EntityLayout: Using directly fetched entity data:", entityData);
-          setCurrentEntity(entityData as any); // Cast as Entity since we've verified key properties
-        }
+      } else if (entityData && typeof entityData === 'object' && 'id' in entityData) {
+        console.log("EntityLayout: Using directly fetched entity data:", entityData);
+        setCurrentEntity(entityData as any);
       }
     }
-  }, [entities, isLoading, entityId, clientId, setCurrentEntity, entityData]);
+  }, [entities, isLoading, entityId, setCurrentEntity, entityData]);
 
-  /* ---------- only render children when entity context is being loaded ---------- */
-  const { allEntities, isInitialLoading } = useEntity();
-  
-  // NEW: If we're still fetching entities for this client, keep waiting
-  const stillFetchingForClient = 
-    isInitialLoading || 
-    (isLoading && entities.length === 0 && allEntities.length === 0);
-    
-  if (stillFetchingForClient) {
-    console.log("EntityLayout: Still loading entities - waiting for initial load", { 
-      isInitialLoading, 
+  // SCENARIO A: Context Loading - Show spinner while initial data loads
+  if (isLoading || !initialLoadComplete) {
+    console.log("EntityLayout: Context still loading - showing spinner", { 
       isLoading, 
-      entitiesLength: entities.length, 
-      allEntitiesLength: allEntities.length 
+      initialLoadComplete
     });
     return <FullPageSpinner />;
   }
 
-  // If we have entities loaded but can't find this specific one, show an error
-  // BUT - only if we also don't have a directly fetched entity
+  // SCENARIO B: No Client/Entity in URL - Show NoEntitySelected component
+  if (!clientId || !entityId) {
+    console.log("EntityLayout: Missing URL parameters - showing NoEntitySelected", { 
+      clientId, 
+      entityId 
+    });
+    return (
+      <AppLayout>
+        <NoEntitySelected />
+      </AppLayout>
+    );
+  }
+
+  // Verify entity exists
   const entityExists = entities.find(e => e.id === Number(entityId)) || entityData;
-  if (!entityExists && !isLoading) {
+  if (!entityExists) {
     console.log("EntityLayout: Entity ID not found:", entityId);
     return (
       <AppLayout>
@@ -120,6 +116,8 @@ export default function EntityLayout() {
     );
   }
 
+  // SCENARIO C: Context Ready - Render the target page
+  console.log("EntityLayout: Context ready - rendering Outlet", { clientId, entityId });
   return (
     <AppLayout>
       <Outlet />

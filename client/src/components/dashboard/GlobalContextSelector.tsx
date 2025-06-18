@@ -51,8 +51,6 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Debug logging removed - data flow is now working correctly
-  
   // Detect if we're on a client-only page (like dimensions or chart of accounts)
   const location = useLocation();
   const navigate = useNavigate();
@@ -65,14 +63,6 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // TRUE USER-CONTROLLED EXPANSION: Creator/Owner's exact requirements
   // Track which clients are expanded - start collapsed, allow restoration for selected client
   const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
-  
-  // PERSISTENCE RESTORATION: If there's a selected client from localStorage, expand it initially
-  useEffect(() => {
-    if (selectedClientId && clients.length > 0) {
-      setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
-      console.log(`ARCHITECT_DEBUG_SELECTOR_INIT_EXPAND: Restored selectedClientId ${selectedClientId}, expanding it for user convenience`);
-    }
-  }, [selectedClientId, clients.length]);
   const [initialClientAutoSelectedDone, setInitialClientAutoSelectedDone] = useState(false);
   // Reference to current selectedClientId to avoid stale references
   const selectedClientIdRef = React.useRef<number | null>(selectedClientId);
