@@ -11,13 +11,6 @@ import { UseFormReturn, FieldArrayWithId } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -218,6 +211,112 @@ export function JournalEntryLinesTable({
   // Combine manual and auto expansions
   const combinedExpansions = { ...expandedAccounts, ...autoExpandedAccounts };
 
+  // Filter dimensions based on search query
+  const filteredDimensions = useMemo(() => {
+    if (!dimensionSearchQuery.trim()) {
+      return dimensions.filter(dim => dim.values && dim.values.length > 0);
+    }
+
+    return dimensions.filter(dimension => {
+      if (!dimension.values || dimension.values.length === 0) return false;
+      
+      const dimensionMatches = dimension.name.toLowerCase().includes(dimensionSearchQuery.toLowerCase());
+      const valueMatches = dimension.values.some(value => 
+        value.name.toLowerCase().includes(dimensionSearchQuery.toLowerCase()) ||
+        (value.code && value.code.toLowerCase().includes(dimensionSearchQuery.toLowerCase()))
+      );
+      
+      return dimensionMatches || valueMatches;
+    });
+  }, [dimensions, dimensionSearchQuery]);
+
+  // Render hierarchical dimension tree with react-hook-form integration
+  const renderDimensionTree = (dimension: Dimension, lineIndex: number): React.ReactNode => {
+    const isExpanded = expandedDimensions[dimension.id] || false;
+    const hasValues = dimension.values && dimension.values.length > 0;
+
+    if (!hasValues) return null;
+
+    return (
+      <div key={dimension.id}>
+        {/* Dimension Header */}
+        <CommandItem
+          className="flex items-center gap-2 cursor-pointer font-medium"
+          onSelect={() => toggleDimensionExpansion(dimension.id)}
+        >
+          <span className="flex-shrink-0">
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </span>
+          <span className="text-sm font-medium">
+            {dimension.name}
+          </span>
+        </CommandItem>
+
+        {/* Dimension Values */}
+        {isExpanded && (
+          <>
+            {dimension.values.map((value) => {
+              const currentTags = form.watch(`lines.${lineIndex}.tags`) || [];
+              const isSelected = currentTags.some((tag: DimensionTag) => tag.dimensionValueId === value.id);
+
+              return (
+                <CommandItem
+                  key={value.id}
+                  className="flex items-center gap-2 cursor-pointer pl-8"
+                  onSelect={() => {
+                    // Get current tags from form state
+                    const currentTags = form.getValues(`lines.${lineIndex}.tags`) || [];
+
+                    let newTags;
+                    if (isSelected) {
+                      // REMOVE the tag if it's already selected
+                      newTags = currentTags.filter((tag: DimensionTag) => tag.dimensionValueId !== value.id);
+                    } else {
+                      // ADD the tag, ensuring only one value per dimension
+                      const otherDimensionTags = currentTags.filter((tag: DimensionTag) => tag.dimensionId !== dimension.id);
+                      newTags = [
+                        ...otherDimensionTags,
+                        {
+                          dimensionId: dimension.id,
+                          dimensionValueId: value.id,
+                          dimensionName: dimension.name,
+                          dimensionValueName: value.name
+                        }
+                      ];
+                    }
+
+                    // Update the form state with the new array of tags
+                    form.setValue(`lines.${lineIndex}.tags`, newTags);
+                  }}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-sm">
+                      {value.name}
+                    </span>
+                    {value.code && (
+                      <span className="text-xs text-gray-500 font-mono">
+                        ({value.code})
+                      </span>
+                    )}
+                    <Check 
+                      className={`ml-auto h-4 w-4 ${
+                        isSelected ? "opacity-100" : "opacity-0"
+                      }`} 
+                    />
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </>
+        )}
+      </div>
+    );
+  };
+
   // Add line function using react-hook-form append
   const addLine = () => {
     const newLine = {
@@ -230,6 +329,72 @@ export function JournalEntryLinesTable({
       tags: [],
     };
     append(newLine);
+  };
+
+  // Render hierarchical account tree with react-hook-form integration
+  const renderAccountTree = (account: any, depth: number, lineIndex: number): React.ReactNode => {
+    const hasChildren = account.children && account.children.length > 0;
+    const isExpanded = combinedExpansions[account.id] || false;
+    const isSelectable = !hasChildren; // Only leaf nodes are selectable
+
+    return (
+      <div key={account.id}>
+        <CommandItem
+          className={`flex items-center gap-2 ${isSelectable ? 'cursor-pointer' : 'cursor-default'}`}
+          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          onSelect={() => {
+            if (isSelectable) {
+              // Use react-hook-form setValue to update the account
+              form.setValue(`lines.${lineIndex}.accountId`, account.id.toString());
+              // Close the popover
+              setAccountPopoverOpen(prev => ({ ...prev, [`line_${lineIndex}`]: false }));
+            } else {
+              // Toggle expansion for parent nodes
+              setExpandedAccounts(prev => ({ ...prev, [account.id]: !prev[account.id] }));
+            }
+          }}
+          disabled={!isSelectable}
+        >
+          {hasChildren && (
+            <span className="flex-shrink-0">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </span>
+          )}
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-gray-600 flex-shrink-0">
+                {account.accountCode}
+              </span>
+              <span className="text-sm truncate">
+                {account.name}
+              </span>
+              {isSelectable && (
+                <Check 
+                  className={`ml-auto h-4 w-4 ${
+                    form.watch(`lines.${lineIndex}.accountId`) === account.id.toString() 
+                      ? "opacity-100" 
+                      : "opacity-0"
+                  }`} 
+                />
+              )}
+            </div>
+          </div>
+        </CommandItem>
+
+        {hasChildren && isExpanded && (
+          <>
+            {account.children.map((child: any) => 
+              renderAccountTree(child, depth + 1, lineIndex)
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -248,17 +413,47 @@ export function JournalEntryLinesTable({
             {/* Account Selection */}
             <div>
               <label className="text-sm font-medium">Account *</label>
-              <select 
-                {...form.register(`lines.${index}.accountId`)} 
-                className="w-full p-2 border rounded mt-1"
+              <Popover 
+                open={accountPopoverOpen[`line_${index}`] || false}
+                onOpenChange={(open) => 
+                  setAccountPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
+                }
               >
-                <option value="">Select Account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.accountCode} - {account.name}
-                  </option>
-                ))}
-              </select>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between mt-1"
+                    type="button"
+                  >
+                    {(() => {
+                      const selectedAccountId = form.watch(`lines.${index}.accountId`);
+                      const selectedAccount = accounts.find(acc => acc.id.toString() === selectedAccountId);
+                      return selectedAccount 
+                        ? `${selectedAccount.accountCode} - ${selectedAccount.name}`
+                        : "Select account...";
+                    })()}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search accounts..." 
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No accounts found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredAccountTree.map((account) => 
+                          renderAccountTree(account, 0, index)
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Entity Code */}
@@ -313,16 +508,69 @@ export function JournalEntryLinesTable({
             {/* Tags */}
             <div>
               <label className="text-sm font-medium">Tags</label>
-              <div className="mt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
+              <div className="mt-1 space-y-2">
+                {/* Display existing tags */}
+                <div className="flex flex-wrap gap-1">
+                  {(form.watch(`lines.${index}.tags`) || []).map((tag: DimensionTag, tagIndex: number) => (
+                    <Badge 
+                      key={`${tag.dimensionId}-${tag.dimensionValueId}`}
+                      variant="secondary" 
+                      className="text-xs"
+                    >
+                      {tag.dimensionName}: {tag.dimensionValueName}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => {
+                          const currentTags = form.getValues(`lines.${index}.tags`) || [];
+                          const newTags = currentTags.filter((_: any, i: number) => i !== tagIndex);
+                          form.setValue(`lines.${index}.tags`, newTags);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                
+                {/* Add Tags Button */}
+                <Popover 
+                  open={tagPopoverOpen[`line_${index}`] || false}
+                  onOpenChange={(open) => 
+                    setTagPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
+                  }
                 >
-                  <Tags className="h-4 w-4 mr-2" />
-                  Add Tags
-                </Button>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Tags className="h-4 w-4 mr-2" />
+                      Add Tags
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search dimensions..." 
+                        value={dimensionSearchQuery}
+                        onValueChange={setDimensionSearchQuery}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No dimensions found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredDimensions.map((dimension) => 
+                            renderDimensionTree(dimension, index)
+                          )}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
