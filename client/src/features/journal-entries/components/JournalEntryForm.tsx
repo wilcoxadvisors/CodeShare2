@@ -251,16 +251,11 @@ function JournalEntryForm({
     enabled: !!effectiveClientId,
   });
 
-  console.log("ARCHITECT_DEBUG_DIMENSION_RESPONSE:", dimensionsResponse);
-
   const dimensions = (dimensionsResponse && Array.isArray(dimensionsResponse.data))
     ? dimensionsResponse.data
     : Array.isArray(dimensionsResponse)
       ? dimensionsResponse
       : []; // Always default to an empty array
-
-  console.log("ARCHITECT_DEBUG_PROCESSED_DIMENSIONS:", dimensions);
-  console.log("ARCHITECT_DEBUG_FIRST_DIMENSION_VALUES:", dimensions[0]?.values);
 
   // Post journal entry mutation
   const postJournalEntry = useMutation({

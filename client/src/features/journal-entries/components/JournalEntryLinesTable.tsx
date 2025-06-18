@@ -66,7 +66,8 @@ interface Dimension {
   id: number;
   name: string;
   description?: string;
-  dimensionValues?: DimensionValue[];
+  values?: DimensionValue[];
+  dimensionValues?: DimensionValue[]; // Keep for backward compatibility
 }
 
 // Account interface
@@ -375,9 +376,6 @@ export function JournalEntryLinesTable({
 
   // Safeguard: Ensure dimensions is always an array
   const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
-  
-  console.log("ARCHITECT_DEBUG_LINES_TABLE_DIMENSIONS:", safeDimensions);
-  console.log("ARCHITECT_DEBUG_LINES_TABLE_FIRST_DIM_VALUES:", safeDimensions[0]?.values);
 
   return (
     <div className="overflow-x-auto mb-4">
@@ -643,7 +641,7 @@ export function JournalEntryLinesTable({
                                 {dimension.name}
                               </div>
                               <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto">
-                                {dimension.dimensionValues?.map((value: DimensionValue) => {
+                                {(dimension as any).values?.map((value: DimensionValue) => {
                                   const isSelected = line.tags?.some(
                                     tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
                                   );

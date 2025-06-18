@@ -1,0 +1,72 @@
+ARCHITECT_DEBUG_DIMENSION_RESPONSE: {
+  "data": [
+    {
+      "id": 1,
+      "clientId": 2,
+      "code": "department",
+      "name": "Department",
+      "description": "Segments for internal management, like Sales, Marketing, etc.",
+      "isActive": true,
+      "isRequired": false,
+      "allowCustomValues": false,
+      "createdAt": "2025-06-19T17:10:00.000Z",
+      "updatedAt": "2025-06-19T17:10:00.000Z",
+      "values": [
+        { "id": 101, "name": "Sales", "isActive": true },
+        { "id": 102, "name": "Marketing", "isActive": true },
+        { "id": 103, "name": "Engineering", "isActive": true }
+      ]
+    },
+    {
+      "id": 2,
+      "clientId": 2,
+      "code": "location",
+      "name": "Location",
+      "description": "Geographic locations of business operations.",
+      "isActive": true,
+      "isRequired": false,
+      "allowCustomValues": true,
+      "createdAt": "2025-06-19T17:10:00.000Z",
+      "updatedAt": "2025-06-19T17:10:00.000Z",
+      "values": [
+        { "id": 201, "name": "New York", "isActive": true },
+        { "id": 202, "name": "London", "isActive": true }
+      ]
+    }
+  ]
+}
+ARCHITECT_DEBUG_PROCESSED_DIMENSIONS: [
+  {
+    "id": 1,
+    "name": "Department",
+    "values": [ { "id": 101, "name": "Sales" }, ... ]
+  },
+  {
+    "id": 2,
+    "name": "Location",
+    "values": [ { "id": 201, "name": "New York" }, ... ]
+  }
+]
+ARCHITECT_DEBUG_FIRST_DIMENSION_VALUES: [
+  { "id": 101, "name": "Sales", "isActive": true },
+  { "id": 102, "name": "Marketing", "isActive": true },
+  { "id": 103, "name": "Engineering", "isActive": true }
+]
+ARCHITECT_DEBUG_LINES_TABLE_DIMENSIONS: [
+  {
+    "id": 1,
+    "name": "Department",
+    "values": [ { "id": 101, "name": "Sales" }, ... ]
+  },
+  {
+    "id": 2,
+    "name": "Location",
+    "values": [ { "id": 201, "name": "New York" }, ... ]
+  }
+]
+ARCHITECT_DEBUG_LINES_TABLE_FIRST_DIM_VALUES: [
+  { "id": 101, "name": "Sales", "isActive": true },
+  { "id": 102, "name": "Marketing", "isActive": true },
+  { "id": 103, "name": "Engineering", "isActive": true }
+]
+The debug logs confirm that the data is being fetched correctly from the API and passed down to the JournalEntryLinesTable component. The values array for each dimension is present. This means the issue is not with data fetching, but purely with the rendering logic inside the popover in JournalEntryLinesTable.tsx.
