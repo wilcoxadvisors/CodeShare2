@@ -358,7 +358,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
               const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
               const isExpanded = isEntitySelectionView && !!expandedClients[client.id];
               
-              console.log(`ARCHITECT_DEBUG_PHANTOM: Client ${client.id} (${client.name}) - isEntitySelectionView: ${isEntitySelectionView}, expandedClients[${client.id}]: ${!!expandedClients[client.id]}, isExpanded: ${isExpanded}, path: ${location.pathname}`);
+              if (client.id === selectedClientId || currentEntity?.clientId === client.id) {
+                console.log(`ARCHITECT_DEBUG_PHANTOM: Client ${client.id} (${client.name}) - isEntitySelectionView: ${isEntitySelectionView}, expandedClients[${client.id}]: ${!!expandedClients[client.id]}, isExpanded: ${isExpanded}, path: ${location.pathname}, selectedClientId: ${selectedClientId}, currentEntity: ${currentEntity?.id}`);
+              }
               
               return (
                 <div key={`client-group-${client.id}`}>

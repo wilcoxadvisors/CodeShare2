@@ -81,7 +81,7 @@ function Header() {
   const hideSelectorRoutes = ['/dashboard', '/login', '/register', '/setup'];
   
   // Define routes where entity selection should be hidden (Chart of Accounts mode)
-  const clientOnlyRoutes = ['/chart-of-accounts'];
+  const clientOnlyRoutes = ['/chart-of-accounts', '/manage/dimensions'];
   
   // Query for clients to populate client selector
   const { data: clientsResponse } = useQuery<{ status: string, data: Client[] }>({
@@ -143,13 +143,13 @@ function Header() {
               {/* General Ledger Section Tabs */}
               {currentBaseSection === '/general-ledger' && (
                 <>
-                  <a href="/general-ledger" className={`${location === '/general-ledger' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/general-ledger" className={`${pathname === '/general-ledger' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     General Ledger
                   </a>
-                  <a href="/trial-balance" className={`${location === '/trial-balance' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/trial-balance" className={`${pathname === '/trial-balance' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Trial Balance
                   </a>
-                  <a href="/journal-entries" className={`${location === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/journal-entries" className={`${pathname === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     Journal Entries
                   </a>
                 </>
@@ -158,7 +158,7 @@ function Header() {
               {/* Journal Entries Section Tabs */}
               {currentBaseSection === '/journal-entries' && (
                 <>
-                  <a href="/journal-entries" className={`${location === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  <a href="/journal-entries" className={`${pathname === '/journal-entries' ? 'border-primary-500 text-secondary-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                     All Entries
                   </a>
                 </>
@@ -243,7 +243,7 @@ function Header() {
             {!hideSelectorRoutes.includes(pathname) && (
               <div className="relative mr-3 hidden md:block">
                 <GlobalContextSelector 
-                  showEntities={!clientOnlyRoutes.includes(pathname)}
+                  showEntities={!clientOnlyRoutes.some(route => pathname.includes(route))}
                 />
               </div>
             )}
