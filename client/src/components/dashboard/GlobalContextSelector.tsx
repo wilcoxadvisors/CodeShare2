@@ -411,8 +411,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                        1. showEntities prop is true (not in CoA mode)
                        2. This client has entities to show
                        3. This client is explicitly expanded by user action 
+                       4. We are in an entity selection view (not Chart of Accounts or Dimensions)
                     */}
-                    {showEntities && !isClientOnlyView && filteredEntities.length > 0 && isExpanded && (
+                    {showEntities && filteredEntities.length > 0 && isExpanded && isEntitySelectionView && (
                       <div 
                         className="pt-1 pb-1 border-l-2 border-primary/30 ml-4 transition-all duration-300 ease-in-out max-h-[500px] opacity-100 translate-y-0"
                         aria-hidden="false"
