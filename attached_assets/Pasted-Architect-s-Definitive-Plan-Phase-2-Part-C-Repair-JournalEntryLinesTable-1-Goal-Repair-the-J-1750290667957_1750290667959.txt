@@ -1,0 +1,121 @@
+Architect's Definitive Plan: Phase 2, Part C - Repair JournalEntryLinesTable
+
+1. Goal:
+
+Repair the JournalEntryLinesTable.tsx component to correctly render and manage dynamic journal entry lines using the parent form's react-hook-form and useFieldArray state. This will restore the ability to add, view, and remove lines.
+
+2. Definitive Plan:
+
+This repair will be done in three focused stages.
+
+Stage 1: Render Dynamic Lines
+
+Objective: The table body is currently static and not rendering any lines. We will fix it to dynamically render the rows from the useFieldArray hook.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Locate the <tbody> element in the component.
+It should contain a map function that iterates over the fields prop. Ensure the implementation looks like this, replacing any simplified or incorrect code:
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+<tbody className="bg-white divide-y divide-gray-200">
+  {fields.map((field, index) => (
+    <tr key={field.id}>
+      {/* Account Column */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        {/* We will restore the hierarchical selector here in the next mission.
+            For now, a simple select is acceptable to restore functionality. */}
+        <select
+          {...form.register(`lines.${index}.accountId`)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="">Select Account</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.accountCode} - {account.name}
+            </option>
+          ))}
+        </select>
+      </td>
+
+      {/* Other columns (Entity, Description, Debit, Credit) should follow this pattern,
+          using form.register(\`lines.INDEX.fieldName\`) */}
+
+      {/* ... other td elements ... */}
+    </tr>
+  ))}
+</tbody>
+Stage 2: Restore "Add Line" Functionality
+
+Objective: The button to add a new journal entry line is missing. We will restore it.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Locate the <tfoot> section of the table.
+Ensure the "Add Line" button exists and that its onClick event calls the append function passed in via props.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+<tfoot>
+  <tr>
+    <td colSpan={6} className="px-6 py-4">
+      <Button
+        type="button"
+        variant="outline"
+        // This onClick is critical. It must call the `append` function.
+        onClick={() => append({
+          _key: nanoid(),
+          accountId: "",
+          entityCode: entities.length > 0 ? entities[0].code : "",
+          description: "",
+          debit: "",
+          credit: "",
+          tags: [],
+        })}
+        className="inline-flex items-center"
+      >
+        <Plus className="-ml-0.5 mr-2 h-4 w-4" />
+        Add Line
+      </Button>
+    </td>
+  </tr>
+  {/* ... Totals rows ... */}
+</tfoot>
+Stage 3: Restore "Remove Line" Functionality
+
+Objective: Add the "Remove" button back to each line so users can delete unwanted lines.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Inside the fields.map(...) from Stage 1, add a final <td> to hold the remove button.
+The button's onClick event must call the remove function passed in via props, with the row's index.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+// Inside the fields.map, as the last cell in the <tr>
+<td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+  <button
+    type="button"
+    className="text-red-600 hover:text-red-900"
+    // This onClick is critical. It must call the `remove` function.
+    onClick={() => remove(index)}
+    aria-label="Remove line"
+    // Disable removing the last line if you want to enforce at least one line
+    disabled={fields.length <= 1}
+  >
+    <X className="h-5 w-5" />
+  </button>
+</td>
+3. Expected Outcome:
+
+The journal entry form will correctly display the line items passed from the useFieldArray hook.
+The "Add Line" button will be visible and functional, allowing users to add new rows to the form.
+Each row will have a working "Remove" button.
+The core functionality of the lines table will be restored, unblocking further development and testing.
