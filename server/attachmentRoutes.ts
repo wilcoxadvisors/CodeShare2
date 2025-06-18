@@ -545,8 +545,8 @@ export function registerAttachmentRoutes(app: Express) {
    */
   router.delete('/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
-    const entityId = parseInt(req.params.eId);
-    const clientId = parseInt(req.params.cId);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
     const fileId = parseInt(req.params.fileId);
     const user = req.user as { id: number };
     

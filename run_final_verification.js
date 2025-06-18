@@ -17,10 +17,19 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import FormData from 'form-data';
+import tough from 'tough-cookie';
+import { wrapper } from 'axios-cookiejar-support';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Set up axios with persistent cookie jar for session management
+const cookieJar = new tough.CookieJar();
+const httpClient = wrapper(axios.create({ 
+  jar: cookieJar,
+  withCredentials: true
+}));
 
 // Configuration
 const BASE_URL = 'http://localhost:5000';
@@ -88,7 +97,6 @@ async function makeRequest(method, url, data = null, headers = {}) {
       method,
       url: `${BASE_URL}${url}`,
       headers: {
-        'Cookie': authCookies,
         ...headers
       }
     };
@@ -103,7 +111,7 @@ async function makeRequest(method, url, data = null, headers = {}) {
       }
     }
 
-    const response = await axios(config);
+    const response = await httpClient(config);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -117,17 +125,11 @@ async function step1_authenticate() {
   logStep(1, 'Authenticate as admin user');
   
   try {
-    const response = await axios.post(`${BASE_URL}/api/auth/login`, credentials);
+    const response = await httpClient.post(`${BASE_URL}/api/auth/login`, credentials);
     
-    if (response.headers['set-cookie']) {
-      authCookies = response.headers['set-cookie'].join('; ');
-      log('Authentication successful');
-      logSuccess('Authentication completed');
-      return true;
-    } else {
-      logFailure('No cookies received from authentication');
-      return false;
-    }
+    log('Authentication successful');
+    logSuccess('Authentication completed');
+    return true;
   } catch (error) {
     logFailure(`Authentication failed: ${error.message}`);
     return false;
