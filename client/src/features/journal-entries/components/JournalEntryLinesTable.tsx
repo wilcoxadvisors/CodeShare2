@@ -35,7 +35,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AccountType } from "@shared/schema";
 import { safeParseAmount } from "../utils/lineFormat";
-import { formatCurrencyForDisplay, parseCurrencyForState } from "../utils/numberFormat";
+import { formatCurrencyForDisplay, parseCurrencyForState, formatCurrencyInput } from "../utils/numberFormat";
 
 // Interface for journal entry lines
 interface JournalLine {
@@ -608,14 +608,29 @@ export function JournalEntryLinesTable({
 
               <td className="px-6 py-4 whitespace-nowrap">
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
                   className={`w-full text-right ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={line.debit}
+                  value={formatCurrencyForDisplay(line.debit)}
                   onChange={(e) => {
-                    handleLineChange(index, "debit", e.target.value);
+                    const cleanValue = parseCurrencyForState(e.target.value);
+                    handleLineChange(index, "debit", cleanValue);
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    const cursorPos = target.selectionStart || 0;
+                    const { formattedValue, newCursorPosition } = formatCurrencyInput(
+                      target.value,
+                      formatCurrencyForDisplay(line.debit),
+                      cursorPos
+                    );
+                    
+                    if (formattedValue !== target.value) {
+                      target.value = formattedValue;
+                      setTimeout(() => {
+                        target.setSelectionRange(newCursorPosition, newCursorPosition);
+                      }, 0);
+                    }
                   }}
                 />
                 {fieldErrors[`line_${index}_debit`] && (
@@ -628,14 +643,29 @@ export function JournalEntryLinesTable({
 
               <td className="px-6 py-4 whitespace-nowrap">
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
                   className={`w-full text-right ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={line.credit}
+                  value={formatCurrencyForDisplay(line.credit)}
                   onChange={(e) => {
-                    handleLineChange(index, "credit", e.target.value);
+                    const cleanValue = parseCurrencyForState(e.target.value);
+                    handleLineChange(index, "credit", cleanValue);
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    const cursorPos = target.selectionStart || 0;
+                    const { formattedValue, newCursorPosition } = formatCurrencyInput(
+                      target.value,
+                      formatCurrencyForDisplay(line.credit),
+                      cursorPos
+                    );
+                    
+                    if (formattedValue !== target.value) {
+                      target.value = formattedValue;
+                      setTimeout(() => {
+                        target.setSelectionRange(newCursorPosition, newCursorPosition);
+                      }, 0);
+                    }
                   }}
                 />
                 {fieldErrors[`line_${index}_credit`] && (
