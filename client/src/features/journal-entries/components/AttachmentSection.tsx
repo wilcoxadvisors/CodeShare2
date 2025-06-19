@@ -70,6 +70,7 @@ export function AttachmentSection({
   // File upload mutation
   const uploadMutation = useMutation({
     mutationFn: async ({ files, entryId }: { files: File[]; entryId: number }) => {
+      console.log(`DEBUG: Starting upload of ${files.length} files for entry ${entryId}`);
       const formData = new FormData();
       files.forEach((file) => {
         formData.append('files', file);
@@ -90,11 +91,12 @@ export function AttachmentSection({
       return response.json();
     },
     onSuccess: () => {
+      console.log("DEBUG: File upload successful, clearing pending files");
       // Clear pending files after successful upload
       setPendingFiles([]);
       setPendingFilesMetadata([]);
       
-      // Invalidate attachment queries
+      // Invalidate attachment queries to refresh the file list
       queryClient.invalidateQueries({
         queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
         exact: true
@@ -107,9 +109,10 @@ export function AttachmentSection({
     },
     onError: (error) => {
       console.error('Upload error:', error);
+      // Don't clear pending files on error so user can retry
       toast({
         title: "Error",
-        description: "Failed to upload files",
+        description: "Failed to upload files. Please try again.",
         variant: "destructive",
       });
     },
@@ -156,7 +159,14 @@ export function AttachmentSection({
   // Upload function to be called externally
   const uploadPendingFiles = async (entryId: number) => {
     if (pendingFiles.length > 0) {
+      console.log(`DEBUG: Uploading ${pendingFiles.length} pending files for entry ${entryId}`);
       await uploadMutation.mutateAsync({ files: pendingFiles, entryId });
+      // Clear pending files after successful upload
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+      console.log("DEBUG: Pending files cleared after upload");
+    } else {
+      console.log("DEBUG: No pending files to upload");
     }
   };
 
@@ -167,11 +177,49 @@ export function AttachmentSection({
     }
   }, [pendingFiles, onUploadToEntryRef]);
 
+  // Clear pending files when switching between journal entries
+  useEffect(() => {
+    if (journalEntryId) {
+      console.log("DEBUG: Journal entry ID changed, clearing pending files");
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+    }
+  }, [journalEntryId]);
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
     const newFiles = Array.from(files);
+    
+    // Validate file types and sizes
+    const invalidFiles = newFiles.filter(file => {
+      const maxSize = 10 * 1024 * 1024; // 10MB limit
+      const allowedTypes = [
+        'application/pdf', 
+        'image/jpeg', 
+        'image/png', 
+        'image/gif',
+        'application/vnd.ms-outlook', // MSG files
+        'message/rfc822', // EML files
+        'text/plain',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      
+      return file.size > maxSize || !allowedTypes.includes(file.type);
+    });
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid Files",
+        description: `Some files are too large (>10MB) or have unsupported formats`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log(`DEBUG: Adding ${newFiles.length} files to pending uploads`);
     const newMetadata = newFiles.map((file) => ({
       id: Date.now() + Math.random(),
       filename: file.name,
