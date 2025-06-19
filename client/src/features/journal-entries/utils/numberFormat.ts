@@ -43,5 +43,10 @@ export const parseCurrencyForState = (value: string): string => {
     return parts[0] + '.' + parts.slice(1).join('');
   }
   
+  // Limit decimal places to 2
+  if (parts.length === 2) {
+    return parts[0] + '.' + parts[1].substring(0, 2);
+  }
+  
   return cleaned;
 };

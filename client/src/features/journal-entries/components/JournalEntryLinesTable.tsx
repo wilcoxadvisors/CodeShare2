@@ -608,12 +608,14 @@ export function JournalEntryLinesTable({
 
               <td className="px-6 py-4 whitespace-nowrap">
                 <Input
-                  type="text"
+                  type="number"
+                  step="0.01"
+                  min="0"
                   className={`w-full text-right ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={formatCurrencyForDisplay(line.debit)}
+                  value={line.debit}
                   onChange={(e) => {
-                    handleLineChange(index, "debit", parseCurrencyForState(e.target.value));
+                    handleLineChange(index, "debit", e.target.value);
                   }}
                 />
                 {fieldErrors[`line_${index}_debit`] && (
@@ -626,12 +628,14 @@ export function JournalEntryLinesTable({
 
               <td className="px-6 py-4 whitespace-nowrap">
                 <Input
-                  type="text"
+                  type="number"
+                  step="0.01"
+                  min="0"
                   className={`w-full text-right ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={formatCurrencyForDisplay(line.credit)}
+                  value={line.credit}
                   onChange={(e) => {
-                    handleLineChange(index, "credit", parseCurrencyForState(e.target.value));
+                    handleLineChange(index, "credit", e.target.value);
                   }}
                 />
                 {fieldErrors[`line_${index}_credit`] && (
