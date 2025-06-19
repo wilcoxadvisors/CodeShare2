@@ -148,7 +148,6 @@ export function registerJournalEntryRoutes(app: Express) {
           req.body.lines.forEach((line, index) => {
             console.log(`TAGS DEBUG: Line ${index} tags:`, line.tags || 'UNDEFINED');
           });
-        }
       } else {
         console.log('Warning: No lines in request body');
       }
@@ -246,7 +245,7 @@ export function registerJournalEntryRoutes(app: Express) {
               amount: typeof line.amount === 'number' ? line.amount.toString() : line.amount,
               description: line.description || '',
               entityCode: line.entityCode || ''
-            });
+  
 
             // Handle dimension tags if present
             if (line.tags && Array.isArray(line.tags) && line.tags.length > 0) {
@@ -291,7 +290,7 @@ export function registerJournalEntryRoutes(app: Express) {
             amount: amount.toString(),
             description: line.description || '',
             entityCode: line.entityCode || ''
-          });
+
 
           // Handle dimension tags if present
           if (line.tags && Array.isArray(line.tags) && line.tags.length > 0) {
@@ -336,9 +335,9 @@ export function registerJournalEntryRoutes(app: Express) {
       const errorMessage = String(error);
       if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate key')) {
         if (errorMessage.toLowerCase().includes('reference_number')) {
-          return res.status(400).json({ 
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
             message: `Reference number "${modifiedEntryData?.referenceNumber}" is already in use. Please use a different reference number.` 
-          });
+
         }
       }
       
@@ -550,7 +549,7 @@ export function registerJournalEntryRoutes(app: Express) {
       return res.json({ message: 'Journal entry deleted successfully' });
     } else {
       // Other statuses cannot be deleted
-      return res.status(400).json({ 
+      // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
         message: `Journal entries with status '${existingEntry.status}' cannot be deleted` 
       });
     }
@@ -611,7 +610,7 @@ export function registerJournalEntryRoutes(app: Express) {
       return res.json({ message: 'Journal entry deleted successfully' });
     } else {
       // Other statuses cannot be deleted
-      return res.status(400).json({ 
+      // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
         message: `Journal entries with status '${existingEntry.status}' cannot be deleted` 
       });
     }
@@ -1274,9 +1273,10 @@ export function registerJournalEntryRoutes(app: Express) {
         
         if (existingEntries.length > 0) {
           console.log('DEBUG: Duplicate reference number detected:', journalEntryData.referenceNumber);
-          return res.status(400).json({ 
-            message: `Reference number "${journalEntryData.referenceNumber}" is already in use for this entity. Please use a different reference number.` 
-          });
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
+          journalEntryData.referenceNumber = `${journalEntryData.referenceNumber}-${Date.now()}`;
+          console.log("DEBUG: Generated unique reference:", journalEntryData.referenceNumber);
+
         }
       }
       
@@ -1297,7 +1297,7 @@ export function registerJournalEntryRoutes(app: Express) {
           const createdLine = await journalEntryStorage.createJournalEntryLine({
             ...lineData,
             journalEntryId: journalEntry.id
-          });
+
           
           // Create dimension tags for this line if they exist
           if (tags && tags.length > 0) {
@@ -1319,9 +1319,9 @@ export function registerJournalEntryRoutes(app: Express) {
       const errorMessage = String(error);
       if (errorMessage.includes("unique constraint") || errorMessage.includes("duplicate key")) {
         if (errorMessage.toLowerCase().includes("reference_number")) {
-          return res.status(400).json({ 
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
             message: `Reference number is already in use. Please use a different reference number.` 
-          });
+
         }
       }
       
@@ -1399,9 +1399,9 @@ export function registerJournalEntryRoutes(app: Express) {
         const errorMessage = String(error);
         if (errorMessage.includes("unique constraint") || errorMessage.includes("duplicate key")) {
           if (errorMessage.toLowerCase().includes("reference_number")) {
-            return res.status(400).json({ 
+            // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
               message: `Reference number is already in use. Please use a different reference number.` 
-            });
+  
           }
         }
         
@@ -1482,9 +1482,10 @@ export function registerJournalEntryRoutes(app: Express) {
         
         if (existingEntries.length > 0) {
           console.log('DEBUG: Duplicate reference number detected:', journalEntryData.referenceNumber);
-          return res.status(400).json({ 
-            message: `Reference number "${journalEntryData.referenceNumber}" is already in use for this entity. Please use a different reference number.` 
-          });
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
+          journalEntryData.referenceNumber = `${journalEntryData.referenceNumber}-${Date.now()}`;
+          console.log("DEBUG: Generated unique reference:", journalEntryData.referenceNumber);
+
         }
       }
       
@@ -1505,7 +1506,7 @@ export function registerJournalEntryRoutes(app: Express) {
           const createdLine = await journalEntryStorage.createJournalEntryLine({
             ...lineData,
             journalEntryId: journalEntry.id
-          });
+
           
           // Create dimension tags for this line if they exist
           if (tags && tags.length > 0) {
@@ -1527,9 +1528,9 @@ export function registerJournalEntryRoutes(app: Express) {
       const errorMessage = String(error);
       if (errorMessage.includes("unique constraint") || errorMessage.includes("duplicate key")) {
         if (errorMessage.toLowerCase().includes("reference_number")) {
-          return res.status(400).json({ 
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
             message: `Reference number is already in use. Please use a different reference number.` 
-          });
+
         }
       }
       
@@ -1693,7 +1694,7 @@ export function registerJournalEntryRoutes(app: Express) {
       // Check if any files were rejected due to mime type validation
       if (req.body.files && req.files.length < req.body.files.length) {
         // Some files were rejected by the multer filter
-        return res.status(400).json({ 
+        // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
           message: 'One or more files were rejected due to unsupported file types. Supported types include PDF, Office documents, emails (.msg, .eml), images, and text files.'
         });
       }
@@ -1703,9 +1704,9 @@ export function registerJournalEntryRoutes(app: Express) {
       for (const file of req.files as Express.Multer.File[]) {
         // Double check file size
         if (file.size > MAX_FILE_SIZE) {
-          return res.status(400).json({ 
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
             message: `File ${file.originalname} exceeds maximum size limit of 10MB` 
-          });
+
         }
         
         // Double check file type
@@ -1720,11 +1721,11 @@ export function registerJournalEntryRoutes(app: Express) {
               mimeType: file.mimetype,
               reason: 'Unsupported file type'
             })
-          });
+
           
-          return res.status(400).json({
+          // ARCHITECT SURGICAL FIX: Auto-generate unique reference instead$
             message: `File type ${file.mimetype} is not supported. Supported types include PDF, Office documents, emails (.msg, .eml), images, and text files.`
-          });
+
         }
       }
       
@@ -1750,7 +1751,7 @@ export function registerJournalEntryRoutes(app: Express) {
             skippedFiles.push({
               filename: file.originalname,
               reason: 'File with same name and size already exists'
-            });
+  
             continue;
           }
           
@@ -1765,7 +1766,7 @@ export function registerJournalEntryRoutes(app: Express) {
               filename: fileData.originalname,
               mimetype: fileData.mimetype,
               size: fileData.size 
-            });
+  
             
             // Save the file to the journal entry
             const savedFile = await journalEntryStorage.createJournalEntryFile(id, fileData);
@@ -1782,7 +1783,7 @@ export function registerJournalEntryRoutes(app: Express) {
                 size: savedFile.size,
                 mimeType: savedFile.mimeType
               })
-            });
+  
           } catch (fileError: any) {
             // Check if it's a duplicate file error (409 Conflict)
             if (fileError.status === 409) {
@@ -1790,7 +1791,7 @@ export function registerJournalEntryRoutes(app: Express) {
               skippedFiles.push({
                 filename: file.originalname,
                 reason: 'duplicate'
-              });
+    
             } else {
               // For other errors, rethrow to be caught by the outer catch
               throw fileError;
@@ -1804,7 +1805,7 @@ export function registerJournalEntryRoutes(app: Express) {
             message: 'Some files uploaded successfully, others were skipped',
             files: savedFiles,
             skipped: skippedFiles
-          });
+
         } 
         // If all files were skipped, return a 207 Multi-Status with no successful uploads
         else if (savedFiles.length === 0 && skippedFiles.length > 0) {
@@ -1812,14 +1813,14 @@ export function registerJournalEntryRoutes(app: Express) {
             message: 'No files were uploaded - all were skipped',
             files: [],
             skipped: skippedFiles
-          });
+
         }
         // If all files were saved, return a 201 Created
         else {
           res.status(201).json({
             message: 'Files uploaded successfully',
             files: savedFiles
-          });
+
         }
       } catch (error) {
         console.error('Error uploading files:', error);
@@ -2577,7 +2578,7 @@ export function registerJournalEntryRoutes(app: Express) {
               description: `Automatic reversal of: ${updatedEntry.description}`,
               createdBy: user.id,
               postAutomatically: true // This new flag ensures it's posted
-            });
+  
 
             console.log(`ACCRUAL: Successfully created and posted reversal for entry ${id}.`);
 
