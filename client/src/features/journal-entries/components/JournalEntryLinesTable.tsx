@@ -35,7 +35,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AccountType } from "@shared/schema";
 import { safeParseAmount } from "../utils/lineFormat";
-import { formatCurrencyForDisplay, parseCurrencyForState, formatCurrencyInput } from "../utils/numberFormat";
+import { CurrencyInput } from "./CurrencyInput";
 
 // Interface for journal entry lines
 interface JournalLine {
@@ -607,25 +607,11 @@ export function JournalEntryLinesTable({
               </td>
 
               <td className="px-6 py-4 whitespace-nowrap">
-                <Input
-                  type="text"
-                  className={`w-full text-right ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
+                <CurrencyInput
+                  value={line.debit}
+                  onChange={(value) => handleLineChange(index, "debit", value)}
+                  className={`w-full ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={formatCurrencyForDisplay(line.debit)}
-                  onChange={(e) => {
-                    const input = e.target.value;
-                    // Allow typing decimal values - only remove invalid characters but preserve decimal input
-                    const cleaned = input.replace(/[^0-9.-]/g, '');
-                    
-                    // Limit to 2 decimal places manually
-                    const parts = cleaned.split('.');
-                    let finalValue = parts[0];
-                    if (parts.length > 1) {
-                      finalValue += '.' + parts[1].substring(0, 2);
-                    }
-                    
-                    handleLineChange(index, "debit", finalValue);
-                  }}
                 />
                 {fieldErrors[`line_${index}_debit`] && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
@@ -636,25 +622,11 @@ export function JournalEntryLinesTable({
               </td>
 
               <td className="px-6 py-4 whitespace-nowrap">
-                <Input
-                  type="text"
-                  className={`w-full text-right ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
+                <CurrencyInput
+                  value={line.credit}
+                  onChange={(value) => handleLineChange(index, "credit", value)}
+                  className={`w-full ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
                   placeholder="0.00"
-                  value={formatCurrencyForDisplay(line.credit)}
-                  onChange={(e) => {
-                    const input = e.target.value;
-                    // Allow typing decimal values - only remove invalid characters but preserve decimal input
-                    const cleaned = input.replace(/[^0-9.-]/g, '');
-                    
-                    // Limit to 2 decimal places manually
-                    const parts = cleaned.split('.');
-                    let finalValue = parts[0];
-                    if (parts.length > 1) {
-                      finalValue += '.' + parts[1].substring(0, 2);
-                    }
-                    
-                    handleLineChange(index, "credit", finalValue);
-                  }}
                 />
                 {fieldErrors[`line_${index}_credit`] && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
