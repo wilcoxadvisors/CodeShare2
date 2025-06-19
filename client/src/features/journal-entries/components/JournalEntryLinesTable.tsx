@@ -100,6 +100,10 @@ export function JournalEntryLinesTable({
   totalCredit,
   isBalanced,
 }: JournalEntryLinesTableProps) {
+  // Ensure dimensions is always an array
+  const safeDimensions = React.useMemo(() => {
+    return Array.isArray(dimensions) ? dimensions : [];
+  }, [dimensions]);
   // State for search and expansion
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
@@ -160,7 +164,6 @@ export function JournalEntryLinesTable({
 
   // Filter dimensions based on search
   const filteredDimensions = useMemo(() => {
-    const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
     if (!dimensionSearchQuery) return safeDimensions;
 
     const searchLower = dimensionSearchQuery.toLowerCase();
@@ -177,7 +180,7 @@ export function JournalEntryLinesTable({
       
       return matchesName || hasMatchingValues;
     });
-  }, [dimensions, dimensionSearchQuery]);
+  }, [safeDimensions, dimensionSearchQuery]);
 
   // Combined expansion state for accounts (search + manual)
   const combinedExpansions = useMemo(() => {
