@@ -8,8 +8,10 @@ export const formatCurrencyInput = (
   const cleanValue = value.replace(/,/g, '');
   
   // Validate input - only allow numbers, one decimal point, and up to 2 decimal places
-  const validPattern = /^\d*\.?\d{0,2}$/;
+  // Allow empty string, numbers with optional decimal and up to 2 decimal places
+  const validPattern = /^$|^\d*\.?\d{0,2}$/;
   if (!validPattern.test(cleanValue)) {
+    // If invalid, just return the previous valid value
     return { formattedValue: previousValue, newCursorPosition: cursorPosition };
   }
   

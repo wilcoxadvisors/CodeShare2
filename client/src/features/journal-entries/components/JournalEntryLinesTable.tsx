@@ -613,24 +613,18 @@ export function JournalEntryLinesTable({
                   placeholder="0.00"
                   value={formatCurrencyForDisplay(line.debit)}
                   onChange={(e) => {
-                    const cleanValue = parseCurrencyForState(e.target.value);
-                    handleLineChange(index, "debit", cleanValue);
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    const cursorPos = target.selectionStart || 0;
-                    const { formattedValue, newCursorPosition } = formatCurrencyInput(
-                      target.value,
-                      formatCurrencyForDisplay(line.debit),
-                      cursorPos
-                    );
+                    const input = e.target.value;
+                    // Allow typing decimal values - only remove invalid characters but preserve decimal input
+                    const cleaned = input.replace(/[^0-9.-]/g, '');
                     
-                    if (formattedValue !== target.value) {
-                      target.value = formattedValue;
-                      setTimeout(() => {
-                        target.setSelectionRange(newCursorPosition, newCursorPosition);
-                      }, 0);
+                    // Limit to 2 decimal places manually
+                    const parts = cleaned.split('.');
+                    let finalValue = parts[0];
+                    if (parts.length > 1) {
+                      finalValue += '.' + parts[1].substring(0, 2);
                     }
+                    
+                    handleLineChange(index, "debit", finalValue);
                   }}
                 />
                 {fieldErrors[`line_${index}_debit`] && (
@@ -648,24 +642,18 @@ export function JournalEntryLinesTable({
                   placeholder="0.00"
                   value={formatCurrencyForDisplay(line.credit)}
                   onChange={(e) => {
-                    const cleanValue = parseCurrencyForState(e.target.value);
-                    handleLineChange(index, "credit", cleanValue);
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    const cursorPos = target.selectionStart || 0;
-                    const { formattedValue, newCursorPosition } = formatCurrencyInput(
-                      target.value,
-                      formatCurrencyForDisplay(line.credit),
-                      cursorPos
-                    );
+                    const input = e.target.value;
+                    // Allow typing decimal values - only remove invalid characters but preserve decimal input
+                    const cleaned = input.replace(/[^0-9.-]/g, '');
                     
-                    if (formattedValue !== target.value) {
-                      target.value = formattedValue;
-                      setTimeout(() => {
-                        target.setSelectionRange(newCursorPosition, newCursorPosition);
-                      }, 0);
+                    // Limit to 2 decimal places manually
+                    const parts = cleaned.split('.');
+                    let finalValue = parts[0];
+                    if (parts.length > 1) {
+                      finalValue += '.' + parts[1].substring(0, 2);
                     }
+                    
+                    handleLineChange(index, "credit", finalValue);
                   }}
                 />
                 {fieldErrors[`line_${index}_credit`] && (
