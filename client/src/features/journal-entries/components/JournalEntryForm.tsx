@@ -559,39 +559,60 @@ function JournalEntryForm({
     return Object.keys(errors).length === 0;
   };
 
+  // Helper function to transform lines from frontend format to backend format
+  const transformLineForBackend = (line: JournalLine) => {
+    const debitAmount = parseFloat(line.debit) || 0;
+    const creditAmount = parseFloat(line.credit) || 0;
+    
+    // Validate that a line has either debit OR credit, not both
+    if (debitAmount > 0 && creditAmount > 0) {
+      throw new Error(`Line cannot have both debit (${debitAmount}) and credit (${creditAmount}) amounts`);
+    }
+    
+    // Ensure at least one amount is provided
+    if (debitAmount === 0 && creditAmount === 0) {
+      throw new Error('Line must have either a debit or credit amount');
+    }
+    
+    return {
+      id: line.id,
+      accountId: parseInt(line.accountId),
+      entityCode: line.entityCode,
+      description: line.description,
+      type: debitAmount > 0 ? "debit" : "credit",
+      amount: debitAmount > 0 ? debitAmount : creditAmount,
+      tags: line.tags || [],
+    };
+  };
+
   // Form submission handlers
   const handleSaveDraft = () => {
     if (!validateForm()) return;
 
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "draft" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => {
-        const debitAmount = parseFloat(line.debit) || 0;
-        const creditAmount = parseFloat(line.credit) || 0;
-        
-        return {
-          id: line.id,
-          accountId: parseInt(line.accountId),
-          entityCode: line.entityCode,
-          description: line.description,
-          type: debitAmount > 0 ? "debit" : "credit",
-          amount: debitAmount > 0 ? debitAmount : creditAmount,
-          tags: line.tags || [],
-        };
-      }),
-    };
+    try {
+      const formData = {
+        date: journalData.date,
+        reference: journalData.referenceNumber,
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: "",
+        description: journalData.description,
+        status: "draft" as JournalEntryStatus,
+        isAccrual: journalData.isAccrual,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        lines: lines.map(transformLineForBackend),
+      };
 
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
+      if (existingEntry && existingEntry.id) {
+        updateEntry.mutate(formData);
+      } else {
+        createEntry.mutate(formData);
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Invalid line data",
+        variant: "destructive",
+      });
     }
   };
 
@@ -606,35 +627,30 @@ function JournalEntryForm({
       return;
     }
 
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "pending_approval" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => {
-        const debitAmount = parseFloat(line.debit) || 0;
-        const creditAmount = parseFloat(line.credit) || 0;
-        
-        return {
-          id: line.id,
-          accountId: parseInt(line.accountId),
-          entityCode: line.entityCode,
-          description: line.description,
-          type: debitAmount > 0 ? "debit" : "credit",
-          amount: debitAmount > 0 ? debitAmount : creditAmount,
-          tags: line.tags || [],
-        };
-      }),
-    };
+    try {
+      const formData = {
+        date: journalData.date,
+        reference: journalData.referenceNumber,
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: "",
+        description: journalData.description,
+        status: "pending_approval" as JournalEntryStatus,
+        isAccrual: journalData.isAccrual,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        lines: lines.map(transformLineForBackend),
+      };
 
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
+      if (existingEntry && existingEntry.id) {
+        updateEntry.mutate(formData);
+      } else {
+        createEntry.mutate(formData);
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Invalid line data",
+        variant: "destructive",
+      });
     }
   };
 
@@ -651,35 +667,30 @@ function JournalEntryForm({
 
     // Pending files validation is now handled by AttachmentSection
 
-    const formData = {
-      date: journalData.date,
-      reference: journalData.referenceNumber,
-      referenceNumber: journalData.referenceNumber,
-      referenceUserSuffix: "",
-      description: journalData.description,
-      status: "posted" as JournalEntryStatus,
-      isAccrual: journalData.isAccrual,
-      reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => {
-        const debitAmount = parseFloat(line.debit) || 0;
-        const creditAmount = parseFloat(line.credit) || 0;
-        
-        return {
-          id: line.id,
-          accountId: parseInt(line.accountId),
-          entityCode: line.entityCode,
-          description: line.description,
-          type: debitAmount > 0 ? "debit" : "credit",
-          amount: debitAmount > 0 ? debitAmount : creditAmount,
-          tags: line.tags || [],
-        };
-      }),
-    };
+    try {
+      const formData = {
+        date: journalData.date,
+        reference: journalData.referenceNumber,
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: "",
+        description: journalData.description,
+        status: "posted" as JournalEntryStatus,
+        isAccrual: journalData.isAccrual,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        lines: lines.map(transformLineForBackend),
+      };
 
-    if (existingEntry && existingEntry.id) {
-      updateEntry.mutate(formData);
-    } else {
-      createEntry.mutate(formData);
+      if (existingEntry && existingEntry.id) {
+        updateEntry.mutate(formData);
+      } else {
+        createEntry.mutate(formData);
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Invalid line data",
+        variant: "destructive",
+      });
     }
   };
 
