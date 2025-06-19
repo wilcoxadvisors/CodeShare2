@@ -264,10 +264,20 @@ function JournalEntryForm({
         method: "PATCH",
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId],
+    onSuccess: async () => {
+      // CRITICAL FIX: Comprehensive cache invalidation for journal entry posting
+      await queryClient.invalidateQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id]
+      });
+      
+      // Force refetch to ensure fresh data appears immediately
+      await queryClient.refetchQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
+      });
+      
       toast({
         title: "Success",
         description: "Journal entry posted successfully",
@@ -313,10 +323,14 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload");
       }
 
-      // ARCHITECT'S STAGE 2 FIX: Use exact query key matching to prevent stale data
-      queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        exact: true
+      // CRITICAL FIX: Comprehensive cache invalidation for journal entry creation
+      await queryClient.invalidateQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
+      });
+      
+      // Force refetch to ensure fresh data appears immediately
+      await queryClient.refetchQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
       });
       
       toast({
@@ -363,14 +377,17 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload after update");
       }
 
-      // ARCHITECT'S STAGE 2 FIX: Use exact query key matching to prevent stale data
-      queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        exact: true
+      // CRITICAL FIX: Comprehensive cache invalidation for journal entry updates
+      await queryClient.invalidateQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
       });
-      queryClient.invalidateQueries({
-        queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id],
-        exact: true
+      await queryClient.invalidateQueries({
+        queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id]
+      });
+      
+      // Force refetch to ensure fresh data appears immediately
+      await queryClient.refetchQueries({
+        queryKey: ["journal-entries", effectiveClientId, entityId]
       });
       
       toast({

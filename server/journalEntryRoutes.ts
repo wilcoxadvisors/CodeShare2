@@ -72,7 +72,7 @@ export function registerJournalEntryRoutes(app: Express) {
       if (endDateStr) filters.endDate = endDateStr;
     }
     
-    if (status && typeof status === 'string' && ['draft', 'posted', 'void'].includes(status)) {
+    if (status && typeof status === 'string' && ['draft', 'posted', 'voided', 'pending_approval', 'approved', 'rejected'].includes(status)) {
       filters.status = status as JournalEntryStatus;
     }
     
@@ -126,6 +126,7 @@ export function registerJournalEntryRoutes(app: Express) {
           const { tags, ...lineData } = line;
           const createdLine = await journalEntryStorage.createJournalEntryLine({
             ...lineData,
+            accountId: typeof lineData.accountId === 'string' ? parseInt(lineData.accountId) : lineData.accountId,
             journalEntryId: journalEntry.id
           });
           
