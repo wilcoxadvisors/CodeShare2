@@ -1,0 +1,41 @@
+Architect's Definitive Plan: Comprehensive Functional Verification
+
+1. Goal:
+
+To perform a comprehensive, end-to-end functional test of the restored Journal Entry form to ensure all features are working as expected. No new features will be developed until this verification is complete and successful.
+
+2. Definitive Verification Plan:
+
+Agent, you are to immediately execute the following verification checklist. Report back with a pass/fail status for each individual point.
+
+Verification Step 1: Form Loading & Initial State
+
+[ ] Navigate to the "New Journal Entry" page.
+[ ] Confirm that the form renders completely with no errors in the browser console.
+[ ] Confirm the JournalEntryHeader component displays all its fields (JE ID, Date, Reference, Description, Accrual switch).
+[ ] Confirm the JournalEntryLinesTable displays exactly two empty lines by default.
+[ ] Confirm the AttachmentSection is visible.
+[ ] Confirm the action buttons ("Cancel", "Save Draft", etc.) are visible.
+Verification Step 2: Core Line Management
+
+[ ] Click the "Add Line" button. Confirm a third, empty line appears in the table.
+[ ] Click the "Remove" button (the 'X' icon) on the second line. Confirm that the second line is removed and only two lines remain.
+Verification Step 3: Advanced Selectors
+
+[ ] In the first journal line, click on the "Select account..." dropdown.
+[ ] Confirm the hierarchical account selector popover appears.
+[ ] Type a known account name into the search bar and confirm the list filters correctly while maintaining the hierarchy.
+[ ] Select a valid, selectable (non-parent) account. Confirm the popover closes and the input field updates correctly.
+[ ] In the same line, click the "Add Tag" button.
+[ ] Confirm the hierarchical dimension tag selector popover appears.
+[ ] Select a dimension value (e.g., Department: Sales). Confirm the popover closes and the tag appears as a badge on the line.
+Verification Step 4: Form Submission
+
+[ ] Fill out all required fields in the header and on at least two lines to create a valid, balanced journal entry.
+[ ] Click the "Save Draft" button.
+[ ] Confirm the form submits without error and that a success notification appears.
+3. Expected Outcome:
+
+A clear confirmation that the Journal Entry module is 100% functional and stable. This will give us the confidence to reconsider the state management refactor with a new, more robust plan, or to move on to other high-priority features.
+
+Do not proceed with any other tasks until this verification is complete. Report your findings.
