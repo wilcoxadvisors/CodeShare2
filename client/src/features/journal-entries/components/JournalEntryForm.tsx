@@ -293,11 +293,14 @@ function JournalEntryForm({
     },
     onSuccess: async (result: JournalEntryResponse, variables: any) => {
       const entryId = result.id || result.entry?.id;
+      console.log("DEBUG: Journal entry created successfully, ID:", entryId);
       
       // Upload pending files if any (handled by AttachmentSection)
       if (uploadPendingFilesRef.current) {
+        console.log("DEBUG: Uploading pending files for journal entry:", entryId);
         try {
           await uploadPendingFilesRef.current(entryId!);
+          console.log("DEBUG: Files uploaded successfully");
         } catch (error) {
           console.error("Error uploading files:", error);
           toast({
@@ -306,6 +309,8 @@ function JournalEntryForm({
             variant: "destructive",
           });
         }
+      } else {
+        console.log("DEBUG: No pending files to upload");
       }
 
       queryClient.invalidateQueries({
