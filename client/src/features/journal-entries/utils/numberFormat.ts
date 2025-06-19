@@ -4,13 +4,24 @@ export const formatCurrencyForDisplay = (value: string | number): string => {
   const stringValue = String(value).replace(/,/g, '');
   if (!stringValue || stringValue === '0' || stringValue === '') return '';
   
-  // Handle incomplete decimal inputs (like "10." or "10.5")
-  if (stringValue.endsWith('.')) {
-    // If user is typing a decimal, don't format yet - just add commas to the whole number part
-    const wholePart = stringValue.slice(0, -1);
-    const num = parseFloat(wholePart);
-    if (isNaN(num) || num === 0) return stringValue;
-    return num.toLocaleString('en-US') + '.';
+  // Handle incomplete decimal inputs (like "10." or "10.5" or "10.50")
+  if (stringValue.includes('.')) {
+    const [wholePart, decimalPart] = stringValue.split('.');
+    
+    // If user is typing a decimal, preserve the exact decimal input
+    if (decimalPart !== undefined) {
+      const wholeNum = parseFloat(wholePart) || 0;
+      if (wholeNum === 0 && wholePart !== '0') return stringValue;
+      
+      // Format the whole number part with commas, then add the decimal part as-is
+      const formattedWhole = wholeNum.toLocaleString('en-US');
+      return `${formattedWhole}.${decimalPart}`;
+    } else {
+      // Just a decimal point at the end
+      const wholeNum = parseFloat(wholePart) || 0;
+      if (wholeNum === 0 && wholePart !== '0') return stringValue;
+      return `${wholeNum.toLocaleString('en-US')}.`;
+    }
   }
   
   // Check if it's a valid number
@@ -18,10 +29,7 @@ export const formatCurrencyForDisplay = (value: string | number): string => {
   if (isNaN(num) || num === 0) return '';
   
   // Format with proper decimal places
-  return num.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
+  return num.toLocaleString('en-US');
 };
 
 // This function takes a potentially formatted string from an input and returns a clean numeric string.
