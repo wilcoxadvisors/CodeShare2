@@ -87,7 +87,6 @@ interface JournalEntryLinesTableProps {
   totalDebit: number;
   totalCredit: number;
   isBalanced: boolean;
-  entityBalances: EntityBalance[];
 }
 
 export function JournalEntryLinesTable({
@@ -100,7 +99,6 @@ export function JournalEntryLinesTable({
   totalDebit,
   totalCredit,
   isBalanced,
-  entityBalances,
 }: JournalEntryLinesTableProps) {
   // State for search and expansion
   const [searchQuery, setSearchQuery] = useState("");
@@ -346,6 +344,37 @@ export function JournalEntryLinesTable({
   };
 
   const difference = totalDebit - totalCredit;
+
+  // Calculate entity balances locally
+  const entityBalances = useMemo(() => {
+    const entityCodesArray = lines.map((line) => line.entityCode);
+    const uniqueEntityCodes = [...new Set(entityCodesArray.filter(Boolean))];
+
+    if (uniqueEntityCodes.length <= 1) {
+      return [];
+    }
+
+    return uniqueEntityCodes.map((entityCode) => {
+      const entityLines = lines.filter((line) => line.entityCode === entityCode);
+      const entityDebit = entityLines.reduce(
+        (sum, line) => sum + (parseFloat(line.debit) || 0),
+        0,
+      );
+      const entityCredit = entityLines.reduce(
+        (sum, line) => sum + (parseFloat(line.credit) || 0),
+        0,
+      );
+      const entityDifference = entityDebit - entityCredit;
+
+      return {
+        entityCode,
+        debit: entityDebit,
+        credit: entityCredit,
+        difference: entityDifference,
+        balanced: Math.abs(entityDifference) < 0.01,
+      };
+    });
+  }, [lines]);
 
   return (
     <div className="space-y-4 p-4 border rounded-lg">

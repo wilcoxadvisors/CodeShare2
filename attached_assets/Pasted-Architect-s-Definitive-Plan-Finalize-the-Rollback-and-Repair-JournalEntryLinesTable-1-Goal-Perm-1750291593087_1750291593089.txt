@@ -1,0 +1,70 @@
+Architect's Definitive Plan: Finalize the Rollback and Repair JournalEntryLinesTable
+
+1. Goal:
+
+Permanently fix the runtime crash by making JournalEntryLinesTable.tsx self-sufficient. It must calculate its own entityBalances from the lines state it manages, instead of incorrectly relying on a prop that the parent component does not provide.
+
+2. Definitive Plan:
+
+Stage 1: Correct the JournalEntryLinesTable Props
+
+Objective: Remove the invalid entityBalances prop from the component's interface.
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+Actions:
+Locate the JournalEntryLinesTableProps interface.
+Delete the line that defines the entityBalances prop.
+In the function signature for JournalEntryLinesTable, remove entityBalances from the list of destructured props.
+Stage 2: Restore the Internal entityBalances Calculation
+
+Objective: Re-implement the useMemo hook inside the JournalEntryLinesTable component to calculate entity balances locally.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Inside the JournalEntryLinesTable component function, directly after the line const difference = totalDebit - totalCredit;, insert the following useMemo hook. This code calculates the balances based on the component's own lines state.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+  // ... after the 'difference' calculation
+  const difference = totalDebit - totalCredit;
+
+  // INSERT THIS CODE BLOCK:
+  const entityBalances = useMemo(() => {
+    const entityCodesArray = lines.map((line) => line.entityCode);
+    const uniqueEntityCodes = [...new Set(entityCodesArray.filter(Boolean))];
+
+    if (uniqueEntityCodes.length <= 1) {
+      return [];
+    }
+
+    return uniqueEntityCodes.map((entityCode) => {
+      const entityLines = lines.filter((line) => line.entityCode === entityCode);
+      const entityDebit = entityLines.reduce(
+        (sum, line) => sum + (parseFloat(line.debit) || 0),
+        0,
+      );
+      const entityCredit = entityLines.reduce(
+        (sum, line) => sum + (parseFloat(line.credit) || 0),
+        0,
+      );
+      const entityDifference = entityDebit - entityCredit;
+
+      return {
+        entityCode,
+        debit: entityDebit,
+        credit: entityCredit,
+        difference: entityDifference,
+        balanced: Math.abs(entityDifference) < 0.01,
+      };
+    });
+  }, [lines]);
+  // END OF INSERTED CODE BLOCK
+3. Verification:
+
+Objective: Confirm the crash is resolved and the application is stable.
+Actions:
+The agent must restart the application.
+Navigate to the "New Journal Entry" page and confirm that the form now loads without any runtime errors.
+This surgical fix will resolve the inconsistency and make the component self-reliant as it was designed to be. Execute this plan.
