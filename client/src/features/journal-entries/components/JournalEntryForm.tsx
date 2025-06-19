@@ -530,9 +530,6 @@ function JournalEntryForm({
       if (!line.entityCode) {
         errors[`line_${index}_entityCode`] = "Entity code is required";
       }
-      if (!line.description?.trim()) {
-        errors[`line_${index}_description`] = "Line description is required";
-      }
       
       const debit = parseFloat(line.debit) || 0;
       const credit = parseFloat(line.credit) || 0;
