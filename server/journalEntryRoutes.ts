@@ -215,6 +215,26 @@ export function registerJournalEntryRoutes(app: Express) {
         throwNotFound(`Journal entry with ID ${id} not found after update`);
       }
       
+      // ARCHITECT'S AUTOMATIC ACCRUAL REVERSAL FIX: Create reversal entry when posting accrual entries
+      if (entryData.status === 'posted' && existingEntry.isAccrual && existingEntry.reversalDate) {
+        console.log(`ARCHITECT_ACCRUAL_REVERSAL: Creating automatic reversal for accrual entry ${id}`);
+        try {
+          const reversalEntry = await journalEntryStorage.reverseJournalEntry(id, {
+            date: new Date(existingEntry.reversalDate),
+            description: `Automatic reversal of ${existingEntry.referenceNumber}`,
+            createdBy: (req.user as { id: number }).id,
+            postAutomatically: true
+          });
+          
+          if (reversalEntry) {
+            console.log(`ARCHITECT_ACCRUAL_REVERSAL: Successfully created and posted reversal entry ${reversalEntry.id} for accrual ${id}`);
+          }
+        } catch (error) {
+          console.error(`ARCHITECT_ACCRUAL_REVERSAL: Failed to create reversal for accrual entry ${id}:`, error);
+          // Don't fail the main operation if reversal creation fails
+        }
+      }
+      
       res.json(updatedEntry);
     } catch (error) {
       if (error instanceof ZodError) {
