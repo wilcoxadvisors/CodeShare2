@@ -555,7 +555,7 @@ export function JournalEntryLinesTable({
                       <CommandList>
                         <CommandEmpty>No dimensions found.</CommandEmpty>
                         <CommandGroup>
-                          {filteredDimensions.map((dimension) => 
+                          {(filteredDimensions || []).map((dimension) => 
                             renderDimensionTree(dimension, index)
                           )}
                         </CommandGroup>
