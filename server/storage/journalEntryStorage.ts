@@ -174,7 +174,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
   
   async getJournalEntry(id: number, includeLines: boolean = true, includeFiles: boolean = true): Promise<JournalEntry | undefined> {
-    console.log(`Getting journal entry ${id} with lines=${includeLines}, files=${includeFiles}`);
+    console.log(`ARCHITECT_STABILIZATION: Getting journal entry ${id} with lines=${includeLines}, files=${includeFiles}`);
     try {
       // Get the basic journal entry first
       const [entry] = await db.select()
@@ -183,13 +183,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         .limit(1);
       
       if (entry) {
-        console.log(`DEBUG: Retrieved journal entry ${id}, now fetching related data`);
+        console.log(`ARCHITECT_STABILIZATION: Retrieved journal entry ${id}, executing manual file query`);
         
-        // ARCHITECT'S FIX: Always fetch files to ensure they're included in the response
-        const files = includeFiles ? await this.getJournalEntryFiles(id) : [];
+        // ARCHITECT'S ACTION 1: Manual second query for files to ensure reliable attachment fetching
+        let files: any[] = [];
+        if (includeFiles) {
+          files = await db.query.journalEntryFiles.findMany({
+            where: and(
+              eq(journalEntryFiles.journalEntryId, id),
+              isNull(journalEntryFiles.deletedAt)
+            ),
+            orderBy: [desc(journalEntryFiles.uploadedAt)]
+          });
+          console.log(`ARCHITECT_STABILIZATION: Manual file query returned ${files.length} attachments`);
+        }
+        
         const lines = includeLines ? await this.getJournalEntryLines(id) : [];
         
-        console.log(`DEBUG: Retrieved ${files.length} files and ${lines.length} lines for journal entry ${id}`);
+        console.log(`ARCHITECT_STABILIZATION: Retrieved ${files.length} files and ${lines.length} lines for journal entry ${id}`);
         
         // Return entry with lines and files as non-database properties (to avoid type issues)
         const result = { ...entry } as JournalEntry & { 
@@ -199,13 +210,13 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         result.lines = lines || [];
         result.files = files || [];
         
-        console.log(`DEBUG: Final entry result - ID: ${entry.id}, files: ${result.files?.length || 0}, lines: ${result.lines?.length || 0}`);
+        console.log(`ARCHITECT_STABILIZATION: Final entry result - ID: ${entry.id}, files: ${result.files?.length || 0}, lines: ${result.lines?.length || 0}`);
         return result;
       }
       
       return undefined;
     } catch (e) {
-      console.error(`ERROR: Failed to get journal entry ${id}:`, e);
+      console.error(`ARCHITECT_STABILIZATION: Failed to get journal entry ${id}:`, e);
       throw handleDbError(e, `getting journal entry ${id}`);
     }
   }

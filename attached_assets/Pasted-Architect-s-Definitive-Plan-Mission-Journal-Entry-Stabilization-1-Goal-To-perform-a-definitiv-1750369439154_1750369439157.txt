@@ -1,0 +1,30 @@
+Architect's Definitive Plan: Mission - Journal Entry Stabilization
+
+1. Goal:
+
+To perform a definitive, top-to-bottom repair of the Journal Entry module. This mission will address all known data persistence, caching, and workflow bugs. The end result must be a module that meets the highest standards of data integrity and reliability.
+
+2. Definitive Plan:
+
+Stage 1: Fix All Attachment & Data Persistence Bugs (#5, #6, #7, #9, #10)
+
+Problem: The backend and frontend are failing to correctly save and load attachments, reference numbers, dates, and accrual settings. This is a systemic data flow failure.
+Primary File to Modify: server/storage/journalEntryStorage.ts
+Action 1 (Fix Data Retrieval): The getJournalEntry function is still not reliably fetching attachments. It must be corrected to always fetch and attach the related files. After fetching the main entry, the agent must manually run a second query for files (db.query.journalEntryFiles.findMany(...)) and attach the result to the entry object before returning it.
+Action 2 (Fix Data Update): The updateJournalEntryWithLines function must be reviewed to ensure it correctly persists changes to attachments (adding new ones, removing old ones) within the same transaction as the rest of the journal entry update.
+Primary File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Action 3 (Fix Data Payload): The formData object created in the handleSaveDraft, handleSubmitForApproval, and handlePostEntry functions is incomplete. The agent must ensure that journalData.referenceUserSuffix, journalData.isAccrual, and journalData.reversalDate are correctly included in the payload sent to the backend in all three handlers.
+Action 4 (Fix Date Handling): The useEffect hook that sets the form's initial state for an existing entry must be audited to prevent the date from changing on edit. Dates must be handled as strings in "yyyy-MM-dd" format consistently to avoid timezone issues.
+Stage 2: Fix Cache Invalidation (#4)
+
+Problem: The JE list page does not update after a save, requiring a manual refresh.
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Action: In the onSuccess callbacks for the createEntry and updateEntry mutations, the agent must ensure queryClient.invalidateQueries is being called with the exact: true flag and the correct query key: ["journal-entries", effectiveClientId, entityId]. This forces a refetch of the list data.
+Stage 3: Fix UI Workflow & Permissions (#8)
+
+Problem: The file upload functionality is visible in read-only mode.
+File to Modify: client/src/features/journal-entries/components/AttachmentSection.tsx
+Action: The file <input> and upload button must be wrapped in a conditional check to ensure they only render when the isInEditMode prop is true.
+3. Verification:
+
+Upon completion, a full re-run of the previous verification checklist is mandatory. I expect every single item to pass without exception.
