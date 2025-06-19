@@ -1,3 +1,18 @@
+Architect's Mandate: Final Rollback Enforcement
+
+1. Goal:
+
+Eradicate all remnants of the failed react-hook-form refactor from the Journal Entry module. Ensure all components (JournalEntryForm, JournalEntryHeader, JournalEntryLinesTable) are using the stable, consistent useState-based implementation.
+
+2. Definitive Plan:
+
+Stage 1: Force-Revert JournalEntryHeader.tsx
+
+Objective: Replace the incorrect, react-hook-form-dependent code in JournalEntryHeader.tsx with the correct useState-based version.
+File to Modify: client/src/features/journal-entries/components/JournalEntryHeader.tsx
+Action: Delete the entire content of the existing file and replace it with the code below. This is the correct, stable version of the component.
+TypeScript
+
 // In client/src/features/journal-entries/components/JournalEntryHeader.tsx
 // REPLACE THE ENTIRE FILE CONTENTS WITH THIS:
 
@@ -142,3 +157,11 @@ export function JournalEntryHeader({
     </div>
   );
 }
+Stage 2: Verification
+
+Objective: Confirm the application is now stable and all components are using the same useState architecture.
+Actions:
+Restart the application.
+Navigate to the "New Journal Entry" page.
+Confirm there are no runtime errors. The form must load completely.
+This action will synchronize the child component with its parent, resolving the crash and completing the rollback. There will be no more piecemeal fixes.

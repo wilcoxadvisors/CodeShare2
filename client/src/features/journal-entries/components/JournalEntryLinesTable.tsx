@@ -348,7 +348,14 @@ export function JournalEntryLinesTable({
   // Calculate entity balances locally
   const entityBalances = useMemo(() => {
     const entityCodesArray = lines.map((line) => line.entityCode);
-    const uniqueEntityCodes = [...new Set(entityCodesArray.filter(Boolean))];
+    const filteredCodes = entityCodesArray.filter(Boolean);
+    const uniqueEntityCodes: string[] = [];
+    
+    filteredCodes.forEach(code => {
+      if (code && uniqueEntityCodes.indexOf(code) === -1) {
+        uniqueEntityCodes.push(code);
+      }
+    });
 
     if (uniqueEntityCodes.length <= 1) {
       return [];
