@@ -662,7 +662,7 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: "",
+        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
         description: journalData.description,
         status: "pending_approval" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,
@@ -702,7 +702,7 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: "",
+        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,

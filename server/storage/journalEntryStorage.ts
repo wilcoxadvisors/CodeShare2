@@ -1701,6 +1701,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                         amount: line.amount,
                         type: line.type,
                         description: line.description,
+                        entityCode: line.entityCode,  // ARCHITECT'S STAGE 4 FIX: Preserve entityCode
                     })
                     .returning();
 
