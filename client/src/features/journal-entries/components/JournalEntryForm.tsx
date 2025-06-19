@@ -572,15 +572,20 @@ function JournalEntryForm({
       status: "draft" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
       reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
+      lines: lines.map((line) => {
+        const debitAmount = parseFloat(line.debit) || 0;
+        const creditAmount = parseFloat(line.credit) || 0;
+        
+        return {
+          id: line.id,
+          accountId: parseInt(line.accountId),
+          entityCode: line.entityCode,
+          description: line.description,
+          type: debitAmount > 0 ? "debit" : "credit",
+          amount: debitAmount > 0 ? debitAmount : creditAmount,
+          tags: line.tags || [],
+        };
+      }),
     };
 
     if (existingEntry && existingEntry.id) {
@@ -610,15 +615,20 @@ function JournalEntryForm({
       status: "pending_approval" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
       reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
+      lines: lines.map((line) => {
+        const debitAmount = parseFloat(line.debit) || 0;
+        const creditAmount = parseFloat(line.credit) || 0;
+        
+        return {
+          id: line.id,
+          accountId: parseInt(line.accountId),
+          entityCode: line.entityCode,
+          description: line.description,
+          type: debitAmount > 0 ? "debit" : "credit",
+          amount: debitAmount > 0 ? debitAmount : creditAmount,
+          tags: line.tags || [],
+        };
+      }),
     };
 
     if (existingEntry && existingEntry.id) {
@@ -650,15 +660,20 @@ function JournalEntryForm({
       status: "posted" as JournalEntryStatus,
       isAccrual: journalData.isAccrual,
       reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
-      lines: lines.map((line) => ({
-        id: line.id,
-        accountId: parseInt(line.accountId),
-        entityCode: line.entityCode,
-        description: line.description,
-        debit: parseFloat(line.debit) || 0,
-        credit: parseFloat(line.credit) || 0,
-        tags: line.tags || [],
-      })),
+      lines: lines.map((line) => {
+        const debitAmount = parseFloat(line.debit) || 0;
+        const creditAmount = parseFloat(line.credit) || 0;
+        
+        return {
+          id: line.id,
+          accountId: parseInt(line.accountId),
+          entityCode: line.entityCode,
+          description: line.description,
+          type: debitAmount > 0 ? "debit" : "credit",
+          amount: debitAmount > 0 ? debitAmount : creditAmount,
+          tags: line.tags || [],
+        };
+      }),
     };
 
     if (existingEntry && existingEntry.id) {
