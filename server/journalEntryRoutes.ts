@@ -205,10 +205,10 @@ export function registerJournalEntryRoutes(app: Express) {
         });
         
         if (existingEntries.length > 0) {
-          console.log('DEBUG: Duplicate reference number detected:', modifiedEntryData.referenceNumber);
-          return res.status(400).json({ 
-            message: `Reference number "${modifiedEntryData.referenceNumber}" is already in use for this entity. Please use a different reference number.` 
-          });
+          console.log('DEBUG: Duplicate reference number detected, auto-generating unique one:', modifiedEntryData.referenceNumber);
+          // Generate unique reference with timestamp
+          modifiedEntryData.referenceNumber = `${modifiedEntryData.referenceNumber}-${Date.now()}`;
+          console.log('DEBUG: Generated unique reference:', modifiedEntryData.referenceNumber);
         }
       }
       
