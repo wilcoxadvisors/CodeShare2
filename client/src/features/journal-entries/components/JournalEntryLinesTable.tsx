@@ -1,21 +1,42 @@
 import React, { useState, useMemo } from "react";
-import { X, Plus, ChevronDown, ChevronRight, Tag, Tags, Check, AlertCircle } from "lucide-react";
+import {
+  X,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Tag,
+  Tags,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { AccountType } from "@shared/schema";
+import { safeParseAmount } from "../utils/lineFormat";
 
-
-interface DimensionTag {
-  dimensionId: number;
-  dimensionValueId: number;
-  dimensionName?: string;
-  dimensionValueName?: string;
-}
-
+// Interface for journal entry lines
 interface JournalLine {
   id?: number;
   _key?: string;
@@ -24,9 +45,32 @@ interface JournalLine {
   description: string;
   debit: string;
   credit: string;
-  tags: DimensionTag[];
+  tags?: DimensionTag[];
 }
 
+interface DimensionTag {
+  dimensionId: number;
+  dimensionValueId: number;
+  dimensionName?: string;
+  dimensionValueName?: string;
+}
+
+interface DimensionValue {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+}
+
+interface Dimension {
+  id: number;
+  name: string;
+  description?: string;
+  values?: DimensionValue[];
+  dimensionValues?: DimensionValue[]; // Keep for backward compatibility
+}
+
+// Account interface
 interface Account {
   id: number;
   accountCode: string;
@@ -59,22 +103,8 @@ interface EntityBalance {
   balanced: boolean;
 }
 
-interface Dimension {
-  id: number;
-  name: string;
-  code?: string;
-  description?: string | null;
-  active: boolean;
-  values: DimensionValue[];
-}
-
-interface DimensionValue {
-  id: number;
-  dimensionId: number;
-  name: string;
-  code?: string;
-  description?: string | null;
-  active: boolean;
+interface ExpandedState {
+  [accountId: number]: boolean;
 }
 
 interface JournalEntryLinesTableProps {
@@ -84,9 +114,9 @@ interface JournalEntryLinesTableProps {
   entities?: Entity[];
   dimensions?: Dimension[];
   fieldErrors: Record<string, string>;
+  isBalanced: boolean;
   totalDebit: number;
   totalCredit: number;
-  isBalanced: boolean;
 }
 
 export function JournalEntryLinesTable({
@@ -96,96 +126,76 @@ export function JournalEntryLinesTable({
   entities = [],
   dimensions = [],
   fieldErrors,
+  isBalanced,
   totalDebit,
   totalCredit,
-  isBalanced,
 }: JournalEntryLinesTableProps) {
-  // Ensure dimensions is always an array
-  const safeDimensions = React.useMemo(() => {
-    return Array.isArray(dimensions) ? dimensions : [];
-  }, [dimensions]);
-  // State for search and expansion
+  // State for line item management
+  const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
-  const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
-  const [dimensionSearchQuery, setDimensionSearchQuery] = useState("");
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState<Record<string, boolean>>({});
   const [expandedDimensions, setExpandedDimensions] = useState<Record<number, boolean>>({});
+  const [dimensionSearchQuery, setDimensionSearchQuery] = useState("");
 
-  // Create hierarchical account structure
-  const accountTree = useMemo(() => {
-    const tree: Account[] = [];
-    const accountMap: Record<number, Account & { children: Account[] }> = {};
-
-    // First pass: create map with children arrays
+  // Initialize expanded state
+  const initializeExpandedState = (): ExpandedState => {
+    const state: ExpandedState = {};
     accounts.forEach((account) => {
-      accountMap[account.id] = { ...account, children: [] };
+      state[account.id] = false;
     });
+    return state;
+  };
 
-    // Second pass: build tree structure
-    accounts.forEach((account) => {
-      if (account.parentId && accountMap[account.parentId]) {
-        accountMap[account.parentId].children.push(accountMap[account.id]);
-      } else {
-        tree.push(accountMap[account.id]);
-      }
-    });
+  // Calculate difference
+  const difference = totalDebit - totalCredit;
 
-    return tree;
-  }, [accounts]);
+  // Calculate entity balances for intercompany validation
+  const entityBalances = useMemo(() => {
+    const entityCodesArray = lines.map((line) => line.entityCode);
+    const uniqueEntityCodes = entityCodesArray.filter(
+      (code, index) => entityCodesArray.indexOf(code) === index,
+    );
 
-  // Filter accounts based on search
-  const filteredAccountTree = useMemo(() => {
-    if (!searchQuery) return accountTree;
+    if (uniqueEntityCodes.length <= 1) {
+      return [];
+    }
 
-    const searchLower = searchQuery.toLowerCase();
-    const filterTree = (accounts: Account[]): Account[] => {
-      return accounts.filter((account: any) => {
-        const matchesSearch = 
-          account.accountCode?.toLowerCase().includes(searchLower) ||
-          account.name?.toLowerCase().includes(searchLower);
-        
-        const hasMatchingChild = account.children && filterTree(account.children).length > 0;
-        
-        if (matchesSearch || hasMatchingChild) {
-          // Auto-expand if this account or its children match
-          if (hasMatchingChild) {
-            setExpandedAccounts(prev => ({ ...prev, [account.id]: true }));
-          }
-          return true;
-        }
-        
-        return false;
-      });
-    };
-
-    return filterTree(accountTree);
-  }, [accountTree, searchQuery]);
-
-  // Filter dimensions based on search
-  const filteredDimensions = useMemo(() => {
-    if (!dimensionSearchQuery) return safeDimensions;
-
-    const searchLower = dimensionSearchQuery.toLowerCase();
-    return safeDimensions.filter((dimension) => {
-      const matchesName = dimension.name?.toLowerCase().includes(searchLower);
-      const hasMatchingValues = dimension.values?.some((value) =>
-        value.name?.toLowerCase().includes(searchLower)
+    return uniqueEntityCodes.map((entityCode) => {
+      const entityLines = lines.filter((line) => line.entityCode === entityCode);
+      const entityDebit = entityLines.reduce(
+        (sum, line) => sum + safeParseAmount(line.debit),
+        0,
       );
-      
-      // Auto-expand if dimension has matching values
-      if (hasMatchingValues) {
-        setExpandedDimensions(prev => ({ ...prev, [dimension.id]: true }));
-      }
-      
-      return matchesName || hasMatchingValues;
-    });
-  }, [safeDimensions, dimensionSearchQuery]);
+      const entityCredit = entityLines.reduce(
+        (sum, line) => sum + safeParseAmount(line.credit),
+        0,
+      );
+      const entityDifference = entityDebit - entityCredit;
 
-  // Combined expansion state for accounts (search + manual)
-  const combinedExpansions = useMemo(() => {
-    return { ...expandedAccounts };
-  }, [expandedAccounts]);
+      return {
+        entityCode,
+        debit: entityDebit,
+        credit: entityCredit,
+        difference: entityDifference,
+        balanced: Math.abs(entityDifference) < 0.001,
+      };
+    });
+  }, [lines]);
+
+  // Toggle function for dimension expansion
+  const toggleDimensionExpansion = (dimensionId: number) => {
+    setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
+  };
+
+  // Handler functions
+  const handleLineChange = (index: number, field: string, value: string) => {
+    setLines((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
 
   const addLine = () => {
     const newLine: JournalLine = {
@@ -197,437 +207,671 @@ export function JournalEntryLinesTable({
       credit: "",
       tags: [],
     };
-    setLines([...lines, newLine]);
+    setLines((prev) => [...prev, newLine]);
   };
 
   const removeLine = (index: number) => {
-    if (lines.length <= 1) return; // Keep at least one line
-    const newLines = lines.filter((_, i) => i !== index);
-    setLines(newLines);
+    setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateLine = (index: number, field: keyof JournalLine, value: any) => {
-    const newLines = [...lines];
-    newLines[index] = { ...newLines[index], [field]: value };
-    setLines(newLines);
+  const updateLineTags = (lineIndex: number, newTags: DimensionTag[]) => {
+    setLines((prev) => {
+      const updated = [...prev];
+      updated[lineIndex] = { ...updated[lineIndex], tags: newTags };
+      return updated;
+    });
   };
 
-  const updateLineTags = (lineIndex: number, tags: DimensionTag[]) => {
-    const newLines = [...lines];
-    newLines[lineIndex] = { ...newLines[lineIndex], tags };
-    setLines(newLines);
-  };
+  // Build hierarchical account tree
+  const accountTree = useMemo(() => {
+    const accountMap = new Map<number, Account & { children: (Account & { children: any[] })[] }>();
+    const rootAccounts: (Account & { children: any[] })[] = [];
 
-  // Render hierarchical account tree
-  const renderAccountTree = (account: any, depth: number, lineIndex: number): React.ReactNode => {
-    const hasChildren = account.children && account.children.length > 0;
-    const isExpanded = combinedExpansions[account.id] || false;
-    const isSelectable = !hasChildren; // Only leaf nodes are selectable
+    // Initialize all accounts with children array
+    accounts.forEach(account => {
+      accountMap.set(account.id, { ...account, children: [] });
+    });
 
-    return (
-      <div key={account.id}>
-        <div
-          className={`flex items-center py-2 px-2 hover:bg-accent cursor-pointer ${
-            depth > 0 ? `ml-${depth * 4}` : ""
-          }`}
-          style={{ marginLeft: `${depth * 16}px` }}
-          onClick={() => {
-            if (hasChildren) {
-              setExpandedAccounts(prev => ({
-                ...prev,
-                [account.id]: !prev[account.id]
-              }));
-            } else if (isSelectable) {
-              updateLine(lineIndex, "accountId", account.id.toString());
-              setAccountPopoverOpen(prev => ({ ...prev, [`line_${lineIndex}`]: false }));
-            }
-          }}
-        >
-          {hasChildren && (
-            <div className="mr-2">
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </div>
-          )}
-          
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <span className={`text-sm ${hasChildren ? "font-medium" : ""}`}>
-                {account.accountCode} - {account.name}
-              </span>
-              {isSelectable && lines[lineIndex]?.accountId === account.id.toString() && (
-                <Check className="h-4 w-4 text-primary" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {hasChildren && isExpanded && (
-          <div>
-            {account.children.map((child: any) => 
-              renderAccountTree(child, depth + 1, lineIndex)
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Render dimension tree for tags
-  const renderDimensionTree = (dimension: Dimension, lineIndex: number): React.ReactNode => {
-    const isExpanded = expandedDimensions[dimension.id] || false;
-    const currentTags = lines[lineIndex]?.tags || [];
-
-    return (
-      <div key={dimension.id}>
-        {/* Dimension Header */}
-        <div
-          className="flex items-center py-2 px-2 hover:bg-accent cursor-pointer"
-          onClick={() => {
-            setExpandedDimensions(prev => ({
-              ...prev,
-              [dimension.id]: !prev[dimension.id]
-            }));
-          }}
-        >
-          <div className="mr-2">
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </div>
-          <span className="text-sm font-medium">{dimension.name}</span>
-        </div>
-
-        {/* Dimension Values */}
-        {isExpanded && (
-          <div className="ml-6">
-            {dimension.values?.map((value) => {
-              const isSelected = currentTags.some((tag: DimensionTag) => tag.dimensionValueId === value.id);
-              
-              return (
-                <div
-                  key={value.id}
-                  className="flex items-center py-1 px-2 hover:bg-accent cursor-pointer"
-                  onClick={() => {
-                    let newTags: DimensionTag[];
-                    
-                    if (isSelected) {
-                      // Remove this tag
-                      newTags = currentTags.filter((tag: DimensionTag) => tag.dimensionValueId !== value.id);
-                    } else {
-                      // Remove any existing tag for this dimension, then add the new one
-                      const otherDimensionTags = currentTags.filter((tag: DimensionTag) => tag.dimensionId !== dimension.id);
-                      const newTag: DimensionTag = {
-                        dimensionId: dimension.id,
-                        dimensionValueId: value.id,
-                        dimensionName: dimension.name,
-                        dimensionValueName: value.name,
-                      };
-                      newTags = [...otherDimensionTags, newTag];
-                    }
-                    
-                    updateLineTags(lineIndex, newTags);
-                  }}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-sm">{value.name}</span>
-                    {isSelected && <Check className="h-4 w-4 text-primary" />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const difference = totalDebit - totalCredit;
-
-  // Calculate entity balances locally
-  const entityBalances = useMemo(() => {
-    const entityCodesArray = lines.map((line) => line.entityCode);
-    const filteredCodes = entityCodesArray.filter(Boolean);
-    const uniqueEntityCodes: string[] = [];
-    
-    filteredCodes.forEach(code => {
-      if (code && uniqueEntityCodes.indexOf(code) === -1) {
-        uniqueEntityCodes.push(code);
+    // Build tree structure
+    accounts.forEach(account => {
+      const accountWithChildren = accountMap.get(account.id)!;
+      if (account.parentId) {
+        const parent = accountMap.get(account.parentId);
+        if (parent) {
+          parent.children.push(accountWithChildren);
+        } else {
+          rootAccounts.push(accountWithChildren);
+        }
+      } else {
+        rootAccounts.push(accountWithChildren);
       }
     });
 
-    if (uniqueEntityCodes.length <= 1) {
-      return [];
+    return rootAccounts;
+  }, [accounts]);
+
+  // Filter and search in hierarchical structure
+  const filteredAccountTree = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return accountTree;
     }
 
-    return uniqueEntityCodes.map((entityCode) => {
-      const entityLines = lines.filter((line) => line.entityCode === entityCode);
-      const entityDebit = entityLines.reduce(
-        (sum, line) => sum + (parseFloat(line.debit) || 0),
-        0,
-      );
-      const entityCredit = entityLines.reduce(
-        (sum, line) => sum + (parseFloat(line.credit) || 0),
-        0,
-      );
-      const entityDifference = entityDebit - entityCredit;
+    const lowerQuery = searchQuery.toLowerCase();
+    
+    const filterRecursive = (account: Account & { children: any[] }): (Account & { children: any[] }) | null => {
+      const matchesSearch = 
+        account.accountCode.toLowerCase().includes(lowerQuery) ||
+        account.name.toLowerCase().includes(lowerQuery);
 
-      return {
-        entityCode,
-        debit: entityDebit,
-        credit: entityCredit,
-        difference: entityDifference,
-        balanced: Math.abs(entityDifference) < 0.01,
-      };
-    });
-  }, [lines]);
+      const filteredChildren = account.children
+        .map(child => filterRecursive(child))
+        .filter(Boolean) as (Account & { children: any[] })[];
 
-  return (
-    <div className="space-y-4 p-4 border rounded-lg">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Journal Entry Lines</h3>
-        <Button type="button" onClick={addLine}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Line
-        </Button>
-      </div>
+      // Include account if it matches search OR has matching children
+      if (matchesSearch || filteredChildren.length > 0) {
+        return { ...account, children: filteredChildren };
+      }
 
-      <div className="space-y-2">
-        {lines.map((line, index) => (
-          <div key={line._key || line.id || index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded bg-gray-50">
-            {/* Account Selection */}
-            <div>
-              <label className="text-sm font-medium">Account *</label>
-              <Popover 
-                open={accountPopoverOpen[`line_${index}`] || false}
-                onOpenChange={(open) => 
-                  setAccountPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
-                }
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between mt-1"
-                    type="button"
-                  >
-                    {(() => {
-                      const selectedAccount = accounts.find(acc => acc.id.toString() === line.accountId);
-                      return selectedAccount 
-                        ? `${selectedAccount.accountCode} - ${selectedAccount.name}`
-                        : "Select account...";
-                    })()}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search accounts..." 
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No accounts found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredAccountTree.map((account) => 
-                          renderAccountTree(account, 0, index)
-                        )}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+      return null;
+    };
 
-            {/* Entity Code */}
-            <div>
-              <label className="text-sm font-medium">Entity</label>
-              <Select 
-                value={line.entityCode} 
-                onValueChange={(value) => updateLine(index, "entityCode", value)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select entity" />
-                </SelectTrigger>
-                <SelectContent>
-                  {entities.map((entity) => (
-                    <SelectItem key={entity.id} value={entity.code}>
-                      {entity.code} - {entity.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    return accountTree
+      .map(account => filterRecursive(account))
+      .filter(Boolean) as (Account & { children: any[] })[];
+  }, [accountTree, searchQuery]);
 
-            {/* Description */}
-            <div>
-              <label className="text-sm font-medium">Description *</label>
-              <Input 
-                value={line.description} 
-                onChange={(e) => updateLine(index, "description", e.target.value)}
-                className="mt-1"
-                placeholder="Line description"
-              />
-            </div>
+  // Auto-expand parents when searching
+  const autoExpandedAccounts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return {};
+    }
 
-            {/* Debit */}
-            <div>
-              <label className="text-sm font-medium">Debit</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={line.debit}
-                onChange={(e) => updateLine(index, "debit", e.target.value)}
-                className="mt-1"
-                placeholder="0.00"
-              />
-            </div>
+    const expanded: ExpandedState = {};
+    
+    const expandParents = (account: Account & { children: any[] }) => {
+      if (account.children.length > 0) {
+        expanded[account.id] = true;
+        account.children.forEach(child => expandParents(child));
+      }
+    };
 
-            {/* Credit */}
-            <div>
-              <label className="text-sm font-medium">Credit</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={line.credit}
-                onChange={(e) => updateLine(index, "credit", e.target.value)}
-                className="mt-1"
-                placeholder="0.00"
-              />
-            </div>
+    filteredAccountTree.forEach(account => expandParents(account));
+    return expanded;
+  }, [filteredAccountTree, searchQuery]);
 
-            {/* Tags */}
-            <div>
-              <label className="text-sm font-medium">Tags</label>
-              <div className="mt-1 space-y-2">
-                {/* Display existing tags */}
-                <div className="flex flex-wrap gap-1">
-                  {(line.tags || []).map((tag: DimensionTag, tagIndex: number) => (
-                    <Badge 
-                      key={`${tag.dimensionId}-${tag.dimensionValueId}`}
-                      variant="secondary" 
-                      className="text-xs"
-                    >
-                      {tag.dimensionName}: {tag.dimensionValueName}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => {
-                          const newTags = line.tags.filter((_: any, i: number) => i !== tagIndex);
-                          updateLineTags(index, newTags);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
-                
-                {/* Add Tags Button */}
-                <Popover 
-                  open={tagPopoverOpen[`line_${index}`] || false}
-                  onOpenChange={(open) => 
-                    setTagPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
-                  }
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Tags className="h-4 w-4 mr-2" />
-                      Add Tags
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search dimensions..." 
-                        value={dimensionSearchQuery}
-                        onValueChange={setDimensionSearchQuery}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No dimensions found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredDimensions.map((dimension) => 
-                            renderDimensionTree(dimension, index)
-                          )}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+  // Get combined expanded state (manual + auto-expanded from search)
+  const combinedExpandedState = useMemo(() => {
+    return { ...expandedAccounts, ...autoExpandedAccounts };
+  }, [expandedAccounts, autoExpandedAccounts]);
+
+  // Toggle account expansion
+  const toggleAccountExpansion = (accountId: number) => {
+    setExpandedAccounts(prev => ({
+      ...prev,
+      [accountId]: !prev[accountId]
+    }));
+  };
+
+  // Render hierarchical account tree
+  const renderAccountTree = (accounts: (Account & { children: any[] })[], level = 0, lineIndex: number) => {
+    return accounts.map((account) => {
+      const hasChildren = account.children.length > 0;
+      const isExpanded = combinedExpandedState[account.id];
+      const isSelected = lines[lineIndex]?.accountId === account.id.toString();
+      const canSelect = !hasChildren; // Only leaf accounts are selectable
+      
+      return (
+        <div key={account.id}>
+          {/* Parent/Child Account Item */}
+          <div
+            className={`flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer ${canSelect ? 'hover:bg-blue-50' : 'hover:bg-gray-100'}`}
+            onClick={() => {
+              if (hasChildren) {
+                toggleAccountExpansion(account.id);
+              } else {
+                handleLineChange(lineIndex, "accountId", account.id.toString());
+                setAccountPopoverOpen(prev => ({
+                  ...prev,
+                  [`line_${lineIndex}`]: false
+                }));
+              }
+            }}
+          >
+            {/* Indentation for hierarchy */}
+            <div style={{ width: level * 16 }} />
+            
+            {/* Expand/Collapse chevron for parent accounts */}
+            {hasChildren && (
+              <div className="flex items-center justify-center w-4 h-4 mr-1">
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-gray-400" />
+                )}
               </div>
-            </div>
-
-            {/* Remove Button */}
-            <div className="flex items-end">
-              {lines.length > 1 && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => removeLine(index)}
-                  className="w-full"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+            )}
+            
+            {/* Account content */}
+            <div className="flex-1 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className={`font-medium text-sm ${hasChildren ? 'text-gray-700 font-semibold' : 'text-gray-900'}`}>
+                  {account.accountCode}
+                </span>
+                <span className="text-gray-400">-</span>
+                <span className={`text-sm ${hasChildren ? 'text-gray-600 font-medium' : 'text-gray-700'}`}>
+                  {account.name}
+                </span>
+              </div>
+              
+              {/* Selection indicator for leaf accounts */}
+              {canSelect && isSelected && (
+                <Check className="h-4 w-4 text-blue-600" />
               )}
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Balance Summary */}
-      <div className="mt-4 p-4 bg-gray-50 rounded border">
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="font-medium">Total Debit:</span> ${totalDebit.toFixed(2)}
-          </div>
-          <div>
-            <span className="font-medium">Total Credit:</span> ${totalCredit.toFixed(2)}
-          </div>
-          <div className={isBalanced ? "text-green-600" : "text-red-600"}>
-            <span className="font-medium">
-              {isBalanced ? "✓ Balanced" : "⚠ Not Balanced"}
-            </span>
-            {!isBalanced && (
-              <div className="text-xs">
-                Difference: ${Math.abs(difference).toFixed(2)}
-              </div>
-            )}
-          </div>
+          
+          {/* Render children if expanded */}
+          {hasChildren && isExpanded && (
+            <div>
+              {renderAccountTree(account.children, level + 1, lineIndex)}
+            </div>
+          )}
         </div>
-      </div>
+      );
+    });
+  };
 
-      {/* Entity Balances */}
-      {entityBalances.length > 0 && (
-        <div className="mt-4 p-4 bg-blue-50 rounded border">
-          <h4 className="text-sm font-medium mb-2">Entity Balances (Intercompany)</h4>
-          <div className="space-y-1">
-            {entityBalances.map((balance) => (
-              <div key={balance.entityCode} className="text-xs grid grid-cols-4 gap-2">
-                <div className="font-medium">{balance.entityCode}</div>
-                <div>Debit: ${balance.debit.toFixed(2)}</div>
-                <div>Credit: ${balance.credit.toFixed(2)}</div>
-                <div className={balance.balanced ? "text-green-600" : "text-orange-600"}>
-                  {balance.balanced ? "✓ Balanced" : `Diff: $${Math.abs(balance.difference).toFixed(2)}`}
+  // Safeguard: Ensure dimensions is always an array and filter empty dimensions
+  const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+  const filteredDimensions = safeDimensions.filter(dimension => dimension.values && dimension.values.length > 0);
+
+  // Intelligent filtering based on search query
+  const searchFilteredDimensions = useMemo(() => {
+    if (!dimensionSearchQuery.trim()) {
+      return filteredDimensions;
+    }
+
+    const query = dimensionSearchQuery.toLowerCase();
+    return filteredDimensions.map(dimension => {
+      const matchingValues = dimension.values?.filter(value => 
+        value.name.toLowerCase().includes(query) || 
+        (value.code && value.code.toLowerCase().includes(query))
+      ) || [];
+
+      return matchingValues.length > 0 ? {
+        ...dimension,
+        values: matchingValues
+      } : null;
+    }).filter((dimension): dimension is NonNullable<typeof dimension> => dimension !== null);
+  }, [filteredDimensions, dimensionSearchQuery]);
+
+  // Auto-expansion for search results
+  const autoExpandedDimensions = useMemo(() => {
+    if (!dimensionSearchQuery.trim()) {
+      return {};
+    }
+
+    const autoExpanded: Record<number, boolean> = {};
+    searchFilteredDimensions.forEach(dimension => {
+      if (dimension) {
+        autoExpanded[dimension.id] = true;
+      }
+    });
+    return autoExpanded;
+  }, [searchFilteredDimensions, dimensionSearchQuery]);
+
+  // Combined expansion state
+  const combinedExpandedDimensions = useMemo(() => ({
+    ...expandedDimensions,
+    ...autoExpandedDimensions
+  }), [expandedDimensions, autoExpandedDimensions]);
+
+  return (
+    <div className="overflow-x-auto mb-4">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Account
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Entity Code
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Description
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Debit
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Credit
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Tags
+            </th>
+            <th scope="col" className="relative px-6 py-3">
+              <span className="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="bg-white divide-y divide-gray-200">
+          {lines.map((line, index) => (
+            <tr key={line.id || line._key}>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div>
+                  {/* Hierarchical Account Selector */}
+                  <Popover
+                    open={accountPopoverOpen[`line_${index}`] || false}
+                    onOpenChange={(open) => {
+                      setAccountPopoverOpen(prev => ({
+                        ...prev,
+                        [`line_${index}`]: open
+                      }));
+                      // Reset expanded state and search query when dropdown is closed
+                      if (!open) {
+                        setExpandedAccounts({});
+                        setSearchQuery("");
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={`w-full justify-between ${fieldErrors[`line_${index}_accountId`] ? "border-red-500" : ""}`}
+                      >
+                        {line.accountId &&
+                        accounts.some(
+                          (account) =>
+                            account.id.toString() === line.accountId,
+                        )
+                          ? `${accounts.find((account) => account.id.toString() === line.accountId)?.accountCode} - ${accounts.find((account) => account.id.toString() === line.accountId)?.name}`
+                          : "Select account..."}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[500px] p-0" side="bottom" align="start">
+                      <div className="border-b px-3 py-2">
+                        <div className="flex items-center border rounded-md px-3">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-gray-400 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder="Search accounts..."
+                            className="flex-1 py-2 bg-transparent outline-none text-sm"
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-[400px] overflow-y-auto">
+                        {filteredAccountTree.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-sm text-gray-500">
+                            No accounts found
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            {renderAccountTree(filteredAccountTree, 0, index)}
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {fieldErrors[`line_${index}_accountId`] && (
+                    <p className="text-red-500 text-sm mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {fieldErrors[`line_${index}_accountId`]}
+                    </p>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Select
+                  value={line.entityCode}
+                  onValueChange={(value) =>
+                    handleLineChange(index, "entityCode", value)
+                  }
+                >
+                  <SelectTrigger
+                    className={`w-full ${fieldErrors[`line_${index}_entityCode`] ? "border-red-500" : ""}`}
+                  >
+                    <SelectValue placeholder="Select entity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {entities.map((entity) => (
+                      <SelectItem key={entity.id} value={entity.code}>
+                        {entity.code} - {entity.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors[`line_${index}_entityCode`] && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {fieldErrors[`line_${index}_entityCode`]}
+                  </p>
+                )}
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Input
+                  type="text"
+                  value={line.description}
+                  onChange={(e) =>
+                    handleLineChange(index, "description", e.target.value)
+                  }
+                  placeholder="Line description"
+                  className={`w-full ${fieldErrors[`line_${index}_description`] ? "border-red-500" : ""}`}
+                />
+                {fieldErrors[`line_${index}_description`] && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {fieldErrors[`line_${index}_description`]}
+                  </p>
+                )}
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={line.debit}
+                  onChange={(e) =>
+                    handleLineChange(index, "debit", e.target.value)
+                  }
+                  placeholder="0.00"
+                  className={`w-full ${fieldErrors[`line_${index}_debit`] ? "border-red-500" : ""}`}
+                />
+                {fieldErrors[`line_${index}_debit`] && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {fieldErrors[`line_${index}_debit`]}
+                  </p>
+                )}
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={line.credit}
+                  onChange={(e) =>
+                    handleLineChange(index, "credit", e.target.value)
+                  }
+                  placeholder="0.00"
+                  className={`w-full ${fieldErrors[`line_${index}_credit`] ? "border-red-500" : ""}`}
+                />
+                {fieldErrors[`line_${index}_credit`] && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {fieldErrors[`line_${index}_credit`]}
+                  </p>
+                )}
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-wrap gap-1 items-center">
+                  {line.tags && line.tags.length > 0 && 
+                    line.tags.map((tag, tagIndex) => (
+                      <Badge key={tagIndex} variant="secondary" className="text-xs flex items-center gap-1">
+                        {tag.dimensionName}: {tag.dimensionValueName}
+                        <X 
+                          className="h-3 w-3 cursor-pointer hover:text-red-600" 
+                          onClick={() => {
+                            const newTags = line.tags?.filter((_, i) => i !== tagIndex) || [];
+                            updateLineTags(index, newTags);
+                          }}
+                        />
+                      </Badge>
+                    ))
+                  }
+                  
+                  {/* Add Tag Button with Popover */}
+                  <Popover 
+                    open={tagPopoverOpen[`line_${index}`] || false}
+                    onOpenChange={(open) => {
+                      setTagPopoverOpen(prev => ({
+                        ...prev,
+                        [`line_${index}`]: open
+                      }));
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs flex items-center gap-1"
+                      >
+                        <Tags className="h-3 w-3" />
+                        Add Tag
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search dimension values..." 
+                          value={dimensionSearchQuery}
+                          onValueChange={setDimensionSearchQuery}
+                        />
+                        <CommandList className="max-h-64">
+                          {searchFilteredDimensions.map((dimension) => {
+                            if (!dimension) return null;
+                            
+                            const isExpanded = combinedExpandedDimensions[dimension.id];
+                            return (
+                              <div key={dimension.id}>
+                                {/* Dimension header (non-selectable parent) */}
+                                <div
+                                  className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                                  onClick={() => toggleDimensionExpansion(dimension.id)}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 mr-2" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 mr-2 transform -rotate-90" />
+                                  )}
+                                  <span className="font-medium">{dimension.name}</span>
+                                </div>
+                                
+                                {/* Dimension values (selectable children) */}
+                                {isExpanded && dimension.values?.map((value: DimensionValue) => {
+                                  const isSelected = line.tags?.some(
+                                    tag => tag.dimensionId === dimension.id && tag.dimensionValueId === value.id
+                                  );
+                                  
+                                  return (
+                                    <CommandItem
+                                      key={value.id}
+                                      onSelect={() => {
+                                        const existingTags = line.tags || [];
+                                        
+                                        if (isSelected) {
+                                          // Remove tag
+                                          const newTags = existingTags.filter(
+                                            tag => !(tag.dimensionId === dimension.id && tag.dimensionValueId === value.id)
+                                          );
+                                          updateLineTags(index, newTags);
+                                        } else {
+                                          // Add tag (remove any existing tag for this dimension first)
+                                          const newTags = existingTags.filter(
+                                            tag => tag.dimensionId !== dimension.id
+                                          );
+                                          newTags.push({
+                                            dimensionId: dimension.id,
+                                            dimensionValueId: value.id,
+                                            dimensionName: dimension.name,
+                                            dimensionValueName: value.name
+                                          });
+                                          updateLineTags(index, newTags);
+                                        }
+                                      }}
+                                      className="pl-8 text-sm"
+                                    >
+                                      {isSelected && <Check className="h-3 w-3 mr-2" />}
+                                      {value.name}
+                                    </CommandItem>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </td>
+
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button
+                  className="text-red-600 hover:text-red-900"
+                  onClick={() => removeLine(index)}
+                  aria-label="Remove line"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+
+        <tfoot>
+          <tr>
+            <td colSpan={6} className="px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLine}
+                className="inline-flex items-center"
+              >
+                <Plus className="-ml-0.5 mr-2 h-4 w-4" />
+                Add Line
+              </Button>
+            </td>
+          </tr>
+
+          <tr className="bg-gray-50">
+            <td
+              colSpan={3}
+              className="px-6 py-4 text-right text-sm font-medium text-gray-900"
+            >
+              Totals:
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              {totalDebit.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              {totalCredit.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </td>
+            <td className="px-6 py-4"></td>
+          </tr>
+
+          <tr className="bg-gray-50">
+            <td
+              colSpan={3}
+              className="px-6 py-4 text-right text-sm font-medium text-gray-900"
+            >
+              Difference:
+            </td>
+            <td
+              colSpan={2}
+              className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isBalanced ? "text-green-600" : "text-red-600"}`}
+            >
+              {difference.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </td>
+            <td className="px-6 py-4"></td>
+          </tr>
+
+          {/* Entity Balance Summary Section - Intercompany Validation */}
+          {entityBalances.length > 1 && (
+            <>
+              <tr className="bg-gray-100">
+                <td
+                  colSpan={6}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Entity Balance Summary (Intercompany)
+                </td>
+              </tr>
+              {entityBalances.map((balance: EntityBalance) => (
+                <tr key={balance.entityCode} className="bg-gray-50">
+                  <td
+                    colSpan={2}
+                    className="px-6 py-2 text-right text-xs font-medium text-gray-900"
+                  >
+                    Entity {balance.entityCode}:
+                  </td>
+                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                    DR:{" "}
+                    {balance.debit.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                    CR:{" "}
+                    {balance.credit.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td
+                    colSpan={2}
+                    className={`px-6 py-2 whitespace-nowrap text-xs font-medium ${balance.balanced ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {balance.balanced
+                      ? "Balanced"
+                      : `Difference: ${balance.difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  </td>
+                </tr>
+              ))}
+            </>
+          )}
+        </tfoot>
+      </table>
     </div>
   );
 }
