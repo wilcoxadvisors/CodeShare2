@@ -73,7 +73,7 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     if (status && typeof status === 'string' && ['draft', 'posted', 'voided', 'pending_approval', 'approved', 'rejected'].includes(status)) {
-      filters.status = status as JournalEntryStatus;
+      filters.status = status as ('draft' | 'posted' | 'pending_approval' | 'approved' | 'rejected' | 'voided');
     }
     
     const entries = await journalEntryStorage.listJournalEntries(filters);
@@ -298,14 +298,17 @@ export function registerJournalEntryRoutes(app: Express) {
     const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${journalEntryId} not found`);
+      return;
     }
     
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
     }
     
     if (existingEntry.status !== 'posted') {
       throwBadRequest('Only posted journal entries can be voided');
+      return;
     }
     
     try {
@@ -340,10 +343,12 @@ export function registerJournalEntryRoutes(app: Express) {
     const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${journalEntryId} not found`);
+      return;
     }
     
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
     }
     
     try {
@@ -351,7 +356,7 @@ export function registerJournalEntryRoutes(app: Express) {
       
       const reversalEntry = await journalEntryStorage.reverseJournalEntry(journalEntryId, {
         date: date ? new Date(date) : undefined,
-        description: description || `Reversal of ${existingEntry.referenceNumber}`,
+        description: description || `Reversal of ${existingEntry?.referenceNumber || 'Unknown'}`,
         createdBy: user.id,
         referenceNumber: referenceNumber
       });
