@@ -1,0 +1,181 @@
+Architect's Definitive Plan: Phase 2, Part D - Rebuild JournalEntryLinesTable
+
+1. Goal:
+
+Completely rebuild the JSX structure of client/src/features/journal-entries/components/JournalEntryLinesTable.tsx to restore all missing UI and functionality, including dynamic line rendering, add/remove line actions, and the totals/summary footer. This new structure must be fully integrated with the react-hook-form state passed via props.
+
+2. Definitive Plan:
+
+This is a comprehensive rebuild of the component's return statement.
+
+Stage 1: Rebuild the Table Body (<tbody>)
+
+Objective: Restore the dynamic rendering of journal entry lines using the data from the useFieldArray hook.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Locate the <tbody> element.
+Replace its entire content with the following mapping function. This iterates over the fields prop (from useFieldArray) and creates a table row for each line item.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+<tbody className="bg-white divide-y divide-gray-200">
+  {fields.map((field, index) => (
+    <tr key={field.id}>
+      {/* Account Selector Cell (We will restore the advanced popover in the next mission) */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <select
+          {...form.register(`lines.${index}.accountId`)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="">Select Account</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.accountCode} - {account.name}
+            </option>
+          ))}
+        </select>
+      </td>
+
+      {/* Entity Selector Cell */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <select
+          {...form.register(`lines.${index}.entityCode`)}
+          className="w-full p-2 border rounded"
+        >
+          {entities.map((entity) => (
+            <option key={entity.id} value={entity.code}>
+              {entity.code} - {entity.name}
+            </option>
+          ))}
+        </select>
+      </td>
+
+      {/* Description Cell */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <Input
+          placeholder="Line description"
+          {...form.register(`lines.${index}.description`)}
+        />
+      </td>
+
+      {/* Debit Cell */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <Input
+          type="number" step="0.01" placeholder="0.00"
+          {...form.register(`lines.${index}.debit`)}
+        />
+      </td>
+
+      {/* Credit Cell */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <Input
+          type="number" step="0.01" placeholder="0.00"
+          {...form.register(`lines.${index}.credit`)}
+        />
+      </td>
+
+      {/* Tags Cell (Placeholder for now) */}
+      <td className="px-6 py-4 whitespace-nowrap">
+        <Button variant="outline" size="sm">Add Tag</Button>
+      </td>
+
+      {/* Remove Line Action Cell */}
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <Button
+          type="button" variant="ghost" size="sm"
+          className="text-red-600 hover:text-red-800"
+          onClick={() => remove(index)}
+          disabled={fields.length <= 1}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+Stage 2: Rebuild the Table Footer (<tfoot>)
+
+Objective: Restore the "Add Line" button, the totals summary, the difference calculation, and the intercompany balance validation section.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Actions:
+
+Immediately after the closing </tbody> tag, add the following <tfoot> section.
+This code uses the props append, totalDebit, totalCredit, isBalanced, and entityBalances which are already being passed from JournalEntryForm.tsx.
+TypeScript
+
+// In client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+<tfoot>
+  {/* "Add Line" Button Row */}
+  <tr>
+    <td colSpan={7} className="px-6 py-4">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => append({ accountId: "", entityCode: "", description: "", debit: "", credit: "", tags: [] })}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Add Line
+      </Button>
+    </td>
+  </tr>
+
+  {/* Totals Row */}
+  <tr className="bg-gray-50 border-t">
+    <td colSpan={3} className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
+      Totals
+    </td>
+    <td className="px-6 py-3 text-sm font-medium text-gray-900">
+      {totalDebit.toFixed(2)}
+    </td>
+    <td className="px-6 py-3 text-sm font-medium text-gray-900">
+      {totalCredit.toFixed(2)}
+    </td>
+    <td colSpan={2}></td>
+  </tr>
+
+  {/* Difference Row */}
+  <tr className="bg-gray-50">
+    <td colSpan={3} className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
+      Difference
+    </td>
+    <td colSpan={2} className={`px-6 py-3 text-sm font-medium ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
+      {(totalDebit - totalCredit).toFixed(2)}
+    </td>
+    <td colSpan={2}></td>
+  </tr>
+
+  {/* Intercompany Balance Section */}
+  {entityBalances.length > 1 && (
+    <>
+      <tr className="bg-gray-100 border-t">
+        <td colSpan={7} className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+          Intercompany Balances
+        </td>
+      </tr>
+      {entityBalances.map((balance) => (
+        <tr key={balance.entityCode} className="bg-gray-50">
+          <td colSpan={3} className="px-6 py-2 text-right text-sm text-gray-700">
+            Entity {balance.entityCode}
+          </td>
+          <td colSpan={2} className={`px-6 py-2 text-sm ${balance.balanced ? 'text-green-600' : 'text-red-600'}`}>
+            {balance.balanced ? 'Balanced' : `Unbalanced: ${(balance.debit - balance.credit).toFixed(2)}`}
+          </td>
+          <td colSpan={2}></td>
+        </tr>
+      ))}
+    </>
+  )}
+</tfoot>
+3. Expected Outcome:
+
+The JournalEntryLinesTable will be visually and functionally restored.
+Users will be able to see the journal entry lines.
+Users will be able to add new lines.
+Users will be able to remove existing lines.
+The totals and balance summary will be correctly displayed.
+The foundational structure will be in place to re-implement the advanced hierarchical selectors in the next mission.

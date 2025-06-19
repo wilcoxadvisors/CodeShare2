@@ -401,237 +401,187 @@ export function JournalEntryLinesTable({
     <div className="space-y-4 p-4 border rounded-lg">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Journal Entry Lines</h3>
-        <Button type="button" onClick={addLine}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Line
-        </Button>
       </div>
 
-      <div className="space-y-2">
-        {fields.map((field, index) => (
-          <div key={field.id} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded bg-gray-50">
-            {/* Account Selection */}
-            <div>
-              <label className="text-sm font-medium">Account *</label>
-              <Popover 
-                open={accountPopoverOpen[`line_${index}`] || false}
-                onOpenChange={(open) => 
-                  setAccountPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
-                }
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between mt-1"
-                    type="button"
+      {/* Table Structure */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Account
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Entity
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Description
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Debit
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Credit
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tags
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+          {/* Stage 1: Rebuild Table Body */}
+          <tbody className="bg-white divide-y divide-gray-200">
+            {fields.map((field, index) => (
+              <tr key={field.id}>
+                {/* Account Selector Cell (Advanced popover temporarily simplified) */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <select
+                    {...form.register(`lines.${index}.accountId`)}
+                    className="w-full p-2 border rounded"
                   >
-                    {(() => {
-                      const selectedAccountId = form.watch(`lines.${index}.accountId`);
-                      const selectedAccount = accounts.find(acc => acc.id.toString() === selectedAccountId);
-                      return selectedAccount 
-                        ? `${selectedAccount.accountCode} - ${selectedAccount.name}`
-                        : "Select account...";
-                    })()}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <option value="">Select Account</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.accountCode} - {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                {/* Entity Selector Cell */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <select
+                    {...form.register(`lines.${index}.entityCode`)}
+                    className="w-full p-2 border rounded"
+                  >
+                    {entities.map((entity) => (
+                      <option key={entity.id} value={entity.code}>
+                        {entity.code} - {entity.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                {/* Description Cell */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    placeholder="Line description"
+                    {...form.register(`lines.${index}.description`)}
+                  />
+                </td>
+
+                {/* Debit Cell */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    type="number" step="0.01" placeholder="0.00"
+                    {...form.register(`lines.${index}.debit`)}
+                  />
+                </td>
+
+                {/* Credit Cell */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    type="number" step="0.01" placeholder="0.00"
+                    {...form.register(`lines.${index}.credit`)}
+                  />
+                </td>
+
+                {/* Tags Cell (Placeholder for now) */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Button variant="outline" size="sm">Add Tag</Button>
+                </td>
+
+                {/* Remove Line Action Cell */}
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <Button
+                    type="button" variant="ghost" size="sm"
+                    className="text-red-600 hover:text-red-800"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
+                  >
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search accounts..." 
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No accounts found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredAccountTree.map((account) => 
-                          renderAccountTree(account, 0, index)
-                        )}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
 
-            {/* Entity Code */}
-            <div>
-              <label className="text-sm font-medium">Entity</label>
-              <select 
-                {...form.register(`lines.${index}.entityCode`)} 
-                className="w-full p-2 border rounded mt-1"
-              >
-                {entities.map((entity) => (
-                  <option key={entity.id} value={entity.code}>
-                    {entity.code} - {entity.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="text-sm font-medium">Description *</label>
-              <Input 
-                {...form.register(`lines.${index}.description`)} 
-                className="mt-1"
-                placeholder="Line description"
-              />
-            </div>
-
-            {/* Debit */}
-            <div>
-              <label className="text-sm font-medium">Debit</label>
-              <Input
-                type="number"
-                step="0.01"
-                {...form.register(`lines.${index}.debit`)}
-                className="mt-1"
-                placeholder="0.00"
-              />
-            </div>
-
-            {/* Credit */}
-            <div>
-              <label className="text-sm font-medium">Credit</label>
-              <Input
-                type="number"
-                step="0.01"
-                {...form.register(`lines.${index}.credit`)}
-                className="mt-1"
-                placeholder="0.00"
-              />
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="text-sm font-medium">Tags</label>
-              <div className="mt-1 space-y-2">
-                {/* Display existing tags */}
-                <div className="flex flex-wrap gap-1">
-                  {(form.watch(`lines.${index}.tags`) || []).map((tag: DimensionTag, tagIndex: number) => (
-                    <Badge 
-                      key={`${tag.dimensionId}-${tag.dimensionValueId}`}
-                      variant="secondary" 
-                      className="text-xs"
-                    >
-                      {tag.dimensionName}: {tag.dimensionValueName}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => {
-                          const currentTags = form.getValues(`lines.${index}.tags`) || [];
-                          const newTags = currentTags.filter((_: any, i: number) => i !== tagIndex);
-                          form.setValue(`lines.${index}.tags`, newTags);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
-                
-                {/* Add Tags Button */}
-                <Popover 
-                  open={tagPopoverOpen[`line_${index}`] || false}
-                  onOpenChange={(open) => 
-                    setTagPopoverOpen(prev => ({ ...prev, [`line_${index}`]: open }))
-                  }
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Tags className="h-4 w-4 mr-2" />
-                      Add Tags
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search dimensions..." 
-                        value={dimensionSearchQuery}
-                        onValueChange={setDimensionSearchQuery}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No dimensions found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredDimensions.map((dimension) => 
-                            renderDimensionTree(dimension, index)
-                          )}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Remove Button */}
-            <div className="flex items-end">
-              {fields.length > 1 && (
+          {/* Stage 2: Rebuild Table Footer */}
+          <tfoot>
+            {/* "Add Line" Button Row */}
+            <tr>
+              <td colSpan={7} className="px-6 py-4">
                 <Button
                   type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => remove(index)}
-                  className="w-full"
+                  variant="outline"
+                  onClick={() => append({ 
+                    _key: `new-${Date.now()}`,
+                    accountId: "", 
+                    entityCode: entities.length > 0 ? entities[0].code : "", 
+                    description: "", 
+                    debit: "", 
+                    credit: "", 
+                    tags: [] 
+                  })}
                 >
-                  <X className="h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Line
                 </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+              </td>
+            </tr>
 
-      {/* Balance Summary */}
-      <div className="mt-4 p-4 bg-gray-50 rounded border">
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="font-medium">Total Debit:</span> ${totalDebit.toFixed(2)}
-          </div>
-          <div>
-            <span className="font-medium">Total Credit:</span> ${totalCredit.toFixed(2)}
-          </div>
-          <div className={isBalanced ? "text-green-600" : "text-red-600"}>
-            <span className="font-medium">
-              {isBalanced ? "✓ Balanced" : "⚠ Not Balanced"}
-            </span>
-            {!isBalanced && (
-              <div className="text-xs">
-                Difference: ${Math.abs(difference).toFixed(2)}
-              </div>
+            {/* Totals Row */}
+            <tr className="bg-gray-50 border-t">
+              <td colSpan={3} className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
+                Totals
+              </td>
+              <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                ${totalDebit.toFixed(2)}
+              </td>
+              <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                ${totalCredit.toFixed(2)}
+              </td>
+              <td colSpan={2}></td>
+            </tr>
+
+            {/* Difference Row */}
+            <tr className="bg-gray-50">
+              <td colSpan={3} className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
+                Difference
+              </td>
+              <td colSpan={2} className={`px-6 py-3 text-sm font-medium ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
+                ${(totalDebit - totalCredit).toFixed(2)}
+              </td>
+              <td colSpan={2}></td>
+            </tr>
+
+            {/* Intercompany Balance Section */}
+            {entityBalances.length > 1 && (
+              <>
+                <tr className="bg-gray-100 border-t">
+                  <td colSpan={7} className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Intercompany Balances
+                  </td>
+                </tr>
+                {entityBalances.map((balance) => (
+                  <tr key={balance.entityCode} className="bg-gray-50">
+                    <td colSpan={3} className="px-6 py-2 text-right text-sm text-gray-700">
+                      Entity {balance.entityCode}
+                    </td>
+                    <td colSpan={2} className={`px-6 py-2 text-sm ${balance.balanced ? 'text-green-600' : 'text-red-600'}`}>
+                      {balance.balanced ? 'Balanced' : `Unbalanced: ${(balance.debit - balance.credit).toFixed(2)}`}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                ))}
+              </>
             )}
-          </div>
-        </div>
+          </tfoot>
+        </table>
       </div>
-
-      {/* Entity Balances */}
-      {entityBalances.length > 0 && (
-        <div className="mt-4 p-4 bg-blue-50 rounded border">
-          <h4 className="text-sm font-medium mb-2">Entity Balances (Intercompany)</h4>
-          <div className="space-y-1">
-            {entityBalances.map((balance) => (
-              <div key={balance.entityCode} className="text-xs grid grid-cols-4 gap-2">
-                <div className="font-medium">{balance.entityCode}</div>
-                <div>Debit: ${balance.debit.toFixed(2)}</div>
-                <div>Credit: ${balance.credit.toFixed(2)}</div>
-                <div className={balance.balanced ? "text-green-600" : "text-orange-600"}>
-                  {balance.balanced ? "✓ Balanced" : `Diff: $${Math.abs(balance.difference).toFixed(2)}`}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
