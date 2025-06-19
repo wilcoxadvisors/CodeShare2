@@ -756,14 +756,14 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         console.log(`DEBUG: Getting dimension tags for line ${line.id}`);
         
         const dimensionTags = await db.select({
-          dimensionId: dimensions.id,
-          dimensionName: dimensions.name,
-          dimensionValueId: dimensionValues.id,
-          dimensionValueName: dimensionValues.name
+          dimensionId: schema.dimensions.id,
+          dimensionName: schema.dimensions.name,
+          dimensionValueId: schema.dimensionValues.id,
+          dimensionValueName: schema.dimensionValues.name
         })
         .from(txDimensionLink)
-        .innerJoin(dimensions, eq(txDimensionLink.dimensionId, dimensions.id))
-        .innerJoin(dimensionValues, eq(txDimensionLink.dimensionValueId, dimensionValues.id))
+        .innerJoin(schema.dimensions, eq(txDimensionLink.dimensionId, schema.dimensions.id))
+        .innerJoin(schema.dimensionValues, eq(txDimensionLink.dimensionValueId, schema.dimensionValues.id))
         .where(eq(txDimensionLink.journalEntryLineId, line.id));
 
         console.log(`DEBUG: Line ${line.id} dimension tags from DB:`, JSON.stringify(dimensionTags, null, 2));

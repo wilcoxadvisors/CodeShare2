@@ -126,7 +126,9 @@ async function makeRequest(method, url, data = null, headers = {}) {
     if (data) {
       if (data instanceof FormData) {
         config.data = data;
-        config.headers = { ...config.headers, ...data.getHeaders() };
+        // Don't manually set headers for FormData - let axios handle it
+        // Remove Content-Type to let axios set the boundary
+        delete config.headers['Content-Type'];
       } else {
         config.data = data;
         config.headers['Content-Type'] = 'application/json';

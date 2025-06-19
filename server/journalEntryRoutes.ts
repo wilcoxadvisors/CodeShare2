@@ -216,12 +216,13 @@ export function registerJournalEntryRoutes(app: Express) {
       }
       
       // ARCHITECT'S AUTOMATIC ACCRUAL REVERSAL FIX: Create reversal entry when posting accrual entries
-      if (entryData.status === 'posted' && existingEntry.isAccrual && existingEntry.reversalDate) {
+      if (entryData.status === 'posted' && existingEntry.status !== 'posted' && 
+          updatedEntry.isAccrual && updatedEntry.reversalDate) {
         console.log(`ARCHITECT_ACCRUAL_REVERSAL: Creating automatic reversal for accrual entry ${id}`);
         try {
           const reversalEntry = await journalEntryStorage.reverseJournalEntry(id, {
-            date: new Date(existingEntry.reversalDate),
-            description: `Automatic reversal of ${existingEntry.referenceNumber}`,
+            date: new Date(updatedEntry.reversalDate),
+            description: `Automatic reversal of ${updatedEntry.referenceNumber}`,
             createdBy: (req.user as { id: number }).id,
             postAutomatically: true
           });
