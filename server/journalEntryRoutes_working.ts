@@ -6,6 +6,7 @@ import {
   JournalEntryStatus
 } from '../shared/schema';
 import { ZodError, z } from 'zod';
+import { db } from './db';
 import { 
   formatZodError, 
   createJournalEntrySchema, 
@@ -13,7 +14,14 @@ import {
   listJournalEntriesFiltersSchema,
   ListJournalEntriesFilters 
 } from '../shared/validation';
+// No longer using date-fns for date parsing
 import { journalEntryStorage } from './storage/journalEntryStorage';
+import { getFileStorage } from './storage/fileStorage';
+import { auditLogStorage } from './storage/auditLogStorage';
+import multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
+import rateLimit from 'express-rate-limit';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
 async function ensureUniqueReference(referenceNumber: string, entityId: number): Promise<string> {
@@ -33,13 +41,55 @@ async function ensureUniqueReference(referenceNumber: string, entityId: number):
   return referenceNumber;
 }
 
-// Authentication middleware
+// Authentication middleware - simple check for user in session
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
+  // If user exists in session, they're authenticated
   if (req.isAuthenticated && req.isAuthenticated()) {
     return next();
   }
+  
+  // If no authentication method available, reject
   res.status(401).json({ message: 'Unauthorized' });
 };
+
+// Rate limiting for journal entry operations
+const journalEntryRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many journal entry requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Multer configuration for file uploads
+const upload = multer({
+  dest: 'uploads/temp/',
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common document types
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'text/plain',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-outlook',
+      'message/rfc822'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('File type not allowed'), false);
+    }
+  }
+});
 
 /**
  * Register all journal entry routes with hierarchical structure
@@ -47,7 +97,9 @@ const isAuthenticated = (req: Request, res: Response, next: Function) => {
 export function registerJournalEntryRoutes(app: Express) {
   console.log('DEBUG: Registering hierarchical journal entry routes...');
   
-  // List journal entries for a specific entity
+  /**
+   * List journal entries for a specific entity
+   */
   app.get('/api/clients/:clientId/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -56,31 +108,45 @@ export function registerJournalEntryRoutes(app: Express) {
       throwBadRequest('Invalid entity ID or client ID provided');
     }
     
+    // Parse query parameters for filtering
     const { startDate, endDate, status } = req.query;
+    
     const filters: ListJournalEntriesFilters = {
       entityId,
       clientId
     };
     
+    // Add date filters if provided
     if (startDate && typeof startDate === 'string') {
       const startDateStr = startDate.trim();
-      if (startDateStr) filters.startDate = startDateStr;
+      if (startDateStr) {
+        filters.startDate = startDateStr;
+      }
     }
     
     if (endDate && typeof endDate === 'string') {
       const endDateStr = endDate.trim();
-      if (endDateStr) filters.endDate = endDateStr;
+      if (endDateStr) {
+        filters.endDate = endDateStr;
+      }
     }
     
-    if (status && typeof status === 'string' && ['draft', 'posted', 'void'].includes(status)) {
-      filters.status = status as JournalEntryStatus;
+    // Add status filter if provided
+    if (status && typeof status === 'string') {
+      if (['draft', 'posted', 'void'].includes(status)) {
+        filters.status = status as JournalEntryStatus;
+      }
     }
     
+    // Get journal entries for this entity
     const entries = await journalEntryStorage.listJournalEntries(filters);
+    
     res.json(entries);
   }));
   
-  // Create a journal entry for a specific entity
+  /**
+   * Create a journal entry for a specific entity
+   */
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -93,6 +159,7 @@ export function registerJournalEntryRoutes(app: Express) {
     try {
       console.log('--- BACKEND ROUTE: RAW BODY ---', req.body);
       
+      // Add entityId and clientId to the request body
       const requestData = {
         ...req.body,
         entityId,
@@ -100,9 +167,11 @@ export function registerJournalEntryRoutes(app: Express) {
         createdBy: user.id
       };
       
+      // Validate with schema
       const validatedData = createJournalEntrySchema.parse(requestData);
       console.log('--- BACKEND ROUTE: VALIDATED DATA ---', validatedData);
       
+      // Extract lines from validated data
       const { lines, ...journalEntryData } = validatedData;
       
       // ARCHITECT'S SURGICAL FIX: Auto-generate unique reference numbers instead of blocking
@@ -113,22 +182,26 @@ export function registerJournalEntryRoutes(app: Express) {
         );
       }
       
+      // Create the journal entry
       const journalEntry = await journalEntryStorage.createJournalEntry(
         journalEntryData.clientId,
         journalEntryData.createdBy,
         journalEntryData
       );
       
+      // Add lines to the journal entry with dimension tags
       if (lines && lines.length > 0) {
         for (const line of lines) {
           console.log(`CREATION DEBUG: Creating line with tags:`, JSON.stringify(line.tags || [], null, 2));
           
+          // Create the line without the tags property (since it's not part of the line schema)
           const { tags, ...lineData } = line;
           const createdLine = await journalEntryStorage.createJournalEntryLine({
             ...lineData,
             journalEntryId: journalEntry.id
           });
           
+          // Create dimension tags for this line if they exist
           if (tags && tags.length > 0) {
             console.log(`CREATION DEBUG: Creating ${tags.length} dimension tags for line ${createdLine.id}`);
             await journalEntryStorage.createDimensionTags(createdLine.id, tags);
@@ -138,7 +211,9 @@ export function registerJournalEntryRoutes(app: Express) {
         }
       }
       
+      // Fetch the complete journal entry with all related data
       const completeEntry = await journalEntryStorage.getJournalEntry(journalEntry.id);
+      
       res.status(201).json(completeEntry);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -148,7 +223,9 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
-  // Get a specific journal entry by ID
+  /**
+   * Get a specific journal entry by ID
+   */
   app.get('/api/clients/:clientId/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
@@ -164,6 +241,7 @@ export function registerJournalEntryRoutes(app: Express) {
       throwNotFound(`Journal entry with ID ${id} not found`);
     }
     
+    // Verify the entry belongs to the specified entity and client
     if (entry.entityId !== entityId || entry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
     }
@@ -171,29 +249,36 @@ export function registerJournalEntryRoutes(app: Express) {
     res.json(entry);
   }));
 
-  // Update a journal entry
+  /**
+   * Update a journal entry
+   */
   app.patch('/api/clients/:clientId/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
+    const user = req.user as { id: number };
     
     if (isNaN(id) || isNaN(entityId) || isNaN(clientId)) {
       throwBadRequest('Invalid ID, entity ID, or client ID provided');
     }
     
+    // Get existing entry to verify ownership and status
     const existingEntry = await journalEntryStorage.getJournalEntry(id);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${id} not found`);
     }
     
+    // Verify the entry belongs to the specified entity and client
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
     }
     
     try {
+      // Parse and validate the request body
       const updateData = updateJournalEntrySchema.parse(req.body);
       console.log('--- UPDATE REQUEST DATA ---', updateData);
       
+      // Extract lines and files from the update data
       const { lines, files, ...entryData } = updateData;
       
       // ARCHITECT'S SURGICAL FIX: Auto-generate unique reference numbers instead of blocking
@@ -204,6 +289,7 @@ export function registerJournalEntryRoutes(app: Express) {
         );
       }
       
+      // Update the journal entry with lines and files
       const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(
         id, 
         entryData, 
@@ -224,7 +310,41 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
-  // Copy a journal entry
+  /**
+   * Delete a journal entry
+   */
+  app.delete('/api/clients/:clientId/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    
+    if (isNaN(id) || isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid ID, entity ID, or client ID provided');
+    }
+    
+    // Get existing entry to verify ownership
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    if (!existingEntry) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+    }
+    
+    // Verify the entry belongs to the specified entity and client
+    if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
+      throwForbidden('Journal entry does not belong to the specified entity or client');
+    }
+    
+    const deleted = await journalEntryStorage.deleteJournalEntry(id);
+    
+    if (!deleted) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+    }
+    
+    res.status(204).send();
+  }));
+
+  /**
+   * Copy a journal entry
+   */
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries/:id/copy', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const originalEntryId = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
@@ -235,20 +355,25 @@ export function registerJournalEntryRoutes(app: Express) {
       throwBadRequest('Invalid entry ID, entity ID, or client ID provided');
     }
     
+    // Get existing entry to verify ownership
     const existingEntry = await journalEntryStorage.getJournalEntry(originalEntryId);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${originalEntryId} not found`);
     }
     
+    // Verify the entry belongs to the specified entity and client
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
     }
     
     const copiedEntry = await journalEntryStorage.copyJournalEntry(originalEntryId, user.id);
+    
     res.status(201).json(copiedEntry);
   }));
 
-  // Reverse a journal entry
+  /**
+   * Reverse a journal entry
+   */
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const journalEntryId = parseInt(req.params.id);
     const entityId = parseInt(req.params.entityId);
@@ -259,11 +384,13 @@ export function registerJournalEntryRoutes(app: Express) {
       throwBadRequest('Invalid journal entry ID, entity ID, or client ID provided');
     }
     
+    // Get existing entry to verify ownership
     const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${journalEntryId} not found`);
     }
     
+    // Verify the entry belongs to the specified entity and client
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
     }
