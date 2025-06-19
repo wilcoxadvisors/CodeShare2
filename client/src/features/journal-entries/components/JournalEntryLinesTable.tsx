@@ -160,10 +160,11 @@ export function JournalEntryLinesTable({
 
   // Filter dimensions based on search
   const filteredDimensions = useMemo(() => {
-    if (!dimensionSearchQuery) return dimensions;
+    const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+    if (!dimensionSearchQuery) return safeDimensions;
 
     const searchLower = dimensionSearchQuery.toLowerCase();
-    return dimensions.filter((dimension) => {
+    return safeDimensions.filter((dimension) => {
       const matchesName = dimension.name?.toLowerCase().includes(searchLower);
       const hasMatchingValues = dimension.values?.some((value) =>
         value.name?.toLowerCase().includes(searchLower)
@@ -555,7 +556,7 @@ export function JournalEntryLinesTable({
                       <CommandList>
                         <CommandEmpty>No dimensions found.</CommandEmpty>
                         <CommandGroup>
-                          {(filteredDimensions || []).map((dimension) => 
+                          {filteredDimensions.map((dimension) => 
                             renderDimensionTree(dimension, index)
                           )}
                         </CommandGroup>
