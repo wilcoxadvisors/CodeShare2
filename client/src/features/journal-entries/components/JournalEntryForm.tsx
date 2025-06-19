@@ -574,6 +574,20 @@ function JournalEntryForm({
       throw new Error('Line must have either a debit or credit amount');
     }
     
+    // Transform dimension tags to ensure they have the correct structure
+    const transformedTags = (line.tags || []).map(tag => ({
+      dimensionId: tag.dimensionId,
+      dimensionValueId: tag.dimensionValueId,
+      // Preserve optional display names if present
+      ...(tag.dimensionName && { dimensionName: tag.dimensionName }),
+      ...(tag.dimensionValueName && { dimensionValueName: tag.dimensionValueName })
+    }));
+    
+    // Debug logging for dimension tags
+    if (transformedTags.length > 0) {
+      console.log(`DEBUG: Line ${line.accountId} has ${transformedTags.length} dimension tags:`, transformedTags);
+    }
+    
     return {
       id: line.id,
       accountId: parseInt(line.accountId),
@@ -581,7 +595,7 @@ function JournalEntryForm({
       description: line.description,
       type: debitAmount > 0 ? "debit" : "credit",
       amount: debitAmount > 0 ? debitAmount : creditAmount,
-      tags: line.tags || [],
+      tags: transformedTags,
     };
   };
 
