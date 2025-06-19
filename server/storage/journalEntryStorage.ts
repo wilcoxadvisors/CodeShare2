@@ -600,6 +600,24 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         
         console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
         
+        // ARCHITECT'S STABILIZATION FIX: Auto-create reversal entries for accrual postings
+        if (updatedEntryData.status === 'posted' && updatedEntry.isAccrual && updatedEntry.reversalDate) {
+          console.log(`ARCHITECT_STABILIZATION: Posted accrual entry detected - creating automatic reversal`);
+          try {
+            const reversalEntry = await this.reverseJournalEntry(updatedEntry.id, {
+              date: new Date(updatedEntry.reversalDate),
+              description: 'Automatic accrual reversal',
+              createdBy: updatedEntry.createdBy || 1,
+              postAutomatically: true
+            });
+            if (reversalEntry) {
+              console.log(`ARCHITECT_STABILIZATION: Auto-created reversal entry ${reversalEntry.id} for accrual ${updatedEntry.id}`);
+            }
+          } catch (error) {
+            console.error(`ARCHITECT_STABILIZATION: Failed to auto-create reversal for accrual ${updatedEntry.id}:`, error);
+          }
+        }
+        
         return updatedEntry;
       });
     } catch (e) {
