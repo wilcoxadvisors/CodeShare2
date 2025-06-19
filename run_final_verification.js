@@ -37,6 +37,17 @@ httpClient.interceptors.request.use(
     if (sessionCookies) {
       config.headers['Cookie'] = sessionCookies;
     }
+    
+    // For FormData uploads, ensure proper headers are set
+    if (config.data instanceof FormData) {
+      // Remove Content-Type to let axios set it with boundary
+      delete config.headers['Content-Type'];
+      // Ensure cookies are preserved for FormData
+      if (sessionCookies) {
+        config.headers['Cookie'] = sessionCookies;
+      }
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)

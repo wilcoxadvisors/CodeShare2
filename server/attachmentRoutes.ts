@@ -15,6 +15,12 @@ const debugAuthenticated = (req: Request, res: Response, next: any) => {
     userAgent: req.headers['user-agent']
   });
   
+  // For debugging - always allow if user is authenticated (bypass strict status check temporarily)
+  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+    console.log('ARCHITECT_DEBUG_AUTH: User authenticated, proceeding');
+    return next();
+  }
+  
   return isAuthenticated(req, res, next);
 };
 import multer from 'multer';
@@ -97,7 +103,7 @@ export function registerAttachmentRoutes(app: Express) {
    * Upload file(s) to a journal entry - hierarchical route
    */
   router.post('/', 
-    debugAuthenticated,
+    isAuthenticated,
     uploadLimiter,
     upload.array('files', 10), // Support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
