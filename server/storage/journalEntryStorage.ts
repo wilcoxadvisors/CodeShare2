@@ -1122,7 +1122,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   async getJournalEntryFiles(journalEntryId: number): Promise<any[]> {
     console.log(`Getting files for journal entry ${journalEntryId}`);
     try {
-      // Use a simple select query with specific fields to avoid schema mismatches
+      // ARCHITECT'S STAGE 1 FIX: Include soft deletion filter and debug query
       const files = await db.select({
         id: journalEntryFiles.id,
         journalEntryId: journalEntryFiles.journalEntryId,
@@ -1135,12 +1135,17 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         uploadedAt: journalEntryFiles.uploadedAt
       })
       .from(journalEntryFiles)
-      .where(eq(journalEntryFiles.journalEntryId, journalEntryId))
+      .where(and(
+        eq(journalEntryFiles.journalEntryId, journalEntryId),
+        isNull(journalEntryFiles.deletedAt) // Filter out soft-deleted files
+      ))
       .orderBy(desc(journalEntryFiles.uploadedAt));
       
-      console.log('DEBUG Attach Storage: getJournalEntryFiles DB result:', files);
+      console.log(`DEBUG Attach Storage: Found ${files.length} active files for journal entry ${journalEntryId}:`, 
+        files.map(f => ({ id: f.id, filename: f.filename })));
       return files;
     } catch (e) {
+      console.error(`ERROR getting files for journal entry ${journalEntryId}:`, e);
       throw handleDbError(e, `getting files for journal entry ${journalEntryId}`);
     }
   }

@@ -313,8 +313,10 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload");
       }
 
+      // ARCHITECT'S STAGE 2 FIX: Use exact query key matching to prevent stale data
       queryClient.invalidateQueries({
         queryKey: ["journal-entries", effectiveClientId, entityId],
+        exact: true
       });
       
       toast({
@@ -361,11 +363,14 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload after update");
       }
 
+      // ARCHITECT'S STAGE 2 FIX: Use exact query key matching to prevent stale data
       queryClient.invalidateQueries({
         queryKey: ["journal-entries", effectiveClientId, entityId],
+        exact: true
       });
       queryClient.invalidateQueries({
         queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id],
+        exact: true
       });
       
       toast({
@@ -619,7 +624,7 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: "",
+        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
         description: journalData.description,
         status: "draft" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,

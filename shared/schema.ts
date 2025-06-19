@@ -346,7 +346,7 @@ export const journalEntryLinesRelations = relations(journalEntryLines, ({ one, m
 // Journal Entry File Blobs (for storing binary file content)
 export const journalEntryFileBlobs = pgTable("journal_entry_file_blobs", {
   id: serial("id").primaryKey(),
-  data: text("data", { length: "max" }).notNull(), // Binary data stored as base64 text
+  data: text("data").notNull(), // Binary data stored as base64 text
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 

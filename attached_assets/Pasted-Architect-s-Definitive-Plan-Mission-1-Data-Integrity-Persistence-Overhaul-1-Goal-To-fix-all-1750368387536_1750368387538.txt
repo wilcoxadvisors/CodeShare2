@@ -1,0 +1,50 @@
+Architect's Definitive Plan: Mission 1 - Data Integrity & Persistence Overhaul
+
+1. Goal:
+
+To fix all critical bugs related to data loss and stale data. This includes ensuring attachments save and load correctly, the journal entry list updates automatically after a save, and all form fields persist correctly during creation and editing.
+
+2. Definitive Plan:
+
+Stage 1: Fix Attachment Persistence (#5, #9)
+
+Problem: Attachments are not being saved or loaded correctly, especially in edit mode. This is the highest priority data loss bug. The root cause is a flawed database query on the backend.
+File to Modify: server/storage/journalEntryStorage.ts
+Action:
+Locate the getJournalEntry function. The previous fix was insufficient. We will ensure that the files are fetched and correctly attached to the returned entry object.
+Locate the updateJournalEntryWithLines function. This function must be audited to ensure it correctly handles the files array, linking new files and preserving existing ones during an update.
+Stage 2: Fix Stale Data After Saving (#4)
+
+Problem: The journal entry list does not update after saving, requiring a manual refresh. This is a classic cache invalidation failure.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action:
+
+Locate the createEntry and updateEntry mutation definitions.
+In the onSuccess callback for both mutations, ensure the queryClient.invalidateQueries call uses the exact query key that the JournalEntries.tsx page uses to fetch its data.
+TypeScript
+
+// In the onSuccess callback for createEntry and updateEntry...
+onSuccess: () => {
+  // ... other logic ...
+  const queryKey = ["journal-entries", effectiveClientId, entityId];
+  queryClient.invalidateQueries({ queryKey: queryKey, exact: true });
+  // ... other logic ...
+}
+Stage 3: Fix Form Field Data Persistence (#6, #7, #10)
+
+Problem: The Reference (optional suffix), Date, and Auto-accrual fields are not saving or loading correctly. This is a data mapping issue between the frontend state and the backend payload.
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Actions:
+Fix Save: In the handleSaveDraft, handleSubmitForApproval, and handlePostEntry functions, find where the formData object is constructed. You must ensure that the referenceUserSuffix, isAccrual, and reversalDate values from the journalData state object are correctly included in the payload being sent to the mutation.
+Fix Load: In the useEffect hook that populates the form when an existingEntry is present, ensure it correctly sets the initial state for the date and accrual fields without causing them to change on re-renders. The date issue is likely a timezone or formatting mismatch between new Date() and format().
+Stage 4: Fix Copy Functionality (#11)
+
+Problem: The "Copy" feature works but does not persist the entityCode for each line item.
+File to Modify: server/storage/journalEntryStorage.ts
+Action:
+Locate the copyJournalEntry function.
+Examine the loop that copies the lines from the original entry to the new one.
+Ensure that entityCode: originalLine.entityCode is included in the data for the new line being created.
+Execute this mission with precision. I will await the agent's report on the successful implementation of these data integrity fixes.
