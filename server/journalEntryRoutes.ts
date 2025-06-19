@@ -127,6 +127,7 @@ export function registerJournalEntryRoutes(app: Express) {
           const createdLine = await journalEntryStorage.createJournalEntryLine({
             ...lineData,
             accountId: typeof lineData.accountId === 'string' ? parseInt(lineData.accountId) : lineData.accountId,
+            amount: typeof lineData.amount === 'number' ? lineData.amount.toString() : lineData.amount,
             journalEntryId: journalEntry.id
           });
           
@@ -163,10 +164,12 @@ export function registerJournalEntryRoutes(app: Express) {
     
     if (!entry) {
       throwNotFound(`Journal entry with ID ${id} not found`);
+      return; // This ensures TypeScript knows entry is not undefined after this point
     }
     
     if (entry.entityId !== entityId || entry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
     }
     
     res.json(entry);
@@ -185,10 +188,12 @@ export function registerJournalEntryRoutes(app: Express) {
     const existingEntry = await journalEntryStorage.getJournalEntry(id);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${id} not found`);
+      return;
     }
     
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
     }
     
     try {
@@ -205,15 +210,22 @@ export function registerJournalEntryRoutes(app: Express) {
         );
       }
       
+      // Clean entityId to ensure it's not null - explicitly cast to number
+      const cleanedEntryData = {
+        ...entryData,
+        entityId: (entryData.entityId || existingEntry.entityId) as number
+      };
+      
       const updatedEntry = await journalEntryStorage.updateJournalEntryWithLines(
         id, 
-        entryData, 
+        cleanedEntryData, 
         lines as any[], 
         files as any[]
       );
       
       if (!updatedEntry) {
         throwNotFound(`Journal entry with ID ${id} not found after update`);
+        return;
       }
       
       // ARCHITECT'S AUTOMATIC ACCRUAL REVERSAL FIX: Create reversal entry when posting accrual entries
@@ -260,10 +272,12 @@ export function registerJournalEntryRoutes(app: Express) {
     const existingEntry = await journalEntryStorage.getJournalEntry(originalEntryId);
     if (!existingEntry) {
       throwNotFound(`Journal entry with ID ${originalEntryId} not found`);
+      return;
     }
     
     if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
       throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
     }
     
     const copiedEntry = await journalEntryStorage.copyJournalEntry(originalEntryId, user.id);
