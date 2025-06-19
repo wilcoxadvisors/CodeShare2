@@ -248,6 +248,48 @@ export function registerJournalEntryRoutes(app: Express) {
     res.status(201).json(copiedEntry);
   }));
 
+  // Void a journal entry
+  app.post('/api/clients/:clientId/entities/:entityId/journal-entries/:id/void', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const journalEntryId = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    const user = req.user as { id: number };
+    
+    if (isNaN(journalEntryId) || isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid journal entry ID, entity ID, or client ID provided');
+    }
+    
+    const existingEntry = await journalEntryStorage.getJournalEntry(journalEntryId);
+    if (!existingEntry) {
+      throwNotFound(`Journal entry with ID ${journalEntryId} not found`);
+    }
+    
+    if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
+      throwForbidden('Journal entry does not belong to the specified entity or client');
+    }
+    
+    if (existingEntry.status !== 'posted') {
+      throwBadRequest('Only posted journal entries can be voided');
+    }
+    
+    try {
+      const { voidReason } = req.body;
+      
+      const voidedEntry = await journalEntryStorage.updateJournalEntry(journalEntryId, {
+        status: 'void',
+        description: existingEntry.description + (voidReason ? ` [VOIDED: ${voidReason}]` : ' [VOIDED]'),
+        updatedAt: new Date()
+      });
+      
+      res.json(voidedEntry);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: formatZodError(error) });
+      }
+      throw error;
+    }
+  }));
+
   // Reverse a journal entry
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries/:id/reverse', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const journalEntryId = parseInt(req.params.id);
