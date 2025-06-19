@@ -308,6 +308,7 @@ export const txDimensionLink = pgTable("tx_dimension_link", {
 
 export const journalEntriesRelations = relations(journalEntries, ({ one, many }) => ({
   lines: many(journalEntryLines), // The critical fix is to ensure this line is present
+  files: many(journalEntryFiles), // ARCHITECT'S FIX: Add files relation for attachment retrieval
   client: one(clients, {
     fields: [journalEntries.clientId],
     references: [clients.id],
@@ -364,6 +365,22 @@ export const journalEntryFiles = pgTable("journal_entry_files", {
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at") // For soft deletion
 });
+
+// Journal Entry Files Relations
+export const journalEntryFilesRelations = relations(journalEntryFiles, ({ one }) => ({
+  journalEntry: one(journalEntries, {
+    fields: [journalEntryFiles.journalEntryId],
+    references: [journalEntries.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [journalEntryFiles.uploadedBy],
+    references: [users.id],
+  }),
+  storageBlob: one(journalEntryFileBlobs, {
+    fields: [journalEntryFiles.storageKey],
+    references: [journalEntryFileBlobs.id],
+  }),
+}));
 
 // Fixed Assets
 export const fixedAssets = pgTable("fixed_assets", {

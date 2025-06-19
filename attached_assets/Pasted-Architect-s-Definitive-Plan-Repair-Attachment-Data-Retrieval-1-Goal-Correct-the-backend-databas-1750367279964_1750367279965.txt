@@ -1,0 +1,49 @@
+Architect's Definitive Plan: Repair Attachment Data Retrieval
+
+1. Goal:
+
+Correct the backend database query for fetching a single journal entry to ensure it always includes the complete list of associated file attachments. This will fix the bug where attachments disappear in edit mode.
+
+2. Definitive Plan:
+
+Stage 1: Correct the Database Query in the Storage Layer
+
+Objective: The getJournalEntry function in our storage layer is failing to correctly join the files relation. We will modify the Drizzle ORM query to explicitly include it.
+
+File to Modify: server/storage/journalEntryStorage.ts
+
+Action:
+
+Instruct the agent to open this file and locate the getJournalEntry function.
+Inside this function, find the db.query.journalEntries.findFirst call.
+Modify the query's with clause to ensure the files relation is included when includeFiles is true.
+The query should be modified to look like this:
+TypeScript
+
+// In server/storage/journalEntryStorage.ts, inside getJournalEntry...
+
+const entry = await db.query.journalEntries.findFirst({
+  where: eq(journalEntries.id, id),
+  with: {
+    lines: includeLines ? { with: { tags: true } } : undefined,
+    files: includeFiles ? true : undefined, // THIS IS THE FIX
+  },
+});
+This change explicitly tells the database to join and return the associated records from the files table.
+Stage 2: Full End-to-End Verification
+
+Objective: Now that the backend is fixed, we must re-run the full verification for the attachment workflow to confirm it is 100% stable.
+Agent Actions:
+Restart the application to apply the backend fix.
+Create a new journal entry draft with at least two attachments. Save it.
+Enter edit mode for that draft.
+[ ] Confirm: The two files you originally attached are now correctly listed.
+Proceed with the original "Verification Step 4":
+[ ] Delete one of the existing attachments.
+[ ] Add one new attachment.
+[ ] Save the changes.
+[ ] Re-enter edit mode for a final time.
+[ ] Confirm the deleted file is gone and the new file is present.
+3. Expected Outcome:
+
+The attachment workflow will be fully functional and reliable in both create and edit modes, with no data loss. This should be the final fix required to stabilize the Journal Entry module.
