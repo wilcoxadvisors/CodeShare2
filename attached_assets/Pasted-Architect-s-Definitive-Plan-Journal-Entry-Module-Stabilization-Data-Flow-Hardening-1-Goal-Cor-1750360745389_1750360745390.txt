@@ -1,0 +1,109 @@
+Architect's Definitive Plan: Journal Entry Module Stabilization & Data Flow Hardening
+
+1. Goal:
+
+Correct the flawed data flow implementation within the useState-based Journal Entry module. The objective is to fix all reported bugs (failed save, incorrect validation, missing number formatting) and ensure the components communicate reliably according to industry-standard patterns for controlled components.
+
+2. Definitive Plan:
+
+Stage 1: Correct the Form Validation Data Flow
+
+Problem: The "Save Draft" action fails because the parent form's validation function (validateForm) is operating on incorrect assumptions about the data.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action:
+
+Locate the validateForm function.
+Inside this function, find the lines.forEach loop. The validation logic within is flawed.
+Remove the incorrect validation rule: Delete the if block that checks !line.description?.trim(). A line item's description is optional and must not block a save. This is the primary cause of the "Save Draft" failure.
+JavaScript
+
+// In client/src/features/journal-entries/components/JournalEntryForm.tsx
+// Inside the validateForm function:
+
+lines.forEach((line, index) => {
+  if (!line.accountId) {
+    errors[`line_${index}_accountId`] = "Account is required";
+  }
+  if (!line.entityCode) {
+    errors[`line_${index}_entityCode`] = "Entity code is required";
+  }
+
+  // --- DELETE THE FOLLOWING 3 LINES ---
+  if (!line.description?.trim()) {
+    errors[`line_${index}_description`] = "Line description is required";
+  }
+  // --- END DELETION ---
+
+  // ... rest of the validation logic
+});
+Stage 2: Implement Robust UI Input Formatting
+
+Problem: The Debit and Credit fields have lost their thousand-separator formatting, a critical UX regression. This will be fixed by implementing a self-contained, robust input formatting strategy.
+
+Actions:
+
+Create a dedicated utility file for number formatting. This is an industry best practice to ensure separation of concerns.
+
+New File: client/src/features/journal-entries/utils/numberFormat.ts
+Content for the new file:
+TypeScript
+
+// This function takes a string or number and returns a formatted currency string.
+// It returns an empty string for zero or invalid inputs, perfect for display in an input field.
+export const formatCurrencyForDisplay = (value: string | number): string => {
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  if (isNaN(num) || num === 0) return '';
+  return num.toLocaleString('en-US');
+};
+
+// This function takes a potentially formatted string from an input and returns a clean numeric string.
+export const parseCurrencyForState = (value: string): string => {
+  return value.replace(/[^0-9.-]/g, '');
+};
+Refactor the Debit/Credit Inputs. The Input components in the lines table must be updated to use these utilities, ensuring the data in our lines state remains a clean number string while the UI displays the formatted version.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx
+
+Import the new utilities: At the top of the file, add:
+
+TypeScript
+
+import { formatCurrencyForDisplay, parseCurrencyForState } from '../utils/numberFormat';
+Replace the Debit and Credit Input components. Find the <Input> for debit and credit inside the lines.map and replace them with the following structure. This ensures the visual formatting does not corrupt the underlying state data.
+
+Replacement for Debit Input:
+
+TypeScript
+
+<Input
+  type="text"
+  className="w-full text-right"
+  placeholder="0.00"
+  value={formatCurrencyForDisplay(line.debit)}
+  onChange={(e) => {
+    handleLineChange(index, "debit", parseCurrencyForState(e.target.value));
+  }}
+/>
+Replacement for Credit Input:
+
+TypeScript
+
+<Input
+  type="text"
+  className="w-full text-right"
+  placeholder="0.00"
+  value={formatCurrencyForDisplay(line.credit)}
+  onChange={(e) => {
+    handleLineChange(index, "credit", parseCurrencyForState(e.target.value));
+  }}
+/>
+3. Final Verification
+
+Objective: Confirm that all reported regressions are fixed and the data flow is now stable and correct.
+Agent Actions:
+Restart the application and navigate to the "New Journal Entry" page.
+Confirm: You can now save a draft with empty line descriptions. The handleSaveDraft function should execute successfully.
+Confirm: When you type a number like 10000.5 into a debit or credit field, it is displayed with commas as 10,000.50 (or 10,000.5).
+Confirm: The underlying data remains a clean number, allowing the balance calculations in the footer to work correctly.
