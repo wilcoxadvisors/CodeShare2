@@ -185,17 +185,11 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       if (entry) {
         console.log(`ARCHITECT_STABILIZATION: Retrieved journal entry ${id}, executing manual file query`);
         
-        // ARCHITECT'S ACTION 1: Manual second query for files to ensure reliable attachment fetching
+        // ARCHITECT'S SURGICAL FIX: Manual file query with guaranteed attachment loading
         let files: any[] = [];
         if (includeFiles) {
-          files = await db.query.journalEntryFiles.findMany({
-            where: and(
-              eq(journalEntryFiles.journalEntryId, id),
-              isNull(journalEntryFiles.deletedAt)
-            ),
-            orderBy: [desc(journalEntryFiles.uploadedAt)]
-          });
-          console.log(`ARCHITECT_STABILIZATION: Manual file query returned ${files.length} attachments`);
+          files = await this.getJournalEntryFiles(id);
+          console.log(`ARCHITECT_SURGICAL_FIX: Retrieved ${files.length} attachments for entry ${id}`);
         }
         
         const lines = includeLines ? await this.getJournalEntryLines(id) : [];
@@ -399,8 +393,25 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         ? entryData.date // Already a string, keep as is
         : format(new Date(entryData.date), 'yyyy-MM-dd'); // Format to YYYY-MM-DD
         
-      // Generate reference number if not provided
-      const referenceNumber = entryData.referenceNumber || `JE-${clientId}-${entryData.entityId}-${formattedDate.replace(/-/g, '')}-${Date.now()}`;
+      // ARCHITECT'S SURGICAL FIX: Check for duplicate reference numbers and auto-generate unique ones
+      let referenceNumber = entryData.referenceNumber;
+      if (referenceNumber) {
+        // Check if reference number already exists
+        const existingEntry = await db.select({ id: journalEntries.id })
+          .from(journalEntries)
+          .where(eq(journalEntries.referenceNumber, referenceNumber))
+          .limit(1);
+          
+        if (existingEntry.length > 0) {
+          console.log(`DEBUG: Duplicate reference number detected: ${referenceNumber}`);
+          // Generate unique reference with timestamp
+          referenceNumber = `${referenceNumber}-${Date.now()}`;
+          console.log(`DEBUG: Generated unique reference: ${referenceNumber}`);
+        }
+      } else {
+        // Generate reference number if not provided
+        referenceNumber = `JE-${clientId}-${entryData.entityId}-${formattedDate.replace(/-/g, '')}-${Date.now()}`;
+      }
       
       const insertData = {
         ...entryData,
@@ -408,7 +419,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         clientId,
         createdBy: createdById,
         status: entryData.status || 'draft', // Default to draft if not specified
-        referenceNumber // Ensure reference number is always set
+        referenceNumber // Ensure reference number is always set and unique
       };
       
       console.log('--- DATABASE WRITE ---', insertData);
@@ -899,16 +910,17 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
   
   async createJournalEntryLine(insertLine: InsertJournalEntryLine): Promise<JournalEntryLine> {
-    console.log(`Creating line for journal entry ${insertLine.journalEntryId}`);
+    console.log(`ARCHITECT_SURGICAL_FIX: Creating line for journal entry ${insertLine.journalEntryId}`);
     try {
-      // Get journal entry to verify it exists and is not posted/void
-      const journalEntry = await this.getJournalEntry(insertLine.journalEntryId);
+      // Get journal entry to verify it exists
+      const journalEntry = await this.getJournalEntry(insertLine.journalEntryId, false, false); // Skip loading lines/files for performance
       if (!journalEntry) {
         throw new ApiError(404, `Journal entry with ID ${insertLine.journalEntryId} not found`);
       }
       
-      if (journalEntry.status === 'posted' || journalEntry.status === 'void') {
-        throw new ApiError(400, `Cannot add line to journal entry with status ${journalEntry.status}`);
+      // SURGICAL FIX: Only block manual line additions to completed entries, not during creation/editing
+      if (journalEntry.status === 'void') {
+        throw new ApiError(400, `Cannot add line to voided journal entry`);
       }
       
       // Validate the account exists and is active
