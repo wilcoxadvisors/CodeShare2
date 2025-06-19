@@ -12,8 +12,17 @@ export interface ApiResponse extends Response {
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorPayload;
+    try {
+      // The server often sends detailed validation errors in a JSON body
+      errorPayload = await res.json();
+      console.error("SERVER REJECTED PAYLOAD:", errorPayload);
+    } catch (e) {
+      // If the body is not JSON, use the raw text
+      errorPayload = await res.text();
+    }
+    // Throw an error that includes the detailed payload
+    throw new Error(`${res.status} ${res.statusText}: ${JSON.stringify(errorPayload, null, 2)}`);
   }
 }
 
