@@ -121,24 +121,30 @@ export function AttachmentSection({
   // File delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (fileId: number) => {
+      console.log(`ARCHITECT_ATTACHMENT_DELETE: Attempting to delete file ${fileId} from entry ${journalEntryId}`);
       const response = await fetch(
         `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`,
         {
           method: 'DELETE',
+          credentials: 'include', // Ensure authentication cookies are sent
         }
       );
 
+      console.log(`ARCHITECT_ATTACHMENT_DELETE: Response status ${response.status} for file ${fileId}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to delete file');
+        const errorText = await response.text();
+        console.error(`ARCHITECT_ATTACHMENT_DELETE: Failed to delete file ${fileId}:`, errorText);
+        throw new Error(`Failed to delete file: ${response.status} ${errorText}`);
       }
 
-      return response.json();
+      return response.status === 204 ? {} : response.json();
     },
     onSuccess: () => {
-      // Invalidate attachment queries
-      queryClient.invalidateQueries({
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh for attachments
+      queryClient.refetchQueries({
         queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
-        exact: true
+        type: 'all'
       });
       
       toast({
