@@ -742,10 +742,10 @@ function JournalEntryDetail() {
     // Handle different response formats
     if (Array.isArray(filesData)) {
       return filesData;
-    } else if (filesData.files && Array.isArray(filesData.files)) {
-      return filesData.files;
-    } else if (typeof filesData === 'object' && filesData.data && Array.isArray(filesData.data)) {
-      return filesData.data;
+    } else if (typeof filesData === 'object' && 'files' in filesData && Array.isArray((filesData as any).files)) {
+      return (filesData as any).files;
+    } else if (typeof filesData === 'object' && 'data' in filesData && Array.isArray((filesData as any).data)) {
+      return (filesData as any).data;
     }
     
     return [];
