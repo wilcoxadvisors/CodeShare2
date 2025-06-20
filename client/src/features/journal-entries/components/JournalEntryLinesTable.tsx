@@ -515,7 +515,7 @@ export function JournalEntryLinesTable({
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[500px] p-0" side="bottom" align="start">
+                    <PopoverContent className="w-[500px] p-0" side="bottom" align="start" sideOffset={5} avoidCollisions={false}>
                       <div className="border-b px-3 py-2">
                         <div className="flex items-center border rounded-md px-3 mb-2">
                           <svg
@@ -694,6 +694,16 @@ export function JournalEntryLinesTable({
                         ...prev,
                         [`line_${index}`]: open
                       }));
+                      // Reset expanded state and search query when dropdown is closed
+                      if (!open) {
+                        setExpandedDimensions({});
+                        setDimensionSearchQuery("");
+                      } else {
+                        // Collapse all on first open unless tags are already selected
+                        if (!line.tags || line.tags.length === 0) {
+                          setExpandedDimensions({});
+                        }
+                      }
                     }}
                   >
                     <PopoverTrigger asChild>
