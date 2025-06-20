@@ -265,26 +265,10 @@ function JournalEntryForm({
       });
     },
     onSuccess: async (response: any) => {
-      // CRITICAL FIX: Direct cache update for posting status change
-      const postedEntry = response.entry || response;
-      queryClient.setQueryData(
-        ["journal-entries", effectiveClientId, entityId],
-        (oldData: any) => {
-          if (Array.isArray(oldData)) {
-            return oldData.map(entry => 
-              entry.id === existingEntry?.id 
-                ? { ...entry, status: 'posted', ...postedEntry }
-                : entry
-            );
-          }
-          return [postedEntry];
-        }
-      );
-
-      // Force immediate background refetch for consistency
-      queryClient.refetchQueries({ 
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
+      await queryClient.refetchQueries({ 
         queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'active'
+        type: 'all'
       });
       
       toast({
@@ -382,24 +366,10 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload after update");
       }
 
-      // CRITICAL FIX: Direct cache update to show changes immediately
-      const updatedEntry = response.entry || response;
-      queryClient.setQueryData(
-        ["journal-entries", effectiveClientId, entityId],
-        (oldData: any) => {
-          if (Array.isArray(oldData)) {
-            return oldData.map(entry => 
-              entry.id === existingEntry?.id ? updatedEntry : entry
-            );
-          }
-          return [updatedEntry];
-        }
-      );
-
-      // Force immediate background refetch for consistency
-      queryClient.refetchQueries({ 
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
+      await queryClient.refetchQueries({ 
         queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'active'
+        type: 'all'
       });
       
       toast({

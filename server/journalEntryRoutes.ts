@@ -284,6 +284,39 @@ export function registerJournalEntryRoutes(app: Express) {
     res.status(201).json(copiedEntry);
   }));
 
+  // Delete a journal entry
+  app.delete('/api/clients/:clientId/entities/:entityId/journal-entries/:id', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    
+    if (isNaN(id) || isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid ID, entity ID, or client ID provided');
+    }
+    
+    // Get existing entry to verify ownership
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    if (!existingEntry) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+      return;
+    }
+    
+    // Verify the entry belongs to the specified entity and client
+    if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
+      throwForbidden('Journal entry does not belong to the specified entity or client');
+      return;
+    }
+    
+    const deleted = await journalEntryStorage.deleteJournalEntry(id);
+    
+    if (!deleted) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+      return;
+    }
+    
+    res.status(204).send();
+  }));
+
   // Void a journal entry
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries/:id/void', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const journalEntryId = parseInt(req.params.id);
