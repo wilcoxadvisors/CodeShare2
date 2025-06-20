@@ -366,8 +366,9 @@ function JournalEntryDetail() {
           (response && typeof response === 'object' ? Object.keys(response).length : 0)
       });
       
-      // Refresh the journal entry to show the new files
+      // Refresh both the journal entry and files to show the new files
       refetch();
+      refetchFiles();
     },
     onError: (error: any) => {
       if (axios.isCancel(error)) {
@@ -725,6 +726,30 @@ function JournalEntryDetail() {
     console.log("DEBUG - JournalEntryDetail - Data has id property:", 'id' in data);
     console.log("DEBUG - JournalEntryDetail - Data has lines property:", 'lines' in data);
   }
+
+  // Separate query for journal entry files to ensure fresh data
+  const { data: filesData, refetch: refetchFiles } = useQuery({
+    queryKey: [`/api/clients/${clientId}/entities/${entityIdParam || currentEntity?.id}/journal-entries/${entryId}/files`],
+    enabled: !!clientId && !!entryId && !!(entityIdParam || currentEntity?.id),
+  });
+
+  // Extract files from the response
+  const attachmentFiles = React.useMemo(() => {
+    if (!filesData) return [];
+    
+    console.log("DEBUG - Files query response:", filesData);
+    
+    // Handle different response formats
+    if (Array.isArray(filesData)) {
+      return filesData;
+    } else if (filesData.files && Array.isArray(filesData.files)) {
+      return filesData.files;
+    } else if (typeof filesData === 'object' && filesData.data && Array.isArray(filesData.data)) {
+      return filesData.data;
+    }
+    
+    return [];
+  }, [filesData]);
   
   // Log line format to help with client/server format detection
   if (entry && entry.lines && entry.lines.length > 0) {
@@ -1982,9 +2007,9 @@ function JournalEntryDetail() {
             ) : null}
             
             {/* File Listing */}
-            {entry.files && entry.files.length > 0 ? (
+            {attachmentFiles && attachmentFiles.length > 0 ? (
               <div className="space-y-3">
-                {entry.files.map((file, index) => (
+                {attachmentFiles.map((file, index) => (
                   <div 
                     key={index} 
                     className="flex items-center justify-between p-3 border rounded-md"
