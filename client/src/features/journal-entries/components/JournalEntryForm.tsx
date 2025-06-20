@@ -192,29 +192,7 @@ function JournalEntryForm({
   const [lines, setLines] = useState<JournalLine[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // TASK 2: Add State for Attachments - Managing all attachments in the form
-  const [attachments, setAttachments] = useState<any[]>([]);
-  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
 
-  // Attachment handlers for controlled component
-  const handleAddAttachments = (files: File[]) => {
-    setPendingAttachments(prev => [...prev, ...files]);
-  };
-
-  const handleRemoveAttachment = async (fileId: number) => {
-    try {
-      const response = await fetch(
-        `/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files/${fileId}`,
-        { method: 'DELETE', credentials: 'include' }
-      );
-      if (response.ok) {
-        setAttachments(prev => prev.filter(file => file.id !== fileId));
-        toast({ title: "Success", description: "File deleted successfully" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete file", variant: "destructive" });
-    }
-  };
 
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
@@ -792,9 +770,7 @@ function JournalEntryForm({
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
-        attachments={attachments}
-        onRemoveAttachment={handleRemoveAttachment}
-        onAddAttachments={handleAddAttachments}
+        onUploadToEntryRef={uploadPendingFilesRef}
       />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
