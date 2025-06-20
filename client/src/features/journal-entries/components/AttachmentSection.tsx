@@ -23,144 +23,24 @@ interface AttachmentSectionProps {
   entityId: number;
   clientId: number;
   journalEntryId: number | null | undefined;
-  status?: JournalEntryStatus;
   isInEditMode: boolean;
-  // Callback to get reference to upload function for parent to call
-  onUploadToEntryRef?: React.MutableRefObject<
-    ((entryId: number) => Promise<void>) | null
-  >;
+  attachments: any[]; // This will be the single source of truth for all files
+  onRemoveAttachment: (fileId: number) => void;
+  onAddAttachments: (files: File[]) => void;
 }
 
 export function AttachmentSection({
   entityId,
   clientId,
   journalEntryId,
-  status,
   isInEditMode,
-  onUploadToEntryRef,
+  attachments,
+  onRemoveAttachment,
+  onAddAttachments,
 }: AttachmentSectionProps) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Internal state for pending files
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<Array<{
-    id: number;
-    filename: string;
-    size: number;
-    mimeType: string;
-    addedAt: Date | number;
-  }>>([]);
 
-  // Query for journal entry files
-  const { data: journalEntryFiles = [] } = useQuery({
-    queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
-    queryFn: async () => {
-      if (!journalEntryId) return [];
-      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files`);
-      if (!response.ok) {
-        if (response.status === 404) return [];
-        throw new Error('Failed to fetch journal entry files');
-      }
-      return response.json();
-    },
-    enabled: !!journalEntryId && !!clientId && !!entityId,
-  });
-
-  // File upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: async ({ files, entryId }: { files: File[]; entryId: number }) => {
-      console.log(`DEBUG: Starting upload of ${files.length} files for entry ${entryId}`);
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
-
-      const response = await fetch(
-        `/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to upload files');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      console.log("DEBUG: File upload successful, clearing pending files");
-      // Clear pending files after successful upload
-      setPendingFiles([]);
-      setPendingFilesMetadata([]);
-      
-      // Invalidate attachment queries to refresh the file list
-      queryClient.invalidateQueries({
-        queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
-        exact: true
-      });
-      
-      toast({
-        title: "Success",
-        description: "Files uploaded successfully",
-      });
-    },
-    onError: (error) => {
-      console.error('Upload error:', error);
-      // Don't clear pending files on error so user can retry
-      toast({
-        title: "Error",
-        description: "Failed to upload files. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // File delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (fileId: number) => {
-      console.log(`ARCHITECT_ATTACHMENT_DELETE: Attempting to delete file ${fileId} from entry ${journalEntryId}`);
-      const response = await fetch(
-        `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include', // Ensure authentication cookies are sent
-        }
-      );
-
-      console.log(`ARCHITECT_ATTACHMENT_DELETE: Response status ${response.status} for file ${fileId}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`ARCHITECT_ATTACHMENT_DELETE: Failed to delete file ${fileId}:`, errorText);
-        throw new Error(`Failed to delete file: ${response.status} ${errorText}`);
-      }
-
-      return response.status === 204 ? {} : response.json();
-    },
-    onSuccess: () => {
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh for attachments
-      queryClient.refetchQueries({
-        queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
-        type: 'all'
-      });
-      
-      toast({
-        title: "Success",
-        description: "File deleted successfully",
-      });
-    },
-    onError: (error) => {
-      console.error('Delete error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete file",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Upload function to be called externally
   const uploadPendingFiles = async (entryId: number) => {

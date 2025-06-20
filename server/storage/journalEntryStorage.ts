@@ -1274,6 +1274,19 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     }
   }
   
+  async getJournalEntryFileData(storageKey: number | string): Promise<Buffer> {
+    try {
+      const fileStorage = getFileStorage();
+      const fileBuffer = await fileStorage.load(storageKey);
+      if (!fileBuffer) {
+        throw new ApiError(404, `File data with storage key ${storageKey} not found`);
+      }
+      return fileBuffer;
+    } catch (e) {
+      throw handleDbError(e, `getting file data with storage key ${storageKey}`);
+    }
+  }
+  
   async saveJournalEntryFile(fileData: { 
     journalEntryId: number;
     filename: string;
@@ -1312,25 +1325,6 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       return journalEntryFile;
     } catch (e) {
       throw handleDbError(e, `saving file for journal entry ${fileData.journalEntryId}`);
-    }
-  }
-  
-  async getJournalEntryFileData(storageKey: number | string): Promise<Buffer> {
-    console.log(`Getting file data with storage key ${storageKey}`);
-    try {
-      // Get the file storage implementation
-      const fileStorage = getFileStorage();
-      
-      // Load the file data from storage
-      const fileBuffer = await fileStorage.load(storageKey);
-      
-      if (!fileBuffer) {
-        throw new ApiError(404, `File data with storage key ${storageKey} not found`);
-      }
-      
-      return fileBuffer;
-    } catch (e) {
-      throw handleDbError(e, `getting file data with storage key ${storageKey}`);
     }
   }
   
