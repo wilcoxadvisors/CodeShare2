@@ -261,6 +261,28 @@ function JournalEntryForm({
       ? dimensionsResponse
       : []; // Always default to an empty array
 
+  // Query for existing files when editing an entry
+  const { data: existingFilesData, refetch: refetchExistingFiles } = useQuery({
+    queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`],
+    enabled: !!existingEntry?.id && !!effectiveClientId && !!entityId,
+  });
+
+  // Extract files from the response
+  const existingFiles = React.useMemo(() => {
+    if (!existingFilesData) return [];
+    
+    console.log("DEBUG - JournalEntryForm files response:", existingFilesData);
+    
+    // Handle different response formats
+    if (Array.isArray(existingFilesData)) {
+      return existingFilesData;
+    } else if (typeof existingFilesData === 'object' && 'files' in existingFilesData && Array.isArray((existingFilesData as any).files)) {
+      return (existingFilesData as any).files;
+    }
+    
+    return [];
+  }, [existingFilesData]);
+
   // Post journal entry mutation
   const postJournalEntry = useMutation({
     mutationFn: async (entryId: number) => {
@@ -360,15 +382,20 @@ function JournalEntryForm({
       if (!response.ok) throw new Error('File upload failed');
       return response.json();
     },
-    onSuccess: (uploadedFiles) => {
-      // Refresh the journal entry files query
+    onSuccess: (response) => {
+      console.log("Upload response:", response);
+      // Refresh the journal entry files query with correct key
       queryClient.invalidateQueries({
-        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, existingEntry?.id]
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
+      
       // Update local attachments state with uploaded files
-      if (uploadedFiles && Array.isArray(uploadedFiles)) {
-        setAttachments(prev => [...prev, ...uploadedFiles]);
+      if (response && response.files && Array.isArray(response.files)) {
+        setAttachments(prev => [...prev, ...response.files]);
+      } else if (response && Array.isArray(response)) {
+        setAttachments(prev => [...prev, ...response]);
       }
+      
       toast({ title: "Success", description: "Files uploaded successfully." });
     },
     onError: () => {
@@ -392,9 +419,9 @@ function JournalEntryForm({
       return response.json();
     },
     onSuccess: () => {
-      // Refresh the journal entry files query
+      // Refresh the journal entry files query with correct key
       queryClient.invalidateQueries({
-        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, existingEntry?.id]
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
       toast({ title: "Success", description: "File deleted successfully." });
     },
@@ -480,6 +507,14 @@ function JournalEntryForm({
       setPendingAttachments([]);
     }
   }, [existingEntry, entities]);
+
+  // Initialize attachments from existing files query
+  React.useEffect(() => {
+    if (existingFiles.length > 0) {
+      console.log("DEBUG - Setting attachments from existing files:", existingFiles);
+      setAttachments(existingFiles);
+    }
+  }, [existingFiles]);
 
   // Line management functions
   const addLine = () => {
