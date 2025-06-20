@@ -192,6 +192,10 @@ function JournalEntryForm({
   const [lines, setLines] = useState<JournalLine[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Add state for attachments - single source of truth
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
 
@@ -294,38 +298,12 @@ function JournalEntryForm({
         data: data,
       });
     },
-    onSuccess: async (result: JournalEntryResponse, variables: any) => {
-      const entryId = result.id || result.entry?.id;
-      console.log("DEBUG: Journal entry created successfully, ID:", entryId);
-      
-      // Upload pending files if any (handled by AttachmentSection)
-      if (uploadPendingFilesRef.current) {
-        console.log("DEBUG: Uploading pending files for journal entry:", entryId);
-        try {
-          await uploadPendingFilesRef.current(entryId!);
-          console.log("DEBUG: Files uploaded successfully");
-        } catch (error) {
-          console.error("Error uploading files:", error);
-          toast({
-            title: "Warning",
-            description: "Journal entry created but file upload failed",
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.log("DEBUG: No pending files to upload");
-      }
-
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'all'
-      });
-      
-      toast({
-        title: "Success",
-        description: "Journal entry created successfully",
-      });
+    onSuccess: (newEntry) => {
+      queryClient.setQueryData(
+        ['journal-entries', effectiveClientId, entityId],
+        (oldData: any[] | undefined) => (oldData ? [newEntry, ...oldData] : [newEntry])
+      );
+      toast({ title: "Success", description: "Journal entry created." });
       onSubmit();
     },
     onError: (error) => {
@@ -395,21 +373,48 @@ function JournalEntryForm({
     return state;
   };
 
-  // Initialize lines from existing entry
+  // Fix Data Initialization - single place where all form state is correctly set
   useEffect(() => {
-    if (existingEntry?.lines) {
-      const processedLines = existingEntry.lines.map((line: any) => ({
-        id: line.id,
-        _key: line.id ? `existing_${line.id}` : nanoid(),
-        accountId: line.accountId?.toString() || "",
-        entityCode: line.entityCode || "",
-        description: line.description || "",
-        debit: line.debit?.toString() || "",
-        credit: line.credit?.toString() || "",
-        tags: line.tags || [],
-      }));
-      setLines(processedLines);
+    if (existingEntry) {
+      // Fixes Date bug #7 - proper timezone handling
+      setJournalData({
+        date: format(new Date(existingEntry.date.replace(/-/g, '/')), "yyyy-MM-dd"),
+        referenceNumber: existingEntry.referenceNumber || '',
+        referenceUserSuffix: existingEntry.referenceUserSuffix || '',
+        description: existingEntry.description || '',
+        isAccrual: existingEntry.isAccrual || false,
+        reversalDate: existingEntry.reversalDate ? format(new Date(existingEntry.reversalDate.replace(/-/g, '/')), "yyyy-MM-dd") : '',
+      });
+      
+      // Initialize lines
+      if (existingEntry.lines) {
+        const processedLines = existingEntry.lines.map((line: any) => ({
+          id: line.id,
+          _key: line.id ? `existing_${line.id}` : nanoid(),
+          accountId: line.accountId?.toString() || "",
+          entityCode: line.entityCode || "",
+          description: line.description || "",
+          debit: line.debit?.toString() || "",
+          credit: line.credit?.toString() || "",
+          tags: line.tags || [],
+        }));
+        setLines(processedLines);
+      }
+      
+      // Correctly load existing files
+      setAttachments(existingEntry.files || []);
+      setPendingAttachments([]); // Clear pending files on new entry load
     } else {
+      // Reset form for new entry
+      setJournalData({
+        date: format(new Date(), "yyyy-MM-dd"),
+        referenceNumber: generateReference(),
+        referenceUserSuffix: "",
+        description: "",
+        isAccrual: false,
+        reversalDate: "",
+      });
+      
       // Add initial two empty lines for new entries (standard accounting practice)
       const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
       setLines([
@@ -432,6 +437,9 @@ function JournalEntryForm({
           tags: [],
         },
       ]);
+      
+      setAttachments([]);
+      setPendingAttachments([]);
     }
   }, [existingEntry, entities]);
 
@@ -754,14 +762,19 @@ function JournalEntryForm({
         totalCredit={totalCredit}
       />
 
-      {/* Attachment Section */}
+      {/* Attachment Section - Now controlled component */}
       <AttachmentSection
         entityId={entityId}
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
-        status={existingEntry?.status}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
-        onUploadToEntryRef={uploadPendingFilesRef}
+        attachments={attachments}
+        onRemoveAttachment={(fileId: number) => {
+          setAttachments(prev => prev.filter(file => file.id !== fileId));
+        }}
+        onAddAttachments={(files: File[]) => {
+          setPendingAttachments(prev => [...prev, ...files]);
+        }}
       />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
