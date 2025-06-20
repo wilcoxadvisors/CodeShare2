@@ -388,6 +388,8 @@ function JournalEntryForm({
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
+      // Also refresh the existing files query
+      refetchExistingFiles();
       
       // Update local attachments state with uploaded files
       if (response && response.files && Array.isArray(response.files)) {
@@ -423,6 +425,8 @@ function JournalEntryForm({
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
+      // Also refresh the existing files query
+      refetchExistingFiles();
       toast({ title: "Success", description: "File deleted successfully." });
     },
     onError: () => {
