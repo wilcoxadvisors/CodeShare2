@@ -571,7 +571,7 @@ export function JournalEntryLinesTable({
                           </Button>
                         </div>
                       </div>
-                      <div className="max-h-[400px] overflow-y-auto">
+                      <div className="max-h-[300px] overflow-y-auto">
                         {filteredAccountTree.length === 0 ? (
                           <div className="px-3 py-4 text-center text-sm text-gray-500">
                             No accounts found
@@ -752,7 +752,7 @@ export function JournalEntryLinesTable({
                             </Button>
                           </div>
                         </div>
-                        <CommandList className="max-h-64">
+                        <CommandList className="max-h-48">
                           {searchFilteredDimensions.map((dimension) => {
                             if (!dimension) return null;
                             
