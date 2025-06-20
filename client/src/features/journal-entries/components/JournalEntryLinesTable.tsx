@@ -189,6 +189,8 @@ export function JournalEntryLinesTable({
     setExpandedDimensions(prev => ({ ...prev, [dimensionId]: !prev[dimensionId] }));
   };
 
+
+
   // Handler functions
   const handleLineChange = (index: number, field: string, value: string) => {
     setLines((prev) => {
@@ -289,29 +291,8 @@ export function JournalEntryLinesTable({
       .filter(Boolean) as (Account & { children: any[] })[];
   }, [accountTree, searchQuery]);
 
-  // Auto-expand parents when searching
-  const autoExpandedAccounts = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return {};
-    }
-
-    const expanded: ExpandedState = {};
-    
-    const expandParents = (account: Account & { children: any[] }) => {
-      if (account.children.length > 0) {
-        expanded[account.id] = true;
-        account.children.forEach(child => expandParents(child));
-      }
-    };
-
-    filteredAccountTree.forEach(account => expandParents(account));
-    return expanded;
-  }, [filteredAccountTree, searchQuery]);
-
-  // Get combined expanded state (manual + auto-expanded from search)
-  const combinedExpandedState = useMemo(() => {
-    return { ...expandedAccounts, ...autoExpandedAccounts };
-  }, [expandedAccounts, autoExpandedAccounts]);
+  // Auto-expand parents when searching (remove duplicate declaration)
+  // This logic is now handled in the earlier autoExpandedAccounts declaration above
 
   // Toggle account expansion
   const toggleAccountExpansion = (accountId: number) => {

@@ -884,7 +884,15 @@ function JournalEntryForm({
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
         <Button
           variant="outline"
-          onClick={onCancel}
+          onClick={() => {
+            // Reset filesToDelete to restore any deleted files
+            setFilesToDelete([]);
+            // Restore deleted files to attachments list
+            if (existingEntry?.files) {
+              setAttachments(existingEntry.files);
+            }
+            onCancel();
+          }}
           disabled={createEntry.isPending || updateEntry.isPending}
         >
           Cancel
