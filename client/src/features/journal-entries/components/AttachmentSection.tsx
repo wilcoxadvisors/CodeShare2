@@ -202,9 +202,6 @@ export function AttachmentSection({
                 accept=".pdf,.jpg,.jpeg,.png,.gif,.msg,.eml,.txt,.doc,.docx"
                 onChange={handleFileSelect}
               />
-              <p className={`mt-2 text-xs ${isDragOver ? 'text-blue-700' : 'text-gray-500'}`}>
-                PDF, Images, MSG, EML, TXT, DOC up to 10MB each
-              </p>
             </div>
           </div>
         )}
