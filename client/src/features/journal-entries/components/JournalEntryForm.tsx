@@ -192,6 +192,30 @@ function JournalEntryForm({
   const [lines, setLines] = useState<JournalLine[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // TASK 2: Add State for Attachments - Managing all attachments in the form
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+
+  // Attachment handlers for controlled component
+  const handleAddAttachments = (files: File[]) => {
+    setPendingAttachments(prev => [...prev, ...files]);
+  };
+
+  const handleRemoveAttachment = async (fileId: number) => {
+    try {
+      const response = await fetch(
+        `/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files/${fileId}`,
+        { method: 'DELETE', credentials: 'include' }
+      );
+      if (response.ok) {
+        setAttachments(prev => prev.filter(file => file.id !== fileId));
+        toast({ title: "Success", description: "File deleted successfully" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete file", variant: "destructive" });
+    }
+  };
+
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
 
@@ -298,29 +322,27 @@ function JournalEntryForm({
       const entryId = result.id || result.entry?.id;
       console.log("DEBUG: Journal entry created successfully, ID:", entryId);
       
-      // Upload pending files if any (handled by AttachmentSection)
-      if (uploadPendingFilesRef.current) {
-        console.log("DEBUG: Uploading pending files for journal entry:", entryId);
+      // Upload pending attachments if any
+      if (pendingAttachments.length > 0 && entryId) {
         try {
-          await uploadPendingFilesRef.current(entryId!);
-          console.log("DEBUG: Files uploaded successfully");
+          const formData = new FormData();
+          pendingAttachments.forEach(file => formData.append('files', file));
+          await fetch(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/files`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+          setPendingAttachments([]);
         } catch (error) {
           console.error("Error uploading files:", error);
-          toast({
-            title: "Warning",
-            description: "Journal entry created but file upload failed",
-            variant: "destructive",
-          });
         }
-      } else {
-        console.log("DEBUG: No pending files to upload");
       }
 
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'all'
-      });
+      // TASK 2: Fix UI Refresh (#4) - Use setQueryData for immediate UI update
+      queryClient.setQueryData(
+        ['journal-entries', effectiveClientId, entityId],
+        (oldData: any[] | undefined) => (oldData ? [result, ...oldData] : [result])
+      );
       
       toast({
         title: "Success",
@@ -432,6 +454,15 @@ function JournalEntryForm({
           tags: [],
         },
       ]);
+    }
+
+    // TASK 2: Fix Data Initialization - Load existing files correctly
+    if (existingEntry) {
+      setAttachments(existingEntry.files || []); // Correctly load existing files
+      setPendingAttachments([]); // Clear pending files on new entry load
+    } else {
+      setAttachments([]);
+      setPendingAttachments([]);
     }
   }, [existingEntry, entities]);
 
@@ -759,9 +790,10 @@ function JournalEntryForm({
         entityId={entityId}
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
-        status={existingEntry?.status}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
-        onUploadToEntryRef={uploadPendingFilesRef}
+        attachments={attachments}
+        onRemoveAttachment={handleRemoveAttachment}
+        onAddAttachments={handleAddAttachments}
       />
 
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
