@@ -1,0 +1,136 @@
+Mission: Architectural Stabilization (Surgical Edition)
+Directive: To fix all remaining critical bugs by making precise, in-place edits to the existing files, thereby correcting their architecture without destroying existing work.
+
+Task 1: Fix All Attachment Bugs (Issues #5, #8, #14, #15, #17, #18)
+Analysis: The root cause is that AttachmentSection.tsx improperly manages its own state, fighting with its parent form. The industry-standard solution is to make it a "Controlled Component" that is managed entirely by its parent. We will perform edits to achieve this.
+
+A. Add the Missing Download Route (Fixes #17):
+
+Open File: server/journalEntryRoutes.ts
+Add Code: Append the following new route handler to the end of the file to enable file downloads.
+TypeScript
+
+app.get('/api/clients/:clientId/entities/:entityId/journal-entries/:journalEntryId/files/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const fileId = parseInt(req.params.fileId);
+    const fileInfo = await journalEntryStorage.getJournalEntryFile(fileId);
+    if (!fileInfo || !fileInfo.storageKey) {
+        throwNotFound('File not found');
+        return;
+    }
+    const fileData = await journalEntryStorage.getJournalEntryFileData(fileInfo.storageKey);
+    res.setHeader('Content-Type', fileInfo.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${fileInfo.filename}"`);
+    res.send(fileData);
+}));
+Open File: server/storage/journalEntryStorage.ts
+Add Method: Add the following new method inside the JournalEntryStorage class to retrieve file data from storage.
+TypeScript
+
+async getJournalEntryFileData(storageKey: number | string): Promise<Buffer> {
+    try {
+        const fileStorage = getFileStorage();
+        const fileBuffer = await fileStorage.load(storageKey);
+        if (!fileBuffer) {
+            throw new ApiError(404, `File data with storage key ${storageKey} not found`);
+        }
+        return fileBuffer;
+    } catch (e) {
+        throw handleDbError(e, `getting file data with storage key ${storageKey}`);
+    }
+}
+B. Surgically Refactor AttachmentSection.tsx (Fixes #5, #8, #14, #15, #18):
+
+Open File: client/src/features/journal-entries/components/AttachmentSection.tsx
+Edit Props: Modify the AttachmentSectionProps interface. This is the first step to making it a controlled component. It will now receive its data and behavior from its parent.
+TypeScript
+
+// CHANGE THIS:
+interface AttachmentSectionProps {
+  entityId: number;
+  clientId: number;
+  journalEntryId: number | null | undefined;
+  status?: JournalEntryStatus;
+  isInEditMode: boolean;
+  onUploadToEntryRef?: React.MutableRefObject<((entryId: number) => Promise<void>) | null>;
+}
+
+// TO THIS:
+interface AttachmentSectionProps {
+  entityId: number;
+  clientId: number;
+  journalEntryId: number | null | undefined;
+  isInEditMode: boolean;
+  attachments: any[]; // This will be the single source of truth for all files
+  onRemoveAttachment: (fileId: number) => void;
+  onAddAttachments: (files: File[]) => void;
+}
+Remove Obsolete Hooks: Delete the useQuery hook that fetches journalEntryFiles and the useState hooks for pendingFiles and pendingFilesMetadata. The component will no longer manage its own data, eliminating the source of bugs.
+Rewire Delete Button: Locate the "Delete" button for existing attachments. Change its onClick handler to call the function passed down from the parent. This fixes issue #15.
+JavaScript
+
+// CHANGE THIS:
+onClick={() => deleteMutation.mutate(file.id)}
+// TO THIS:
+onClick={() => onRemoveAttachment(file.id)}
+Rewire File Input: Locate the <input type="file" />. Change its onChange handler to immediately pass newly selected files up to the parent.
+JavaScript
+
+// CHANGE THIS:
+onChange={handleFileSelect}
+// TO THIS:
+onChange={(e) => {
+  if (e.target.files) onAddAttachments(Array.from(e.target.files));
+  e.target.value = '';
+}}
+Fix Download Link: Find the "View" button and ensure its onClick handler points to the new download route we created.
+JavaScript
+
+ onClick={() => window.open(`/api/clients/<span class="math-inline">\{clientId\}/entities/</span>{entityId}/journal-entries/<span class="math-inline">\{journalEntryId\}/files/</span>{file.id}/download`, '_blank')}
+Enforce Edit Mode: Verify that the file input and the delete buttons are wrapped in a conditional check for the isInEditMode prop, like so: {isInEditMode && ( ... )}. This fixes issues #8 and #14.
+Task 2: Fix Core Data & State Bugs (Issues #4, #6, #7, #19)
+Analysis: The remaining data loss and UI refresh bugs are caused by flawed state initialization and incorrect data packaging in JournalEntryForm.tsx. We will surgically edit the form to make it the single source of truth for all its data, including attachments.
+
+Your Instructions:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Add State for Attachments: At the top of the JournalEntryForm component, add state variables to manage all attachments.
+TypeScript
+
+// Add these lines near the other useState hooks
+const [attachments, setAttachments] = useState<any[]>([]);
+const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+Fix Data Initialization: Modify the main useEffect hook that depends on [existingEntry] to be the single place where all form state is correctly set when an existing entry is loaded. This is the fix for data disappearing on edit.
+TypeScript
+
+// Find the useEffect that starts with "if (existingEntry?.lines)" and replace its contents.
+useEffect(() => {
+    if (existingEntry) {
+        // Fixes Date bug #7
+        setJournalData({
+            date: format(new Date(existingEntry.date.replace(/-/g, '/')), "yyyy-MM-dd"),
+            referenceNumber: existingEntry.referenceNumber || '',
+            description: existingEntry.description || '',
+            isAccrual: existingEntry.isAccrual || false,
+            reversalDate: existingEntry.reversalDate ? format(new Date(existingEntry.reversalDate.replace(/-/g, '/')), "yyyy-MM-dd") : '',
+        });
+        // ... (rest of the state setting logic for lines, etc.) ...
+        setAttachments(existingEntry.files || []); // Correctly load existing files
+        setPendingAttachments([]); // Clear pending files on new entry load
+    } else {
+       // ... (logic for resetting the form for a new entry) ...
+    }
+}, [existingEntry, entities]);
+Fix UI Refresh (#4): In the onSuccess handlers for createEntry and updateEntry, you must replace the failing refetchQueries logic with queryClient.setQueryData. This is the industry-standard way to prevent UI race conditions.
+TypeScript
+
+// In the createEntry mutation, replace the onSuccess handler with this:
+onSuccess: (newEntry) => {
+    queryClient.setQueryData(
+        ['journal-entries', effectiveClientId, entityId],
+        (oldData: any[] | undefined) => (oldData ? [newEntry, ...oldData] : [newEntry])
+    );
+    toast({ title: "Success", description: "Journal entry created." });
+    onSubmit();
+}
+Fortify Save Copied Entry (#19) and Reference Field (#6): In the submission handlers (handleSaveDraft, handlePostEntry), ensure the payload object sent to the mutation contains all required fields from the journalData state: referenceNumber, description, isAccrual, reversalDate. The 400 Bad Request error for copied entries indicates the payload is malformed or incomplete. This edit ensures a valid payload is always sent.
+These surgical edits will refactor the flawed components to use correct, industry-standard patterns without deleting any files. This will stabilize the system.

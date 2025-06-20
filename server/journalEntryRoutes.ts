@@ -403,5 +403,19 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
+  // Add file download route (Fixes issue #17)
+  app.get('/api/clients/:clientId/entities/:entityId/journal-entries/:journalEntryId/files/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const fileId = parseInt(req.params.fileId);
+    const fileInfo = await journalEntryStorage.getJournalEntryFile(fileId);
+    if (!fileInfo || !fileInfo.storageKey) {
+      throwNotFound('File not found');
+      return;
+    }
+    const fileData = await journalEntryStorage.getJournalEntryFileData(fileInfo.storageKey);
+    res.setHeader('Content-Type', fileInfo.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${fileInfo.filename}"`);
+    res.send(fileData);
+  }));
+
   console.log('✅ Hierarchical journal entry routes registered');
 }
