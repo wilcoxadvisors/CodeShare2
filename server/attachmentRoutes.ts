@@ -330,7 +330,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Get all files attached to a journal entry - hierarchical route
    */
-  router.get('/', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/', asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -372,7 +372,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Get a specific file from a journal entry - hierarchical route
    */
-  router.get('/:fileId', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/:fileId', asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -461,7 +461,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Download a specific file from a journal entry - hierarchical route
    */
-  router.get('/:fileId/download', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/:fileId/download', asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -547,7 +547,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Delete a file from a journal entry - hierarchical route
    */
-  router.delete('/:fileId', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.delete('/:fileId', asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
