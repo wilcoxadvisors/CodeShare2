@@ -850,15 +850,24 @@ function JournalEntryForm({
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
-        attachments={attachments}
+        attachments={existingEntry?.id ? attachments : pendingAttachments.map((file, index) => ({
+          id: -index - 1, // Temporary negative ID for pending files
+          filename: file.name,
+          size: file.size,
+          mimeType: file.type,
+          uploadedAt: new Date(),
+          journalEntryId: 0,
+          uploadedBy: 1
+        }))}
         onRemoveAttachment={(fileId: number) => {
           if (existingEntry?.id) {
             // For existing entries, delete immediately
             deleteFileMutation.mutate(fileId);
             setAttachments(prev => prev.filter(file => file.id !== fileId));
           } else {
-            // For new entries, just remove from local state
-            setAttachments(prev => prev.filter(file => file.id !== fileId));
+            // For new entries, remove from pending files using the negative index
+            const pendingIndex = Math.abs(fileId + 1);
+            setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
           }
         }}
         onAddAttachments={(files: File[]) => {
