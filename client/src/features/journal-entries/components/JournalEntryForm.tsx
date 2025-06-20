@@ -370,29 +370,30 @@ function JournalEntryForm({
     onSuccess: async (response: JournalEntryResponse) => {
       console.log("DEBUG: Journal entry updated successfully, ID:", existingEntry?.id);
       
-      // Upload pending files if any (handled by AttachmentSection)
-      if (uploadPendingFilesRef.current) {
-        console.log("DEBUG: Uploading pending files for updated journal entry:", existingEntry?.id);
+      // Upload pending attachments if any
+      if (pendingAttachments.length > 0 && existingEntry?.id) {
         try {
-          await uploadPendingFilesRef.current(existingEntry?.id!);
-          console.log("DEBUG: Files uploaded successfully after update");
-        } catch (error) {
-          console.error("Error uploading files after update:", error);
-          toast({
-            title: "Warning",
-            description: "Journal entry updated but file upload failed",
-            variant: "destructive",
+          const formData = new FormData();
+          pendingAttachments.forEach(file => formData.append('files', file));
+          await fetch(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry.id}/files`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
           });
+          setPendingAttachments([]);
+        } catch (error) {
+          console.error("Error uploading files:", error);
         }
-      } else {
-        console.log("DEBUG: No pending files to upload after update");
       }
 
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'all'
-      });
+      // TASK 2: Fix UI Refresh (#4) - Use setQueryData for immediate UI update
+      queryClient.setQueryData(
+        ['journal-entries', effectiveClientId, entityId],
+        (oldData: any[] | undefined) => {
+          if (!oldData) return [response];
+          return oldData.map(entry => entry.id === existingEntry?.id ? { ...entry, ...response } : entry);
+        }
+      );
       
       toast({
         title: "Success",
