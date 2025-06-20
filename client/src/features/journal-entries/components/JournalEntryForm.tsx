@@ -323,37 +323,13 @@ function JournalEntryForm({
         data: data,
       });
     },
-    onSuccess: async (response: JournalEntryResponse) => {
-      console.log("DEBUG: Journal entry updated successfully, ID:", existingEntry?.id);
-      
-      // Upload pending files if any (handled by AttachmentSection)
-      if (uploadPendingFilesRef.current) {
-        console.log("DEBUG: Uploading pending files for updated journal entry:", existingEntry?.id);
-        try {
-          await uploadPendingFilesRef.current(existingEntry?.id!);
-          console.log("DEBUG: Files uploaded successfully after update");
-        } catch (error) {
-          console.error("Error uploading files after update:", error);
-          toast({
-            title: "Warning",
-            description: "Journal entry updated but file upload failed",
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.log("DEBUG: No pending files to upload after update");
-      }
-
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'all'
-      });
-      
-      toast({
-        title: "Success",
-        description: "Journal entry updated successfully",
-      });
+    onSuccess: (updatedEntry) => {
+      queryClient.setQueryData(
+        ['journal-entries', effectiveClientId, entityId],
+        (oldData: any[] | undefined) => 
+          oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
+      );
+      toast({ title: "Success", description: "Journal entry updated." });
       onSubmit();
     },
     onError: (error) => {

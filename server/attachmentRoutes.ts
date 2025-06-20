@@ -506,17 +506,19 @@ export function registerAttachmentRoutes(app: Express) {
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     
     // Log file download for audit purposes (async, don't await to improve response time)
-    auditLogStorage.createAuditLog({
-      action: 'journal_file_downloaded',
-      performedBy: (req.user as any).id,
-      details: JSON.stringify({
-        journalEntryId: jeId,
-        fileId,
-        filename: file.filename,
-        clientId,
-        entityId
-      })
-    }).catch(err => console.error('Error creating audit log for file download:', err));
+    if (req.user && (req.user as any).id) {
+      auditLogStorage.createAuditLog({
+        action: 'journal_file_downloaded',
+        performedBy: (req.user as any).id,
+        details: JSON.stringify({
+          journalEntryId: jeId,
+          fileId,
+          filename: file.filename,
+          clientId,
+          entityId
+        })
+      }).catch(err => console.error('Error creating audit log for file download:', err));
+    }
     
     try {
       // If the file is stored in the blob storage
