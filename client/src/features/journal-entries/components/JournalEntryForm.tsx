@@ -341,6 +341,68 @@ function JournalEntryForm({
     },
   });
 
+  // File upload mutation for immediate upload in edit mode
+  const uploadFilesMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!existingEntry?.id) throw new Error('No journal entry ID for file upload');
+      
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+      
+      const response = await fetch(
+        `/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry.id}/files`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      
+      if (!response.ok) throw new Error('File upload failed');
+      return response.json();
+    },
+    onSuccess: (uploadedFiles) => {
+      // Refresh the journal entry files query
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, existingEntry?.id]
+      });
+      // Update local attachments state with uploaded files
+      if (uploadedFiles && Array.isArray(uploadedFiles)) {
+        setAttachments(prev => [...prev, ...uploadedFiles]);
+      }
+      toast({ title: "Success", description: "Files uploaded successfully." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to upload files.", variant: "destructive" });
+    }
+  });
+
+  // File deletion mutation for immediate deletion in edit mode
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      if (!existingEntry?.id) throw new Error('No journal entry ID for file deletion');
+      
+      const response = await fetch(
+        `/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry.id}/files/${fileId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+      
+      if (!response.ok) throw new Error('File deletion failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh the journal entry files query
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, existingEntry?.id]
+      });
+      toast({ title: "Success", description: "File deleted successfully." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete file.", variant: "destructive" });
+    }
+  });
+
   const initializeExpandedState = (): ExpandedState => {
     const state: ExpandedState = {};
     accounts.forEach((account) => {
@@ -746,10 +808,23 @@ function JournalEntryForm({
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
         attachments={attachments}
         onRemoveAttachment={(fileId: number) => {
-          setAttachments(prev => prev.filter(file => file.id !== fileId));
+          if (existingEntry?.id) {
+            // For existing entries, delete immediately
+            deleteFileMutation.mutate(fileId);
+            setAttachments(prev => prev.filter(file => file.id !== fileId));
+          } else {
+            // For new entries, just remove from local state
+            setAttachments(prev => prev.filter(file => file.id !== fileId));
+          }
         }}
         onAddAttachments={(files: File[]) => {
-          setPendingAttachments(prev => [...prev, ...files]);
+          if (existingEntry?.id) {
+            // For existing entries, upload immediately
+            uploadFilesMutation.mutate(files);
+          } else {
+            // For new entries, add to pending files
+            setPendingAttachments(prev => [...prev, ...files]);
+          }
         }}
       />
 

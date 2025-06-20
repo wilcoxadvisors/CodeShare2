@@ -1880,20 +1880,8 @@ function JournalEntryDetail() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* File Upload Area - only visible for draft or pending_approval entries */}
-            {(() => {
-              // DEBUG: Log entry status for attachment permission troubleshooting
-              console.log("ARCHITECT_DEBUG_DETAIL_ATTACHMENT_PERMISSIONS:", {
-                entryStatus: entry?.status,
-                entryExists: !!entry,
-                canUpload: entry?.status === 'draft' || entry?.status === 'pending_approval',
-                entryId: entryId,
-                isInEditMode: isInEditMode,
-                entryObject: entry ? { id: entry.id, status: entry.status, description: entry.description } : null
-              });
-              return null;
-            })()}
-            {entry && (entry.status === 'draft' || entry.status === 'pending_approval') ? (
+            {/* File Upload Area - DISABLED in detail view - uploads should only be in edit/new modes */}
+            {false ? (
               <div className="mb-4">
                 {!uploading && (
                   <div
