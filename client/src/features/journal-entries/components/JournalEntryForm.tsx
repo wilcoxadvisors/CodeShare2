@@ -323,15 +323,13 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload");
       }
 
-      // CRITICAL FIX: Comprehensive cache invalidation for journal entry creation
-      await queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
-      });
-      
-      // Force refetch to ensure fresh data appears immediately
-      await queryClient.refetchQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
-      });
+      const queryKey = ["journal-entries", effectiveClientId, entityId];
+
+      // First, invalidate the query to mark it as stale.
+      await queryClient.invalidateQueries({ queryKey, exact: true });
+
+      // FIX #4: Immediately trigger a refetch of the stale query.
+      await queryClient.refetchQueries({ queryKey, exact: true });
       
       toast({
         title: "Success",
@@ -377,18 +375,13 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload after update");
       }
 
-      // CRITICAL FIX: Comprehensive cache invalidation for journal entry updates
-      await queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id]
-      });
-      
-      // Force refetch to ensure fresh data appears immediately
-      await queryClient.refetchQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
-      });
+      const queryKey = ["journal-entries", effectiveClientId, entityId];
+
+      // First, invalidate the query to mark it as stale.
+      await queryClient.invalidateQueries({ queryKey, exact: true });
+
+      // FIX #4: Immediately trigger a refetch of the stale query.
+      await queryClient.refetchQueries({ queryKey, exact: true });
       
       toast({
         title: "Success",

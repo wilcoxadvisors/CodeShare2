@@ -174,43 +174,40 @@ export class JournalEntryStorage implements IJournalEntryStorage {
   }
   
   async getJournalEntry(id: number, includeLines: boolean = true, includeFiles: boolean = true): Promise<JournalEntry | undefined> {
-    console.log(`ARCHITECT_STABILIZATION: Getting journal entry ${id} with lines=${includeLines}, files=${includeFiles}`);
     try {
-      // Get the basic journal entry first
-      const [entry] = await db.select()
-        .from(journalEntries)
-        .where(eq(journalEntries.id, id))
-        .limit(1);
-      
+      const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
+
       if (entry) {
-        console.log(`ARCHITECT_STABILIZATION: Retrieved journal entry ${id}, executing manual file query`);
-        
-        // ARCHITECT'S SURGICAL FIX: Manual file query with guaranteed attachment loading
-        let files: any[] = [];
-        if (includeFiles) {
-          files = await this.getJournalEntryFiles(id);
-          console.log(`ARCHITECT_SURGICAL_FIX: Retrieved ${files.length} attachments for entry ${id}`);
-        }
-        
+        // ... existing lines logic ...
         const lines = includeLines ? await this.getJournalEntryLines(id) : [];
-        
-        console.log(`ARCHITECT_STABILIZATION: Retrieved ${files.length} files and ${lines.length} lines for journal entry ${id}`);
-        
-        // Return entry with lines and files as non-database properties (to avoid type issues)
+
+        // FIX #5 & #9: This block is mandatory for fixing attachments.
+        if (includeFiles) {
+          console.log(`ARCHITECT_DEBUG: Manually fetching files for entry ID: ${id}`);
+          const files = await db.query.journalEntryFiles.findMany({
+              where: (files, { eq, and }) => and(
+                  eq(files.journalEntryId, id),
+                  isNull(files.deletedAt) // Ensure we don't load deleted files
+              )
+          });
+          (entry as any).files = files || [];
+          console.log(`ARCHITECT_DEBUG: Attached ${files.length} files.`);
+        }
+
+        // Return entry with lines and files
         const result = { ...entry } as JournalEntry & { 
           lines: JournalEntryLine[],
           files: any[]
         };
         result.lines = lines || [];
-        result.files = files || [];
+        if (!includeFiles) {
+          result.files = [];
+        }
         
-        console.log(`ARCHITECT_STABILIZATION: Final entry result - ID: ${entry.id}, files: ${result.files?.length || 0}, lines: ${result.lines?.length || 0}`);
         return result;
       }
-      
       return undefined;
     } catch (e) {
-      console.error(`ARCHITECT_STABILIZATION: Failed to get journal entry ${id}:`, e);
       throw handleDbError(e, `getting journal entry ${id}`);
     }
   }
