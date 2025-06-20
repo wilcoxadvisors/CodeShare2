@@ -184,7 +184,7 @@ function NewJournalEntry() {
   }
 
   return (
-    <>
+    <div className="py-6">
       <PageHeader 
         title={isEditMode ? "Edit Journal Entry" : "New Journal Entry"} 
         description={isEditMode ? "Edit an existing journal entry" : "Create a new journal entry"}
@@ -221,7 +221,7 @@ function NewJournalEntry() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
