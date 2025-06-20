@@ -264,18 +264,27 @@ function JournalEntryForm({
         method: "PATCH",
       });
     },
-    onSuccess: async () => {
-      // CRITICAL FIX: Comprehensive cache invalidation for journal entry posting
-      await queryClient.invalidateQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["journal-entry", effectiveClientId, entityId, existingEntry?.id]
-      });
-      
-      // Force refetch to ensure fresh data appears immediately
-      await queryClient.refetchQueries({
-        queryKey: ["journal-entries", effectiveClientId, entityId]
+    onSuccess: async (response: any) => {
+      // CRITICAL FIX: Direct cache update for posting status change
+      const postedEntry = response.entry || response;
+      queryClient.setQueryData(
+        ["journal-entries", effectiveClientId, entityId],
+        (oldData: any) => {
+          if (Array.isArray(oldData)) {
+            return oldData.map(entry => 
+              entry.id === existingEntry?.id 
+                ? { ...entry, status: 'posted', ...postedEntry }
+                : entry
+            );
+          }
+          return [postedEntry];
+        }
+      );
+
+      // Force immediate background refetch for consistency
+      queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", effectiveClientId, entityId],
+        type: 'active'
       });
       
       toast({
@@ -323,13 +332,23 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload");
       }
 
-      const queryKey = ["journal-entries", effectiveClientId, entityId];
+      // CRITICAL FIX: Direct cache update to make entry appear immediately
+      const newEntry = result.entry || result;
+      queryClient.setQueryData(
+        ["journal-entries", effectiveClientId, entityId],
+        (oldData: any) => {
+          if (Array.isArray(oldData)) {
+            return [newEntry, ...oldData];
+          }
+          return [newEntry];
+        }
+      );
 
-      // First, invalidate the query to mark it as stale.
-      await queryClient.invalidateQueries({ queryKey, exact: true });
-
-      // FIX #4: Immediately trigger a refetch of the stale query.
-      await queryClient.refetchQueries({ queryKey, exact: true });
+      // Force immediate background refetch for consistency
+      queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", effectiveClientId, entityId],
+        type: 'active'
+      });
       
       toast({
         title: "Success",
@@ -375,13 +394,25 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload after update");
       }
 
-      const queryKey = ["journal-entries", effectiveClientId, entityId];
+      // CRITICAL FIX: Direct cache update to show changes immediately
+      const updatedEntry = response.entry || response;
+      queryClient.setQueryData(
+        ["journal-entries", effectiveClientId, entityId],
+        (oldData: any) => {
+          if (Array.isArray(oldData)) {
+            return oldData.map(entry => 
+              entry.id === existingEntry?.id ? updatedEntry : entry
+            );
+          }
+          return [updatedEntry];
+        }
+      );
 
-      // First, invalidate the query to mark it as stale.
-      await queryClient.invalidateQueries({ queryKey, exact: true });
-
-      // FIX #4: Immediately trigger a refetch of the stale query.
-      await queryClient.refetchQueries({ queryKey, exact: true });
+      // Force immediate background refetch for consistency
+      queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", effectiveClientId, entityId],
+        type: 'active'
+      });
       
       toast({
         title: "Success",
