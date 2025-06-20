@@ -491,6 +491,11 @@ export function JournalEntryLinesTable({
                       if (!open) {
                         setExpandedAccounts({});
                         setSearchQuery("");
+                      } else {
+                        // Collapse all on first open unless something is selected
+                        if (!line.accountId) {
+                          setExpandedAccounts({});
+                        }
                       }
                     }}
                   >
@@ -512,7 +517,7 @@ export function JournalEntryLinesTable({
                     </PopoverTrigger>
                     <PopoverContent className="w-[500px] p-0" side="bottom" align="start">
                       <div className="border-b px-3 py-2">
-                        <div className="flex items-center border rounded-md px-3">
+                        <div className="flex items-center border rounded-md px-3 mb-2">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-4 w-4 text-gray-400 mr-2"
@@ -536,6 +541,34 @@ export function JournalEntryLinesTable({
                               setSearchQuery(e.target.value);
                             }}
                           />
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-6 px-2"
+                            onClick={() => {
+                              const allExpanded: Record<number, boolean> = {};
+                              accounts.forEach(account => {
+                                if (account.parentId === null) { // Only expand top-level accounts
+                                  allExpanded[account.id] = true;
+                                }
+                              });
+                              setExpandedAccounts(allExpanded);
+                            }}
+                          >
+                            Expand All
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-6 px-2"
+                            onClick={() => setExpandedAccounts({})}
+                          >
+                            Collapse All
+                          </Button>
                         </div>
                       </div>
                       <div className="max-h-[400px] overflow-y-auto">
@@ -675,11 +708,40 @@ export function JournalEntryLinesTable({
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0">
                       <Command>
-                        <CommandInput 
-                          placeholder="Search dimension values..." 
-                          value={dimensionSearchQuery}
-                          onValueChange={setDimensionSearchQuery}
-                        />
+                        <div className="border-b px-3 py-2">
+                          <CommandInput 
+                            placeholder="Search dimension values..." 
+                            value={dimensionSearchQuery}
+                            onValueChange={setDimensionSearchQuery}
+                            className="mb-2"
+                          />
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-6 px-2"
+                              onClick={() => {
+                                const allExpanded: Record<number, boolean> = {};
+                                filteredDimensions.forEach(dimension => {
+                                  allExpanded[dimension.id] = true;
+                                });
+                                setExpandedDimensions(allExpanded);
+                              }}
+                            >
+                              Expand All
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-6 px-2"
+                              onClick={() => setExpandedDimensions({})}
+                            >
+                              Collapse All
+                            </Button>
+                          </div>
+                        </div>
                         <CommandList className="max-h-64">
                           {searchFilteredDimensions.map((dimension) => {
                             if (!dimension) return null;

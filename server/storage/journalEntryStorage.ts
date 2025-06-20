@@ -178,32 +178,31 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
 
       if (entry) {
-        // ... existing lines logic ...
         const lines = includeLines ? await this.getJournalEntryLines(id) : [];
+        let files: any[] = []; // Initialize files array
 
-        // FIX #5 & #9: This block is mandatory for fixing attachments.
         if (includeFiles) {
           console.log(`ARCHITECT_DEBUG: Manually fetching files for entry ID: ${id}`);
-          const files = await db.query.journalEntryFiles.findMany({
+          // Assign fetched files to the local 'files' variable
+          files = await db.query.journalEntryFiles.findMany({
               where: (files, { eq, and }) => and(
                   eq(files.journalEntryId, id),
                   isNull(files.deletedAt) // Ensure we don't load deleted files
               )
           });
-          (entry as any).files = files || [];
           console.log(`ARCHITECT_DEBUG: Attached ${files.length} files.`);
         }
 
-        // Return entry with lines and files
-        const result = { ...entry } as JournalEntry & { 
+        // Construct the final result object, ensuring the 'files' array is included
+        const result = {
+          ...entry,
+          lines: lines || [],
+          files: files || []
+        } as JournalEntry & {
           lines: JournalEntryLine[],
           files: any[]
         };
-        result.lines = lines || [];
-        if (!includeFiles) {
-          result.files = [];
-        }
-        
+
         return result;
       }
       return undefined;
@@ -476,11 +475,9 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       // Format date if provided to ensure consistent format
       let updatedEntryData = { ...entryData };
       if (entryData.date !== undefined) {
-        const formattedDate = typeof entryData.date === 'string'
-          ? entryData.date
-          : format(new Date(entryData.date), 'yyyy-MM-dd');
-          
-        updatedEntryData.date = formattedDate;
+        // The frontend sends a 'yyyy-MM-dd' string. Trust it and pass it directly.
+        // This prevents timezone conversion errors.
+        updatedEntryData.date = entryData.date;
       }
       
       // ROBUST UPDATE: Transaction-wrapped selective update preserving data integrity
