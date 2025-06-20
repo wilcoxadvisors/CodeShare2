@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, X, Eye, FileText, Download } from 'lucide-react';
-import { JournalEntryStatus } from '@shared/schema';
+import React, { useState, useEffect, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { JournalEntryStatus } from "@shared/schema";
 
 interface JournalEntryFile {
   id: number;
@@ -22,101 +23,230 @@ interface AttachmentSectionProps {
   entityId: number;
   clientId: number;
   journalEntryId: number | null | undefined;
+  status?: JournalEntryStatus;
   isInEditMode: boolean;
-  onUploadToEntryRef: React.MutableRefObject<((entryId: number) => Promise<void>) | null>;
+  // Callback to get reference to upload function for parent to call
+  onUploadToEntryRef?: React.MutableRefObject<
+    ((entryId: number) => Promise<void>) | null
+  >;
 }
 
 export function AttachmentSection({
   entityId,
   clientId,
   journalEntryId,
+  status,
   isInEditMode,
   onUploadToEntryRef,
 }: AttachmentSectionProps) {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  // SURGICAL FIX #1: Use proper useJournalEntryFiles hook for data fetching
-  const { data: actualAttachments = [], isLoading } = useQuery({
+  // Internal state for pending files
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<Array<{
+    id: number;
+    filename: string;
+    size: number;
+    mimeType: string;
+    addedAt: Date | number;
+  }>>([]);
+
+  // Query for journal entry files
+  const { data: journalEntryFiles = [] } = useQuery({
     queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
     queryFn: async () => {
       if (!journalEntryId) return [];
-      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch files');
+      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files`);
+      if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error('Failed to fetch journal entry files');
+      }
       return response.json();
     },
-    enabled: !!journalEntryId,
+    enabled: !!journalEntryId && !!clientId && !!entityId,
   });
 
-  // Handle file selection
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      setPendingFiles(prev => [...prev, ...Array.from(event.target.files || [])]);
-      event.target.value = '';
-    }
-  };
-
-  // SURGICAL FIX #2: Implement proper upload mutation with cache invalidation
+  // File upload mutation
   const uploadMutation = useMutation({
-    mutationFn: async ({ files, entryId }: { files: File[], entryId: number }) => {
+    mutationFn: async ({ files, entryId }: { files: File[]; entryId: number }) => {
+      console.log(`DEBUG: Starting upload of ${files.length} files for entry ${entryId}`);
       const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      
-      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      files.forEach((file) => {
+        formData.append('files', file);
       });
-      if (!response.ok) throw new Error('Upload failed');
+
+      const response = await fetch(
+        `/api/clients/${clientId}/entities/${entityId}/journal-entries/${entryId}/files`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to upload files');
+      }
+
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments'] });
+      console.log("DEBUG: File upload successful, clearing pending files");
+      // Clear pending files after successful upload
       setPendingFiles([]);
-      toast({ title: "Success", description: "Files uploaded successfully" });
+      setPendingFilesMetadata([]);
+      
+      // Invalidate attachment queries to refresh the file list
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
+        exact: true
+      });
+      
+      toast({
+        title: "Success",
+        description: "Files uploaded successfully",
+      });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to upload files", variant: "destructive" });
-    }
+    onError: (error) => {
+      console.error('Upload error:', error);
+      // Don't clear pending files on error so user can retry
+      toast({
+        title: "Error",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
-  // SURGICAL FIX #3: Implement proper delete mutation
+  // File delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Delete failed');
+      console.log(`ARCHITECT_ATTACHMENT_DELETE: Attempting to delete file ${fileId} from entry ${journalEntryId}`);
+      const response = await fetch(
+        `/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${fileId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include', // Ensure authentication cookies are sent
+        }
+      );
+
+      console.log(`ARCHITECT_ATTACHMENT_DELETE: Response status ${response.status} for file ${fileId}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`ARCHITECT_ATTACHMENT_DELETE: Failed to delete file ${fileId}:`, errorText);
+        throw new Error(`Failed to delete file: ${response.status} ${errorText}`);
+      }
+
+      return response.status === 204 ? {} : response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments'] });
-      toast({ title: "Success", description: "File deleted successfully" });
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh for attachments
+      queryClient.refetchQueries({
+        queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
+        type: 'all'
+      });
+      
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete file", variant: "destructive" });
-    }
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive",
+      });
+    },
   });
 
-  // SURGICAL FIX #4: Expose upload function to parent via ref
-  useEffect(() => {
-    onUploadToEntryRef.current = async (entryId: number) => {
-      if (pendingFiles.length > 0) {
-        await uploadMutation.mutateAsync({ files: pendingFiles, entryId });
-      }
-    };
-  }, [pendingFiles, uploadMutation, onUploadToEntryRef]);
-
-  const handleDeleteFile = (fileId: number) => {
-    deleteMutation.mutate(fileId);
+  // Upload function to be called externally
+  const uploadPendingFiles = async (entryId: number) => {
+    if (pendingFiles.length > 0) {
+      console.log(`DEBUG: Uploading ${pendingFiles.length} pending files for entry ${entryId}`);
+      await uploadMutation.mutateAsync({ files: pendingFiles, entryId });
+      // Clear pending files after successful upload
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+      console.log("DEBUG: Pending files cleared after upload");
+    } else {
+      console.log("DEBUG: No pending files to upload");
+    }
   };
 
-  // Format file size for display
-  const formatFileSize = (bytes: number): string => {
+  // Set the upload function reference for parent to use
+  useEffect(() => {
+    if (onUploadToEntryRef) {
+      onUploadToEntryRef.current = uploadPendingFiles;
+    }
+  }, [pendingFiles, onUploadToEntryRef]);
+
+  // Clear pending files when switching between journal entries
+  useEffect(() => {
+    if (journalEntryId) {
+      console.log("DEBUG: Journal entry ID changed, clearing pending files");
+      setPendingFiles([]);
+      setPendingFilesMetadata([]);
+    }
+  }, [journalEntryId]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    
+    // Validate file types and sizes
+    const invalidFiles = newFiles.filter(file => {
+      const maxSize = 10 * 1024 * 1024; // 10MB limit
+      const allowedTypes = [
+        'application/pdf', 
+        'image/jpeg', 
+        'image/png', 
+        'image/gif',
+        'application/vnd.ms-outlook', // MSG files
+        'message/rfc822', // EML files
+        'text/plain',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      
+      return file.size > maxSize || !allowedTypes.includes(file.type);
+    });
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid Files",
+        description: `Some files are too large (>10MB) or have unsupported formats`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log(`DEBUG: Adding ${newFiles.length} files to pending uploads`);
+    const newMetadata = newFiles.map((file) => ({
+      id: Date.now() + Math.random(),
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type,
+      addedAt: new Date(),
+    }));
+
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+    setPendingFilesMetadata((prev) => [...prev, ...newMetadata]);
+
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+    setPendingFilesMetadata((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -124,109 +254,114 @@ export function AttachmentSection({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Get file icon based on mime type
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return <FileText className="h-4 w-4" />;
-    if (mimeType.includes('pdf')) return <FileText className="h-4 w-4" />;
-    return <FileText className="h-4 w-4" />;
-  };
-
-  // SURGICAL FIX #5: Display both pending and actual attachments
-  const allFiles = [...(actualAttachments || []), ...pendingFiles.map(file => ({
-    id: `pending-${file.name}`,
-    filename: file.name,
-    size: file.size,
-    mimeType: file.type,
-    isPending: true
-  }))];
+  // Expose pending files count for parent validation
+  const hasPendingFiles = pendingFiles.length > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Attachments</h3>
-        {isInEditMode && (
-          <div className="flex items-center space-x-2">
-            <Input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt,.msg,.eml"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Add Files
-            </Button>
-          </div>
-        )}
-      </div>
+    <div className="mt-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Attachments</h3>
 
-      {/* Display all attachments (existing + pending) */}
-      {allFiles.length > 0 && (
-        <div className="grid gap-2">
-          {allFiles.map((file: any) => (
-            <div
-              key={file.id}
-              className={`flex items-center justify-between p-3 border rounded-lg ${file.isPending ? 'bg-yellow-50' : 'bg-gray-50'}`}
-            >
-              <div className="flex items-center space-x-3">
-                {getFileIcon(file.mimeType)}
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {file.filename}
-                    {file.isPending && <span className="ml-2 text-xs text-yellow-600">(Pending)</span>}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {formatFileSize(file.size)}
-                    {!file.isPending && file.uploadedAt && (
-                      <> • Uploaded {new Date(file.uploadedAt).toLocaleDateString()}</>
-                    )}
-                  </p>
+      {/* File Upload Section */}
+      {isInEditMode && (
+        <div className="mb-4">
+          <Label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
+            Upload Files
+          </Label>
+          <input
+            id="file-upload"
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.msg,.eml"
+            onChange={handleFileSelect}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, GIF, MSG, EML
+          </p>
+        </div>
+      )}
+
+      {/* Pending Files List */}
+      {pendingFiles.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Files</h4>
+          <div className="space-y-2">
+            {pendingFilesMetadata.map((file, index) => (
+              <div key={file.id} className="flex items-center justify-between p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900">{file.filename}</span>
+                  <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                  <Badge variant="secondary" className="text-xs">Pending</Badge>
                 </div>
-              </div>
-              <div className="flex items-center space-x-1">
-                {!file.isPending && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}/download`, '_blank')}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                )}
                 {isInEditMode && (
                   <Button
-                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => file.isPending 
-                      ? setPendingFiles(prev => prev.filter(f => f.name !== file.filename))
-                      : handleDeleteFile(file.id)
-                    }
+                    onClick={() => removePendingFile(index)}
                     className="text-red-600 hover:text-red-800"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Empty state */}
-      {allFiles.length === 0 && (
-        <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500">
-            {isInEditMode ? 'No files attached. Click "Add Files" to upload.' : 'No files attached to this journal entry.'}
+      {/* Existing Attachments List */}
+      {journalEntryFiles.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Current Files</h4>
+          <div className="space-y-2">
+            {journalEntryFiles.map((file: JournalEntryFile) => (
+              <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900">
+                    {file.originalname || file.filename}
+                  </span>
+                  <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                  <Badge variant="outline" className="text-xs">Uploaded</Badge>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}/download`, '_blank')}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    View
+                  </Button>
+                  {isInEditMode && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(file.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {journalEntryFiles.length === 0 && pendingFiles.length === 0 && (
+        <div className="text-center py-4 text-gray-500">
+          <p className="text-sm">No files attached</p>
+        </div>
+      )}
+
+      {/* Validation warning for pending files during post operations */}
+      {hasPendingFiles && status !== 'draft' && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-800">
+            You have pending files that need to be uploaded before posting this entry.
           </p>
         </div>
       )}

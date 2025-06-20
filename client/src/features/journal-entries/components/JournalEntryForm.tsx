@@ -192,8 +192,6 @@ function JournalEntryForm({
   const [lines, setLines] = useState<JournalLine[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-
-
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
 
@@ -300,27 +298,29 @@ function JournalEntryForm({
       const entryId = result.id || result.entry?.id;
       console.log("DEBUG: Journal entry created successfully, ID:", entryId);
       
-      // Upload pending attachments if any
-      if (pendingAttachments.length > 0 && entryId) {
+      // Upload pending files if any (handled by AttachmentSection)
+      if (uploadPendingFilesRef.current) {
+        console.log("DEBUG: Uploading pending files for journal entry:", entryId);
         try {
-          const formData = new FormData();
-          pendingAttachments.forEach(file => formData.append('files', file));
-          await fetch(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/files`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-          });
-          setPendingAttachments([]);
+          await uploadPendingFilesRef.current(entryId!);
+          console.log("DEBUG: Files uploaded successfully");
         } catch (error) {
           console.error("Error uploading files:", error);
+          toast({
+            title: "Warning",
+            description: "Journal entry created but file upload failed",
+            variant: "destructive",
+          });
         }
+      } else {
+        console.log("DEBUG: No pending files to upload");
       }
 
-      // TASK 2: Fix UI Refresh (#4) - Use setQueryData for immediate UI update
-      queryClient.setQueryData(
-        ['journal-entries', effectiveClientId, entityId],
-        (oldData: any[] | undefined) => (oldData ? [result, ...oldData] : [result])
-      );
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
+      await queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", effectiveClientId, entityId],
+        type: 'all'
+      });
       
       toast({
         title: "Success",
@@ -348,30 +348,29 @@ function JournalEntryForm({
     onSuccess: async (response: JournalEntryResponse) => {
       console.log("DEBUG: Journal entry updated successfully, ID:", existingEntry?.id);
       
-      // Upload pending attachments if any
-      if (pendingAttachments.length > 0 && existingEntry?.id) {
+      // Upload pending files if any (handled by AttachmentSection)
+      if (uploadPendingFilesRef.current) {
+        console.log("DEBUG: Uploading pending files for updated journal entry:", existingEntry?.id);
         try {
-          const formData = new FormData();
-          pendingAttachments.forEach(file => formData.append('files', file));
-          await fetch(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry.id}/files`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-          });
-          setPendingAttachments([]);
+          await uploadPendingFilesRef.current(existingEntry?.id!);
+          console.log("DEBUG: Files uploaded successfully after update");
         } catch (error) {
-          console.error("Error uploading files:", error);
+          console.error("Error uploading files after update:", error);
+          toast({
+            title: "Warning",
+            description: "Journal entry updated but file upload failed",
+            variant: "destructive",
+          });
         }
+      } else {
+        console.log("DEBUG: No pending files to upload after update");
       }
 
-      // TASK 2: Fix UI Refresh (#4) - Use setQueryData for immediate UI update
-      queryClient.setQueryData(
-        ['journal-entries', effectiveClientId, entityId],
-        (oldData: any[] | undefined) => {
-          if (!oldData) return [response];
-          return oldData.map(entry => entry.id === existingEntry?.id ? { ...entry, ...response } : entry);
-        }
-      );
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
+      await queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", effectiveClientId, entityId],
+        type: 'all'
+      });
       
       toast({
         title: "Success",
@@ -433,15 +432,6 @@ function JournalEntryForm({
           tags: [],
         },
       ]);
-    }
-
-    // TASK 2: Fix Data Initialization - Load existing files correctly
-    if (existingEntry) {
-      setAttachments(existingEntry.files || []); // Correctly load existing files
-      setPendingAttachments([]); // Clear pending files on new entry load
-    } else {
-      setAttachments([]);
-      setPendingAttachments([]);
     }
   }, [existingEntry, entities]);
 
@@ -769,6 +759,7 @@ function JournalEntryForm({
         entityId={entityId}
         clientId={effectiveClientId as number}
         journalEntryId={tempJournalEntryId}
+        status={existingEntry?.status}
         isInEditMode={!existingEntry || existingEntry.status === 'draft'}
         onUploadToEntryRef={uploadPendingFilesRef}
       />
