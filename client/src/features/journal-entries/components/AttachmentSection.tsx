@@ -23,49 +23,22 @@ interface AttachmentSectionProps {
   entityId: number;
   clientId: number;
   journalEntryId: number | null | undefined;
-  status?: JournalEntryStatus;
   isInEditMode: boolean;
-  // Callback to get reference to upload function for parent to call
-  onUploadToEntryRef?: React.MutableRefObject<
-    ((entryId: number) => Promise<void>) | null
-  >;
+  attachments: any[]; // This will be the single source of truth for all files
+  onRemoveAttachment: (fileId: number) => void;
+  onAddAttachments: (files: File[]) => void;
 }
 
 export function AttachmentSection({
   entityId,
   clientId,
   journalEntryId,
-  status,
   isInEditMode,
-  onUploadToEntryRef,
+  attachments,
+  onRemoveAttachment,
+  onAddAttachments,
 }: AttachmentSectionProps) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  // Internal state for pending files
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [pendingFilesMetadata, setPendingFilesMetadata] = useState<Array<{
-    id: number;
-    filename: string;
-    size: number;
-    mimeType: string;
-    addedAt: Date | number;
-  }>>([]);
-
-  // Query for journal entry files
-  const { data: journalEntryFiles = [] } = useQuery({
-    queryKey: ['journalEntryAttachments', clientId, entityId, journalEntryId],
-    queryFn: async () => {
-      if (!journalEntryId) return [];
-      const response = await fetch(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files`);
-      if (!response.ok) {
-        if (response.status === 404) return [];
-        throw new Error('Failed to fetch journal entry files');
-      }
-      return response.json();
-    },
-    enabled: !!journalEntryId && !!clientId && !!entityId,
-  });
 
   // File upload mutation
   const uploadMutation = useMutation({
