@@ -1,0 +1,96 @@
+Mission: Final Polish & Hardening
+Directive: To resolve the six outstanding bugs with surgical precision, focusing on data integrity, workflow, and layout architecture.
+
+Task 1: Fix Data Integrity & Workflow Blockers (Issues #6, #19, #25)
+Analysis: The most critical issues are the inability to save copied entries (#19), the data loss on the reference field (#6), and the flawed attachment deletion workflow (#25). We will fix these first.
+
+Your Instructions:
+
+Fix Save Failure on Copied Entries (#19) and Reference Field (#6):
+
+Root Cause: The 400 Bad Request error on copied entries is caused by an invalid data payload. The reversalDate field is being sent as null instead of undefined, which fails backend validation.
+File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Action: In all three submission handlers (handleSaveDraft, handleSubmitForApproval, handlePostEntry), you must surgically edit the formData object.
+Find this line:
+TypeScript
+
+reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+Replace it with this exact line to ensure the field is omitted when not applicable:
+TypeScript
+
+reversalDate: journalData.isAccrual && journalData.reversalDate ? journalData.reversalDate : undefined,
+Verify this line is also present in all three handlers to fix the reference field data loss:
+TypeScript
+
+referenceNumber: journalData.referenceNumber,
+Fix Attachment Deletion Workflow (#25):
+
+Root Cause: Deleting an attachment makes an immediate API call. This is incorrect. The deletion must only be finalized when the entire form is saved.
+Action: We will refactor the deletion to be transactional with the form save.
+File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Add State: Add this new state variable at the top of the component:
+TypeScript
+
+const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
+Modify Delete Handler: Find the onRemoveAttachment prop being passed to <AttachmentSection /> and replace its function with this logic. It will now only update the local UI state and queue the file for deletion.
+TypeScript
+
+onRemoveAttachment={(fileId: number) => {
+  // If it's a saved file (ID > 0), add it to the deletion queue
+  if (fileId > 0) {
+    setFilesToDelete(prev => [...prev, fileId]);
+  }
+  // Always remove the file from the visible list
+  setAttachments(prev => prev.filter(f => f.id !== fileId));
+}}
+Update the updateEntry Mutation: Modify the updateEntry mutation to send this filesToDelete list to the backend.
+TypeScript
+
+const updateEntry = useMutation({
+  mutationFn: async (data: any) => {
+    const payload = { ...data, filesToDelete }; // Add the list of IDs to the payload
+    return apiRequest(`/api/clients/<span class="math-inline">\{effectiveClientId\}/entities/</span>{entityId}/journal-entries/${existingEntry?.id}`, {
+      method: "PATCH",
+      data: payload,
+    });
+  },
+  onSuccess: () => {
+    setFilesToDelete([]); // IMPORTANT: Clear the queue on success
+    // ... rest of the onSuccess logic
+  },
+});
+File: server/storage/journalEntryStorage.ts.
+Action: Add the following block of code inside the db.transaction of the updateJournalEntryWithLines function. This makes the backend process the deletion list.
+TypeScript
+
+// Add this block inside the transaction to handle the deletions
+if (entryData.filesToDelete && Array.isArray(entryData.filesToDelete) && entryData.filesToDelete.length > 0) {
+    const fileIdsToDelete = entryData.filesToDelete as number[];
+    for (const fileId of fileIdsToDelete) {
+        const fileToDelete = await tx.query.journalEntryFiles.findFirst({ where: eq(schema.journalEntryFiles.id, fileId) });
+        if (fileToDelete?.storageKey) {
+            const fileStorage = getFileStorage();
+            await fileStorage.delete(fileToDelete.storageKey);
+        }
+        await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
+    }
+}
+Task 2: Fix UI and Layout (Issues #24, #13, #21)
+Analysis: The UI issues detract from the professional, industry-standard quality we require. The scrollbar bug is an architectural layout problem, while the others are matters of polish and usability.
+
+Your Instructions:
+
+Fix Double Scrollbar (#24):
+
+Root Cause: A scrollable container in the main layout is conflicting with page-level content.
+File: client/src/components/AppLayout.tsx.
+Action: Find the primary <main> element. It will have a class like overflow-y-auto. Remove that class. The page should be allowed to grow, with only the main browser scrollbar active.
+Fix Account Selector Expansion (#13):
+
+File: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx.
+Action: The recursive function that renders the account tree is not correctly rendering nested children. Ensure the recursive call is passing the renderAccountNode function itself to the children, allowing for infinite depth.
+Fix Upload Area Clickability (#21):
+
+File: client/src/features/journal-entries/components/AttachmentSection.tsx.
+Action: To make the entire drag-and-drop area clickable, wrap the whole div for the dropzone inside the <label htmlFor="file-upload">. This is standard HTML practice for creating large, clickable targets for file inputs.
+This surgical plan addresses every one of your outstanding issues. Once completed, the module will be stable.
