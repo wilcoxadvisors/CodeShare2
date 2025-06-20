@@ -332,22 +332,10 @@ function JournalEntryForm({
         console.log("DEBUG: No pending files to upload");
       }
 
-      // CRITICAL FIX: Direct cache update to make entry appear immediately
-      const newEntry = result.entry || result;
-      queryClient.setQueryData(
-        ["journal-entries", effectiveClientId, entityId],
-        (oldData: any) => {
-          if (Array.isArray(oldData)) {
-            return [newEntry, ...oldData];
-          }
-          return [newEntry];
-        }
-      );
-
-      // Force immediate background refetch for consistency
-      queryClient.refetchQueries({ 
+      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
+      await queryClient.refetchQueries({ 
         queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'active'
+        type: 'all'
       });
       
       toast({

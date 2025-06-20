@@ -731,6 +731,7 @@ export class JournalEntryStorage implements IJournalEntryStorage {
       
       return true;
     } catch (e) {
+      console.error('ARCHITECT_DEBUG: Full deletion error:', e);
       throw handleDbError(e, `deleting journal entry ${id}`);
     }
   }
