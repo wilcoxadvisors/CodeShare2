@@ -1,0 +1,23 @@
+Issues for journal entries:
+1. (Complete) Account selector and tag selector need a expand all and collapse all button.
+2. (complete) The selector should always collapse at the first click unless something is selected.
+3. (Complete)UI needs to improve on the account selector so its not moving around the screen making it hard on the user to select.
+4. (complete)When saving an entry. The page needs to be refreshed for the je to appear. This needs to be fixed so it loads automatically. All entries disappear till refreshed at the moment
+5. (partial completion refer to 8, 14, & 15 )Attachments do not appear with saved Journal entries or posted Journal entries.
+6. Reference optional field does not save7.(complete) Date changes when editing moving 1 day back
+8. When not in edit the draft JE has a field to upload attachments which it shouldn’t. Should only be able to see the files and view them unless creating a JE. (post entries do not allow you to upload files which is great)
+9. (complete)Files do not save when edit and posting.
+10.(complete) Auto accrual doesn’t work.
+11. (Completed) Copy function works but entity type doesn’t persist 
+12. (duplicated with 7) sometime the date changes when edit or on posted entry
+13. Account selector expand expands parents accounts but not child account anything below that.
+14. Journal entries allows you to upload files when you are not creating or edit a je.
+15. (compete)When editing a journal edit, I can not remove files.
+16. (complete) can not delete a draft entry and a copied entry.
+17. (compete)Downloading an attachment does not work.
+18. (complete) can not see attachments in edit mode.
+19. Can not save copied journal entries
+20. Drag and drop doesn’t work section doesn’t work when uploading attachments to JEs.
+21. Click here is very small for upload attachments
+22. Can save as draft cause it wants a reversal date when the auto accrual is not on.
+23. Can not add attachments in edit mode or creating a je. Only when a draft entry is viewed which is wrong.

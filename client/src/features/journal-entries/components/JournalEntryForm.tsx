@@ -607,11 +607,11 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
+        referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "draft" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,
-        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : undefined,
         lines: lines.map(transformLineForBackend),
       };
 
@@ -645,11 +645,11 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
+        referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "pending_approval" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,
-        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : undefined,
         lines: lines.map(transformLineForBackend),
       };
 
@@ -685,11 +685,11 @@ function JournalEntryForm({
         date: journalData.date,
         reference: journalData.referenceNumber,
         referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix || "",  // ARCHITECT'S STAGE 3 FIX
+        referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
         isAccrual: journalData.isAccrual,
-        reversalDate: journalData.isAccrual ? journalData.reversalDate : null,
+        reversalDate: journalData.isAccrual ? journalData.reversalDate : undefined,
         lines: lines.map(transformLineForBackend),
       };
 
