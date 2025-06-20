@@ -273,11 +273,13 @@ function JournalEntryForm({
     
     console.log("DEBUG - JournalEntryForm files response:", existingFilesData);
     
-    // Handle different response formats
-    if (Array.isArray(existingFilesData)) {
-      return existingFilesData;
-    } else if (typeof existingFilesData === 'object' && 'files' in existingFilesData && Array.isArray((existingFilesData as any).files)) {
+    // Backend returns { files: [...], count: ... } format
+    if (typeof existingFilesData === 'object' && 'files' in existingFilesData && Array.isArray((existingFilesData as any).files)) {
       return (existingFilesData as any).files;
+    }
+    // Fallback for array format
+    else if (Array.isArray(existingFilesData)) {
+      return existingFilesData;
     }
     
     return [];
@@ -393,6 +395,7 @@ function JournalEntryForm({
       
       // Update local attachments state with uploaded files
       if (response && response.files && Array.isArray(response.files)) {
+        console.log("DEBUG - Adding uploaded files to attachments:", response.files);
         setAttachments(prev => [...prev, ...response.files]);
       } else if (response && Array.isArray(response)) {
         setAttachments(prev => [...prev, ...response]);
@@ -418,15 +421,17 @@ function JournalEntryForm({
       );
       
       if (!response.ok) throw new Error('File deletion failed');
-      return response.json();
+      return { fileId }; // Return the fileId so we can use it in onSuccess
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refresh the journal entry files query with correct key
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
       // Also refresh the existing files query
       refetchExistingFiles();
+      // Remove the deleted file from local state immediately
+      setAttachments(prev => prev.filter(file => file.id !== data.fileId));
       toast({ title: "Success", description: "File deleted successfully." });
     },
     onError: () => {
