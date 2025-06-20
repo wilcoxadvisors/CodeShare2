@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,9 +37,65 @@ export function AttachmentSection({
   onAddAttachments,
 }: AttachmentSectionProps) {
   const { toast } = useToast();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Calculate if there are files
   const hasAttachedFiles = attachments.length > 0;
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isInEditMode) {
+      setIsDragOver(true);
+    }
+  }, [isInEditMode]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    if (!isInEditMode) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      // Validate file types and sizes
+      const maxSize = 10 * 1024 * 1024; // 10MB limit
+      const allowedTypes = [
+        'application/pdf', 
+        'image/jpeg', 
+        'image/png', 
+        'image/gif',
+        'application/vnd.ms-outlook', // MSG files
+        'message/rfc822', // EML files
+        'text/plain',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      
+      const invalidFiles = files.filter(file => 
+        file.size > maxSize || !allowedTypes.includes(file.type)
+      );
+
+      if (invalidFiles.length > 0) {
+        toast({
+          title: "Invalid Files",
+          description: `${invalidFiles.length} file(s) rejected. Files must be under 10MB and of supported type.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      onAddAttachments(files);
+    }
+  }, [isInEditMode, onAddAttachments, toast]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -118,12 +174,21 @@ export function AttachmentSection({
       <CardContent className="space-y-4">
         {/* File Upload Section - Only show in edit mode */}
         {isInEditMode && (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+          <div 
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              isDragOver 
+                ? 'border-blue-400 bg-blue-50' 
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
             <div className="mt-4">
               <label htmlFor="file-upload" className="cursor-pointer">
-                <span className="mt-2 block text-sm font-medium text-gray-900">
-                  Drop files here or click to upload
+                <span className={`mt-2 block text-sm font-medium ${isDragOver ? 'text-blue-900' : 'text-gray-900'}`}>
+                  {isDragOver ? 'Drop files here!' : 'Drop files here or click to upload'}
                 </span>
                 <Input
                   id="file-upload"
@@ -135,7 +200,7 @@ export function AttachmentSection({
                   onChange={handleFileSelect}
                 />
               </label>
-              <p className="mt-2 text-xs text-gray-500">
+              <p className={`mt-2 text-xs ${isDragOver ? 'text-blue-700' : 'text-gray-500'}`}>
                 PDF, Images, MSG, EML, TXT, DOC up to 10MB each
               </p>
             </div>
