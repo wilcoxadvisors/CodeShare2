@@ -223,7 +223,7 @@ export function JournalEntryLinesTable({
     });
   };
 
-  // Build hierarchical account tree
+  // Build hierarchical account tree with proper parent-child relationships
   const accountTree = useMemo(() => {
     const accountMap = new Map<number, Account & { children: (Account & { children: any[] })[] }>();
     const rootAccounts: (Account & { children: any[] })[] = [];
@@ -233,18 +233,26 @@ export function JournalEntryLinesTable({
       accountMap.set(account.id, { ...account, children: [] });
     });
 
-    // Build tree structure
+    // Build tree structure by processing parents first, then children
+    const processedIds = new Set<number>();
+    
+    // First pass: identify root accounts (no parentId or parentId not in accounts list)
     accounts.forEach(account => {
-      const accountWithChildren = accountMap.get(account.id)!;
-      if (account.parentId) {
-        const parent = accountMap.get(account.parentId);
-        if (parent) {
-          parent.children.push(accountWithChildren);
-        } else {
-          rootAccounts.push(accountWithChildren);
-        }
-      } else {
+      if (!account.parentId || !accounts.find(a => a.id === account.parentId)) {
+        const accountWithChildren = accountMap.get(account.id)!;
         rootAccounts.push(accountWithChildren);
+        processedIds.add(account.id);
+      }
+    });
+
+    // Second pass: build parent-child relationships
+    accounts.forEach(account => {
+      if (account.parentId && accounts.find(a => a.id === account.parentId)) {
+        const accountWithChildren = accountMap.get(account.id)!;
+        const parent = accountMap.get(account.parentId);
+        if (parent && !parent.children.find(c => c.id === account.id)) {
+          parent.children.push(accountWithChildren);
+        }
       }
     });
 

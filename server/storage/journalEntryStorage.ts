@@ -493,8 +493,8 @@ export class JournalEntryStorage implements IJournalEntryStorage {
         console.log(`ARCHITECT_ROBUST_UPDATE: Updated journal entry header`);
         
         // Step 1.5: Handle filesToDelete array for transactional deletion
-        if (entryData.filesToDelete && Array.isArray(entryData.filesToDelete) && entryData.filesToDelete.length > 0) {
-          const fileIdsToDelete = entryData.filesToDelete as number[];
+        if ((entryData as any).filesToDelete && Array.isArray((entryData as any).filesToDelete) && (entryData as any).filesToDelete.length > 0) {
+          const fileIdsToDelete = (entryData as any).filesToDelete as number[];
           for (const fileId of fileIdsToDelete) {
             const fileToDelete = await tx.query.journalEntryFiles.findFirst({ where: eq(schema.journalEntryFiles.id, fileId) });
             if (fileToDelete?.storageKey) {

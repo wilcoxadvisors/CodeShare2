@@ -175,31 +175,33 @@ export function AttachmentSection({
         {/* File Upload Section - Only show in edit mode */}
         {isInEditMode && (
           <div 
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
               isDragOver 
                 ? 'border-blue-400 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
+                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={() => document.getElementById('file-upload')?.click()}
           >
             <Upload className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
             <div className="mt-4">
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <span className={`mt-2 block text-sm font-medium ${isDragOver ? 'text-blue-900' : 'text-gray-900'}`}>
-                  {isDragOver ? 'Drop files here!' : 'Drop files here or click to upload'}
-                </span>
-                <Input
-                  id="file-upload"
-                  name="file-upload"
-                  type="file"
-                  className="sr-only"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.msg,.eml,.txt,.doc,.docx"
-                  onChange={handleFileSelect}
-                />
-              </label>
+              <span className={`mt-2 block text-sm font-medium ${isDragOver ? 'text-blue-900' : 'text-gray-900'}`}>
+                {isDragOver ? 'Drop files here!' : 'Drop files here or click anywhere to upload'}
+              </span>
+              <p className="text-xs text-gray-500 mt-2">
+                Supported: PDF, Images, Word, Excel, Email files (Max 10MB each)
+              </p>
+              <Input
+                id="file-upload"
+                name="file-upload"
+                type="file"
+                className="sr-only"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.msg,.eml,.txt,.doc,.docx"
+                onChange={handleFileSelect}
+              />
               <p className={`mt-2 text-xs ${isDragOver ? 'text-blue-700' : 'text-gray-500'}`}>
                 PDF, Images, MSG, EML, TXT, DOC up to 10MB each
               </p>
