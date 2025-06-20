@@ -103,7 +103,7 @@ export function registerAttachmentRoutes(app: Express) {
    * Upload file(s) to a journal entry - hierarchical route
    */
   router.post('/', 
-    isAuthenticated,
+    debugAuthenticated,
     uploadLimiter,
     upload.array('files', 10), // Support multiple files with a limit of 10
     asyncHandler(async (req: Request, res: Response) => {
@@ -341,7 +341,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Get all files attached to a journal entry - hierarchical route
    */
-  router.get('/', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -383,7 +383,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Get a specific file from a journal entry - hierarchical route
    */
-  router.get('/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/:fileId', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -472,7 +472,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Download a specific file from a journal entry - hierarchical route
    */
-  router.get('/:fileId/download', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.get('/:fileId/download', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
@@ -558,7 +558,7 @@ export function registerAttachmentRoutes(app: Express) {
   /**
    * Delete a file from a journal entry - hierarchical route
    */
-  router.delete('/:fileId', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  router.delete('/:fileId', debugAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const jeId = parseInt(req.params.jeId);
     const entityId = parseInt(req.params.entityId);
     const clientId = parseInt(req.params.clientId);
