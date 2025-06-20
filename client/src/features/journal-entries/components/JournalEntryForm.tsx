@@ -203,7 +203,6 @@ function JournalEntryForm({
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState<ExpandedState>({});
   const [tagPopoverOpen, setTagPopoverOpen] = useState<Record<string, boolean>>({});
-  const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
 
   // Journal data with local storage fallback and proper default values
   const generateReference = () => {
@@ -343,14 +342,12 @@ function JournalEntryForm({
   // Update entry mutation
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
-      const payload = { ...data, filesToDelete }; // Add the list of IDs to the payload
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`, {
         method: "PATCH",
-        data: payload,
+        data: data,
       });
     },
     onSuccess: (updatedEntry) => {
-      setFilesToDelete([]); // IMPORTANT: Clear the queue on success
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => 
@@ -863,12 +860,15 @@ function JournalEntryForm({
           uploadedBy: 1
         }))}
         onRemoveAttachment={(fileId: number) => {
-          // If it's a saved file (ID > 0), add it to the deletion queue
-          if (fileId > 0) {
-            setFilesToDelete(prev => [...prev, fileId]);
+          if (existingEntry?.id) {
+            // For existing entries, delete immediately
+            deleteFileMutation.mutate(fileId);
+            setAttachments(prev => prev.filter(file => file.id !== fileId));
+          } else {
+            // For new entries, remove from pending files using the negative index
+            const pendingIndex = Math.abs(fileId + 1);
+            setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
           }
-          // Always remove the file from the visible list
-          setAttachments(prev => prev.filter(f => f.id !== fileId));
         }}
         onAddAttachments={(files: File[]) => {
           if (existingEntry?.id) {
@@ -884,15 +884,7 @@ function JournalEntryForm({
       <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
         <Button
           variant="outline"
-          onClick={() => {
-            // Reset filesToDelete to restore any deleted files
-            setFilesToDelete([]);
-            // Restore deleted files to attachments list
-            if (existingEntry?.files) {
-              setAttachments(existingEntry.files);
-            }
-            onCancel();
-          }}
+          onClick={onCancel}
           disabled={createEntry.isPending || updateEntry.isPending}
         >
           Cancel

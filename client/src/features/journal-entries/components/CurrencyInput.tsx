@@ -56,7 +56,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     const inputValue = e.target.value;
     const cursorPosition = e.target.selectionStart || 0;
     
-    // Clean the input value - remove all non-numeric characters except decimal point and minus
+    // Allow typing decimal point and numbers
     const cleanValue = inputValue.replace(/[^0-9.-]/g, '');
     
     // Prevent multiple decimal points
@@ -68,33 +68,28 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     // Limit decimal places to 2
     const parts = cleanValue.split('.');
     if (parts[1] && parts[1].length > 2) {
-      // Truncate to 2 decimal places instead of blocking
-      const truncatedValue = parts[0] + '.' + parts[1].substring(0, 2);
-      onChange(truncatedValue);
-      return;
+      return; // Don't update if more than 2 decimal places
     }
     
     // Update the stored value (clean number)
     onChange(cleanValue);
-  };
-
-  // Handle paste events to allow pasting numbers
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
     
-    // Clean the pasted text
-    const cleanPasted = pastedText.replace(/[^0-9.-]/g, '');
+    // Format for display
+    const formattedValue = formatCurrency(cleanValue);
     
-    // Validate it's a valid number
-    if (cleanPasted && !isNaN(parseFloat(cleanPasted))) {
-      // Limit decimal places to 2
-      const parts = cleanPasted.split('.');
-      let finalValue = parts[0];
-      if (parts[1]) {
-        finalValue += '.' + parts[1].substring(0, 2);
-      }
-      onChange(finalValue);
+    // Set cursor position after formatting
+    if (inputRef.current) {
+      // Calculate cursor adjustment for added commas
+      const beforeCommas = (inputValue.substring(0, cursorPosition).match(/,/g) || []).length;
+      const afterCommas = (formattedValue.substring(0, cursorPosition).match(/,/g) || []).length;
+      const cursorAdjustment = afterCommas - beforeCommas;
+      const newCursorPosition = cursorPosition + cursorAdjustment;
+      
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
+        }
+      }, 0);
     }
   };
 
@@ -103,13 +98,8 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     const char = e.key;
     const currentValue = (e.target as HTMLInputElement).value;
     
-    // Allow control keys (including Ctrl+V for paste)
+    // Allow control keys
     if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(char)) {
-      return;
-    }
-    
-    // Allow Ctrl+V, Ctrl+C, Ctrl+X, Ctrl+A
-    if (e.ctrlKey && ['v', 'c', 'x', 'a'].includes(char.toLowerCase())) {
       return;
     }
     
@@ -136,7 +126,6 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
       value={displayValue}
       onChange={handleInputChange}
       onKeyDown={handleKeyPress}
-      onPaste={handlePaste}
       placeholder={placeholder}
       className={`text-right ${className}`}
       disabled={disabled}
