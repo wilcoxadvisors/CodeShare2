@@ -1,0 +1,75 @@
+Architect's Definitive Plan: Mission - Data & Cache Integrity
+
+1. Goal:
+
+A targeted, surgical strike on the two most critical bug categories: cache invalidation and attachment persistence. We will resolve the stale data on the JE list page and ensure attachments are reliably saved and loaded.
+
+2. Definitive Plan:
+
+Stage 1: Force Cache Invalidation (#4)
+
+Problem: The journal entry list page is not updating after a save because react-query is serving stale data from its cache. The invalidateQueries call is not sufficient.
+
+File to Modify: client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Action: We will force an immediate refetch after every successful save. In the onSuccess callbacks for BOTH the createEntry and updateEntry mutations, the agent must add a call to queryClient.refetchQueries.
+
+TypeScript
+
+// In BOTH createEntry and updateEntry onSuccess callbacks...
+onSuccess: async (result) => {
+  // ... existing logic like attachment uploads ...
+
+  const queryKey = ["journal-entries", effectiveClientId, entityId];
+
+  // First, invalidate the query to mark it as stale.
+  await queryClient.invalidateQueries({ queryKey, exact: true });
+
+  // FIX #4: Immediately trigger a refetch of the stale query.
+  await queryClient.refetchQueries({ queryKey, exact: true });
+
+  toast({ title: "Success", /* ... */ });
+  onSubmit(); // Navigate away
+}
+Stage 2: Fix Attachment Persistence (#5, #9)
+
+Problem: Your testing confirms attachments are still not being saved or loaded correctly. The useEditJournalEntry hook log shows Final processedEntry.files: Array(0). This is a backend data retrieval failure.
+
+File to Modify: server/storage/journalEntryStorage.ts
+
+Action: My previous instruction to fix this was correct in principle but flawed in execution by the agent. We will try again with a more direct approach. The getJournalEntry function must be modified to manually fetch and attach files. This is not optional.
+
+TypeScript
+
+// In server/storage/journalEntryStorage.ts
+async getJournalEntry(id: number, includeLines: boolean = true, includeFiles: boolean = true) {
+  // ...
+  const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
+
+  if (entry) {
+    // ... existing lines logic ...
+
+    // FIX #5 & #9: This block is mandatory for fixing attachments.
+    if (includeFiles) {
+      console.log(`ARCHITECT_DEBUG: Manually fetching files for entry ID: ${id}`);
+      const files = await db.query.journalEntryFiles.findMany({
+          where: (files, { eq, and }) => and(
+              eq(files.journalEntryId, id),
+              isNull(files.deletedAt) // Ensure we don't load deleted files
+          )
+      });
+      (entry as any).files = files || [];
+      console.log(`ARCHITECT_DEBUG: Attached ${files.length} files.`);
+    }
+
+    return entry;
+  }
+  return undefined;
+}
+3. Next Steps
+
+We are ignoring all other bugs for now. The agent's only mission is to implement these two stages precisely as described. After the agent completes this mission, I will ask you to perform a targeted verification of only these two specific issues:
+
+Does the JE list update automatically after saving?
+Do attachments now appear correctly when editing a saved entry?
+Let's fix this, together. Instruct the agent to proceed.
