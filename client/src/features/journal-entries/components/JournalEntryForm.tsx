@@ -461,6 +461,11 @@ function JournalEntryForm({
       // Also refresh the existing files query
       refetchExistingFiles();
       
+      // Update main journal entry cache to reflect changes
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      
       // Update local attachments state with uploaded files
       if (response && response.files && Array.isArray(response.files)) {
         console.log("DEBUG - Adding uploaded files to attachments:", response.files);
@@ -498,6 +503,12 @@ function JournalEntryForm({
       });
       // Also refresh the existing files query
       refetchExistingFiles();
+      
+      // Update main journal entry cache to reflect changes
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      
       // Remove the deleted file from local state immediately
       setAttachments(prev => prev.filter(file => file.id !== data.fileId));
       toast({ title: "Success", description: "File deleted successfully." });
@@ -675,7 +686,7 @@ function JournalEntryForm({
     return Object.values(balances);
   }, [lines]);
 
-  // Validation function
+  // Validation function with enhanced error handling
   const validateForm = () => {
     const errors: Record<string, string> = {};
 
@@ -692,6 +703,11 @@ function JournalEntryForm({
 
     if (!journalData.description?.trim()) {
       errors.description = "Description is required";
+    }
+
+    // Enhanced reference field validation
+    if (journalData.referenceUserSuffix && journalData.referenceUserSuffix.length > 30) {
+      errors.referenceUserSuffix = "Reference suffix must be 30 characters or less";
     }
 
     // Validate accrual reversal date
@@ -742,6 +758,12 @@ function JournalEntryForm({
     }
 
     setFieldErrors(errors);
+    
+    // Clear any existing success messages when validation fails
+    if (Object.keys(errors).length > 0) {
+      console.log("Validation errors:", errors);
+    }
+    
     return Object.keys(errors).length === 0;
   };
 
