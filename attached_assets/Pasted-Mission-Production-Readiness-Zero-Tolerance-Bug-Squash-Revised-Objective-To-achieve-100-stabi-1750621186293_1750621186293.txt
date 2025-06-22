@@ -1,0 +1,143 @@
+Mission: Production Readiness - Zero-Tolerance Bug Squash (Revised)
+Objective: To achieve 100% stability in the Journal Entry module by surgically repairing all remaining bugs related to data integrity, UI, and state management. All other development is on hold until this mission is complete.
+
+Directive 1: Fix Data Saving & Reference Field Integrity
+Targeted Issues: #6, #26, #28, #34 (Reference field not saving, edits failing on copied JEs, reference name changing).
+
+Architect's Diagnosis: These issues point to a clear payload mismatch between the frontend and the backend, especially during an update mutation versus a create. The frontend state for referenceNumber is likely not being correctly propagated into the final data object sent to the API.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Locate the Submission Handlers: Find the handleSaveDraft, handleSubmitForApproval, and handlePostEntry functions.
+Reinforce the Payload: Inside the formData object within all three handlers, ensure the reference and referenceNumber fields are both present and correctly assigned. This provides resilience against any backend inconsistencies in field naming.
+Modify the formData object to include both fields, like so:
+TypeScript
+
+const formData = {
+  date: journalData.date,
+  reference: journalData.referenceNumber, // Add this line
+  referenceNumber: journalData.referenceNumber, // Ensure this line exists
+  referenceUserSuffix: journalData.referenceUserSuffix || "",
+  description: journalData.description,
+  // ... rest of the properties
+};
+Fix Data Initialization: In the useEffect hook that initializes the form for an existingEntry, ensure the referenceNumber is correctly sourced from either reference or referenceNumber.
+Find this line (around line 459):
+TypeScript
+
+referenceNumber: existingEntry.reference || existingEntry.referenceNumber || '',
+This appears correct but must be verified to ensure existingEntry.reference is checked first, as this may hold the user-facing value.
+Directive 2: Ensure Transactional Integrity for Attachments
+Targeted Issues: #25 (Cancelling an edit still deletes a pre-existing attachment), #27 (Adding and then deleting an attachment in the same session results in the attachment being saved).
+
+Architect's Diagnosis: The attachment workflow is not transactional. Deletions are being executed via an immediate API call instead of being staged. The logic for handling newly added-then-removed files is also flawed.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Verify State Variable: Ensure this state variable exists at the top of the component:
+TypeScript
+
+const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
+Replace Attachment Removal Logic: Locate the <AttachmentSection /> component and replace its entire onRemoveAttachment prop with the following transactional logic. This queues saved files for deletion and handles removal of pending files without immediate API calls.
+TypeScript
+
+onRemoveAttachment={(fileId: number) => {
+  if (existingEntry?.id) {
+    // For existing saved files, queue the ID for deletion on save.
+    if (fileId > 0) {
+      setFilesToDelete(prev => [...prev, fileId]);
+    }
+    // Always remove from the visible list for immediate UI feedback.
+    setAttachments(prev => prev.filter(f => f.id !== fileId));
+  } else {
+    // For new entries, simply remove the file from the pending queue.
+    const pendingIndex = Math.abs(fileId + 1);
+    setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
+  }
+}}
+Send Deletion Queue on Save: In the updateEntry mutation, ensure the filesToDelete array is added to the payload sent to the backend.
+TypeScript
+
+const payload = { ...data, filesToDelete };
+updateEntry.mutate(payload);
+Confirm Backend Logic: The backend must process this queue. Verify that server/storage/journalEntryStorage.ts contains the logic within the updateJournalEntryWithLines transaction to iterate over and delete the files specified in the filesToDelete array.
+Directive 3: Correct UI Layout & Hierarchy Rendering (Revised)
+Targeted Issues: #13 (Account selector only expands one level), #30 (Double scrollbars in edit mode).
+
+Architect's Diagnosis: These are component-specific layout and rendering flaws.
+
+Surgical Instruction for Agent:
+
+Fix Double Scrollbar in Edit Mode (#30): The primary layout in AppLayout.tsx manages scrolling. A component specific to the edit page is creating a second, unnecessary scrollbar.
+
+Investigate the Edit Page: The issue lies within the page component that renders the edit form, likely client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Inspect the Root Container: Find the main container div within that file. It likely has a CSS class like h-screen or overflow-y-auto that is causing the conflict.
+Remove the Conflicting Style: Remove the height or overflow class from the page component's container to allow the main AppLayout to handle all scrolling.
+Fix Shallow Account Expansion (#13):
+
+Open File: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx.
+Locate the renderAccountTree function.
+Correct the recursive call: The current implementation incorrectly wraps the recursive call in a .map(), preventing deep rendering.
+From:
+TypeScript
+
+{hasChildren && isExpanded && (
+  <div>
+    {account.children.map((childAccount) => 
+      renderAccountTree([childAccount], level + 1, lineIndex)
+    )}
+  </div>
+)}
+To (Surgical Edit):
+TypeScript
+
+{hasChildren && isExpanded && (
+    renderAccountTree(account.children, level + 1, lineIndex)
+)}
+Directive 4: Overhaul State Management & UI Reactivity
+Targeted Issues: #29 (Totals don't update), #31 (JE list doesn't refresh), #32 (Reversal data not showing), #33 (Cannot post from view mode).
+
+Architect's Diagnosis: This cluster of issues indicates significant problems with state management and data fetching. Components are not re-rendering on data change, and queries are not being invalidated correctly.
+
+Surgical Instruction for Agent:
+
+Fix Stale Totals (#29):
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Wrap Calculations in useMemo: To ensure totals recalculate only when lines change, wrap the totalDebit and totalCredit calculations in a useMemo hook.
+From:
+TypeScript
+
+const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+To:
+TypeScript
+
+const totalDebit = useMemo(() => {
+  return lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+}, [lines]);
+
+const totalCredit = useMemo(() => {
+  return lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+}, [lines]);
+Force UI Refresh on Changes (#31):
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Force Query Invalidation: In the onSuccess callbacks for both the createEntry and updateEntry mutations, add a query invalidation call to force the main journal entry list to refetch its data.
+Add this code block inside both onSuccess handlers:
+TypeScript
+
+queryClient.invalidateQueries({
+  queryKey: ['journal-entries', effectiveClientId, entityId]
+});
+Enable Posting from View Mode (#33):
+
+Open File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Add a 'Post' button that is only visible if entry.status === 'draft'.
+This button should trigger the postJournalEntry mutation (which you will need to import and initialize from JournalEntryForm.tsx's logic or a new dedicated hook). The mutation requires the entryId.
+Fetch and Display Reversal Data (#32):
+
+Open File: server/storage/journalEntryStorage.ts.
+Modify getJournalEntry function: This function must be updated to conditionally fetch the reversing journal entry if reversedByEntryId exists on the entry being fetched. This will require another database query within the function to get the details of the linked reversal entry. The result should be added to the returned entry object.
