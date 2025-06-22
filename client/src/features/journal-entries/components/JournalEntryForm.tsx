@@ -943,10 +943,16 @@ function JournalEntryForm({
     // Pending files validation is now handled by AttachmentSection
 
     try {
+      // Build complete reference number including user suffix using the same logic as the header
+      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`;
+      const completeReference = journalData.referenceUserSuffix 
+        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
+        : autoReferencePrefix;
+
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber, // Ensure this exists
-        referenceNumber: journalData.referenceNumber, // Ensure this exists
+        reference: completeReference,
+        referenceNumber: completeReference,
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
@@ -954,6 +960,12 @@ function JournalEntryForm({
         reversalDate: journalData.isAccrual && journalData.reversalDate ? journalData.reversalDate : undefined,
         lines: lines.map(transformLineForBackend),
       };
+
+      console.log("DEBUG: handlePostEntry payload with complete reference:", {
+        completeReference,
+        referenceUserSuffix: journalData.referenceUserSuffix,
+        autoReferencePrefix
+      });
 
       if (existingEntry && existingEntry.id) {
         updateEntry.mutate(formData);
