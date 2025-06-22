@@ -158,6 +158,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
     // CONTEXT-AWARE NAVIGATION: Intelligent routing based on current page
     const currentPath = location.pathname;
     
+    // Always update the context first to ensure client selection is synchronized
+    setSelectedClientId(clientId);
+    
     // Navigate to the appropriate URL based on current page context
     if (currentPath.includes('/chart-of-accounts')) {
       // Rule 1: Chart of Accounts page - navigate to Chart of Accounts for new client
@@ -172,9 +175,6 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
     } else {
       // Rule 3: All other cases - direct navigation to client's first entity
       console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Setting client context for client ${clientId}, current entity: ${currentEntity?.id}`);
-      
-      // Update the context
-      setSelectedClientId(clientId);
       
       // For journal entries, navigate directly to first entity's journal entries
       if (currentPath.includes('/journal-entries')) {

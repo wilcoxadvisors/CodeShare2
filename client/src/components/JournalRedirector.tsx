@@ -96,59 +96,39 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
     }
   }, [params.entityId, currentEntity, isAuthLoading, isLoading, allEntities, user, setCurrentEntityById]);
 
-  // SMART SESSION NAVIGATION: Auto-redirect to client-specific pages when session has active client
-  // ONLY redirect if user is on generic base paths AND hasn't explicitly navigated to a specific client
+  // SMART SESSION NAVIGATION: Only redirect Journal Entries to entity-specific pages
+  // DISABLED auto-redirect for client-only pages to prevent client switching issues
   useEffect(() => {
-    // Only proceed if we have a selected client from the session, but no client in the URL
-    // AND we're not already on a client-specific page (which would indicate user intent)
+    // Only handle Journal Entries auto-redirect to entity-specific pages
     if (selectedClientId && !params.clientId && !isAuthLoading && !isLoading) {
       const currentPath = location.pathname;
       
-      // Check if we are on a base module path that should be redirected
-      const isGenericModulePath = currentPath === '/journal-entries' || 
-                                 currentPath === '/chart-of-accounts' || 
-                                 currentPath === '/manage/dimensions';
-      
-      // NEW FIX: Don't auto-redirect if user has just navigated to a different client's page
-      // This prevents overriding user's manual client selection
-      const hasRecentNavigation = sessionStorage.getItem('user_manual_navigation');
-      if (hasRecentNavigation) {
-        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Skipping auto-redirect due to recent manual navigation`);
-        // Clear the flag after a short delay
-        setTimeout(() => sessionStorage.removeItem('user_manual_navigation'), 1000);
-        return;
-      }
-      
-      if (isGenericModulePath) {
-        // For Journal Entries, we need to check if we have both client and entity
-        if (currentPath === '/journal-entries') {
-          if (currentEntity && currentEntity.clientId === selectedClientId) {
-            // We have matching client and entity - redirect to full path
-            const targetPath = `/clients/${selectedClientId}/entities/${currentEntity.id}/journal-entries`;
-            console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting to entity-specific journal entries: ${targetPath}`);
-            navigate(targetPath, { replace: true });
-            return;
-          } else if (allEntities && allEntities.length > 0) {
-            // Find first entity for the selected client
-            const clientEntities = allEntities.filter(e => e.clientId === selectedClientId && e.active);
-            if (clientEntities.length > 0) {
-              const firstEntity = clientEntities[0];
-              const targetPath = `/clients/${selectedClientId}/entities/${firstEntity.id}/journal-entries`;
-              console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-selecting first entity and redirecting: ${targetPath}`);
-              navigate(targetPath, { replace: true });
-              return;
-            }
-          }
-          // If no entity available, stay on generic page to show entity selection
-          console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: No suitable entity found for journal entries, staying on generic page`);
-        } else {
-          // For client-only pages (Chart of Accounts, Dimensions)
-          const targetPath = `/clients/${selectedClientId}${currentPath}`;
-          console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting from ${currentPath} to ${targetPath} for active client ${selectedClientId}`);
+      // Only auto-redirect for Journal Entries to entity-specific pages
+      if (currentPath === '/journal-entries') {
+        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Checking journal entries redirect for client ${selectedClientId}`);
+        
+        if (currentEntity && currentEntity.clientId === selectedClientId) {
+          // We have matching client and entity - redirect to full path
+          const targetPath = `/clients/${selectedClientId}/entities/${currentEntity.id}/journal-entries`;
+          console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-redirecting to entity-specific journal entries: ${targetPath}`);
           navigate(targetPath, { replace: true });
           return;
+        } else if (allEntities && allEntities.length > 0) {
+          // Find first entity for the selected client
+          const clientEntities = allEntities.filter(e => e.clientId === selectedClientId && e.active);
+          if (clientEntities.length > 0) {
+            const firstEntity = clientEntities[0];
+            const targetPath = `/clients/${selectedClientId}/entities/${firstEntity.id}/journal-entries`;
+            console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Auto-selecting first entity and redirecting: ${targetPath}`);
+            navigate(targetPath, { replace: true });
+            return;
+          }
         }
+        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: No suitable entity found for journal entries, staying on generic page`);
       }
+      
+      // REMOVED: Auto-redirect for client-only pages (Chart of Accounts, Dimensions)
+      // This was causing client switching issues
     }
   }, [selectedClientId, currentEntity, allEntities, params.clientId, location.pathname, navigate, isAuthLoading, isLoading]);
 

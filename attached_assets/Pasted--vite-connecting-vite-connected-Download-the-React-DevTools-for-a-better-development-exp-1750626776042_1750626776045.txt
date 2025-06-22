@@ -1,0 +1,354 @@
+ [vite] connecting...
+ [vite] connected.
+ Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Checking authentication status...
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Debug session ID found: tP1jgDqVe-m_Eiapx0MN-ZucN7mshFYY
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Making fetch request to /api/auth/me with credentials
+ ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=159031c7:4394
+/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq)
+/api/auth/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Auth check response status: 401
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Auth check failed: 
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Current path: /login Is home page: false
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Not authenticated on login page
+ ARCHITECT_DEBUG_AUTH_CTX_CHECK: Auth check completed, setting isLoading to false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= true QueryEnabled= false
+ ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
+        From true to false
+        - Auth loading: false
+        - Query loading: false
+        - Fetching: false
+        - Initial load complete: false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= true QueryEnabled= false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: false
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= true QueryEnabled= false
+ NodeList(1)
+ ol_extension: addApp button toolbar disabled by user setting (tab_enabled)
+ ARCHITECT_DEBUG_LOGIN_FORM: Attempting login with username: admin
+ ARCHITECT_DEBUG_LOGIN_FORM: Password length: 11
+ ARCHITECT_DEBUG_LOGIN_FORM: Calling AuthContext login function
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Login attempt with: admin
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Making login request with credentials
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+ ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
+        From false to true
+        - Auth loading: true
+        - Query loading: false
+        - Fetching: false
+        - Initial load complete: false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: false
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Login response status: 200
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Login response data: Object
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Verifying session with /api/auth/me
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Session verification status: 200
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Session verification data: Object
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Setting authenticated user: Object
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Login successful. User set: Object
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Starting critical query invalidation sequence...
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Step 1 - Resetting [/api/entities] and [/api/clients] queries to clear stale data
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Step 2 - Invalidating [/api/entities] and [/api/clients] queries NOW to force refetch
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Step 3 - Explicitly triggering refetch for [/api/entities] and [/api/clients]
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Waiting for refetch operations to complete...
+ ARCHITECT_DEBUG_AUTH_CTX_LOGIN: Query invalidation sequence completed. Entities should load without page reload.
+ ARCHITECT_DEBUG_LOGIN_FORM: Login result: Success
+ ARCHITECT_DEBUG_LOGIN_FORM: Setting navigation timeout after successful login
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Query function executing with:
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - User: ID 1, Username admin
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Auth loading state: false
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Query enabled: true
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Is Guest user: false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: true
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: Fetched clients length: 5
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: First few clients: Array(2)
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: true
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Status 200 OK
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Got successful response, parsing JSON...
+ ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length: 50
+ ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities: Array(2)
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ENTITY_CONTEXT_STATE_POST_FETCH: 
+        - Total entities: 50
+        - Auth loading: false
+        - Query state: Success=true, Loading=false, Error=false
+ ARCHITECT_DEBUG_ENTITY_CTX_STATE_POST_FETCH: Object
+ DEBUG: Initial entities loading completed successfully
+ ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
+        From true to false
+        - Auth loading: false
+        - Query loading: false
+        - Fetching: false
+        - Initial load complete: false
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+ DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: true
+    - Loading: false
+    - Query fetching: false
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ ARCHITECT_DEBUG_LOGIN_FORM: Navigation timeout expired, checking if entities have loaded
+ ARCHITECT_DEBUG_LOGIN_FORM: Navigating to dashboard after login
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_REDIRECTOR_STATE: Object
+ ARCHITECT_DEBUG_REDIRECTOR_RENDER: No entity selected, showing placeholder Object
+ ARCHITECT_DEBUG_REDIRECTOR_URL_ENTITY: No entity ID in URL parameters
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client 73 showEntities= true
+ ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client 73, current path: /journal-entries
+ ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Setting client context for client 73, current entity: undefined
+ ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+ ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to first entity: ONE (ID: 238)
+ ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Keeping dropdown open for entity selection
+ ARCHITECT_DEBUG_SELECTOR_CLIENT_BEHAVIOR: Client 73 selected, but NOT auto-expanded per Creator/Owner request. User must explicitly expand via chevron.
+ ENTITY_CONTEXT_AUTH_STATE: Object
+ ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+ EntityLayout: Context ready - rendering Outlet Object
+ ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: undefined
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+ ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:100 No data available for journal entries
+EntityUrlSync.tsx:12 EntityUrlSync: Setting client ID from URL: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityUrlSync.tsx:19 EntityUrlSync: Found client object: ONE1
+EntityUrlSync.tsx:30 EntityUrlSync: Setting entity from URL: ONE
+JournalEntries.tsx:82 DEBUG: Fetching journal entries from: /api/clients/73/entities/238/journal-entries
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:299 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client selection changed: Object
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 4
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: true
+    - Loading: false
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: Object
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet Object
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+EntityUrlSync.tsx:12 EntityUrlSync: Setting client ID from URL: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityUrlSync.tsx:19 EntityUrlSync: Found client object: ONE1
+EntityUrlSync.tsx:30 EntityUrlSync: Setting entity from URL: ONE
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:299 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client selection changed: Object
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 4
+    - Selected client: 73
+    - Current entity: 238
+    - Initial loading complete: true
+    - Loading: false
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: Object
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet Object
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:109 DEBUG - JournalEntries - Raw entries: Array(5)
+JournalEntries.tsx:114 DEBUG - Entry 553 structure: Array(29)
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 553: debit=1, credit=1
+JournalEntries.tsx:114 DEBUG - Entry 561 structure: Array(29)
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 561: debit=45, credit=45
+JournalEntries.tsx:114 DEBUG - Entry 562 structure: Array(29)
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 562: debit=45, credit=45
+JournalEntries.tsx:114 DEBUG - Entry 285 structure: Array(29)
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 285: debit=123, credit=123
+JournalEntries.tsx:114 DEBUG - Entry 398 structure: Array(29)
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 398: debit=1.25, credit=1.25
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: false, isExpanded: false, path: /clients/73/chart-of-accounts, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+GlobalContextSelector.tsx:80 ARCHITECT_DEBUG_SESSION_AWARE: On client-only page - clearing expansion state to prevent phantom UI
+ChartOfAccounts.tsx:149 CHART_OF_ACCOUNTS_DEBUG: Fetching accounts for client 73
+ChartOfAccounts.tsx:2180 EXPLICIT VERIFICATION - Selection state changed: Object
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: true, isExpanded: false, path: /clients/73/chart-of-accounts, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: true, isExpanded: false, path: /clients/73/chart-of-accounts, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:391 ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client 235 showEntities= false
+GlobalContextSelector.tsx:153 ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client 235, current path: /clients/73/chart-of-accounts
+GlobalContextSelector.tsx:165 ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Navigating to chart of accounts: /clients/235/chart-of-accounts
+GlobalContextSelector.tsx:398 ARCHITECT_DEBUG_SELECTOR_BEHAVIOR: Entities hidden (Chart of Accounts mode or dimensions page) - closing dropdown after client selection
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: true, isExpanded: false, path: /clients/235/chart-of-accounts, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+GlobalContextSelector.tsx:80 ARCHITECT_DEBUG_SESSION_AWARE: On client-only page - clearing expansion state to prevent phantom UI
+ChartOfAccounts.tsx:149 CHART_OF_ACCOUNTS_DEBUG: Fetching accounts for client 235
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: false, isExpanded: false, path: /clients/235/chart-of-accounts, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+ChartOfAccounts.tsx:73 DEBUG - ChartOfAccounts rendering with context: Object
+ChartOfAccounts.tsx:175 DEBUG: Account Tree Data Object
+ChartOfAccounts.tsx:185 VERIFICATION STEP 3: Account Tree Structure Object
+ChartOfAccounts.tsx:2542 VERIFICATION STEP 3: DataTable Props Object
+DataTable.tsx:40 VERIFICATION STEP 3: DataTable Component Object
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: false, isExpanded: false, path: /clients/73/manage/dimensions, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:80 ARCHITECT_DEBUG_SESSION_AWARE: On client-only page - clearing expansion state to prevent phantom UI
+DimensionsPage.tsx:344 DIMENSIONS_DEBUG: Fetching dimensions for client 73
+queryClient.ts:80 DEBUG apiRequest: isFormData: false data type: undefined url: /api/clients/73/dimensions method: GET
+GlobalContextSelector.tsx:380 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: false, expandedClients[73]: false, isExpanded: false, path: /clients/73/manage/dimensions, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: false, filteredEntities: 4, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: false, filteredEntities: 2, isExpanded: false, isEntitySelectionView: false, shouldShow: false
+GlobalContextSelector.tsx:441 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: false, filteredEntities: 1, isExpanded: false, isEntitySelectionView: false, shouldShow: false
