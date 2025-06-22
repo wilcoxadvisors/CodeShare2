@@ -198,7 +198,10 @@ function EntityProvider({ children }: { children: ReactNode }) {
             }
             
             const response = await entitiesResponse.json();
-            return response.entities || [];
+            // Handle different response formats - sometimes entities are directly in response, sometimes in data property
+            const entities = Array.isArray(response) ? response : (response.entities || response.data || []);
+            console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_ENTITIES: Client ${client.id} has ${entities.length} entities`);
+            return entities;
           } catch (error) {
             console.error(`Error fetching entities for client ${client.id}:`, error);
             return [];
