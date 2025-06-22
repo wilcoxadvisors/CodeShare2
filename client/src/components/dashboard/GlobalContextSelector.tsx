@@ -129,10 +129,10 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
     console.log(`ARCHITECT_DEBUG_RAW_ENTITIES:`, allEntities.slice(0, 3));
     
     clients.forEach(client => {
-      // More permissive filtering - just check basic requirements
+      // Strict filtering - only show explicitly active entities
       const clientEntities = allEntities.filter(e => {
         const hasClientId = e.clientId === client.id;
-        const isActive = e.active !== false; // Allow undefined or true
+        const isActive = e.active === true; // Only allow explicitly true values
         const notDeleted = !e.deletedAt; // Allow undefined, null, or falsy
         
         console.log(`ARCHITECT_DEBUG_ENTITY_FILTER: Entity ${e.id} - clientId: ${e.clientId}==${client.id}? ${hasClientId}, active: ${e.active} (${isActive}), deletedAt: ${e.deletedAt} (${notDeleted})`);
@@ -289,6 +289,27 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       setExpandedClients(prev => ({ ...prev, [selectedClientId]: true }));
     }
   }, [selectedClientId]);
+
+  // Auto-expand clients that have entities on initial load (Journal Entries only)
+  useEffect(() => {
+    const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
+    
+    if (isEntitySelectionView && showEntities && Object.keys(expandedClients).length === 0) {
+      // Only expand if no clients are currently expanded (initial load)
+      const clientsWithEntities: Record<number, boolean> = {};
+      
+      Object.entries(entitiesByClient).forEach(([clientIdStr, entities]) => {
+        if (entities.length > 0) {
+          clientsWithEntities[parseInt(clientIdStr)] = true;
+        }
+      });
+      
+      if (Object.keys(clientsWithEntities).length > 0) {
+        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Auto-expanding clients with entities:', Object.keys(clientsWithEntities));
+        setExpandedClients(clientsWithEntities);
+      }
+    }
+  }, [entitiesByClient, location.pathname, showEntities, expandedClients]);
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur
