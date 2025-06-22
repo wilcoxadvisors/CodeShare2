@@ -193,14 +193,29 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           console.log(`ARCHITECT_DEBUG: Attached ${files.length} files.`);
         }
 
+        // Fetch reversal entry if this entry has been reversed
+        let reversalEntry = null;
+        if (entry.reversedByEntryId) {
+          const [reversal] = await db.select().from(journalEntries).where(eq(journalEntries.id, entry.reversedByEntryId));
+          if (reversal) {
+            const reversalLines = await this.getJournalEntryLines(reversal.id);
+            reversalEntry = {
+              ...reversal,
+              lines: reversalLines || []
+            };
+          }
+        }
+
         // Construct the final result object, ensuring the 'files' array is included
         const result = {
           ...entry,
           lines: lines || [],
-          files: files || []
+          files: files || [],
+          reversalEntry: reversalEntry
         } as JournalEntry & {
           lines: JournalEntryLine[],
-          files: any[]
+          files: any[],
+          reversalEntry?: JournalEntry
         };
 
         return result;
