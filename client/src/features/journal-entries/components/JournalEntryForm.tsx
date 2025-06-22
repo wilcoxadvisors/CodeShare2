@@ -430,14 +430,17 @@ function JournalEntryForm({
       if (pendingAttachments.length > 0 && uploadPendingFilesRef.current) {
         uploadPendingFilesRef.current(newEntry.id).then(() => {
           toast({ title: "Success", description: "Journal entry created with attachments." });
-          onSubmit();
+          // Add small delay to ensure cache is updated before navigation
+          setTimeout(() => onSubmit(), 100);
         }).catch(() => {
           toast({ title: "Warning", description: "Journal entry created but some files failed to upload." });
-          onSubmit();
+          // Add small delay to ensure cache is updated before navigation
+          setTimeout(() => onSubmit(), 100);
         });
       } else {
         toast({ title: "Success", description: "Journal entry created." });
-        onSubmit();
+        // Add small delay to ensure cache is updated before navigation
+        setTimeout(() => onSubmit(), 100);
       }
     },
     onError: (error) => {
@@ -508,7 +511,8 @@ function JournalEntryForm({
       }
       
       toast({ title: "Success", description: "Journal entry updated." });
-      onSubmit();
+      // Add small delay to ensure cache is updated before navigation
+      setTimeout(() => onSubmit(), 100);
     },
     onError: (error) => {
       toast({
