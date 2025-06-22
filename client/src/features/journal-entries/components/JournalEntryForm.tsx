@@ -951,17 +951,35 @@ function JournalEntryForm({
     };
   };
 
+  // Helper function to generate unique reference for new entries
+  const generateUniqueReference = () => {
+    // Generate a scalable unique ID (6 characters, alphanumeric)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let uniqueId = '';
+    for (let i = 0; i < 6; i++) {
+      uniqueId += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `JE-${effectiveClientId}-${entityId}-${uniqueId}`;
+  };
+
   // Form submission handlers
   const handleSaveDraft = () => {
     if (!validateForm()) return;
 
     try {
-      // Build complete reference including user suffix using consistent logic
-      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
+      // For new entries, generate unique reference. For existing entries, preserve the base reference
+      let baseReference;
+      if (existingEntry?.id) {
+        // Extract base reference (everything before the colon)
+        baseReference = existingEntry.referenceNumber?.split(':')[0] || existingEntry.referenceNumber;
+      } else {
+        // Generate new unique reference for new entries
+        baseReference = generateUniqueReference();
+      }
+      
       const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
+        ? `${baseReference}:${journalData.referenceUserSuffix}`
+        : baseReference;
 
       const formData = {
         date: journalData.date,
@@ -976,7 +994,7 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handleSaveDraft payload:", {
-        autoReferencePrefix,
+        baseReference,
         referenceUserSuffix: journalData.referenceUserSuffix,
         completeReference
       });
@@ -1008,12 +1026,19 @@ function JournalEntryForm({
     }
 
     try {
-      // Build complete reference including user suffix using consistent logic
-      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
+      // For new entries, generate unique reference. For existing entries, preserve the base reference
+      let baseReference;
+      if (existingEntry?.id) {
+        // Extract base reference (everything before the colon)
+        baseReference = existingEntry.referenceNumber?.split(':')[0] || existingEntry.referenceNumber;
+      } else {
+        // Generate new unique reference for new entries
+        baseReference = generateUniqueReference();
+      }
+      
       const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
+        ? `${baseReference}:${journalData.referenceUserSuffix}`
+        : baseReference;
 
       const formData = {
         date: journalData.date,
@@ -1028,7 +1053,7 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handleSubmitForApproval payload:", {
-        autoReferencePrefix,
+        baseReference,
         referenceUserSuffix: journalData.referenceUserSuffix,
         completeReference
       });
@@ -1062,12 +1087,19 @@ function JournalEntryForm({
     // Pending files validation is now handled by AttachmentSection
 
     try {
-      // Build complete reference including user suffix using consistent logic
-      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
+      // For new entries, generate unique reference. For existing entries, preserve the base reference
+      let baseReference;
+      if (existingEntry?.id) {
+        // Extract base reference (everything before the colon)
+        baseReference = existingEntry.referenceNumber?.split(':')[0] || existingEntry.referenceNumber;
+      } else {
+        // Generate new unique reference for new entries
+        baseReference = generateUniqueReference();
+      }
+      
       const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
+        ? `${baseReference}:${journalData.referenceUserSuffix}`
+        : baseReference;
 
       const formData = {
         date: journalData.date,
@@ -1082,7 +1114,7 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handlePostEntry payload:", {
-        autoReferencePrefix,
+        baseReference,
         referenceUserSuffix: journalData.referenceUserSuffix,
         completeReference
       });
@@ -1116,7 +1148,7 @@ function JournalEntryForm({
         setJournalData={setJournalData}
         fieldErrors={fieldErrors}
         existingEntry={existingEntry}
-        autoReferencePrefix={`JE-${effectiveClientId}-${entityId}-${format(journalData.date ? new Date(journalData.date) : new Date(), 'MMddyy')}`}
+        autoReferencePrefix={existingEntry?.id ? existingEntry.referenceNumber?.split(':')[0] || existingEntry.referenceNumber : `JE-${effectiveClientId}-${entityId}-[UNIQUE_ID]`}
         displayId={existingEntry?.id ? `JE-${effectiveClientId}-${entityId}-${format(new Date(existingEntry.date), 'MMddyy')}-${existingEntry.id}` : "Will be assigned after creation"}
       />
 
