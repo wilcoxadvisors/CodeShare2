@@ -345,6 +345,19 @@ function EntityProvider({ children }: { children: ReactNode }) {
     // Auto-selection has been disabled to prevent fighting with user selections
   }, [selectedClientId, currentEntity, allEntities, isLoading, queryIsLoading, isFetching, isSuccess, initialLoadComplete]);
 
+  // Force query execution when auth completes - with improved timing
+  useEffect(() => {
+    // Add small delay to ensure auth state is fully settled
+    const timeoutId = setTimeout(() => {
+      if (user && !isAuthLoadingFromAuthContext && !entitiesData && !queryIsLoading && !isFetching) {
+        console.log('ARCHITECT_DEBUG_FORCE_QUERY: Auth complete but no entities loaded, forcing query execution');
+        refetchEntities();
+      }
+    }, 100); // 100ms delay
+    
+    return () => clearTimeout(timeoutId);
+  }, [user, isAuthLoadingFromAuthContext, entitiesData, queryIsLoading, isFetching, refetchEntities]);
+
   // Debug logs for tracking state changes
   useEffect(() => {
     console.log(`DEBUG: Entities context state:
@@ -354,8 +367,10 @@ function EntityProvider({ children }: { children: ReactNode }) {
     - Current entity: ${currentEntity?.id}
     - Initial loading complete: ${initialLoadComplete}
     - Loading: ${isLoading}
-    - Query fetching: ${isFetching}`);
-  }, [allEntities, entities, selectedClientId, currentEntity, initialLoadComplete, isLoading, isFetching]);
+    - Query fetching: ${isFetching}
+    - Query enabled: ${!!user && !isAuthLoadingFromAuthContext}
+    - Query has data: ${!!entitiesData}`);
+  }, [allEntities, entities, selectedClientId, currentEntity, initialLoadComplete, isLoading, isFetching, user, isAuthLoadingFromAuthContext, entitiesData]);
 
   // Function to set current entity by ID
   const setCurrentEntityById = (entityId: number) => {
