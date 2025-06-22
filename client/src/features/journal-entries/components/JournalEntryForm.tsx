@@ -262,8 +262,8 @@ function JournalEntryForm({
 
   // Initialize form data with proper state management
   const [journalData, setJournalData] = useState(() => {
-    // Parse existing reference to extract user suffix
-    const existingReference = existingEntry?.reference || existingEntry?.referenceNumber || "";
+    // Parse existing reference to extract user suffix - use referenceNumber from DB
+    const existingReference = existingEntry?.referenceNumber || "";
     let userSuffix = "";
     
     // If there's an existing reference, try to extract the user suffix after the colon
@@ -278,13 +278,13 @@ function JournalEntryForm({
       existingEntry: existingEntry?.id,
       existingReference,
       extractedUserSuffix: userSuffix,
-      fallbackUserSuffix: existingEntry?.referenceUserSuffix
+      fullReferenceNumber: existingEntry?.referenceNumber
     });
     
     return {
       date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       referenceNumber: existingReference || generateReference(),
-      referenceUserSuffix: userSuffix || existingEntry?.referenceUserSuffix || "",
+      referenceUserSuffix: userSuffix,
       description: existingEntry?.description || "",
       isAccrual: existingEntry?.isAccrual || false,
       reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
@@ -294,7 +294,7 @@ function JournalEntryForm({
   // Update journalData when existingEntry changes (for edit mode)
   React.useEffect(() => {
     if (existingEntry) {
-      const existingReference = existingEntry?.reference || existingEntry?.referenceNumber || "";
+      const existingReference = existingEntry?.referenceNumber || "";
       let userSuffix = "";
       
       // Parse user suffix from existing reference
@@ -309,13 +309,13 @@ function JournalEntryForm({
         entryId: existingEntry.id,
         existingReference,
         extractedUserSuffix: userSuffix,
-        fallbackUserSuffix: existingEntry?.referenceUserSuffix
+        fullReferenceNumber: existingEntry?.referenceNumber
       });
       
       setJournalData({
         date: format(new Date(existingEntry.date), "yyyy-MM-dd"),
         referenceNumber: existingReference,
-        referenceUserSuffix: userSuffix || existingEntry?.referenceUserSuffix || "",
+        referenceUserSuffix: userSuffix,
         description: existingEntry?.description || "",
         isAccrual: existingEntry?.isAccrual || false,
         reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
