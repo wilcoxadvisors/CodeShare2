@@ -244,14 +244,22 @@ export function useJournalEntry() {
         description: 'Journal entry deleted successfully',
       });
       
-      // EMERGENCY FIX: Invalidate using direct URLs
+      // Fix cache invalidation to use proper array-based query keys that match the list queries
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/clients/${params.clientId}/entities/${params.entityId}/journal-entries`]
+        queryKey: ['journal-entries', params.clientId, params.entityId],
+        exact: true
       });
       
-      // ALSO invalidate the entities API to refresh entity list
+      // Also invalidate the specific entry
       queryClient.invalidateQueries({
-        queryKey: ['/api/entities']
+        queryKey: ['journal-entry', params.clientId, params.entityId, params.id],
+        exact: true
+      });
+      
+      // Invalidate entities list to refresh any counters
+      queryClient.invalidateQueries({
+        queryKey: ['/api/entities'],
+        exact: true
       });
     },
     onError: (error: any) => {
