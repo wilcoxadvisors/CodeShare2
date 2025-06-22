@@ -278,7 +278,10 @@ function JournalEntryForm({
       existingEntry: existingEntry?.id,
       existingReference,
       extractedUserSuffix: userSuffix,
-      fullReferenceNumber: existingEntry?.referenceNumber
+      fullReferenceNumber: existingEntry?.referenceNumber,
+      hasColon: existingReference.includes(':'),
+      splitParts: existingReference.split(':'),
+      entireExistingEntry: existingEntry
     });
     
     return {
