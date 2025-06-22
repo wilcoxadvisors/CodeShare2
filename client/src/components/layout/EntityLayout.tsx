@@ -39,8 +39,8 @@ export default function EntityLayout() {
 
   // Directly fetch entity if needed - as a backup to the main entity loading
   const { data: entityData, isError, error } = useQuery({
-    queryKey: [`/api/clients/${clientId}/entities/${entityId}`],
-    enabled: !!clientId && !!entityId && (!entities.length || !entities.find(e => e.id === Number(entityId))),
+    queryKey: [`/api/entities/${entityId}`],
+    enabled: !!entityId && (!entities.length || !entities.find(e => e.id === Number(entityId))),
   });
 
   // Log errors with direct entity fetching for debugging
