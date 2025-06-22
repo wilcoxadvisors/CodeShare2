@@ -48,19 +48,27 @@ function Sidebar() {
     navigate('/');
   };
 
-  const NavItem = ({ path, icon, label }: { path: string, icon: React.ReactNode, label: string }) => (
-    <Link 
-      to={path}
-      className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer ${
-        isActive(path) 
-          ? 'bg-primary-700 text-white font-semibold' 
-          : 'text-white hover:bg-primary-800/60 hover:text-white'
-      }`}
-    >
-      {icon}
-      <span className="ml-1">{label}</span>
-    </Link>
-  );
+  const NavItem = ({ path, icon, label }: { path: string, icon: React.ReactNode, label: string }) => {
+    // For client-specific modules, construct URL with current client
+    let targetPath = path;
+    if (selectedClientId && (path === '/chart-of-accounts' || path === '/manage/dimensions')) {
+      targetPath = `/clients/${selectedClientId}${path}`;
+    }
+    
+    return (
+      <Link 
+        to={targetPath}
+        className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer ${
+          isActive(path) 
+            ? 'bg-primary-700 text-white font-semibold' 
+            : 'text-white hover:bg-primary-800/60 hover:text-white'
+        }`}
+      >
+        {icon}
+        <span className="ml-1">{label}</span>
+      </Link>
+    );
+  };
 
   return (
     <aside className="hidden md:flex md:flex-shrink-0">
