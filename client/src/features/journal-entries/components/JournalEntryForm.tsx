@@ -648,7 +648,17 @@ function JournalEntryForm({
       });
       
       // Add initial two empty lines for new entries (standard accounting practice)
-      const defaultEntityCode = entities.length > 0 ? entities[0].code : "";
+      // Use the current entity's code based on entityId prop
+      const currentEntity = entities.find(e => e.id === entityId);
+      const defaultEntityCode = currentEntity?.code || (entities.length > 0 ? entities[0].code : "");
+      
+      console.log("DEBUG: Setting default entity code:", {
+        entityId,
+        currentEntityCode: currentEntity?.code,
+        defaultEntityCode,
+        entitiesLength: entities.length
+      });
+      
       setLines([
         {
           _key: nanoid(),
@@ -725,10 +735,14 @@ function JournalEntryForm({
 
   // Line management functions
   const addLine = () => {
+    // Use the current entity's code based on entityId prop
+    const currentEntity = entities.find(e => e.id === entityId);
+    const defaultEntityCode = currentEntity?.code || (entities.length > 0 ? entities[0].code : "");
+    
     const newLine: JournalLine = {
       _key: nanoid(),
       accountId: "",
-      entityCode: entities.length > 0 ? entities[0].code : "",
+      entityCode: defaultEntityCode,
       description: "",
       debit: "",
       credit: "",

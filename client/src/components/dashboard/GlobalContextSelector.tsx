@@ -126,9 +126,11 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
     const map: Record<number, Entity[]> = {};
     clients.forEach(client => {
       map[client.id] = entities.filter(
-        e => e.clientId === client.id && e.active && !e.deletedAt
+        e => e.clientId === client.id && e.active && (e.deletedAt === null || e.deletedAt === undefined)
       );
     });
+    console.log(`ARCHITECT_DEBUG_ENTITY_FILTERING: Total entities: ${entities.length}, Filtered by client:`, 
+      Object.entries(map).map(([clientId, ents]) => ({ clientId, count: ents.length })));
     return map;
   }, [clients, entities]);
 
