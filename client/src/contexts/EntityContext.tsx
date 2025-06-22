@@ -143,7 +143,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
     isSuccess,
     refetch: refetchEntities 
   } = useQuery<Entity[]>({
-    queryKey: ['/api/entities'],
+    queryKey: ['/api/entities-by-clients'],
     queryFn: () => {
       // Log detailed information about the query execution
       console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Query function executing with:");
@@ -161,32 +161,58 @@ function EntityProvider({ children }: { children: ReactNode }) {
         return Promise.resolve([]);
       }
       
-      // For regular authenticated users, proceed with the normal API call
-      return fetch('/api/entities', {
-        credentials: 'include', // Ensure cookies are sent for authentication
+      // CLIENT-SCOPED APPROACH: Fetch entities through client endpoints
+      // This ensures entities are properly tied to clients
+      return fetch('/api/clients', {
+        credentials: 'include',
         headers: {
           'Accept': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate' // Strong anti-caching headers
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
         }
-      }).then(res => {
-        // Log the HTTP response status
-        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Status ${res.status} ${res.statusText}`);
+      }).then(async res => {
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Clients status ${res.status} ${res.statusText}`);
         
         if (!res.ok) {
-          console.error(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_ERROR: Entities fetch failed with status ${res.status}`);
-          throw new Error(`Entities fetch failed: ${res.status}`);
+          throw new Error(`Clients fetch failed: ${res.status}`);
         }
         
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Got successful response, parsing JSON...');
-        const data = res.json();
-        return data;
-      }).then(data => {
-        // Log detailed information about the received data
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', data?.length);
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities:', 
-          data?.slice(0, 2).map((e: any) => ({ id: e.id, name: e.name, clientId: e.clientId })));
+        const clients = await res.json();
+        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: Fetched clients length: ${clients.length}`);
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: First few clients:', 
+          clients.slice(0, 2).map((c: any) => ({ id: c.id, name: c.name })));
         
-        return data;
+        // For each client, fetch their entities
+        const allEntitiesPromises = clients.map(async (client: any) => {
+          try {
+            const entitiesResponse = await fetch(`/api/clients/${client.id}/entities`, {
+              credentials: 'include',
+              headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+              }
+            });
+            
+            if (!entitiesResponse.ok) {
+              console.error(`Entities fetch failed for client ${client.id}: ${entitiesResponse.status}`);
+              return [];
+            }
+            
+            const response = await entitiesResponse.json();
+            return response.entities || [];
+          } catch (error) {
+            console.error(`Error fetching entities for client ${client.id}:`, error);
+            return [];
+          }
+        });
+        
+        const allEntitiesArrays = await Promise.all(allEntitiesPromises);
+        const allEntities = allEntitiesArrays.flat();
+        
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', allEntities.length);
+        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities:', 
+          allEntities.slice(0, 2).map((e: any) => ({ id: e.id, name: e.name, clientId: e.clientId })));
+        
+        return allEntities;
       });
     },
     // CRITICAL: Only run this query when user is authenticated and auth loading is complete

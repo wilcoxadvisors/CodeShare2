@@ -327,17 +327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Entity routes
-  app.get("/api/entities", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as AuthUser).id;
-      const entities = await storage.entities.getEntitiesByUser(userId);
-      res.json(entities);
-    } catch (error) {
-      console.error("Error fetching entities:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
+  // Entity routes - All entity operations should be client-scoped
+  // Removed general /api/entities endpoint as entities must be tied to clients
   
   // Get all entities for a specific client
   app.get("/api/clients/:clientId/entities", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
