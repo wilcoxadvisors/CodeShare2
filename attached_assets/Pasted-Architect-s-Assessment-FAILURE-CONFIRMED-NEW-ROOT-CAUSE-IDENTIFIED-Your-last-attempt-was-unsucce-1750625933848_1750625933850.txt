@@ -1,0 +1,72 @@
+Architect's Assessment: FAILURE CONFIRMED. NEW ROOT CAUSE IDENTIFIED.
+
+Your last attempt was unsuccessful because my diagnosis was incomplete. The guard clause we added to isReferenceDuplicate worked as intended: it prevented the application from crashing. More importantly, it revealed the true nature of the problem by logging the unexpected data type to the console.
+
+New Root Cause Analysis:
+
+The console log is unequivocal:
+isReferenceDuplicate received non-array: {0: {…}, 1: {…}, status: 200, ...}
+
+The function is receiving a raw HTTP Response object, not a JSON array of journal entries. This is a fundamental flaw in our data-fetching layer. The useQuery hook is being fed the entire response instead of the parsed JSON body. This single error is the source of the crash and must be fixed before any other progress can be made.
+
+We will scrap the previous mission. All other bugs are secondary. We have one focus.
+
+New Mission: Correct the Data-Fetching Layer
+Objective: Fix the root cause of all data-type mismatches by ensuring that our core API request utility always parses the JSON body from successful HTTP responses.
+
+Targeted Issue: #35, as it is the key to unlocking all other save/edit functionality.
+
+Surgical Instruction for Agent:
+
+Open the Core API Utility File: The problem lies within our apiRequest function. Open the file: client/src/lib/queryClient.ts.
+
+Locate the apiRequest function. The current implementation incorrectly returns the raw response object.
+
+Replace the apiRequest function with the following architecturally-sound implementation. This new version will properly handle HTTP responses, parse the JSON, and throw meaningful errors. This is a critical, non-negotiable change.
+
+TypeScript
+
+// Replace the existing apiRequest function with this exact implementation.
+
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient();
+
+export async function apiRequest(url: string, options: RequestInit = {}) {
+  const { method = "GET", data, ...restOptions } = options as any;
+
+  const config: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...restOptions.headers,
+    },
+    ...restOptions,
+  };
+
+  if (data) {
+    config.body = JSON.stringify(data);
+  }
+
+  console.log(`DEBUG apiRequest: isFormData: false data type: ${typeof data} url: ${url} method: ${method}`);
+
+  const response = await fetch(url, config);
+
+  // ARCHITECT'S SURGICAL FIX: Properly handle the response.
+  // If the response is not OK, throw an error with the response body.
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({
+      message: `Request failed with status: ${response.status}`,
+    }));
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+
+  // If the response is successful but has no content (e.g., a 204), return null.
+  if (response.status === 204) {
+    return null;
+  }
+
+  // If the response is successful and has content, parse and return the JSON body.
+  return response.json();
+}
+Execute this single directive. This fix to the data-fetching layer is foundational. Once you confirm it is complete, we will re-evaluate the stability of the form and proceed to the next issue.
