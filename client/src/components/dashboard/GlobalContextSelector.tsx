@@ -47,7 +47,7 @@ interface GlobalContextSelectorProps {
 }
 
 export default function GlobalContextSelector({ showEntities = true }: GlobalContextSelectorProps) {
-  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, allEntities: entities } = useEntity();
+  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, allEntities } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -124,15 +124,29 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // Explicitly pre-fetch and filter entities by client immediately
   const entitiesByClient = useMemo(() => {
     const map: Record<number, Entity[]> = {};
+    
+    // Debug: Log the raw entity data
+    console.log(`ARCHITECT_DEBUG_RAW_ENTITIES:`, allEntities.slice(0, 3));
+    
     clients.forEach(client => {
-      map[client.id] = entities.filter(
-        e => e.clientId === client.id && e.active && (e.deletedAt === null || e.deletedAt === undefined)
-      );
+      // More permissive filtering - just check basic requirements
+      const clientEntities = allEntities.filter(e => {
+        const hasClientId = e.clientId === client.id;
+        const isActive = e.active !== false; // Allow undefined or true
+        const notDeleted = !e.deletedAt; // Allow undefined, null, or falsy
+        
+        console.log(`ARCHITECT_DEBUG_ENTITY_FILTER: Entity ${e.id} - clientId: ${e.clientId}==${client.id}? ${hasClientId}, active: ${e.active} (${isActive}), deletedAt: ${e.deletedAt} (${notDeleted})`);
+        
+        return hasClientId && isActive && notDeleted;
+      });
+      
+      map[client.id] = clientEntities;
     });
-    console.log(`ARCHITECT_DEBUG_ENTITY_FILTERING: Total entities: ${entities.length}, Filtered by client:`, 
+    
+    console.log(`ARCHITECT_DEBUG_ENTITY_FILTERING: Total entities: ${allEntities.length}, Filtered by client:`, 
       Object.entries(map).map(([clientId, ents]) => ({ clientId, count: ents.length })));
     return map;
-  }, [clients, entities]);
+  }, [clients, allEntities]);
 
   // Get filtered and sorted clients with selected client at the top
   const filteredClients = Array.isArray(clients) 
