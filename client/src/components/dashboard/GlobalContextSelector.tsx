@@ -47,7 +47,7 @@ interface GlobalContextSelectorProps {
 }
 
 export default function GlobalContextSelector({ showEntities = true }: GlobalContextSelectorProps) {
-  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, allEntities } = useEntity();
+  const { selectedClientId, setSelectedClientId, currentEntity, setCurrentEntity, clients, entities, allEntities } = useEntity();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -194,7 +194,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       
       // For journal entries, navigate directly to first entity's journal entries
       if (currentPath.includes('/journal-entries')) {
-        const clientEntities = allEntities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
+        const clientEntities = entities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
         
         if (clientEntities.length > 0) {
           const firstEntity = clientEntities[0];
