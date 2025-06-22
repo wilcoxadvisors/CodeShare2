@@ -1,0 +1,61 @@
+New Mission: Repair New Entry Attachment Workflow
+Objective: To fix the critical bug where attachments added to a new journal entry are discarded and not saved when the entry is created.
+
+Targeted Issue: Attachments are not being uploaded when a new Journal Entry is saved or posted.
+
+Architect's Diagnosis:
+After reviewing the code and the workflow, the issue is clear. The createEntry mutation correctly attempts to call an upload function from a ref (uploadPendingFilesRef) in its onSuccess callback. However, the component never actually assigns a valid upload function to this ref. The mechanism exists, but it's disconnected. The ref remains null, so the file upload step is silently skipped every time.
+
+We will now bridge this gap by creating the upload handler and assigning it to the ref.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+
+Define the Upload Handler: We need a concrete function to handle the upload of pending files. Add the following function inside the JournalEntryForm component. This function will contain the logic to package and send the files to the server.
+
+TypeScript
+
+// Inside the JournalEntryForm component, before the return statement.
+const handleUploadPendingFiles = async (entryId: number) => {
+  if (pendingAttachments.length === 0) {
+    return; // No files to upload
+  }
+
+  const formData = new FormData();
+  pendingAttachments.forEach(file => {
+    formData.append('files', file);
+  });
+
+  try {
+    const response = await fetch(
+      `/api/clients/<span class="math-inline">\{effectiveClientId\}/entities/</span>{entityId}/journal-entries/${entryId}/files`,
+      {
+        method: 'POST',
+        body: formData,
+        // Note: Do not set 'Content-Type' header, the browser does it for FormData
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('File upload failed');
+    }
+
+    // On successful upload, clear the pending attachments
+    setPendingAttachments([]);
+    console.log('Successfully uploaded pending files.');
+  } catch (error) {
+    console.error("Error uploading pending files:", error);
+    // We throw the error so the calling .catch() block can handle the toast notification
+    throw error;
+  }
+};
+Connect the Handler to the Ref: Now, we must assign this new handler to the uploadPendingFilesRef. Use a useEffect hook to ensure the ref always holds the current version of the handler. Add this hook near your other useEffect blocks.
+
+TypeScript
+
+// Inside the JournalEntryForm component
+useEffect(() => {
+  uploadPendingFilesRef.current = handleUploadPendingFiles;
+}, [pendingAttachments, effectiveClientId, entityId]); // Dependencies ensure the function in the ref is not stale
+Executing this mission will connect the missing logic. The onSuccess handler for creating an entry will now have a valid function in uploadPendingFilesRef.current to call, ensuring attachments for new journal entries are properly saved.

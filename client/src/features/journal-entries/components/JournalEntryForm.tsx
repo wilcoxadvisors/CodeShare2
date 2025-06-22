@@ -683,6 +683,46 @@ function JournalEntryForm({
     }
   }, [existingFiles]);
 
+  // Define the upload handler for pending files
+  const handleUploadPendingFiles = async (entryId: number) => {
+    if (pendingAttachments.length === 0) {
+      return; // No files to upload
+    }
+
+    const formData = new FormData();
+    pendingAttachments.forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      const response = await fetch(
+        `/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/files`,
+        {
+          method: 'POST',
+          body: formData,
+          // Note: Do not set 'Content-Type' header, the browser does it for FormData
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('File upload failed');
+      }
+
+      // On successful upload, clear the pending attachments
+      setPendingAttachments([]);
+      console.log('Successfully uploaded pending files.');
+    } catch (error) {
+      console.error("Error uploading pending files:", error);
+      // We throw the error so the calling .catch() block can handle the toast notification
+      throw error;
+    }
+  };
+
+  // Connect the handler to the ref
+  useEffect(() => {
+    uploadPendingFilesRef.current = handleUploadPendingFiles;
+  }, [pendingAttachments, effectiveClientId, entityId]); // Dependencies ensure the function in the ref is not stale
+
   // Line management functions
   const addLine = () => {
     const newLine: JournalLine = {
