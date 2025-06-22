@@ -152,6 +152,9 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   const selectClient = (clientId: number) => {
     console.log(`ARCHITECT_DEBUG_SELECTOR_CLIENT_SELECT: Selecting client ${clientId}, current path: ${location.pathname}`);
     
+    // NEW FIX: Set flag to prevent auto-redirect when user manually selects a client
+    sessionStorage.setItem('user_manual_navigation', 'true');
+    
     // CONTEXT-AWARE NAVIGATION: Intelligent routing based on current page
     const currentPath = location.pathname;
     

@@ -97,8 +97,10 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
   }, [params.entityId, currentEntity, isAuthLoading, isLoading, allEntities, user, setCurrentEntityById]);
 
   // SMART SESSION NAVIGATION: Auto-redirect to client-specific pages when session has active client
+  // ONLY redirect if user is on generic base paths AND hasn't explicitly navigated to a specific client
   useEffect(() => {
     // Only proceed if we have a selected client from the session, but no client in the URL
+    // AND we're not already on a client-specific page (which would indicate user intent)
     if (selectedClientId && !params.clientId && !isAuthLoading && !isLoading) {
       const currentPath = location.pathname;
       
@@ -106,6 +108,16 @@ const JournalRedirector: React.FC<JournalRedirectorProps> = ({ mode = 'list' }) 
       const isGenericModulePath = currentPath === '/journal-entries' || 
                                  currentPath === '/chart-of-accounts' || 
                                  currentPath === '/manage/dimensions';
+      
+      // NEW FIX: Don't auto-redirect if user has just navigated to a different client's page
+      // This prevents overriding user's manual client selection
+      const hasRecentNavigation = sessionStorage.getItem('user_manual_navigation');
+      if (hasRecentNavigation) {
+        console.log(`ARCHITECT_DEBUG_SMART_REDIRECT: Skipping auto-redirect due to recent manual navigation`);
+        // Clear the flag after a short delay
+        setTimeout(() => sessionStorage.removeItem('user_manual_navigation'), 1000);
+        return;
+      }
       
       if (isGenericModulePath) {
         // For Journal Entries, we need to check if we have both client and entity
