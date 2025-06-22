@@ -144,9 +144,7 @@ function EntityProvider({ children }: { children: ReactNode }) {
     staleTime: 30000
   });
 
-  // CRITICAL FIX: Special handling for guest users
-  // Since guest users (ID=0) will get 401 errors when trying to access entities,
-  // we need to skip the actual API call but still maintain the query structure
+  // PROPER DEPENDENCY CHAIN: Entities query depends on clients data
   const { 
     data: entitiesData = [], 
     isLoading: queryIsLoading,
@@ -155,95 +153,74 @@ function EntityProvider({ children }: { children: ReactNode }) {
     isSuccess,
     refetch: refetchEntities 
   } = useQuery<Entity[]>({
-    queryKey: ['/api/entities-by-clients'],
-    queryFn: () => {
-      // Log detailed information about the query execution
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Query function executing with:");
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - User:", user ? `ID ${user.id}, Username ${user.username}` : "null");
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Auth loading state:", isAuthLoadingFromAuthContext);
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Query enabled:", !!user && !isAuthLoadingFromAuthContext);
-      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Is Guest user:", isGuestUser);
+    queryKey: ['/api/entities-by-clients', clientsData?.length || 0],
+    queryFn: async () => {
+      console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Entities query executing with clients data:", clientsData?.length);
       
       entityFetchAttempted.current = true;
       
-      // CRITICAL FIX: For guest users, don't actually make the API call
-      // This prevents 401 errors for guest users while still maintaining the query structure
       if (isGuestUser) {
-        console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Guest user detected, skipping actual API call and returning empty array");
+        console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Guest user detected, skipping API call");
         return Promise.resolve([]);
       }
       
-      // CLIENT-SCOPED APPROACH: Fetch entities through client endpoints
-      // This ensures entities are properly tied to clients
-      return fetch('/api/clients', {
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate'
-        }
-      }).then(async res => {
-        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Clients status ${res.status} ${res.statusText}`);
-        
-        if (!res.ok) {
-          throw new Error(`Clients fetch failed: ${res.status}`);
-        }
-        
-        const clients = await res.json();
-        console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: Fetched clients length: ${clients.length}`);
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: First few clients:', 
-          clients.slice(0, 2).map((c: any) => ({ id: c.id, name: c.name })));
-        
-        // For each client, fetch their entities
-        const allEntitiesPromises = clients.map(async (client: any) => {
-          try {
-            const entitiesResponse = await fetch(`/api/clients/${client.id}/entities`, {
-              credentials: 'include',
-              headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
-              }
-            });
-            
-            if (!entitiesResponse.ok) {
-              console.error(`Entities fetch failed for client ${client.id}: ${entitiesResponse.status}`);
-              return [];
+      // Use the already-fetched clients data instead of refetching
+      if (!clientsData || clientsData.length === 0) {
+        console.log("ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: No clients data available, returning empty array");
+        return [];
+      }
+      
+      console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_AVAILABLE: Using ${clientsData.length} clients for entity fetch`);
+      
+      // For each client, fetch their entities
+      const allEntitiesPromises = clientsData.map(async (client: any) => {
+        try {
+          const entitiesResponse = await fetch(`/api/clients/${client.id}/entities`, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
             }
-            
-            const response = await entitiesResponse.json();
-            console.log(`ARCHITECT_DEBUG_ENTITY_CTX_RAW_RESPONSE: Client ${client.id} response:`, response);
-            
-            // Handle different response formats - sometimes entities are directly in response, sometimes in data property
-            const entities = Array.isArray(response) ? response : (response.entities || response.data || []);
-            console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_ENTITIES: Client ${client.id} has ${entities.length} entities`);
-            
-            if (entities.length > 0) {
-              console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SAMPLE_ENTITY: Client ${client.id} first entity:`, entities[0]);
-            }
-            
-            return entities;
-          } catch (error) {
-            console.error(`Error fetching entities for client ${client.id}:`, error);
+          });
+          
+          if (!entitiesResponse.ok) {
+            console.error(`Entities fetch failed for client ${client.id}: ${entitiesResponse.status}`);
             return [];
           }
-        });
-        
-        const allEntitiesArrays = await Promise.all(allEntitiesPromises);
-        const allEntities = allEntitiesArrays.flat();
-        
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', allEntities.length);
-        console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities:', 
-          allEntities.slice(0, 2).map((e: any) => ({ id: e.id, name: e.name, clientId: e.clientId })));
-        
-        return allEntities;
+          
+          const response = await entitiesResponse.json();
+          console.log(`ARCHITECT_DEBUG_ENTITY_CTX_RAW_RESPONSE: Client ${client.id} response:`, response);
+          
+          const entities = Array.isArray(response) ? response : (response.entities || response.data || []);
+          console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_ENTITIES: Client ${client.id} has ${entities.length} entities`);
+          
+          if (entities.length > 0) {
+            console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SAMPLE_ENTITY: Client ${client.id} first entity:`, entities[0]);
+          }
+          
+          return entities;
+        } catch (error) {
+          console.error(`Error fetching entities for client ${client.id}:`, error);
+          return [];
+        }
       });
+      
+      const allEntitiesArrays = await Promise.all(allEntitiesPromises);
+      console.log('ARCHITECT_DEBUG_ENTITY_CTX_ARRAYS_RECEIVED: Individual arrays:', allEntitiesArrays.map(arr => arr.length));
+      
+      const allEntities = allEntitiesArrays.flat();
+      
+      console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length:', allEntities.length);
+      console.log('ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities:', 
+        allEntities.slice(0, 2).map((e: any) => ({ id: e.id, name: e.name, clientId: e.clientId })));
+      
+      return allEntities;
     },
-    // CRITICAL: Only run this query when user is authenticated and auth loading is complete
-    // This must match EXACTLY the condition in our debug log above
-    enabled: !!user && !isAuthLoadingFromAuthContext,
-    // Additional props to ensure reliable loading
-    retry: isGuestUser ? 0 : 2, // No retry for guest users
+    // CRITICAL: Only run when user is authenticated, auth loading complete, AND clients data is available
+    enabled: !!user && !isAuthLoadingFromAuthContext && clientsData && clientsData.length > 0,
+    retry: isGuestUser ? 0 : 2,
     retryDelay: 1000,
-    staleTime: 30000 // 30 seconds
+    staleTime: 30000
   });
 
   // Store all entities without filtering - ensure it's always an array
