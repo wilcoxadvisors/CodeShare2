@@ -351,11 +351,28 @@ function JournalEntryForm({
     },
     onSuccess: (updatedEntry) => {
       setFilesToDelete([]); // IMPORTANT: Clear the queue on success
+      
+      // Update the journal entries cache with the new data
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => 
           oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
       );
+      
+      // Also invalidate queries to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      
+      // Update journal data state with the response to maintain form consistency
+      if (updatedEntry) {
+        setJournalData(prev => ({
+          ...prev,
+          referenceNumber: updatedEntry.reference || updatedEntry.referenceNumber || prev.referenceNumber,
+          description: updatedEntry.description || prev.description,
+        }));
+      }
+      
       toast({ title: "Success", description: "Journal entry updated." });
       onSubmit();
     },
@@ -456,7 +473,7 @@ function JournalEntryForm({
       // Fixes Date bug #7 - proper timezone handling
       setJournalData({
         date: format(new Date(existingEntry.date.replace(/-/g, '/')), "yyyy-MM-dd"),
-        referenceNumber: existingEntry.referenceNumber || '',
+        referenceNumber: existingEntry.reference || existingEntry.referenceNumber || '',
         referenceUserSuffix: existingEntry.referenceUserSuffix || '',
         description: existingEntry.description || '',
         isAccrual: existingEntry.isAccrual || false,
@@ -552,6 +569,13 @@ function JournalEntryForm({
     const updatedLines = [...lines];
     updatedLines[index] = { ...updatedLines[index], [field]: value };
     setLines(updatedLines);
+    
+    // Clear field errors when user makes changes
+    if (fieldErrors[`line_${index}_${field}`]) {
+      const newErrors = { ...fieldErrors };
+      delete newErrors[`line_${index}_${field}`];
+      setFieldErrors(newErrors);
+    }
   };
 
   // Function to update line tags
@@ -561,9 +585,15 @@ function JournalEntryForm({
     setLines(updatedLines);
   };
 
-  // Calculate totals and balance
-  const totalDebit = lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
-  const totalCredit = lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+  // Calculate totals and balance with real-time updates
+  const totalDebit = useMemo(() => {
+    return lines.reduce((sum, line) => sum + (parseFloat(line.debit) || 0), 0);
+  }, [lines]);
+  
+  const totalCredit = useMemo(() => {
+    return lines.reduce((sum, line) => sum + (parseFloat(line.credit) || 0), 0);
+  }, [lines]);
+  
   const difference = Math.abs(totalDebit - totalCredit);
   const isBalanced = difference < 0.01; // Allow for small rounding differences
 
@@ -863,12 +893,18 @@ function JournalEntryForm({
           uploadedBy: 1
         }))}
         onRemoveAttachment={(fileId: number) => {
-          // If it's a saved file (ID > 0), add it to the deletion queue
-          if (fileId > 0) {
-            setFilesToDelete(prev => [...prev, fileId]);
+          if (existingEntry?.id) {
+            // For existing entries, use queue-based deletion
+            if (fileId > 0) {
+              setFilesToDelete(prev => [...prev, fileId]);
+            }
+            // Remove from visible list for immediate UI feedback
+            setAttachments(prev => prev.filter(f => f.id !== fileId));
+          } else {
+            // For new entries, remove from pending files using the negative index
+            const pendingIndex = Math.abs(fileId + 1);
+            setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
           }
-          // Always remove the file from the visible list
-          setAttachments(prev => prev.filter(f => f.id !== fileId));
         }}
         onAddAttachments={(files: File[]) => {
           if (existingEntry?.id) {
