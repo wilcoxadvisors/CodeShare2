@@ -956,10 +956,17 @@ function JournalEntryForm({
     if (!validateForm()) return;
 
     try {
+      // Build complete reference including user suffix using consistent logic
+      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
+      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
+      const completeReference = journalData.referenceUserSuffix 
+        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
+        : autoReferencePrefix;
+
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber, // Ensures compatibility
-        referenceNumber: journalData.referenceNumber, // The primary field
+        reference: completeReference, // Complete reference with suffix
+        referenceNumber: completeReference, // The primary field with suffix
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "draft" as JournalEntryStatus,
@@ -969,8 +976,9 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handleSaveDraft payload:", {
-        referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix
+        autoReferencePrefix,
+        referenceUserSuffix: journalData.referenceUserSuffix,
+        completeReference
       });
 
       if (existingEntry && existingEntry.id) {
@@ -1000,10 +1008,15 @@ function JournalEntryForm({
     }
 
     try {
+      // Build complete reference including user suffix
+      const completeReference = journalData.referenceUserSuffix 
+        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
+        : autoReferencePrefix;
+
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber, // Ensures compatibility
-        referenceNumber: journalData.referenceNumber, // The primary field
+        reference: completeReference, // Complete reference with suffix
+        referenceNumber: completeReference, // The primary field with suffix
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "pending_approval" as JournalEntryStatus,
@@ -1013,8 +1026,9 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handleSubmitForApproval payload:", {
-        referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix
+        autoReferencePrefix,
+        referenceUserSuffix: journalData.referenceUserSuffix,
+        completeReference
       });
 
       if (existingEntry && existingEntry.id) {
