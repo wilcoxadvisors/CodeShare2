@@ -618,17 +618,32 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           console.log(`ARCHITECT_ROBUST_UPDATE: No files array provided - preserving existing attachments`);
         }
         
-        // Add this block inside the transaction to handle the deletions
+        // Handle filesToDelete array for transactional file deletion
         if ((entryData as any).filesToDelete && Array.isArray((entryData as any).filesToDelete) && (entryData as any).filesToDelete.length > 0) {
             const fileIdsToDelete = (entryData as any).filesToDelete as number[];
+            console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Processing ${fileIdsToDelete.length} files for deletion`);
+            
             for (const fileId of fileIdsToDelete) {
-                const fileToDelete = await tx.query.journalEntryFiles.findFirst({ where: eq(schema.journalEntryFiles.id, fileId) });
-                if (fileToDelete?.storageKey) {
-                    const fileStorage = getFileStorage();
-                    await fileStorage.delete(fileToDelete.storageKey);
+                // Get the file record to access storageKey
+                const [fileToDelete] = await tx.select()
+                    .from(journalEntryFiles)
+                    .where(eq(journalEntryFiles.id, fileId))
+                    .limit(1);
+                    
+                if (fileToDelete) {
+                    console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Deleting file ${fileId} with storage key ${fileToDelete.storageKey}`);
+                    
+                    // Delete physical file first
+                    if (fileToDelete.storageKey) {
+                        const fileStorage = getFileStorage();
+                        await fileStorage.delete(fileToDelete.storageKey);
+                    }
+                    
+                    // Delete database record
+                    await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
                 }
-                await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
             }
+            console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Successfully deleted ${fileIdsToDelete.length} files`);
         }
         
         console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
