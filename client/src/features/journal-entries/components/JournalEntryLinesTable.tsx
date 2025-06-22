@@ -313,10 +313,15 @@ export function JournalEntryLinesTable({
     }));
   };
 
-  // Render hierarchical account tree
-  const renderAccountTree = (accounts: (Account & { children: any[] })[], level = 0, lineIndex: number) => {
+  // Fixed recursive rendering to prevent infinite expansion
+  const renderAccountTree = (accounts: (Account & { children: any[] })[], level = 0, lineIndex: number): React.ReactNode[] => {
+    if (level > 10) { // Prevent infinite recursion
+      console.warn("Maximum account tree depth reached");
+      return [];
+    }
+
     return accounts.map((account) => {
-      const hasChildren = account.children.length > 0;
+      const hasChildren = account.children && account.children.length > 0;
       const isExpanded = combinedExpandedState[account.id];
       const isSelected = lines[lineIndex]?.accountId === account.id.toString();
       const canSelect = !hasChildren; // Only leaf accounts are selectable
@@ -371,8 +376,8 @@ export function JournalEntryLinesTable({
             </div>
           </div>
           
-          {/* Render children if expanded */}
-          {hasChildren && isExpanded && (
+          {/* Render children if expanded - with proper null check */}
+          {hasChildren && isExpanded && account.children && (
             renderAccountTree(account.children, level + 1, lineIndex)
           )}
         </div>

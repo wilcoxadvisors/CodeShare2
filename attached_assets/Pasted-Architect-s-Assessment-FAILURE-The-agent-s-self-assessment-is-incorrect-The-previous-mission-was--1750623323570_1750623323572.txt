@@ -1,0 +1,150 @@
+Architect's Assessment: FAILURE. The agent's self-assessment is incorrect. The previous mission was not successful, and the agent's claim of "100% Production Stability" is false. The provided console log clearly shows a fatal runtime error that makes the application unusable.
+
+Uncaught TypeError: existingEntries.some is not a function at isReferenceDuplicate (JournalEntryForm.tsx:67:26)
+
+This error proves the system is not stable. We are halting all forward progress on new features. The next set of instructions are not suggestions; they are a direct, final order to repair the application to a truly stable state.
+
+New Mission: Zero-Tolerance Bug Squash
+Objective: To achieve 100% production stability by surgically repairing all remaining bugs. There will be no deviation from this plan.
+
+Directive 1: IMMEDIATE - Fix Runtime Crash (#35)
+Architect's Diagnosis: The system is crashing because the isReferenceDuplicate function is being called with a non-array value, which is a critical data-flow failure. This blocks all save/post/update operations. This is the absolute top priority.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Locate the isReferenceDuplicate function.
+Insert a Guard Clause: Add a type-check at the beginning of the function to prevent the crash and log the faulty data for diagnosis.
+FROM:
+TypeScript
+
+function isReferenceDuplicate(
+  referenceNumber: string,
+  entityId: number,
+  existingEntries: any[],
+  currentEntryId?: number,
+): boolean {
+  if (!referenceNumber?.trim()) return false;
+
+  const normalizedRef = referenceNumber.trim().toLowerCase();
+
+  return existingEntries.some((entry) => {
+TO (Apply this exact change):
+TypeScript
+
+function isReferenceDuplicate(
+  referenceNumber: string,
+  entityId: number,
+  existingEntries: any[],
+  currentEntryId?: number,
+): boolean {
+  // ARCHITECT'S SURGICAL FIX: Prevent runtime crash if existingEntries is not an array.
+  if (!Array.isArray(existingEntries)) {
+    console.error("isReferenceDuplicate received non-array:", existingEntries);
+    return false; // Safely exit if data is not in the expected format.
+  }
+
+  if (!referenceNumber?.trim()) return false;
+
+  const normalizedRef = referenceNumber.trim().toLowerCase();
+
+  return existingEntries.some((entry) => {
+Directive 2: Fix Data & Attachment Transactional Integrity
+Targeted Issues: #6, #25, #26, #27, #28, #34 (Data saving, transactional attachments, reference fields).
+
+Architect's Diagnosis: This entire category of bugs persists due to incorrect payload construction and a non-transactional attachment workflow. The previous fixes were not implemented correctly.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Reinforce the Save Payload: Locate all three submission handlers (handleSaveDraft, handleSubmitForApproval, handlePostEntry). In each one, ensure the formData object sent to the mutation includes both reference and referenceNumber to ensure compatibility.
+TypeScript
+
+const formData = {
+  date: journalData.date,
+  reference: journalData.referenceNumber, // Ensure this exists
+  referenceNumber: journalData.referenceNumber, // Ensure this exists
+  // ...other properties
+};
+Re-implement Transactional Attachment Deletion: Locate the <AttachmentSection /> component and replace its onRemoveAttachment prop with this exact logic:
+TypeScript
+
+onRemoveAttachment={(fileId: number) => {
+  if (existingEntry?.id) {
+    // For existing saved files, queue the ID for deletion on save.
+    if (fileId > 0) {
+      setFilesToDelete(prev => [...prev, fileId]);
+    }
+    // Always remove from the visible list for immediate UI feedback.
+    setAttachments(prev => prev.filter(f => f.id !== fileId));
+  } else {
+    // For new entries, simply remove the file from the pending queue.
+    const pendingIndex = Math.abs(fileId + 1);
+    setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
+  }
+}}
+Send the Deletion Queue: In the updateEntry mutation, ensure the filesToDelete array is passed in the payload:
+TypeScript
+
+const payload = { ...data, filesToDelete };
+updateEntry.mutate(payload);
+Directive 3: Correct UI Layout & Hierarchy Rendering
+Targeted Issues: #13 (Shallow account expansion), #30 (Double scrollbar in edit mode).
+
+Architect's Diagnosis: These are recurring UI flaws that the agent has failed to fix.
+
+Surgical Instruction for Agent:
+
+Fix Double Scrollbar in Edit Mode (#30):
+
+Investigate File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Action: Inspect the root container div in this file. It is the source of the conflicting scrollbar. Remove any overflow-y-auto, overflow-hidden, or h-screen classes from this container. The main AppLayout is responsible for scrolling, and this component must not interfere.
+Fix Shallow Account Expansion (#13):
+
+Open File: client/src/features/journal-entries/components/JournalEntryLinesTable.tsx.
+Locate the renderAccountTree function and correct the flawed recursive call.
+FROM:
+TypeScript
+
+{hasChildren && isExpanded && (
+  <div>
+    {account.children.map((childAccount) => 
+      renderAccountTree([childAccount], level + 1, lineIndex)
+    )}
+  </div>
+)}
+TO (Apply this exact change):
+TypeScript
+
+{hasChildren && isExpanded && (
+    renderAccountTree(account.children, level + 1, lineIndex)
+)}
+Directive 4: Fix State Reactivity & Data Display
+Targeted Issues: #29 (Stale totals), #31 (Stale JE list), #32 (Missing reversal data), #33 (Cannot post from view).
+
+Architect's Diagnosis: A chain reaction of state management failures.
+
+Surgical Instruction for Agent:
+
+Fix Stale Totals (#29):
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Implement useMemo: The agent has incorrectly reported this as fixed. Wrap the totalDebit and totalCredit calculations in useMemo hooks with a dependency on [lines] to ensure they re-render on change.
+Force UI Refresh on CUD Operations (#31):
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Invalidate Queries: In the onSuccess callbacks for the createEntry and updateEntry mutations, you must add the following query invalidation call to force the list to refetch.
+TypeScript
+
+queryClient.invalidateQueries({
+  queryKey: ['journal-entries', effectiveClientId, entityId]
+});
+Fetch and Display Reversal Data (#32):
+
+Open File: server/storage/journalEntryStorage.ts.
+Modify getJournalEntry function: The function currently only fetches the specified entry. Modify it to check if entry.reversedByEntryId exists. If it does, perform a second database query to fetch the full reversal entry and embed it in the returned object.
+Enable Posting from View Mode (#33):
+
+Open File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Add a 'Post' button inside the header or action area. It must only be visible if entry.status === 'draft'.
+The button's onClick handler must trigger a mutation (you can reuse postJournalEntry from the form logic) to patch the entry's status to posted.

@@ -214,9 +214,31 @@ function JournalEntryForm({
     return `JE-${year}${month}${day}-${nanoid(6).toUpperCase()}`;
   };
 
-  // Create form with proper schema
+  // Create form with proper schema - remove required line description validation
+  const createFormSchemaFixed = () => {
+    return z.object({
+      date: z.string().min(1, "Date is required"),
+      referenceNumber: z.string().min(1, "Reference number is required"),
+      description: z.string().min(1, "Description is required"),
+      lines: z
+        .array(
+          z.object({
+            accountId: z.string().min(1, "Account is required"),
+            entityCode: z.string().min(1, "Entity code is required"),
+            description: z.string().optional(), // Make description optional for draft saves
+            debit: z.string(),
+            credit: z.string(),
+            tags: z.array(z.any()).optional(),
+          }),
+        )
+        .min(1, "At least one line is required"),
+      isAccrual: z.boolean().optional(),
+      reversalDate: z.string().optional(),
+    });
+  };
+
   const form = useForm({
-    resolver: zodResolver(createFormSchema()),
+    resolver: zodResolver(createFormSchemaFixed()),
     defaultValues: {
       date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || "",
