@@ -260,33 +260,36 @@ function JournalEntryForm({
   const watchedDate = form.watch("date");
   const watchedReferenceNumber = form.watch("referenceNumber");
 
-  // Initialize form data with proper state management
-  const [journalData, setJournalData] = useState(() => {
-    // Parse existing reference to extract user suffix - use referenceNumber from DB
-    const existingReference = existingEntry?.referenceNumber || "";
-    let userSuffix = "";
+  // Parse existing reference to extract user suffix
+  const parseReferenceNumber = React.useCallback((refNumber: string) => {
+    console.log("DEBUG: parseReferenceNumber called with:", refNumber);
     
-    // If there's an existing reference, try to extract the user suffix after the colon
-    if (existingReference && existingReference.includes(':')) {
-      const parts = existingReference.split(':');
-      if (parts.length > 1) {
-        userSuffix = parts.slice(1).join(':'); // Handle cases with multiple colons
-      }
+    if (!refNumber || !refNumber.includes(':')) {
+      console.log("DEBUG: No colon found, returning empty suffix");
+      return "";
     }
     
-    console.log("DEBUG: Initializing journalData with:", {
-      existingEntry: existingEntry?.id,
-      existingReference,
-      extractedUserSuffix: userSuffix,
-      fullReferenceNumber: existingEntry?.referenceNumber,
-      hasColon: existingReference.includes(':'),
-      splitParts: existingReference.split(':'),
-      entireExistingEntry: existingEntry
+    const parts = refNumber.split(':');
+    const suffix = parts.length > 1 ? parts.slice(1).join(':') : "";
+    console.log("DEBUG: Extracted suffix:", suffix, "from parts:", parts);
+    return suffix;
+  }, []);
+
+  // Initialize form data with proper state management
+  const [journalData, setJournalData] = useState(() => {
+    const refNumber = existingEntry?.referenceNumber || "";
+    const userSuffix = parseReferenceNumber(refNumber);
+    
+    console.log("DEBUG: useState initialization:", {
+      existingEntryId: existingEntry?.id,
+      referenceNumber: refNumber,
+      extractedSuffix: userSuffix,
+      existingEntry: existingEntry
     });
     
     return {
       date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-      referenceNumber: existingReference || generateReference(),
+      referenceNumber: refNumber || generateReference(),
       referenceUserSuffix: userSuffix,
       description: existingEntry?.description || "",
       isAccrual: existingEntry?.isAccrual || false,
@@ -296,35 +299,27 @@ function JournalEntryForm({
 
   // Update journalData when existingEntry changes (for edit mode)
   React.useEffect(() => {
-    if (existingEntry) {
-      const existingReference = existingEntry?.referenceNumber || "";
-      let userSuffix = "";
+    if (existingEntry && existingEntry.id) {
+      const refNumber = existingEntry.referenceNumber || "";
+      const userSuffix = parseReferenceNumber(refNumber);
       
-      // Parse user suffix from existing reference
-      if (existingReference && existingReference.includes(':')) {
-        const parts = existingReference.split(':');
-        if (parts.length > 1) {
-          userSuffix = parts.slice(1).join(':');
-        }
-      }
-      
-      console.log("DEBUG: useEffect updating journalData for edit mode:", {
-        entryId: existingEntry.id,
-        existingReference,
-        extractedUserSuffix: userSuffix,
-        fullReferenceNumber: existingEntry?.referenceNumber
+      console.log("DEBUG: useEffect triggered for entry:", existingEntry.id, {
+        referenceNumber: refNumber,
+        extractedSuffix: userSuffix,
+        willUpdate: true
       });
       
-      setJournalData({
+      setJournalData(prev => ({
+        ...prev,
         date: format(new Date(existingEntry.date), "yyyy-MM-dd"),
-        referenceNumber: existingReference,
+        referenceNumber: refNumber,
         referenceUserSuffix: userSuffix,
         description: existingEntry?.description || "",
         isAccrual: existingEntry?.isAccrual || false,
         reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
-      });
+      }));
     }
-  }, [existingEntry?.id]);
+  }, [existingEntry?.id, existingEntry?.referenceNumber, parseReferenceNumber]);
 
   // Handle journal data changes with error clearing
   const handleJournalDataChange = (field: keyof typeof journalData, value: string | boolean) => {
