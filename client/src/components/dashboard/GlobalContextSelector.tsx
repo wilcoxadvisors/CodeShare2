@@ -194,7 +194,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       
       // For journal entries, navigate directly to first entity's journal entries
       if (currentPath.includes('/journal-entries')) {
-        const clientEntities = entities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
+        const clientEntities = allEntities.filter((entity: Entity) => entity.clientId === clientId && entity.active);
         
         if (clientEntities.length > 0) {
           const firstEntity = clientEntities[0];
@@ -479,7 +479,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                                 // Parse the entity ID from the value string
                                 const id = parseInt(currentValue.split('-')[1]);
                                 // Find the entity by ID
-                                const selectedEntity = entities.find(e => e.id === id);
+                                const selectedEntity = allEntities.find(e => e.id === id);
                                 if (selectedEntity) {
                                   console.log('ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: Entity selected, navigating to URL:', 
                                     { id: selectedEntity.id, name: selectedEntity.name, clientId: selectedEntity.clientId });
@@ -488,7 +488,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
                                   navigate(`/clients/${selectedEntity.clientId}/entities/${selectedEntity.id}/journal-entries`);
                                   setOpen(false);
                                 } else {
-                                  console.error(`ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: ERROR - Could not find entity with ID ${id} in entities list of ${entities?.length} items`);
+                                  console.error(`ARCHITECT_DEBUG_GLOBAL_SELECTOR_ENTITY_ONSELECT: ERROR - Could not find entity with ID ${id} in entities list of ${allEntities?.length} items`);
                                 }
                               }}
                               onClick={() => {
