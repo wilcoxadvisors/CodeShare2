@@ -233,14 +233,12 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       }
     });
     setExpandedClients(allExpanded);
-    setHasAutoExpanded(true); // Prevent future auto-expansion
   }, [filteredClients, entitiesByClient, showEntities]);
 
   const handleCollapseAll = useCallback(() => {
     if (!showEntities) return; // Only act if entities are shown
     console.log("ARCHITECT_DEBUG_SELECTOR_COLLAPSE_ALL: Collapsing all clients");
     setExpandedClients({}); // Reset to all collapsed
-    setHasAutoExpanded(true); // Prevent future auto-expansion
   }, [showEntities]);
 
   // Handle entity selection with stabilized navigation

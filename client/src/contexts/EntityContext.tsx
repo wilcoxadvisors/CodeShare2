@@ -105,6 +105,12 @@ function EntityProvider({ children }: { children: ReactNode }) {
   // Force query execution for debugging
   if (!!user && !isAuthLoadingFromAuthContext) {
     console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SHOULD_RUN: Query conditions met, should execute');
+  } else {
+    console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_BLOCKED:', {
+      hasUser: !!user,
+      authNotLoading: !isAuthLoadingFromAuthContext,
+      isGuestUser
+    });
   }
   
   // Add clients query for full object exposure - use standard /api/clients endpoint
