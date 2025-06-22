@@ -22,7 +22,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 import { apiRequest } from "@/lib/queryClient";
-import { createCacheManager } from "@/lib/cacheUtils";
 import { AccountType, JournalEntryStatus } from "@shared/schema";
 
 // Import the new components
@@ -193,7 +192,6 @@ function JournalEntryForm({
 }: JournalEntryFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const cacheManager = createCacheManager(queryClient);
   const params = useParams();
   const effectiveClientId = clientId || parseInt(params.clientId || "0");
   
@@ -470,10 +468,17 @@ function JournalEntryForm({
           oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
       );
       
-      // Also invalidate queries to ensure fresh data
+      // Targeted cache invalidation for immediate UI updates
       queryClient.invalidateQueries({
         queryKey: ['journal-entries', effectiveClientId, entityId]
       });
+      
+      // Also invalidate specific entry
+      if (updatedEntry.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['journal-entry', effectiveClientId, entityId, updatedEntry.id]
+        });
+      }
       
       // Update journal data state with the response to maintain form consistency
       if (updatedEntry) {
