@@ -232,7 +232,7 @@ function JournalEntryForm({
   const watchedDate = form.watch("date");
   const watchedReferenceNumber = form.watch("referenceNumber");
 
-  // Initialize form data
+  // Initialize form data with proper state management
   const [journalData, setJournalData] = useState(() => ({
     date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || generateReference(),
@@ -241,6 +241,18 @@ function JournalEntryForm({
     isAccrual: existingEntry?.isAccrual || false,
     reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
   }));
+
+  // Handle journal data changes with error clearing
+  const handleJournalDataChange = (field: keyof typeof journalData, value: string | boolean) => {
+    setJournalData((prev) => ({ ...prev, [field]: value }));
+    
+    // Clear field errors when user makes changes
+    if (fieldErrors[field]) {
+      const newErrors = { ...fieldErrors };
+      delete newErrors[field];
+      setFieldErrors(newErrors);
+    }
+  };
 
   // Query for existing journal entries to check for duplicate reference numbers
   const { data: existingJournalEntries = [] } = useQuery({
@@ -324,12 +336,30 @@ function JournalEntryForm({
       });
     },
     onSuccess: (newEntry) => {
+      // Update cache with new entry
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => (oldData ? [newEntry, ...oldData] : [newEntry])
       );
-      toast({ title: "Success", description: "Journal entry created." });
-      onSubmit();
+      
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      
+      // Upload pending files if any
+      if (pendingAttachments.length > 0 && uploadPendingFilesRef.current) {
+        uploadPendingFilesRef.current(newEntry.id).then(() => {
+          toast({ title: "Success", description: "Journal entry created with attachments." });
+          onSubmit();
+        }).catch(() => {
+          toast({ title: "Warning", description: "Journal entry created but some files failed to upload." });
+          onSubmit();
+        });
+      } else {
+        toast({ title: "Success", description: "Journal entry created." });
+        onSubmit();
+      }
     },
     onError: (error) => {
       toast({
@@ -369,8 +399,26 @@ function JournalEntryForm({
         setJournalData(prev => ({
           ...prev,
           referenceNumber: updatedEntry.reference || updatedEntry.referenceNumber || prev.referenceNumber,
+          referenceUserSuffix: updatedEntry.referenceUserSuffix || prev.referenceUserSuffix,
           description: updatedEntry.description || prev.description,
+          isAccrual: updatedEntry.isAccrual !== undefined ? updatedEntry.isAccrual : prev.isAccrual,
+          reversalDate: updatedEntry.reversalDate ? format(new Date(updatedEntry.reversalDate), "yyyy-MM-dd") : prev.reversalDate,
         }));
+        
+        // Update lines with fresh data from server
+        if (updatedEntry.lines) {
+          const processedLines = updatedEntry.lines.map((line: any) => ({
+            id: line.id,
+            _key: line.id ? `existing_${line.id}` : nanoid(),
+            accountId: line.accountId?.toString() || "",
+            entityCode: line.entityCode || "",
+            description: line.description || "",
+            debit: line.debit?.toString() || "",
+            credit: line.credit?.toString() || "",
+            tags: line.tags || [],
+          }));
+          setLines(processedLines);
+        }
       }
       
       toast({ title: "Success", description: "Journal entry updated." });

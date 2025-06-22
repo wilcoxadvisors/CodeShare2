@@ -46,6 +46,24 @@ export function JournalEntryHeader({
     }));
   };
 
+  const handleAccrualChange = (checked: boolean) => {
+    setJournalData((prev: any) => ({
+      ...prev,
+      isAccrual: checked,
+      reversalDate: checked ? prev.reversalDate : '',
+    }));
+  };
+
+  const handleDateSelect = (date: Date | undefined, field: string) => {
+    if (date) {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      setJournalData((prev: any) => ({
+        ...prev,
+        [field]: formattedDate,
+      }));
+    }
+  };
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -176,13 +194,7 @@ export function JournalEntryHeader({
           <Switch
             id="isAccrual"
             checked={journalData.isAccrual || false}
-            onCheckedChange={(checked) => {
-              setJournalData((prev: any) => ({
-                ...prev,
-                isAccrual: checked,
-                reversalDate: checked ? prev.reversalDate : ""
-              }));
-            }}
+            onCheckedChange={handleAccrualChange}
           />
           <Label htmlFor="isAccrual" className="font-medium">
             Auto-Reversing Accrual
@@ -217,9 +229,7 @@ export function JournalEntryHeader({
                       const [year, month, day] = journalData.reversalDate.split('-');
                       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                     })() : undefined}
-                    onSelect={(date) => {
-                      setJournalData((prev: any) => ({ ...prev, reversalDate: date ? format(date, 'yyyy-MM-dd') : '' }));
-                    }}
+                    onSelect={(date) => handleDateSelect(date, 'reversalDate')}
                     disabled={(date) => {
                       // If no journal entry date is set yet, don't disable anything.
                       if (!journalData.date) return false;
