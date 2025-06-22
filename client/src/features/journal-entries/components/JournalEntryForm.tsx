@@ -1008,7 +1008,9 @@ function JournalEntryForm({
     }
 
     try {
-      // Build complete reference including user suffix
+      // Build complete reference including user suffix using consistent logic
+      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
+      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
       const completeReference = journalData.referenceUserSuffix 
         ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
         : autoReferencePrefix;
@@ -1060,10 +1062,17 @@ function JournalEntryForm({
     // Pending files validation is now handled by AttachmentSection
 
     try {
+      // Build complete reference including user suffix using consistent logic
+      const referenceDate = journalData.date ? new Date(journalData.date) : new Date();
+      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(referenceDate, 'MMddyy')}`;
+      const completeReference = journalData.referenceUserSuffix 
+        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
+        : autoReferencePrefix;
+
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber, // Ensures compatibility
-        referenceNumber: journalData.referenceNumber, // The primary field
+        reference: completeReference, // Complete reference with suffix
+        referenceNumber: completeReference, // The primary field with suffix
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
@@ -1073,8 +1082,9 @@ function JournalEntryForm({
       };
 
       console.log("DEBUG: handlePostEntry payload:", {
-        referenceNumber: journalData.referenceNumber,
-        referenceUserSuffix: journalData.referenceUserSuffix
+        autoReferencePrefix,
+        referenceUserSuffix: journalData.referenceUserSuffix,
+        completeReference
       });
 
       if (existingEntry && existingEntry.id) {
@@ -1106,7 +1116,7 @@ function JournalEntryForm({
         setJournalData={setJournalData}
         fieldErrors={fieldErrors}
         existingEntry={existingEntry}
-        autoReferencePrefix={`JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`}
+        autoReferencePrefix={`JE-${effectiveClientId}-${entityId}-${format(journalData.date ? new Date(journalData.date) : new Date(), 'MMddyy')}`}
         displayId={existingEntry?.id ? `JE-${effectiveClientId}-${entityId}-${format(new Date(existingEntry.date), 'MMddyy')}-${existingEntry.id}` : "Will be assigned after creation"}
       />
 
