@@ -956,16 +956,10 @@ function JournalEntryForm({
     if (!validateForm()) return;
 
     try {
-      // Build complete reference number including user suffix using the same logic as the header
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`;
-      const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
-
       const formData = {
         date: journalData.date,
-        reference: completeReference,
-        referenceNumber: completeReference,
+        reference: journalData.referenceNumber, // Ensures compatibility
+        referenceNumber: journalData.referenceNumber, // The primary field
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "draft" as JournalEntryStatus,
@@ -974,10 +968,9 @@ function JournalEntryForm({
         lines: lines.map(transformLineForBackend),
       };
 
-      console.log("DEBUG: handleSaveDraft payload with complete reference:", {
-        completeReference,
-        referenceUserSuffix: journalData.referenceUserSuffix,
-        autoReferencePrefix
+      console.log("DEBUG: handleSaveDraft payload:", {
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: journalData.referenceUserSuffix
       });
 
       if (existingEntry && existingEntry.id) {
@@ -1007,16 +1000,10 @@ function JournalEntryForm({
     }
 
     try {
-      // Build complete reference number including user suffix using the same logic as the header
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`;
-      const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
-
       const formData = {
         date: journalData.date,
-        reference: completeReference,
-        referenceNumber: completeReference,
+        reference: journalData.referenceNumber, // Ensures compatibility
+        referenceNumber: journalData.referenceNumber, // The primary field
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "pending_approval" as JournalEntryStatus,
@@ -1025,10 +1012,9 @@ function JournalEntryForm({
         lines: lines.map(transformLineForBackend),
       };
 
-      console.log("DEBUG: handleSubmitForApproval payload with complete reference:", {
-        completeReference,
-        referenceUserSuffix: journalData.referenceUserSuffix,
-        autoReferencePrefix
+      console.log("DEBUG: handleSubmitForApproval payload:", {
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: journalData.referenceUserSuffix
       });
 
       if (existingEntry && existingEntry.id) {
@@ -1060,16 +1046,10 @@ function JournalEntryForm({
     // Pending files validation is now handled by AttachmentSection
 
     try {
-      // Build complete reference number including user suffix using the same logic as the header
-      const autoReferencePrefix = `JE-${effectiveClientId}-${entityId}-${format(new Date(), 'MMddyy')}`;
-      const completeReference = journalData.referenceUserSuffix 
-        ? `${autoReferencePrefix}:${journalData.referenceUserSuffix}`
-        : autoReferencePrefix;
-
       const formData = {
         date: journalData.date,
-        reference: completeReference,
-        referenceNumber: completeReference,
+        reference: journalData.referenceNumber, // Ensures compatibility
+        referenceNumber: journalData.referenceNumber, // The primary field
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
@@ -1078,10 +1058,9 @@ function JournalEntryForm({
         lines: lines.map(transformLineForBackend),
       };
 
-      console.log("DEBUG: handlePostEntry payload with complete reference:", {
-        completeReference,
-        referenceUserSuffix: journalData.referenceUserSuffix,
-        autoReferencePrefix
+      console.log("DEBUG: handlePostEntry payload:", {
+        referenceNumber: journalData.referenceNumber,
+        referenceUserSuffix: journalData.referenceUserSuffix
       });
 
       if (existingEntry && existingEntry.id) {

@@ -1,0 +1,32 @@
+New Mission: Fix Reference Field & Save Integrity
+Objective: To resolve the cluster of bugs that prevent a journal entry from being saved correctly, specifically when dealing with optional reference fields or copied entries.
+
+Targeted Issues: #6, #26, #28, #34.
+
+Architect's Diagnosis:
+The root cause of these failures is an inconsistent data payload being sent from the frontend to the backend. When an entry is edited, especially a copied one or one with a new optional reference, the formData object being constructed is missing or misnaming the required referenceNumber field, leading to a backend rejection or incorrect data persistence. We will enforce a consistent and redundant payload to eliminate this ambiguity.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+
+Locate All Three Submission Handlers: Find the handleSaveDraft, handleSubmitForApproval, and handlePostEntry functions.
+
+Replace the formData Object: Inside each of these three functions, you are to replace the existing formData object with the following code block. This new structure includes both reference and referenceNumber keys, ensuring the payload is always valid, regardless of minor backend API inconsistencies.
+
+Use this exact object structure for the formData variable in all three handlers:
+TypeScript
+
+const formData = {
+  date: journalData.date,
+  reference: journalData.referenceNumber, // Ensures compatibility
+  referenceNumber: journalData.referenceNumber, // The primary field
+  referenceUserSuffix: journalData.referenceUserSuffix || "",
+  description: journalData.description,
+  status: "draft", // Note: This will be 'pending_approval' or 'posted' in the other handlers
+  isAccrual: journalData.isAccrual,
+  reversalDate: journalData.isAccrual && journalData.reversalDate ? journalData.reversalDate : undefined,
+  lines: lines.map(transformLineForBackend),
+};
+(Remember to adjust the status field accordingly for the handleSubmitForApproval and handlePostEntry functions as noted in the comment.)
+This surgical replacement will create a standardized, robust payload, resolving the data persistence failures. Confirm once this is complete.
