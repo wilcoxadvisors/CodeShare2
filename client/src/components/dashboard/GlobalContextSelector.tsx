@@ -91,7 +91,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
   // Display logic that uses URL client ID for client-only pages
   const displayClientId = isClientOnlyView ? urlClientId : selectedClientId;
   const selectedClientName = useMemo(() => clients.find(c => c.id === displayClientId)?.name, [clients, displayClientId]);
-  const currentEntityName = useMemo(() => entities.find(e => e.id === currentEntity?.id)?.name, [entities, currentEntity]);
+  const currentEntityName = useMemo(() => allEntities.find(e => e.id === currentEntity?.id)?.name, [allEntities, currentEntity]);
 
   let buttonText: React.ReactNode = "Select Client...";
 
