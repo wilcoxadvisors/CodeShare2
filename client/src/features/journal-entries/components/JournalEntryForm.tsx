@@ -60,6 +60,12 @@ function isReferenceDuplicate(
   existingEntries: any[],
   currentEntryId?: number,
 ): boolean {
+  // ARCHITECT'S SURGICAL FIX: Prevent runtime crash if existingEntries is not an array.
+  if (!Array.isArray(existingEntries)) {
+    console.error("isReferenceDuplicate received non-array:", existingEntries);
+    return false; // Safely exit if data is not in the expected format.
+  }
+
   if (!referenceNumber?.trim()) return false;
 
   const normalizedRef = referenceNumber.trim().toLowerCase();
@@ -836,8 +842,8 @@ function JournalEntryForm({
     try {
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber,
-        referenceNumber: journalData.referenceNumber,
+        reference: journalData.referenceNumber, // Ensure this exists
+        referenceNumber: journalData.referenceNumber, // Ensure this exists
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "draft" as JournalEntryStatus,
@@ -847,7 +853,8 @@ function JournalEntryForm({
       };
 
       if (existingEntry && existingEntry.id) {
-        updateEntry.mutate(formData);
+        const payload = { ...formData, filesToDelete };
+        updateEntry.mutate(payload);
       } else {
         createEntry.mutate(formData);
       }
@@ -874,8 +881,8 @@ function JournalEntryForm({
     try {
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber,
-        referenceNumber: journalData.referenceNumber,
+        reference: journalData.referenceNumber, // Ensure this exists
+        referenceNumber: journalData.referenceNumber, // Ensure this exists
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "pending_approval" as JournalEntryStatus,
@@ -914,8 +921,8 @@ function JournalEntryForm({
     try {
       const formData = {
         date: journalData.date,
-        reference: journalData.referenceNumber,
-        referenceNumber: journalData.referenceNumber,
+        reference: journalData.referenceNumber, // Ensure this exists
+        referenceNumber: journalData.referenceNumber, // Ensure this exists
         referenceUserSuffix: journalData.referenceUserSuffix || "",
         description: journalData.description,
         status: "posted" as JournalEntryStatus,
