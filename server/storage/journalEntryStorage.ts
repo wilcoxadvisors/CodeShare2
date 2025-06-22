@@ -603,6 +603,19 @@ export class JournalEntryStorage implements IJournalEntryStorage {
           console.log(`ARCHITECT_ROBUST_UPDATE: No files array provided - preserving existing attachments`);
         }
         
+        // Add this block inside the transaction to handle the deletions
+        if ((entryData as any).filesToDelete && Array.isArray((entryData as any).filesToDelete) && (entryData as any).filesToDelete.length > 0) {
+            const fileIdsToDelete = (entryData as any).filesToDelete as number[];
+            for (const fileId of fileIdsToDelete) {
+                const fileToDelete = await tx.query.journalEntryFiles.findFirst({ where: eq(schema.journalEntryFiles.id, fileId) });
+                if (fileToDelete?.storageKey) {
+                    const fileStorage = getFileStorage();
+                    await fileStorage.delete(fileToDelete.storageKey);
+                }
+                await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
+            }
+        }
+        
         console.log(`ARCHITECT_ROBUST_UPDATE: Transaction completed successfully for journal entry ${id}`);
         
         // ARCHITECT'S STABILIZATION FIX: Auto-create reversal entries for accrual postings

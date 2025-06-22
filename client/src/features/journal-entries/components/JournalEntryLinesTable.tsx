@@ -374,7 +374,9 @@ export function JournalEntryLinesTable({
           {/* Render children if expanded */}
           {hasChildren && isExpanded && (
             <div>
-              {renderAccountTree(account.children, level + 1, lineIndex)}
+              {account.children.map((childAccount) => 
+                renderAccountTree([childAccount], level + 1, lineIndex)
+              )}
             </div>
           )}
         </div>

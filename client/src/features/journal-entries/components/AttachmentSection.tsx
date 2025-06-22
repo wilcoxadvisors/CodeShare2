@@ -174,19 +174,19 @@ export function AttachmentSection({
       <CardContent className="space-y-4">
         {/* File Upload Section - Only show in edit mode */}
         {isInEditMode && (
-          <div 
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              isDragOver 
-                ? 'border-blue-400 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <Upload className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
-            <div className="mt-4">
-              <label htmlFor="file-upload" className="cursor-pointer">
+          <label htmlFor="file-upload" className="cursor-pointer block">
+            <div 
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                isDragOver 
+                  ? 'border-blue-400 bg-blue-50' 
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <Upload className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
+              <div className="mt-4">
                 <span className={`mt-2 block text-sm font-medium ${isDragOver ? 'text-blue-900' : 'text-gray-900'}`}>
                   {isDragOver ? 'Drop files here!' : 'Drop files here or click to upload'}
                 </span>
@@ -199,12 +199,12 @@ export function AttachmentSection({
                   accept=".pdf,.jpg,.jpeg,.png,.gif,.msg,.eml,.txt,.doc,.docx"
                   onChange={handleFileSelect}
                 />
-              </label>
-              <p className={`mt-2 text-xs ${isDragOver ? 'text-blue-700' : 'text-gray-500'}`}>
-                PDF, Images, MSG, EML, TXT, DOC up to 10MB each
-              </p>
+                <p className={`mt-2 text-xs ${isDragOver ? 'text-blue-700' : 'text-gray-500'}`}>
+                  PDF, Images, MSG, EML, TXT, DOC up to 10MB each
+                </p>
+              </div>
             </div>
-          </div>
+          </label>
         )}
 
         {/* Existing Files List */}
