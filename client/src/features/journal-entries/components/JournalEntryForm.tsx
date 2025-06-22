@@ -261,14 +261,67 @@ function JournalEntryForm({
   const watchedReferenceNumber = form.watch("referenceNumber");
 
   // Initialize form data with proper state management
-  const [journalData, setJournalData] = useState(() => ({
-    date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-    referenceNumber: existingEntry?.reference || existingEntry?.referenceNumber || generateReference(),
-    referenceUserSuffix: existingEntry?.referenceUserSuffix || "",
-    description: existingEntry?.description || "",
-    isAccrual: existingEntry?.isAccrual || false,
-    reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
-  }));
+  const [journalData, setJournalData] = useState(() => {
+    // Parse existing reference to extract user suffix
+    const existingReference = existingEntry?.reference || existingEntry?.referenceNumber || "";
+    let userSuffix = "";
+    
+    // If there's an existing reference, try to extract the user suffix after the colon
+    if (existingReference && existingReference.includes(':')) {
+      const parts = existingReference.split(':');
+      if (parts.length > 1) {
+        userSuffix = parts.slice(1).join(':'); // Handle cases with multiple colons
+      }
+    }
+    
+    console.log("DEBUG: Initializing journalData with:", {
+      existingEntry: existingEntry?.id,
+      existingReference,
+      extractedUserSuffix: userSuffix,
+      fallbackUserSuffix: existingEntry?.referenceUserSuffix
+    });
+    
+    return {
+      date: existingEntry?.date ? format(new Date(existingEntry.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      referenceNumber: existingReference || generateReference(),
+      referenceUserSuffix: userSuffix || existingEntry?.referenceUserSuffix || "",
+      description: existingEntry?.description || "",
+      isAccrual: existingEntry?.isAccrual || false,
+      reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
+    };
+  });
+
+  // Update journalData when existingEntry changes (for edit mode)
+  React.useEffect(() => {
+    if (existingEntry) {
+      const existingReference = existingEntry?.reference || existingEntry?.referenceNumber || "";
+      let userSuffix = "";
+      
+      // Parse user suffix from existing reference
+      if (existingReference && existingReference.includes(':')) {
+        const parts = existingReference.split(':');
+        if (parts.length > 1) {
+          userSuffix = parts.slice(1).join(':');
+        }
+      }
+      
+      console.log("DEBUG: useEffect updating journalData for edit mode:", {
+        entryId: existingEntry.id,
+        existingReference,
+        extractedUserSuffix: userSuffix,
+        fallbackUserSuffix: existingEntry?.referenceUserSuffix
+      });
+      
+      setJournalData({
+        date: format(new Date(existingEntry.date), "yyyy-MM-dd"),
+        referenceNumber: existingReference,
+        referenceUserSuffix: userSuffix || existingEntry?.referenceUserSuffix || "",
+        description: existingEntry?.description || "",
+        isAccrual: existingEntry?.isAccrual || false,
+        reversalDate: existingEntry?.reversalDate ? format(new Date(existingEntry.reversalDate), "yyyy-MM-dd") : "",
+      });
+    }
+  }, [existingEntry?.id]);
 
   // Handle journal data changes with error clearing
   const handleJournalDataChange = (field: keyof typeof journalData, value: string | boolean) => {
