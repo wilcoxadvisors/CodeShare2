@@ -373,6 +373,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
   
+  // Get a specific entity for a specific client
+  app.get("/api/clients/:clientId/entities/:entityId", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const entityId = parseInt(req.params.entityId);
+      
+      if (isNaN(clientId) || clientId <= 0 || isNaN(entityId) || entityId <= 0) {
+        return res.status(400).json({ error: "Invalid client ID or entity ID format" });
+      }
+      
+      // Validate user has access to this client
+      const userId = (req.user as AuthUser).id;
+      const userRole = (req.user as AuthUser).role;
+      
+      if (userRole !== 'admin') {
+        const client = await storage.clients.getClient(clientId);
+        if (!client || (client.userId !== userId)) {
+          return res.status(403).json({ message: "You don't have access to this client" });
+        }
+      }
+      
+      // Get the entity and verify it belongs to the client
+      const entity = await storage.entities.getEntity(entityId);
+      
+      if (!entity) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+      
+      if (entity.clientId !== clientId) {
+        return res.status(400).json({ message: "Entity does not belong to the specified client" });
+      }
+      
+      return res.json(entity);
+    } catch (error: any) {
+      console.error("Error fetching specific entity:", error.message || error);
+      throw error;
+    }
+  }));
+  
   // Get general ledger entries for an entity
   app.get("/api/entities/:entityId/general-ledger", isAuthenticated, async (req: Request, res: Response) => {
     try {
