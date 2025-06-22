@@ -967,7 +967,8 @@ function JournalEntryForm({
       });
 
       if (existingEntry && existingEntry.id) {
-        updateEntry.mutate(formData);
+        const payload = { ...formData, filesToDelete };
+        updateEntry.mutate(payload);
       } else {
         createEntry.mutate(formData);
       }
@@ -1019,7 +1020,8 @@ function JournalEntryForm({
       });
 
       if (existingEntry && existingEntry.id) {
-        updateEntry.mutate(formData);
+        const payload = { ...formData, filesToDelete };
+        updateEntry.mutate(payload);
       } else {
         createEntry.mutate(formData);
       }

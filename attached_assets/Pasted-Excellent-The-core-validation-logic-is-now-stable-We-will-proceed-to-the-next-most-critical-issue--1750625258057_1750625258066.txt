@@ -1,0 +1,80 @@
+Excellent. The core validation logic is now stable. We will proceed to the next most critical issue: data and attachment integrity.
+
+A user must be able to trust that what they see on the screen will be saved correctly, and that cancelling an action will not result in permanent data loss. The current behavior violates this trust.
+
+New Mission: Harden Data Persistence & Attachment Workflow
+Objective: To ensure all data, including reference fields and attachments, is saved correctly and that all user actions within the form are fully transactional and reversible upon cancellation.
+
+Targeted Issues: #6, #25, #26, #27, #28, #34.
+
+This mission has two parts. Execute them in order.
+
+Part A: Implement Transactional Attachment Deletion
+Architect's Diagnosis: The root cause of issues #25 and #27 is that attachment deletion is an immediate, non-transactional API call. This is incorrect. Deletions must be staged on the frontend and only committed when the user explicitly saves the form.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Verify State Variable: Confirm this state variable exists at the top of the JournalEntryForm component. It is non-negotiable for this fix.
+TypeScript
+
+const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
+Replace Attachment Removal Logic: Locate the <AttachmentSection /> component instance within the return statement. You are to replace its entire onRemoveAttachment prop with the following transactional logic. This code correctly queues existing file IDs for deletion and handles the removal of newly added (pending) files without making any premature API calls.
+TypeScript
+
+onRemoveAttachment={(fileId: number) => {
+  if (existingEntry?.id) {
+    // For existing, saved files, queue the ID for deletion on save.
+    if (fileId > 0) {
+      setFilesToDelete(prev => [...prev, fileId]);
+    }
+    // Always remove the file from the visible list for immediate UI feedback.
+    setAttachments(prev => prev.filter(f => f.id !== fileId));
+  } else {
+    // For new entries, simply remove the file from the pending attachment queue.
+    const pendingIndex = Math.abs(fileId + 1);
+    setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
+  }
+}}
+Send Deletion Queue on Save: Find the updateEntry mutation. Ensure the payload object passed to mutate includes the filesToDelete array.
+TypeScript
+
+// Inside the submission handlers (handleSaveDraft, etc.) for existing entries:
+const payload = { ...data, filesToDelete };
+updateEntry.mutate(payload);
+Verify Backend Transaction Logic: The backend must handle this queue. Open server/storage/journalEntryStorage.ts. Inside the updateJournalEntryWithLines function, verify that the following logic block exists within the db.transaction block. This ensures file deletions only happen if the entire entry update is successful.
+TypeScript
+
+if ((entryData as any).filesToDelete && Array.isArray((entryData as any).filesToDelete) && (entryData as any).filesToDelete.length > 0) {
+    const fileIdsToDelete = (entryData as any).filesToDelete as number[];
+    for (const fileId of fileIdsToDelete) {
+        const fileToDelete = await tx.query.journalEntryFiles.findFirst({ where: eq(schema.journalEntryFiles.id, fileId) });
+        if (fileToDelete?.storageKey) {
+            const fileStorage = getFileStorage();
+            await fileStorage.delete(fileToDelete.storageKey);
+        }
+        await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
+    }
+}
+Part B: Fix Reference Field & Save Integrity
+Architect's Diagnosis: Issues #6, #26, #28, and #34 all point to a mismatch between the frontend's data structure and the backend's expectations for the referenceNumber field, especially when editing or copying an entry.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Locate All Submission Handlers: Find handleSaveDraft, handleSubmitForApproval, and handlePostEntry.
+Reinforce the Save Payload: Inside the formData object within all three handlers, you must ensure that the payload sent to the backend is unambiguous.
+Modify the formData object in each handler to contain both reference and referenceNumber keys, assigning the same value to each.
+TypeScript
+
+const formData = {
+  date: journalData.date,
+  reference: journalData.referenceNumber, // Ensures compatibility
+  referenceNumber: journalData.referenceNumber, // The primary field
+  referenceUserSuffix: journalData.referenceUserSuffix || "",
+  description: journalData.description,
+  status: "draft" as JournalEntryStatus, // or "pending_approval", "posted"
+  isAccrual: journalData.isAccrual,
+  reversalDate: journalData.isAccrual && journalData.reversalDate ? journalData.reversalDate : undefined,
+  lines: lines.map(transformLineForBackend),
+};
