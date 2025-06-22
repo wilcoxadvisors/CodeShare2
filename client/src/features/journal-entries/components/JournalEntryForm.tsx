@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 import { apiRequest } from "@/lib/queryClient";
+import { createCacheManager } from "@/lib/cacheUtils";
 import { AccountType, JournalEntryStatus } from "@shared/schema";
 
 // Import the new components
@@ -192,6 +193,7 @@ function JournalEntryForm({
 }: JournalEntryFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const cacheManager = createCacheManager(queryClient);
   const params = useParams();
   const effectiveClientId = clientId || parseInt(params.clientId || "0");
   
