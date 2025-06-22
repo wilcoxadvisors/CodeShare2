@@ -84,6 +84,10 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
       // Refresh the client details to update the entity list
       queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // CRITICAL: Invalidate EntityContext cache to refresh GlobalContextSelector
+      queryClient.invalidateQueries({ queryKey: ['/api/entities-by-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
 
       toast({
         title: "Success",
@@ -125,6 +129,10 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
       // Refresh the client details to update the entity list
       queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // CRITICAL: Invalidate EntityContext cache to refresh GlobalContextSelector
+      queryClient.invalidateQueries({ queryKey: ['/api/entities-by-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
 
       toast({
         title: "Success",
@@ -166,6 +174,10 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
       // Refresh the client details to update the entity list
       queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // CRITICAL: Invalidate EntityContext cache to refresh GlobalContextSelector
+      queryClient.invalidateQueries({ queryKey: ['/api/entities-by-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
 
       toast({
         title: "Success",
@@ -207,6 +219,10 @@ export function ClientEditModal({ clientId, isOpen, onOpenChange }: ClientEditMo
       // Refresh the client details to update the entity list
       queryClient.invalidateQueries({ queryKey: ["clientDetails", clientId] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      
+      // CRITICAL: Invalidate EntityContext cache to refresh GlobalContextSelector
+      queryClient.invalidateQueries({ queryKey: ['/api/entities-by-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
 
       toast({
         title: "Success",
