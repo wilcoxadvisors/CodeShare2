@@ -1,0 +1,51 @@
+Mission: Stabilize Core Validation Logic
+Objective: Resolve the application-breaking runtime crash in the form validation logic to enable further debugging and development.
+
+Targeted Issue: #35 (Uncaught TypeError: existingEntries.some is not a function).
+
+Architect's Diagnosis:
+The console log is definitive. The system is crashing because the isReferenceDuplicate function is being called with a non-array value for its existingEntries parameter. This is a critical data-flow failure. The function must be made resilient to incorrect data types to prevent the entire application from failing.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+
+Locate the isReferenceDuplicate function.
+
+Insert a Guard Clause: You are to add a type-check at the very beginning of this function. This will prevent the crash and log the faulty data, which is essential for future debugging.
+
+FROM:
+TypeScript
+
+function isReferenceDuplicate(
+  referenceNumber: string,
+  entityId: number,
+  existingEntries: any[],
+  currentEntryId?: number,
+): boolean {
+  if (!referenceNumber?.trim()) return false;
+
+  const normalizedRef = referenceNumber.trim().toLowerCase();
+
+  return existingEntries.some((entry) => {
+TO (Apply this exact change):
+TypeScript
+
+function isReferenceDuplicate(
+  referenceNumber: string,
+  entityId: number,
+  existingEntries: any[],
+  currentEntryId?: number,
+): boolean {
+  // ARCHITECT'S SURGICAL FIX: Prevent runtime crash if existingEntries is not an array.
+  if (!Array.isArray(existingEntries)) {
+    console.error("isReferenceDuplicate received non-array:", existingEntries);
+    return false; // Safely exit if data is not in the expected format.
+  }
+
+  if (!referenceNumber?.trim()) return false;
+
+  const normalizedRef = referenceNumber.trim().toLowerCase();
+
+  return existingEntries.some((entry) => {
+Execute this single, targeted fix. Once you confirm it is complete, I will provide the instruction for the next most critical issue.
