@@ -16,7 +16,7 @@ import {
 import { journalEntryStorage } from './storage/journalEntryStorage';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
-async function ensureUniqueReference(referenceNumber: string, entityId: number): Promise<string> {
+async function ensureUniqueReference(referenceNumber: string, entityId: number, excludeEntryId?: number): Promise<string> {
   if (!referenceNumber) return referenceNumber;
   
   const existingEntries = await journalEntryStorage.listJournalEntries({
@@ -24,7 +24,12 @@ async function ensureUniqueReference(referenceNumber: string, entityId: number):
     referenceNumber,
   });
   
-  if (existingEntries.length > 0) {
+  // Filter out the current entry being edited
+  const conflictingEntries = excludeEntryId 
+    ? existingEntries.filter(entry => entry.id !== excludeEntryId)
+    : existingEntries;
+  
+  if (conflictingEntries.length > 0) {
     const uniqueReference = `${referenceNumber}-${Date.now()}`;
     console.log(`DEBUG: Auto-generated unique reference: ${referenceNumber} -> ${uniqueReference}`);
     return uniqueReference;
@@ -206,7 +211,8 @@ export function registerJournalEntryRoutes(app: Express) {
       if (entryData.referenceNumber && entryData.referenceNumber !== existingEntry.referenceNumber) {
         entryData.referenceNumber = await ensureUniqueReference(
           entryData.referenceNumber, 
-          entityId
+          entityId,
+          id // Exclude current entry from duplicate check
         );
       }
       

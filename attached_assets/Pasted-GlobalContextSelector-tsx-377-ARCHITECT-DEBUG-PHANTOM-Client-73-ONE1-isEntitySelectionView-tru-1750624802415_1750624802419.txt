@@ -1,0 +1,816 @@
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 73 entityId: 238 entryId: 285
+JournalEntryDetail.tsx:597 JournalEntryDetail: Using clientId 73 for API requests (from param: 73 or entity: 73 )
+JournalEntryDetail.tsx:631 DEBUG - AccountsMap - Accounts array: (74) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+JournalEntryDetail.tsx:707 DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:708 DEBUG - JournalEntryDetail - Data structure: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:1-1750624531625', …}
+JournalEntryDetail.tsx:720 entry at render {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:1-1750624531625', …}
+JournalEntryDetail.tsx:721 DEBUG - JournalEntryDetail - Using entry: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:1-1750624531625', …}
+JournalEntryDetail.tsx:725 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:726 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:727 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:740 DEBUG - Files query response: {files: Array(0), count: 0}
+JournalEntryDetail.tsx:757 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:761 DEBUG - JournalEntryDetail - First line properties: (18) ['id', 'journalEntryId', 'accountId', 'type', 'amount', 'description', 'entityCode', 'fsliBucket', 'internalReportingBucket', 'item', 'lineNo', 'reference', 'reconciled', 'reconciledAt', 'reconciledBy', 'createdAt', 'updatedAt', 'tags']
+JournalEntryDetail.tsx:1678 ARCHITECT_DEBUG: Button visibility check. Entry ID: 285, Status: draft
+JournalEntryDetail.tsx:1223 DEBUG: Permission matrix: {entryId: 285, status: 'draft', isAdmin: true, isSupervisor: false, isAccounting: false, …}
+JournalEntryDetail.tsx:1849 Line 0: debitValue=123, creditValue=0, line= {id: 737, journalEntryId: 285, accountId: 325, type: 'debit', amount: '123.0000', …}
+JournalEntryDetail.tsx:1849 Line 1: debitValue=0, creditValue=123, line= {id: 738, journalEntryId: 285, accountId: 343, type: 'credit', amount: '123.0000', …}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries/285/edit, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+useEditJournalEntry.ts:19 useEditJournalEntry - Entry ID from URL: 285
+useEditJournalEntry.ts:20 useEditJournalEntry - Client ID: 73 Entity ID: 238
+urlHelpers.ts:44 DEBUG: getJournalEntriesBaseUrl called with clientId: 73, entityId: 238
+urlHelpers.ts:46 DEBUG: getJournalEntriesBaseUrl constructed URL: /api/clients/73/entities/238/journal-entries
+useEditJournalEntry.ts:37 useEditJournalEntry - Journal entry data: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:1-1750624531625', …}
+useEditJournalEntry.ts:45 useEditJournalEntry - Raw API response structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:53 useEditJournalEntry - Extracted journal entry structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:57 useEditJournalEntry - Journal entry status: draft
+useEditJournalEntry.ts:79 useEditJournalEntry - Journal entry lines count: 2
+useEditJournalEntry.ts:83 useEditJournalEntry - First line structure: id, journalEntryId, accountId, type, amount, description, entityCode, fsliBucket, internalReportingBucket, item, lineNo, reference, reconciled, reconciledAt, reconciledBy, createdAt, updatedAt, tags
+useEditJournalEntry.ts:85 useEditJournalEntry - Journal entry lines sample: [
+  {
+    "id": 737,
+    "journalEntryId": 285,
+    "accountId": 325,
+    "type": "debit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.530Z",
+    "updatedAt": "2025-06-17T23:42:52.530Z",
+    "tags": [
+      {
+        "dimensionId": 23,
+        "dimensionValueId": 28,
+        "dimensionName": "Vendor",
+        "dimensionValueName": "test"
+      }
+    ]
+  },
+  {
+    "id": 738,
+    "journalEntryId": 285,
+    "accountId": 343,
+    "type": "credit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.664Z",
+    "updatedAt": "2025-06-17T23:42:52.664Z",
+    "tags": []
+  }
+]
+useEditJournalEntry.ts:90 useEditJournalEntry - Line format:  SERVER (type/amount)
+useEditJournalEntry.ts:93 useEditJournalEntry - Converting server format to client format
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 1 of 2: {
+  "id": 737,
+  "journalEntryId": 285,
+  "accountId": 325,
+  "type": "debit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.530Z",
+  "updatedAt": "2025-06-17T23:42:52.530Z",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ]
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 1 converted from type='debit', amount=123.0000 to: {
+  "accountId": "325",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "123.00",
+  "credit": "",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ],
+  "id": 737
+}
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 2 of 2: {
+  "id": 738,
+  "journalEntryId": 285,
+  "accountId": 343,
+  "type": "credit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.664Z",
+  "updatedAt": "2025-06-17T23:42:52.664Z",
+  "tags": []
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 2 converted from type='credit', amount=123.0000 to: {
+  "accountId": "343",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "",
+  "credit": "123.00",
+  "tags": [],
+  "id": 738
+}
+useEditJournalEntry.ts:119 useEditJournalEntry - All lines converted from server to client format
+useEditJournalEntry.ts:143 useEditJournalEntry - Processed entry lines: (2) [{…}, {…}]
+useEditJournalEntry.ts:153 useEditJournalEntry - Files in processedEntry: []
+useEditJournalEntry.ts:154 useEditJournalEntry - Raw data has files: []
+useEditJournalEntry.ts:161 useEditJournalEntry - Final processedEntry.files: []
+NewJournalEntry.tsx:110 DEBUG NewJournalEntry - Raw accountsData: {accounts: Array(74)}
+NewJournalEntry.tsx:116 DEBUG NewJournalEntry - accountsData.accounts exists and is an array with length: 74
+NewJournalEntry.tsx:120 DEBUG NewJournalEntry - After filtering active accounts: 74
+NewJournalEntry.tsx:142 DEBUG NewJournalEntry - Final accounts array after mapping: 74
+JournalEntryForm.tsx:265 DEBUG: parseReferenceNumber called with: JE-73-238-062225:1-1750624531625
+JournalEntryForm.tsx:274 DEBUG: Extracted suffix: 1-1750624531625 from parts: (2) ['JE-73-238-062225', '1-1750624531625']
+JournalEntryForm.tsx:283 DEBUG: useState initialization: {existingEntryId: 285, referenceNumber: 'JE-73-238-062225:1-1750624531625', extractedSuffix: '1-1750624531625', existingEntry: {…}}
+JournalEntryForm.tsx:366 DEBUG - JournalEntryForm files response: {files: Array(0), count: 0}
+JournalEntryForm.tsx:265 DEBUG: parseReferenceNumber called with: JE-73-238-062225:1-1750624531625
+JournalEntryForm.tsx:274 DEBUG: Extracted suffix: 1-1750624531625 from parts: (2) ['JE-73-238-062225', '1-1750624531625']
+JournalEntryForm.tsx:306 DEBUG: useEffect triggered for entry: 285 {referenceNumber: 'JE-73-238-062225:1-1750624531625', extractedSuffix: '1-1750624531625', willUpdate: true}
+NewJournalEntry.tsx:73 DEBUG NewJournalEntry - Accounts API success response: {accounts: Array(74)}
+NewJournalEntry.tsx:74 DEBUG NewJournalEntry - Response has accounts array: true
+NewJournalEntry.tsx:75 DEBUG NewJournalEntry - Accounts array length: 74
+NewJournalEntry.tsx:100 DEBUG NewJournalEntry - Entities API success response: {status: 'success', entities: Array(4)}
+NewJournalEntry.tsx:101 DEBUG NewJournalEntry - Response has entities array: true
+NewJournalEntry.tsx:102 DEBUG NewJournalEntry - Entities array length: 4
+JournalEntryForm.tsx:875 DEBUG: Line 325 has 1 dimension tags: [{…}]
+JournalEntryForm.tsx:912 DEBUG: handleSaveDraft payload with complete reference: {completeReference: 'JE-73-238-062225:123', referenceUserSuffix: '123', autoReferencePrefix: 'JE-73-238-062225'}
+queryClient.ts:43 DEBUG apiRequest: isFormData: false data type: object url: /api/clients/73/entities/238/journal-entries/285 method: PATCH
+queryClient.ts:43 DEBUG apiRequest: isFormData: false data type: undefined url: /api/clients/73/entities/238/journal-entries method: GET
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet {clientId: '73', entityId: '238'}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:109 DEBUG - JournalEntries - Raw entries: (3) [{…}, {…}, {…}]
+JournalEntries.tsx:114 DEBUG - Entry 553 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 553: debit=1, credit=1
+JournalEntries.tsx:114 DEBUG - Entry 285 structure: (31) ['status', 'ok', 'statusText', 'headers', 'id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt']
+JournalEntries.tsx:189 DEBUG - No totals data found for entry 285, using zeros
+(anonymous) @ JournalEntries.tsx:189
+(anonymous) @ JournalEntries.tsx:112
+mountMemo @ chunk-RPCDYKBN.js?v=159031c7:12194
+useMemo @ chunk-RPCDYKBN.js?v=159031c7:12518
+useMemo @ chunk-QCHXOAYK.js?v=159031c7:1094
+JournalEntries @ JournalEntries.tsx:98
+renderWithHooks @ chunk-RPCDYKBN.js?v=159031c7:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=159031c7:14926
+beginWork @ chunk-RPCDYKBN.js?v=159031c7:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=159031c7:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=159031c7:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=159031c7:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=159031c7:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=159031c7:18678
+workLoop @ chunk-RPCDYKBN.js?v=159031c7:197
+flushWork @ chunk-RPCDYKBN.js?v=159031c7:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=159031c7:384
+JournalEntries.tsx:114 DEBUG - Entry 398 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 398: debit=1.25, credit=1.25
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:109 DEBUG - JournalEntries - Raw entries: []
+Navigated to https://80550fad-9a85-4035-aa54-a26530837091-00-3hx3dcszn47es.janeway.replit.dev/clients/73/entities/238/journal-entries
+client:495 [vite] connecting...
+client:618 [vite] connected.
+chunk-RPCDYKBN.js?v=159031c7:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: null, isAuthLoading: true, entityFetchAttempted: false}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+EntityLayout.tsx:76 EntityLayout: Context still loading - showing spinner {isLoading: true, initialLoadComplete: false}
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityContext.tsx:271 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: No client selected, skipping entity selection logic
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: null
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+AuthContext.tsx:40 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Checking authentication status...
+AuthContext.tsx:45 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Debug session ID found: tP1jgDqVe-m_Eiapx0MN-ZucN7mshFYY
+AuthContext.tsx:50 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Making fetch request to /api/auth/me with credentials
+react-router-dom.js?v=159031c7:4394 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=159031c7:4394
+logDeprecation @ react-router-dom.js?v=159031c7:4397
+logV6DeprecationWarnings @ react-router-dom.js?v=159031c7:4400
+(anonymous) @ react-router-dom.js?v=159031c7:5216
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=159031c7:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=159031c7:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=159031c7:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=159031c7:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=159031c7:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=159031c7:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=159031c7:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=159031c7:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=159031c7:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=159031c7:19432
+commitRoot @ chunk-RPCDYKBN.js?v=159031c7:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=159031c7:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=159031c7:18718
+workLoop @ chunk-RPCDYKBN.js?v=159031c7:197
+flushWork @ chunk-RPCDYKBN.js?v=159031c7:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=159031c7:384
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: null, isAuthLoading: true, entityFetchAttempted: false}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+EntityLayout.tsx:76 EntityLayout: Context still loading - showing spinner {isLoading: true, initialLoadComplete: false}
+AuthContext.tsx:60 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Auth check response status: 200
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:293 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic: {isLoading: true, queryIsLoading: false, isFetching: false}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: null, isAuthLoading: true, entityFetchAttempted: false}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= false AuthNotLoading= false QueryEnabled= false
+AuthContext.tsx:67 ARCHITECT_DEBUG_AUTH_CTX_CHECK: User authenticated: {user: {…}}
+AuthContext.tsx:73 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Authentication successful, triggering query invalidation to ensure fresh data
+AuthContext.tsx:79 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Invalidated and refetched entity queries
+AuthContext.tsx:147 ARCHITECT_DEBUG_AUTH_CTX_CHECK: Auth check completed, setting isLoading to false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: false}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:76 EntityLayout: Context still loading - showing spinner {isLoading: true, initialLoadComplete: false}
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityContext.tsx:149 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: Query function executing with:
+EntityContext.tsx:150 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - User: ID 1, Username admin
+EntityContext.tsx:151 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Auth loading state: false
+EntityContext.tsx:152 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Query enabled: true
+EntityContext.tsx:153 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_EXECUTION: - Is Guest user: false
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:293 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic: {isLoading: true, queryIsLoading: true, isFetching: true}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: true
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:123 ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: Fetched clients length: 5
+EntityContext.tsx:124 ARCHITECT_DEBUG_ENTITY_CTX_CLIENTS_RECEIVED: First few clients: (2) [{…}, {…}]
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:76 EntityLayout: Context still loading - showing spinner {isLoading: true, initialLoadComplete: false}
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:293 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic: {isLoading: true, queryIsLoading: true, isFetching: true}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 0
+    - Filtered entities: 0
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: true
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:173 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_RESPONSE: Status 200 OK
+EntityContext.tsx:180 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SUCCESS: Got successful response, parsing JSON...
+EntityContext.tsx:185 ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: Fetched entitiesData length: 50
+EntityContext.tsx:186 ARCHITECT_DEBUG_ENTITY_CTX_DATA_RECEIVED: First few entities: (2) [{…}, {…}]
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:76 EntityLayout: Context still loading - showing spinner {isLoading: true, initialLoadComplete: false}
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityContext.tsx:231 ENTITY_CONTEXT_STATE_POST_FETCH: 
+        - Total entities: 50
+        - Auth loading: false
+        - Query state: Success=true, Loading=false, Error=false
+EntityContext.tsx:240 ARCHITECT_DEBUG_ENTITY_CTX_STATE_POST_FETCH: {allEntitiesLength: 50, initialLoadComplete: false, isAuthLoading: false, queryIsLoading: false, isFetching: false, …}
+EntityContext.tsx:250 DEBUG: Initial entities loading completed successfully
+EntityContext.tsx:258 ENTITY_CONTEXT_LOADING_STATE_CHANGE: 
+        From true to false
+        - Auth loading: false
+        - Query loading: false
+        - Fetching: false
+        - Initial load complete: false
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:293 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Loading state detected, deferring entity selection logic: {isLoading: true, queryIsLoading: false, isFetching: false}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 4
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: false
+    - Loading: true
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet {clientId: '73', entityId: '238'}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: undefined
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:100 No data available for journal entries
+JournalEntries.tsx:82 DEBUG: Fetching journal entries from: /api/clients/73/entities/238/journal-entries
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:299 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client selection changed: {selectedClientId: 73, currentEntityId: undefined, currentEntityClientId: undefined, entitiesCount: 50, initialLoadComplete: true}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 4
+    - Selected client: 73
+    - Current entity: undefined
+    - Initial loading complete: true
+    - Loading: false
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet {clientId: '73', entityId: '238'}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+EntityContext.tsx:276 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client changed to 73, invalidating related queries
+EntityContext.tsx:299 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Client selection changed: {selectedClientId: 73, currentEntityId: 238, currentEntityClientId: 73, entitiesCount: 50, initialLoadComplete: true}
+EntityContext.tsx:321 DEBUG: Entities context state:
+    - Total entities: 50
+    - Filtered entities: 4
+    - Selected client: 73
+    - Current entity: 238
+    - Initial loading complete: true
+    - Loading: false
+    - Query fetching: false
+EntityContext.tsx:92 ENTITY_CONTEXT_AUTH_STATE: {user: {…}, isAuthLoading: false, entityFetchAttempted: true}
+EntityContext.tsx:100 ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists= true AuthNotLoading= true QueryEnabled= true
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+EntityContext.tsx:289 ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_CHANGE: Query invalidation completed for client 73
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:109 DEBUG - JournalEntries - Raw entries: (3) [{…}, {…}, {…}]
+JournalEntries.tsx:114 DEBUG - Entry 553 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 553: debit=1, credit=1
+JournalEntries.tsx:114 DEBUG - Entry 285 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 285: debit=123, credit=123
+JournalEntries.tsx:114 DEBUG - Entry 398 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 398: debit=1.25, credit=1.25
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 73 entityId: 238 entryId: 285
+JournalEntryDetail.tsx:597 JournalEntryDetail: Using clientId 73 for API requests (from param: 73 or entity: 73 )
+JournalEntryDetail.tsx:720 entry at render undefined
+JournalEntryDetail.tsx:721 DEBUG - JournalEntryDetail - Using entry: undefined
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 73 entityId: 238 entryId: 285
+JournalEntryDetail.tsx:597 JournalEntryDetail: Using clientId 73 for API requests (from param: 73 or entity: 73 )
+JournalEntryDetail.tsx:631 DEBUG - AccountsMap - Accounts array: (74) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+JournalEntryDetail.tsx:720 entry at render undefined
+JournalEntryDetail.tsx:721 DEBUG - JournalEntryDetail - Using entry: undefined
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 73 entityId: 238 entryId: 285
+JournalEntryDetail.tsx:597 JournalEntryDetail: Using clientId 73 for API requests (from param: 73 or entity: 73 )
+JournalEntryDetail.tsx:707 DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:708 DEBUG - JournalEntryDetail - Data structure: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:720 entry at render {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:721 DEBUG - JournalEntryDetail - Using entry: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:725 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:726 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:727 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:740 DEBUG - Files query response: {files: Array(0), count: 0}
+JournalEntryDetail.tsx:757 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:761 DEBUG - JournalEntryDetail - First line properties: (18) ['id', 'journalEntryId', 'accountId', 'type', 'amount', 'description', 'entityCode', 'fsliBucket', 'internalReportingBucket', 'item', 'lineNo', 'reference', 'reconciled', 'reconciledAt', 'reconciledBy', 'createdAt', 'updatedAt', 'tags']
+JournalEntryDetail.tsx:1678 ARCHITECT_DEBUG: Button visibility check. Entry ID: 285, Status: draft
+JournalEntryDetail.tsx:1223 DEBUG: Permission matrix: {entryId: 285, status: 'draft', isAdmin: true, isSupervisor: false, isAccounting: false, …}
+JournalEntryDetail.tsx:1849 Line 0: debitValue=123, creditValue=0, line= {id: 737, journalEntryId: 285, accountId: 325, type: 'debit', amount: '123.0000', …}
+JournalEntryDetail.tsx:1849 Line 1: debitValue=0, creditValue=123, line= {id: 738, journalEntryId: 285, accountId: 343, type: 'credit', amount: '123.0000', …}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries/285/edit, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+useEditJournalEntry.ts:19 useEditJournalEntry - Entry ID from URL: 285
+useEditJournalEntry.ts:20 useEditJournalEntry - Client ID: 73 Entity ID: 238
+urlHelpers.ts:44 DEBUG: getJournalEntriesBaseUrl called with clientId: 73, entityId: 238
+urlHelpers.ts:46 DEBUG: getJournalEntriesBaseUrl constructed URL: /api/clients/73/entities/238/journal-entries
+useEditJournalEntry.ts:37 useEditJournalEntry - Journal entry data: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+useEditJournalEntry.ts:45 useEditJournalEntry - Raw API response structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:53 useEditJournalEntry - Extracted journal entry structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:57 useEditJournalEntry - Journal entry status: draft
+useEditJournalEntry.ts:79 useEditJournalEntry - Journal entry lines count: 2
+useEditJournalEntry.ts:83 useEditJournalEntry - First line structure: id, journalEntryId, accountId, type, amount, description, entityCode, fsliBucket, internalReportingBucket, item, lineNo, reference, reconciled, reconciledAt, reconciledBy, createdAt, updatedAt, tags
+useEditJournalEntry.ts:85 useEditJournalEntry - Journal entry lines sample: [
+  {
+    "id": 737,
+    "journalEntryId": 285,
+    "accountId": 325,
+    "type": "debit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.530Z",
+    "updatedAt": "2025-06-17T23:42:52.530Z",
+    "tags": [
+      {
+        "dimensionId": 23,
+        "dimensionValueId": 28,
+        "dimensionName": "Vendor",
+        "dimensionValueName": "test"
+      }
+    ]
+  },
+  {
+    "id": 738,
+    "journalEntryId": 285,
+    "accountId": 343,
+    "type": "credit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.664Z",
+    "updatedAt": "2025-06-17T23:42:52.664Z",
+    "tags": []
+  }
+]
+useEditJournalEntry.ts:90 useEditJournalEntry - Line format:  SERVER (type/amount)
+useEditJournalEntry.ts:93 useEditJournalEntry - Converting server format to client format
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 1 of 2: {
+  "id": 737,
+  "journalEntryId": 285,
+  "accountId": 325,
+  "type": "debit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.530Z",
+  "updatedAt": "2025-06-17T23:42:52.530Z",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ]
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 1 converted from type='debit', amount=123.0000 to: {
+  "accountId": "325",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "123.00",
+  "credit": "",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ],
+  "id": 737
+}
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 2 of 2: {
+  "id": 738,
+  "journalEntryId": 285,
+  "accountId": 343,
+  "type": "credit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.664Z",
+  "updatedAt": "2025-06-17T23:42:52.664Z",
+  "tags": []
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 2 converted from type='credit', amount=123.0000 to: {
+  "accountId": "343",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "",
+  "credit": "123.00",
+  "tags": [],
+  "id": 738
+}
+useEditJournalEntry.ts:119 useEditJournalEntry - All lines converted from server to client format
+useEditJournalEntry.ts:143 useEditJournalEntry - Processed entry lines: (2) [{…}, {…}]
+useEditJournalEntry.ts:153 useEditJournalEntry - Files in processedEntry: []
+useEditJournalEntry.ts:154 useEditJournalEntry - Raw data has files: []
+useEditJournalEntry.ts:161 useEditJournalEntry - Final processedEntry.files: []
+NewJournalEntry.tsx:110 DEBUG NewJournalEntry - Raw accountsData: {accounts: Array(74)}
+NewJournalEntry.tsx:116 DEBUG NewJournalEntry - accountsData.accounts exists and is an array with length: 74
+NewJournalEntry.tsx:120 DEBUG NewJournalEntry - After filtering active accounts: 74
+NewJournalEntry.tsx:142 DEBUG NewJournalEntry - Final accounts array after mapping: 74
+NewJournalEntry.tsx:73 DEBUG NewJournalEntry - Accounts API success response: {accounts: Array(74)}
+NewJournalEntry.tsx:74 DEBUG NewJournalEntry - Response has accounts array: true
+NewJournalEntry.tsx:75 DEBUG NewJournalEntry - Accounts array length: 74
+useEditJournalEntry.ts:19 useEditJournalEntry - Entry ID from URL: 285
+useEditJournalEntry.ts:20 useEditJournalEntry - Client ID: 73 Entity ID: 238
+urlHelpers.ts:44 DEBUG: getJournalEntriesBaseUrl called with clientId: 73, entityId: 238
+urlHelpers.ts:46 DEBUG: getJournalEntriesBaseUrl constructed URL: /api/clients/73/entities/238/journal-entries
+useEditJournalEntry.ts:37 useEditJournalEntry - Journal entry data: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+useEditJournalEntry.ts:45 useEditJournalEntry - Raw API response structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:53 useEditJournalEntry - Extracted journal entry structure: id, clientId, entityId, date, referenceNumber, description, isSystemGenerated, status, journalType, supDocId, reversalDate, isAccrual, isReversal, reversedEntryId, isReversed, reversedByEntryId, requestedBy, requestedAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, postedBy, postedAt, createdBy, createdAt, updatedAt, lines, files, reversalEntry
+useEditJournalEntry.ts:57 useEditJournalEntry - Journal entry status: draft
+useEditJournalEntry.ts:79 useEditJournalEntry - Journal entry lines count: 2
+useEditJournalEntry.ts:83 useEditJournalEntry - First line structure: id, journalEntryId, accountId, type, amount, description, entityCode, fsliBucket, internalReportingBucket, item, lineNo, reference, reconciled, reconciledAt, reconciledBy, createdAt, updatedAt, tags
+useEditJournalEntry.ts:85 useEditJournalEntry - Journal entry lines sample: [
+  {
+    "id": 737,
+    "journalEntryId": 285,
+    "accountId": 325,
+    "type": "debit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.530Z",
+    "updatedAt": "2025-06-17T23:42:52.530Z",
+    "tags": [
+      {
+        "dimensionId": 23,
+        "dimensionValueId": 28,
+        "dimensionName": "Vendor",
+        "dimensionValueName": "test"
+      }
+    ]
+  },
+  {
+    "id": 738,
+    "journalEntryId": 285,
+    "accountId": 343,
+    "type": "credit",
+    "amount": "123.0000",
+    "description": "123",
+    "entityCode": "ONE",
+    "fsliBucket": null,
+    "internalReportingBucket": null,
+    "item": null,
+    "lineNo": null,
+    "reference": null,
+    "reconciled": false,
+    "reconciledAt": null,
+    "reconciledBy": null,
+    "createdAt": "2025-06-17T23:42:52.664Z",
+    "updatedAt": "2025-06-17T23:42:52.664Z",
+    "tags": []
+  }
+]
+useEditJournalEntry.ts:90 useEditJournalEntry - Line format:  SERVER (type/amount)
+useEditJournalEntry.ts:93 useEditJournalEntry - Converting server format to client format
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 1 of 2: {
+  "id": 737,
+  "journalEntryId": 285,
+  "accountId": 325,
+  "type": "debit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.530Z",
+  "updatedAt": "2025-06-17T23:42:52.530Z",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ]
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 1 converted from type='debit', amount=123.0000 to: {
+  "accountId": "325",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "123.00",
+  "credit": "",
+  "tags": [
+    {
+      "dimensionId": 23,
+      "dimensionValueId": 28,
+      "dimensionName": "Vendor",
+      "dimensionValueName": "test"
+    }
+  ],
+  "id": 737
+}
+useEditJournalEntry.ts:97 useEditJournalEntry - Converting line 2 of 2: {
+  "id": 738,
+  "journalEntryId": 285,
+  "accountId": 343,
+  "type": "credit",
+  "amount": "123.0000",
+  "description": "123",
+  "entityCode": "ONE",
+  "fsliBucket": null,
+  "internalReportingBucket": null,
+  "item": null,
+  "lineNo": null,
+  "reference": null,
+  "reconciled": false,
+  "reconciledAt": null,
+  "reconciledBy": null,
+  "createdAt": "2025-06-17T23:42:52.664Z",
+  "updatedAt": "2025-06-17T23:42:52.664Z",
+  "tags": []
+}
+useEditJournalEntry.ts:113 useEditJournalEntry - Line 2 converted from type='credit', amount=123.0000 to: {
+  "accountId": "343",
+  "entityCode": "ONE",
+  "description": "123",
+  "debit": "",
+  "credit": "123.00",
+  "tags": [],
+  "id": 738
+}
+useEditJournalEntry.ts:119 useEditJournalEntry - All lines converted from server to client format
+useEditJournalEntry.ts:143 useEditJournalEntry - Processed entry lines: (2) [{…}, {…}]
+useEditJournalEntry.ts:153 useEditJournalEntry - Files in processedEntry: []
+useEditJournalEntry.ts:154 useEditJournalEntry - Raw data has files: []
+useEditJournalEntry.ts:161 useEditJournalEntry - Final processedEntry.files: []
+NewJournalEntry.tsx:110 DEBUG NewJournalEntry - Raw accountsData: {accounts: Array(74)}
+NewJournalEntry.tsx:116 DEBUG NewJournalEntry - accountsData.accounts exists and is an array with length: 74
+NewJournalEntry.tsx:120 DEBUG NewJournalEntry - After filtering active accounts: 74
+NewJournalEntry.tsx:142 DEBUG NewJournalEntry - Final accounts array after mapping: 74
+JournalEntryForm.tsx:265 DEBUG: parseReferenceNumber called with: JE-73-238-062225:123-1750624746921
+JournalEntryForm.tsx:274 DEBUG: Extracted suffix: 123-1750624746921 from parts: (2) ['JE-73-238-062225', '123-1750624746921']
+JournalEntryForm.tsx:283 DEBUG: useState initialization: {existingEntryId: 285, referenceNumber: 'JE-73-238-062225:123-1750624746921', extractedSuffix: '123-1750624746921', existingEntry: {…}}
+JournalEntryForm.tsx:366 DEBUG - JournalEntryForm files response: {files: Array(0), count: 0}
+JournalEntryForm.tsx:265 DEBUG: parseReferenceNumber called with: JE-73-238-062225:123-1750624746921
+JournalEntryForm.tsx:274 DEBUG: Extracted suffix: 123-1750624746921 from parts: (2) ['JE-73-238-062225', '123-1750624746921']
+JournalEntryForm.tsx:306 DEBUG: useEffect triggered for entry: 285 {referenceNumber: 'JE-73-238-062225:123-1750624746921', extractedSuffix: '123-1750624746921', willUpdate: true}
+queryClient.ts:43 DEBUG apiRequest: isFormData: false data type: undefined url: /api/clients/73/dimensions method: GET
+NewJournalEntry.tsx:100 DEBUG NewJournalEntry - Entities API success response: {status: 'success', entities: Array(4)}
+NewJournalEntry.tsx:101 DEBUG NewJournalEntry - Response has entities array: true
+NewJournalEntry.tsx:102 DEBUG NewJournalEntry - Entities array length: 4
+EntityLayout.tsx:120 EntityLayout: Context ready - rendering Outlet {clientId: '73', entityId: '238'}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntries.tsx:109 DEBUG - JournalEntries - Raw entries: (3) [{…}, {…}, {…}]
+JournalEntries.tsx:114 DEBUG - Entry 553 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 553: debit=1, credit=1
+JournalEntries.tsx:114 DEBUG - Entry 285 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 285: debit=123, credit=123
+JournalEntries.tsx:114 DEBUG - Entry 398 structure: (29) ['id', 'clientId', 'entityId', 'date', 'referenceNumber', 'description', 'isSystemGenerated', 'status', 'journalType', 'supDocId', 'reversalDate', 'isAccrual', 'isReversal', 'reversedEntryId', 'isReversed', 'reversedByEntryId', 'requestedBy', 'requestedAt', 'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt', 'rejectionReason', 'postedBy', 'postedAt', 'createdBy', 'createdAt', 'updatedAt', 'totals']
+JournalEntries.tsx:119 DEBUG - Using pre-calculated totals for entry 398: debit=1.25, credit=1.25
+EntityLayout.tsx:35 EntityLayout: Setting client ID from URL params: 73
+EntityContext.tsx:78 ARCHITECT_DEBUG_SELECTOR_STATE: Setting client ID to 73
+EntityLayout.tsx:65 EntityLayout: Found entity in loaded entities, setting current entity: ONE
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: false, isExpanded: false, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 73 entityId: 238 entryId: 285
+JournalEntryDetail.tsx:597 JournalEntryDetail: Using clientId 73 for API requests (from param: 73 or entity: 73 )
+JournalEntryDetail.tsx:631 DEBUG - AccountsMap - Accounts array: (74) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+JournalEntryDetail.tsx:707 DEBUG - JournalEntryDetail - Data type: object
+JournalEntryDetail.tsx:708 DEBUG - JournalEntryDetail - Data structure: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:720 entry at render {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:721 DEBUG - JournalEntryDetail - Using entry: {id: 285, clientId: 73, entityId: 238, date: '2025-06-17', referenceNumber: 'JE-73-238-062225:123-1750624746921', …}
+JournalEntryDetail.tsx:725 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:726 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:727 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:740 DEBUG - Files query response: {files: Array(0), count: 0}
+JournalEntryDetail.tsx:757 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:761 DEBUG - JournalEntryDetail - First line properties: (18) ['id', 'journalEntryId', 'accountId', 'type', 'amount', 'description', 'entityCode', 'fsliBucket', 'internalReportingBucket', 'item', 'lineNo', 'reference', 'reconciled', 'reconciledAt', 'reconciledBy', 'createdAt', 'updatedAt', 'tags']
+JournalEntryDetail.tsx:1678 ARCHITECT_DEBUG: Button visibility check. Entry ID: 285, Status: draft
+JournalEntryDetail.tsx:1223 DEBUG: Permission matrix: {entryId: 285, status: 'draft', isAdmin: true, isSupervisor: false, isAccounting: false, …}
+JournalEntryDetail.tsx:1849 Line 0: debitValue=123, creditValue=0, line= {id: 737, journalEntryId: 285, accountId: 325, type: 'debit', amount: '123.0000', …}
+JournalEntryDetail.tsx:1849 Line 1: debitValue=0, creditValue=123, line= {id: 738, journalEntryId: 285, accountId: 343, type: 'credit', amount: '123.0000', …}
+GlobalContextSelector.tsx:377 ARCHITECT_DEBUG_PHANTOM: Client 73 (ONE1) - isEntitySelectionView: true, expandedClients[73]: true, isExpanded: true, path: /clients/73/entities/238/journal-entries/285, selectedClientId: 73, currentEntity: 238
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 73 - showEntities: true, filteredEntities: 4, isExpanded: true, isEntitySelectionView: true, shouldShow: true
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 235 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 250 - showEntities: true, filteredEntities: 2, isExpanded: false, isEntitySelectionView: true, shouldShow: false
+GlobalContextSelector.tsx:438 ARCHITECT_DEBUG_ENTITY_LIST: Client 251 - showEntities: true, filteredEntities: 1, isExpanded: false, isEntitySelectionView: true, shouldShow: false
