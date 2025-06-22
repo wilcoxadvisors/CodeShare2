@@ -233,12 +233,14 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
       }
     });
     setExpandedClients(allExpanded);
+    setHasAutoExpanded(true); // Prevent future auto-expansion
   }, [filteredClients, entitiesByClient, showEntities]);
 
   const handleCollapseAll = useCallback(() => {
     if (!showEntities) return; // Only act if entities are shown
     console.log("ARCHITECT_DEBUG_SELECTOR_COLLAPSE_ALL: Collapsing all clients");
     setExpandedClients({}); // Reset to all collapsed
+    setHasAutoExpanded(true); // Prevent future auto-expansion
   }, [showEntities]);
 
   // Handle entity selection with stabilized navigation
@@ -290,26 +292,7 @@ export default function GlobalContextSelector({ showEntities = true }: GlobalCon
     }
   }, [selectedClientId]);
 
-  // Auto-expand clients that have entities on initial load (Journal Entries only)
-  useEffect(() => {
-    const isEntitySelectionView = !location.pathname.includes('/chart-of-accounts') && !location.pathname.includes('/manage/dimensions');
-    
-    if (isEntitySelectionView && showEntities && Object.keys(expandedClients).length === 0) {
-      // Only expand if no clients are currently expanded (initial load)
-      const clientsWithEntities: Record<number, boolean> = {};
-      
-      Object.entries(entitiesByClient).forEach(([clientIdStr, entities]) => {
-        if (entities.length > 0) {
-          clientsWithEntities[parseInt(clientIdStr)] = true;
-        }
-      });
-      
-      if (Object.keys(clientsWithEntities).length > 0) {
-        console.log('ARCHITECT_DEBUG_AUTO_EXPAND: Auto-expanding clients with entities:', Object.keys(clientsWithEntities));
-        setExpandedClients(clientsWithEntities);
-      }
-    }
-  }, [entitiesByClient, location.pathname, showEntities, expandedClients]);
+  // No auto-expansion - users control visibility manually
   
   // Auto-selection of first client has been removed as requested
   // No automatic client selection will occur

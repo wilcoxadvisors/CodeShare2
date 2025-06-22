@@ -92,7 +92,8 @@ function EntityProvider({ children }: { children: ReactNode }) {
   console.log('ENTITY_CONTEXT_AUTH_STATE:', {
     user: user ? { id: user.id, username: user.username } : null,
     isAuthLoading: isAuthLoadingFromAuthContext,
-    entityFetchAttempted: entityFetchAttempted.current
+    entityFetchAttempted: entityFetchAttempted.current,
+    queryEnabled: !!user && !isAuthLoadingFromAuthContext
   });
   
   // CRITICAL: Add detailed debugging for entity context query enabling conditions
@@ -100,6 +101,11 @@ function EntityProvider({ children }: { children: ReactNode }) {
   console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_CONFIG: UserExists=', 
     !!user, 'AuthNotLoading=', !isAuthLoadingFromAuthContext, 'QueryEnabled=', 
     !!user && !isAuthLoadingFromAuthContext);
+    
+  // Force query execution for debugging
+  if (!!user && !isAuthLoadingFromAuthContext) {
+    console.log('ARCHITECT_DEBUG_ENTITY_CTX_QUERY_SHOULD_RUN: Query conditions met, should execute');
+  }
   
   // Add clients query for full object exposure - use standard /api/clients endpoint
   const { data: clientsData = [] } = useQuery<Client[]>({
@@ -198,9 +204,16 @@ function EntityProvider({ children }: { children: ReactNode }) {
             }
             
             const response = await entitiesResponse.json();
+            console.log(`ARCHITECT_DEBUG_ENTITY_CTX_RAW_RESPONSE: Client ${client.id} response:`, response);
+            
             // Handle different response formats - sometimes entities are directly in response, sometimes in data property
             const entities = Array.isArray(response) ? response : (response.entities || response.data || []);
             console.log(`ARCHITECT_DEBUG_ENTITY_CTX_CLIENT_ENTITIES: Client ${client.id} has ${entities.length} entities`);
+            
+            if (entities.length > 0) {
+              console.log(`ARCHITECT_DEBUG_ENTITY_CTX_SAMPLE_ENTITY: Client ${client.id} first entity:`, entities[0]);
+            }
+            
             return entities;
           } catch (error) {
             console.error(`Error fetching entities for client ${client.id}:`, error);
