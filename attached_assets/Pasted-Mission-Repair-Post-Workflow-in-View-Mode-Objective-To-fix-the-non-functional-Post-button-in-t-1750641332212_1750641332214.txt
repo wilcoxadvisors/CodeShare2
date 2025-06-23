@@ -1,0 +1,77 @@
+Mission: Repair 'Post' Workflow in View Mode
+Objective: To fix the non-functional "Post" button in the Journal Entry Detail (View Mode) by ensuring it sends the correct data payload to the backend, mirroring the behavior of the Edit Mode.
+
+Targeted Issue: #33 ("Can not post a entry in view mode when the JE is a draft.")
+
+Architect's Diagnosis:
+I have analyzed the difference between the "Post" functionality in the form versus the detail view. The cause of the failure is clear and located in JournalEntryDetail.tsx.
+
+In Edit/Create Mode (JournalEntryForm.tsx): The handlePostEntry function correctly gathers all form data (header, lines), builds a complete payload object, and sends it to the backend create or update mutation. This works.
+In View Mode (JournalEntryDetail.tsx): The handlePostEntry function does not work. It calculates a complete updatePayload with all the necessary data, logs it to the console, but then discards it. It proceeds to call a different mutation (postJournalEntry) that sends an empty body to the /post endpoint. This endpoint is only designed to flip a status, not to save data, which is why the action fails or does not persist any changes made in a draft.
+We will fix this by making the View Mode's "Post" button use the same data-rich mutation as the Edit Mode.
+
+Surgical Instruction for Agent:
+
+Open File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+
+Locate the handlePostEntry function.
+
+Replace the Mutation Call: The end of this function contains the critical flaw. You will replace the incorrect mutation call with one that sends the complete payload.
+
+FROM (The flawed code):
+
+TypeScript
+
+// ... inside handlePostEntry()
+// The code correctly builds 'updatePayload' above this point, then ignores it.
+
+console.log('DEBUG: Final post parameters:', JSON.stringify(postParams, null, 2));
+
+postJournalEntry.mutate(postParams, {
+  onSuccess: (result) => {
+    // ...
+  },
+  onError: (error: any) => {
+    // ...
+  }
+});
+TO (Apply this exact change):
+
+TypeScript
+
+// ... inside handlePostEntry()
+// The 'updatePayload' is already correctly constructed above this point.
+
+console.log('DEBUG: Posting with complete payload:', updatePayload);
+
+// ARCHITECT'S SURGICAL FIX: Use the 'updateJournalEntry' mutation 
+// and pass the 'updatePayload' which contains all the necessary data.
+updateJournalEntry.mutate(updatePayload, {
+  onSuccess: (result) => {
+    console.log('DEBUG: Post success response:', JSON.stringify(result, null, 2));
+
+    if (clientId && currentEntity?.id) {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/<span class="math-inline">\{clientId\}/entities/</span>{currentEntity.id}/journal-entries`]
+      });
+    }
+
+    toast({
+      title: "Journal Entry Posted",
+      description: "The journal entry has been posted successfully.",
+    });
+
+    refetch(); // Refetch the current entry to show the "posted" status
+  },
+  onError: (error: any) => {
+    console.error('ERROR: Failed to post journal entry:', error);
+    toast({
+      title: "Error",
+      description: `Failed to post journal entry: ${error.message}`,
+      variant: "destructive",
+    });
+  }
+});
+Note: You must also ensure that the updateJournalEntry mutation is available in this component. It is already being imported from useJournalEntry at the top of the file, so no import is needed.
+
+This change ensures that when the "Post" button is clicked in the detail view, it sends the full, correct journal entry data to the server, exactly like the form does.

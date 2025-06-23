@@ -1192,10 +1192,36 @@ function JournalEntryDetail() {
         return;
       }
       
-      // Use simple entryId parameter like edit mode
-      console.log('DEBUG: Posting journal entry with ID:', entryId);
-      
-      postJournalEntry.mutate(Number(entryId));
+      console.log('DEBUG: Posting with complete payload:', updatePayload);
+
+      // ARCHITECT'S SURGICAL FIX: Use the 'updateJournalEntry' mutation 
+      // and pass the 'updatePayload' which contains all the necessary data.
+      updateJournalEntry.mutate(updatePayload, {
+        onSuccess: (result) => {
+          console.log('DEBUG: Post success response:', JSON.stringify(result, null, 2));
+
+          if (clientId && currentEntity?.id) {
+            queryClient.invalidateQueries({
+              queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+            });
+          }
+
+          toast({
+            title: "Journal Entry Posted",
+            description: "The journal entry has been posted successfully.",
+          });
+
+          refetch(); // Refetch the current entry to show the "posted" status
+        },
+        onError: (error: any) => {
+          console.error('ERROR: Failed to post journal entry:', error);
+          toast({
+            title: "Error",
+            description: `Failed to post journal entry: ${error.message}`,
+            variant: "destructive",
+          });
+        }
+      });
     }
   };
   
