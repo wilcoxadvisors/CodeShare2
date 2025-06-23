@@ -575,7 +575,7 @@ export function JournalEntryLinesTable({
                           </Button>
                         </div>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto">
+                      <div>
                         {filteredAccountTree.length === 0 ? (
                           <div className="px-3 py-4 text-center text-sm text-gray-500">
                             No accounts found
