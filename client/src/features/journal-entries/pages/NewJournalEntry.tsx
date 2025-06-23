@@ -184,7 +184,7 @@ function NewJournalEntry() {
   }
 
   return (
-    <div className="py-6">
+    <div className="h-full overflow-y-auto py-6">
       <PageHeader 
         title={isEditMode ? "Edit Journal Entry" : "New Journal Entry"} 
         description={isEditMode ? "Edit an existing journal entry" : "Create a new journal entry"}

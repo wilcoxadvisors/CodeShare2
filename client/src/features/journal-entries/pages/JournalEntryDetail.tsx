@@ -1666,7 +1666,7 @@ function JournalEntryDetail() {
   console.log(`ARCHITECT_DEBUG: Button visibility check. Entry ID: ${entry?.id}, Status: ${entry?.status}`);
   
   return (
-    <div className="py-6">
+    <div className="h-full overflow-y-auto py-6">
       <PageHeader
         title={`Journal Entry #${entry.id}`}
         description={entry.description || 'No description'}
