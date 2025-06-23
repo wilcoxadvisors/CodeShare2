@@ -89,15 +89,21 @@ export function getDebit(line: any): number {
   if (!line) return 0;
   
   if (isClientFormatLine(line)) {
-    return safeParseAmount(line.debit);
+    const result = safeParseAmount(line.debit);
+    console.log('DEBUG getDebit ClientFormat:', { debit: line.debit, result });
+    return result;
   }
   
   if (isServerFormatLine(line)) {
-    return line.type === 'debit' ? safeParseAmount(line.amount) : 0;
+    const result = line.type === 'debit' ? safeParseAmount(line.amount) : 0;
+    console.log('DEBUG getDebit ServerFormat:', { type: line.type, amount: line.amount, result });
+    return result;
   }
   
   // Fallback for legacy or unrecognized formats
-  return typeof line.debit !== 'undefined' ? safeParseAmount(line.debit) : 0;
+  const result = typeof line.debit !== 'undefined' ? safeParseAmount(line.debit) : 0;
+  console.log('DEBUG getDebit Fallback:', { debit: line.debit, result });
+  return result;
 }
 
 /** Gets the credit amount from a line regardless of format */
@@ -105,13 +111,19 @@ export function getCredit(line: any): number {
   if (!line) return 0;
   
   if (isClientFormatLine(line)) {
-    return safeParseAmount(line.credit);
+    const result = safeParseAmount(line.credit);
+    console.log('DEBUG getCredit ClientFormat:', { credit: line.credit, result });
+    return result;
   }
   
   if (isServerFormatLine(line)) {
-    return line.type === 'credit' ? safeParseAmount(line.amount) : 0;
+    const result = line.type === 'credit' ? safeParseAmount(line.amount) : 0;
+    console.log('DEBUG getCredit ServerFormat:', { type: line.type, amount: line.amount, result });
+    return result;
   }
   
   // Fallback for legacy or unrecognized formats
-  return typeof line.credit !== 'undefined' ? safeParseAmount(line.credit) : 0;
+  const result = typeof line.credit !== 'undefined' ? safeParseAmount(line.credit) : 0;
+  console.log('DEBUG getCredit Fallback:', { credit: line.credit, result });
+  return result;
 }
