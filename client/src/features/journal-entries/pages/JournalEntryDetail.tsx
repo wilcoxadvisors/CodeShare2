@@ -441,9 +441,12 @@ function JournalEntryDetail() {
       refetch();
     },
     onError: (error) => {
+      console.error('ERROR: Post journal entry failed:', error);
+      console.error('ERROR: Error details:', error.response?.data || error.message);
+      
       toast({
         title: "Error",
-        description: "Failed to post journal entry",
+        description: `Failed to post journal entry: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     },
