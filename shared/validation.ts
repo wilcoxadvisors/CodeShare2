@@ -246,6 +246,9 @@ export const updateJournalEntrySchema = z.object({
     mimeType: z.string().optional(),
     size: z.number().optional()
   })).optional(),
+  
+  // File deletion queue for transactional deletion
+  filesToDelete: z.array(z.number().int().positive()).optional(),
 })
 // First refinement: Check overall balance (debits = credits) only when lines are provided
 .refine(data => {

@@ -456,6 +456,8 @@ function JournalEntryForm({
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
       const payload = { ...data, filesToDelete }; // Add the list of IDs to the payload
+      console.log("ARCHITECT_DEBUG_PAYLOAD: Sending filesToDelete:", filesToDelete);
+      console.log("ARCHITECT_DEBUG_PAYLOAD: Full payload:", payload);
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`, {
         method: "PATCH",
         data: payload,

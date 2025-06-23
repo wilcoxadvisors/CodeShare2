@@ -274,12 +274,22 @@ export function registerJournalEntryRoutes(app: Express) {
     }
     
     try {
+      console.log('ARCHITECT_DEBUG_RAW_BODY: Raw request body:', JSON.stringify(req.body, null, 2));
+      
       // Parse and validate the request body
       const updateData = updateJournalEntrySchema.parse(req.body);
       console.log('--- UPDATE REQUEST DATA ---', updateData);
+      console.log('ARCHITECT_DEBUG_FILES_TO_DELETE: filesToDelete in updateData:', updateData.filesToDelete);
+      console.log('ARCHITECT_DEBUG_FILES_TO_DELETE: filesToDelete in req.body:', req.body.filesToDelete);
       
-      // Extract lines and files from the update data
-      const { lines, files, ...entryData } = updateData;
+      // Extract lines, files, and filesToDelete from the update data
+      const { lines, files, filesToDelete, ...entryData } = updateData;
+      
+      // Add filesToDelete to entryData so it gets passed to the storage layer
+      if (filesToDelete && Array.isArray(filesToDelete) && filesToDelete.length > 0) {
+        (entryData as any).filesToDelete = filesToDelete;
+        console.log('ARCHITECT_DEBUG_FILES_TO_DELETE: Added filesToDelete to entryData:', filesToDelete);
+      }
       
       // ARCHITECT'S SURGICAL FIX: Auto-generate unique reference numbers instead of blocking
       if (entryData.referenceNumber && entryData.referenceNumber !== existingEntry.referenceNumber) {
