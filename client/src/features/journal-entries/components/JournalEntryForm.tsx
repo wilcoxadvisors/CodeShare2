@@ -415,32 +415,24 @@ function JournalEntryForm({
       });
     },
     onSuccess: (newEntry) => {
-      // Update cache with new entry
+      // Single cache update operation for better performance
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => (oldData ? [newEntry, ...oldData] : [newEntry])
       );
       
-      // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({
-        queryKey: ['journal-entries', effectiveClientId, entityId]
-      });
-      
       // Upload pending files if any
       if (pendingAttachments.length > 0 && uploadPendingFilesRef.current) {
         uploadPendingFilesRef.current(newEntry.id).then(() => {
           toast({ title: "Success", description: "Journal entry created with attachments." });
-          // Add small delay to ensure cache is updated before navigation
-          setTimeout(() => onSubmit(), 100);
+          onSubmit();
         }).catch(() => {
           toast({ title: "Warning", description: "Journal entry created but some files failed to upload." });
-          // Add small delay to ensure cache is updated before navigation
-          setTimeout(() => onSubmit(), 100);
+          onSubmit();
         });
       } else {
         toast({ title: "Success", description: "Journal entry created." });
-        // Add small delay to ensure cache is updated before navigation
-        setTimeout(() => onSubmit(), 100);
+        onSubmit();
       }
     },
     onError: (error) => {
@@ -468,31 +460,14 @@ function JournalEntryForm({
       if (filesToDelete.length > 0) {
         setAttachments(prev => prev.filter(file => !filesToDelete.includes(file.id)));
       }
-      setFilesToDelete([]); // IMPORTANT: Clear the queue on success
+      setFilesToDelete([]); // Clear the queue on success
       
-      // Update the journal entries cache with the new data
+      // Single cache update operation for better performance
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => 
           oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
       );
-      
-      // Targeted cache invalidation for immediate UI updates
-      queryClient.invalidateQueries({
-        queryKey: ['journal-entries', effectiveClientId, entityId]
-      });
-      
-      // Also invalidate specific entry and its files
-      if (updatedEntry.id) {
-        queryClient.invalidateQueries({
-          queryKey: ['journal-entry', effectiveClientId, entityId, updatedEntry.id]
-        });
-        
-        // CRITICAL: Invalidate file attachments cache after deletion
-        queryClient.invalidateQueries({
-          queryKey: ['journalEntryAttachments', effectiveClientId, entityId, updatedEntry.id]
-        });
-      }
       
       // Update journal data state with the response to maintain form consistency
       if (updatedEntry) {
@@ -525,14 +500,14 @@ function JournalEntryForm({
       if (pendingAttachments.length > 0) {
         handleUploadPendingFiles(updatedEntry.id).then(() => {
           toast({ title: "Success", description: "Journal entry updated with attachments." });
-          setTimeout(() => onSubmit(), 100);
+          onSubmit();
         }).catch(() => {
           toast({ title: "Warning", description: "Journal entry updated but some files failed to upload." });
-          setTimeout(() => onSubmit(), 100);
+          onSubmit();
         });
       } else {
         toast({ title: "Success", description: "Journal entry updated." });
-        setTimeout(() => onSubmit(), 100);
+        onSubmit();
       }
     },
     onError: (error) => {
