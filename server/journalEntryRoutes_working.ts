@@ -454,14 +454,28 @@ export function registerJournalEntryRoutes(app: Express) {
     }
 
     try {
-      // Post the journal entry
+      console.log(`POST ENDPOINT: Attempting to post journal entry ${id} by user ${user.id}`);
+      
+      // Post the journal entry using the storage method
       const postedEntry = await journalEntryStorage.postJournalEntry(id, user.id);
       
-      console.log(`Successfully posted journal entry ${id} by user ${user.id}`);
+      if (!postedEntry) {
+        throw new ApiError(500, `Failed to post journal entry ${id}`);
+      }
+      
+      console.log(`POST ENDPOINT: Successfully posted journal entry ${id} by user ${user.id}`);
+      
+      // Return the updated entry in the same format as other endpoints
       res.json(postedEntry);
     } catch (error) {
-      console.error('Error posting journal entry:', error);
-      throw error;
+      console.error('POST ENDPOINT: Error posting journal entry:', error);
+      
+      // Ensure proper error response format
+      if (error instanceof ApiError) {
+        res.status(error.status).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Internal server error during journal entry posting' });
+      }
     }
   }));
 
