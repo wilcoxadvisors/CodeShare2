@@ -464,6 +464,10 @@ function JournalEntryForm({
       });
     },
     onSuccess: (updatedEntry) => {
+      // IMMEDIATE UI UPDATE: Remove deleted files from attachments state
+      if (filesToDelete.length > 0) {
+        setAttachments(prev => prev.filter(file => !filesToDelete.includes(file.id)));
+      }
       setFilesToDelete([]); // IMPORTANT: Clear the queue on success
       
       // Update the journal entries cache with the new data
@@ -478,10 +482,15 @@ function JournalEntryForm({
         queryKey: ['journal-entries', effectiveClientId, entityId]
       });
       
-      // Also invalidate specific entry
+      // Also invalidate specific entry and its files
       if (updatedEntry.id) {
         queryClient.invalidateQueries({
           queryKey: ['journal-entry', effectiveClientId, entityId, updatedEntry.id]
+        });
+        
+        // CRITICAL: Invalidate file attachments cache after deletion
+        queryClient.invalidateQueries({
+          queryKey: ['journalEntryAttachments', effectiveClientId, entityId, updatedEntry.id]
         });
       }
       
@@ -1197,13 +1206,26 @@ function JournalEntryForm({
           }
         }}
         onAddAttachments={(files: File[]) => {
-          if (existingEntry?.id) {
-            // For existing entries, upload immediately
-            uploadFilesMutation.mutate(files);
-          } else {
-            // For new entries, add to pending files
-            setPendingAttachments(prev => [...prev, ...files]);
-          }
+          // CRITICAL FIX: Always use pending system to prevent orphaned files
+          // Files will only be uploaded when the entry is actually saved
+          setPendingAttachments(prev => [...prev, ...files]);
+          
+          // Update attachments display for immediate UI feedback
+          const newPendingFiles = files.map((file, index) => ({
+            id: -(Date.now() + index), // Temporary negative ID for tracking
+            filename: file.name,
+            size: file.size,
+            mimeType: file.type,
+            uploadedAt: new Date(),
+            journalEntryId: 0,
+            uploadedBy: 1
+          }));
+          setAttachments(prev => [...prev, ...newPendingFiles]);
+          
+          toast({ 
+            title: "Files ready", 
+            description: `${files.length} file(s) will be uploaded when you save the entry.` 
+          });
         }}
       />
 
