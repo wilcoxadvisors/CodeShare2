@@ -521,9 +521,19 @@ function JournalEntryForm({
         }
       }
       
-      toast({ title: "Success", description: "Journal entry updated." });
-      // Add small delay to ensure cache is updated before navigation
-      setTimeout(() => onSubmit(), 100);
+      // Upload pending files if any
+      if (pendingAttachments.length > 0) {
+        handleUploadPendingFiles(updatedEntry.id).then(() => {
+          toast({ title: "Success", description: "Journal entry updated with attachments." });
+          setTimeout(() => onSubmit(), 100);
+        }).catch(() => {
+          toast({ title: "Warning", description: "Journal entry updated but some files failed to upload." });
+          setTimeout(() => onSubmit(), 100);
+        });
+      } else {
+        toast({ title: "Success", description: "Journal entry updated." });
+        setTimeout(() => onSubmit(), 100);
+      }
     },
     onError: (error) => {
       toast({
