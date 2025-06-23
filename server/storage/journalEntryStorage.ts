@@ -633,14 +633,14 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                 if (fileToDelete) {
                     console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Deleting file ${fileId} with storage key ${fileToDelete.storageKey}`);
                     
-                    // Delete physical file first
+                    // CRITICAL FIX: Delete database record FIRST to avoid foreign key constraint violation
+                    await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
+                    
+                    // Then delete physical file
                     if (fileToDelete.storageKey) {
                         const fileStorage = getFileStorage();
                         await fileStorage.delete(fileToDelete.storageKey);
                     }
-                    
-                    // Delete database record
-                    await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
                 }
             }
             console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Successfully deleted ${fileIdsToDelete.length} files`);
