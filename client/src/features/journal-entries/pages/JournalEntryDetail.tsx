@@ -418,55 +418,35 @@ function JournalEntryDetail() {
     }
   });
 
-  // Post journal entry mutation
+  // Post journal entry mutation - using exact same pattern as edit mode
   const postJournalEntry = useMutation({
-    mutationFn: async (params: { id: number; clientId: number; entityId: number }) => {
-      const { id, clientId, entityId } = params;
-      console.log('DEBUG: postJournalEntry mutation called with params:', params);
-      
-      const postUrl = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/post`;
-      console.log('DEBUG: Posting to URL:', postUrl);
-      
-      try {
-        const result = await apiRequest(postUrl, {
-          method: 'PATCH'
-        });
-        console.log('DEBUG: apiRequest successful, result:', result);
-        return result;
-      } catch (error) {
-        console.error('DEBUG: apiRequest failed:', error);
-        throw error;
-      }
+    mutationFn: async (entryId: number) => {
+      return apiRequest(`/api/clients/${clientId}/entities/${currentEntity?.id}/journal-entries/${entryId}/post`, {
+        method: "PATCH",
+      });
     },
-    onSuccess: async (response: any, params) => {
-      console.log('DEBUG: Post success response:', response);
-      
-      // Use the same cache invalidation pattern as edit mode
+    onSuccess: async (response: any) => {
+      // Use exact same cache invalidation as edit mode
       await queryClient.refetchQueries({ 
         queryKey: ["journal-entries", clientId, currentEntity?.id],
         type: 'all'
       });
       
       toast({
-        title: 'Success',
-        description: 'Journal entry posted successfully',
+        title: "Success",
+        description: "Journal entry posted successfully",
       });
       
       // Refresh the entry to show updated status
       refetch();
     },
-    onError: (error: any) => {
-      console.error('ERROR in postJournalEntry mutation function:', error);
-      console.error('ERROR: Post journal entry mutation failed:', error);
-      console.error('ERROR: Failed to post journal entry:', error);
-      console.error('ERROR: Error response:', error.response?.data);
-      
+    onError: (error) => {
       toast({
-        title: 'Error',
-        description: `Failed to post journal entry: ${error.message || 'Unknown error'}`,
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to post journal entry",
+        variant: "destructive",
       });
-    }
+    },
   });
 
   // Copy journal entry mutation
@@ -1209,50 +1189,10 @@ function JournalEntryDetail() {
         return;
       }
       
-      // Use the dedicated post endpoint with correct parameters
-      // IMPORTANT: Ensure we're passing numeric values, not strings
-      const postParams = {
-        id: Number(entryId),
-        clientId: Number(entry.clientId),
-        entityId: Number(entry.entityId)
-      };
+      // Use simple entryId parameter like edit mode
+      console.log('DEBUG: Posting journal entry with ID:', entryId);
       
-      console.log('DEBUG: Final post parameters:', JSON.stringify(postParams, null, 2));
-      
-      postJournalEntry.mutate(postParams, {
-        onSuccess: (result) => {
-          console.log('DEBUG: Post success response:', JSON.stringify(result, null, 2));
-          
-          // PART 4 FIX: Invalidate journal entry list cache to show updated status
-          if (clientId && currentEntity?.id) {
-            queryClient.invalidateQueries({
-              queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
-            });
-            
-            // Also invalidate general ledger queries that might be affected
-            queryClient.invalidateQueries({
-              queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/general-ledger`]
-            });
-          }
-          
-          toast({
-            title: "Journal Entry Posted",
-            description: "The journal entry has been posted successfully.",
-          });
-          
-          // Refresh the entry to show its updated status
-          refetch();
-        },
-        onError: (error: any) => {
-          console.error('ERROR: Failed to post journal entry:', error);
-          console.error('ERROR: Error response:', error.response?.data);
-          toast({
-            title: "Error",
-            description: `Failed to post journal entry: ${error.message}`,
-            variant: "destructive",
-          });
-        }
-      });
+      postJournalEntry.mutate(Number(entryId));
     }
   };
   
