@@ -36,7 +36,6 @@ import Redirect from "@/components/Redirect";
 import JournalRedirector from "@/components/JournalRedirector";
 import DeleteJournalEntry from "@/features/journal-entries/pages/DeleteJournalEntry";
 import EntityLayout from "@/components/layout/EntityLayout";
-import AppLayout from "@/components/AppLayout";
 
 // Public website header component
 const PublicHeader: React.FC = () => {
@@ -287,6 +286,20 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   }
 
   return <Component />;
+}
+
+function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }
 
 function Router() {
