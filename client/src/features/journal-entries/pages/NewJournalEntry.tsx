@@ -200,7 +200,7 @@ function NewJournalEntry() {
       </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <div className="bg-white shadow sm:rounded-lg">
+        <div className="bg-white shadow sm:rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:p-6">
             {accountsLoading || entitiesLoading || (isEditMode && entryLoading) ? (
               <div className="py-10 text-center">

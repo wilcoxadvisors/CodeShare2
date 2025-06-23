@@ -1681,7 +1681,7 @@ function JournalEntryDetail() {
         </div>
       </PageHeader>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <Card>
             <CardHeader>

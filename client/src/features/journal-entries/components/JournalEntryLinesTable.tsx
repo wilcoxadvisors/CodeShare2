@@ -432,7 +432,7 @@ export function JournalEntryLinesTable({
 
   return (
     <div className="mb-4">
-      <div className="overflow-x-auto">
+      <div>
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
           <tr>
