@@ -752,7 +752,18 @@ function JournalEntryForm({
 
       // On successful upload, clear the pending attachments
       setPendingAttachments([]);
-      console.log('Successfully uploaded pending files.');
+      
+      // CRITICAL: Invalidate attachment queries to refresh UI
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, entryId]
+      });
+      
+      // Also invalidate the main journal entry to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entry', effectiveClientId, entityId, entryId]
+      });
+      
+      console.log('Successfully uploaded pending files and invalidated caches.');
     } catch (error) {
       console.error("Error uploading pending files:", error);
       // We throw the error so the calling .catch() block can handle the toast notification
