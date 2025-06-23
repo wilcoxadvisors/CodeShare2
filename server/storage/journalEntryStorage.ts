@@ -1740,6 +1740,69 @@ export class JournalEntryStorage implements IJournalEntryStorage {
     return { successCount, failCount };
   }
 
+  /**
+   * Post a journal entry (change status from draft/approved to posted)
+   */
+  async postJournalEntry(id: number, postedBy: number): Promise<JournalEntry | undefined> {
+    console.log(`Posting journal entry ${id} by user ${postedBy}`);
+    
+    try {
+      // Get the existing entry to validate
+      const existingEntry = await this.getJournalEntry(id);
+      if (!existingEntry) {
+        throw new ApiError(404, `Journal entry with ID ${id} not found`);
+      }
+      
+      // Only allow posting of draft or approved entries
+      if (existingEntry.status !== 'draft' && existingEntry.status !== 'approved') {
+        throw new ApiError(400, `Cannot post journal entry with status '${existingEntry.status}'. Only draft or approved entries can be posted.`);
+      }
+      
+      // Validate the entry is balanced before posting
+      const isBalanced = await this.validateJournalEntryBalance(id);
+      if (!isBalanced) {
+        throw new ApiError(400, 'Cannot post an unbalanced journal entry. Please ensure debits equal credits.');
+      }
+      
+      // Update the entry status to posted
+      const [updatedEntry] = await db.update(journalEntries)
+        .set({
+          status: 'posted' as JournalEntryStatus,
+          postedBy: postedBy,
+          postedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(journalEntries.id, id))
+        .returning();
+      
+      if (!updatedEntry) {
+        throw new ApiError(500, `Failed to update journal entry ${id} to posted status`);
+      }
+      
+      // Handle automatic accrual reversal if this is an accrual entry
+      if (updatedEntry.isAccrual && updatedEntry.reversalDate) {
+        try {
+          const reversalEntry = await this.reverseJournalEntry(id, {
+            date: new Date(updatedEntry.reversalDate),
+            description: 'Automatic accrual reversal',
+            createdBy: postedBy,
+            postAutomatically: true
+          });
+          console.log(`Created automatic reversal entry ${reversalEntry?.id} for accrual entry ${id}`);
+        } catch (reversalError) {
+          console.error(`Failed to create automatic reversal for accrual entry ${id}:`, reversalError);
+          // Don't fail the posting operation if reversal creation fails
+        }
+      }
+      
+      console.log(`Successfully posted journal entry ${id}`);
+      return this.getJournalEntry(id); // Return the complete entry with lines
+    } catch (e) {
+      console.error(`Error posting journal entry ${id}:`, e);
+      throw handleDbError(e, `posting journal entry ${id}`);
+    }
+  }
+
   async copyJournalEntry(originalEntryId: number, newUserId: number): Promise<JournalEntry> {
     console.log(`ARCHITECT_DEBUG: FINAL ATTEMPT V5. Starting copy for original entry ID: ${originalEntryId}`);
 

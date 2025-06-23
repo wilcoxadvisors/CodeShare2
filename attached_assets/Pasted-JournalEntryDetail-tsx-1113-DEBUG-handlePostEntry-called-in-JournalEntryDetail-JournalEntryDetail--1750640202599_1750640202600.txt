@@ -1,0 +1,248 @@
+JournalEntryDetail.tsx:1113 DEBUG: handlePostEntry called in JournalEntryDetail
+JournalEntryDetail.tsx:1152 DEBUG: Posting journal entry with formatted lines: (2) [{…}, {…}]
+JournalEntryDetail.tsx:1171 DEBUG: Complete posting payload: {
+  "id": 597,
+  "status": "posted",
+  "lines": [
+    {
+      "type": "debit",
+      "amount": "1.0000",
+      "accountId": 7928,
+      "entityCode": "12",
+      "description": null,
+      "tags": []
+    },
+    {
+      "type": "credit",
+      "amount": "1.0000",
+      "accountId": 7976,
+      "entityCode": "12",
+      "description": null,
+      "tags": []
+    }
+  ],
+  "date": "2025-06-22",
+  "description": "3",
+  "referenceNumber": "JE-250-393-R41EUG:34",
+  "journalType": "JE",
+  "entityId": 393,
+  "clientId": 250
+}
+JournalEntryDetail.tsx:1174 DEBUG: Posting existing entry with ID: 597
+JournalEntryDetail.tsx:1177 DEBUG: Route params for posting: {clientIdParam: 250, entityIdParam: 393, entryId: 597}
+JournalEntryDetail.tsx:1184 DEBUG: Resolved context values: {clientId: 250, entityId: undefined, entityName: undefined}
+JournalEntryDetail.tsx:1191 DEBUG: Entry object for posting: {
+  "id": 597,
+  "clientId": 250,
+  "entityId": 393
+}
+JournalEntryDetail.tsx:1221 DEBUG: Final post parameters: {
+  "id": 597,
+  "clientId": 250,
+  "entityId": 393
+}
+chunk-RPCDYKBN.js?v=159031c7:3671 [Violation] 'click' handler took 2584ms
+[Violation] 'click' handler took 2585ms
+JournalEntryDetail.tsx:425 DEBUG: postJournalEntry mutation called with params: {id: 597, clientId: 250, entityId: 393}
+JournalEntryDetail.tsx:428 DEBUG: Posting to URL: /api/clients/250/entities/393/journal-entries/597/post
+queryClient.ts:80 DEBUG apiRequest: isFormData: false data type: undefined url: /api/clients/250/entities/393/journal-entries/597/post method: PUT
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 250 entityId: 393 entryId: 597
+JournalEntryDetail.tsx:649 JournalEntryDetail: Using clientId 250 for API requests (from param: 250 or entity: undefined )
+JournalEntryDetail.tsx:772 entry at render {id: 597, clientId: 250, entityId: 393, date: '2025-06-22', referenceNumber: 'JE-250-393-R41EUG:34', …}
+JournalEntryDetail.tsx:773 DEBUG - JournalEntryDetail - Using entry: {id: 597, clientId: 250, entityId: 393, date: '2025-06-22', referenceNumber: 'JE-250-393-R41EUG:34', …}
+JournalEntryDetail.tsx:777 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:778 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:779 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:809 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:813 DEBUG - JournalEntryDetail - First line properties: (18) ['id', 'journalEntryId', 'accountId', 'type', 'amount', 'description', 'entityCode', 'fsliBucket', 'internalReportingBucket', 'item', 'lineNo', 'reference', 'reconciled', 'reconciledAt', 'reconciledBy', 'createdAt', 'updatedAt', 'tags']
+JournalEntryDetail.tsx:1730 ARCHITECT_DEBUG: Button visibility check. Entry ID: 597, Status: draft
+JournalEntryDetail.tsx:1275 DEBUG: Permission matrix: {entryId: 597, status: 'draft', isAdmin: true, isSupervisor: false, isAccounting: false, …}
+JournalEntryDetail.tsx:1901 Line 0: debitValue=1, creditValue=0, line= {id: 1395, journalEntryId: 597, accountId: 7928, type: 'debit', amount: '1.0000', …}
+JournalEntryDetail.tsx:1901 Line 1: debitValue=0, creditValue=1, line= {id: 1396, journalEntryId: 597, accountId: 7976, type: 'credit', amount: '1.0000', …}
+JournalEntryDetail.tsx:437 DEBUG: apiRequest failed: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+mutationFn @ JournalEntryDetail.tsx:437
+await in mutationFn
+fn @ @tanstack_react-query.js?v=159031c7:1189
+run @ @tanstack_react-query.js?v=159031c7:494
+start @ @tanstack_react-query.js?v=159031c7:536
+execute @ @tanstack_react-query.js?v=159031c7:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:460 ERROR in postJournalEntry mutation function: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+onError @ JournalEntryDetail.tsx:460
+execute @ @tanstack_react-query.js?v=159031c7:1254
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:461 ERROR: Post journal entry mutation failed: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+onError @ JournalEntryDetail.tsx:461
+execute @ @tanstack_react-query.js?v=159031c7:1254
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:462 ERROR: Failed to post journal entry: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+onError @ JournalEntryDetail.tsx:462
+execute @ @tanstack_react-query.js?v=159031c7:1254
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:463 ERROR: Error response: undefined
+onError @ JournalEntryDetail.tsx:463
+execute @ @tanstack_react-query.js?v=159031c7:1254
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:1248 ERROR: Failed to post journal entry: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+onError @ JournalEntryDetail.tsx:1248
+(anonymous) @ @tanstack_react-query.js?v=159031c7:2654
+batch @ @tanstack_react-query.js?v=159031c7:583
+notify_fn3 @ @tanstack_react-query.js?v=159031c7:2645
+onMutationUpdate @ @tanstack_react-query.js?v=159031c7:2612
+(anonymous) @ @tanstack_react-query.js?v=159031c7:1340
+(anonymous) @ @tanstack_react-query.js?v=159031c7:1339
+batch @ @tanstack_react-query.js?v=159031c7:583
+dispatch_fn2 @ @tanstack_react-query.js?v=159031c7:1338
+execute @ @tanstack_react-query.js?v=159031c7:1277
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:1249 ERROR: Error response: undefined
+onError @ JournalEntryDetail.tsx:1249
+(anonymous) @ @tanstack_react-query.js?v=159031c7:2654
+batch @ @tanstack_react-query.js?v=159031c7:583
+notify_fn3 @ @tanstack_react-query.js?v=159031c7:2645
+onMutationUpdate @ @tanstack_react-query.js?v=159031c7:2612
+(anonymous) @ @tanstack_react-query.js?v=159031c7:1340
+(anonymous) @ @tanstack_react-query.js?v=159031c7:1339
+batch @ @tanstack_react-query.js?v=159031c7:583
+dispatch_fn2 @ @tanstack_react-query.js?v=159031c7:1338
+execute @ @tanstack_react-query.js?v=159031c7:1277
+await in execute
+mutate @ @tanstack_react-query.js?v=159031c7:2630
+(anonymous) @ @tanstack_react-query.js?v=159031c7:3295
+handlePostEntry @ JournalEntryDetail.tsx:1223
+callCallback2 @ chunk-RPCDYKBN.js?v=159031c7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=159031c7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=159031c7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=159031c7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=159031c7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=159031c7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=159031c7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=159031c7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=159031c7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=159031c7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=159031c7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=159031c7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=159031c7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=159031c7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=159031c7:5449
+JournalEntryDetail.tsx:155 JournalEntryDetail: Route params - clientId: 250 entityId: 393 entryId: 597
+JournalEntryDetail.tsx:649 JournalEntryDetail: Using clientId 250 for API requests (from param: 250 or entity: undefined )
+JournalEntryDetail.tsx:772 entry at render {id: 597, clientId: 250, entityId: 393, date: '2025-06-22', referenceNumber: 'JE-250-393-R41EUG:34', …}
+JournalEntryDetail.tsx:773 DEBUG - JournalEntryDetail - Using entry: {id: 597, clientId: 250, entityId: 393, date: '2025-06-22', referenceNumber: 'JE-250-393-R41EUG:34', …}
+JournalEntryDetail.tsx:777 DEBUG - JournalEntryDetail - Data has journalEntry property: false
+JournalEntryDetail.tsx:778 DEBUG - JournalEntryDetail - Data has id property: true
+JournalEntryDetail.tsx:779 DEBUG - JournalEntryDetail - Data has lines property: true
+JournalEntryDetail.tsx:809 DEBUG - JournalEntryDetail - First line format: Server format (type/amount)
+JournalEntryDetail.tsx:813 DEBUG - JournalEntryDetail - First line properties: (18) ['id', 'journalEntryId', 'accountId', 'type', 'amount', 'description', 'entityCode', 'fsliBucket', 'internalReportingBucket', 'item', 'lineNo', 'reference', 'reconciled', 'reconciledAt', 'reconciledBy', 'createdAt', 'updatedAt', 'tags']
+JournalEntryDetail.tsx:1730 ARCHITECT_DEBUG: Button visibility check. Entry ID: 597, Status: draft
+JournalEntryDetail.tsx:1275 DEBUG: Permission matrix: {entryId: 597, status: 'draft', isAdmin: true, isSupervisor: false, isAccounting: false, …}
+JournalEntryDetail.tsx:1901 Line 0: debitValue=1, creditValue=0, line= {id: 1395, journalEntryId: 597, accountId: 7928, type: 'debit', amount: '1.0000', …}
+JournalEntryDetail.tsx:1901 Line 1: debitValue=0, creditValue=1, line= {id: 1396, journalEntryId: 597, accountId: 7976, type: 'credit', amount: '1.0000', …}
