@@ -438,15 +438,14 @@ function JournalEntryDetail() {
         throw error;
       }
     },
-    onSuccess: (response: any, params) => {
+    onSuccess: async (response: any, params) => {
       console.log('DEBUG: Post success response:', response);
       
-      // Invalidate cache to show updated status
-      if (clientId && currentEntity?.id) {
-        queryClient.invalidateQueries({
-          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
-        });
-      }
+      // Use the same cache invalidation pattern as edit mode
+      await queryClient.refetchQueries({ 
+        queryKey: ["journal-entries", clientId, currentEntity?.id],
+        type: 'all'
+      });
       
       toast({
         title: 'Success',
