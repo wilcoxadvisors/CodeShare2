@@ -418,39 +418,7 @@ function JournalEntryDetail() {
     }
   });
 
-  // Post journal entry mutation - using exact same pattern as edit mode
-  const postJournalEntry = useMutation({
-    mutationFn: async (entryId: number) => {
-      return apiRequest(`/api/clients/${clientId}/entities/${currentEntity?.id}/journal-entries/${entryId}/post`, {
-        method: "PATCH",
-      });
-    },
-    onSuccess: async (response: any) => {
-      // Use exact same cache invalidation as edit mode
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", clientId, currentEntity?.id],
-        type: 'all'
-      });
-      
-      toast({
-        title: "Success",
-        description: "Journal entry posted successfully",
-      });
-      
-      // Refresh the entry to show updated status
-      refetch();
-    },
-    onError: (error) => {
-      console.error('ERROR: Post journal entry failed:', error);
-      console.error('ERROR: Error details:', error.response?.data || error.message);
-      
-      toast({
-        title: "Error",
-        description: `Failed to post journal entry: ${error.message || 'Unknown error'}`,
-        variant: "destructive",
-      });
-    },
-  });
+  // Post functionality now uses centralized updateJournalEntry from useJournalEntry hook
 
   // Copy journal entry mutation
   const copyJournalEntry = useMutation({
