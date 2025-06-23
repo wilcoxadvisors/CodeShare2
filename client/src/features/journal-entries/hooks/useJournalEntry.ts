@@ -116,110 +116,100 @@ export function useJournalEntry() {
   
   const updateJournalEntry = useMutation({
     mutationFn: async (data: any) => {
-      // Check if we're being called with the old format ({ id, journalEntry }) or the new format
-      // where data is a flat object with id and other properties
       console.log('DEBUG: updateJournalEntry called with data:', JSON.stringify(data, null, 2));
       
       let id: number;
       let payload: any;
+      let clientId: number;
+      let entityId: number;
       
       if (data.id && data.journalEntry) {
         // Old format
         id = data.id;
         payload = data.journalEntry;
+        clientId = payload.clientId;
+        entityId = payload.entityId;
       } else if (data.id) {
         // New format - data is flat with all properties including id
         id = data.id;
         payload = { ...data };
+        clientId = payload.clientId;
+        entityId = payload.entityId;
         delete payload.id; // Remove id from the payload since it's in the URL
       } else {
         throw new Error('Invalid parameters - missing id');
       }
       
-      // EXPLICITLY ensure all required fields are included - date, description, reference
-      if (payload.status === 'posted') {
-        console.log('DEBUG: Posting journal entry - ensuring all required fields are included');
-        
-        // Make sure the payload has all required fields for posting
-        if (!payload.date) {
-          // If no date provided, use the original entry date or today
-          payload.date = getTodayYMD(); // Use safer date utility function
-        }
-        
-        // Bug fix #3: Fix for date posting 1-day early when status changes (draft → posted)
-        // Do not convert string date to Date object as it causes timezone issues
-        if (payload.date) {
-          // If the date is already in YYYY-MM-DD format, keep it as is
-          if (/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
-            console.log('DEBUG: Date is already in YYYY-MM-DD format, keeping as is:', payload.date);
-            // Already correct 'YYYY-MM-DD' – leave untouched
-          } else {
-            // Only if it's not in YYYY-MM-DD format, convert it carefully
-            console.log('DEBUG: Converting date to YYYY-MM-DD format:', payload.date);
-            // Just extract the date part without timezone conversion
-            payload.date = payload.date.split('T')[0]; // Extract just the YYYY-MM-DD part
-          }
-        }
-        
-        // Debugging logs to verify the payload
-        console.log('DEBUG: Update payload:', JSON.stringify(payload, null, 2));
+      // Ensure we have clientId and entityId for constructing hierarchical URL
+      if (!clientId || !entityId) {
+        throw new Error('Client ID and Entity ID are required for journal entry update');
       }
       
       console.log('DEBUG: Updating journal entry with ID:', id);
       console.log('DEBUG: Update data:', JSON.stringify(payload, null, 2));
       
-      // Ensure we have clientId and entityId for constructing hierarchical URL
-      if (!payload.clientId || !payload.entityId) {
-        throw new Error('Client ID and Entity ID are required for journal entry update');
-      }
-      
-      // EMERGENCY FIX: Direct URL construction
-      const url = `/api/clients/${payload.clientId}/entities/${payload.entityId}/journal-entries/${id}`;
-      console.log(`DEBUG: Updating journal entry with direct URL: ${url}`);
+      // Use working logic from JournalEntryForm.tsx
+      const url = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}`;
+      console.log(`DEBUG: Updating journal entry with URL: ${url}`);
       return await apiRequest(url, {
-        method: 'PUT',
+        method: 'PATCH',
         data: payload
       });
     },
-    onSuccess: (data, variables) => {
-      console.log('ARCHITECT_FIX_PART3: Update success response:', JSON.stringify(data, null, 2));
+    onSuccess: (updatedEntry, variables) => {
+      console.log('DEBUG: Update success response:', JSON.stringify(updatedEntry, null, 2));
+      
+      // Extract clientId and entityId from variables
+      let clientId: number;
+      let entityId: number;
+      
+      if (variables.id && variables.journalEntry) {
+        clientId = variables.journalEntry.clientId;
+        entityId = variables.journalEntry.entityId;
+      } else {
+        clientId = variables.clientId;
+        entityId = variables.entityId;
+      }
+      
+      // Use working cache update logic from JournalEntryForm.tsx
+      queryClient.setQueryData(
+        ['journal-entries', clientId, entityId],
+        (oldData: any[] | undefined) => 
+          oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
+      );
+      
+      // Targeted cache invalidation for immediate UI updates
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', clientId, entityId]
+      });
+      
+      // Also invalidate specific entry and its files
+      if (updatedEntry.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['journal-entry', clientId, entityId, updatedEntry.id]
+        });
+        
+        // Invalidate file attachments cache
+        queryClient.invalidateQueries({
+          queryKey: ['journalEntryAttachments', clientId, entityId, updatedEntry.id]
+        });
+      }
+      
       toast({
         title: 'Success',
         description: 'Journal entry updated successfully',
       });
       
-      // ARCHITECT FIX PART 3: Comprehensive cache invalidation with URL-based keys
-      const clientId = variables.clientId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.clientId : null);
-      const entityId = variables.entityId || (typeof variables === 'object' && 'payload' in variables ? variables.payload.entityId : null);
-      const id = variables.id;
-      
-      if (clientId && entityId && id) {
-        // Invalidate the specific journal entry
-        queryClient.invalidateQueries({ 
-          queryKey: ['journal-entries', clientId, entityId, id],
-          exact: true
-        });
-        
-        // Invalidate the journal entries list for this entity
-        queryClient.invalidateQueries({ 
-          queryKey: ['journal-entries', clientId, entityId],
-          exact: true
-        });
-        
-        // Invalidate attachment queries for this entry
-        queryClient.invalidateQueries({
-          queryKey: ['journalEntryAttachments', id],
-          exact: true
-        });
-      }
-      
       // Handle both response formats
-      return data.entry || data;
+      return updatedEntry.entry || updatedEntry;
     },
     onError: (error: any) => {
+      console.error('ERROR: Update journal entry failed:', error);
+      console.error('ERROR: Error details:', error.response?.data || error.message);
+      
       toast({
         title: 'Error',
-        description: `Failed to update journal entry: ${error.message}`,
+        description: `Failed to update journal entry: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     }

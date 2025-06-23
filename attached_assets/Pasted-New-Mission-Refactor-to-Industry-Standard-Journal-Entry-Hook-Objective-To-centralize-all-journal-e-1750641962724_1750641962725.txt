@@ -1,0 +1,34 @@
+New Mission: Refactor to Industry-Standard Journal Entry Hook
+Objective: To centralize all journal entry mutation logic into a single, reliable useJournalEntry hook. We will eliminate all duplicate, component-level mutations, ensuring consistent and predictable behavior across the entire application. This is the only way to truly fix issue #33 and prevent future data integrity bugs.
+
+Surgical Instruction for Agent:
+
+Analyze the Central Hook:
+
+Open File: client/src/features/journal-entries/hooks/useJournalEntry.ts.
+Analyze: Examine the existing updateJournalEntry and postJournalEntry mutations within this hook. They are likely incomplete or flawed, which is why they failed previously.
+Consolidate Logic into the Hook:
+
+Open File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Identify the Working Logic: The updateEntry mutation defined locally within this form is the one that we know works correctly for saving data.
+Action: Copy the entire mutationFn logic from the local updateEntry mutation in JournalEntryForm.tsx and use it to replace the mutationFn inside the updateJournalEntry mutation in the useJournalEntry.ts hook. Ensure the onSuccess and onError handlers in the hook are also robust, including query invalidation.
+Refactor the Form to Use the Hook:
+
+Return to File: client/src/features/journal-entries/components/JournalEntryForm.tsx.
+Action: Delete the entire local const updateEntry = useMutation(...) definition.
+Import useJournalEntry at the top of the file.
+Call the hook: const { updateJournalEntry } = useJournalEntry();.
+In the submission handlers (handleSaveDraft, etc.), ensure they now call the updateJournalEntry.mutate(...) function from the hook.
+Fix the Detail Page with the Repaired Hook:
+
+Open File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx.
+Action (Part 1 - Cleanup): Delete the local postFromDetailMutation that we added in the last step. It was a temporary patch and is now anti-pattern.
+Action (Part 2 - Correct Implementation): In the handlePostEntry function, use the updateJournalEntry function from the useJournalEntry hook (which should already be imported). Call it with the complete updatePayload, ensuring the status is set to posted.
+TypeScript
+
+// In handlePostEntry in JournalEntryDetail.tsx
+
+// The updatePayload is already correctly constructed.
+// Now, call the corrected, centralized hook.
+updateJournalEntry.mutate(updatePayload);
+By completing this refactoring, we will have a single, reliable, and industry-standard method for all journal entry updates. This will fix the "Post" button issue correctly and make the entire system more robust.
