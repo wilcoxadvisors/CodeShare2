@@ -633,13 +633,31 @@ export class JournalEntryStorage implements IJournalEntryStorage {
                 if (fileToDelete) {
                     console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Deleting file ${fileId} with storage key ${fileToDelete.storageKey}`);
                     
-                    // CRITICAL FIX: Delete database record FIRST to avoid foreign key constraint violation
-                    await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
-                    
-                    // Then delete physical file
-                    if (fileToDelete.storageKey) {
-                        const fileStorage = getFileStorage();
-                        await fileStorage.delete(fileToDelete.storageKey);
+                    try {
+                        // CRITICAL FIX: Delete database record FIRST to avoid foreign key constraint violation
+                        await tx.delete(journalEntryFiles).where(eq(journalEntryFiles.id, fileId));
+                        console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Database record deleted for file ${fileId}`);
+                        
+                        // Then delete physical file with timeout protection
+                        if (fileToDelete.storageKey) {
+                            const fileStorage = getFileStorage();
+                            // Add timeout to prevent hanging
+                            const deletePromise = fileStorage.delete(fileToDelete.storageKey);
+                            const timeoutPromise = new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error('File deletion timeout')), 5000)
+                            );
+                            
+                            try {
+                                await Promise.race([deletePromise, timeoutPromise]);
+                                console.log(`ARCHITECT_TRANSACTIONAL_DELETION: Physical file deleted for storage key ${fileToDelete.storageKey}`);
+                            } catch (error) {
+                                console.warn(`ARCHITECT_TRANSACTIONAL_DELETION: Physical file deletion failed for storage key ${fileToDelete.storageKey}:`, error);
+                                // Continue with transaction - database record is already deleted
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`ARCHITECT_TRANSACTIONAL_DELETION: Error deleting file ${fileId}:`, error);
+                        throw error; // Re-throw to rollback transaction
                     }
                 }
             }
