@@ -62,6 +62,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import { 
   getJournalEntryUrl,
   getJournalEntryFilesBaseUrl,
@@ -99,7 +100,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 
 function JournalEntryDetail() {
-  const { updateJournalEntry, deleteJournalEntry, postJournalEntry } = useJournalEntry();
+  const { updateJournalEntry, deleteJournalEntry } = useJournalEntry();
   
   // Helper function to process line data consistently for API submission
   const processLineForSubmission = (line: JournalEntryLine) => {
