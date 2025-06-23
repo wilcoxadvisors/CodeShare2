@@ -62,7 +62,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { queryClient, apiRequest } from '@/lib/queryClient';
 import { 
   getJournalEntryUrl,
   getJournalEntryFilesBaseUrl,
@@ -413,6 +412,51 @@ function JournalEntryDetail() {
       toast({
         title: 'Error',
         description: `Failed to delete file: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
+
+  // Post journal entry mutation
+  const postJournalEntry = useMutation({
+    mutationFn: async (params: { id: number; clientId: number; entityId: number }) => {
+      const { id, clientId, entityId } = params;
+      console.log('DEBUG: postJournalEntry mutation called with params:', params);
+      
+      const postUrl = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/post`;
+      console.log('DEBUG: Posting to URL:', postUrl);
+      
+      return await apiRequest(postUrl, {
+        method: 'PUT'
+      });
+    },
+    onSuccess: (response: any, params) => {
+      console.log('DEBUG: Post success response:', response);
+      
+      // Invalidate cache to show updated status
+      if (clientId && currentEntity?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${currentEntity.id}/journal-entries`]
+        });
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Journal entry posted successfully',
+      });
+      
+      // Refresh the entry to show updated status
+      refetch();
+    },
+    onError: (error: any) => {
+      console.error('ERROR in postJournalEntry mutation function:', error);
+      console.error('ERROR: Post journal entry mutation failed:', error);
+      console.error('ERROR: Failed to post journal entry:', error);
+      console.error('ERROR: Error response:', error.response?.data);
+      
+      toast({
+        title: 'Error',
+        description: `Failed to post journal entry: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     }
