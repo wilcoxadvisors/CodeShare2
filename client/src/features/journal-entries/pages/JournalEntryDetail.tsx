@@ -429,7 +429,7 @@ function JournalEntryDetail() {
       
       try {
         const result = await apiRequest(postUrl, {
-          method: 'PUT'
+          method: 'PATCH'
         });
         console.log('DEBUG: apiRequest successful, result:', result);
         return result;

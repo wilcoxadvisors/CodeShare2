@@ -479,5 +479,61 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
+  /**
+   * Post a journal entry using PATCH method (for edit mode compatibility)
+   */
+  app.patch('/api/clients/:clientId/entities/:entityId/journal-entries/:id/post', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    const user = req.user as { id: number };
+
+    if (isNaN(id) || isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid ID, entity ID, or client ID provided');
+    }
+
+    // Get existing entry to verify ownership and status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    if (!existingEntry) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+    }
+
+    // Verify the entry belongs to the specified entity and client
+    if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
+      throwForbidden('Journal entry does not belong to the specified entity or client');
+    }
+
+    // Only allow posting of draft or approved entries
+    if (existingEntry.status !== 'draft' && existingEntry.status !== 'approved') {
+      throwBadRequest(`Cannot post journal entry with status '${existingEntry.status}'. Only draft or approved entries can be posted.`);
+    }
+
+    try {
+      console.log(`PATCH POST ENDPOINT: Attempting to post journal entry ${id} by user ${user.id}`);
+      
+      // Post the journal entry using the storage method
+      const postedEntry = await journalEntryStorage.postJournalEntry(id, user.id);
+      
+      if (!postedEntry) {
+        console.error(`PATCH POST ENDPOINT: postJournalEntry returned null/undefined for entry ${id}`);
+        return res.status(500).json({ message: `Failed to post journal entry ${id}` });
+      }
+      
+      console.log(`PATCH POST ENDPOINT: Successfully posted journal entry ${id} by user ${user.id}`);
+      
+      // Return the updated entry in the same format as other endpoints
+      res.json(postedEntry);
+    } catch (error) {
+      console.error('PATCH POST ENDPOINT: Error posting journal entry:', error);
+      
+      // Ensure proper error response format
+      if (error instanceof Error && 'status' in error) {
+        res.status((error as any).status).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Internal server error during journal entry posting' });
+      }
+    }
+  }));
+
   console.log('✅ Hierarchical journal entry routes registered');
 }
