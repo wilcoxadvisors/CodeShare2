@@ -424,5 +424,46 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
+  /**
+   * Post a journal entry (change status from draft/approved to posted)
+   */
+  app.put('/api/clients/:clientId/entities/:entityId/journal-entries/:id/post', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const entityId = parseInt(req.params.entityId);
+    const clientId = parseInt(req.params.clientId);
+    const user = req.user as { id: number };
+
+    if (isNaN(id) || isNaN(entityId) || isNaN(clientId)) {
+      throwBadRequest('Invalid ID, entity ID, or client ID provided');
+    }
+
+    // Get existing entry to verify ownership and status
+    const existingEntry = await journalEntryStorage.getJournalEntry(id);
+    if (!existingEntry) {
+      throwNotFound(`Journal entry with ID ${id} not found`);
+    }
+
+    // Verify the entry belongs to the specified entity and client
+    if (existingEntry.entityId !== entityId || existingEntry.clientId !== clientId) {
+      throwForbidden('Journal entry does not belong to the specified entity or client');
+    }
+
+    // Only allow posting of draft or approved entries
+    if (existingEntry.status !== 'draft' && existingEntry.status !== 'approved') {
+      throwBadRequest(`Cannot post journal entry with status '${existingEntry.status}'. Only draft or approved entries can be posted.`);
+    }
+
+    try {
+      // Post the journal entry
+      const postedEntry = await journalEntryStorage.postJournalEntry(id, user.id);
+      
+      console.log(`Successfully posted journal entry ${id} by user ${user.id}`);
+      res.json(postedEntry);
+    } catch (error) {
+      console.error('Error posting journal entry:', error);
+      throw error;
+    }
+  }));
+
   console.log('✅ Hierarchical journal entry routes registered');
 }

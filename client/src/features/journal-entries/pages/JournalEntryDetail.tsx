@@ -427,9 +427,16 @@ function JournalEntryDetail() {
       const postUrl = `/api/clients/${clientId}/entities/${entityId}/journal-entries/${id}/post`;
       console.log('DEBUG: Posting to URL:', postUrl);
       
-      return await apiRequest(postUrl, {
-        method: 'PUT'
-      });
+      try {
+        const result = await apiRequest(postUrl, {
+          method: 'PUT'
+        });
+        console.log('DEBUG: apiRequest successful, result:', result);
+        return result;
+      } catch (error) {
+        console.error('DEBUG: apiRequest failed:', error);
+        throw error;
+      }
     },
     onSuccess: (response: any, params) => {
       console.log('DEBUG: Post success response:', response);
