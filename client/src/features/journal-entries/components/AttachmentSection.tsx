@@ -159,7 +159,7 @@ export function AttachmentSection({
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <FileText className="h-5 w-5" />
@@ -171,7 +171,7 @@ export function AttachmentSection({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-hidden">
         {/* File Upload Section - Only show in edit mode */}
         {isInEditMode && (
           <label htmlFor="file-upload" className="cursor-pointer block">
@@ -209,7 +209,7 @@ export function AttachmentSection({
 
         {/* Existing Files List */}
         {hasAttachedFiles && (
-          <div className="space-y-2">
+          <div className="space-y-2 overflow-hidden">
             <h4 className="text-sm font-medium text-gray-700">Attached Files</h4>
             {attachments.map((file: JournalEntryFile) => (
               <div

@@ -421,7 +421,7 @@ function JournalEntries() {
               
               <div className="flex space-x-2">
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-[150px] max-w-[20vw]">
                     <Filter className="mr-2 h-4 w-4" />
                     <span>{filterStatus === 'all' ? 'All Statuses' : filterStatus}</span>
                   </SelectTrigger>
@@ -437,7 +437,7 @@ function JournalEntries() {
                 </Select>
 
                 <Select value={filterYear} onValueChange={setFilterYear}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-[120px] max-w-[15vw]">
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -449,7 +449,7 @@ function JournalEntries() {
                 </Select>
 
                 <Select value={filterMonth} onValueChange={setFilterMonth}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-[120px] max-w-[15vw]">
                     <SelectValue placeholder="Month" />
                   </SelectTrigger>
                   <SelectContent>
