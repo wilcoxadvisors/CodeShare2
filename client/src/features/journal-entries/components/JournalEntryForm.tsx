@@ -1345,7 +1345,7 @@ function JournalEntryForm({
           {user.role !== 'admin' && (
             <Button
               onClick={handleSubmitForApproval}
-              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading}
+              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading || isProcessingFiles}
               className={!isBalanced ? "bg-gray-400 cursor-not-allowed" : ""}
             >
               {createEntry.isPending || updateEntry.isPending || isUploading
@@ -1360,11 +1360,13 @@ function JournalEntryForm({
           {user.role === 'admin' && (
             <Button
               onClick={handlePostEntry}
-              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading}
+              disabled={!isBalanced || createEntry.isPending || updateEntry.isPending || isUploading || isProcessingFiles}
               className={!isBalanced ? "bg-gray-400 cursor-not-allowed" : ""}
             >
               {createEntry.isPending || updateEntry.isPending || isUploading
                 ? "Posting..."
+                : isProcessingFiles
+                ? "Processing files..."
                 : "Post Entry"}
             </Button>
           )}
