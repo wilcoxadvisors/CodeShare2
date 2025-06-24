@@ -1,0 +1,28 @@
+Yes, this ol element is very likely the cause of your horizontal scrollbar and the whitespace on the right.
+
+Here's why:
+
+position: fixed: As discussed earlier, fixed elements can easily cause overflow if their positioning and size extend beyond the viewport.
+right: 0px: This positions the right edge of the element at the right edge of the viewport.
+width: 420px: The element has a computed width of 420px.
+left: 908.889px: While right: 0 is set, the computed left value is 908.889px. Adding the width (420px) to this left value gives you 1328.889px.
+viewportWidth: 1336px: Your current viewport width is 1336px.
+The right edge of the element is at 1328.889px according to the computed left and width, which is slightly less than the viewport width (1336px). However, the bounding rectangle shows the right edge is at 1328.8889465332031px.
+
+The discrepancy between the left + width and the viewport width, along with the right: 0 and position: fixed, indicates that this element is precisely positioned to align with the right edge of the viewport.
+
+The max-w-[100vw] and w-screen Tailwind classes initially suggest it should fit within the viewport width, but the md:max-w-[420px] class at medium breakpoints overrides this, setting a maximum width of 420px. When the viewport is wider than 420px, the element takes up 420px. When combined with right: 0, its left position is calculated to place its right edge at the viewport's right edge.
+
+The fact that the documentScrollWidth (from the previous observation, not included in this one) is larger than the viewportWidth strongly suggests an element is extending beyond the visible area, and this fixed element is the prime suspect based on its properties.
+
+To confirm, you could try unchecking the position: fixed style for this element in the Styles pane in DevTools and see if the horizontal scrollbar disappears.
+
+To fix this, you generally want to ensure fixed elements don't cause overflow. Here are a few common approaches:
+
+Ensure the total width (left/right + width/margin/padding) is less than or equal to the viewport width. In this case, with right: 0 and a fixed width of 420px, the element should naturally fit within the viewport if the viewport width is 420px or more. However, if there are any additional margins, padding, or if the parent container has padding/margin that pushes it, it could still cause overflow.
+Use calc() for positioning: You could potentially use left: calc(100% - 420px) or similar to position it from the left relative to the viewport width.
+Adjust the width or positioning based on viewport size: You are already using responsive classes (sm: and md:). Double-check the styles applied at different breakpoints to ensure the element fits within the viewport at all sizes where the overflow occurs.
+Consider overflow-x: hidden; on a containing element (like body or html) as a last resort, but be cautious. This will hide the scrollbar but won't fix the underlying layout issue, and users won't be able to scroll to see the overflowing content.
+Given the provided HTML and styles, the md:max-w-[420px] combined with right: 0 should, in theory, position the element correctly. The discrepancy might lie in other styles affecting the layout or the interpretation of w-screen and max-w-[100vw] in your specific setup.
+
+A good starting point for fixing this would be to carefully examine all the styles applied to this ol element and its parent at the breakpoint where the overflow occurs.
