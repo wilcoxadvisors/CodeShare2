@@ -194,7 +194,7 @@ export function AttachmentSection({
                   id="file-upload"
                   name="file-upload"
                   type="file"
-                  className="sr-only"
+                  className="absolute opacity-0 pointer-events-none w-0 h-0"
                   multiple
                   accept=".pdf,.jpg,.jpeg,.png,.gif,.msg,.eml,.txt,.doc,.docx"
                   onChange={handleFileSelect}
