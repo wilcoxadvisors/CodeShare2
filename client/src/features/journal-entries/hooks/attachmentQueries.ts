@@ -38,6 +38,8 @@ export function useJournalEntryFiles(journalEntryId: number | undefined | null, 
   return useQuery<JournalEntryFile[]>({
     queryKey: ['journalEntryAttachments', journalEntryId],
     enabled: !!journalEntryId && !!entityId && !!clientId,
+    staleTime: 0, // Always consider data stale to force fresh fetches
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!journalEntryId || !entityId || !clientId) {
         console.log("ARCHITECT_DEBUG_ATTACHMENT_QUERY_SKIPPED:", { journalEntryId, entityId, clientId });

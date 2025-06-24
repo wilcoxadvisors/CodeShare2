@@ -429,17 +429,22 @@ function JournalEntryForm({
       // Upload pending files if any
       if (pendingAttachments.length > 0 && uploadPendingFilesRef.current) {
         uploadPendingFilesRef.current(newEntry.id).then(() => {
+          // Additional cache invalidation after file upload to ensure detail view updates
+          queryClient.invalidateQueries({
+            queryKey: ['journalEntryAttachments', newEntry.id]
+          });
+          queryClient.invalidateQueries({
+            queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${newEntry.id}`]
+          });
+          
           toast({ title: "Success", description: "Journal entry created with attachments." });
-          // Add small delay to ensure cache is updated before navigation
-          setTimeout(() => onSubmit(), 100);
+          setTimeout(() => onSubmit(), 200); // Slightly longer delay for file processing
         }).catch(() => {
           toast({ title: "Warning", description: "Journal entry created but some files failed to upload." });
-          // Add small delay to ensure cache is updated before navigation
           setTimeout(() => onSubmit(), 100);
         });
       } else {
         toast({ title: "Success", description: "Journal entry created." });
-        // Add small delay to ensure cache is updated before navigation
         setTimeout(() => onSubmit(), 100);
       }
     },
@@ -533,8 +538,16 @@ function JournalEntryForm({
       // Upload pending files if any
       if (pendingAttachments.length > 0) {
         handleUploadPendingFiles(updatedEntry.id).then(() => {
+          // Additional cache invalidation after file upload to ensure detail view updates
+          queryClient.invalidateQueries({
+            queryKey: ['journalEntryAttachments', updatedEntry.id]
+          });
+          queryClient.invalidateQueries({
+            queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${updatedEntry.id}`]
+          });
+          
           toast({ title: "Success", description: "Journal entry updated with attachments." });
-          setTimeout(() => onSubmit(), 100);
+          setTimeout(() => onSubmit(), 200); // Slightly longer delay for file processing
         }).catch(() => {
           toast({ title: "Warning", description: "Journal entry updated but some files failed to upload." });
           setTimeout(() => onSubmit(), 100);
@@ -545,7 +558,7 @@ function JournalEntryForm({
         setTimeout(() => {
           console.log("DEBUG: Executing onSubmit callback");
           onSubmit();
-        }, 100);
+        }, 200); // Consistent delay for cache updates
       }
     },
     onError: (error) => {
@@ -788,14 +801,23 @@ function JournalEntryForm({
       // On successful upload, clear the pending attachments
       setPendingAttachments([]);
       
-      // CRITICAL: Invalidate attachment queries to refresh UI
+      // CRITICAL: Comprehensive cache invalidation to refresh detail view immediately
       queryClient.invalidateQueries({
-        queryKey: ['journalEntryAttachments', effectiveClientId, entityId, entryId]
+        queryKey: ['journalEntryAttachments', entryId]
       });
       
-      // Also invalidate the main journal entry to ensure consistency
       queryClient.invalidateQueries({
-        queryKey: ['journal-entry', effectiveClientId, entityId, entryId]
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/files`]
+      });
+      
+      // Invalidate the main journal entry detail view
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}`]
+      });
+      
+      // Invalidate the journal entries list
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
       });
       
       console.log('Successfully uploaded pending files and invalidated caches.');
