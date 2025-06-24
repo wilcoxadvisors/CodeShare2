@@ -366,8 +366,17 @@ function JournalEntryDetail() {
           (response && typeof response === 'object' ? Object.keys(response).length : 0)
       });
       
-      // Refresh both the journal entry and files to show the new files
-      refetch();
+      // Comprehensive cache invalidation for immediate UI updates
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', entryId]
+      });
+      
+      // Also invalidate the main journal entry query
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${clientId}/entities/${currentEntity?.id}/journal-entries/${entryId}`]
+      });
+      
+      // Force refetch to ensure immediate updates
       refetchFiles();
     },
     onError: (error: any) => {
@@ -406,8 +415,19 @@ function JournalEntryDetail() {
         title: 'Success',
         description: 'File deleted successfully',
       });
-      // Refresh the journal entry to update the file list
-      refetch();
+      
+      // Comprehensive cache invalidation for immediate UI updates
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', entryId]
+      });
+      
+      // Also invalidate the main journal entry query
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${clientId}/entities/${currentEntity?.id}/journal-entries/${entryId}`]
+      });
+      
+      // Force refetch to ensure immediate updates
+      refetchFiles();
     },
     onError: (error: any) => {
       toast({

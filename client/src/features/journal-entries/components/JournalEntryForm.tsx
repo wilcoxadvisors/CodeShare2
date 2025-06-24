@@ -570,17 +570,27 @@ function JournalEntryForm({
     },
     onSuccess: (response) => {
       console.log("Upload response:", response);
-      // Refresh the journal entry files query with correct key
+      
+      // Comprehensive cache invalidation for immediate UI updates - matching detail view pattern
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', existingEntry?.id]
+      });
+      
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
-      // Also refresh the existing files query
-      refetchExistingFiles();
       
-      // Update main journal entry cache to reflect changes
+      // Also invalidate the main journal entry query
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`]
+      });
+      
       queryClient.invalidateQueries({
         queryKey: ['journal-entries', effectiveClientId, entityId]
       });
+      
+      // Force refetch to ensure immediate updates
+      refetchExistingFiles();
       
       // Update local attachments state with uploaded files
       if (response && response.files && Array.isArray(response.files)) {
@@ -613,17 +623,26 @@ function JournalEntryForm({
       return { fileId }; // Return the fileId so we can use it in onSuccess
     },
     onSuccess: (data) => {
-      // Refresh the journal entry files query with correct key
+      // Comprehensive cache invalidation for immediate UI updates - matching detail view pattern
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', existingEntry?.id]
+      });
+      
       queryClient.invalidateQueries({
         queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}/files`]
       });
-      // Also refresh the existing files query
-      refetchExistingFiles();
       
-      // Update main journal entry cache to reflect changes
+      // Also invalidate the main journal entry query
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`]
+      });
+      
       queryClient.invalidateQueries({
         queryKey: ['journal-entries', effectiveClientId, entityId]
       });
+      
+      // Force refetch to ensure immediate updates
+      refetchExistingFiles();
       
       // Remove the deleted file from local state immediately
       setAttachments(prev => prev.filter(file => file.id !== data.fileId));
