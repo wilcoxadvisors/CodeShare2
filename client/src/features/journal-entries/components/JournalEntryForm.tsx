@@ -463,40 +463,44 @@ function JournalEntryForm({
         data: payload,
       });
     },
-    onSuccess: (updatedEntry) => {
-      // IMMEDIATE UI UPDATE: Remove deleted files from attachments state
-      if (filesToDelete.length > 0) {
-        setAttachments(prev => prev.filter(file => !filesToDelete.includes(file.id)));
-      }
-      setFilesToDelete([]); // IMPORTANT: Clear the queue on success
+    onSuccess: async (updatedEntry) => {
+      console.log("DEBUG: Update entry success, filesToDelete:", filesToDelete);
       
-      // Update the journal entries cache with the new data
+      // Capture filesToDelete before clearing to ensure cache updates work correctly
+      const deletedFileIds = [...filesToDelete];
+      
+      // IMMEDIATE UI UPDATE: Remove deleted files from attachments state
+      if (deletedFileIds.length > 0) {
+        setAttachments(prev => prev.filter(file => !deletedFileIds.includes(file.id)));
+      }
+      
+      // Clear file deletion queue immediately to prevent UI blocking
+      setFilesToDelete([]);
+      
+      // Use direct cache updates instead of invalidation for immediate UI feedback
       queryClient.setQueryData(
         ['journal-entries', effectiveClientId, entityId],
         (oldData: any[] | undefined) => 
           oldData ? oldData.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry) : [updatedEntry]
       );
       
-      // Targeted cache invalidation for immediate UI updates
-      queryClient.invalidateQueries({
-        queryKey: ['journal-entries', effectiveClientId, entityId]
-      });
-      
-      // Also invalidate specific entry and its files
+      // Update the specific journal entry cache directly
       if (updatedEntry.id) {
-        // Invalidate the specific journal entry detail view
-        queryClient.invalidateQueries({
-          queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${updatedEntry.id}`]
-        });
+        queryClient.setQueryData(
+          [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${updatedEntry.id}`],
+          updatedEntry
+        );
         
-        queryClient.invalidateQueries({
-          queryKey: ['journal-entry', effectiveClientId, entityId, updatedEntry.id]
-        });
-        
-        // CRITICAL: Invalidate file attachments cache after deletion
-        queryClient.invalidateQueries({
-          queryKey: ['journalEntryAttachments', effectiveClientId, entityId, updatedEntry.id]
-        });
+        // Update attachments cache to reflect deletions using captured IDs
+        console.log("DEBUG: Updating attachment cache, deletedFileIds:", deletedFileIds);
+        queryClient.setQueryData(
+          ['journalEntryAttachments', updatedEntry.id],
+          (oldFiles: any[] | undefined) => {
+            const filteredFiles = oldFiles ? oldFiles.filter(file => !deletedFileIds.includes(file.id)) : [];
+            console.log("DEBUG: Filtered files from cache:", { oldCount: oldFiles?.length || 0, newCount: filteredFiles.length });
+            return filteredFiles;
+          }
+        );
       }
       
       // Update journal data state with the response to maintain form consistency
@@ -537,10 +541,17 @@ function JournalEntryForm({
         });
       } else {
         toast({ title: "Success", description: "Journal entry updated." });
-        setTimeout(() => onSubmit(), 100);
+        console.log("DEBUG: About to call onSubmit after successful update");
+        setTimeout(() => {
+          console.log("DEBUG: Executing onSubmit callback");
+          onSubmit();
+        }, 100);
       }
     },
     onError: (error) => {
+      console.log("DEBUG: Update entry failed:", error);
+      // Clear file deletion queue on error to prevent UI blocking
+      setFilesToDelete([]);
       toast({
         title: "Error",
         description: "Failed to update journal entry",
