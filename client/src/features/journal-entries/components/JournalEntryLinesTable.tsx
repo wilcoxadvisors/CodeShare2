@@ -519,7 +519,7 @@ export function JournalEntryLinesTable({
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80 max-w-[90vw] p-0" side="bottom" align="start" sideOffset={5} avoidCollisions={false}>
+                    <PopoverContent className="w-80 max-w-[90vw] p-0" side="bottom" align="start" sideOffset={5} avoidCollisions={true}>
                       <div className="border-b px-3 py-2">
                         <div className="flex items-center border rounded-md px-3 mb-2">
                           <svg

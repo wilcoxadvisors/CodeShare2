@@ -12,7 +12,7 @@ interface AppLayoutProps {
  */
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 overflow-x-hidden max-w-full">
       <EntityUrlSync />
       <Sidebar />
       <div className="flex flex-col flex-1">
