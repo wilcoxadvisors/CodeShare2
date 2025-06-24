@@ -432,47 +432,47 @@ export function JournalEntryLinesTable({
 
   return (
     <div className="mb-4">
-      <div>
-        <table className="w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
           <tr>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Account
             </th>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Entity Code
             </th>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Description
             </th>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Debit
             </th>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Credit
             </th>
             <th
               scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Tags
             </th>
-            <th scope="col" className="relative px-6 py-3">
+            <th scope="col" className="relative px-2 sm:px-6 py-3">
               <span className="sr-only">Actions</span>
             </th>
           </tr>
@@ -481,7 +481,7 @@ export function JournalEntryLinesTable({
         <tbody className="bg-white divide-y divide-gray-200">
           {lines.map((line, index) => (
             <tr key={line.id || line._key}>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <div>
                   {/* Hierarchical Account Selector */}
                   <Popover
@@ -597,7 +597,7 @@ export function JournalEntryLinesTable({
                 </div>
               </td>
 
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <Select
                   value={line.entityCode}
                   onValueChange={(value) =>
@@ -625,7 +625,7 @@ export function JournalEntryLinesTable({
                 )}
               </td>
 
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <Input
                   type="text"
                   value={line.description}
@@ -643,7 +643,7 @@ export function JournalEntryLinesTable({
                 )}
               </td>
 
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <CurrencyInput
                   value={line.debit}
                   onChange={(value) => handleLineChange(index, "debit", value)}
@@ -658,7 +658,7 @@ export function JournalEntryLinesTable({
                 )}
               </td>
 
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <CurrencyInput
                   value={line.credit}
                   onChange={(value) => handleLineChange(index, "credit", value)}
@@ -673,7 +673,7 @@ export function JournalEntryLinesTable({
                 )}
               </td>
 
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                 <div className="flex flex-wrap gap-1 items-center">
                   {line.tags && line.tags.length > 0 && 
                     line.tags.map((tag, tagIndex) => (
@@ -909,18 +909,18 @@ export function JournalEntryLinesTable({
                 <tr key={balance.entityCode} className="bg-gray-50">
                   <td
                     colSpan={2}
-                    className="px-6 py-2 text-right text-xs font-medium text-gray-900"
+                    className="px-2 sm:px-6 py-2 text-right text-xs font-medium text-gray-900"
                   >
                     Entity {balance.entityCode}:
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                  <td className="px-2 sm:px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                     DR:{" "}
                     {balance.debit.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                  <td className="px-2 sm:px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                     CR:{" "}
                     {balance.credit.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
