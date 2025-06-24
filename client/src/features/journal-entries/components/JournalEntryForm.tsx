@@ -202,6 +202,7 @@ function JournalEntryForm({
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
   const [filesToDelete, setFilesToDelete] = useState<number[]>([]);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
   // Create a ref to store the upload function
   const uploadPendingFilesRef = useRef<((entryId: number) => Promise<void>) | null>(null);
@@ -471,6 +472,11 @@ function JournalEntryForm({
     onSuccess: async (updatedEntry) => {
       console.log("DEBUG: Update entry success, filesToDelete:", filesToDelete);
       
+      // Show processing indicator for file operations
+      if (filesToDelete.length > 0) {
+        setIsProcessingFiles(true);
+      }
+      
       // Capture filesToDelete before clearing to ensure cache updates work correctly
       const deletedFileIds = [...filesToDelete];
       
@@ -481,6 +487,11 @@ function JournalEntryForm({
       
       // Clear file deletion queue immediately to prevent UI blocking
       setFilesToDelete([]);
+      
+      // Clear processing indicator after a short delay
+      setTimeout(() => {
+        setIsProcessingFiles(false);
+      }, 1000);
       
       // Use direct cache updates instead of invalidation for immediate UI feedback
       queryClient.setQueryData(
@@ -1320,11 +1331,13 @@ function JournalEntryForm({
           {/* Save as Draft button - for all users */}
           <Button
             onClick={handleSaveDraft}
-            disabled={createEntry.isPending || updateEntry.isPending || isUploading}
+            disabled={createEntry.isPending || updateEntry.isPending || isUploading || isProcessingFiles}
             variant="outline"
           >
             {createEntry.isPending || updateEntry.isPending || isUploading
               ? "Saving..."
+              : isProcessingFiles
+              ? "Processing files..."
               : "Save Draft"}
           </Button>
 
@@ -1337,6 +1350,8 @@ function JournalEntryForm({
             >
               {createEntry.isPending || updateEntry.isPending || isUploading
                 ? "Submitting..."
+                : isProcessingFiles
+                ? "Processing files..."
                 : "Submit for Approval"}
             </Button>
           )}
