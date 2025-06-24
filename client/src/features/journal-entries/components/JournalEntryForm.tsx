@@ -484,6 +484,11 @@ function JournalEntryForm({
       
       // Also invalidate specific entry and its files
       if (updatedEntry.id) {
+        // Invalidate the specific journal entry detail view
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${updatedEntry.id}`]
+        });
+        
         queryClient.invalidateQueries({
           queryKey: ['journal-entry', effectiveClientId, entityId, updatedEntry.id]
         });

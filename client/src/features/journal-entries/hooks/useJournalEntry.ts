@@ -185,13 +185,23 @@ export function useJournalEntry() {
       
       // Also invalidate specific entry and its files
       if (updatedEntry.id) {
+        // Invalidate the specific journal entry detail view
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries/${updatedEntry.id}`]
+        });
+        
+        // Also invalidate the legacy format
         queryClient.invalidateQueries({
           queryKey: ['journal-entry', clientId, entityId, updatedEntry.id]
         });
         
-        // Invalidate file attachments cache
+        // Invalidate file attachments cache with both formats
         queryClient.invalidateQueries({
           queryKey: ['journalEntryAttachments', clientId, entityId, updatedEntry.id]
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients/${clientId}/entities/${entityId}/journal-entries/${updatedEntry.id}/files`]
         });
       }
       
