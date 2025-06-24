@@ -290,11 +290,11 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gray-50 overflow-hidden">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
-        <main className="flex-1 bg-gray-50 overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 bg-gray-50">
           {children}
         </main>
       </div>
