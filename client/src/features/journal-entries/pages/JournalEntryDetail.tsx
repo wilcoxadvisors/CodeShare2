@@ -753,7 +753,17 @@ function JournalEntryDetail() {
   const { data: filesData, refetch: refetchFiles } = useQuery({
     queryKey: [`/api/clients/${clientId}/entities/${entityIdParam || currentEntity?.id}/journal-entries/${entryId}/files`],
     enabled: !!clientId && !!entryId && !!(entityIdParam || currentEntity?.id),
+    staleTime: 0, // Always consider data stale to force fresh fetches
+    refetchOnWindowFocus: true,
   });
+
+  // Force refresh files when navigating back from edit mode
+  React.useEffect(() => {
+    if (!isInEditMode && entryId && entryId > 0) {
+      console.log("DEBUG: Forcing files refetch on detail view mount/navigation");
+      refetchFiles();
+    }
+  }, [isInEditMode, entryId, refetchFiles]);
 
   // Extract files from the response
   const attachmentFiles = React.useMemo(() => {
