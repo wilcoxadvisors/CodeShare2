@@ -699,11 +699,22 @@ function JournalEntryForm({
   // Fix Data Initialization - single place where all form state is correctly set
   useEffect(() => {
     if (existingEntry) {
+      // Extract reference number and parse suffix properly
+      const refNumber = existingEntry.reference || existingEntry.referenceNumber || '';
+      const extractedSuffix = parseReferenceNumber(refNumber);
+      
+      console.log("DEBUG: useEffect data initialization:", {
+        entryId: existingEntry.id,
+        rawReference: refNumber,
+        extractedSuffix: extractedSuffix,
+        directSuffix: existingEntry.referenceUserSuffix
+      });
+      
       // Fixes Date bug #7 - proper timezone handling
       setJournalData({
         date: format(new Date(existingEntry.date.replace(/-/g, '/')), "yyyy-MM-dd"),
-        referenceNumber: existingEntry.reference || existingEntry.referenceNumber || '',
-        referenceUserSuffix: existingEntry.referenceUserSuffix || '',
+        referenceNumber: refNumber,
+        referenceUserSuffix: extractedSuffix, // Use extracted suffix instead of direct field
         description: existingEntry.description || '',
         isAccrual: existingEntry.isAccrual || false,
         reversalDate: existingEntry.reversalDate ? format(new Date(existingEntry.reversalDate.replace(/-/g, '/')), "yyyy-MM-dd") : '',
