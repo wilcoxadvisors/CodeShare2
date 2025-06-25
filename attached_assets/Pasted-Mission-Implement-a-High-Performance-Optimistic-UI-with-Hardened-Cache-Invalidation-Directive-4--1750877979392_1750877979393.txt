@@ -1,0 +1,73 @@
+Mission: Implement a High-Performance, Optimistic UI with Hardened Cache Invalidation (Directive 4, Architect's Final Mandate)
+
+Goal: To deliver a truly state-of-the-art user experience by eradicating both stale data and perceived UI freezing. All user actions—creating, updating, deleting entries, and especially modifying attachments—must feel instantaneous. The UI will update optimistically before the server responds, providing immediate feedback, while robust error handling and cache synchronization guarantee data integrity.
+
+1. Root Cause Analysis & Architectural Pivot
+
+Initial Analysis: The system has incomplete cache invalidation, causing stale data.
+Hardened Analysis: The user has confirmed that backend operations involving files are slow. A simple invalidateQueries call after the slow operation completes is insufficient, as the UI remains locked and unresponsive during the delay, leading to a poor user experience.
+Architectural Solution: We will pivot from a simple "invalidate-on-success" model to a full Optimistic Update pattern for all relevant mutations. This is the standard for modern, high-performance applications like Odoo and Intacct.
+2. The Optimistic Update Workflow
+
+For each mutation, we will implement the following three-stage process using React Query's advanced lifecycle hooks:
+
+onMutate (Optimistic Update): Before the server request is sent, we will immediately update the client-side cache to reflect the user's intended action.
+onError (Rollback): If the server returns an error, we will seamlessly roll back the optimistic UI update and notify the user.
+onSettled (Synchronization): After the server operation completes (whether successful or not), we will always refetch the authoritative data to ensure the client is in perfect sync with the backend.
+3. Surgical Instructions for the Agent
+
+You are to refactor all relevant mutations to follow this high-performance optimistic pattern.
+
+Part A: Attachment Mutations (The Primary Source of Delay)
+
+Target File: client/src/features/journal-entries/components/AttachmentSection.tsx (or a related hook).
+
+Instruction: Refactor the uploadFile and deleteFile mutations as follows.
+
+For the deleteFile mutation:
+
+TypeScript
+
+useMutation({
+  mutationFn: deleteFile, // Your existing API call
+  onMutate: async (fileIdToDelete) => {
+    // 1. Cancel ongoing queries to prevent them from overwriting our optimistic update.
+    await queryClient.cancelQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+
+    // 2. Snapshot the previous state.
+    const previousAttachments = queryClient.getQueryData(['journalEntryAttachments', journalEntryId]);
+
+    // 3. Optimistically update the cache by removing the file.
+    queryClient.setQueryData(['journalEntryAttachments', journalEntryId], (oldData) =>
+      oldData.files.filter((file) => file.id !== fileIdToDelete)
+    );
+
+    // 4. Return the snapshot.
+    return { previousAttachments };
+  },
+  onError: (err, variables, context) => {
+    // 5. If the mutation fails, roll back to the previous state.
+    queryClient.setQueryData(['journalEntryAttachments', journalEntryId], context.previousAttachments);
+    // ... also show a toast error message to the user.
+  },
+  onSettled: () => {
+    // 6. Always refetch after the mutation is complete to ensure consistency.
+    queryClient.invalidateQueries({ queryKey: ['journalEntryAttachments', journalEntryId] });
+    queryClient.invalidateQueries({ queryKey: ['journal-entries', clientId, entityId] });
+  },
+})
+Apply a similar onMutate, onError, and onSettled pattern for the uploadFile mutation, optimistically adding the new file to the cache before the upload completes.
+
+Part B: Primary Journal Entry Mutations
+
+Target File: client/src/features/journal-entries/components/JournalEntryForm.tsx and the location of the deleteJournalEntry mutation.
+Instruction: While these operations are typically faster, applying the optimistic pattern provides a consistent, high-performance experience. Refactor the createEntry, updateEntry, and deleteJournalEntry mutations to use the same three-stage optimistic update logic. When updating an entry, for example, optimistically set the new description in the cache immediately in onMutate.
+Step 4: Final Verification
+
+This requires the most rigorous testing.
+
+Responsiveness: Confirm that when you delete an attachment, it disappears from the UI instantly. The save buttons should not be disabled for a long period.
+Data Integrity: After the optimistic UI change, wait a few seconds for the onSettled function to complete, then perform a hard refresh of the page. The data must remain correct, proving that the backend operation and cache synchronization were successful.
+Error Handling: (This may require temporarily modifying the backend to force an error). Confirm that if a mutation fails, the UI correctly rolls back to its previous state and an error is displayed.
+Full Flow: Test the entire lifecycle: create an entry, add and delete attachments optimistically, update the entry's details optimistically, and finally delete the entire entry optimistically. The UI must remain fluid and in sync at every step.
+Executing this final, definitive directive will elevate the application to the highest standard of both data integrity and user experience, fully resolving all aspects of Issue #34. The system will be fast, reliable, and a pleasure to use.
