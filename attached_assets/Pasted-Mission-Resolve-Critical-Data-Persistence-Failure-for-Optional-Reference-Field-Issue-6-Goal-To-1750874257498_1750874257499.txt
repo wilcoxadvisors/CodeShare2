@@ -1,0 +1,88 @@
+Mission: Resolve Critical Data Persistence Failure for Optional Reference Field (Issue #6)
+
+Goal: To ensure that any user-entered value in the optional reference suffix field is correctly persisted when a journal entry is saved as a draft, submitted for approval, or posted. The system must never lose user input.
+
+1. Deep Codebase Research & Analysis
+
+Primary Target File: client/src/features/journal-entries/components/JournalEntryForm.tsx
+Key Functions:
+handleSaveDraft(e)
+handleSubmitForApproval(e)
+handlePostEntry(e)
+Related State: The component's internal state, likely managed by a useState or useReducer hook, which holds the journal entry data (e.g., journalData). The specific field is journalData.referenceUserSuffix.
+Root Cause Assessment: The investigation confirms that the referenceUserSuffix from the component's state is not being explicitly included in the formData or payload object within the three key submission handler functions. When the updateEntry or createEntry mutation is called, the data payload is incomplete, causing the user's input to be lost upon saving. The backend API is not receiving the data, so it cannot save it.
+2. Definitive Plan for Resolution
+
+The fix requires surgically modifying the three submission handlers to ensure the referenceUserSuffix is always included in the payload sent to the backend. We will standardize the payload construction to guarantee data integrity.
+
+3. Surgical Instructions for the Agent
+
+You are to execute the following modifications with precision. Do not deviate.
+
+Step 1: Open the Target File
+
+Navigate to and open the following file in your editor:
+client/src/features/journal-entries/components/JournalEntryForm.tsx
+
+Step 2: Locate the handleSaveDraft Function
+
+Find the handleSaveDraft function. Inside this function, you will see the construction of the formData object that is passed to the mutation.
+
+Instruction: You must ensure that the referenceUserSuffix from the component's state is explicitly added to this formData object.
+
+Find this line (or similar):
+
+TypeScript
+
+const formData = {
+  // ... other properties
+};
+Modify it to explicitly include referenceUserSuffix:
+
+TypeScript
+
+// Inside handleSaveDraft
+const formData = {
+  // ... other properties
+  referenceUserSuffix: journalData.referenceUserSuffix || '', // Ensure it's always included
+};
+Step 3: Locate the handleSubmitForApproval Function
+
+Find the handleSubmitForApproval function. It will have a similar payload construction.
+
+Instruction: Apply the exact same modification to the formData object within this function.
+
+Modify the payload to explicitly include referenceUserSuffix:
+TypeScript
+
+// Inside handleSubmitForApproval
+const formData = {
+  // ... other properties
+  referenceUserSuffix: journalData.referenceUserSuffix || '',
+};
+Step 4: Locate the handlePostEntry Function
+
+Find the handlePostEntry function. This is the third and final handler to modify.
+
+Instruction: Apply the exact same modification to the formData object within this function.
+
+Modify the payload to explicitly include referenceUserSuffix:
+TypeScript
+
+// Inside handlePostEntry
+const formData = {
+  // ... other properties
+  referenceUserSuffix: journalData.referenceUserSuffix || '',
+};
+Step 5: Verification
+
+After implementing these changes, you must rigorously test the functionality to confirm the resolution.
+
+Navigate to an existing journal entry and enter a value into the optional reference field.
+Save the entry as a draft.
+Reload the page and confirm the value has been saved.
+Edit the value again and use the "Post" function.
+Verify the final posted entry displays the correct, updated reference number.
+This surgical repair ensures that the user's input for the optional reference is never lost, bringing the component's behavior up to the required enterprise standard.
+
+Agent, proceed with these instructions. I will be standing by to verify the fix once you have completed the mission.
