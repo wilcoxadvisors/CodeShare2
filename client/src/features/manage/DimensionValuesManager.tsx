@@ -51,7 +51,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
   // Use the dimension passed as prop directly
   const currentDimension = dimension;
 
-  // Create dimension value mutation
+  // Create dimension value mutation with optimistic UI pattern
   const createValueMutation = useMutation({
     mutationFn: (newValue: ValueFormData) => {
       return apiRequest(`/api/dimensions/${currentDimension.id}/values`, {
@@ -59,19 +59,84 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data: newValue,
       });
     },
-    onSuccess: () => {
+    onMutate: async (newValue) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', selectedClientId] });
+
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', selectedClientId]);
+
+      // 3. Optimistically add the new value to the correct dimension instantly
+      const optimisticValue = {
+        id: -(Date.now()), // Temporary negative ID
+        ...newValue,
+        isActive: true,
+        _optimistic: true, // Mark as optimistic
+      };
+
+      queryClient.setQueryData(['dimensions', selectedClientId], (old: any) => {
+        if (!old) return old;
+        
+        const addValueToDimension = (dimensions: any[]) => 
+          dimensions.map(dim => 
+            dim.id === currentDimension.id 
+              ? { ...dim, values: [optimisticValue, ...(dim.values || [])] }
+              : dim
+          );
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: addValueToDimension(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return addValueToDimension(old);
+        }
+        return old;
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
+    },
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', selectedClientId], context.previousDimensions);
+      }
+      toast({ title: "Error", description: err.message || "Failed to create dimension value.", variant: "destructive" });
+    },
+    onSuccess: (newValue) => {
+      // Replace optimistic entry with real server response
+      queryClient.setQueryData(['dimensions', selectedClientId], (old: any) => {
+        if (!old) return old;
+        
+        const replaceOptimisticValue = (dimensions: any[]) => 
+          dimensions.map(dim => 
+            dim.id === currentDimension.id 
+              ? { 
+                  ...dim, 
+                  values: dim.values?.map((val: any) => 
+                    val._optimistic && val.id < 0 ? newValue : val
+                  ) || [newValue]
+                }
+              : dim
+          );
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: replaceOptimisticValue(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return replaceOptimisticValue(old);
+        }
+        return old;
+      });
+
       toast({ title: "Success", description: "Dimension value created successfully." });
-
-      // This is the ONLY line needed to trigger a refresh.
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-
-      // Perform any necessary local state cleanup (e.g., closing a modal).
       setAddModalOpen(false);
       setFormData({ name: '', code: '', description: '' });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to create dimension value.", variant: "destructive" });
-    }
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+    },
   });
 
   // Update dimension value mutation

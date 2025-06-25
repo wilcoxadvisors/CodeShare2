@@ -122,14 +122,66 @@ const DimensionsPage = () => {
         data: newDimension,
       });
     },
-    onSuccess: () => {
+    onMutate: async (newDimension) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', clientId] });
+
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', clientId]);
+
+      // 3. Optimistically add the new dimension to the UI instantly
+      const optimisticDimension = {
+        id: -(Date.now()), // Temporary negative ID
+        ...newDimension,
+        isActive: true,
+        values: [],
+        _optimistic: true, // Mark as optimistic
+      };
+
+      queryClient.setQueryData(['dimensions', clientId], (old: any) => {
+        if (!old) return { data: [optimisticDimension] };
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: [optimisticDimension, ...old.data] };
+        }
+        if (Array.isArray(old)) {
+          return [optimisticDimension, ...old];
+        }
+        return { data: [optimisticDimension] };
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
+    },
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', clientId], context.previousDimensions);
+      }
+      toast({ title: "Error", description: err.message || "Failed to create dimension.", variant: "destructive" });
+    },
+    onSuccess: (newDimension) => {
+      // Replace optimistic entry with real server response
+      queryClient.setQueryData(['dimensions', clientId], (old: any) => {
+        if (!old) return { data: [newDimension] };
+        if (old.data && Array.isArray(old.data)) {
+          return { 
+            ...old, 
+            data: old.data.map((dim: any) => dim._optimistic && dim.id < 0 ? newDimension : dim)
+          };
+        }
+        if (Array.isArray(old)) {
+          return old.map((dim: any) => dim._optimistic && dim.id < 0 ? newDimension : dim);
+        }
+        return { data: [newDimension] };
+      });
+      
       toast({ title: "Success", description: "Dimension created successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
       setCreateModalOpen(false);
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to create dimension.", variant: "destructive" });
-    }
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+    },
   });
 
   const updateDimensionMutation = useMutation({
@@ -139,15 +191,47 @@ const DimensionsPage = () => {
         data,
       });
     },
+    onMutate: async ({ id, data }) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', clientId] });
+
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', clientId]);
+
+      // 3. Optimistically update the dimension in the UI instantly
+      queryClient.setQueryData(['dimensions', clientId], (old: any) => {
+        if (!old) return old;
+        
+        const updateDimensionInArray = (dimensions: any[]) => 
+          dimensions.map(dim => dim.id === id ? { ...dim, ...data } : dim);
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: updateDimensionInArray(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return updateDimensionInArray(old);
+        }
+        return old;
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
+    },
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', clientId], context.previousDimensions);
+      }
+      toast({ title: "Error", description: err.message || "Failed to update dimension.", variant: "destructive" });
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension updated successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', clientId] });
       setEditingDimension(null);
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to update dimension.", variant: "destructive" });
-    }
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+    },
   });
 
   const deleteDimensionMutation = useMutation({
@@ -156,15 +240,47 @@ const DimensionsPage = () => {
         method: 'DELETE',
       });
     },
+    onMutate: async (id) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', clientId] });
+
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', clientId]);
+
+      // 3. Optimistically remove the dimension from the UI instantly
+      queryClient.setQueryData(['dimensions', clientId], (old: any) => {
+        if (!old) return old;
+        
+        const removeDimensionFromArray = (dimensions: any[]) => 
+          dimensions.filter(dim => dim.id !== id);
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: removeDimensionFromArray(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return removeDimensionFromArray(old);
+        }
+        return old;
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
+    },
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', clientId], context.previousDimensions);
+      }
+      toast({ title: "Error", description: err.message || "Failed to delete dimension.", variant: "destructive" });
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension deleted successfully." });
-      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
-      queryClient.refetchQueries({ queryKey: ['dimensions', clientId] });
       setDeletingDimension(null);
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to delete dimension.", variant: "destructive" });
-    }
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+    },
   });
 
   const masterUploadMutation = useMutation({

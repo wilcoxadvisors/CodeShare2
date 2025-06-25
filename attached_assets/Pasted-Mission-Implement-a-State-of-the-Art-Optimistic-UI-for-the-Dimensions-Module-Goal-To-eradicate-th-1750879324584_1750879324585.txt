@@ -1,0 +1,74 @@
+Mission: Implement a State-of-the-Art Optimistic UI for the Dimensions Module
+
+Goal: To eradicate the need for manual refreshes on the "Manage Dimensions" page. All user actions—creating, updating, and deleting dimensions or their values—must be reflected in the UI instantly and automatically. This will be achieved by implementing the same high-performance, optimistic update pattern we used to harden the Journal Entry module.
+
+1. Deep Codebase Research & Analysis
+
+Primary Target File(s): The agent must locate the React components responsible for managing dimensions and their values. This will likely be client/src/features/dimensions/pages/ManageDimensions.tsx and any components it uses for modals or forms (e.g., DimensionForm.tsx, DimensionValueDialog.tsx).
+Key Logic Blocks: The useMutation hooks within these files that handle the API calls for:
+createDimension
+updateDimension
+deleteDimension
+createDimensionValue
+updateDimensionValue
+deleteDimensionValue
+Target Query Key: Based on the console logs, the primary query key to invalidate is ['dimensions', clientId].
+2. Definitive Plan for Resolution
+
+The agent will refactor every mutation listed above to follow the state-of-the-art, three-stage optimistic update pattern (onMutate, onError, onSettled). This will make the UI feel instantaneous while guaranteeing data integrity.
+
+3. Surgical Instructions for the Agent
+
+You are to apply the following architectural pattern to all six of the dimension-related mutations. I will provide the example for createDimensionValue.
+
+Example: Refactoring the createDimensionValue Mutation
+
+TypeScript
+
+// Find the mutation for creating a new dimension value.
+// Replace its current implementation with this state-of-the-art pattern.
+
+const createDimensionValue = useMutation({
+  mutationFn: createDimensionValueApiCall, // Your existing API call function
+
+  onMutate: async (newDimensionValue) => {
+    // Step 1: Cancel any outgoing refetches to prevent conflicts.
+    await queryClient.cancelQueries({ queryKey: ['dimensions', clientId] });
+
+    // Step 2: Snapshot the previous state for rollback.
+    const previousDimensions = queryClient.getQueryData(['dimensions', clientId]);
+
+    // Step 3: Optimistically add the new value to the UI instantly.
+    queryClient.setQueryData(['dimensions', clientId], (old: any) => {
+      // Logic to find the correct dimension and add the new value to its list
+      // This makes the UI update before the server even responds.
+      // ...
+    });
+
+    // Step 4: Return the snapshot.
+    return { previousDimensions };
+  },
+
+  onError: (err, variables, context) => {
+    // Step 5: If the server returns an error, roll back to the previous state.
+    if (context?.previousDimensions) {
+      queryClient.setQueryData(['dimensions', clientId], context.previousDimensions);
+    }
+    // ... show an error toast to the user.
+  },
+
+  onSettled: () => {
+    // Step 6: After everything is done (success or error), always refetch from the server
+    // to guarantee perfect data consistency.
+    queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+  },
+});
+Agent's Mandate:
+
+You must apply this exact three-stage (onMutate, onError, onSettled) optimistic update architecture to every single mutation related to the Dimensions module. This includes all create, update, and delete operations for both parent dimensions and their child values.
+
+Final Verification:
+
+After implementing this, you must test every possible action on the "Manage Dimensions" page. Adding, editing, or removing a dimension or any of its values must result in an instantaneous and correct UI update without requiring a manual page refresh.
+
+This is the final step to ensure our master data modules meet the high standards of performance and reliability required for an enterprise-grade financial platform.
