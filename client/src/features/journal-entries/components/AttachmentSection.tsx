@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Trash2, Eye } from 'lucide-react';
+import { Upload, FileText, Trash2 } from 'lucide-react';
 
 interface JournalEntryFile {
   id: number;
@@ -228,14 +228,6 @@ export function AttachmentSection({
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {/* Fixed Download Link - uses new download route */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`/api/clients/${clientId}/entities/${entityId}/journal-entries/${journalEntryId}/files/${file.id}/download`, '_blank')}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
                   {/* Rewired Delete Button - calls parent callback */}
                   {isInEditMode && (
                     <Button

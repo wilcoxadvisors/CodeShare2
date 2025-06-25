@@ -1,0 +1,47 @@
+Mission: Remove Non-Functional Attachment Preview Button (Issue #33)
+
+Goal: To permanently remove the confusing and non-functional "Preview" button (the "eye" icon) from the attachments list. This will streamline the user interface and remove a dead-end interaction, ensuring a clean and intuitive user experience.
+
+1. Deep Codebase Research & Analysis
+
+Primary Target File: client/src/features/journal-entries/components/AttachmentSection.tsx
+Key Logic Block: The JSX code inside this component that maps (.map()) over the list of attachments and renders the display for each file, including its action buttons.
+Root Cause Assessment: The component AttachmentSection.tsx contains a <Button> component that renders the <Eye /> icon for every file in the attachment list. This button is rendered regardless of the page mode (New, Edit, or View) and has no associated functionality. It is dead code that pollutes the UI.
+2. Definitive Plan for Resolution
+
+The plan is a surgical code removal. We will delete the specific JSX code block that renders the non-functional preview button. This will remove it from the UI in all contexts where the AttachmentSection component is used.
+
+3. Surgical Instructions for the Agent
+
+You are to execute the following modification precisely.
+
+Step 1: Open the Target File
+
+Navigate to and open the following file in your editor:
+client/src/features/journal-entries/components/AttachmentSection.tsx
+
+Step 2: Locate the Attachment List Rendering Logic
+
+Find the JSX code block where the component loops through the attachments array. Inside this loop, you will find a <div> or similar container that holds the action buttons for each file (like "Download" and "Delete").
+
+Step 3: Delete the Preview Button Element
+
+Instruction: You must locate and completely delete the <Button> component that contains the <Eye /> icon. It will look similar to this example:
+
+TypeScript
+
+// FIND AND DELETE THIS ENTIRE BUTTON COMPONENT.
+// The exact attributes may differ slightly.
+<Button variant="outline" size="icon" onClick={() => handlePreview(file)}>
+    <Eye className="h-4 w-4" />
+</Button>
+By deleting this block of code, the preview button will be permanently removed from the interface.
+
+Step 4: Verification
+
+After implementing this change, you must verify its correctness:
+
+Navigate to any journal entry that has attachments, in either "Edit" or "View" mode.
+Confirm that the "eye" icon button is no longer visible in the list of attachments.
+Confirm that the "Download" and "Delete" (in edit mode) buttons are still present and functional.
+This action will successfully resolve the UI flaw and bring the component to our required standard of quality.
