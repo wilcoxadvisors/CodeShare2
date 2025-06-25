@@ -1,0 +1,57 @@
+Mission: Display Auto-Reversing Accrual Information in Journal Entry View (Directive 2)
+
+Goal: To clearly and prominently display the accrual status and scheduled reversal date on the read-only "View" page of any journal entry that has been flagged for automatic reversal. This provides critical visibility for accountants and reviewers, meeting Odoo and Sage Intacct standards of clarity.
+
+1. Deep Codebase Research & Analysis
+
+Primary Target File: client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+Key Data: The component already receives the necessary data within the entry object, specifically the entry.isAccrual (boolean) and entry.reversalDate (string/date) fields.
+Root Cause Assessment: The failure is purely in the presentation layer. The JournalEntryDetail.tsx component's JSX does not contain any code to conditionally render a UI block that would show the user this information. The data is available to the component, but it is not being used in the render output.
+2. Definitive Plan for Resolution
+
+The plan is to add a new, conditionally rendered UI block to the JournalEntryDetail.tsx component. This block will only be visible if entry.isAccrual is true. It will be styled to draw attention without being intrusive and will present the reversal date in a human-readable format.
+
+3. Surgical Instructions for the Agent
+
+You are to modify the UI to display this critical information. Follow these steps exactly.
+
+Step 1: Open the Target File
+
+Navigate to and open the following file in your editor:
+client/src/features/journal-entries/pages/JournalEntryDetail.tsx
+
+Step 2: Locate the Main Content Area in the JSX
+
+Find the main return statement of the JournalEntryDetail component. Inside, you will see the JSX that renders the page structure. Find a logical place to display this accrual information, for example, after the main page header or just before the table of journal entry lines.
+
+Step 3: Insert the Conditional UI Block
+
+Instruction: Copy and paste the following JSX code block into the location you identified in Step 2. This code checks if the entry is an accrual and, if so, renders a styled informational box.
+
+TypeScript
+
+{entry.isAccrual && (
+  <div className="mt-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+    <div className="flex items-center">
+      <svg className="h-5 w-5 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p className="text-sm font-semibold text-blue-800">
+          Auto-Reversing Accrual Entry
+        </p>
+        <p className="text-sm text-blue-700">
+          A reversal entry is scheduled to be posted on: {new Date(entry.reversalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+Step 4: Verification
+
+After implementing this change, you must verify its correctness:
+
+Navigate to the view page for a journal entry that you know is an accrual (like JE #605 if it was created as such). Confirm that the new blue information box appears and displays the correct reversal date.
+Navigate to the view page for a standard journal entry that is not an accrual. Confirm that the blue information box does not appear.
+This modification will provide the necessary visibility into the status of accrual entries, preventing confusion and ensuring the system's transparency meets our high standards.
+

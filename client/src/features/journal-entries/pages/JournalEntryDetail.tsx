@@ -719,6 +719,8 @@ function JournalEntryDetail() {
     lines: JournalEntryLine[];
     files?: JournalEntryFile[];
     voidReason?: string;
+    isAccrual?: boolean;
+    reversalDate?: string;
   }
   
   // API might return the journal entry directly or wrapped in a journalEntry property
@@ -1831,6 +1833,25 @@ function JournalEntryDetail() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Auto-Reversing Accrual Information */}
+        {entry.isAccrual && (
+          <div className="mt-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-blue-800">
+                  Auto-Reversing Accrual Entry
+                </p>
+                <p className="text-sm text-blue-700">
+                  A reversal entry is scheduled to be posted on: {new Date(entry.reversalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Journal Entry Lines */}
         <Card>
