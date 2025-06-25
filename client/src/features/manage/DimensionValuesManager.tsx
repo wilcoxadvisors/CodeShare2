@@ -32,6 +32,7 @@ interface Dimension {
 interface DimensionValuesManagerProps {
   dimension: Dimension;
   selectedClientId: number;
+  clientId?: number; // Add support for both prop names
 }
 
 interface ValueFormData {
@@ -139,7 +140,7 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
     },
   });
 
-  // Update dimension value mutation
+  // Update dimension value mutation with optimistic UI pattern
   const updateValueMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ValueFormData & { isActive: boolean }> }) => {
       return apiRequest(`/api/dimension-values/${id}`, {
@@ -147,44 +148,118 @@ const DimensionValuesManager: React.FC<DimensionValuesManagerProps> = ({ dimensi
         data,
       });
     },
+    onMutate: async ({ id, data }) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', selectedClientId] });
+
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', selectedClientId]);
+
+      // 3. Optimistically update the value in the correct dimension instantly
+      queryClient.setQueryData(['dimensions', selectedClientId], (old: any) => {
+        if (!old) return old;
+        
+        const updateValueInDimension = (dimensions: any[]) => 
+          dimensions.map(dim => 
+            dim.id === currentDimension.id 
+              ? { 
+                  ...dim, 
+                  values: dim.values?.map((val: any) => 
+                    val.id === id ? { ...val, ...data } : val
+                  ) || []
+                }
+              : dim
+          );
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: updateValueInDimension(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return updateValueInDimension(old);
+        }
+        return old;
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
+    },
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', selectedClientId], context.previousDimensions);
+      }
+      toast({ title: "Error", description: err.message || "Failed to update dimension value.", variant: "destructive" });
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Dimension value updated successfully." });
-
-      // This is the ONLY line needed to trigger a refresh.
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
-
-      // Perform any necessary local state cleanup (e.g., closing a modal).
       setEditingValue(null);
       setFormData({ name: '', code: '', description: '' });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to update dimension value.", variant: "destructive" });
-    }
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+    },
   });
 
-  // Delete dimension value mutation
+  // Delete dimension value mutation with optimistic UI pattern
   const deleteValueMutation = useMutation({
     mutationFn: (id: number) => {
       return apiRequest(`/api/dimension-values/${id}`, {
         method: 'DELETE',
       });
     },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Dimension value deleted successfully." });
+    onMutate: async (id) => {
+      // 1. Cancel any outgoing refetches to prevent conflicts
+      await queryClient.cancelQueries({ queryKey: ['dimensions', selectedClientId] });
 
-      // This is the ONLY line needed to trigger a refresh.
-      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+      // 2. Snapshot the previous state for rollback
+      const previousDimensions = queryClient.getQueryData(['dimensions', selectedClientId]);
 
-      // Perform any necessary local state cleanup (e.g., closing a modal).
-      setDeletingValue(null);
+      // 3. Optimistically remove the value from the correct dimension instantly
+      queryClient.setQueryData(['dimensions', selectedClientId], (old: any) => {
+        if (!old) return old;
+        
+        const removeValueFromDimension = (dimensions: any[]) => 
+          dimensions.map(dim => 
+            dim.id === currentDimension.id 
+              ? { 
+                  ...dim, 
+                  values: dim.values?.filter((val: any) => val.id !== id) || []
+                }
+              : dim
+          );
+
+        if (old.data && Array.isArray(old.data)) {
+          return { ...old, data: removeValueFromDimension(old.data) };
+        }
+        if (Array.isArray(old)) {
+          return removeValueFromDimension(old);
+        }
+        return old;
+      });
+
+      // 4. Return the snapshot
+      return { previousDimensions };
     },
-    onError: (error: any) => {
+    onError: (err, variables, context) => {
+      // 5. If the server returns an error, roll back to the previous state
+      if (context?.previousDimensions) {
+        queryClient.setQueryData(['dimensions', selectedClientId], context.previousDimensions);
+      }
       toast({ 
         title: "Error", 
-        description: error.message || "Failed to delete dimension value.", 
+        description: err.message || "Failed to delete dimension value.", 
         variant: "destructive" 
       });
-    }
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Dimension value deleted successfully." });
+      setDeletingValue(null);
+    },
+    onSettled: () => {
+      // 6. After everything is done, always refetch to guarantee perfect data consistency
+      queryClient.invalidateQueries({ queryKey: ['dimensions', selectedClientId] });
+    },
   });
 
   const handleAddValue = (e: React.FormEvent) => {
