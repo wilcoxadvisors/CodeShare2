@@ -530,54 +530,158 @@ function JournalEntryForm({
     },
   });
 
-  // Update entry mutation with architectural decoupling for instant UI response
+  // Update entry mutation with optimistic UI pattern
   const updateEntry = useMutation({
     mutationFn: async (data: any) => {
-      const payload = { ...data, filesToDelete };
+      const payload = { ...data, filesToDelete }; // Add the list of IDs to the payload
+      console.log("ARCHITECT_DEBUG_PAYLOAD: Sending filesToDelete:", filesToDelete);
+      console.log("ARCHITECT_DEBUG_PAYLOAD: Full payload:", payload);
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`, {
         method: "PATCH",
         data: payload,
       });
     },
-    onMutate: async (newData) => {
-      // Optimistically update the entry details immediately
-      await queryClient.cancelQueries({ queryKey: ['journal-entries', effectiveClientId, entityId, existingEntry?.id] });
-      const previousEntry = queryClient.getQueryData(['journal-entries', effectiveClientId, entityId, existingEntry?.id]);
-      queryClient.setQueryData(['journal-entries', effectiveClientId, entityId, existingEntry?.id], (old: any) => ({ ...old, ...newData }));
-      return { previousEntry };
-    },
-    onSuccess: (data) => {
-      // THIS IS THE KEY CHANGE:
-      // This block runs as soon as the backend acknowledges the request,
-      // even if file deletions are still running.
-      // We can immediately perform UI actions like navigation or showing a success toast.
-
-      toast({
-        title: "Success",
-        description: "Journal entry draft has been saved.",
+    onMutate: async (data: any) => {
+      // 1. Cancel ongoing queries to prevent them from overwriting our optimistic update
+      await queryClient.cancelQueries({ 
+        queryKey: ['journal-entries', effectiveClientId, entityId] 
+      });
+      await queryClient.cancelQueries({ 
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`] 
       });
 
-      // If there is a callback (like navigating away), execute it NOW.
-      if (onSubmit) {
-        onSubmit();
+      // 2. Snapshot the previous state
+      const previousJournalEntries = queryClient.getQueryData(['journal-entries', effectiveClientId, entityId]);
+      const previousJournalEntry = queryClient.getQueryData([`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`]);
+      const previousAttachments = [...attachments];
+      const previousFilesToDelete = [...filesToDelete];
+
+      // 3. Optimistically update journal entry data
+      const optimisticEntry = {
+        ...existingEntry,
+        ...data,
+        lines: lines.map(line => ({
+          ...line,
+          accountId: parseInt(line.accountId),
+          type: line.debit ? 'debit' : 'credit',
+          amount: line.debit || line.credit,
+          description: line.description,
+          entityCode: line.entityCode,
+          tags: line.tags || []
+        }))
+      };
+
+      // Update journal entries list cache
+      queryClient.setQueryData(['journal-entries', effectiveClientId, entityId], (oldData: any[] | undefined) => 
+        oldData ? oldData.map(entry => entry.id === existingEntry?.id ? optimisticEntry : entry) : [optimisticEntry]
+      );
+
+      // Update specific journal entry cache
+      queryClient.setQueryData(
+        [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`],
+        optimisticEntry
+      );
+
+      // Optimistically remove files marked for deletion
+      if (filesToDelete.length > 0) {
+        setAttachments(prev => prev.filter(file => !filesToDelete.includes(file.id)));
+        
+        // Update attachments cache
+        queryClient.setQueryData(
+          ['journalEntryAttachments', existingEntry?.id],
+          (oldFiles: any[] | undefined) => oldFiles ? oldFiles.filter(file => !filesToDelete.includes(file.id)) : []
+        );
       }
+
+      // 4. Return context for rollback
+      return { 
+        previousJournalEntries, 
+        previousJournalEntry, 
+        previousAttachments, 
+        previousFilesToDelete,
+        optimisticEntry
+      };
     },
     onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousEntry) {
-        queryClient.setQueryData(['journal-entries', effectiveClientId, entityId, existingEntry?.id], context.previousEntry);
+      // 5. Roll back optimistic updates on error
+      if (context?.previousJournalEntries) {
+        queryClient.setQueryData(['journal-entries', effectiveClientId, entityId], context.previousJournalEntries);
       }
+      if (context?.previousJournalEntry) {
+        queryClient.setQueryData([`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`], context.previousJournalEntry);
+      }
+      if (context?.previousAttachments) {
+        setAttachments(context.previousAttachments);
+      }
+      if (context?.previousFilesToDelete) {
+        setFilesToDelete(context.previousFilesToDelete);
+      }
+
+      console.log("DEBUG: Update entry failed:", err);
       toast({
         title: "Error",
-        description: "Failed to update entry.",
+        description: `Failed to update journal entry: ${err.message}`,
         variant: "destructive",
       });
     },
+    onSuccess: async (updatedEntry, variables, context) => {
+      console.log("DEBUG: Update entry success");
+      
+      // Clear file deletion queue after successful update
+      setFilesToDelete([]);
+      
+      // Update form state with server response
+      if (updatedEntry) {
+        setJournalData(prev => ({
+          ...prev,
+          referenceNumber: updatedEntry.reference || updatedEntry.referenceNumber || prev.referenceNumber,
+          referenceUserSuffix: updatedEntry.referenceUserSuffix || prev.referenceUserSuffix,
+          description: updatedEntry.description || prev.description,
+          isAccrual: updatedEntry.isAccrual !== undefined ? updatedEntry.isAccrual : prev.isAccrual,
+          reversalDate: updatedEntry.reversalDate ? format(new Date(updatedEntry.reversalDate), "yyyy-MM-dd") : prev.reversalDate,
+        }));
+        
+        // Update lines with fresh data from server
+        if (updatedEntry.lines) {
+          const processedLines = updatedEntry.lines.map((line: any) => ({
+            id: line.id,
+            _key: line.id ? `existing_${line.id}` : nanoid(),
+            accountId: line.accountId?.toString() || "",
+            entityCode: line.entityCode || "",
+            description: line.description || "",
+            debit: line.debit?.toString() || "",
+            credit: line.credit?.toString() || "",
+            tags: line.tags || [],
+          }));
+          setLines(processedLines);
+        }
+      }
+      
+      // Upload pending files if any
+      if (pendingAttachments.length > 0) {
+        handleUploadPendingFiles(updatedEntry.id).then(() => {
+          toast({ title: "Success", description: "Journal entry updated with attachments." });
+          setTimeout(() => onSubmit(), 200);
+        }).catch(() => {
+          toast({ title: "Warning", description: "Journal entry updated but some files failed to upload." });
+          setTimeout(() => onSubmit(), 100);
+        });
+      } else {
+        toast({ title: "Success", description: "Journal entry updated." });
+        setTimeout(() => onSubmit(), 200);
+      }
+    },
     onSettled: () => {
-      // This will run *after* the slow backend process is truly finished.
-      // It guarantees final data consistency in the background.
-      queryClient.invalidateQueries({ queryKey: ['journal-entries', effectiveClientId, entityId] });
-      queryClient.invalidateQueries({ queryKey: ['journal-entries', effectiveClientId, entityId, existingEntry?.id] });
+      // Always refetch to ensure data consistency after optimistic updates
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['journalEntryAttachments', existingEntry?.id]
+      });
     },
   });
 
