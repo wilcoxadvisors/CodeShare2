@@ -785,7 +785,7 @@ function JournalEntryForm({
       setAttachments([]);
       setPendingAttachments([]);
     }
-  }, [existingEntry, entities]);
+  }, [existingEntry, entities, parseReferenceNumber]);
 
   // Initialize attachments from existing files query
   React.useEffect(() => {
