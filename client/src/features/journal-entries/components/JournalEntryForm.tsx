@@ -117,6 +117,7 @@ interface JournalEntryFile {
   size: number;
   uploadedBy: number;
   uploadedAt: string | Date;
+  _optimistic?: boolean; // Mark for optimistic updates
 }
 
 interface ExpandedState {
@@ -378,31 +379,67 @@ function JournalEntryForm({
     return [];
   }, [existingFilesData]);
 
-  // Post journal entry mutation
+  // Post journal entry mutation with optimistic UI pattern
   const postJournalEntry = useMutation({
     mutationFn: async (entryId: number) => {
       return apiRequest(`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}/post`, {
         method: "PATCH",
       });
     },
-    onSuccess: async (response: any) => {
-      // ARCHITECT'S DEFINITIVE FIX: Force immediate query refresh without race conditions
-      await queryClient.refetchQueries({ 
-        queryKey: ["journal-entries", effectiveClientId, entityId],
-        type: 'all'
+    onMutate: async (entryId: number) => {
+      // 1. Cancel ongoing queries to prevent them from overwriting our optimistic update
+      await queryClient.cancelQueries({ 
+        queryKey: ['journal-entries', effectiveClientId, entityId] 
       });
-      
+      await queryClient.cancelQueries({ 
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}`] 
+      });
+
+      // 2. Snapshot the previous state
+      const previousJournalEntries = queryClient.getQueryData(['journal-entries', effectiveClientId, entityId]);
+      const previousJournalEntry = queryClient.getQueryData([`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}`]);
+
+      // 3. Optimistically update entry status to 'posted'
+      queryClient.setQueryData(['journal-entries', effectiveClientId, entityId], (oldData: any[] | undefined) => 
+        oldData ? oldData.map(entry => entry.id === entryId ? { ...entry, status: 'posted' } : entry) : []
+      );
+
+      queryClient.setQueryData([`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${entryId}`], (oldData: any) => 
+        oldData ? { ...oldData, status: 'posted' } : oldData
+      );
+
+      // 4. Return context for rollback
+      return { previousJournalEntries, previousJournalEntry, entryId };
+    },
+    onError: (err, variables, context) => {
+      // 5. Roll back optimistic updates on error
+      if (context?.previousJournalEntries) {
+        queryClient.setQueryData(['journal-entries', effectiveClientId, entityId], context.previousJournalEntries);
+      }
+      if (context?.previousJournalEntry) {
+        queryClient.setQueryData([`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${context.entryId}`], context.previousJournalEntry);
+      }
+
+      toast({
+        title: "Error",
+        description: `Failed to post journal entry: ${err.message}`,
+        variant: "destructive",
+      });
+    },
+    onSuccess: async (response: any, variables, context) => {
       toast({
         title: "Success",
         description: "Journal entry posted successfully",
       });
       onSubmit();
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to post journal entry",
-        variant: "destructive",
+    onSettled: () => {
+      // Always refetch to ensure data consistency
+      queryClient.invalidateQueries({
+        queryKey: ['journal-entries', effectiveClientId, entityId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/clients/${effectiveClientId}/entities/${entityId}/journal-entries/${existingEntry?.id}`]
       });
     },
   });
