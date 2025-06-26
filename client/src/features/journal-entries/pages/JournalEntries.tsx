@@ -206,16 +206,16 @@ function JournalEntries() {
     }
   };
   
-  // Handle batch upload button click
-  const handleBatchUpload = () => {
+  // Handle batch import button click
+  const handleBatchImport = () => {
     if (clientId && entityId) {
       // Use absolute URL pattern to ensure client and entity params are included
-      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/batch-upload`);
+      navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/batch-import`);
     } else {
-      console.error("Cannot access batch upload: Missing client ID or entity ID");
+      console.error("Cannot access batch import: Missing client ID or entity ID");
       toast({
         title: "Error",
-        description: "Cannot access batch upload. Please select a client and entity first.",
+        description: "Cannot access batch import. Please select a client and entity first.",
         variant: "destructive",
       });
     }
@@ -377,10 +377,10 @@ function JournalEntries() {
                 </Button>
               </Link>
               
-              <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/batch-upload`}>
+              <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/batch-import`}>
                 <Button variant="outline">
                   <FileUp className="mr-2 h-4 w-4" />
-                  Batch Upload
+                  Batch Import
                 </Button>
               </Link>
             </>
@@ -391,9 +391,9 @@ function JournalEntries() {
                 New Entry
               </Button>
               
-              <Button variant="outline" onClick={handleBatchUpload}>
+              <Button variant="outline" onClick={handleBatchImport}>
                 <FileUp className="mr-2 h-4 w-4" />
-                Batch Upload
+                Batch Import
               </Button>
             </>
           )}
