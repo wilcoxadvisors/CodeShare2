@@ -201,6 +201,10 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   // Calculate the number of selected valid entries for processing
   const selectedForProcessingCount = Object.keys(selectionState).filter(key => selectionState[key]).length;
 
+  // Calculate if all valid visible items are selected
+  const validVisibleItems = filteredAndSortedGroups.filter(g => g.isValid);
+  const isAllSelected = validVisibleItems.length > 0 && validVisibleItems.every(g => selectionState[g.groupKey]);
+
   console.log("Current Filter State:", filter); // For verification
   console.log("Current Sort State:", sort);   // For verification
   console.log("Dynamic Batch Summary:", dynamicBatchSummary); // For real-time validation tracking
@@ -242,6 +246,9 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
         onFilterChange={setFilter}
         sort={sort}
         onSortChange={setSort}
+        isAllSelected={isAllSelected}
+        onSelectAll={handleSelectAll}
+        itemCount={validVisibleItems.length}
       />
 
       <div className="space-y-4">
