@@ -1,0 +1,58 @@
+Mission: Implement Final UI Controls ("Include in Import" Toggles & UI Entry Point)
+
+Goal: To complete the "Smart Import" feature by implementing the final two user-facing controls: 1) A checkbox on each EntryGroupCard to allow users to selectively include/exclude entries from the batch. 2) A functional "Batch Import" button on the main JournalEntries page to provide a clear entry point to the entire wizard.
+
+Architectural Justification: These are the last two pieces required for a complete and professional user experience. Granular control over which entries are processed is a must-have for any enterprise-grade import tool. A clear and visible entry point ensures the feature is discoverable and easily accessible.
+
+Surgical Code Implementation
+This will be a two-part mission.
+
+Part 1: Implement "Include in Import" Toggles
+
+Action: The agent is to implement the functionality for the selection checkboxes on each EntryGroupCard. The agent has previously implemented the UI for this; they must now ensure the logic is fully integrated.
+
+Verification:
+
+The checkbox on invalid entries must be disabled.
+
+Unchecking a valid entry must update the count on the "Confirm and Process" button and exclude that entry from the payload sent to the backend.
+
+A "Select All" checkbox in the toolbar must correctly select/deselect all visible and valid entries.
+
+Part 2: Implement the Main UI Entry Point
+
+Action: The agent must add a functional "Batch Import" button to the header of the JournalEntries.tsx page.
+
+Surgical Instruction:
+
+Open: client/src/features/journal-entries/pages/JournalEntries.tsx.
+
+Import: useNavigate, useParams, Button, and the Upload icon.
+
+Implement: Get Maps, clientId, and entityId from the hooks.
+
+Add the Button: In the <PageHeader> component, add the new button next to the existing "New Journal Entry" button. It must have an onClick handler that correctly navigates the user to the /.../batch-import route.
+
+TypeScript
+
+<div className="flex items-center space-x-2">
+    <Button
+      variant="outline"
+      onClick={() => navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/batch-import`)}
+    >
+      <Upload className="mr-2 h-4 w-4" />
+      Batch Import
+    </Button>
+    <Button onClick={() => navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/new`)}>
+        <PlusCircle className="mr-2 h-4 w-4" />
+        New Journal Entry
+    </Button>
+</div>
+Final Verification Plan
+Navigate to the main JournalEntries list page. Assert that the "Batch Import" button is visible.
+
+Click the "Batch Import" button. Assert that it successfully navigates you to the "Smart Import" wizard.
+
+Proceed through the entire workflow with a test file. On the review screen, Assert that the "Select All" and individual checkboxes function correctly and that the "Confirm and Process" button count updates in real-time.
+
+This is the final mission required to complete this feature.

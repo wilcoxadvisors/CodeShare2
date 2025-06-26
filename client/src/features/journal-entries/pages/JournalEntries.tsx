@@ -31,6 +31,7 @@ import {
 import {
   Plus,
   FileUp,
+  Upload,
   Filter,
   Search,
   Calendar,
@@ -379,7 +380,7 @@ function JournalEntries() {
               
               <Link to={`/clients/${clientId}/entities/${entityId}/journal-entries/batch-import`}>
                 <Button variant="outline">
-                  <FileUp className="mr-2 h-4 w-4" />
+                  <Upload className="mr-2 h-4 w-4" />
                   Batch Import
                 </Button>
               </Link>
@@ -392,7 +393,7 @@ function JournalEntries() {
               </Button>
               
               <Button variant="outline" onClick={handleBatchImport}>
-                <FileUp className="mr-2 h-4 w-4" />
+                <Upload className="mr-2 h-4 w-4" />
                 Batch Import
               </Button>
             </>
