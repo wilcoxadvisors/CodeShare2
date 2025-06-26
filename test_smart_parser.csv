@@ -1,0 +1,5 @@
+AccountCode,Amount,Description,Date,Department,Location
+1000,1500,Cash receipt,2023-01-15,Sales,New York
+4000,-1500,Revenue recognition,2023-01-15,Sales,New York
+6000,500,Office supplies,2023-01-16,Operations,Boston
+1000,-500,Cash payment,2023-01-16,Operations,Boston

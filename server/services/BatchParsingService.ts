@@ -99,6 +99,10 @@ export class BatchParsingService {
 
     } catch (error) {
       console.error("Error in BatchParsingService:", error);
+      // Preserve specific error messages, otherwise use generic fallback
+      if (error instanceof Error && error.message.includes('JournalEntryLines')) {
+        throw error;
+      }
       // Re-throw a user-friendly error to be caught by the route handler
       throw new Error("Failed to parse the uploaded file. Please ensure it is a valid .xlsx or .csv file and matches the template format.");
     }
