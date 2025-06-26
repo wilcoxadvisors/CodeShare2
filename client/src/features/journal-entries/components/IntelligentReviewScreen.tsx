@@ -39,10 +39,17 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
 
   // Add this new state to hold the mutable data for editing
   const [editableGroups, setEditableGroups] = useState(analysisResult.entryGroups);
+  const [selectionState, setSelectionState] = useState<{ [key: string]: boolean }>({});
 
   // Add a useEffect to reset the editable data if a new analysis result comes in
   useEffect(() => {
     setEditableGroups(analysisResult.entryGroups);
+    // Initialize selection state - by default, only valid entries are selected for processing
+    const initialSelection: { [key: string]: boolean } = {};
+    analysisResult.entryGroups.forEach((group: any) => {
+      initialSelection[group.groupKey] = group.isValid;
+    });
+    setSelectionState(initialSelection);
   }, [analysisResult]);
 
   // Fetch accounts and dimensions data for real-time validation
@@ -119,6 +126,14 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     setEditableGroups(newGroups);
   };
 
+  // Add this new handler function to toggle selection for a specific group
+  const handleToggleSelection = (groupKey: string) => {
+    setSelectionState(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
+
   // Client-side sorting and filtering logic with performance optimization
   const filteredAndSortedGroups = React.useMemo(() => {
     let processedGroups = [...editableGroups]; // Use editableGroups
@@ -172,9 +187,13 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     };
   }, [editableGroups, batchSummary.newDimensionValues]);
 
+  // Calculate the number of selected valid entries for processing
+  const selectedForProcessingCount = Object.keys(selectionState).filter(key => selectionState[key]).length;
+
   console.log("Current Filter State:", filter); // For verification
   console.log("Current Sort State:", sort);   // For verification
   console.log("Dynamic Batch Summary:", dynamicBatchSummary); // For real-time validation tracking
+  console.log("Selected for Processing:", selectedForProcessingCount); // For selection tracking
 
   return (
     <div className="space-y-6">
@@ -221,6 +240,8 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             group={group}
             index={index}
             onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
+            isSelected={selectionState[group.groupKey] || false}
+            onToggleSelected={() => handleToggleSelection(group.groupKey)}
           />
         ))}
       </div>
