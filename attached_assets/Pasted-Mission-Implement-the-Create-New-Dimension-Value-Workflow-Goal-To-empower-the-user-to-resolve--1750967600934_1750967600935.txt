@@ -1,0 +1,114 @@
+Mission: Implement the "Create New Dimension Value" Workflow
+
+Goal: To empower the user to resolve "Dimension Value Not Found" errors with a single click. When the validation service identifies a dimension value in the uploaded file that does not exist in the system, the UI must present an "Approve & Create" button that allows the user to add the new value instantly.
+
+Architectural Justification: Forcing a user to leave the import workflow, navigate to the Dimensions management page, create the new value, and then restart the import is a poor user experience. A state-of-the-art system allows users to seamlessly resolve these data gaps where they are discovered, making the onboarding process faster and more intuitive.
+
+Surgical Code Implementation
+Step 1: Implement the "Create Dimension Value" Mutation
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: Add a new useMutation hook specifically for creating a new dimension value. This mutation must be optimistic to provide instant feedback and must re-trigger our client-side validation on success.
+
+TypeScript
+
+// Inside IntelligentReviewScreen component, after the other hooks
+
+const createDimensionValueMutation = useMutation({
+    mutationFn: (data: { dimensionId: number; name: string; code: string }) => {
+        return apiRequest(`/api/dimensions/${data.dimensionId}/values`, {
+            method: 'POST',
+            data: { name: data.name, code: data.code },
+        });
+    },
+    onSuccess: () => {
+        toast({ title: "Success", description: "New dimension value created." });
+        // The MOST important step: invalidate the dimensions query so our
+        // client-side validation engine has the fresh data.
+        queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+    },
+    onError: (error: any) => {
+        toast({
+            title: "Creation Failed",
+            description: error?.error?.message || "Could not create the new dimension value.",
+            variant: "destructive",
+        });
+    },
+});
+Step 2: Enhance the EntryGroupCard.tsx to Display the Action
+
+File: client/src/features/journal-entries/components/EntryGroupCard.tsx
+
+Instruction: Modify the component to display an "Approve & Create" button next to any "Dimension Value Not Found" error.
+
+Update the props interface to accept the new mutation handler:
+
+TypeScript
+
+interface EntryGroupCardProps {
+  // ... existing props
+  onCreateDimensionValue: (data: { dimensionId: number; name: string; code: string }) => void;
+}
+Update the component signature:
+
+TypeScript
+
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected, onCreateDimensionValue }) => { ... }
+Update the Error Display Logic. Find the section that displays the error details and enhance it to show the button.
+
+TypeScript
+
+// Find the map function for displaying errors
+{group.errors.map((error: any, i: number) => {
+    const isNewValueSuggestion = error.type === 'DIMENSION_VALUE_NOT_FOUND';
+    return (
+      <div key={i} className="text-xs text-red-600 flex items-center justify-between p-1">
+        <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Row {error.originalRow} ({error.field}): {error.message}</span>
+        </div>
+        {isNewValueSuggestion && (
+            <Button
+                size="xs"
+                variant="outline"
+                className="h-6 px-2"
+                onClick={() => onCreateDimensionValue({
+                    dimensionId: error.dimensionId, // The backend validation must provide this
+                    name: error.value, // The backend validation must provide this
+                    code: error.value, // The backend validation must provide this
+                })}
+            >
+                Approve & Create
+            </Button>
+        )}
+      </div>
+    )
+})}
+Step 3: Final Integration in IntelligentReviewScreen.tsx
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: Update the <EntryGroupCard /> call to pass down the new onCreateDimensionValue prop.
+
+TypeScript
+
+// Find the EntryGroupCard component call
+<EntryGroupCard
+  // ... existing props
+  onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
+  isSelected={selectionState[group.groupKey] || false}
+  onToggleSelected={() => handleToggleSelection(group.groupKey)}
+  // --- ADD THIS NEW PROP ---
+  onCreateDimensionValue={(data) => createDimensionValueMutation.mutate(data)}
+/>
+Verification Plan
+Upload a file with a Dimension value that you know does not exist (e.g., a new Project code).
+
+Verify: The review screen should show the EntryGroupCard with a red border and an error message stating "Dimension Value '[Your new value]' not found..."
+
+Verify: Next to this specific error message, an "Approve & Create" button should be visible.
+
+Action: Click the "Approve & Create" button.
+
+Verify: A success toast should appear. The dimensions query should be invalidated, and the client-side re-validation logic should be triggered, causing the error message and the red highlighting on the card to disappear instantly.

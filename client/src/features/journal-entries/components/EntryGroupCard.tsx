@@ -16,9 +16,10 @@ interface EntryGroupCardProps {
   onCellUpdate: (lineIndex: number, field: string, value: string) => void;
   isSelected: boolean;
   onToggleSelected: () => void;
+  onCreateDimensionValue: (data: { dimensionId: number; name: string; code: string }) => void;
 }
 
-export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected }) => {
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected, onCreateDimensionValue }) => {
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
@@ -143,12 +144,31 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
             {/* Error and Suggestion Details */}
             {errorCount > 0 && (
               <div className="mt-4 space-y-2">
-                {group.errors.map((error: any, i: number) => (
-                  <div key={i} className="text-xs text-red-600 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Row {error.originalRow} ({error.field}): {error.message}</span>
-                  </div>
-                ))}
+                {group.errors.map((error: any, i: number) => {
+                  const isNewValueSuggestion = error.type === 'DIMENSION_VALUE_NOT_FOUND';
+                  return (
+                    <div key={i} className="text-xs text-red-600 flex items-center justify-between p-1">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>Row {error.originalRow} ({error.field}): {error.message}</span>
+                      </div>
+                      {isNewValueSuggestion && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => onCreateDimensionValue({
+                            dimensionId: error.dimensionId, // The backend validation must provide this
+                            name: error.value, // The backend validation must provide this
+                            code: error.value, // The backend validation must provide this
+                          })}
+                        >
+                          Approve & Create
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

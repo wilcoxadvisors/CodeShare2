@@ -83,13 +83,22 @@ export class BatchValidationService {
               field: dimCode,
             });
           } else if (!(dimension as any).valuesMap.has(dimValueCode)) {
-              // This is a potential new value, not a hard error.
+              // This is a dimension value that doesn't exist - create an error with creation capability
+              groupErrors.push({
+                type: 'DIMENSION_VALUE_NOT_FOUND',
+                message: `Dimension value "${dimValueCode}" not found for ${(dimension as any).name}. Click "Approve & Create" to add it.`,
+                originalRow: line.originalRow,
+                field: dimCode,
+                dimensionId: (dimension as any).id,
+                value: dimValueCode,
+              });
+              
+              // Also add to suggestions for summary display
               const suggestion = {
                   dimensionName: (dimension as any).name,
                   dimensionCode: dimCode,
                   newValueCode: dimValueCode
               };
-              // Add suggestion if it's not already found
               if (!newDimensionValueSuggestions.some(s => s.dimensionCode === dimCode && s.newValueCode === dimValueCode)) {
                   newDimensionValueSuggestions.push(suggestion);
               }

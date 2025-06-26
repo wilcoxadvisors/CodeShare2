@@ -100,6 +100,29 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     },
   });
 
+  // Create dimension value mutation for seamless error resolution
+  const createDimensionValueMutation = useMutation({
+    mutationFn: (data: { dimensionId: number; name: string; code: string }) => {
+      return apiRequest(`/api/dimensions/${data.dimensionId}/values`, {
+        method: 'POST',
+        data: { name: data.name, code: data.code },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "New dimension value created." });
+      // The MOST important step: invalidate the dimensions query so our
+      // client-side validation engine has the fresh data.
+      queryClient.invalidateQueries({ queryKey: ['dimensions', clientId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Creation Failed",
+        description: error?.error?.message || "Could not create the new dimension value.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Create a handler function to update a specific cell with real-time re-validation
   const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
     // Deep copy to ensure state updates work correctly
@@ -260,6 +283,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
             isSelected={selectionState[group.groupKey] || false}
             onToggleSelected={() => handleToggleSelection(group.groupKey)}
+            onCreateDimensionValue={(data) => createDimensionValueMutation.mutate(data)}
           />
         ))}
       </div>
