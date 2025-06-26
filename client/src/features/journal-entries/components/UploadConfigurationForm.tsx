@@ -121,7 +121,40 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
           <AlertTitle>Download Your Template</AlertTitle>
           <AlertDescription>
             Download the "Smart Template" to ensure your data is formatted correctly. The template includes reference tabs for your Chart of Accounts and Dimensions.
-            <Button variant="outline" size="sm" className="ml-4">Download Template</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4"
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/clients/${clientId}/journal-entries/batch-template?mode=${mode}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to download template from server.');
+                  }
+
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `Wilcox_JE_Template_${mode}.xlsx`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+
+                } catch (error) {
+                  console.error("Download failed", error);
+                  toast({ title: "Download Failed", description: "Could not generate the template.", variant: "destructive" });
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Template
+            </Button>
           </AlertDescription>
         </Alert>
 

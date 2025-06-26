@@ -174,6 +174,44 @@ export function registerJournalEntryRoutes(app: Express) {
     }
   }));
 
+  // Dynamic template generation endpoint
+  app.get('/api/clients/:clientId/journal-entries/batch-template', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
+      const mode = req.query.mode as 'standard' | 'historical'; // Mode is passed as a query param
+
+      if (!mode) {
+        return res.status(400).json({ error: 'Import mode is required.' });
+      }
+
+      // Import the template service at the top of the file
+      const { BatchTemplateService } = await import('./services/BatchTemplateService');
+      
+      // Import the storage modules
+      const { accountStorage } = await import('./storage/accountStorage');
+      const { dimensionStorage } = await import('./storage/dimensionStorage');
+
+      // 1. Fetch all necessary data for the reference sheets
+      const accounts = await accountStorage.getAccounts(clientId);
+      const dimensions = await dimensionStorage.getDimensionsByClient(clientId);
+
+      // 2. Generate the Excel file buffer using a dedicated service
+      const templateService = new BatchTemplateService();
+      const fileBuffer = templateService.generateTemplate({ mode, accounts, dimensions });
+
+      const fileName = `Wilcox_JE_Template_${mode}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // 3. Set headers and stream the file to the user for download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(fileBuffer);
+
+    } catch (error: any) {
+      console.error("Template Generation Error:", error);
+      res.status(500).json({ error: 'Failed to generate template.' });
+    }
+  }));
+
   // Batch process approved journal entries
   app.post('/api/clients/:clientId/journal-entries/batch-process', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
     try {
