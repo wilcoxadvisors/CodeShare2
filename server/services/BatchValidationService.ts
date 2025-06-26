@@ -1,52 +1,120 @@
-/**
- * BatchValidationService - Stub Implementation
- * 
- * This is a temporary stub implementation for Mission 1.1.
- * The actual validation logic will be implemented in Mission 1.3.
- */
+import { accountStorage } from '../storage/accountStorage';
+import { dimensionStorage } from '../storage/dimensionStorage';
+
+// Re-using the interfaces defined in the parsing service
+interface ParsedLine {
+  originalRow: number;
+  accountCode: string;
+  amount: any; // Decimal from parsing service
+  description: string | null;
+  date: Date | null;
+  dimensions: { [key: string]: string };
+}
+
+interface EntryGroup {
+  groupKey: string;
+  lines: ParsedLine[];
+  errors: string[];
+}
+
+// Define the structure for the final validation output
+interface ValidationError {
+  type: 'ACCOUNT_NOT_FOUND' | 'DIMENSION_NOT_FOUND' | 'DIMENSION_VALUE_NOT_FOUND';
+  message: string;
+  originalRow: number;
+  field: string; // e.g., 'AccountCode' or 'Department'
+}
+
+interface NewDimensionValueSuggestion {
+    dimensionName: string;
+    dimensionCode: string;
+    newValueCode: string;
+}
 
 export class BatchValidationService {
-  async validate(parsedData: any, clientId: number): Promise<any> {
+  public async validate(parsedData: { entryGroups: EntryGroup[] }, clientId: number) {
     console.log('ARCHITECT_DEBUG: BatchValidationService.validate called for client:', clientId);
-    console.log('ARCHITECT_DEBUG: Validating', parsedData.parsedEntries?.length || 0, 'entry groups');
+    console.log('ARCHITECT_DEBUG: Validating', parsedData.entryGroups?.length || 0, 'entry groups');
     
-    // Stub implementation - returns mock validation result
-    return {
-      batchSummary: {
-        totalEntries: 2,
-        validEntries: 1,
-        entriesWithErrors: 1,
-        newDimensionValues: 0
-      },
-      entryGroups: [
-        {
-          groupKey: 'auto-gen-1',
-          header: { date: '2024-01-15', description: 'Cash receipt transaction' },
-          lines: [
-            { accountCode: '1000', amount: 1500, description: 'Cash receipt', rowNumber: 1 },
-            { accountCode: '4000', amount: -1500, description: 'Revenue', rowNumber: 2 }
-          ],
-          errors: [], // No errors for this group
-          isValid: true
-        },
-        {
-          groupKey: 'auto-gen-2',
-          header: { date: '2024-01-15', description: 'Office supplies transaction' },
-          lines: [
-            { accountCode: '6000', amount: 500, description: 'Office supplies', rowNumber: 3 },
-            { accountCode: '1000', amount: -500, description: 'Cash payment', rowNumber: 4 }
-          ],
-          errors: [
-            {
-              type: 'ACCOUNT_NOT_FOUND',
-              message: 'Account code "6000" does not exist in the chart of accounts',
-              rowNumber: 3,
-              field: 'accountCode'
-            }
-          ],
-          isValid: false
+    // 1. Fetch all necessary data from the database ONCE for efficiency.
+    const allAccounts = await accountStorage.getAccounts(clientId);
+    const allDimensions = await dimensionStorage.getDimensionsByClient(clientId);
+
+    // 2. Create efficient in-memory lookup maps.
+    const accountsMap = new Map(allAccounts.map(acc => [acc.accountCode, acc]));
+    const dimensionsMap = new Map(
+      allDimensions.map((dim: any) => [
+        dim.code,
+        { ...dim, valuesMap: new Map(dim.values?.map((val: any) => [val.code, val]) || []) },
+      ])
+    );
+
+    console.log('ARCHITECT_DEBUG: Created lookup maps - Accounts:', accountsMap.size, 'Dimensions:', dimensionsMap.size);
+
+    const newDimensionValueSuggestions: NewDimensionValueSuggestion[] = [];
+    let validationErrors: ValidationError[] = [];
+
+    // 3. Iterate through each entry group and validate its lines.
+    const validatedEntryGroups = parsedData.entryGroups.map(group => {
+      const groupErrors: ValidationError[] = [];
+
+      group.lines.forEach(line => {
+        // Validate Account Code
+        if (!accountsMap.has(line.accountCode)) {
+          groupErrors.push({
+            type: 'ACCOUNT_NOT_FOUND',
+            message: `Account code "${line.accountCode}" does not exist or is inactive.`,
+            originalRow: line.originalRow,
+            field: 'AccountCode',
+          });
         }
-      ]
+
+        // Validate Dimension Codes and Values
+        for (const dimCode in line.dimensions) {
+          const dimValueCode = line.dimensions[dimCode];
+          if (!dimValueCode) continue; // Skip if no value is provided
+
+          const dimension = dimensionsMap.get(dimCode);
+          if (!dimension) {
+            groupErrors.push({
+              type: 'DIMENSION_NOT_FOUND',
+              message: `Dimension "${dimCode}" does not exist for this client.`,
+              originalRow: line.originalRow,
+              field: dimCode,
+            });
+          } else if (!(dimension as any).valuesMap.has(dimValueCode)) {
+              // This is a potential new value, not a hard error.
+              const suggestion = {
+                  dimensionName: (dimension as any).name,
+                  dimensionCode: dimCode,
+                  newValueCode: dimValueCode
+              };
+              // Add suggestion if it's not already found
+              if (!newDimensionValueSuggestions.some(s => s.dimensionCode === dimCode && s.newValueCode === dimValueCode)) {
+                  newDimensionValueSuggestions.push(suggestion);
+              }
+          }
+        }
+      });
+
+      validationErrors.push(...groupErrors);
+      return { ...group, errors: groupErrors, isValid: groupErrors.length === 0 };
+    });
+
+    // 4. Assemble the final, comprehensive response object.
+    const batchSummary = {
+        totalEntries: validatedEntryGroups.length,
+        validEntries: validatedEntryGroups.filter(g => g.isValid).length,
+        entriesWithErrors: validatedEntryGroups.filter(g => !g.isValid).length,
+        newDimensionValues: newDimensionValueSuggestions.length
+    };
+
+    console.log('ARCHITECT_DEBUG: Validation complete - Total:', batchSummary.totalEntries, 'Valid:', batchSummary.validEntries, 'Errors:', batchSummary.entriesWithErrors);
+
+    return {
+      batchSummary,
+      entryGroups: validatedEntryGroups,
+      newDimensionValueSuggestions,
     };
   }
 }
