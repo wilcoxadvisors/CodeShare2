@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/PageHeader';
+import { UploadConfigurationForm } from '../components/UploadConfigurationForm';
 // --- Placeholders for future components ---
-// import { UploadConfigurationForm } from '../components/UploadConfigurationForm';
 // import { IntelligentReviewScreen } from '../components/IntelligentReviewScreen';
 
 // A placeholder type for the analysis data we will get from the backend
@@ -34,12 +34,7 @@ const BatchImportWizard: React.FC = () => {
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
         {currentStep === 'CONFIG' && (
-          // Placeholder for the configuration and upload form
-          <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
-            <h2 className="text-xl font-semibold">Phase 2, Mission 2.2</h2>
-            <p className="text-muted-foreground mt-2">The `UploadConfigurationForm` component will be built here.</p>
-            <p className="mt-4">It will handle file uploads and call `handleAnalysisComplete` with the backend response.</p>
-          </div>
+          <UploadConfigurationForm onAnalysisComplete={handleAnalysisComplete} />
         )}
 
         {currentStep === 'REVIEW' && analysisResult && (

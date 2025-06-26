@@ -1,0 +1,222 @@
+Mission: Build the "Smart Import" Configuration & Upload Form
+
+Goal: To create a new, reusable component, UploadConfigurationForm.tsx, that will serve as the first step in the "Smart Import" wizard. This component will allow the user to select their import mode, configure batch-level settings, download the correct template, and upload their completed file for analysis.
+
+1. Architectural Plan
+This component will be the "front door" to the import process. It must be clear, intuitive, and robust.
+
+File to Create: client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+State Management: The component will manage its own internal state for the form inputs (import mode, description, date, etc.).
+
+API Interaction: It will contain the useMutation hook responsible for calling the POST /.../batch-analyze API endpoint that we built in Phase 1. This mutation will handle the file upload and API communication.
+
+Props Contract: It will accept one primary prop: a callback function onAnalysisComplete(result: BatchAnalysisResult) from its parent (BatchImportWizard). When the backend analysis is successful, it will call this function to pass the results up and trigger the wizard to move to the next step.
+
+Dynamic Behavior: The form will dynamically show or hide fields based on the selected import mode ("Standard" vs. "Historical").
+
+2. Surgical Code Implementation
+You are to build the new form component and then integrate it into the main wizard.
+
+Step 1: Create the UploadConfigurationForm.tsx File
+
+Action: Create a new file at the specified location.
+
+Instruction: Add the following complete code to the new file. This code includes all necessary UI elements, state management, and the mutation for handling the file upload and analysis.
+
+TypeScript
+
+import React, { useState, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Download, Upload, Loader2, Info } from 'lucide-react';
+
+interface UploadConfigurationFormProps {
+  onAnalysisComplete: (result: any) => void;
+}
+
+type ImportMode = 'standard' | 'historical';
+
+export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = ({ onAnalysisComplete }) => {
+  const [mode, setMode] = useState<ImportMode>('standard');
+  const [description, setDescription] = useState('');
+  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isAccrual, setIsAccrual] = useState(false);
+  const [reversalDate, setReversalDate] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const params = useParams();
+  const clientId = params.clientId;
+
+  const analysisMutation = useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return apiRequest(`/api/clients/${clientId}/journal-entries/batch-analyze`, {
+        method: 'POST',
+        data: formData,
+        isFormData: true,
+      });
+    },
+    onSuccess: (response) => {
+      toast({ title: "Success", description: "File analysis complete. Please review the results." });
+      onAnalysisComplete(response.data); // Pass results to parent wizard
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Analysis Failed",
+        description: error?.error?.message || "An unknown error occurred during file analysis.",
+        variant: "destructive",
+      });
+      setSelectedFile(null); // Clear the file on error
+    },
+  });
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    if (!selectedFile) {
+      toast({ title: "No File Selected", description: "Please select a file to upload and analyze.", variant: "destructive" });
+      return;
+    }
+    analysisMutation.mutate(selectedFile);
+  };
+
+  return (
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle>Step 1: Configure & Upload</CardTitle>
+        <CardDescription>Select your import type, configure settings, and upload your data file.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="import-mode">Import Mode</Label>
+          <Select onValueChange={(value: ImportMode) => setMode(value)} defaultValue={mode}>
+            <SelectTrigger id="import-mode">
+              <SelectValue placeholder="Select an import mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">Standard Batch Entry</SelectItem>
+              <SelectItem value="historical">Historical GL Import</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {mode === 'standard' && (
+          <Card className="p-4 bg-gray-50">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Batch Settings</h3>
+              <div>
+                <Label htmlFor="batch-date">Batch Date</Label>
+                <Input id="batch-date" type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} />
+              </div>
+               <div>
+                <Label htmlFor="description">Batch Description</Label>
+                <Textarea id="description" placeholder="e.g., June 2025 Month-End Accruals" value={description} onChange={e => setDescription(e.target.value)} />
+              </div>
+              <div className="flex items-center space-x-2">
+                 <Switch id="is-accrual" checked={isAccrual} onCheckedChange={setIsAccrual} />
+                 <Label htmlFor="is-accrual">Mark this entire batch as an Auto-Reversing Accrual</Label>
+              </div>
+              {isAccrual && (
+                 <div>
+                    <Label htmlFor="reversal-date">Reversal Date</Label>
+                    <Input id="reversal-date" type="date" value={reversalDate} onChange={e => setReversalDate(e.target.value)} />
+                 </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        <Alert>
+          <Download className="h-4 w-4" />
+          <AlertTitle>Download Your Template</AlertTitle>
+          <AlertDescription>
+            Download the "Smart Template" to ensure your data is formatted correctly. The template includes reference tabs for your Chart of Accounts and Dimensions.
+            <Button variant="outline" size="sm" className="ml-4">Download Template</Button>
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-2">
+          <Label>Upload Completed File</Label>
+          <div className="flex items-center space-x-2">
+            <Input ref={fileInputRef} type="file" onChange={handleFileSelect} accept=".xlsx, .xls, .csv" className="flex-1" />
+          </div>
+          {selectedFile && <p className="text-sm text-muted-foreground">Selected file: {selectedFile.name}</p>}
+        </div>
+
+        <div className="flex justify-end">
+            <Button onClick={handleAnalyzeClick} disabled={!selectedFile || analysisMutation.isPending}>
+                {analysisMutation.isPending ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                    </>
+                ) : (
+                    <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Analyze File
+                    </>
+                )}
+            </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+Step 2: Integrate the New Component into the Wizard
+
+File: client/src/features/journal-entries/pages/BatchImportWizard.tsx
+
+Instruction: Replace the placeholder div with the actual UploadConfigurationForm component.
+
+First, add the import at the top of the file:
+
+TypeScript
+
+import { UploadConfigurationForm } from '../components/UploadConfigurationForm';
+Next, find this placeholder block:
+
+TypeScript
+
+{currentStep === 'CONFIG' && (
+  <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
+    <h2 className="text-xl font-semibold">Phase 2, Mission 2.2</h2>
+    {/* ... */}
+  </div>
+)}
+Replace it with the actual component, passing the handleAnalysisComplete callback as a prop:
+
+TypeScript
+
+{currentStep === 'CONFIG' && (
+  <UploadConfigurationForm onAnalysisComplete={handleAnalysisComplete} />
+)}
+3. Verification Plan
+Navigate to the /batch-import URL. The new, detailed configuration form should be displayed.
+
+Test the "Import Mode" dropdown. Confirm that the "Batch Settings" card correctly appears and disappears when you switch between "Standard Batch" and "Historical GL Import."
+
+Test the file selection. Confirm that after you select a file, its name appears below the input.
+
+Crucially: Upload a valid test file and click "Analyze File."
+
+Expected Result: You should see a success toast, and the UI should switch from the configuration form to the "Phase 2, Mission 2.3" review screen placeholder. This verifies that the mutation call, API communication, and state transition are all working correctly.
+
+This completes Phase 2, Mission 2.1.
