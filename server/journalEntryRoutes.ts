@@ -17,6 +17,7 @@ import { journalEntryStorage } from './storage/journalEntryStorage';
 import { multerMiddleware } from './middleware/multer';
 import { BatchParsingService } from './services/BatchParsingService';
 import { BatchValidationService } from './services/BatchValidationService';
+import { authenticateUser } from './authMiddleware';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
 async function ensureUniqueReference(referenceNumber: string, entityId: number, excludeEntryId?: number): Promise<string> {
@@ -88,6 +89,65 @@ export function registerJournalEntryRoutes(app: Express) {
     res.json(entries);
   }));
   
+  // Batch analyze uploaded Excel file for journal entries
+  app.post('/api/clients/:clientId/journal-entries/batch-analyze', authenticateUser, multerMiddleware, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
+
+      // 1. Validate that a file was uploaded
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'NO_FILE_UPLOADED',
+            message: 'No file was uploaded. Please select a file to analyze.',
+          },
+        });
+      }
+
+      console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
+
+      // --- This section will be implemented in future missions ---
+      // For now, we use stubs to prove the endpoint works.
+      const parsingService = new BatchParsingService();
+      const validationService = new BatchValidationService();
+
+      // 2. Pass the file buffer to the parser
+      const parsedData = await parsingService.parse(req.file.buffer);
+
+      // 3. Pass the parsed data to the validator
+      const validationResult = await validationService.validate(parsedData, clientId);
+      // --- End of future mission section ---
+
+      // 4. Format the final success response
+      // Note: In the future, 'validationResult' will contain the full data structure.
+      return res.status(200).json({
+        success: true,
+        data: validationResult, // Send the complete analysis back to the client
+      });
+
+    } catch (error: any) {
+      console.error("Batch Analysis Error:", error);
+
+      // Handle specific file type errors from Multer
+      if (error.message.includes('Invalid file type')) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_FILE_TYPE', message: error.message },
+        });
+      }
+
+      // Generic internal server error for all other issues
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected error occurred during file analysis.',
+        },
+      });
+    }
+  }));
+
   // Create a journal entry for a specific entity
   app.post('/api/clients/:clientId/entities/:entityId/journal-entries', isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
     const entityId = parseInt(req.params.entityId);
