@@ -158,8 +158,23 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     return processedGroups;
   }, [editableGroups, filter, sort]); // Update dependency to use editableGroups
 
+  // Real-time batch summary calculation based on current validation state
+  const dynamicBatchSummary = React.useMemo(() => {
+    const validEntries = editableGroups.filter((group: any) => group.isValid).length;
+    const entriesWithErrors = editableGroups.filter((group: any) => !group.isValid).length;
+    const newDimensionValues = batchSummary.newDimensionValues || 0; // Keep original count
+    
+    return {
+      validEntries,
+      entriesWithErrors,
+      newDimensionValues,
+      totalEntries: editableGroups.length
+    };
+  }, [editableGroups, batchSummary.newDimensionValues]);
+
   console.log("Current Filter State:", filter); // For verification
   console.log("Current Sort State:", sort);   // For verification
+  console.log("Dynamic Batch Summary:", dynamicBatchSummary); // For real-time validation tracking
 
   return (
     <div className="space-y-6">
@@ -171,14 +186,14 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             <div className="flex items-center space-x-2">
                 <CheckCircle className="h-6 w-6 text-green-500" />
                 <div>
-                    <p className="text-2xl font-bold">{batchSummary.validEntries}</p>
+                    <p className="text-2xl font-bold">{dynamicBatchSummary.validEntries}</p>
                     <p className="text-sm text-muted-foreground">Valid Entries</p>
                 </div>
             </div>
             <div className="flex items-center space-x-2">
                 <AlertTriangle className="h-6 w-6 text-red-500" />
                 <div>
-                    <p className="text-2xl font-bold">{batchSummary.entriesWithErrors}</p>
+                    <p className="text-2xl font-bold">{dynamicBatchSummary.entriesWithErrors}</p>
                     <p className="text-sm text-muted-foreground">Entries with Errors</p>
                 </div>
             </div>
@@ -219,7 +234,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             };
             processBatchMutation.mutate(payload);
           }}
-          disabled={batchSummary.entriesWithErrors > 0 || processBatchMutation.isPending}
+          disabled={dynamicBatchSummary.entriesWithErrors > 0 || processBatchMutation.isPending}
         >
           {processBatchMutation.isPending ? (
             <>
@@ -227,7 +242,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
               Processing...
             </>
           ) : (
-            `Confirm and Process ${batchSummary.validEntries} Entries`
+            `Confirm and Process ${dynamicBatchSummary.validEntries} Entries`
           )}
         </Button>
       </div>
