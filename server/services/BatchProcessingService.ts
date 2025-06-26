@@ -10,45 +10,76 @@ export class BatchProcessingService {
       const createdEntryIds: number[] = [];
 
       for (const entryGroup of approvedEntries) {
-        // 1. Create the main Journal Entry record
-        const [newEntry] = await tx.insert(journalEntries).values({
-          entityId,
-          date: new Date(entryGroup.header.Date),
-          description: entryGroup.header.Description || '',
-          referenceNumber: entryGroup.header.Reference || `BATCH-${Date.now()}-${createdCount + 1}`,
-          status: 'draft' as const, // Start as draft, can be posted later
-          isAccrual: batchSettings?.isAccrual || false,
-          reversalDate: batchSettings?.reversalDate ? new Date(batchSettings.reversalDate) : null,
-          createdBy: 1, // TODO: Get actual user ID from request context
-        }).returning();
+        try {
+          // 1. Create the main Journal Entry record
+          // Format date consistently
+          const entryDate = typeof entryGroup.header.Date === 'string' 
+            ? entryGroup.header.Date
+            : new Date(entryGroup.header.Date).toISOString().split('T')[0];
 
-        // 2. Create the Journal Entry Lines
-        for (const line of entryGroup.lines) {
-          const [newLine] = await tx.insert(journalEntryLines).values({
-            journalEntryId: newEntry.id,
-            accountId: line.accountId, // Assumes validation has provided the ID
-            amount: line.amount.toString(),
-            type: line.amount.isPositive() ? 'debit' : 'credit',
-            description: line.description || '',
-            entityCode: line.entityCode || entityId.toString(),
-          }).returning();
+          // Use a minimal insert data object with only required fields
+          const journalEntryData: any = {
+            entityId: entityId,
+            date: entryDate,
+            referenceNumber: entryGroup.header.Reference || `BATCH-${clientId}-${entityId}-${Date.now()}-${createdCount + 1}`,
+            description: entryGroup.header.Description || 'Batch import entry',
+            status: 'draft',
+            createdBy: 1, // TODO: Get actual user ID from request context
+            isSystemGenerated: false,
+            isAccrual: false,
+          };
 
-          // 3. Create the Dimension Links (if any)
-          if (line.dimensions && Array.isArray(line.dimensions)) {
-            for (const dimTag of line.dimensions) {
-              if (dimTag.dimensionId && dimTag.dimensionValueId) {
-                await tx.insert(txDimensionLink).values({
-                  journalEntryLineId: newLine.id,
-                  dimensionId: dimTag.dimensionId,
-                  dimensionValueId: dimTag.dimensionValueId,
-                });
+          console.log('ARCHITECT_DEBUG: Creating journal entry with data:', journalEntryData);
+
+          const [newEntry] = await tx.insert(journalEntries).values(journalEntryData).returning();
+          console.log('ARCHITECT_DEBUG: Created journal entry:', newEntry.id);
+
+          // 2. Create the Journal Entry Lines
+          for (const line of entryGroup.lines) {
+            // Determine amount and type based on the parsed data structure
+            const amount = Math.abs(line.amount);
+            const type = line.amount >= 0 ? 'debit' : 'credit';
+
+            const lineData: any = {
+              journalEntryId: newEntry.id,
+              accountId: line.accountId, // Assumes validation has provided the ID
+              amount: amount.toString(),
+              type: type,
+              description: line.description || '',
+              entityCode: line.entityCode || entityId.toString(),
+            };
+
+            console.log('ARCHITECT_DEBUG: Creating journal entry line:', lineData);
+
+            const [newLine] = await tx.insert(journalEntryLines).values(lineData).returning();
+
+            // 3. Create the Dimension Links (if any)
+            if (line.dimensions && Array.isArray(line.dimensions)) {
+              for (const dimTag of line.dimensions) {
+                if (dimTag.dimensionId && dimTag.dimensionValueId) {
+                  console.log('ARCHITECT_DEBUG: Creating dimension link:', {
+                    journalEntryLineId: newLine.id,
+                    dimensionId: dimTag.dimensionId,
+                    dimensionValueId: dimTag.dimensionValueId,
+                  });
+                  
+                  await tx.insert(txDimensionLink).values({
+                    journalEntryLineId: newLine.id,
+                    dimensionId: dimTag.dimensionId,
+                    dimensionValueId: dimTag.dimensionValueId,
+                  });
+                }
               }
             }
           }
-        }
 
-        createdEntryIds.push(newEntry.id);
-        createdCount++;
+          createdEntryIds.push(newEntry.id);
+          createdCount++;
+          
+        } catch (error) {
+          console.error('ARCHITECT_DEBUG: Error processing entry group:', error);
+          throw error; // This will cause the transaction to rollback
+        }
       }
 
       console.log(`Successfully processed and created ${createdCount} journal entries with IDs: ${createdEntryIds.join(', ')}`);

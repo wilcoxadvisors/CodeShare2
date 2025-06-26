@@ -195,6 +195,16 @@ export function registerJournalEntryRoutes(app: Express) {
       const processingService = new BatchProcessingService();
       const result = await processingService.processBatch(approvedEntries, clientId, entityId, batchSettings);
 
+      if (!result) {
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'PROCESSING_FAILED',
+            message: 'Failed to process batch entries.'
+          }
+        });
+      }
+
       return res.status(200).json({
         success: true,
         message: `Successfully created ${result.createdCount} journal entries.`,
