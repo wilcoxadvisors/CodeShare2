@@ -1,0 +1,91 @@
+Mission: Implement Client-Side Sorting and Filtering Logic
+
+Goal: To activate the ReviewToolbar by implementing the sorting and filtering logic within the IntelligentReviewScreen component. The list of imported journal entries must dynamically re-render in the correct order and with the correct visibility based on the user's selections in the toolbar.
+
+1. Architectural Plan
+To ensure a highly performant UI, this logic must be efficient. We will not re-fetch data from the server; instead, we will manipulate the existing dataset on the client side.
+
+Target File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Key Architectural Pattern: We will use the React.useMemo hook. This is a state-of-the-art performance optimization that ensures the complex sorting and filtering calculations are only re-run when the source data or the filter/sort criteria actually change, preventing unnecessary re-renders.
+
+Logic Flow: Inside the useMemo hook, we will create a data pipeline:
+
+Start with the original entryGroups array.
+
+First, filter the array based on the filter state (showValid, showErrors).
+
+Then, sort the filtered array based on the sort state (default, date-desc, etc.).
+
+Return the final, processed array.
+
+2. Surgical Code Implementation
+You are to replace the placeholder logic in IntelligentReviewScreen.tsx with the real implementation.
+
+Step 1: Open the IntelligentReviewScreen.tsx Component
+
+Action: Navigate to and open the file.
+
+Step 2: Implement the Sorting and Filtering Logic
+
+Instruction: Find the line where filteredAndSortedGroups is defined and replace the placeholder with the following complete useMemo implementation. This code should be placed inside the IntelligentReviewScreen component function, after the state definitions.
+
+TypeScript
+
+// Find this line:
+const filteredAndSortedGroups = entryGroups; // For now, just use the raw groups
+
+// And replace it with this complete, memoized implementation:
+const filteredAndSortedGroups = React.useMemo(() => {
+  let processedGroups = [...entryGroups];
+
+  // 1. Apply Filtering
+  processedGroups = processedGroups.filter(group => {
+    if (filter.showValid && filter.showErrors) {
+      return true; // Show all
+    }
+    if (filter.showValid) {
+      return group.isValid;
+    }
+    if (filter.showErrors) {
+      return !group.isValid;
+    }
+    return false; // Show none if both are unchecked
+  });
+
+  // 2. Apply Sorting
+  switch (sort) {
+    case 'date-desc':
+      processedGroups.sort((a, b) => new Date(b.header.Date).getTime() - new Date(a.header.Date).getTime());
+      break;
+    case 'date-asc':
+      processedGroups.sort((a, b) => new Date(a.header.Date).getTime() - new Date(b.header.Date).getTime());
+      break;
+    case 'errors-first':
+      processedGroups.sort((a, b) => (a.isValid === b.isValid) ? 0 : a.isValid ? 1 : -1);
+      break;
+    case 'default':
+    default:
+      // The default order is the original parsed order from the file.
+      // No sorting needed.
+      break;
+  }
+
+  return processedGroups;
+}, [entryGroups, filter, sort]); // The dependencies for the useMemo hook
+3. Verification Plan
+Navigate to the /batch-import URL and upload a test file that contains a mix of valid and invalid entries with different dates.
+
+Test Filtering:
+
+Uncheck the "Valid Entries" box in the Filter dropdown. Verify that only the entry groups with red borders (errors) remain visible.
+
+Re-check "Valid Entries" and uncheck "Entries with Errors." Verify that only the valid entries are visible.
+
+Test Sorting:
+
+Select "Date (Newest First)" from the Sort dropdown. Verify that the entries rearrange themselves into the correct chronological order.
+
+Select "Errors First." Verify that all entry groups with errors move to the top of the list.
+
+Executing this mission will make our review screen fully interactive and functional, providing the user with the necessary tools to efficiently manage their batch uploads. This completes Phase 2, Mission 2.5.

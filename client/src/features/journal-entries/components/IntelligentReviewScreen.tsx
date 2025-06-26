@@ -24,8 +24,44 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   const [filter, setFilter] = useState<FilterState>({ showValid: true, showErrors: true });
   const [sort, setSort] = useState('default');
 
-  // This is a placeholder for the actual filtering/sorting logic we will build next
-  const filteredAndSortedGroups = entryGroups; // For now, just use the raw groups
+  // Client-side sorting and filtering logic with performance optimization
+  const filteredAndSortedGroups = React.useMemo(() => {
+    let processedGroups = [...entryGroups];
+
+    // 1. Apply Filtering
+    processedGroups = processedGroups.filter(group => {
+      if (filter.showValid && filter.showErrors) {
+        return true; // Show all
+      }
+      if (filter.showValid) {
+        return group.isValid;
+      }
+      if (filter.showErrors) {
+        return !group.isValid;
+      }
+      return false; // Show none if both are unchecked
+    });
+
+    // 2. Apply Sorting
+    switch (sort) {
+      case 'date-desc':
+        processedGroups.sort((a, b) => new Date(b.header.Date).getTime() - new Date(a.header.Date).getTime());
+        break;
+      case 'date-asc':
+        processedGroups.sort((a, b) => new Date(a.header.Date).getTime() - new Date(b.header.Date).getTime());
+        break;
+      case 'errors-first':
+        processedGroups.sort((a, b) => (a.isValid === b.isValid) ? 0 : a.isValid ? 1 : -1);
+        break;
+      case 'default':
+      default:
+        // The default order is the original parsed order from the file.
+        // No sorting needed.
+        break;
+    }
+
+    return processedGroups;
+  }, [entryGroups, filter, sort]); // The dependencies for the useMemo hook
 
   console.log("Current Filter State:", filter); // For verification
   console.log("Current Sort State:", sort);   // For verification
