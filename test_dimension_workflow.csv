@@ -1,0 +1,3 @@
+AccountCode,Description,Amount,Department,Location
+1000,Cash Receipt,1000,Marketing,San Francisco
+4000,Sales Revenue,-1000,Marketing,San Francisco

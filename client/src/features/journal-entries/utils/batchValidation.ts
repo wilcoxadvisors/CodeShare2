@@ -5,6 +5,9 @@ export interface ValidationError {
   originalRow: number;
   field: string;
   message: string;
+  type?: 'ACCOUNT_NOT_FOUND' | 'DIMENSION_NOT_FOUND' | 'DIMENSION_VALUE_NOT_FOUND';
+  dimensionId?: number; // Required for DIMENSION_VALUE_NOT_FOUND type
+  value?: string; // Required for DIMENSION_VALUE_NOT_FOUND type
 }
 
 // Interface for account lookup
@@ -54,11 +57,23 @@ export const validateEntryGroup = (
         const dimValueCode = line.dimensions[dimCode];
         const dimension = dimensionsMap.get(dimCode);
         if (dimValueCode && (!dimension || !dimension.valuesMap.has(dimValueCode))) {
-          errors.push({
-            originalRow: line.originalRow,
-            field: dimCode,
-            message: `Value '${dimValueCode}' not found for ${dimCode}.`
-          });
+          if (!dimension) {
+            errors.push({
+              originalRow: line.originalRow,
+              field: dimCode,
+              message: `Dimension '${dimCode}' not found.`
+            });
+          } else {
+            // Dimension exists but value doesn't - create error with creation capability
+            errors.push({
+              type: 'DIMENSION_VALUE_NOT_FOUND',
+              originalRow: line.originalRow,
+              field: dimCode,
+              message: `Dimension value "${dimValueCode}" not found for ${dimension.name}. Click "Approve & Create" to add it.`,
+              dimensionId: dimension.id,
+              value: dimValueCode,
+            });
+          }
         }
       });
     }

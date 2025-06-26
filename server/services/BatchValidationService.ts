@@ -19,10 +19,12 @@ interface EntryGroup {
 
 // Define the structure for the final validation output
 interface ValidationError {
-  type: 'ACCOUNT_NOT_FOUND' | 'DIMENSION_NOT_FOUND' | 'DIMENSION_VALUE_NOT_FOUND';
+  type?: 'ACCOUNT_NOT_FOUND' | 'DIMENSION_NOT_FOUND' | 'DIMENSION_VALUE_NOT_FOUND';
   message: string;
   originalRow: number;
   field: string; // e.g., 'AccountCode' or 'Department'
+  dimensionId?: number; // Required for DIMENSION_VALUE_NOT_FOUND type
+  value?: string; // Required for DIMENSION_VALUE_NOT_FOUND type
 }
 
 interface NewDimensionValueSuggestion {
