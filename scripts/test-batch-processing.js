@@ -54,13 +54,13 @@ async function testBatchProcessing(cookies) {
           },
           lines: [
             {
-              accountId: 1, // Using existing account ID
+              accountId: 7890, // Using valid account ID: Cash
               amount: 250.00,
               description: 'Test debit line - Office Supplies',
               entityCode: 'GW2' // Use actual entity code from database
             },
             {
-              accountId: 2, // Using existing account ID
+              accountId: 7891, // Using valid account ID: Accounts Receivable  
               amount: -250.00,
               description: 'Test credit line - Cash',
               entityCode: 'GW2' // Use actual entity code from database
@@ -75,13 +75,13 @@ async function testBatchProcessing(cookies) {
           },
           lines: [
             {
-              accountId: 1,
+              accountId: 7890, // Cash
               amount: 150.00,
               description: 'Test debit line - Equipment',
               entityCode: 'GW2'
             },
             {
-              accountId: 2,
+              accountId: 7892, // Inventory
               amount: -150.00,
               description: 'Test credit line - Accounts Payable',
               entityCode: 'GW2'
