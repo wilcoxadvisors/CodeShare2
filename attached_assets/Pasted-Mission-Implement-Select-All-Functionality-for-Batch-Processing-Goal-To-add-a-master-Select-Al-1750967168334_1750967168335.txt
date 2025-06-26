@@ -1,0 +1,123 @@
+Mission: Implement "Select All" Functionality for Batch Processing
+
+Goal: To add a master "Select All" checkbox to the ReviewToolbar component. This will empower the user to select or deselect all actionable entries at once, dramatically improving the efficiency of the review process.
+
+Architectural Justification: For large batches, selecting entries one-by-one is not a viable workflow. A "Select All" control is a fundamental industry-standard feature for any bulk data management UI. It respects the user's time and provides a more intuitive experience.
+
+Surgical Code Implementation
+Step 1: Enhance the ReviewToolbar.tsx Component
+
+Action: Open this file and add the Checkbox component to the toolbar's main container.
+
+Instruction:
+
+Import the Checkbox component at the top of the file:
+
+TypeScript
+
+import { Checkbox } from '@/components/ui/checkbox';
+Update the props interface to accept the new properties needed for the master checkbox:
+
+TypeScript
+
+interface ReviewToolbarProps {
+  // ... existing props
+  isAllSelected: boolean;
+  onSelectAll: (checked: boolean) => void;
+  itemCount: number;
+}
+Update the component signature:
+
+TypeScript
+
+export const ReviewToolbar: React.FC<ReviewToolbarProps> = ({
+  // ... existing props
+  isAllSelected,
+  onSelectAll,
+  itemCount
+}) => { ... }
+Add the "Select All" Checkbox to the JSX, placing it in the main flex container.
+
+TypeScript
+
+// Inside the main div of the return statement
+<div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
+  <div className="flex items-center space-x-4">
+    {/* --- ADD THIS NEW SECTION --- */}
+    <div className="flex items-center space-x-2">
+      <Checkbox
+        id="select-all"
+        checked={isAllSelected}
+        onCheckedChange={onSelectAll}
+        disabled={itemCount === 0}
+      />
+      <label htmlFor="select-all" className="text-sm font-medium">
+        Select All ({itemCount} items)
+      </label>
+    </div>
+    {/* --- END OF NEW SECTION --- */}
+
+    <span className="text-sm font-medium">Sort by:</span>
+    {/* ... rest of the sort dropdown ... */}
+  </div>
+  {/* ... rest of the filter dropdown ... */}
+</div>
+Step 2: Upgrade State Management in IntelligentReviewScreen.tsx
+
+Action: Open this file to add the logic that will power the new "Select All" checkbox.
+
+Instruction:
+
+Create a new handler function for selecting all. This function will intelligently set the state for all currently visible (filtered) and valid entries.
+
+TypeScript
+
+// Add this new handler function inside the IntelligentReviewScreen component
+
+const handleSelectAll = (checked: boolean) => {
+  const newSelection = { ...selectionState };
+  filteredAndSortedGroups.forEach(group => {
+    if (group.isValid) { // Only toggle selection for valid entries
+      newSelection[group.groupKey] = checked;
+    }
+  });
+  setSelectionState(newSelection);
+};
+Calculate the isAllSelected state. This will determine if the master checkbox should be in the "checked" state.
+
+TypeScript
+
+// Add this calculation inside the component, before the return statement.
+
+const validVisibleItems = filteredAndSortedGroups.filter(g => g.isValid);
+const isAllSelected = validVisibleItems.length > 0 && validVisibleItems.every(g => selectionState[g.groupKey]);
+Update the <ReviewToolbar /> call to pass down the new props.
+
+TypeScript
+
+// Find the ReviewToolbar component and add the new props:
+<ReviewToolbar
+    filter={filter}
+    onFilterChange={setFilter}
+    sort={sort}
+    onSortChange={setSort}
+    isAllSelected={isAllSelected}
+    onSelectAll={handleSelectAll}
+    itemCount={validVisibleItems.length}
+/>
+Verification Plan
+Upload a file with multiple valid entries and some invalid entries.
+
+Verify: The "Select All" checkbox in the toolbar should appear and show the count of valid items.
+
+Action: Click the "Select All" checkbox to uncheck it.
+
+Verify: All the individual checkboxes next to the valid entry cards should become unchecked simultaneously. The count on the "Confirm and Process" button should drop to 0, and the button should become disabled.
+
+Action: Click the "Select All" checkbox again to check it.
+
+Verify: All the individual checkboxes for valid entries should become checked again, and the button count should update correctly.
+
+Action: Use the "Filter" dropdown to show only "Entries with Errors."
+
+Verify: The "Select All" checkbox should now show a count of 0 and be disabled.

@@ -134,6 +134,17 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     }));
   };
 
+  // Handle Select All functionality
+  const handleSelectAll = (checked: boolean) => {
+    const newSelection = { ...selectionState };
+    filteredAndSortedGroups.forEach(group => {
+      if (group.isValid) { // Only toggle selection for valid entries
+        newSelection[group.groupKey] = checked;
+      }
+    });
+    setSelectionState(newSelection);
+  };
+
   // Client-side sorting and filtering logic with performance optimization
   const filteredAndSortedGroups = React.useMemo(() => {
     let processedGroups = [...editableGroups]; // Use editableGroups

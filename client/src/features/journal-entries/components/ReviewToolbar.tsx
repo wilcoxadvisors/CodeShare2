@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ListFilter } from 'lucide-react';
@@ -14,17 +15,36 @@ interface ReviewToolbarProps {
   onFilterChange: (newFilter: FilterState) => void;
   sort: string;
   onSortChange: (newSort: string) => void;
+  isAllSelected: boolean;
+  onSelectAll: (checked: boolean) => void;
+  itemCount: number;
 }
 
 export const ReviewToolbar: React.FC<ReviewToolbarProps> = ({
   filter,
   onFilterChange,
   sort,
-  onSortChange
+  onSortChange,
+  isAllSelected,
+  onSelectAll,
+  itemCount
 }) => {
   return (
     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
       <div className="flex items-center space-x-4">
+        {/* Select All Section */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="select-all"
+            checked={isAllSelected}
+            onCheckedChange={onSelectAll}
+            disabled={itemCount === 0}
+          />
+          <label htmlFor="select-all" className="text-sm font-medium">
+            Select All ({itemCount} items)
+          </label>
+        </div>
+        
         <span className="text-sm font-medium">Sort by:</span>
         <Select value={sort} onValueChange={onSortChange}>
           <SelectTrigger className="w-[180px]">
