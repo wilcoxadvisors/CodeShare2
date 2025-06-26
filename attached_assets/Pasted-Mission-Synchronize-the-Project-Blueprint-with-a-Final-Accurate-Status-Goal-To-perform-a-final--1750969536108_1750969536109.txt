@@ -1,0 +1,60 @@
+Mission: Synchronize the Project Blueprint with a Final, Accurate Status
+
+Goal: To perform a final, surgical update on docs/Instructions.md. This update will:
+
+Mark the "Batch Import" feature as code-complete.
+
+Set the next mission to be the manual, end-to-end verification of the "Smart Import" workflow.
+
+Accurately update the status of the Dimensions module to COMPLETE, while explicitly leaving the "Smart Rules" feature as the next outstanding task in that section.
+
+Architectural Justification: This update will create a perfectly accurate "single source of truth" for the project. It clarifies that all development on the current feature is finished and that we are formally moving into a testing and verification phase, while correctly tracking the status of future planned work.
+
+Surgical Instructions for the Agent
+Task: You are to open the file docs/Instructions.md and perform the following precise modifications.
+
+Step 1: Update the "CURRENT MISSION" Section
+
+Action: Find the ## 1.2. CURRENT MISSION section at the top of the file.
+
+Instruction: Replace the entire content of this section with the following.
+
+Markdown
+
+### 1.2. CURRENT MISSION
+**Final Verification: End-to-End Manual Testing of "Smart Import"**
+-   **Objective:** To perform a comprehensive, manual test of the entire Batch Journal Entry Import workflow to find any remaining bugs and verify it meets our high standards for user experience and data integrity.
+-   **Status:** Awaiting execution by the Lead Architect and team.
+Step 2: Update the "Detailed Development Status" Section
+
+Action: Find the ## 7. Historical Documentation: Detailed Development Status section.
+
+Instruction: Within this section, locate the line for Task B.2.1 (Dimensions & Smart Rules). Replace the entire description for that task with the following, which correctly separates the two features.
+
+Replace this line:
+Current Update: Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. Backend foundation complete, frontend UI for listing/creating dimensions complete. Next: Build UI to add/edit/deactivate dimension values and integrate tagging into Journal Entry form.
+
+With this new, accurate text:
+Current Update: Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The Dimensions module UI is now considered complete. The next major task for this feature set is the implementation of the Smart Rules MVP.
+
+Step 3: Update the "Detailed Task List" Section
+
+Action: Find the ## 8. Historical Documentation: Detailed Task List section.
+
+Instruction: Find the line for (Task B.2.1) Dimensions & Smart Rules. Replace the entire checklist for this task with the following, which marks the Dimensions work as complete and leaves Smart Rules as the next action.
+
+Replace the old checklist:
+
+(Task B.2.1) Dimensions & Smart Rules: 🔄 IN PROGRESS (Current Focus)
+✅ Create client-level master-data tables...
+...
+🔄 NEXT: Build UI to add/edit/deactivate values for each dimension...
+With this new, accurate checklist:
+
+(Task B.2.1) Dimensions & Smart Rules: 🔄 IN PROGRESS
+✅ Create client-level master-data tables in `shared/schema.ts`.
+✅ Seed system dimensions: Department, Location, Customer, etc.
+✅ Build backend Storage Layer and API routes for CRUD operations.
+✅ Build frontend UI to list, create, edit, and deactivate dimensions and their values.
+✅ Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
+🔄 **NEXT:** Implement a Smart Rules MVP (JSON validation).

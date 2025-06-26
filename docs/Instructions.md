@@ -11,7 +11,7 @@ Build a best-in-class, scalable SaaS accounting platform that combines rock-soli
 ### 1.2. CURRENT MISSION
 **Final Verification: End-to-End Manual Testing of "Smart Import"**
 -   **Objective:** To perform a comprehensive, manual test of the entire Batch Journal Entry Import workflow to find any remaining bugs and verify it meets our high standards for user experience and data integrity.
--   **Status:** Awaiting execution.
+-   **Status:** Awaiting execution by the Lead Architect and team.
 
 ## 2. Strategic Roadmap
 This roadmap outlines the major development phases.
@@ -201,7 +201,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 
   - **Current Update:** Task B.1 (Chart of Accounts): ✅ NEARLY COMPLETE. Final UI/UX review remains.
   - **Current Update:** Task B.2 (General Ledger / Journal Entries): ✅ STABLE. The manual JE workflow, including Create, Edit, Post, Void, Reverse, and Delete, is now functional. The next planned enhancement is the Auto-Reversing Accrual feature.
-  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): ✅ COMPLETE. The backend and all frontend UI for creating, managing, and deleting dimensions and their values are now fully functional.
+  - **Current Update:** Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. The Dimensions module UI is now considered complete. The next major task for this feature set is the implementation of the Smart Rules MVP.
   - **Storage Layer Refactoring:** COMPLETE. The monolithic storage system has been successfully refactored:
     - **Client Storage:** ✅ Successfully refactored all client-related storage logic to `server/storage/clientStorage.ts`.
     - **Entity Storage:** ✅ Created `entityStorage.ts` module with clear delegation pattern.
@@ -367,16 +367,13 @@ The Dimensions module has solid backend foundation with partial frontend impleme
     - 🔄 Requirements: multi-file, drag-drop, delete, specific file types (PDF, images, office docs, txt, csv)
     - 🔄 UI location: Journal Entry Form (shown only in Edit mode)
     - 🔄 Need systematic debugging (backend save/list, frontend fetch/render)
-* **(Task B.2.1)** Dimensions & Smart Rules: **✅ COMPLETE**
-  - ✅ Create client-level master-data tables in `shared/schema.ts` (dimensions, dimension_values, tx_dimension_link).
+* **(Task B.2.1)** Dimensions & Smart Rules: **🔄 IN PROGRESS**
+  - ✅ Create client-level master-data tables in `shared/schema.ts`.
   - ✅ Seed system dimensions: Department, Location, Customer, etc.
   - ✅ Build backend Storage Layer and API routes for CRUD operations.
-  - ✅ Build initial frontend UI to list existing dimensions and create new ones.
-  - ✅ Build UI to add/edit/deactivate values for each dimension.
-  - ✅ Integrate Dimensions into the Journal Entry form.
-  - 🔄 NEXT: Implement a Smart Rules MVP (JSON validation).
-  - 🔄 Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
-  - 🔄 Implement a Smart Rules MVP (JSON validation).
+  - ✅ Build frontend UI to list, create, edit, and deactivate dimensions and their values.
+  - ✅ Integrate Dimensions into the Journal Entry form, allowing each line to be tagged.
+  - 🔄 **NEXT:** Implement a Smart Rules MVP (JSON validation).
 
 * **(Task B.2.2)** Automatic Accrual Reversals: **✅ COMPLETE**
   
