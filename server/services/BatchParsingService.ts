@@ -24,14 +24,23 @@ export class BatchParsingService {
     try {
       // 1. Read the workbook from the buffer
       const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
-      const sheetName = 'JournalEntryLines'; // As defined in our architecture
-      const worksheet = workbook.Sheets[sheetName];
-
-      if (!worksheet) {
-        throw new Error(`The required sheet "${sheetName}" was not found in the uploaded file.`);
+      
+      // 2. Determine the sheet to use - for CSV files, use the first sheet
+      let worksheet: XLSX.WorkSheet;
+      const sheetNames = workbook.SheetNames;
+      
+      if (sheetNames.includes('JournalEntryLines')) {
+        // Excel file with proper structure
+        worksheet = workbook.Sheets['JournalEntryLines'];
+      } else if (sheetNames.length > 0) {
+        // CSV file or Excel file without standard naming - use first sheet
+        worksheet = workbook.Sheets[sheetNames[0]];
+        console.log(`INFO: Using first sheet "${sheetNames[0]}" as JournalEntryLines data`);
+      } else {
+        throw new Error('No data sheets found in the uploaded file.');
       }
 
-      // 2. Convert the sheet to an array of JSON objects
+      // 3. Convert the sheet to an array of JSON objects
       const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
 
       // 3. Implement the Zero-Balance Grouping Algorithm
