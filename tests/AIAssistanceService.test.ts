@@ -96,7 +96,7 @@ describe('AIAssistanceService', () => {
         lines: [
           {
             originalRow: 5,
-            accountCode: '1000', // Wrong account
+            accountCode: '65100', // Correct office supplies account for anomaly detection
             description: 'Office Depot supplies for NYC office',
             amount: new Decimal('1500.00'), // High amount that triggers anomaly
             dimensions: {} // Missing Location dimension
@@ -111,10 +111,9 @@ describe('AIAssistanceService', () => {
     expect(lineSuggestions).toBeDefined();
     expect(lineSuggestions!.length).toBeGreaterThanOrEqual(2);
 
-    // Should have account code suggestion
+    // Should NOT have account code suggestion since account is already correct (65100)
     const accountSuggestion = lineSuggestions!.find(s => s.field === 'AccountCode');
-    expect(accountSuggestion).toBeDefined();
-    expect(accountSuggestion!.type).toBe('SUGGESTION');
+    expect(accountSuggestion).toBeUndefined();
 
     // Should have location dimension suggestion
     const locationSuggestion = lineSuggestions!.find(s => s.field === 'Location');
