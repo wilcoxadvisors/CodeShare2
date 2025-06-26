@@ -1,3 +1,39 @@
+Mission: Implement the "Smart Parser" & Zero-Balance Grouping Algorithm
+
+Goal: To replace the stub implementation of the BatchParsingService with a robust, production-grade service. This service will be responsible for taking a raw file buffer (from an uploaded Excel or CSV file), parsing its contents, and intelligently grouping the rows into distinct journal entries using a zero-balance algorithm.
+
+1. Architectural Plan
+This service is the core of the import intelligence. It must be precise, efficient, and resilient to common data formatting issues.
+
+File to Modify: server/services/BatchParsingService.ts.
+
+Primary Dependency: To handle the complexity of parsing .xlsx and .csv files reliably, you will use a standard, well-vetted library. The recommended library is xlsx (SheetJS). It is powerful and the industry standard for handling spreadsheets in Node.js.
+
+Core Logic: The Zero-Balance Grouping Algorithm: This is the most critical part of the implementation. The service will read the rows from the JournalEntryLines sheet sequentially and use financial logic to determine where one entry ends and the next begins.
+
+Financial Precision: Standard JavaScript numbers are prone to floating-point rounding errors (e.g., 0.1 + 0.2 !== 0.3). This is unacceptable in a financial system. All monetary calculations must be performed using a library designed for decimal arithmetic. The mandated library is decimal.js. It will ensure that our zero-balance check is always perfectly accurate.
+
+Data Contract: The parse method in this service must return a structured object that the BatchValidationService can consume.
+
+2. Surgical Code Implementation
+You are to refactor the BatchParsingService file to implement the full parsing and grouping logic.
+
+Step 1: Install Dependencies
+
+Action: From the server directory, install the necessary libraries.
+
+Bash
+
+npm install xlsx decimal.js
+npm install --save-dev @types/xlsx @types/decimal.js
+Step 2: Refactor BatchParsingService.ts
+
+File: server/services/BatchParsingService.ts
+
+Instruction: Replace the entire contents of the file with the following complete, state-of-the-art implementation.
+
+TypeScript
+
 import * as XLSX from 'xlsx';
 import { Decimal } from 'decimal.js';
 
@@ -104,3 +140,19 @@ export class BatchParsingService {
     }
   }
 }
+3. Verification Plan
+The agent must create a unit test file to validate the new service.
+
+File: server/services/BatchParsingService.test.ts
+
+Logic: Create several test cases, including:
+
+Simple Balanced Entry: A test with two lines (a debit and a credit) that balance to zero. Assert that it correctly creates one entry group with no errors.
+
+Multi-Entry File: A test with four lines that form two distinct, balanced entries. Assert that it creates exactly two entry groups.
+
+Unbalanced Final Group: A test where the file ends but the last entry is not balanced. Assert that it creates a final group containing the unbalanced lines and includes the specific "not balanced" error message.
+
+Dynamic Dimensions: A test with dimension columns (e.g., Department, Location). Assert that the dimensions object on the parsed lines is correctly populated.
+
+Executing these steps will complete the intelligent core of our import feature. This fulfills Phase 1, Mission 1.2.
