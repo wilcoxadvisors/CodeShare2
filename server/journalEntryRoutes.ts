@@ -14,6 +14,9 @@ import {
   ListJournalEntriesFilters 
 } from '../shared/validation';
 import { journalEntryStorage } from './storage/journalEntryStorage';
+import { multerMiddleware } from './middleware/multer';
+import { BatchParsingService } from './services/BatchParsingService';
+import { BatchValidationService } from './services/BatchValidationService';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
 async function ensureUniqueReference(referenceNumber: string, entityId: number, excludeEntryId?: number): Promise<string> {

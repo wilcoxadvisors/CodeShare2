@@ -1,0 +1,234 @@
+Mission: Build the Batch Analysis API Endpoint
+
+Goal: To create a new, secure, and robust backend API endpoint at POST /api/clients/:clientId/journal-entries/batch-analyze. This endpoint will be responsible for receiving an uploaded Excel file, orchestrating the backend analysis services, and returning a structured JSON response that the frontend's "Intelligent Review" screen can use to render a rich user experience.
+
+1. Architectural Plan
+This endpoint is the entry point for our most sophisticated user workflow. It must be architected to be secure, scalable, and maintainable.
+
+Location: The new route will be added to the existing journal entry router file, located at: server/routes/journalEntryRoutes.ts.
+
+Route Definition:
+
+Verb: POST
+
+Path: /clients/:clientId/journal-entries/batch-analyze
+
+Middleware Stack: The route will be protected and processed by a series of middleware functions, executed in this specific order:
+
+authMiddleware: This existing middleware will run first to ensure the user is authenticated and has the necessary permissions for the given :clientId. This is a critical security step.
+
+multerMiddleware: This will be a new, lightweight middleware configuration using the multer library. Its sole responsibility is to handle the multipart/form-data upload, extract the Excel file from the request, and make it available to our controller. It will be configured to use memory storage for performance and to automatically delete the file after processing.
+
+API Contract (The "What"): Defining a clear contract is essential for state-of-the-art development.
+
+Request:
+
+Method: POST
+
+Content-Type: multipart/form-data
+
+Body: Must contain a single file field named file.
+
+Success Response (200 OK):
+
+Content-Type: application/json
+
+Body: A structured JSON object containing the full analysis.
+
+JSON
+
+{
+  "success": true,
+  "data": {
+    "batchSummary": {
+      "totalEntries": 15,
+      "validEntries": 12,
+      "entriesWithErrors": 3,
+      "newDimensionValues": 4
+    },
+    "entryGroups": [
+      {
+        "groupKey": "auto-gen-1",
+        "header": { "Date": "2024-01-15", "Description": "Payroll" },
+        "lines": [ /* ...array of line items... */ ],
+        "errors": [ /* ...array of validation errors for this group... */ ],
+        "isValid": false
+      }
+    ]
+  }
+}
+Error Responses:
+
+400 Bad Request: If no file is uploaded or the file has an invalid format.
+
+401 Unauthorized: Handled by authMiddleware.
+
+404 Not Found: If the :clientId is invalid.
+
+500 Internal Server Error: For any unexpected server errors during parsing or validation.
+
+Controller Logic (The "How"): The route's controller function will be clean and act as an orchestrator. It will not contain complex business logic itself.
+
+Validate that a file was actually uploaded by Multer. If not, return a 400 error.
+
+Instantiate the BatchParsingService (to be built in Mission 1.2).
+
+Instantiate the BatchValidationService (to be built in Mission 1.3).
+
+Pass the uploaded file buffer to the BatchParsingService.
+
+Pass the parsed data to the BatchValidationService.
+
+Combine the results from the services into the final JSON response structure.
+
+Wrap the entire process in a try...catch block to handle unexpected errors and return a 500 status if anything fails.
+
+2. Surgical Code Implementation
+You are to modify the following files as described.
+
+Step 1: Configure Multer Middleware
+
+File: Create a new middleware file at server/middleware/multer.ts.
+
+Code: Add the following code. This creates a reusable Multer instance that processes a single file named file and stores it in memory.
+
+TypeScript
+
+import multer from 'multer';
+
+// Configure multer to use memory storage. This is efficient for processing
+// and avoids writing temporary files to disk.
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB file size limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Only accept excel file types
+    if (file.mimetype === 'application/vnd.ms-excel' || file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.mimetype === 'text/csv') {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only .xlsx, .xls, and .csv are allowed.'));
+    }
+  },
+});
+
+export const multerMiddleware = upload.single('file');
+Step 2: Add the New Route to the Router
+
+File: server/routes/journalEntryRoutes.ts
+
+Code: Import the new middleware and add the route definition.
+
+TypeScript
+
+// At the top of the file, with other imports
+import { multerMiddleware } from '../middleware/multer';
+import { BatchParsingService } from '../services/BatchParsingService'; // To be created
+import { BatchValidationService } from '../services/BatchValidationService'; // To be created
+
+// ... (existing routes)
+
+// Add this new route definition. It should be placed with other POST routes for organization.
+router.post(
+  '/clients/:clientId/journal-entries/batch-analyze',
+  authMiddleware, // Existing authentication middleware
+  multerMiddleware, // Our new file-handling middleware
+  async (req, res) => {
+    // This is our controller logic
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
+
+      // 1. Validate that a file was uploaded
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'NO_FILE_UPLOADED',
+            message: 'No file was uploaded. Please select a file to analyze.',
+          },
+        });
+      }
+
+      console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
+
+      // --- This section will be implemented in future missions ---
+      // For now, we use stubs to prove the endpoint works.
+      const parsingService = new BatchParsingService();
+      const validationService = new BatchValidationService();
+
+      // 2. Pass the file buffer to the parser
+      const parsedData = await parsingService.parse(req.file.buffer);
+
+      // 3. Pass the parsed data to the validator
+      const validationResult = await validationService.validate(parsedData, clientId);
+      // --- End of future mission section ---
+
+
+      // 4. Format the final success response
+      // Note: In the future, 'validationResult' will contain the full data structure.
+      return res.status(200).json({
+        success: true,
+        data: validationResult, // Send the complete analysis back to the client
+      });
+
+    } catch (error: any) {
+      console.error("Batch Analysis Error:", error);
+
+      // Handle specific file type errors from Multer
+      if (error.message.includes('Invalid file type')) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_FILE_TYPE', message: error.message },
+        });
+      }
+
+      // Generic internal server error for all other issues
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected error occurred during file analysis.',
+        },
+      });
+    }
+  }
+);
+
+// ... (rest of the file)
+Note: For this mission, the BatchParsingService and BatchValidationService can be created as stub files that return mock data, allowing you to test the endpoint independently.
+
+3. Verification Plan
+You must test this endpoint using an API client like Postman or Insomnia.
+
+Test Case 1: Success
+
+Action: Send a POST request to http://localhost:PORT/api/clients/250/journal-entries/batch-analyze.
+
+Authentication: Ensure you provide a valid session cookie.
+
+Body: Select form-data and create a key named file, setting its type to "File" and attaching a valid .xlsx or .csv file.
+
+Expected Result: A 200 OK status code and a JSON body matching the success structure defined in the API Contract.
+
+Test Case 2: No File Error
+
+Action: Send the same request but do not attach a file to the file key.
+
+Expected Result: A 400 Bad Request status code with the NO_FILE_UPLOADED error message.
+
+Test Case 3: Invalid File Type Error
+
+Action: Send the request but attach a .txt or .jpg file instead of an Excel/CSV file.
+
+Expected Result: A 400 Bad Request status code with the INVALID_FILE_TYPE error message.
+
+Test Case 4: Unauthorized Error
+
+Action: Send the request without a valid session cookie.
+
+Expected Result: A 401 Unauthorized status code.
+
+Executing these steps will create the robust and scalable entry point required for our Smart Import feature. This completes Phase 1, Mission 1.1.
