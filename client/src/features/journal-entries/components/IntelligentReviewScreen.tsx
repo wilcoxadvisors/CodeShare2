@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +8,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { AlertTriangle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
 import { ReviewToolbar, FilterState } from './ReviewToolbar';
 import { EntryGroupCard } from './EntryGroupCard';
+import { validateEntryGroup, createAccountsMap, createDimensionsMap } from '../utils/batchValidation';
 
 // Placeholder type, will be refined in future missions
 type BatchAnalysisResult = any;
@@ -44,6 +45,28 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     setEditableGroups(analysisResult.entryGroups);
   }, [analysisResult]);
 
+  // Fetch accounts and dimensions data for real-time validation
+  const { data: accountsData } = useQuery({
+    queryKey: ['accounts', clientId],
+    queryFn: () => apiRequest(`/api/clients/${clientId}/accounts`),
+    enabled: !!clientId,
+  });
+
+  const { data: dimensionsData } = useQuery({
+    queryKey: ['dimensions', clientId],
+    queryFn: () => apiRequest(`/api/clients/${clientId}/dimensions`),
+    enabled: !!clientId,
+  });
+
+  // Create lookup maps for efficient validation
+  const accountsMap = React.useMemo(() => {
+    return accountsData ? createAccountsMap(accountsData) : new Map();
+  }, [accountsData]);
+
+  const dimensionsMap = React.useMemo(() => {
+    return dimensionsData ? createDimensionsMap(dimensionsData) : new Map();
+  }, [dimensionsData]);
+
   // Batch processing mutation
   const processBatchMutation = useMutation({
     mutationFn: (payload: { approvedEntries: any[] }) => {
@@ -70,13 +93,28 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     },
   });
 
-  // Create a handler function to update a specific cell
+  // Create a handler function to update a specific cell with real-time re-validation
   const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
-    const newGroups = [...editableGroups];
+    // Deep copy to ensure state updates work correctly
+    const newGroups = JSON.parse(JSON.stringify(editableGroups));
+    
+    // Update the cell value
     newGroups[groupIndex].lines[lineIndex][field] = value;
 
-    // TODO: Add re-validation logic here in a future step
-    console.log(`Updated group ${groupIndex}, line ${lineIndex}, field ${field} to:`, value);
+    // Real-time re-validation: Re-validate just the group that was changed
+    if (accountsMap.size > 0 && dimensionsMap.size > 0) {
+      const newErrors = validateEntryGroup(newGroups[groupIndex], accountsMap, dimensionsMap);
+      newGroups[groupIndex].errors = newErrors;
+      newGroups[groupIndex].isValid = newErrors.length === 0;
+      
+      console.log(`Re-validated group ${groupIndex} after updating ${field}:`, {
+        errors: newErrors.length,
+        isValid: newGroups[groupIndex].isValid,
+        updatedValue: value
+      });
+    } else {
+      console.log('Validation maps not ready yet, skipping re-validation');
+    }
 
     setEditableGroups(newGroups);
   };

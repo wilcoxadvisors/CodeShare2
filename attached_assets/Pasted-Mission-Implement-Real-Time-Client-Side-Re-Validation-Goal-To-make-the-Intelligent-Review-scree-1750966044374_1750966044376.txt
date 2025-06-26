@@ -1,0 +1,93 @@
+Mission: Implement Real-Time Client-Side Re-Validation
+
+Goal: To make the "Intelligent Review" screen truly intelligent. When a user edits a cell to fix a validation error, the system must instantly re-validate that specific entry group. If all errors in the group are resolved, all red error highlighting must disappear immediately, providing the user with real-time feedback that their corrections are valid.
+
+Architectural Justification: This is a cornerstone of a modern user experience. Forcing a user to guess whether their fix was correct is unacceptable. By re-running our validation logic on the client-side after every change, we create a responsive feedback loop that builds user confidence and dramatically speeds up the reconciliation process.
+
+Surgical Code Implementation
+Step 1: Create a Client-Side Validation Utility
+
+Architectural Decision: The validation logic currently lives on the backend. We must replicate it on the frontend for instant feedback. We will create a dedicated utility file for this to keep the logic clean and testable.
+
+File to Create: client/src/features/journal-entries/utils/batchValidation.ts
+
+Instruction: Add the following code to the new file. This utility will contain the pure functions needed to validate the data.
+
+TypeScript
+
+// This function checks a single entry group for errors.
+export const validateEntryGroup = (group, accountsMap, dimensionsMap) => {
+  const errors = [];
+  let balance = 0;
+
+  // Rule 1: Validate each line
+  group.lines.forEach(line => {
+    // Check Account Code
+    if (!accountsMap.has(line.accountCode)) {
+      errors.push({ originalRow: line.originalRow, field: 'accountCode', message: 'Account code not found.' });
+    }
+
+    // Check Dimensions (add more sophisticated logic as needed)
+    Object.keys(line.dimensions).forEach(dimCode => {
+        const dimValueCode = line.dimensions[dimCode];
+        const dimension = dimensionsMap.get(dimCode);
+        if (dimValueCode && (!dimension || !dimension.valuesMap.has(dimValueCode))) {
+            errors.push({ originalRow: line.originalRow, field: dimCode, message: `Value '${dimValueCode}' not found for ${dimCode}.` });
+        }
+    });
+
+    // Add to balance check (assumes amount is a string)
+    const amount = parseFloat(line.debit || `-${line.credit}` || '0');
+    balance += amount;
+  });
+
+  // Rule 2: Check if the entry balances
+  // Use a small epsilon for floating-point comparisons
+  if (Math.abs(balance) > 0.001) {
+    errors.push({ originalRow: group.lines[0]?.originalRow, field: 'Group', message: 'This entry group does not balance.' });
+  }
+
+  return errors;
+};
+Step 2: Upgrade the IntelligentReviewScreen to Re-Validate
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: We will now import the new validation utility and use it inside our handleCellUpdate function.
+
+Add the import:
+
+TypeScript
+
+import { validateEntryGroup } from '../utils/batchValidation';
+// You will also need to fetch accounts and dimensions data here to create the lookup maps.
+// For now, we assume this data is available.
+Replace the existing handleCellUpdate function with this enhanced version:
+
+TypeScript
+
+const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
+    const newGroups = JSON.parse(JSON.stringify(editableGroups)); // Deep copy to ensure state updates
+    newGroups[groupIndex].lines[lineIndex][field] = value;
+
+    // --- NEW RE-VALIDATION LOGIC ---
+    // Create lookup maps from your fetched CoA and Dimension data
+    const accountsMap = new Map(/* ... from query ... */);
+    const dimensionsMap = new Map(/* ... from query ... */);
+
+    // Re-validate just the group that was changed
+    const newErrors = validateEntryGroup(newGroups[groupIndex], accountsMap, dimensionsMap);
+    newGroups[groupIndex].errors = newErrors;
+    newGroups[groupIndex].isValid = newErrors.length === 0;
+    // --- END OF NEW LOGIC ---
+
+    setEditableGroups(newGroups);
+};
+Final Verification Plan
+Upload a file with an invalid AccountCode on a specific line.
+
+Verify: The EntryGroupCard and the specific row should be highlighted in red, with an error message displayed.
+
+Action: Click into the incorrect AccountCode input field and type a valid account code. Click away.
+
+Expected Result: The red highlighting on the row and on the card's border must disappear instantly. The error count in the header should update. This will confirm that our real-time re-validation is working perfectly.
