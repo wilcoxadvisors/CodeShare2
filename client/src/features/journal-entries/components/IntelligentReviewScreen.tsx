@@ -251,11 +251,12 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
         <Button
           onClick={() => {
             const payload = {
-              approvedEntries: filteredAndSortedGroups.filter(g => g.isValid)
+              // Only include groups that are valid AND selected
+              approvedEntries: editableGroups.filter((g: any) => g.isValid && selectionState[g.groupKey])
             };
             processBatchMutation.mutate(payload);
           }}
-          disabled={dynamicBatchSummary.entriesWithErrors > 0 || processBatchMutation.isPending}
+          disabled={selectedForProcessingCount === 0 || processBatchMutation.isPending}
         >
           {processBatchMutation.isPending ? (
             <>
@@ -263,7 +264,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
               Processing...
             </>
           ) : (
-            `Confirm and Process ${dynamicBatchSummary.validEntries} Entries`
+            `Confirm and Process ${selectedForProcessingCount} Entries`
           )}
         </Button>
       </div>

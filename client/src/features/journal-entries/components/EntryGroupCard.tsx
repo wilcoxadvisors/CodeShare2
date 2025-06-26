@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronsUpDown, AlertCircle, Lightbulb } from 'lucide-react';
 
@@ -13,9 +14,11 @@ interface EntryGroupCardProps {
   group: any;
   index: number;
   onCellUpdate: (lineIndex: number, field: string, value: string) => void;
+  isSelected: boolean;
+  onToggleSelected: () => void;
 }
 
-export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate }) => {
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected }) => {
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
@@ -29,12 +32,19 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
       <Collapsible defaultOpen={!group.isValid}>
         <CollapsibleTrigger asChild>
           <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 rounded-t-lg">
-            <div className="flex-1">
-              <h4 className="font-semibold">
-                Entry Group #{index + 1}
-                {group.header.Date && <span className="ml-4 font-normal text-sm text-muted-foreground">Date: {new Date(group.header.Date).toLocaleDateString()}</span>}
-              </h4>
-              <p className="text-sm text-muted-foreground truncate pr-4">{group.header.Description || 'No description provided'}</p>
+            <div className="flex items-center space-x-4">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={onToggleSelected}
+                disabled={!group.isValid} // Disable checkbox if the entry has errors
+              />
+              <div className="flex-1">
+                <h4 className="font-semibold">
+                  Entry Group #{index + 1}
+                  {group.header.Date && <span className="ml-4 font-normal text-sm text-muted-foreground">Date: {new Date(group.header.Date).toLocaleDateString()}</span>}
+                </h4>
+                <p className="text-sm text-muted-foreground truncate pr-4">{group.header.Description || 'No description provided'}</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
               {errorCount > 0 && <Badge variant="destructive">{errorCount} Error(s)</Badge>}
