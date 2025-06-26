@@ -17,11 +17,20 @@ export class BatchProcessingService {
             ? entryGroup.header.Date
             : new Date(entryGroup.header.Date).toISOString().split('T')[0];
 
-          // Use a minimal insert data object with only required fields
+          // Get the actual clientId from the entity (since entities are linked to clients)
+          // First, let's query the entity to get the correct clientId
+          const entityQuery = await tx.select({ clientId: entities.clientId }).from(entities).where(eq(entities.id, entityId)).limit(1);
+          if (entityQuery.length === 0) {
+            throw new Error(`Entity with ID ${entityId} not found`);
+          }
+          const actualClientId = entityQuery[0].clientId;
+
+          // Use minimal insert data object with only required fields
           const journalEntryData: any = {
             entityId: entityId,
+            clientId: actualClientId, // Use the client ID from the entity
             date: entryDate,
-            referenceNumber: entryGroup.header.Reference || `BATCH-${clientId}-${entityId}-${Date.now()}-${createdCount + 1}`,
+            referenceNumber: entryGroup.header.Reference || `BATCH-${actualClientId}-${entityId}-${Date.now()}-${createdCount + 1}`,
             description: entryGroup.header.Description || 'Batch import entry',
             status: 'draft',
             createdBy: 1, // TODO: Get actual user ID from request context
