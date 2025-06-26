@@ -17,9 +17,10 @@ interface EntryGroupCardProps {
   isSelected: boolean;
   onToggleSelected: () => void;
   onCreateDimensionValue: (data: { dimensionId: number; name: string; code: string }) => void;
+  onAcceptSuggestion: (groupIndex: number, lineIndex: number, action: any) => void;
 }
 
-export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected, onCreateDimensionValue }) => {
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected, onCreateDimensionValue, onAcceptSuggestion }) => {
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
@@ -169,6 +170,28 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* AI Suggestions */}
+            {suggestionCount > 0 && (
+              <div className="mt-2 space-y-1">
+                {group.aiSuggestions.map((suggestion: any, i: number) => (
+                  <div key={`sugg-${i}`} className="text-xs text-yellow-800 bg-yellow-50 p-1 rounded-md flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 flex-shrink-0 text-yellow-600" />
+                      <span>Row {suggestion.originalRow} ({suggestion.field}): {suggestion.message}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => onAcceptSuggestion(index, group.lines.findIndex((l: any) => l.originalRow === suggestion.originalRow), suggestion.action)}
+                    >
+                      Accept
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

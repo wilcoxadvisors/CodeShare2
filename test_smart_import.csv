@@ -1,5 +1,3 @@
-Date,Account Code,Description,Debit,Credit,Department
-2025-06-26,1000,Office Supplies,250.00,,Sales
-2025-06-26,2000,Accounts Payable,,250.00,Sales
-2025-06-26,5000,Marketing Expense,500.00,,Marketing
-2025-06-26,1000,Cash,,500.00,Marketing
+AccountCode,Description,Amount,Department,Location
+7000,Office Depot supplies order,500,Marketing,New York
+1000,Office Depot supplies order,-500,Marketing,New York

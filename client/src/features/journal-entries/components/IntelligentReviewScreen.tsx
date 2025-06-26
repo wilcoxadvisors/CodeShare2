@@ -123,6 +123,34 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     },
   });
 
+  // AI suggestion acceptance handler
+  const handleAcceptSuggestion = (groupIndex: number, lineIndex: number, action: any) => {
+    if (!action || !action.type || !action.payload) return;
+
+    const { type, payload } = action;
+    const newGroups = JSON.parse(JSON.stringify(editableGroups));
+    const targetLine = newGroups[groupIndex].lines[lineIndex];
+
+    console.log("Accepting AI Suggestion:", { type, payload });
+
+    // Apply the change based on the action type
+    if (type === 'CHANGE_ACCOUNT_CODE') {
+      targetLine.accountCode = payload.newAccountCode;
+    } else if (type === 'SET_DIMENSION_TAG') {
+      targetLine.dimensions[payload.dimensionCode] = payload.newValueCode;
+    }
+
+    // After applying the change, we must trigger our real-time re-validation
+    // to confirm the fix and clear any related errors.
+    const accountsMap = createAccountsMap(accountsData || []);
+    const dimensionsMap = createDimensionsMap(dimensionsData || []);
+    const newErrors = validateEntryGroup(newGroups[groupIndex], accountsMap, dimensionsMap);
+    newGroups[groupIndex].errors = newErrors;
+    newGroups[groupIndex].isValid = newErrors.length === 0;
+
+    setEditableGroups(newGroups);
+  };
+
   // Create a handler function to update a specific cell with real-time re-validation
   const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
     // Deep copy to ensure state updates work correctly
@@ -284,6 +312,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             isSelected={selectionState[group.groupKey] || false}
             onToggleSelected={() => handleToggleSelection(group.groupKey)}
             onCreateDimensionValue={(data) => createDimensionValueMutation.mutate(data)}
+            onAcceptSuggestion={handleAcceptSuggestion}
           />
         ))}
       </div>
