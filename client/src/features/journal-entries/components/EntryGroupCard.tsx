@@ -47,8 +47,8 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="p-4 pt-0">
-            <div className="border rounded-lg overflow-hidden">
+          <div className="p-4 pt-0 border-t">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -83,50 +83,48 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                             </Tooltip>
                           </TooltipProvider>
                         </TableCell>
-                      <TableCell>
-                        <Input
-                          defaultValue={line.description}
-                          onBlur={(e) => onCellUpdate(lineIndex, 'description', e.target.value)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          defaultValue={line.amount.isPositive() ? line.amount.toFixed(2) : ''}
-                          onBlur={(e) => onCellUpdate(lineIndex, 'debit', e.target.value)}
-                          className="text-right font-mono"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          defaultValue={line.amount.isNegative() ? line.amount.abs().toFixed(2) : ''}
-                          onBlur={(e) => onCellUpdate(lineIndex, 'credit', e.target.value)}
-                          className="text-right font-mono"
-                        />
-                      </TableCell>
-                      {Object.keys(line.dimensions).map(dimKey => {
-                        const dimError = getErrorForCell(line.originalRow, dimKey);
-                        return (
-                          <TableCell key={dimKey}>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Input
-                                    defaultValue={line.dimensions[dimKey]}
-                                    onBlur={(e) => onCellUpdate(lineIndex, `dimensions.${dimKey}`, e.target.value)}
-                                    className={dimError ? 'border-red-500' : ''}
-                                  />
-                                </TooltipTrigger>
-                                {dimError && <TooltipContent><p className="text-red-600">{dimError.message}</p></TooltipContent>}
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
+                        <TableCell>
+                          <Input
+                            defaultValue={line.description}
+                            onBlur={(e) => onCellUpdate(lineIndex, 'description', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                           <Input
+                            type="number"
+                            defaultValue={line.amount.isPositive() ? line.amount.toFixed(2) : ''}
+                            onBlur={(e) => onCellUpdate(lineIndex, 'debit', e.target.value)}
+                            className="text-right font-mono"
+                           />
+                        </TableCell>
+                        <TableCell>
+                            <Input
+                             type="number"
+                             defaultValue={line.amount.isNegative() ? line.amount.abs().toFixed(2) : ''}
+                             onBlur={(e) => onCellUpdate(lineIndex, 'credit', e.target.value)}
+                             className="text-right font-mono"
+                            />
+                        </TableCell>
+                         {Object.keys(line.dimensions).map(dimKey => {
+                           const dimError = getErrorForCell(line.originalRow, dimKey);
+                           return (
+                            <TableCell key={dimKey}>
+                              <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                       <Input
+                                        defaultValue={line.dimensions[dimKey]}
+                                        onBlur={(e) => onCellUpdate(lineIndex, `dimensions.${dimKey}`, e.target.value)}
+                                        className={dimError ? 'border-red-500' : ''}
+                                       />
+                                    </TooltipTrigger>
+                                    {dimError && <TooltipContent><p className="text-red-600">{dimError.message}</p></TooltipContent>}
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                           );
+                         })}
+                      </TableRow>
                     );
                   })}
                 </TableBody>
