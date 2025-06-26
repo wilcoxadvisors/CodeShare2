@@ -1,0 +1,52 @@
+Surgical Instructions for the Agent
+Task: You are to open the file docs/Instructions.md and perform the following modifications.
+
+Step 1: Update the "CURRENT MISSION" Section
+
+Action: Find the ## 3. CURRENT MISSION section.
+
+Instruction: Replace the entire content of this section with the following, which sets our next task.
+
+Markdown
+
+## 3. CURRENT MISSION
+
+**Final Verification: End-to-End Manual Testing of "Smart Import"**
+-   **Objective:** To perform a comprehensive, manual test of the entire Batch Journal Entry Import workflow to find any remaining bugs and verify it meets our high standards for user experience and data integrity.
+-   **Status:** Awaiting execution.
+Step 2: Update the "Detailed Development Status"
+
+Action: Find the ## 7. Historical Documentation: Detailed Development Status section (or similar).
+
+Instruction: Within this section, locate the line for Task B.2.1 (Dimensions & Smart Rules) and update its status.
+
+Find the block related to Dimensions & Smart Rules:
+
+Current Update: Task B.2.1 (Dimensions & Smart Rules): 🔄 IN PROGRESS. Backend foundation complete, frontend UI for listing/creating dimensions complete. Next: Build UI to add/edit/deactivate dimension values and integrate tagging into Journal Entry form.
+Change it to reflect completion:
+
+Current Update: Task B.2.1 (Dimensions & Smart Rules): ✅ COMPLETE. The backend and all frontend UI for creating, managing, and deleting dimensions and their values are now fully functional.
+Step 3: Update the "Detailed Task List"
+
+Action: Find the ## 8. Historical Documentation: Detailed Task List section (or similar).
+
+Instruction: Find the line for (Task B.2.1) Dimensions & Smart Rules and update its status to reflect completion.
+
+Find the block:
+
+(Task B.2.1) Dimensions & Smart Rules: 🔄 IN PROGRESS (Current Focus)
+✅ Create client-level master-data tables...
+...
+🔄 NEXT: Build UI to add/edit/deactivate values for each dimension...
+Change it to reflect completion:
+
+(Task B.2.1) Dimensions & Smart Rules: ✅ COMPLETE
+✅ Create client-level master-data tables...
+✅ Seed system dimensions...
+✅ Build backend Storage Layer and API routes...
+✅ Build initial frontend UI to list existing dimensions...
+✅ Build UI to add/edit/deactivate values for each dimension.
+✅ Integrate Dimensions into the Journal Entry form.
+🔄 NEXT: Implement a Smart Rules MVP (JSON validation).
+Final Verification
+After you have completed these modifications, the Instructions.md file will be perfectly in sync with our progress. This concludes all development work on the "Smart Import" feature. Our next step is to begin the final verification testing.

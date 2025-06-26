@@ -1,0 +1,69 @@
+Instructions.md
+Mission: Implement the Final UI Entry Point for Batch Import
+
+Goal: To provide a clear and discoverable entry point for the "Smart Import" feature by adding a functional "Batch Import" button to the header of the main journal entries list page. This is the last step required to make the feature accessible to users.
+
+Architectural Justification: Even the most powerful feature is useless if no one can find it. Placing the entry point within the primary context where users manage journal entries is the most intuitive and user-friendly design. It ensures the feature is visible and integrated directly into the user's natural workflow.
+
+Surgical Code Implementation
+Step 1: Locate the Target Component
+
+File: client/src/features/journal-entries/pages/JournalEntries.tsx
+
+Step 2: Ensure Necessary Imports and Hooks are Present
+
+Instruction: At the top of the file, verify that the following are imported. Add any that are missing.
+
+TypeScript
+
+import { useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import PageHeader from '@/components/PageHeader';
+import { PlusCircle, Upload } from 'lucide-react'; // Ensure 'Upload' is present
+Instruction: Inside the JournalEntries component function, ensure the useNavigate and useParams hooks are being called to get the necessary data for navigation.
+
+TypeScript
+
+const navigate = useNavigate();
+const params = useParams();
+const clientId = params.clientId;
+const entityId = params.entityId;
+Step 3: Surgically Add the "Batch Import" Button
+
+Instruction: Find the <PageHeader> component in the JSX. You will add the "Batch Import" button directly next to the "New Journal Entry" button. I am providing a complete div wrapper to ensure they are correctly styled and aligned. Replace the existing button or buttons inside the <PageHeader> with this complete block.
+
+TypeScript
+
+{/* Inside the <PageHeader> component, as a child */}
+
+<div className="flex items-center space-x-2">
+  <Button
+    variant="outline"
+    onClick={() => {
+      if (clientId && entityId) {
+        navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/batch-import`);
+      } else {
+        console.error("Cannot navigate to Batch Import: Client or Entity ID is missing.");
+        // Optionally, show a toast notification here to inform the user.
+      }
+    }}
+  >
+    <Upload className="mr-2 h-4 w-4" />
+    Batch Import
+  </Button>
+
+  <Button onClick={() => navigate(`/clients/${clientId}/entities/${entityId}/journal-entries/new`)}>
+    <PlusCircle className="mr-2 h-4 w-4" />
+    New Journal Entry
+  </Button>
+</div>
+Final Verification Plan
+Navigate to the main JournalEntries list page for any client and entity.
+
+Assert: The "Batch Import" button is now visible in the page header.
+
+Click the "Batch Import" button.
+
+Assert: The application correctly navigates to the "Smart Import" wizard, displaying the "Step 1: Configure & Upload" screen.
+
+This is the final task. Once this is complete and you have verified it, the entire "Smart Import" feature will be architecturally sound, functionally complete, and fully accessible to the user.
