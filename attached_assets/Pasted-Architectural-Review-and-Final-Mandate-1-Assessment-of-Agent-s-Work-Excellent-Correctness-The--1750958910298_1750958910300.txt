@@ -1,0 +1,49 @@
+Architectural Review and Final Mandate
+1. Assessment of Agent's Work (Excellent):
+
+Correctness: The agent successfully created the new API endpoint, implemented the required multer middleware for file handling, created the necessary stub services, and correctly integrated the route into the Express application with proper authentication.
+
+Robustness: The agent's testing was thorough. They verified the success case, no-file error, invalid-file-type error, and unauthorized error. The final implementation with strict MIME type and file extension checking is secure and correct.
+
+Adherence to Standards: The code is clean, follows the architectural pattern I laid out, and provides the structured JSON responses required for a state-of-the-art API.
+
+2. Your Critical Feedback (Correct):
+
+10 MB File Size Limit: You are absolutely right. A 10MB limit is insufficient for historical data uploads. A client's annual general ledger could easily exceed this, and hitting this limit would create a frustrating and unnecessary roadblock during a critical onboarding phase. A state-of-the-art system must anticipate the real-world needs of its users.
+
+Conclusion:
+
+The agent's implementation is successful, but it requires one final, surgical correction to be considered complete.
+
+Definitive Instructions for the Agent (Final Correction)
+Mission: Complete the Batch Analysis API Endpoint by implementing the final architectural requirement for file size.
+
+Goal: To ensure the endpoint can handle large-scale historical data imports without issue.
+
+Step 1: Open the Multer Middleware Configuration
+
+File: server/middleware/multer.ts
+
+Step 2: Increase the File Size Limit
+
+Instruction: Locate the limits configuration within the multer setup. You are to change the fileSize from 10 * 1024 * 1024 (10MB) to 100 * 1024 * 1024 (100MB). This provides a generous buffer for large historical datasets while still protecting the server from excessively large uploads.
+
+Change this:
+
+TypeScript
+
+limits: {
+  fileSize: 10 * 1024 * 1024, // 10 MB file size limit
+},
+To this:
+
+TypeScript
+
+limits: {
+  fileSize: 100 * 1024 * 1024, // 100 MB file size limit
+},
+Step 3: Final Verification
+
+Once this change is made, this mission is complete. No further testing is required. This architectural adjustment ensures the feature is robust and user-friendly for large-scale onboarding.
+
+Upon completion of this final instruction, Phase 1, Mission 1.1 will be officially approved. We will then be ready to proceed to Phase 1, Mission 1.2: Implement the "Smart Parser" & Grouping Algorithm.
