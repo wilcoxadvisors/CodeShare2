@@ -1,0 +1,131 @@
+Mission: Refactor the "Smart Import" Engine to Implement the "Smart Hybrid" Grouping Algorithm
+
+Goal: To upgrade the BatchParsingService to intelligently handle both explicit, key-based grouping and automatic, date-based grouping. The EntryGroupKey will now be optional, providing maximum flexibility for the user. This is the definitive architecture for this feature.
+
+Architectural Justification: A state-of-the-art system must adapt to the user's data, not the other way around. This hybrid approach offers explicit control for complex, one-off entries while providing powerful, "zero-effort" automation for the critical historical data onboarding use case.
+
+Phase 1: Backend Refactoring - The "Smart Hybrid" Parser
+Mission 1.1: Upgrade the BatchParsingService
+
+Target File: server/services/BatchParsingService.ts
+
+Instruction: You will replace the entire parse method with the following new implementation. This new version contains the critical conditional logic to switch between grouping strategies.
+
+TypeScript
+
+// Inside BatchParsingService.ts
+
+public async parse(fileBuffer: Buffer): Promise<{ entryGroups: EntryGroup[] }> {
+  try {
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
+    const sheetName = 'JournalEntryLines (EDIT THIS)';
+    const worksheet = workbook.Sheets[sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+
+    if (!worksheet) {
+      throw new Error(`The required sheet "JournalEntryLines (EDIT THIS)" was not found.`);
+    }
+
+    const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+    // --- ARCHITECT'S DEFINITIVE HYBRID LOGIC ---
+    // Determine which grouping strategy to use.
+    const useKeyBasedGrouping = rows.some(row => row.EntryGroupKey && String(row.EntryGroupKey).trim() !== '');
+
+    if (useKeyBasedGrouping) {
+      console.log('ARCHITECT_DEBUG: Using "Explicit Grouping" strategy based on EntryGroupKey.');
+      return this.groupByEntryGroupKey(rows);
+    } else {
+      console.log('ARCHITECT_DEBUG: Using "Auto-Grouping by Date" strategy.');
+      return this.groupByDateAndBalance(rows);
+    }
+    // --- END OF HYBRID LOGIC ---
+
+  } catch (error) {
+    // ... existing error handling
+  }
+}
+
+// You will add the following two private helper methods to the class.
+
+private groupByEntryGroupKey(rows: any[]): { entryGroups: EntryGroup[] } {
+    const groupsMap = new Map<string, ParsedLine[]>();
+    // ... logic to group all lines into the map based on row.EntryGroupKey ...
+    // ... then convert the map to the EntryGroup[] array structure ...
+    return { entryGroups: [/* ... a a b b c c ... */] };
+}
+
+private groupByDateAndBalance(rows: any[]): { entryGroups: EntryGroup[] } {
+    const entryGroups: EntryGroup[] = [];
+    let currentGroup: ParsedLine[] = [];
+    let currentBalance = new Decimal(0);
+    let currentDate = rows[0]?.Date || null;
+    let entryCounter = 1;
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowDate = row.Date || null;
+        // ... logic to parse the line ...
+
+        // If the date changes, it forces the current group to close.
+        if (rowDate && currentDate && new Date(rowDate).getTime() !== new Date(currentDate).getTime()) {
+            if(currentGroup.length > 0) {
+                // Close the previous group, even if unbalanced
+                 entryGroups.push({ /* ... */ });
+            }
+            // Start a new group
+            currentGroup = [parsedLine];
+            currentBalance = parsedLine.amount;
+            currentDate = rowDate;
+            continue;
+        }
+
+        currentGroup.push(parsedLine);
+        currentBalance = currentBalance.plus(parsedLine.amount);
+
+        // If the group balances, close it and start a new one.
+        if (currentBalance.isZero()) {
+            entryGroups.push({ /* ... */ });
+            currentGroup = [];
+        }
+    }
+    // Handle any remaining lines at the end of the file
+    if (currentGroup.length > 0) {
+         entryGroups.push({ /* ... */ });
+    }
+    return { entryGroups };
+}
+Phase 2: Frontend Refactoring - Update the "Smart Template"
+Mission 2.1: Update the BatchTemplateService
+
+Target File: server/services/BatchTemplateService.ts
+
+Instruction: Modify the createMainSheetData helper function to reflect that the EntryGroupKey is now optional.
+
+Find this line:
+
+TypeScript
+
+'EntryGroupKey': 'Example: MKTG-01 (Group lines into one entry)',
+Change it to this:
+
+TypeScript
+
+'EntryGroupKey': '(Optional) Example: MKTG-01',
+Verification Plan
+Test Workflow A (Historical GL Import):
+
+Download the newly modified template.
+
+Prepare a test file with multiple entries on different dates, but leave the EntryGroupKey column completely blank.
+
+Upload the file.
+
+Assert: The backend debug logs must show "Using "Auto-Grouping by Date" strategy." The preview screen must correctly display multiple, distinct journal entries grouped by their dates.
+
+Test Workflow B (Complex Manual Grouping):
+
+Prepare a test file and use the EntryGroupKey column to manually group lines.
+
+Upload the file.
+
+Assert: The backend debug logs must show "Using "Explicit Grouping" strategy..." The preview screen must group the entries exactly as defined by your keys.

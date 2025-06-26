@@ -26,7 +26,7 @@ export class BatchTemplateService {
 
   private createMainSheetData(mode: string, dimensions: any[]): any[] {
     const baseHeaders: any = {
-        'EntryGroupKey': 'Example: JUNE-PAYROLL',
+        'EntryGroupKey': '(Optional) Example: MKTG-01',
         'AccountCode': 'Example: 60100',
         'Amount': 'Example: 5000.00 (positive for debit, negative for credit)',
         'LineDescription': 'Example: Salary for J. Doe'

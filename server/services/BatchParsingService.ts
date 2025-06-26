@@ -20,91 +20,29 @@ interface EntryGroup {
 
 export class BatchParsingService {
   public async parse(fileBuffer: Buffer): Promise<{ entryGroups: EntryGroup[] }> {
-    // Use a try-catch block to handle potential errors from the parsing library
     try {
-      // 1. Read the workbook from the buffer
       const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
-      
-      // 2. Determine the sheet to use - for CSV files, use the first sheet
-      let worksheet: XLSX.WorkSheet;
-      const sheetNames = workbook.SheetNames;
-      
-      if (sheetNames.includes('JournalEntryLines')) {
-        // Excel file with proper structure
-        worksheet = workbook.Sheets['JournalEntryLines'];
-      } else if (sheetNames.length > 0) {
-        // CSV file or Excel file without standard naming - use first sheet
-        worksheet = workbook.Sheets[sheetNames[0]];
-        console.log(`INFO: Using first sheet "${sheetNames[0]}" as JournalEntryLines data`);
-      } else {
-        throw new Error('No data sheets found in the uploaded file.');
+      const sheetName = 'JournalEntryLines (EDIT THIS)';
+      const worksheet = workbook.Sheets[sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+
+      if (!worksheet) {
+        throw new Error(`The required sheet "JournalEntryLines (EDIT THIS)" was not found.`);
       }
 
-      // 3. Convert the sheet to an array of JSON objects
       const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-      // 3. Implement the Zero-Balance Grouping Algorithm
-      const entryGroups: EntryGroup[] = [];
-      let currentGroup: ParsedLine[] = [];
-      let currentBalance = new Decimal(0);
-      let entryCounter = 1;
+      // --- ARCHITECT'S DEFINITIVE HYBRID LOGIC ---
+      // Determine which grouping strategy to use.
+      const useKeyBasedGrouping = rows.some(row => row.EntryGroupKey && String(row.EntryGroupKey).trim() !== '');
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const originalRow = i + 2; // +2 to account for 0-index and header row
-
-        // Extract core data and perform initial type validation
-        const amount = new Decimal(row['Amount'] || 0);
-        const accountCode = String(row['AccountCode'] || '').trim();
-
-        if (amount.isZero() || !accountCode) {
-          // Skip empty or invalid rows to make the import more resilient
-          continue;
-        }
-
-        // Extract dimension data dynamically from all other columns
-        const dimensions: { [key: string]: string } = {};
-        Object.keys(row).forEach(key => {
-          if (!['AccountCode', 'Amount', 'Description', 'Date'].includes(key)) {
-            dimensions[key] = String(row[key] || '').trim();
-          }
-        });
-
-        const parsedLine: ParsedLine = {
-          originalRow,
-          accountCode,
-          amount,
-          description: row['Description'] || null,
-          date: row['Date'] instanceof Date ? row['Date'] : null,
-          dimensions,
-        };
-
-        currentGroup.push(parsedLine);
-        currentBalance = currentBalance.plus(amount);
-
-        // Check if the group is balanced
-        if (currentBalance.isZero()) {
-          entryGroups.push({
-            groupKey: `entry-${entryCounter++}`,
-            lines: currentGroup,
-            errors: [],
-          });
-          // Reset for the next group
-          currentGroup = [];
-        }
+      if (useKeyBasedGrouping) {
+        console.log('ARCHITECT_DEBUG: Using "Explicit Grouping" strategy based on EntryGroupKey.');
+        return this.groupByEntryGroupKey(rows);
+      } else {
+        console.log('ARCHITECT_DEBUG: Using "Auto-Grouping by Date" strategy.');
+        return this.groupByDateAndBalance(rows);
       }
-
-      // Edge Case: Handle the last group if it's not balanced
-      if (currentGroup.length > 0) {
-        entryGroups.push({
-          groupKey: `entry-${entryCounter}`,
-          lines: currentGroup,
-          errors: ['This entry group is not balanced. The sum of debits and credits does not equal zero.'],
-        });
-      }
-
-      console.log(`ARCHITECT_DEBUG: Parsing complete. Found ${entryGroups.length} entry groups.`);
-      return { entryGroups };
+      // --- END OF HYBRID LOGIC ---
 
     } catch (error) {
       console.error("Error in BatchParsingService:", error);
@@ -115,5 +53,163 @@ export class BatchParsingService {
       // Re-throw a user-friendly error to be caught by the route handler
       throw new Error("Failed to parse the uploaded file. Please ensure it is a valid .xlsx or .csv file and matches the template format.");
     }
+  }
+
+  private groupByEntryGroupKey(rows: any[]): { entryGroups: EntryGroup[] } {
+    const groupsMap = new Map<string, ParsedLine[]>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const originalRow = i + 2; // +2 to account for 0-index and header row
+
+      // Extract core data and perform initial type validation
+      const amount = new Decimal(row['Amount'] || 0);
+      const accountCode = String(row['AccountCode'] || '').trim();
+      const entryGroupKey = String(row['EntryGroupKey'] || '').trim();
+
+      if (amount.isZero() || !accountCode || !entryGroupKey) {
+        // Skip empty or invalid rows
+        continue;
+      }
+
+      // Extract dimension data dynamically from all other columns
+      const dimensions: { [key: string]: string } = {};
+      Object.keys(row).forEach(key => {
+        if (!['AccountCode', 'Amount', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
+          dimensions[key] = String(row[key] || '').trim();
+        }
+      });
+
+      const parsedLine: ParsedLine = {
+        originalRow,
+        accountCode,
+        amount,
+        description: row['Description'] || null,
+        date: row['Date'] instanceof Date ? row['Date'] : null,
+        dimensions,
+      };
+
+      // Group lines by their EntryGroupKey
+      if (!groupsMap.has(entryGroupKey)) {
+        groupsMap.set(entryGroupKey, []);
+      }
+      groupsMap.get(entryGroupKey)!.push(parsedLine);
+    }
+
+    // Convert the map to EntryGroup[] array structure
+    const entryGroups: EntryGroup[] = [];
+    groupsMap.forEach((lines, groupKey) => {
+      // Calculate balance for this group
+      const balance = lines.reduce((sum, line) => sum.plus(line.amount), new Decimal(0));
+      const errors: string[] = [];
+
+      if (!balance.isZero()) {
+        errors.push('This entry group is not balanced. The sum of debits and credits does not equal zero.');
+      }
+
+      entryGroups.push({
+        groupKey,
+        lines,
+        errors,
+      });
+    });
+
+    console.log(`ARCHITECT_DEBUG: Key-based grouping complete. Found ${entryGroups.length} entry groups.`);
+    return { entryGroups };
+  }
+
+  private groupByDateAndBalance(rows: any[]): { entryGroups: EntryGroup[] } {
+    const entryGroups: EntryGroup[] = [];
+    let currentGroup: ParsedLine[] = [];
+    let currentBalance = new Decimal(0);
+    let currentDate = rows[0]?.Date || null;
+    let entryCounter = 1;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const originalRow = i + 2; // +2 to account for 0-index and header row
+      const rowDate = row.Date || null;
+
+      // Extract core data and perform initial type validation
+      const amount = new Decimal(row['Amount'] || 0);
+      const accountCode = String(row['AccountCode'] || '').trim();
+
+      if (amount.isZero() || !accountCode) {
+        // Skip empty or invalid rows to make the import more resilient
+        continue;
+      }
+
+      // Extract dimension data dynamically from all other columns
+      const dimensions: { [key: string]: string } = {};
+      Object.keys(row).forEach(key => {
+        if (!['AccountCode', 'Amount', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
+          dimensions[key] = String(row[key] || '').trim();
+        }
+      });
+
+      const parsedLine: ParsedLine = {
+        originalRow,
+        accountCode,
+        amount,
+        description: row['Description'] || null,
+        date: rowDate instanceof Date ? rowDate : null,
+        dimensions,
+      };
+
+      // If the date changes, it forces the current group to close.
+      if (rowDate && currentDate && new Date(rowDate).getTime() !== new Date(currentDate).getTime()) {
+        if (currentGroup.length > 0) {
+          // Close the previous group, even if unbalanced
+          const balance = currentGroup.reduce((sum, line) => sum.plus(line.amount), new Decimal(0));
+          const errors: string[] = [];
+          if (!balance.isZero()) {
+            errors.push('This entry group is not balanced. The sum of debits and credits does not equal zero.');
+          }
+
+          entryGroups.push({
+            groupKey: `entry-${entryCounter++}`,
+            lines: currentGroup,
+            errors,
+          });
+        }
+        // Start a new group
+        currentGroup = [parsedLine];
+        currentBalance = parsedLine.amount;
+        currentDate = rowDate;
+        continue;
+      }
+
+      currentGroup.push(parsedLine);
+      currentBalance = currentBalance.plus(parsedLine.amount);
+
+      // If the group balances, close it and start a new one.
+      if (currentBalance.isZero()) {
+        entryGroups.push({
+          groupKey: `entry-${entryCounter++}`,
+          lines: currentGroup,
+          errors: [],
+        });
+        currentGroup = [];
+        currentBalance = new Decimal(0);
+      }
+    }
+
+    // Handle any remaining lines at the end of the file
+    if (currentGroup.length > 0) {
+      const balance = currentGroup.reduce((sum, line) => sum.plus(line.amount), new Decimal(0));
+      const errors: string[] = [];
+      if (!balance.isZero()) {
+        errors.push('This entry group is not balanced. The sum of debits and credits does not equal zero.');
+      }
+
+      entryGroups.push({
+        groupKey: `entry-${entryCounter}`,
+        lines: currentGroup,
+        errors,
+      });
+    }
+
+    console.log(`ARCHITECT_DEBUG: Date-based grouping complete. Found ${entryGroups.length} entry groups.`);
+    return { entryGroups };
   }
 }
