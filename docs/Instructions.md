@@ -23,6 +23,36 @@ This roadmap outlines the major development phases.
 -   **`[PLANNED]` Phase E: AI/ML Model Implementation & Integration**
 -   **`[PLANNED]` Phase F: AP/AR & Expanded Modules**
 
+### 2.A. Strategic Directive: Dual-Path Customer Experience
+
+**1. Overview**
+
+To broaden market reach and create a scalable, self-sufficient revenue stream, the Wilcox Advisors platform will support two distinct customer engagement models. This "Dual-Path" strategy is a core component of the business's long-term vision.
+
+* **Path A: Wilcox Advisory Services (Full-Service Model):** This is the original, high-touch model. Clients engage directly with Wilcox Advisors for comprehensive accounting and financial advisory services, and the platform serves as the central workspace for collaboration. Onboarding is manual and personalized.
+
+* **Path B: Wilcox Platform (Self-Service SaaS Model):** This new model is designed for users who want to leverage our powerful accounting software directly, without an accompanying advisory agreement. This path will be characterized by a public-facing marketing homepage, automated self-service signup, and a software-only subscription plan.
+
+**2. Architectural & Roadmap Implications**
+
+This directive necessitates foundational changes and additions to our strategic roadmap. The following items are now officially part of the development plan:
+
+* **(New Epic) Public Website & Self-Service Funnel:**
+    * **Task:** Design and build a public-facing marketing website.
+    * **Requirement:** The homepage must clearly funnel visitors to either "Request a Consultation" (Path A) or "Sign Up Now" (Path B).
+
+* **(New Epic) Automated User Onboarding:**
+    * **Task:** Develop a fully automated, wizard-style onboarding flow for self-service users.
+    * **Requirement:** This flow will guide users through account creation, plan selection, and initial entity setup without manual intervention.
+
+* **(New Epic) Subscription & Billing Management:**
+    * **Task:** Integrate a third-party payment and subscription management service (e.g., Stripe, Chargebee).
+    * **Requirement:** The system must handle recurring billing, plan changes, and payment processing for self-service customers.
+
+* **(Modification) Core Schema & Entitlements:**
+    * **Task:** The database schema must be adapted to differentiate between the two service models.
+    * **Requirement:** A `serviceStyle` attribute (`self_service` vs. `assisted`) will be added to the `plans` table to control feature entitlements for each path. This is the immediate, foundational priority.
+
 ## 3. Architectural Blueprint: Batch Journal Entry "Smart Import"
 This section details the approved architecture for the "Smart Import" feature.
 
