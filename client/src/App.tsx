@@ -13,6 +13,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import GeneralLedger from "@/pages/GeneralLedger";
 import { JournalEntries, JournalEntryDetail, NewJournalEntry, BatchUpload } from "@/features/journal-entries";
+import BatchImportWizard from "@/features/journal-entries/pages/BatchImportWizard";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import Reports from "@/pages/Reports";
 import TrialBalance from "@/pages/TrialBalance";
@@ -361,6 +362,11 @@ function Router() {
       <Route path="/clients/:clientId/entities/:entityId/journal-entries/:id/delete" element={
         <AppLayout>
           <ProtectedRoute component={DeleteJournalEntry} />
+        </AppLayout>
+      } />
+      <Route path="/clients/:clientId/entities/:entityId/journal-entries/batch-import" element={
+        <AppLayout>
+          <ProtectedRoute component={BatchImportWizard} />
         </AppLayout>
       } />
       
