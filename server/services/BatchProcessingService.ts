@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { journalEntries, journalEntryLines, txDimensionLink } from '../../shared/schema';
+import { journalEntries, journalEntryLines, txDimensionLink, entities } from '../../shared/schema';
 import { and, eq } from 'drizzle-orm';
 
 export class BatchProcessingService {

@@ -54,16 +54,16 @@ async function testBatchProcessing(cookies) {
           },
           lines: [
             {
-              accountId: 1, // Assuming account ID 1 exists
+              accountId: 1, // Using existing account ID
               amount: 250.00,
               description: 'Test debit line - Office Supplies',
-              entityCode: '001'
+              entityCode: 'GW2' // Use actual entity code from database
             },
             {
-              accountId: 2, // Assuming account ID 2 exists
+              accountId: 2, // Using existing account ID
               amount: -250.00,
               description: 'Test credit line - Cash',
-              entityCode: '001'
+              entityCode: 'GW2' // Use actual entity code from database
             }
           ]
         },
@@ -78,18 +78,18 @@ async function testBatchProcessing(cookies) {
               accountId: 1,
               amount: 150.00,
               description: 'Test debit line - Equipment',
-              entityCode: '001'
+              entityCode: 'GW2'
             },
             {
               accountId: 2,
               amount: -150.00,
               description: 'Test credit line - Accounts Payable',
-              entityCode: '001'
+              entityCode: 'GW2'
             }
           ]
         }
       ],
-      entityId: 1, // Assuming entity ID 1 exists
+      entityId: 393, // Using actual entity ID from database (GCW entity)
       batchSettings: {
         isAccrual: false,
         description: 'Test batch processing'
@@ -97,7 +97,7 @@ async function testBatchProcessing(cookies) {
     };
 
     const response = await axios.post(
-      `${BASE_URL}/api/clients/1/journal-entries/batch-process`,
+      `${BASE_URL}/api/clients/250/journal-entries/batch-process`,
       testPayload,
       {
         headers: {
@@ -133,7 +133,7 @@ async function testInvalidPayload(cookies) {
     };
 
     const response = await axios.post(
-      `${BASE_URL}/api/clients/1/journal-entries/batch-process`,
+      `${BASE_URL}/api/clients/250/journal-entries/batch-process`,
       invalidPayload,
       {
         headers: {
