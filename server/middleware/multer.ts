@@ -22,18 +22,20 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/csv',
       'application/csv',
-      'text/plain', // Sometimes CSV files are detected as plain text
       'application/octet-stream' // Generic binary type that some browsers use
     ];
     
     const allowedExtensions = ['.xlsx', '.xls', '.csv'];
     const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
     
-    console.log('MULTER_DEBUG: File extension:', fileExtension);
-    console.log('MULTER_DEBUG: MIME type check:', allowedMimeTypes.includes(file.mimetype));
-    console.log('MULTER_DEBUG: Extension check:', allowedExtensions.includes(fileExtension));
+    // Be strict about file validation: require proper extension AND compatible MIME type
+    const isValidCsv = fileExtension === '.csv' && (file.mimetype === 'text/csv' || file.mimetype === 'application/csv' || file.mimetype === 'application/octet-stream');
+    const isValidExcel = (fileExtension === '.xls' || fileExtension === '.xlsx') && (file.mimetype === 'application/vnd.ms-excel' || file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.mimetype === 'application/octet-stream');
     
-    if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+    console.log('MULTER_DEBUG: isValidCsv:', isValidCsv);
+    console.log('MULTER_DEBUG: isValidExcel:', isValidExcel);
+    
+    if (isValidCsv || isValidExcel) {
       console.log('MULTER_DEBUG: File accepted');
       cb(null, true);
     } else {
