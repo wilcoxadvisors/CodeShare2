@@ -1,3 +1,51 @@
+# Wilcox Advisors Accounting Platform: Official Project Blueprint & Roadmap
+**Version:** 2.1
+**Last Updated:** June 26, 2025
+**Lead Architect:** Gemini
+
+## 1. Executive Summary & Current Mission
+
+### 1.1. High-Level Goal
+Build a best-in-class, scalable SaaS accounting platform that combines rock-solid financial integrity with a state-of-the-art, AI-enhanced user experience, drawing inspiration from the architectural principles of platforms like Odoo and Sage Intacct.
+
+### 1.2. CURRENT MISSION
+**Phase 2, Mission 2.1: Build the Main "Smart Import" Wizard Component**
+-   **Objective:** To begin the frontend development of the "Smart Import" feature by creating the main parent component that will manage the state of the multi-step workflow.
+-   **File to Create:** `client/src/features/journal-entries/pages/BatchImportWizard.tsx`
+-   **Status:** Awaiting detailed instructions from the Architect.
+
+## 2. Strategic Roadmap
+This roadmap outlines the major development phases.
+
+-   **`[COMPLETED]` Phase A: Stabilize Core Setup Flow**
+-   **`[COMPLETED]` Phase B: Core Accounting Features (Manual JE Workflow)**
+-   **`[ACTIVE]` Phase C: Smart Import & Master Data Management**
+-   **`[UP NEXT]` Phase D: Reporting & Business Intelligence**
+-   **`[PLANNED]` Phase E: AI/ML Model Implementation & Integration**
+-   **`[PLANNED]` Phase F: AP/AR & Expanded Modules**
+
+## 3. Architectural Blueprint: Batch Journal Entry "Smart Import"
+This section details the approved architecture for the "Smart Import" feature.
+
+### 3.1. The User Workflow
+A guided, wizard-style workflow:
+1.  **Choose Mode:** User selects "Standard Batch" (single date) or "Historical GL Import" (multi-date).
+2.  **Configure & Download:** User configures batch-level settings (description, common attachments, accrual status) in a UI form and downloads the corresponding "Smart Template".
+3.  **Upload & Analyze:** User uploads the completed file. The backend intelligently parses and validates the data.
+4.  **Review & Reconcile:** User is presented with a powerful interactive UI to review, correct errors, approve new dimension values, and reject specific entries.
+5.  **Confirm & Process:** User gives final confirmation to import the validated data.
+
+### 3.2. The "Smart Template" (Excel)
+A simple template with one data entry tab and two read-only reference tabs (`ChartOfAccountsKey`, `DimensionsKey`).
+-   **`JournalEntryLines` Tab:** Contains columns for `AccountCode`, `Amount` (positive/debit, negative/credit), `Description`, an optional `Date` (for historical mode), and dynamically generated columns for each of the client's Dimensions (e.g., `Department`, `Project`).
+
+### 3.3. The Backend Engine
+-   **Intelligent Parser:** Employs a **zero-balance grouping algorithm**.
+-   **Validation Service:** Uses a high-performance **in-memory hashmap** strategy for validation.
+-   **AI Assistance Service:** Provides a non-blocking "copilot" to analyze descriptions and amounts to suggest corrections and flag anomalies.
+
+---
+
 # Agent Instructions: Wilcox Advisors Accounting System (Comprehensive Roadmap)
 
 ## Recent Changelog:
@@ -10,7 +58,7 @@
 - **2025-05-01**: Clarified Dimensions framework (B.2.1) must precede Batch JE Upload; added detailed Entitlements design schema
 - **2025-04-29**: Added Date & Attachment Reliability Guards; documented multi-file attachment CRUD test coverage
 
-## 1. Project Overview & Goal
+## 5. Historical Documentation: Project Overview & Goal
 
 - **Project:** Wilcox Advisors Accounting System
 - **High-Level Goal:** Build a best-in-class, scalable SaaS accounting platform, inspired by Odoo's open-source backend logic where applicable.
@@ -52,7 +100,7 @@ Note:
 - Explicitly ensure ALL components (ClientSetupCard.tsx, EntityManagementCard.tsx, EntityForm.tsx, ClientOnboardingForm.tsx, etc.) import and utilize this centralized source.
 - Immediately remove duplicate implementations of utility functions like ensureIndustryValue explicitly from individual components.
 
-## 2. Business Model & Long-Term Vision
+## 6. Historical Documentation: Business Model & Vision
 
 - **Revenue:** Tiered SaaS subscriptions (Basic/Pro/Enterprise) + Add-ons + Implementation Fees. Aggressive growth targets ($10M revenue/2k clients by Year 5).
 - **Automation Goal:** Progressively automate accounting and finance processes, moving from manual input to API-driven workflows enhanced by AI/ML.
@@ -144,7 +192,7 @@ Status: Architecture approved, development scheduled for a post-MVP phase (Phase
 - Utilization of SHAP and x.ai Grok API explicitly selected for transparent explainability and interpretability.
 - Infrastructure (CockroachDB, Backblaze, GCP Preemptible VMs) explicitly optimized for minimal operational costs without compromising performance or scalability.
 
-## 3. Current Development Status
+## 7. Historical Documentation: Detailed Development Status
 
 - **Phase 1 (Stabilization & Migration):** COMPLETE. Database migration (junction table for consolidation groups) is finished. Backend logic updated. Code cleanup done.
   - **Recent Fix:** ✅ **Fixed server crash during migrations by correcting the conditional check in `add-soft-deletion-and-audit-logs.ts` that was causing premature process termination.**
@@ -256,7 +304,7 @@ The Dimensions module has solid backend foundation with partial frontend impleme
 - 📝 Begin AI integration planning for blog content generation.
 - 📝 After the Journal Entry feature set is complete, move to **Task B.3: Accounts Payable Backend Foundation** (Vendors, AP Bills Schema; Vendor CRUD Storage/API).
 
-## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
+## 8. Historical Documentation: Detailed Task List
 
 ### Phase A: Stabilize Core Setup Flow (COMPLETED)
 
@@ -298,7 +346,7 @@ The Dimensions module has solid backend foundation with partial frontend impleme
   - 🔄 Finalize UI/UX enhancements and document edge-case validations
   - 🔄 Ensure consistency and verify hierarchical CoA across multiple entities
   - ✅ Refactored Account storage logic to `server/storage/accountStorage.ts`.
-* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **IN PROGRESS**
+* **(Task B.2)** General Ledger (GL) and Journal Entries (JE): **✅ STABLE**
   - ✅ Design/Finalize JE schema (`shared/schema.ts`, reporting fields moved)
   - ✅ Implement backend CRUD API (`server/journalEntryRoutes.ts`, validation debit=credit)
   - ✅ Build frontend UI for manual JE creation (`client/src/features/journal-entries/components/JournalEntryForm.tsx`) - Verified via test page.

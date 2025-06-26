@@ -1,0 +1,105 @@
+Definitive Instructions for the Agent: Surgical Refactoring of docs/Instructions.md
+Mission: To perform a surgical update of the docs/Instructions.md file, prepending the new architectural blueprint and reorganizing the existing content to serve as the project's historical log. Do not perform a full replacement.
+
+Task: You are to open the file docs/Instructions.md and execute the following steps in order.
+
+Step 1: Prepend New Architectural Sections
+
+Action: Go to the very top of the file, before any existing content.
+
+Instruction: Insert the following complete Markdown block.
+
+Markdown
+
+# Wilcox Advisors Accounting Platform: Official Project Blueprint & Roadmap
+**Version:** 2.1
+**Last Updated:** June 26, 2025
+**Lead Architect:** Gemini
+
+## 1. Executive Summary & Current Mission
+
+### 1.1. High-Level Goal
+Build a best-in-class, scalable SaaS accounting platform that combines rock-solid financial integrity with a state-of-the-art, AI-enhanced user experience, drawing inspiration from the architectural principles of platforms like Odoo and Sage Intacct.
+
+### 1.2. CURRENT MISSION
+**Phase 2, Mission 2.1: Build the Main "Smart Import" Wizard Component**
+-   **Objective:** To begin the frontend development of the "Smart Import" feature by creating the main parent component that will manage the state of the multi-step workflow.
+-   **File to Create:** `client/src/features/journal-entries/pages/BatchImportWizard.tsx`
+-   **Status:** Awaiting detailed instructions from the Architect.
+
+## 2. Strategic Roadmap
+This roadmap outlines the major development phases.
+
+-   **`[COMPLETED]` Phase A: Stabilize Core Setup Flow**
+-   **`[COMPLETED]` Phase B: Core Accounting Features (Manual JE Workflow)**
+-   **`[ACTIVE]` Phase C: Smart Import & Master Data Management**
+-   **`[UP NEXT]` Phase D: Reporting & Business Intelligence**
+-   **`[PLANNED]` Phase E: AI/ML Model Implementation & Integration**
+-   **`[PLANNED]` Phase F: AP/AR & Expanded Modules**
+
+## 3. Architectural Blueprint: Batch Journal Entry "Smart Import"
+This section details the approved architecture for the "Smart Import" feature.
+
+### 3.1. The User Workflow
+A guided, wizard-style workflow:
+1.  **Choose Mode:** User selects "Standard Batch" (single date) or "Historical GL Import" (multi-date).
+2.  **Configure & Download:** User configures batch-level settings (description, common attachments, accrual status) in a UI form and downloads the corresponding "Smart Template".
+3.  **Upload & Analyze:** User uploads the completed file. The backend intelligently parses and validates the data.
+4.  **Review & Reconcile:** User is presented with a powerful interactive UI to review, correct errors, approve new dimension values, and reject specific entries.
+5.  **Confirm & Process:** User gives final confirmation to import the validated data.
+
+### 3.2. The "Smart Template" (Excel)
+A simple template with one data entry tab and two read-only reference tabs (`ChartOfAccountsKey`, `DimensionsKey`).
+-   **`JournalEntryLines` Tab:** Contains columns for `AccountCode`, `Amount` (positive/debit, negative/credit), `Description`, an optional `Date` (for historical mode), and dynamically generated columns for each of the client's Dimensions (e.g., `Department`, `Project`).
+
+### 3.3. The Backend Engine
+-   **Intelligent Parser:** Employs a **zero-balance grouping algorithm**.
+-   **Validation Service:** Uses a high-performance **in-memory hashmap** strategy for validation.
+-   **AI Assistance Service:** Provides a non-blocking "copilot" to analyze descriptions and amounts to suggest corrections and flag anomalies.
+
+---
+Step 2: Update Existing Headings for Reorganization
+
+Action: Find the existing headings in the document and modify them as specified below. This reorganizes the original content into a historical log without deleting anything.
+
+Instruction:
+
+Find the line: ## 1. Project Overview & Goal
+
+Change it to: ## 5. Historical Documentation: Project Overview & Goal
+
+Find the line: ## 2. Business Model & Long-Term Vision
+
+Change it to: ## 6. Historical Documentation: Business Model & Vision
+
+Find the line: ## 3. Current Development Status
+
+Change it to: ## 7. Historical Documentation: Detailed Development Status
+
+Find the line: ## 4. Overall Project Roadmap & Agent Tasks (Prioritized)
+
+Change it to: ## 8. Historical Documentation: Detailed Task List
+
+Step 3: Update Task Statuses within the Existing Content
+
+Action: Find the following specific lines within the historical content and update their status to reflect completed work.
+
+Instruction:
+
+Find the line containing: (Task B.2) General Ledger (GL) and Journal Entries (JE): IN PROGRESS
+
+Change it to: (Task B.2) General Ledger (GL) and Journal Entries (JE): ✅ STABLE
+
+Find the line containing: PRIORITY: Fix File Attachment functionality (#7):
+
+Change it to: ✅ COMPLETED: Fix File Attachment functionality (#7):
+
+Verification:
+
+After you have completed these modifications, please confirm:
+
+The new Sections 1-3 are now at the top of the docs/Instructions.md file.
+
+The original sections have been renumbered to start at Section 5 and have been renamed to "Historical Documentation...".
+
+The specific task statuses for the JE Module and Attachment Bug #7 have been updated to reflect their completion.
