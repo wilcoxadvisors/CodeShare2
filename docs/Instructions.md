@@ -129,7 +129,63 @@ Note:
 - Explicitly ensure ALL components (ClientSetupCard.tsx, EntityManagementCard.tsx, EntityForm.tsx, ClientOnboardingForm.tsx, etc.) import and utilize this centralized source.
 - Immediately remove duplicate implementations of utility functions like ensureIndustryValue explicitly from individual components.
 
-## 6. Historical Documentation: Business Model & Vision
+## 6. Products & Services (Finalized Go-to-Market Model)
+
+Our go-to-market strategy is a hybrid "Free Trial to Freemium" model. We will attract the widest possible audience with an extended free trial for our entry-level plan, then convert users to one of three competitively priced tiers, with further revenue opportunities through a la carte add-ons.
+
+#### Path B: Self-Service SaaS Plans
+
+* **Basic:**
+    * **Price:** **6 Months Free**, then **$8/month**
+    * **Target Audience:** Freelancers and new businesses needing a professional, affordable accounting system.
+    * **Core Features:**
+        * Core Accounting (CoA, Journal Entries)
+        * Accounts Payable (AP) & Accounts Receivable (AR)
+        * **Limited "Smart Import"** (Up to 10 batch imports/month)
+        * 10 GB Storage
+        * 1,000 AI Credits/month
+
+* **Pro:**
+    * **Price:** **$35/month**
+    * **Target Audience:** Growing businesses that need greater efficiency, multi-dimensional reporting, and more powerful AI capabilities.
+    * **Core Features:**
+        * Everything in **Basic**, plus:
+        * **Unlimited "Smart Import"**
+        * Bank Reconciliation
+        * Multi-Dimensional Reporting
+        * Basic AI-Powered Anomaly Detection
+        * 100 GB Storage
+        * 15,000 AI Credits/month
+
+* **Premier:**
+    * **Price:** **$95/month**
+    * **Target Audience:** Data-driven businesses and advisory firms requiring our most advanced analytical and integration tools.
+    * **Core Features:**
+        * Everything in **Pro**, plus:
+        * **Advanced Forecasting & Business Intelligence Suite**
+        * **XAI (Explainable AI) Anomaly Detection & Insights**
+        * **Full API Access & Zapier Integration**
+        * 1 TB Storage
+        * Unlimited AI Credits
+
+#### A La Carte Add-Ons
+*(Can be added to any plan, including Basic after the trial period)*
+
+* **AI Power Pack:** +20,000 AI Credits for **$15/month**
+* **Forecasting & BI Suite:** **$25/month** (*Included in Premier*)
+* **API & Integrations Pack:** **$30/month** (*Included in Premier*)
+
+#### Path A: Full-Service Advisory Plans
+
+* **Outsourced Accounting:**
+    * **Price:** Starting at **$600/month**
+    * **Software Included:** Includes a **Pro Plan** subscription.
+
+* **Virtual CFO & Advisory:**
+    * **Price:** Starting at **$2,500/month**
+    * **Software Included:** Includes a **Premier Plan** subscription.
+
+## 7. Historical Documentation: Business Model & Vision
 
 - **Revenue:** Tiered SaaS subscriptions (Basic/Pro/Enterprise) + Add-ons + Implementation Fees. Aggressive growth targets ($10M revenue/2k clients by Year 5).
 - **Automation Goal:** Progressively automate accounting and finance processes, moving from manual input to API-driven workflows enhanced by AI/ML.

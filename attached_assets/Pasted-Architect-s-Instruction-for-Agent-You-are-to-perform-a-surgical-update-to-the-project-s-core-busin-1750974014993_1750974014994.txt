@@ -1,0 +1,67 @@
+Architect's Instruction for Agent:
+
+You are to perform a surgical update to the project's core business plan documentation. The "Products & Services" section is to be replaced entirely with the new, finalized three-tier and add-on model.
+
+File to Edit: Instructions.md (or the comprehensive business plan document).
+
+Action: Find the section currently titled 3. Products & Services and replace its entire contents with the following text block. Ensure the markdown formatting is preserved.
+
+Content to Insert:
+
+Markdown
+
+### 3. Products & Services (Finalized Go-to-Market Model)
+
+Our go-to-market strategy is a hybrid "Free Trial to Freemium" model. We will attract the widest possible audience with an extended free trial for our entry-level plan, then convert users to one of three competitively priced tiers, with further revenue opportunities through a la carte add-ons.
+
+#### Path B: Self-Service SaaS Plans
+
+* **Basic:**
+    * **Price:** **6 Months Free**, then **$8/month**
+    * **Target Audience:** Freelancers and new businesses needing a professional, affordable accounting system.
+    * **Core Features:**
+        * Core Accounting (CoA, Journal Entries)
+        * Accounts Payable (AP) & Accounts Receivable (AR)
+        * **Limited "Smart Import"** (Up to 10 batch imports/month)
+        * 10 GB Storage
+        * 1,000 AI Credits/month
+
+* **Pro:**
+    * **Price:** **$35/month**
+    * **Target Audience:** Growing businesses that need greater efficiency, multi-dimensional reporting, and more powerful AI capabilities.
+    * **Core Features:**
+        * Everything in **Basic**, plus:
+        * **Unlimited "Smart Import"**
+        * Bank Reconciliation
+        * Multi-Dimensional Reporting
+        * Basic AI-Powered Anomaly Detection
+        * 100 GB Storage
+        * 15,000 AI Credits/month
+
+* **Premier:**
+    * **Price:** **$95/month**
+    * **Target Audience:** Data-driven businesses and advisory firms requiring our most advanced analytical and integration tools.
+    * **Core Features:**
+        * Everything in **Pro**, plus:
+        * **Advanced Forecasting & Business Intelligence Suite**
+        * **XAI (Explainable AI) Anomaly Detection & Insights**
+        * **Full API Access & Zapier Integration**
+        * 1 TB Storage
+        * Unlimited AI Credits
+
+#### A La Carte Add-Ons
+*(Can be added to any plan, including Basic after the trial period)*
+
+* **AI Power Pack:** +20,000 AI Credits for **$15/month**
+* **Forecasting & BI Suite:** **$25/month** (*Included in Premier*)
+* **API & Integrations Pack:** **$30/month** (*Included in Premier*)
+
+#### Path A: Full-Service Advisory Plans
+
+* **Outsourced Accounting:**
+    * **Price:** Starting at **$600/month**
+    * **Software Included:** Includes a **Pro Plan** subscription.
+
+* **Virtual CFO & Advisory:**
+    * **Price:** Starting at **$2,500/month**
+    * **Software Included:** Includes a **Premier Plan** subscription.
