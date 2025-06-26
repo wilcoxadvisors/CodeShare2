@@ -8,7 +8,8 @@ export default {
     }
   },
   moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@shared/(.*)$': '<rootDir>/shared/$1'
   },
   testMatch: [
     '<rootDir>/tests/**/*.test.ts',
