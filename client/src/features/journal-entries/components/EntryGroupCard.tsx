@@ -55,15 +55,49 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.lines.map((line: any) => (
+                  {group.lines.map((line: any, lineIndex: number) => (
                     <TableRow key={line.originalRow} className={group.errors.some((e: any) => e.originalRow === line.originalRow) ? 'bg-red-50' : ''}>
                       <TableCell className="text-xs text-muted-foreground">{line.originalRow}</TableCell>
-                      <TableCell>{line.accountCode}</TableCell>
-                      <TableCell>{line.description}</TableCell>
-                      <TableCell className="text-right font-mono">{line.amount.isPositive() ? line.amount.toFixed(2) : ''}</TableCell>
-                      <TableCell className="text-right font-mono">{line.amount.isNegative() ? line.amount.abs().toFixed(2) : ''}</TableCell>
                       <TableCell>
-                        {/* Logic to display dimensions will go here */}
+                        <Input
+                          defaultValue={line.accountCode}
+                          onBlur={(e) => onCellUpdate(lineIndex, 'accountCode', e.target.value)}
+                          className={group.errors.some((e: any) => e.originalRow === line.originalRow && e.field === 'AccountCode') ? 'border-red-500' : ''}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          defaultValue={line.description}
+                          onBlur={(e) => onCellUpdate(lineIndex, 'description', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          defaultValue={line.amount.isPositive() ? line.amount.toFixed(2) : ''}
+                          onBlur={(e) => onCellUpdate(lineIndex, 'debit', e.target.value)}
+                          className="text-right font-mono"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          defaultValue={line.amount.isNegative() ? line.amount.abs().toFixed(2) : ''}
+                          onBlur={(e) => onCellUpdate(lineIndex, 'credit', e.target.value)}
+                          className="text-right font-mono"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {/* Dimension editing will be added in future missions */}
+                        {line.dimensions && Object.keys(line.dimensions).length > 0 ? (
+                          <div className="text-xs text-muted-foreground">
+                            {Object.entries(line.dimensions).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No dimensions</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
