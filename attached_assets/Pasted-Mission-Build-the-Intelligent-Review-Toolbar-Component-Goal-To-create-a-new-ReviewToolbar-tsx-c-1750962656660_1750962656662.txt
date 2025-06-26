@@ -1,0 +1,159 @@
+Mission: Build the "Intelligent Review" Toolbar Component
+
+Goal: To create a new ReviewToolbar.tsx component that provides users with powerful and intuitive sorting and filtering controls. This will allow users to easily navigate large datasets and focus on entries that require their attention (e.g., those with errors).
+
+1. Architectural Plan
+This component will be a "controlled component." Its job is to display the current filter and sort state and to notify its parent component when the user makes a change. The parent component, IntelligentReviewScreen, will be responsible for holding the state and performing the actual data manipulation. This is a state-of-the-art React pattern that ensures a clear data flow.
+
+File to Create: client/src/features/journal-entries/components/ReviewToolbar.tsx
+
+Component to Modify: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx (to manage state).
+
+Props Contract (ReviewToolbar.tsx):
+
+It will accept the current filter state and a setFilter callback function.
+
+It will accept the current sort state and a setSort callback function.
+
+UI Components: We will leverage our existing shadcn/ui library to build a clean and professional interface, using <Select> for sorting and a <DropdownMenu> with <DropdownMenuCheckboxItem> for multi-select filtering.
+
+2. Surgical Code Implementation
+You are to build the new toolbar and then integrate it into the review screen.
+
+Step 1: Create the ReviewToolbar.tsx File
+
+Action: Create a new file at the specified location.
+
+Instruction: Add the following complete code to the new file.
+
+TypeScript
+
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ListFilter } from 'lucide-react';
+
+export interface FilterState {
+  showValid: boolean;
+  showErrors: boolean;
+}
+
+interface ReviewToolbarProps {
+  filter: FilterState;
+  onFilterChange: (newFilter: FilterState) => void;
+  sort: string;
+  onSortChange: (newSort: string) => void;
+}
+
+export const ReviewToolbar: React.FC<ReviewToolbarProps> = ({
+  filter,
+  onFilterChange,
+  sort,
+  onSortChange
+}) => {
+  return (
+    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
+      <div className="flex items-center space-x-4">
+        <span className="text-sm font-medium">Sort by:</span>
+        <Select value={sort} onValueChange={onSortChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select sort order" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default Order</SelectItem>
+            <SelectItem value="date-desc">Date (Newest First)</SelectItem>
+            <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
+            <SelectItem value="errors-first">Errors First</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">
+            <ListFilter className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Show Entries</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={filter.showValid}
+            onCheckedChange={(checked) => onFilterChange({ ...filter, showValid: checked })}
+          >
+            Valid Entries
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={filter.showErrors}
+            onCheckedChange={(checked) => onFilterChange({ ...filter, showErrors: checked })}
+          >
+            Entries with Errors
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+Step 2: Update IntelligentReviewScreen.tsx to Manage State
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: You must now add the state management logic to this parent component and replace the placeholder div with the new <ReviewToolbar />.
+
+Add the new import:
+
+TypeScript
+
+import { ReviewToolbar, FilterState } from './ReviewToolbar'; // Import the new component and its type
+Add the state hooks inside the component function, before the return statement:
+
+TypeScript
+
+// Inside IntelligentReviewScreen component
+const [filter, setFilter] = useState<FilterState>({ showValid: true, showErrors: true });
+const [sort, setSort] = useState('default');
+
+// This is a placeholder for the actual filtering/sorting logic we will build next
+const filteredAndSortedGroups = entryGroups; // For now, just use the raw groups
+
+console.log("Current Filter State:", filter); // For verification
+console.log("Current Sort State:", sort);   // For verification
+Replace the placeholder div for the toolbar with the actual component, passing the state and setters as props:
+
+TypeScript
+
+{/* Replace this placeholder */}
+<div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
+   <p className="text-muted-foreground">The `ReviewToolbar` component for sorting and filtering will be built here.</p>
+</div>
+
+{/* With this actual component */}
+<ReviewToolbar
+    filter={filter}
+    onFilterChange={setFilter}
+    sort={sort}
+    onSortChange={setSort}
+/>
+Update the list rendering to use the new (currently placeholder) filteredAndSortedGroups variable:
+
+TypeScript
+
+// Find this line:
+{entryGroups.map((group: any, index: number) => (
+
+// Change it to this:
+{filteredAndSortedGroups.map((group: any, index: number) => (
+3. Verification Plan
+Navigate to the /batch-import URL and upload a file to get to the review screen.
+
+Expected Result: You should now see the new toolbar with the "Sort by" dropdown and the "Filter" button.
+
+Interact with the controls. Change the sort option in the dropdown. Click the filter button and check/uncheck the boxes.
+
+Open the browser's developer console. Verify that each time you change a filter or sort option, the console.log messages appear and show the correct, updated state.
+
+This confirms that the child toolbar component is correctly communicating its changes up to the parent review screen. The list itself will not change yet; that will be our next mission.
+
+This completes Phase 2, Mission 2.4.

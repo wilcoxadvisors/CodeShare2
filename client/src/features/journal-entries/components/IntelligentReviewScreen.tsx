@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { ReviewToolbar, FilterState } from './ReviewToolbar';
 
 // Placeholder type, will be refined in future missions
 type BatchAnalysisResult = any;
@@ -18,6 +19,16 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   onProcess,
 }) => {
   const { batchSummary, entryGroups } = analysisResult;
+
+  // State management for filtering and sorting
+  const [filter, setFilter] = useState<FilterState>({ showValid: true, showErrors: true });
+  const [sort, setSort] = useState('default');
+
+  // This is a placeholder for the actual filtering/sorting logic we will build next
+  const filteredAndSortedGroups = entryGroups; // For now, just use the raw groups
+
+  console.log("Current Filter State:", filter); // For verification
+  console.log("Current Sort State:", sort);   // For verification
 
   return (
     <div className="space-y-6">
@@ -50,13 +61,15 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
         </CardContent>
       </Card>
 
-      {/* Placeholder for Toolbar */}
-      <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
-         <p className="text-muted-foreground">The `ReviewToolbar` component for sorting and filtering will be built here.</p>
-      </div>
+      <ReviewToolbar
+        filter={filter}
+        onFilterChange={setFilter}
+        sort={sort}
+        onSortChange={setSort}
+      />
 
       <div className="space-y-4">
-        {entryGroups.map((group: any, index: number) => (
+        {filteredAndSortedGroups.map((group: any, index: number) => (
           // Placeholder for Entry Group Card
           <div key={index} className={`p-4 border-2 border-dashed rounded-lg ${group.isValid ? 'border-gray-300' : 'border-red-400'}`}>
              <p>Entry Group {index + 1} ({group.isValid ? 'Valid' : 'Errors Found'})</p>
