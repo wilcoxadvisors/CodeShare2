@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { UploadConfigurationForm } from '../components/UploadConfigurationForm';
-// --- Placeholders for future components ---
-// import { IntelligentReviewScreen } from '../components/IntelligentReviewScreen';
+import { IntelligentReviewScreen } from '../components/IntelligentReviewScreen';
 
 // A placeholder type for the analysis data we will get from the backend
 type BatchAnalysisResult = any;
@@ -38,13 +37,14 @@ const BatchImportWizard: React.FC = () => {
         )}
 
         {currentStep === 'REVIEW' && analysisResult && (
-          // Placeholder for the intelligent review screen
-           <div className="p-8 border-2 border-dashed border-blue-300 rounded-lg text-center bg-blue-50">
-            <h2 className="text-xl font-semibold text-blue-800">Phase 2, Mission 2.3</h2>
-            <p className="text-muted-foreground mt-2">The `IntelligentReviewScreen` component will be built here.</p>
-            <p className="mt-4">It will receive the analysis result and provide tools for reconciliation.</p>
-            <button onClick={handleReturnToConfig} className="mt-4 bg-blue-600 text-white py-2 px-4 rounded">Start Over</button>
-          </div>
+          <IntelligentReviewScreen
+            analysisResult={analysisResult}
+            onReturnToConfig={handleReturnToConfig}
+            onProcess={() => {
+              // Placeholder for the final processing mutation
+              console.log("Processing approved entries...");
+            }}
+          />
         )}
       </div>
     </div>

@@ -1,0 +1,165 @@
+You are absolutely correct. My apologies. I was reviewing the agent's completed work and my instructions fell out of sync. You are right to call me on it. That is a failure in my process, and it will not happen again.
+
+The agent has successfully completed both Mission 2.1 (the main wizard) and Mission 2.2 (the configuration form). The foundation is built, and the system can now accept and analyze an uploaded file, triggering the state change in our wizard.
+
+It is time to build the most critical part of the user workflow: the interactive review screen that will display the results of our powerful backend analysis.
+
+We will now proceed with the instructions for the mission you are waiting for: Phase 2, Mission 2.3.
+
+Instructions.md
+Mission: Build the "Intelligent Review" Screen Component
+
+Goal: To create the central user interface for the "Smart Import" feature, IntelligentReviewScreen.tsx. This component will receive the complete analysis from the backend (including parsed entries, validation errors, and AI suggestions) and render a powerful, interactive tool for the user to review, correct, and approve their data for final processing.
+
+1. Architectural Plan
+This component is the heart of the frontend workflow. It must be designed to handle and display complex, nested data in a way that is clear and intuitive.
+
+File to Create: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Props Contract: This component's primary job is to receive and render data. It will accept two main props from its parent, BatchImportWizard.tsx:
+
+analysisResult: BatchAnalysisResult: The full JSON object returned from our batch-analyze API endpoint.
+
+onReturnToConfig: () => void: A callback function to allow the user to cancel the review and start over.
+
+Component Composition: This will be a "container" component that orchestrates several smaller, specialized child components (which we will build in subsequent missions). Its main responsibility is to display a summary and loop through the entryGroups from the analysis result.
+
+Key UI Features:
+
+Batch Summary: A header section that displays the key metrics from the batchSummary object (e.g., "15 Total Entries; 12 Valid, 3 with Errors").
+
+Toolbar: A ReviewToolbar.tsx component (placeholder for now) that will contain the sorting and filtering controls.
+
+Entry List: It will map over the analysisResult.entryGroups array and render an EntryGroupCard.tsx component (placeholder for now) for each one.
+
+Action Buttons: A "Cancel" button that calls onReturnToConfig and a "Confirm and Process" button that will eventually trigger the final processing mutation.
+
+2. Surgical Code Implementation
+You are to create the new review screen component and integrate it into the main wizard.
+
+Step 1: Create the IntelligentReviewScreen.tsx File
+
+Action: Create a new file at client/src/features/journal-entries/components/IntelligentReviewScreen.tsx.
+
+Instruction: Add the following complete code to the new file. This code includes the structure for displaying the analysis, with placeholders for the more detailed sub-components.
+
+TypeScript
+
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+
+// Placeholder type, will be refined in future missions
+type BatchAnalysisResult = any;
+
+interface IntelligentReviewScreenProps {
+  analysisResult: BatchAnalysisResult;
+  onReturnToConfig: () => void;
+  onProcess: () => void; // Placeholder for future processing logic
+}
+
+export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = ({
+  analysisResult,
+  onReturnToConfig,
+  onProcess,
+}) => {
+  const { batchSummary, entryGroups } = analysisResult;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 2: Review, Reconcile & Approve</CardTitle>
+        </CardHeader>
+        <CardContent className="flex justify-around items-center text-center">
+            <div className="flex items-center space-x-2">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                <div>
+                    <p className="text-2xl font-bold">{batchSummary.validEntries}</p>
+                    <p className="text-sm text-muted-foreground">Valid Entries</p>
+                </div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-6 w-6 text-red-500" />
+                <div>
+                    <p className="text-2xl font-bold">{batchSummary.entriesWithErrors}</p>
+                    <p className="text-sm text-muted-foreground">Entries with Errors</p>
+                </div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Lightbulb className="h-6 w-6 text-yellow-500" />
+                <div>
+                    <p className="text-2xl font-bold">{batchSummary.newDimensionValues || 0}</p>
+                    <p className="text-sm text-muted-foreground">New Dimensions to Create</p>
+                </div>
+            </div>
+        </CardContent>
+      </Card>
+
+      {/* Placeholder for Toolbar */}
+      <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
+         <p className="text-muted-foreground">The `ReviewToolbar` component for sorting and filtering will be built here.</p>
+      </div>
+
+      <div className="space-y-4">
+        {entryGroups.map((group: any, index: number) => (
+          // Placeholder for Entry Group Card
+          <div key={index} className={`p-4 border-2 border-dashed rounded-lg ${group.isValid ? 'border-gray-300' : 'border-red-400'}`}>
+             <p>Entry Group {index + 1} ({group.isValid ? 'Valid' : 'Errors Found'})</p>
+             <p className="text-sm text-muted-foreground">The `EntryGroupCard` component will be built here to display lines and errors.</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-between items-center mt-8">
+        <Button variant="outline" onClick={onReturnToConfig}>Back to Upload</Button>
+        <Button onClick={onProcess} disabled={batchSummary.entriesWithErrors > 0}>
+          Confirm and Process {batchSummary.validEntries} Entries
+        </Button>
+      </div>
+    </div>
+  );
+};
+Step 2: Integrate the New Component into the Wizard
+
+File: client/src/features/journal-entries/pages/BatchImportWizard.tsx
+
+Instruction: Replace the placeholder div for the review step with the actual IntelligentReviewScreen component.
+
+First, add the import at the top of the file:
+
+TypeScript
+
+import { IntelligentReviewScreen } from '../components/IntelligentReviewScreen';
+Next, find this placeholder block:
+
+TypeScript
+
+{currentStep === 'REVIEW' && analysisResult && (
+  <div className="p-8 border-2 border-dashed border-blue-300 rounded-lg text-center bg-blue-50">
+    {/* ... placeholder content ... */}
+  </div>
+)}
+Replace it with the actual component, passing the required props:
+
+TypeScript
+
+{currentStep === 'REVIEW' && analysisResult && (
+  <IntelligentReviewScreen
+    analysisResult={analysisResult}
+    onReturnToConfig={handleReturnToConfig}
+    onProcess={() => {
+      // Placeholder for the final processing mutation
+      console.log("Processing approved entries...");
+    }}
+  />
+)}
+3. Verification Plan
+Navigate to the /batch-import URL.
+
+Upload a valid test file and click "Analyze File."
+
+Expected Result: The wizard should transition to the next step and render the new IntelligentReviewScreen. You should see the summary card with statistics (e.g., "Valid Entries," "Entries with Errors") and the list of placeholder entry group cards.
+
+Click the "Back to Upload" button. The wizard should correctly return to the configuration form.
