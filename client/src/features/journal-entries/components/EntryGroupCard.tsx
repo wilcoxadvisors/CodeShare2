@@ -19,23 +19,29 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
+  // Helper to find an error for a specific line and field for highlighting
+  const getErrorForCell = (originalRow: number, field: string) => {
+    return group.errors?.find((e: any) => e.originalRow === originalRow && e.field === field);
+  };
+
   return (
-    <Card className={!group.isValid ? 'border-red-400' : 'border-gray-200'}>
+    <Card className={!group.isValid ? 'border-red-400 border-2' : 'border-gray-200'}>
       <Collapsible defaultOpen={!group.isValid}>
         <CollapsibleTrigger asChild>
-          <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50">
-            <div>
+          <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 rounded-t-lg">
+            <div className="flex-1">
               <h4 className="font-semibold">
                 Entry Group #{index + 1}
-                <span className="ml-4 font-normal text-sm text-muted-foreground">Date: {new Date(group.header.Date).toLocaleDateString()}</span>
+                {group.header.Date && <span className="ml-4 font-normal text-sm text-muted-foreground">Date: {new Date(group.header.Date).toLocaleDateString()}</span>}
               </h4>
-              <p className="text-sm text-muted-foreground">{group.header.Description || 'No description'}</p>
+              <p className="text-sm text-muted-foreground truncate pr-4">{group.header.Description || 'No description provided'}</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               {errorCount > 0 && <Badge variant="destructive">{errorCount} Error(s)</Badge>}
-              {suggestionCount > 0 && <Badge variant="default" className="bg-yellow-400 text-black">{suggestionCount} Suggestion(s)</Badge>}
-              <Button variant="ghost" size="sm">
+              {suggestionCount > 0 && <Badge variant="default" className="bg-yellow-400 text-black hover:bg-yellow-500">{suggestionCount} Suggestion(s)</Badge>}
+              <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
                 <ChevronsUpDown className="h-4 w-4" />
+                <span className="sr-only">Toggle</span>
               </Button>
             </div>
           </div>
@@ -47,24 +53,36 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px]">Row</TableHead>
-                    <TableHead>Account</TableHead>
+                    <TableHead>Account Code</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead>Dimensions</TableHead>
+                    <TableHead>Debit</TableHead>
+                    <TableHead>Credit</TableHead>
+                    {/* Dynamically add dimension headers */}
+                    {Object.keys(group.lines[0]?.dimensions || {}).map(dimKey => (
+                       <TableHead key={dimKey}>{dimKey}</TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.lines.map((line: any, lineIndex: number) => (
-                    <TableRow key={line.originalRow} className={group.errors.some((e: any) => e.originalRow === line.originalRow) ? 'bg-red-50' : ''}>
-                      <TableCell className="text-xs text-muted-foreground">{line.originalRow}</TableCell>
-                      <TableCell>
-                        <Input
-                          defaultValue={line.accountCode}
-                          onBlur={(e) => onCellUpdate(lineIndex, 'accountCode', e.target.value)}
-                          className={group.errors.some((e: any) => e.originalRow === line.originalRow && e.field === 'AccountCode') ? 'border-red-500' : ''}
-                        />
-                      </TableCell>
+                  {group.lines.map((line: any, lineIndex: number) => {
+                    const accountError = getErrorForCell(line.originalRow, 'AccountCode');
+                    return (
+                      <TableRow key={line.originalRow} className={accountError ? 'bg-red-50' : ''}>
+                        <TableCell className="text-xs text-muted-foreground">{line.originalRow}</TableCell>
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Input
+                                  defaultValue={line.accountCode}
+                                  onBlur={(e) => onCellUpdate(lineIndex, 'accountCode', e.target.value)}
+                                  className={accountError ? 'border-red-500' : ''}
+                                />
+                              </TooltipTrigger>
+                              {accountError && <TooltipContent><p className="text-red-600">{accountError.message}</p></TooltipContent>}
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
                       <TableCell>
                         <Input
                           defaultValue={line.description}
@@ -89,18 +107,28 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                           className="text-right font-mono"
                         />
                       </TableCell>
-                      <TableCell>
-                        {/* Dimension editing will be added in future missions */}
-                        {line.dimensions && Object.keys(line.dimensions).length > 0 ? (
-                          <div className="text-xs text-muted-foreground">
-                            {Object.entries(line.dimensions).map(([key, value]) => `${key}: ${value}`).join(', ')}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No dimensions</span>
-                        )}
-                      </TableCell>
+                      {Object.keys(line.dimensions).map(dimKey => {
+                        const dimError = getErrorForCell(line.originalRow, dimKey);
+                        return (
+                          <TableCell key={dimKey}>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Input
+                                    defaultValue={line.dimensions[dimKey]}
+                                    onBlur={(e) => onCellUpdate(lineIndex, `dimensions.${dimKey}`, e.target.value)}
+                                    className={dimError ? 'border-red-500' : ''}
+                                  />
+                                </TooltipTrigger>
+                                {dimError && <TooltipContent><p className="text-red-600">{dimError.message}</p></TooltipContent>}
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
