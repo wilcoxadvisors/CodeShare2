@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { AlertTriangle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
 import { ReviewToolbar, FilterState } from './ReviewToolbar';
 import { EntryGroupCard } from './EntryGroupCard';
 
@@ -20,10 +24,43 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   onProcess,
 }) => {
   const { batchSummary, entryGroups } = analysisResult;
+  
+  // Extract route parameters for API calls
+  const params = useParams();
+  const clientId = params.clientId;
+  const entityId = params.entityId;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // State management for filtering and sorting
   const [filter, setFilter] = useState<FilterState>({ showValid: true, showErrors: true });
   const [sort, setSort] = useState('default');
+
+  // Batch processing mutation
+  const processBatchMutation = useMutation({
+    mutationFn: (payload: { approvedEntries: any[] }) => {
+      return apiRequest(`/api/clients/${clientId}/journal-entries/batch-process`, {
+        method: 'POST',
+        data: { ...payload, entityId }, // Pass the entityId for entry creation
+      });
+    },
+    onSuccess: (response) => {
+      toast({
+        title: "Batch Processed Successfully",
+        description: response.message,
+      });
+      // On success, invalidate the main JE list and return the user to the starting point
+      queryClient.invalidateQueries({ queryKey: ['journal-entries', clientId, entityId] });
+      onReturnToConfig(); // Go back to the upload form
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Processing Failed",
+        description: error?.error?.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Client-side sorting and filtering logic with performance optimization
   const filteredAndSortedGroups = React.useMemo(() => {
@@ -113,8 +150,23 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
 
       <div className="flex justify-between items-center mt-8">
         <Button variant="outline" onClick={onReturnToConfig}>Back to Upload</Button>
-        <Button onClick={onProcess} disabled={batchSummary.entriesWithErrors > 0}>
-          Confirm and Process {batchSummary.validEntries} Entries
+        <Button
+          onClick={() => {
+            const payload = {
+              approvedEntries: filteredAndSortedGroups.filter(g => g.isValid)
+            };
+            processBatchMutation.mutate(payload);
+          }}
+          disabled={batchSummary.entriesWithErrors > 0 || processBatchMutation.isPending}
+        >
+          {processBatchMutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            `Confirm and Process ${batchSummary.validEntries} Entries`
+          )}
         </Button>
       </div>
     </div>
