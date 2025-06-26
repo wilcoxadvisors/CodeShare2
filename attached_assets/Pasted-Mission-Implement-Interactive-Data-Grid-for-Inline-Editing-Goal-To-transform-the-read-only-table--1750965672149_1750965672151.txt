@@ -1,0 +1,107 @@
+Mission: Implement Interactive Data Grid for Inline Editing
+
+Goal: To transform the read-only table in the EntryGroupCard.tsx component into a fully interactive data grid. Users must be able to click into cells with validation errors (e.g., an invalid AccountCode) and correct the data directly within the review screen.
+
+Architectural Justification: A static error report is not user-friendly. A state-of-the-art reconciliation tool allows the user to fix problems where they find them. By enabling inline editing, we empower the user to correct their data efficiently without having to go back to the original Excel file and re-upload, dramatically improving the workflow.
+
+Surgical Code Implementation
+Step 1: Manage Editable State
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: We need to manage the state of the entire batch data so it can be edited. The analysisResult prop is read-only. We will create a new state variable to hold the editable version of the data.
+
+TypeScript
+
+// Inside IntelligentReviewScreen component
+
+// Add this new state to hold the mutable data for editing
+const [editableGroups, setEditableGroups] = useState(analysisResult.entryGroups);
+
+// Add a useEffect to reset the editable data if a new analysis result comes in
+useEffect(() => {
+    setEditableGroups(analysisResult.entryGroups);
+}, [analysisResult]);
+
+// Update the filtering/sorting logic to use this new stateful variable
+const filteredAndSortedGroups = React.useMemo(() => {
+  let processedGroups = [...editableGroups]; // Use editableGroups
+  // ... (rest of the useMemo logic is unchanged)
+  return processedGroups;
+}, [editableGroups, filter, sort]); // Update dependency
+
+// Create a handler function to update a specific cell
+const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
+    const newGroups = [...editableGroups];
+    newGroups[groupIndex].lines[lineIndex][field] = value;
+
+    // TODO: Add re-validation logic here in a future step
+
+    setEditableGroups(newGroups);
+};
+Step 2: Update the EntryGroupCard to be Editable
+
+File: client/src/features/journal-entries/components/EntryGroupCard.tsx
+
+Instruction: Modify the component to accept the handleCellUpdate callback and replace the read-only table cells (<TableCell>) with editable <Input> components.
+
+TypeScript
+
+// Update the props interface
+interface EntryGroupCardProps {
+  group: any;
+  index: number;
+  onCellUpdate: (lineIndex: number, field: string, value: string) => void;
+}
+
+// Update the component signature
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate }) => {
+
+// ...
+
+// Inside the map for group.lines:
+<TableRow key={line.originalRow} /* ... */>
+  {/* ... */}
+  <TableCell>
+    <Input
+      defaultValue={line.accountCode}
+      onBlur={(e) => onCellUpdate(lineIndex, 'accountCode', e.target.value)}
+      className={group.errors.some((e: any) => e.originalRow === line.originalRow && e.field === 'AccountCode') ? 'border-red-500' : ''}
+    />
+  </TableCell>
+  <TableCell>
+    <Input
+        defaultValue={line.description}
+        onBlur={(e) => onCellUpdate(lineIndex, 'description', e.target.value)}
+    />
+  </TableCell>
+  {/* ... Add similar <Input> components for other editable fields like Debit, Credit, and Dimensions ... */}
+</TableRow>
+Step 3: Integrate into IntelligentReviewScreen.tsx
+
+File: client/src/features/journal-entries/components/IntelligentReviewScreen.tsx
+
+Instruction: Update the <EntryGroupCard /> call to pass down the new prop.
+
+TypeScript
+
+// Find this:
+<EntryGroupCard key={group.groupKey} group={group} index={index} />
+
+// Change it to this:
+<EntryGroupCard
+  key={group.groupKey}
+  group={group}
+  index={index}
+  onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
+/>
+3. Verification Plan
+Upload a file with known errors (e.g., an invalid AccountCode).
+
+The review screen should display the error.
+
+Verify: The cell containing the invalid AccountCode should now be an input field.
+
+Action: Type a valid AccountCode into the input field and click away (triggering the onBlur event).
+
+Verify: The data in the component's state should be updated (you can verify this with a console.log inside the handleCellUpdate function for now). The red error highlighting will not disappear until we implement real-time re-validation in the next mission, but the core editing functionality will be in place.

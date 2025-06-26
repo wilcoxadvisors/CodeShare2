@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,14 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   const [filter, setFilter] = useState<FilterState>({ showValid: true, showErrors: true });
   const [sort, setSort] = useState('default');
 
+  // Add this new state to hold the mutable data for editing
+  const [editableGroups, setEditableGroups] = useState(analysisResult.entryGroups);
+
+  // Add a useEffect to reset the editable data if a new analysis result comes in
+  useEffect(() => {
+    setEditableGroups(analysisResult.entryGroups);
+  }, [analysisResult]);
+
   // Batch processing mutation
   const processBatchMutation = useMutation({
     mutationFn: (payload: { approvedEntries: any[] }) => {
@@ -62,9 +70,20 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     },
   });
 
+  // Create a handler function to update a specific cell
+  const handleCellUpdate = (groupIndex: number, lineIndex: number, field: string, value: string) => {
+    const newGroups = [...editableGroups];
+    newGroups[groupIndex].lines[lineIndex][field] = value;
+
+    // TODO: Add re-validation logic here in a future step
+    console.log(`Updated group ${groupIndex}, line ${lineIndex}, field ${field} to:`, value);
+
+    setEditableGroups(newGroups);
+  };
+
   // Client-side sorting and filtering logic with performance optimization
   const filteredAndSortedGroups = React.useMemo(() => {
-    let processedGroups = [...entryGroups];
+    let processedGroups = [...editableGroups]; // Use editableGroups
 
     // 1. Apply Filtering
     processedGroups = processedGroups.filter(group => {
@@ -99,7 +118,7 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     }
 
     return processedGroups;
-  }, [entryGroups, filter, sort]); // The dependencies for the useMemo hook
+  }, [editableGroups, filter, sort]); // Update dependency to use editableGroups
 
   console.log("Current Filter State:", filter); // For verification
   console.log("Current Sort State:", sort);   // For verification
@@ -144,7 +163,12 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
 
       <div className="space-y-4">
         {filteredAndSortedGroups.map((group: any, index: number) => (
-          <EntryGroupCard key={group.groupKey} group={group} index={index} />
+          <EntryGroupCard
+            key={group.groupKey}
+            group={group}
+            index={index}
+            onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
+          />
         ))}
       </div>
 

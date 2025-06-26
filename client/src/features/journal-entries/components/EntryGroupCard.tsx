@@ -4,6 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronsUpDown, AlertCircle, Lightbulb } from 'lucide-react';
 
@@ -11,9 +12,10 @@ import { ChevronsUpDown, AlertCircle, Lightbulb } from 'lucide-react';
 interface EntryGroupCardProps {
   group: any;
   index: number;
+  onCellUpdate: (lineIndex: number, field: string, value: string) => void;
 }
 
-export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index }) => {
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate }) => {
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
