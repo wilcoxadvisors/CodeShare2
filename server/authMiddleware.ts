@@ -13,7 +13,13 @@ import { UserRole } from '@shared/schema';
  */
 export const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return next(new ApiError('Authentication required', 401));
+    return res.status(401).json({ 
+      success: false, 
+      error: { 
+        code: 'UNAUTHORIZED', 
+        message: 'Authentication required' 
+      } 
+    });
   }
   next();
 };
