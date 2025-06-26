@@ -17,6 +17,7 @@ import { journalEntryStorage } from './storage/journalEntryStorage';
 import { multerMiddleware } from './middleware/multer';
 import { BatchParsingService } from './services/BatchParsingService';
 import { BatchValidationService } from './services/BatchValidationService';
+import { AIAssistanceService } from './services/AIAssistanceService';
 import { authenticateUser } from './authMiddleware';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
@@ -107,23 +108,47 @@ export function registerJournalEntryRoutes(app: Express) {
 
       console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
 
-      // --- This section will be implemented in future missions ---
-      // For now, we use stubs to prove the endpoint works.
+      // Phase 1 Complete Implementation: Smart Parser + Validation + AI Analysis
       const parsingService = new BatchParsingService();
       const validationService = new BatchValidationService();
+      const aiService = new AIAssistanceService();
 
       // 2. Pass the file buffer to the parser
       const parsedData = await parsingService.parse(req.file.buffer);
 
       // 3. Pass the parsed data to the validator
       const validationResult = await validationService.validate(parsedData, clientId);
-      // --- End of future mission section ---
 
-      // 4. Format the final success response
-      // Note: In the future, 'validationResult' will contain the full data structure.
+      // 4. Get AI suggestions for all valid entry groups
+      console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
+      const aiSuggestions = await aiService.getSuggestions(validationResult.entryGroups);
+
+      // 5. Integrate AI suggestions into the response
+      const enrichedEntryGroups = validationResult.entryGroups.map(group => ({
+        ...group,
+        aiSuggestions: Array.from(aiSuggestions.entries())
+          .filter(([rowNumber, suggestions]) => 
+            group.lines.some(line => line.originalRow === rowNumber)
+          )
+          .reduce((acc, [rowNumber, suggestions]) => {
+            acc[rowNumber] = suggestions;
+            return acc;
+          }, {} as Record<number, any[]>)
+      }));
+
+      const enrichedResult = {
+        ...validationResult,
+        entryGroups: enrichedEntryGroups,
+        aiAnalysisSummary: {
+          totalSuggestions: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'SUGGESTION').length,
+          totalAnomalies: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'ANOMALY').length
+        }
+      };
+
+      // 6. Format the final enriched response with AI analysis
       return res.status(200).json({
         success: true,
-        data: validationResult, // Send the complete analysis back to the client
+        data: enrichedResult, // Send the complete analysis with AI suggestions back to the client
       });
 
     } catch (error: any) {
