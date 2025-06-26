@@ -1,0 +1,170 @@
+This is outstanding progress. The agent has successfully completed the implementation of the EntryGroupCard, which is the final major UI component for our review screen.
+
+Architectural Review: Mission Accomplished
+The agent's work on Phase 2, Mission 2.6 is confirmed and approved.
+
+Assessment of Implementation (Excellent):
+
+The new EntryGroupCard.tsx component correctly uses our shadcn/ui library to create a clean, professional, and highly functional interface.
+
+The use of a Collapsible component is the correct architectural choice for handling potentially large numbers of entries.
+
+The header correctly summarizes the key information (date, description, error/suggestion counts), allowing for a rapid at-a-glance review.
+
+Most importantly, the error highlighting at both the card level (red border) and the row level (red background) provides clear, unambiguous feedback to the user, which is a core requirement for a user-friendly system.
+
+Conclusion:
+Phase 2 of the "Smart Import" feature is now functionally complete. We have successfully built the entire frontend wizard. Our users can now upload a file, configure the batch, and see a rich, detailed, and interactive preview of their data, complete with sorting, filtering, and error highlighting.
+
+We have reached the final phase of this feature's development. All that remains is to make the "Confirm and Process" button functional.
+
+Next Steps: Proceeding to Phase 3 - Finalization & Data Processing
+We will now begin Phase 3, Mission 3.1, which is to build the final backend API endpoint that will receive the user's approved data and commit it to the database.
+
+Here are the complete and definitive instructions for this mission.
+
+Instructions.md
+Mission: Build the "Batch Process" API Endpoint
+
+Goal: To create the final, secure backend API endpoint at POST /api/clients/:clientId/journal-entries/batch-process. This endpoint will receive the clean, validated, and user-approved data from the frontend, wrap the entire operation in a single database transaction, and create all the necessary records.
+
+1. Architectural Plan
+This endpoint is the final gatekeeper for our data. Its architecture must prioritize atomicity and data integrity.
+
+Location: The new route will be added to server/routes/journalEntryRoutes.ts.
+
+Route Definition:
+
+Verb: POST
+
+Path: /clients/:clientId/journal-entries/batch-process
+
+Middleware: It will use the authMiddleware to ensure the user is authenticated and authorized.
+
+Data Integrity: Database Transactions
+
+This is a non-negotiable architectural requirement. The entire process of creating multiple journal entries, their lines, and their dimension tags must be wrapped in a single database transaction.
+
+If any single part of the operation fails (e.g., one line item fails to save), the entire transaction must be rolled back. This ensures that we never leave the database in a partially updated, inconsistent, or corrupt state.
+
+API Contract:
+
+Request Body: The frontend will send a JSON payload containing the array of approved entryGroups.
+
+JSON
+
+{
+  "approvedEntries": [ /* The array of validated entryGroup objects */ ],
+  "commonAttachments": [ /* Array of attachment IDs to link */ ],
+  "batchSettings": { /* Accrual settings, etc. */ }
+}
+Success Response (200 OK): A summary of the successful operation.
+
+JSON
+
+{ "success": true, "message": "Successfully created 12 journal entries." }
+Error Response (500 Internal Server Error): A generic error if the transaction fails, as the specific error will be logged on the server.
+
+2. Surgical Code Implementation
+Step 1: Create the BatchProcessingService.ts
+
+File: Create a new file at server/services/BatchProcessingService.ts.
+
+Instruction: Add the following code. This service contains the core logic for interacting with the database.
+
+TypeScript
+
+import { db } from '../db'; // Your Drizzle DB instance
+import { journalEntries, journalEntryLines, txDimensionLink } from '@shared/schema';
+import { and, eq } from 'drizzle-orm';
+
+export class BatchProcessingService {
+  public async processBatch(approvedEntries: any[], clientId: number, entityId: number) {
+    // Wrap the entire batch processing in a single database transaction
+    return await db.transaction(async (tx) => {
+      let createdCount = 0;
+
+      for (const entryGroup of approvedEntries) {
+        // 1. Create the main Journal Entry record
+        const [newEntry] = await tx.insert(journalEntries).values({
+          clientId,
+          entityId,
+          date: new Date(entryGroup.header.Date),
+          description: entryGroup.header.Description,
+          // ... other header fields
+        }).returning();
+
+        // 2. Create the Journal Entry Lines
+        for (const line of entryGroup.lines) {
+          const [newLine] = await tx.insert(journalEntryLines).values({
+            journalEntryId: newEntry.id,
+            accountId: line.accountId, // Assumes validation has provided the ID
+            amount: line.amount.toString(),
+            type: line.amount.isPositive() ? 'debit' : 'credit',
+            description: line.description,
+            // ... other line fields
+          }).returning();
+
+          // 3. Create the Dimension Links
+          for (const dimTag of line.dimensions) {
+              await tx.insert(txDimensionLink).values({
+                  journalEntryLineId: newLine.id,
+                  dimensionId: dimTag.dimensionId,
+                  dimensionValueId: dimTag.dimensionValueId,
+              });
+          }
+        }
+        createdCount++;
+      }
+
+      console.log(`Successfully processed and created ${createdCount} journal entries.`);
+      return { createdCount };
+    });
+  }
+}
+Step 2: Add the New Route to journalEntryRoutes.ts
+
+File: server/routes/journalEntryRoutes.ts
+
+Instruction: Add the new route definition.
+
+TypeScript
+
+// At the top of the file
+import { BatchProcessingService } from '../services/BatchProcessingService';
+
+// ... (existing routes)
+
+router.post(
+  '/clients/:clientId/journal-entries/batch-process',
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
+      const { approvedEntries, entityId } = req.body; // entityId needed for creation
+
+      if (!approvedEntries || !entityId || approvedEntries.length === 0) {
+        return res.status(400).json({ success: false, error: 'INVALID_PAYLOAD' });
+      }
+
+      const processingService = new BatchProcessingService();
+      const result = await processingService.processBatch(approvedEntries, clientId, entityId);
+
+      return res.status(200).json({
+        success: true,
+        message: `Successfully created ${result.createdCount} journal entries.`,
+        data: result,
+      });
+
+    } catch (error: any) {
+      console.error("Batch Processing Error:", error);
+      return res.status(500).json({ success: false, error: 'PROCESSING_FAILED' });
+    }
+  }
+);
+3. Verification Plan
+Unit Tests: Create a test file, BatchProcessingService.test.ts, that mocks the database transaction (db.transaction) and verifies that the correct insert statements are being called with the correct data for entries, lines, and dimension links.
+
+End-to-End Test: Using an API client, send a valid payload of approvedEntries to the batch-process endpoint. Verify that the correct records are created in the database and that a 200 OK response is returned.
+
+This completes Phase 3, Mission 3.1.

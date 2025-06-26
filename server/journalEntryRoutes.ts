@@ -18,6 +18,7 @@ import { multerMiddleware } from './middleware/multer';
 import { BatchParsingService } from './services/BatchParsingService';
 import { BatchValidationService } from './services/BatchValidationService';
 import { AIAssistanceService } from './services/AIAssistanceService';
+import { BatchProcessingService } from './services/BatchProcessingService';
 import { authenticateUser } from './authMiddleware';
 
 // ARCHITECT'S SURGICAL FIX: Utility function to handle duplicate reference numbers
@@ -169,6 +170,48 @@ export function registerJournalEntryRoutes(app: Express) {
           code: 'INTERNAL_SERVER_ERROR',
           message: 'An unexpected error occurred during file analysis.',
         },
+      });
+    }
+  }));
+
+  // Batch process approved journal entries
+  app.post('/api/clients/:clientId/journal-entries/batch-process', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
+      const { approvedEntries, entityId, batchSettings } = req.body;
+
+      if (!approvedEntries || !entityId || approvedEntries.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: {
+            code: 'INVALID_PAYLOAD',
+            message: 'Missing required fields: approvedEntries, entityId'
+          }
+        });
+      }
+
+      console.log(`ARCHITECT_DEBUG: Starting batch processing for client ${clientId}, entity ${entityId}, ${approvedEntries.length} entries`);
+
+      const processingService = new BatchProcessingService();
+      const result = await processingService.processBatch(approvedEntries, clientId, entityId, batchSettings);
+
+      return res.status(200).json({
+        success: true,
+        message: `Successfully created ${result.createdCount} journal entries.`,
+        data: {
+          createdCount: result.createdCount,
+          createdEntryIds: result.createdEntryIds
+        },
+      });
+
+    } catch (error: any) {
+      console.error("Batch Processing Error:", error);
+      return res.status(500).json({ 
+        success: false, 
+        error: {
+          code: 'PROCESSING_FAILED',
+          message: 'An error occurred while processing the batch entries.'
+        }
       });
     }
   }));
