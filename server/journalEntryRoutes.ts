@@ -107,18 +107,62 @@ export function registerJournalEntryRoutes(app: Express) {
         });
       }
 
+      // 2. Parse and validate form data from the request
+      const formData = {
+        importMode: req.body.importMode || 'standard',
+        description: req.body.description || '',
+        referenceSuffix: req.body.referenceSuffix || '',
+        batchDate: req.body.batchDate || new Date().toISOString().split('T')[0],
+        isAccrual: req.body.isAccrual === 'true' || req.body.isAccrual === true, // Handle string to boolean conversion
+        reversalDate: req.body.reversalDate || ''
+      };
+
+      // 3. Validate required fields
+      if (!formData.batchDate) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_FORM_DATA',
+            message: 'Batch date is required.',
+          },
+        });
+      }
+
+      // 4. Validate import mode
+      if (!['standard', 'historical'].includes(formData.importMode)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_IMPORT_MODE',
+            message: 'Import mode must be either "standard" or "historical".',
+          },
+        });
+      }
+
+      // 5. Validate accrual settings
+      if (formData.isAccrual && !formData.reversalDate) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_REVERSAL_DATE',
+            message: 'Reversal date is required when auto-reversing accrual is enabled.',
+          },
+        });
+      }
+
       console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
+      console.log(`ARCHITECT_DEBUG: Form data received:`, formData);
 
       // Phase 1 Complete Implementation: Smart Parser + Validation + AI Analysis
       const parsingService = new BatchParsingService();
       const validationService = new BatchValidationService();
       const aiService = new AIAssistanceService();
 
-      // 2. Pass the file buffer to the parser
-      const parsedData = await parsingService.parse(req.file.buffer);
+      // 6. Pass the file buffer to the parser with configuration
+      const parsedData = await parsingService.parse(req.file.buffer, formData);
 
-      // 3. Pass the parsed data to the validator
-      const validationResult = await validationService.validate(parsedData, clientId);
+      // 7. Pass the parsed data to the validator with configuration
+      const validationResult = await validationService.validate(parsedData, clientId, formData);
 
       // 4. Get AI suggestions for all valid entry groups
       console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
@@ -143,7 +187,8 @@ export function registerJournalEntryRoutes(app: Express) {
         aiAnalysisSummary: {
           totalSuggestions: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'SUGGESTION').length,
           totalAnomalies: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'ANOMALY').length
-        }
+        },
+        configurationData: formData // Include the validated configuration data for frontend use
       };
 
       // 6. Format the final enriched response with AI analysis

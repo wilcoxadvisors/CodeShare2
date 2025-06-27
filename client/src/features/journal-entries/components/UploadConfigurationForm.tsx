@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Download, Upload, Loader2, Lock } from 'lucide-react';
+import { AttachmentSection } from './AttachmentSection';
 
 interface UploadConfigurationFormProps {
   onAnalysisComplete: (result: any) => void;
@@ -333,6 +334,19 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
                 Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
               </p>
             </div>
+
+            {/* Conditional AttachmentSection for Standard Mode Only */}
+            {isStandardBatchMode && (
+              <AttachmentSection
+                entityId={parseInt(params.entityId || '0')}
+                clientId={parseInt(clientId || '0')}
+                journalEntryId={0} // This is for a new batch import, no existing journal entry
+                isInEditMode={true} // Always editable during configuration
+                attachments={[]} // No existing attachments for new batch
+                onRemoveAttachment={() => {}} // Placeholder - files will be managed by the batch process
+                onAddAttachments={() => {}} // Placeholder - files will be managed by the batch process
+              />
+            )}
 
             {/* Submit Button */}
             <div className="flex justify-end">
