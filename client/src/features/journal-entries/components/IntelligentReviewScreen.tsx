@@ -56,6 +56,17 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
   const validationData = analysisResult?.validationData;
   const accountsData = validationData?.accounts;
   const dimensionsData = validationData?.dimensions;
+  
+  // ARCHITECT_DEBUG: Log the received data structure
+  console.log('ARCHITECT_DEBUG: Frontend received validation data:', {
+    hasValidationData: !!validationData,
+    hasAccounts: !!accountsData,
+    hasDimensions: !!dimensionsData,
+    accountsType: typeof accountsData,
+    dimensionsType: typeof dimensionsData,
+    accountsLength: Array.isArray(accountsData) ? accountsData.length : 'not array',
+    dimensionsLength: Array.isArray(dimensionsData) ? dimensionsData.length : 'not array'
+  });
 
   // Backup query for dimensions (only used when creating new dimension values)
   const { data: freshDimensionsData } = useQuery({

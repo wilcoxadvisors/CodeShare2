@@ -205,6 +205,12 @@ export function registerJournalEntryRoutes(app: Express) {
         };
 
         // 6. Format the final enriched response with AI analysis
+        console.log('ARCHITECT_DEBUG: Final response structure:', {
+          hasValidationData: !!enrichedResult.validationData,
+          accountsCount: enrichedResult.validationData?.accounts?.length,
+          dimensionsCount: enrichedResult.validationData?.dimensions?.length
+        });
+        
         return res.status(200).json({
           success: true,
           data: enrichedResult, // Send the complete analysis with AI suggestions back to the client
