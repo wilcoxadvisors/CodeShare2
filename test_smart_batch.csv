@@ -1,0 +1,5 @@
+Date,AccountCode,Description,Debit,Credit,Department
+2025-01-15,1000,Cash from sales,500.00,,Sales
+2025-01-15,4000,Revenue from sales,,500.00,Sales
+2025-01-16,1000,Cash from consulting,1000.00,,Marketing
+2025-01-16,4100,Consulting revenue,,1000.00,Marketing

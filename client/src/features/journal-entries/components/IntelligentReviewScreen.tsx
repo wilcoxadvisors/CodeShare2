@@ -52,27 +52,28 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     setSelectionState(initialSelection);
   }, [analysisResult]);
 
-  // Fetch accounts and dimensions data for real-time validation
-  const { data: accountsData } = useQuery({
-    queryKey: ['accounts', clientId],
-    queryFn: () => apiRequest(`/api/clients/${clientId}/accounts`),
-    enabled: !!clientId,
-  });
+  // Extract validation data from analysisResult (provided by backend)
+  const validationData = analysisResult?.validationData;
+  const accountsData = validationData?.accounts;
+  const dimensionsData = validationData?.dimensions;
 
-  const { data: dimensionsData } = useQuery({
+  // Backup query for dimensions (only used when creating new dimension values)
+  const { data: freshDimensionsData } = useQuery({
     queryKey: ['dimensions', clientId],
     queryFn: () => apiRequest(`/api/clients/${clientId}/dimensions`),
     enabled: !!clientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Create lookup maps for efficient validation
+  // Create lookup maps for efficient validation (prefer fresh data if available)
   const accountsMap = React.useMemo(() => {
     return accountsData ? createAccountsMap(accountsData) : new Map();
   }, [accountsData]);
 
   const dimensionsMap = React.useMemo(() => {
-    return dimensionsData ? createDimensionsMap(dimensionsData) : new Map();
-  }, [dimensionsData]);
+    const finalDimensionsData = freshDimensionsData || dimensionsData;
+    return finalDimensionsData ? createDimensionsMap(finalDimensionsData) : new Map();
+  }, [freshDimensionsData, dimensionsData]);
 
   // Batch processing mutation
   const processBatchMutation = useMutation({

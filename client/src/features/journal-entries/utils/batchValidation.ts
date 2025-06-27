@@ -130,7 +130,11 @@ export const createAccountsMap = (accounts: any[]): Map<string, AccountLookup> =
  */
 export const createDimensionsMap = (dimensions: any[]): Map<string, DimensionLookup> => {
   const map = new Map<string, DimensionLookup>();
-  dimensions.forEach(dimension => {
+  
+  // ARCHITECT'S DEFENSIVE CODING: Ensure dimensions is a valid array
+  const safeDimensions = Array.isArray(dimensions) ? dimensions : [];
+  
+  safeDimensions.forEach(dimension => {
     const valuesMap = new Map<string, { id: number; code: string; name: string }>();
     if (dimension.values) {
       dimension.values.forEach((value: any) => {

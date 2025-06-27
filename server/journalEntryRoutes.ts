@@ -170,8 +170,8 @@ export function registerJournalEntryRoutes(app: Express) {
         const validationResult = await validationService.validate(parsedData, clientId);
 
         // 7.5. Fetch all required data for frontend validation
-        const allAccountsForClient = await accountStorage.getAllAccounts(clientId);
-        const allDimensionsForClient = await dimensionStorage.getDimensions(clientId);
+        const allAccountsForClient = await accountStorage.getAccounts(clientId);
+        const allDimensionsForClient = await dimensionStorage.getDimensionsByClient(clientId);
 
         // 8. Get AI suggestions for all valid entry groups
         console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
