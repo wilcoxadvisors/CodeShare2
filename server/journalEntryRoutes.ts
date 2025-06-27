@@ -158,13 +158,13 @@ export function registerJournalEntryRoutes(app: Express) {
       const validationService = new BatchValidationService();
       const aiService = new AIAssistanceService();
 
-      // 6. Pass the file buffer to the parser with configuration
-      const parsedData = await parsingService.parse(req.file.buffer, formData);
+      // 6. Pass the file buffer to the parser
+      const parsedData = await parsingService.parse(req.file.buffer);
 
-      // 7. Pass the parsed data to the validator with configuration
-      const validationResult = await validationService.validate(parsedData, clientId, formData);
+      // 7. Pass the parsed data to the validator
+      const validationResult = await validationService.validate(parsedData, clientId);
 
-      // 4. Get AI suggestions for all valid entry groups
+      // 8. Get AI suggestions for all valid entry groups
       console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
       const aiSuggestions = await aiService.getSuggestions(validationResult.entryGroups);
 
