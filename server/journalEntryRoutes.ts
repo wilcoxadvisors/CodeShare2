@@ -14,6 +14,8 @@ import {
   ListJournalEntriesFilters 
 } from '../shared/validation';
 import { journalEntryStorage } from './storage/journalEntryStorage';
+import { accountStorage } from './storage/accountStorage';
+import { dimensionStorage } from './storage/dimensionStorage';
 import { multerMiddleware } from './middleware/multer';
 import { BatchParsingService } from './services/BatchParsingService';
 import { BatchValidationService } from './services/BatchValidationService';
@@ -167,6 +169,10 @@ export function registerJournalEntryRoutes(app: Express) {
         // 7. Pass the parsed data to the validator
         const validationResult = await validationService.validate(parsedData, clientId);
 
+        // 7.5. Fetch all required data for frontend validation
+        const allAccountsForClient = await accountStorage.getAllAccounts(clientId);
+        const allDimensionsForClient = await dimensionStorage.getDimensions(clientId);
+
         // 8. Get AI suggestions for all valid entry groups
         console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
         const aiSuggestions = await aiService.getSuggestions(validationResult.entryGroups);
@@ -191,7 +197,11 @@ export function registerJournalEntryRoutes(app: Express) {
             totalSuggestions: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'SUGGESTION').length,
             totalAnomalies: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'ANOMALY').length
           },
-          configurationData: formData // Include the validated configuration data for frontend use
+          configurationData: formData, // Include the validated configuration data for frontend use
+          validationData: {
+            accounts: allAccountsForClient,   // The array of accounts for frontend validation
+            dimensions: allDimensionsForClient // The array of dimensions for frontend validation
+          }
         };
 
         // 6. Format the final enriched response with AI analysis
