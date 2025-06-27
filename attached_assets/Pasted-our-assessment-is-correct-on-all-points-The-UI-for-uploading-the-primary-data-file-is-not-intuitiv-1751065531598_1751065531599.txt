@@ -1,0 +1,53 @@
+our assessment is correct on all points:
+
+The UI for uploading the primary data file is not intuitive.
+
+There is no way to remove an incorrect data file once selected.
+
+The attachment functionality is broken.
+
+The 400 Bad Request error persists, indicating a fundamental mismatch between the frontend and backend.
+
+We will abandon the previous approach and execute a new, definitive repair plan that addresses these failures at their core. We will start by completely rebuilding the most critical part of the UI: the data file upload.
+
+Architectural Repair Plan: The Final, Definitive Fix
+Mission 1: Re-architect the Data File Upload Experience
+
+Objective: To replace the confusing file input with a clear, intuitive, single-file upload component that allows for file selection and removal, directly addressing your feedback.
+
+Architect's Instruction for Agent:
+
+You are to surgically remove the existing data file input and replace it with a new, purpose-built component for handling the primary Excel/CSV data file.
+
+File to Edit: client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+Surgical Instructions:
+
+Remove Old UI: Delete the existing <Input type="file"> and any associated Label or Button that is currently used for uploading the main data file.
+
+Create a New State for the Data File: At the top of the component, create a new state variable specifically for the data file.
+
+JavaScript
+
+const [dataFile, setDataFile] = useState<File | null>(null);
+Implement a New Drag-and-Drop UI:
+
+Create a new, visually distinct section labeled "Step 1: Upload Your Data File (.xlsx or .csv)".
+
+Implement a drag-and-drop zone. When no file is selected, it should display a message like "Drag & drop your file here, or click to select a file."
+
+When a file is selected (either by dropping or clicking), the UI must change to show:
+
+The selected file's name (e.g., q3_marketing_spend.xlsx).
+
+A "Remove File" button that, when clicked, clears the dataFile state and resets the UI to its initial state.
+
+This entire component provides a much better user experience, as you suggested.
+
+Update the "Analyze" Button Logic:
+
+The main "Analyze File" button for the form must now be disabled if dataFile is null.
+
+When the "Analyze File" button is clicked, the onSubmit function must now retrieve the file from the dataFile state variable to be included in the FormData payload.
+
+This mission will fix the most significant UI and usability problems. Once it is complete, we will proceed to fix the data contract and the attachment flow. Execute Mission 1 now.

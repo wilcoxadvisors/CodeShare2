@@ -48,6 +48,9 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
 
   // State for supporting documents
   const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+  
+  // State for the primary data file
+  const [dataFile, setDataFile] = useState<File | null>(null);
 
   // Initialize form with react-hook-form
   const form = useForm<FormData>({
@@ -106,15 +109,12 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
   });
 
   const onSubmit = (data: FormData) => {
-    const fileInput = fileInputRef.current;
-    const selectedFile = fileInput?.files?.[0];
-    
-    if (!selectedFile) {
+    if (!dataFile) {
       toast({ title: "No File Selected", description: "Please select a file to upload and analyze.", variant: "destructive" });
       return;
     }
     
-    analysisMutation.mutate({ file: selectedFile, formData: data });
+    analysisMutation.mutate({ file: dataFile, formData: data });
   };
 
   return (
@@ -326,24 +326,82 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
               </AlertDescription>
             </Alert>
 
-            {/* Step 1: Upload Data File */}
-            <Card className="p-4 border-2 border-blue-200 bg-blue-50">
+            {/* Step 1: Upload Your Data File - New Drag & Drop UI */}
+            <Card className="p-6 border-2 border-blue-200 bg-blue-50">
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg text-blue-900">Step 1: Upload Data File</h3>
-                <div className="space-y-2">
-                  <FormLabel>Select your Excel or CSV file containing journal entry data</FormLabel>
-                  <div className="flex items-center space-x-2">
-                    <Input 
-                      ref={fileInputRef} 
-                      type="file" 
-                      accept=".xlsx, .xls, .csv" 
-                      className="flex-1 bg-white" 
-                    />
+                <h3 className="font-semibold text-lg text-blue-900">Step 1: Upload Your Data File (.xlsx or .csv)</h3>
+                
+                {!dataFile ? (
+                  <div 
+                    className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-white hover:bg-blue-50 cursor-pointer transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const files = e.dataTransfer.files;
+                      if (files.length > 0) {
+                        const file = files[0];
+                        if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
+                          setDataFile(file);
+                        } else {
+                          toast({ 
+                            title: "Invalid File Type", 
+                            description: "Please select an Excel (.xlsx, .xls) or CSV (.csv) file.", 
+                            variant: "destructive" 
+                          });
+                        }
+                      }
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnter={(e) => e.preventDefault()}
+                  >
+                    <Upload className="mx-auto h-12 w-12 text-blue-400 mb-4" />
+                    <p className="text-lg font-medium text-blue-700 mb-2">
+                      Drag & drop your file here, or click to select a file
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
-                  </p>
-                </div>
+                ) : (
+                  <div className="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <Upload className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-green-900">{dataFile.name}</p>
+                          <p className="text-sm text-green-700">
+                            {(dataFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setDataFile(null)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        Remove File
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Hidden file input for click selection */}
+                <input 
+                  ref={fileInputRef} 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setDataFile(file);
+                    }
+                  }}
+                />
               </div>
             </Card>
 
@@ -391,7 +449,7 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
             <div className="flex justify-end">
               <Button 
                 type="submit"
-                disabled={analysisMutation.isPending}
+                disabled={analysisMutation.isPending || !dataFile}
               >
                 {analysisMutation.isPending ? (
                   <>
