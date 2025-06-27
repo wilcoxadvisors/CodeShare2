@@ -170,8 +170,13 @@ export function registerJournalEntryRoutes(app: Express) {
         const validationResult = await validationService.validate(parsedData, clientId);
 
         // 7.5. Fetch all required data for frontend validation
+        console.log('ARCHITECT_DEBUG: About to fetch accounts and dimensions for validation data');
         const allAccountsForClient = await accountStorage.getAccounts(clientId);
         const allDimensionsForClient = await dimensionStorage.getDimensionsByClient(clientId);
+        console.log('ARCHITECT_DEBUG: Fetched validation data:', {
+          accountsCount: allAccountsForClient?.length,
+          dimensionsCount: allDimensionsForClient?.length
+        });
 
         // 8. Get AI suggestions for all valid entry groups
         console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
@@ -190,6 +195,7 @@ export function registerJournalEntryRoutes(app: Express) {
             }, {} as Record<number, any[]>)
         }));
 
+        console.log('ARCHITECT_DEBUG: Building enriched result with validation data');
         const enrichedResult = {
           ...validationResult,
           entryGroups: enrichedEntryGroups,
@@ -203,6 +209,7 @@ export function registerJournalEntryRoutes(app: Express) {
             dimensions: allDimensionsForClient // The array of dimensions for frontend validation
           }
         };
+        console.log('ARCHITECT_DEBUG: enrichedResult constructed successfully');
 
         // 6. Format the final enriched response with AI analysis
         console.log('ARCHITECT_DEBUG: Final response structure:', {
