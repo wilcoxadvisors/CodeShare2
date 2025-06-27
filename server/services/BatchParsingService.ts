@@ -63,12 +63,28 @@ export class BatchParsingService {
       const originalRow = i + 2; // +2 to account for 0-index and header row
 
       // Extract core data and perform initial type validation
-      const amount = new Decimal(row['Amount'] || 0);
+      const rawAmount = String(row['Amount'] || '').trim();
       const accountCode = String(row['AccountCode'] || '').trim();
       const entryGroupKey = String(row['EntryGroupKey'] || '').trim();
 
-      if (amount.isZero() || !accountCode || !entryGroupKey) {
-        // Skip empty or invalid rows
+      // Skip template example rows or rows with non-numeric amounts
+      if (!rawAmount || rawAmount.toLowerCase().includes('example') || 
+          !accountCode || accountCode.toLowerCase().includes('example') ||
+          !entryGroupKey || entryGroupKey.toLowerCase().includes('example')) {
+        console.log(`PARSER_DEBUG: Skipping template/example row ${originalRow}: amount="${rawAmount}", account="${accountCode}", key="${entryGroupKey}"`);
+        continue;
+      }
+
+      // Try to parse amount as decimal, skip if invalid
+      let amount: Decimal;
+      try {
+        amount = new Decimal(rawAmount);
+        if (amount.isZero()) {
+          console.log(`PARSER_DEBUG: Skipping zero amount row ${originalRow}`);
+          continue;
+        }
+      } catch (error) {
+        console.log(`PARSER_DEBUG: Skipping invalid amount row ${originalRow}: "${rawAmount}"`);
         continue;
       }
 
