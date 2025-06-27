@@ -380,7 +380,13 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
                         type="button"
                         variant="outline" 
                         size="sm"
-                        onClick={() => setDataFile(null)}
+                        onClick={() => {
+                          setDataFile(null);
+                          // Clear the file input to allow selecting the same file again
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
                         Remove File
@@ -395,6 +401,7 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
                   type="file" 
                   accept=".xlsx, .xls, .csv" 
                   className="hidden"
+                  key={dataFile ? 'file-selected' : 'no-file'} // Reset input when file is removed
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
