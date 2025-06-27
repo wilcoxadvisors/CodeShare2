@@ -1,0 +1,50 @@
+Architectural Repair Plan
+Mission 1: Correct the UI Implementation
+
+Objective: To implement the AttachmentSection as originally designed, ensuring it appears only in the correct mode.
+
+Architect's Instruction for Agent:
+
+You will now complete the UI implementation for the UploadConfigurationForm.tsx component.
+
+File to Edit: client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+Surgical Instructions:
+
+Import AttachmentSection: If it is not already, import the AttachmentSection component.
+
+Conditionally Render AttachmentSection: Locate the end of the main form, just before the "Analyze" button. Insert the AttachmentSection component.
+
+Enforce Conditional Logic: The AttachmentSection component must be wrapped in a conditional rendering block. It should only be visible if the user has selected the 'standard' import mode.
+
+JavaScript
+
+{isStandardBatchMode && (
+  <AttachmentSection ...props />
+)}
+Mission 2: Repair the Backend Data Contract
+Objective: To diagnose and fix the 400 Bad Request error by aligning the backend API with the frontend's data payload.
+
+Architect's Instruction for Agent:
+
+You will now debug and repair the batch-analyze endpoint.
+
+Files to Investigate:
+
+The API route definition for POST /api/clients/:clientId/journal-entries/batch-analyze.
+
+Any DTO (Data Transfer Object), Zod schema, or validation middleware associated with that route.
+
+Surgical Instructions:
+
+Analyze the Payload: The frontend is now sending importMode, description, referenceSuffix, batchDate, isAccrual, and reversalDate.
+
+Deconstruct the Backend: Find the code where the backend receives and validates the request body for this endpoint.
+
+Identify the Mismatch: The 400 error is likely caused by one of two things:
+
+Missing Fields: The backend validation might not be expecting these new fields.
+
+Type Mismatch: The backend might expect isAccrual as a boolean, but the form data sends it as a string ('true'). You must ensure the backend correctly parses this string back into a boolean before validation.
+
+Implement the Fix: Adjust the backend validation schema and parsing logic to correctly accept and process the full data payload from the frontend form. Pay special attention to the isAccrual boolean conversion.
