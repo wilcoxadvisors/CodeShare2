@@ -1,0 +1,56 @@
+Architectural Repair Plan: Backend First
+Mission: Repair and Harden the API Endpoint
+
+Objective: To diagnose and permanently fix the 400 Bad Request error by making the backend API robust and ensuring the data contract between the frontend and backend is perfectly synchronized.
+
+Architect's Instruction for Agent:
+
+You will now focus exclusively on the backend. Do not touch any frontend files. Your mission is to repair the batch-analyze route.
+
+File to Edit: server/journalEntryRoutes.ts
+
+Surgical Instructions:
+
+Intercept and Log the Request: The very first line inside the POST /api/clients/:clientId/journal-entries/batch-analyze route handler must be a console.log to expose the exact data being received.
+
+JavaScript
+
+console.log('ARCHITECT_DEBUG: Raw request body received:', req.body);
+Define the Data Contract with Zod: We will enforce a strict data contract. Immediately after the log, define a Zod schema that precisely matches the fields the frontend form is sending.
+
+JavaScript
+
+const batchAnalyzeSchema = z.object({
+    importMode: z.enum(['standard', 'historical']),
+    description: z.string().optional(),
+    referenceSuffix: z.string().optional(),
+    batchDate: z.string(),
+    isAccrual: z.string(), // FormData sends booleans as strings
+    reversalDate: z.string().optional()
+});
+Parse and Validate: Use the schema to parse the request body. This will serve as our authoritative validation. Wrap it in a try/catch block to handle any validation errors and return a clear error message.
+
+JavaScript
+
+try {
+    const validatedData = batchAnalyzeSchema.parse(req.body);
+
+    // Convert isAccrual to a proper boolean
+    const isAccrualBoolean = validatedData.isAccrual === 'true';
+
+    // ... proceed with the rest of the logic using validatedData ...
+
+} catch (error) {
+    console.error("ARCHITECT_ERROR: Backend validation failed!", error);
+    return res.status(400).json({ 
+        message: "Invalid request data. Please check the form and try again.",
+        details: error.errors 
+    });
+}
+Remove Ineffective Code: Delete any previous, non-Zod validation logic that the agent implemented for this route, as it was clearly insufficient.
+
+Verification:
+
+Once this is complete, I will test again. The "Analyze File" button should now successfully trigger the backend without a 400 error. The server logs will show the ARCHITECT_DEBUG message with the raw body, and if there are any issues, the ARCHITECT_ERROR will tell us exactly which field is failing validation.
+
+Execute this backend repair mission now.

@@ -93,6 +93,20 @@ export function registerJournalEntryRoutes(app: Express) {
   
   // Batch analyze uploaded Excel file for journal entries
   app.post('/api/clients/:clientId/journal-entries/batch-analyze', authenticateUser, multerMiddleware, asyncHandler(async (req: Request, res: Response) => {
+    // Diagnostic logging to see exactly what data is received
+    console.log('ARCHITECT_DEBUG: Raw request body received:', req.body);
+    console.log('ARCHITECT_DEBUG: File received:', req.file ? { name: req.file.originalname, size: req.file.size } : 'No file');
+
+    // Define strict data contract with Zod
+    const batchAnalyzeSchema = z.object({
+      importMode: z.enum(['standard', 'historical']),
+      description: z.string().optional(),
+      referenceSuffix: z.string().optional(),
+      batchDate: z.string(),
+      isAccrual: z.string(), // FormData sends booleans as strings
+      reversalDate: z.string().optional()
+    });
+
     try {
       const clientId = parseInt(req.params.clientId, 10);
 
@@ -107,39 +121,37 @@ export function registerJournalEntryRoutes(app: Express) {
         });
       }
 
-      // 2. Parse and validate form data from the request
+      // 2. Parse and validate form data using Zod schema
+      let validatedData;
+      try {
+        validatedData = batchAnalyzeSchema.parse(req.body);
+        console.log('ARCHITECT_DEBUG: Validated data:', validatedData);
+      } catch (validationError: any) {
+        console.error("ARCHITECT_ERROR: Backend validation failed!", validationError);
+        return res.status(400).json({ 
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: "Invalid request data. Please check the form and try again.",
+            details: validationError.errors 
+          }
+        });
+      }
+
+      // Convert isAccrual to a proper boolean
+      const isAccrualBoolean = validatedData.isAccrual === 'true';
+
+      // 3. Create the form data object with validated fields
       const formData = {
-        importMode: req.body.importMode || 'standard',
-        description: req.body.description || '',
-        referenceSuffix: req.body.referenceSuffix || '',
-        batchDate: req.body.batchDate || new Date().toISOString().split('T')[0],
-        isAccrual: req.body.isAccrual === 'true' || req.body.isAccrual === true, // Handle string to boolean conversion
-        reversalDate: req.body.reversalDate || ''
+        importMode: validatedData.importMode,
+        description: validatedData.description || '',
+        referenceSuffix: validatedData.referenceSuffix || '',
+        batchDate: validatedData.batchDate,
+        isAccrual: isAccrualBoolean,
+        reversalDate: validatedData.reversalDate || ''
       };
 
-      // 3. Validate required fields
-      if (!formData.batchDate) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'INVALID_FORM_DATA',
-            message: 'Batch date is required.',
-          },
-        });
-      }
-
-      // 4. Validate import mode
-      if (!['standard', 'historical'].includes(formData.importMode)) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'INVALID_IMPORT_MODE',
-            message: 'Import mode must be either "standard" or "historical".',
-          },
-        });
-      }
-
-      // 5. Validate accrual settings
+      // 4. Validate accrual settings (only validation needed after Zod parsing)
       if (formData.isAccrual && !formData.reversalDate) {
         return res.status(400).json({
           success: false,
