@@ -3,7 +3,19 @@ import { journalEntries, journalEntryLines, txDimensionLink, entities } from '..
 import { and, eq } from 'drizzle-orm';
 
 export class BatchProcessingService {
-  public async processBatch(approvedEntries: any[], clientId: number, entityId: number, batchSettings?: any) {
+  public async processBatch(
+    approvedEntries: any[], 
+    clientId: number, 
+    entityId: number, 
+    batchSettings?: {
+      importMode?: string;
+      description?: string;
+      referenceSuffix?: string;
+      batchDate?: string;
+      isAccrual?: boolean;
+      reversalDate?: string;
+    }
+  ) {
     // Wrap the entire batch processing in a single database transaction
     return await db.transaction(async (tx) => {
       let createdCount = 0;
@@ -25,19 +37,36 @@ export class BatchProcessingService {
           }
           const actualClientId = entityQuery[0].clientId;
 
+          // Generate reference number with optional suffix
+          let baseReference = entryGroup.header.Reference || `BATCH-${actualClientId}-${entityId}-${Date.now()}-${createdCount + 1}`;
+          if (batchSettings?.referenceSuffix) {
+            baseReference = `${baseReference}:${batchSettings.referenceSuffix}`;
+          }
+
+          // Determine entry status based on import mode (Dual-Path Logic)
+          let entryStatus = 'draft'; // Default for standard mode
+          if (batchSettings?.importMode === 'historical') {
+            entryStatus = 'posted'; // Historical imports go directly to posted
+          }
+
+          // Apply header data from batch settings
+          const entryDescription = batchSettings?.description || entryGroup.header.Description || 'Batch import entry';
+
           // Use minimal insert data object with only required fields
           const journalEntryData: any = {
             entityId: entityId,
             clientId: actualClientId, // Use the client ID from the entity
             date: entryDate,
-            referenceNumber: entryGroup.header.Reference || `BATCH-${actualClientId}-${entityId}-${Date.now()}-${createdCount + 1}`,
-            description: entryGroup.header.Description || 'Batch import entry',
-            status: 'draft',
+            referenceNumber: baseReference,
+            description: entryDescription,
+            status: entryStatus, // Dynamic status based on import mode
             createdBy: 1, // TODO: Get actual user ID from request context
             isSystemGenerated: false,
-            isAccrual: false,
+            isAccrual: batchSettings?.isAccrual || false, // Apply accrual settings
+            reversalDate: batchSettings?.reversalDate || null, // Apply reversal date if provided
           };
 
+          console.log('ARCHITECT_DEBUG: Processing entry in mode:', batchSettings?.importMode || 'standard');
           console.log('ARCHITECT_DEBUG: Creating journal entry with data:', journalEntryData);
 
           const [newEntry] = await tx.insert(journalEntries).values(journalEntryData).returning();

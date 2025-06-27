@@ -116,110 +116,245 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
         <CardDescription>Select your import type, configure settings, and upload your data file.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="import-mode">Import Mode</Label>
-          <Select onValueChange={(value: ImportMode) => setMode(value)} defaultValue={mode}>
-            <SelectTrigger id="import-mode">
-              <SelectValue placeholder="Select an import mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">Standard Batch Entry</SelectItem>
-              <SelectItem value="historical">Historical GL Import</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {mode === 'standard' && (
-          <Card className="p-4 bg-gray-50">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Batch Settings</h3>
-              <div>
-                <Label htmlFor="batch-date">Batch Date</Label>
-                <Input id="batch-date" type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} />
-              </div>
-               <div>
-                <Label htmlFor="description">Batch Description</Label>
-                <Textarea id="description" placeholder="e.g., June 2025 Month-End Accruals" value={description} onChange={e => setDescription(e.target.value)} />
-              </div>
-              <div className="flex items-center space-x-2">
-                 <Switch id="is-accrual" checked={isAccrual} onCheckedChange={setIsAccrual} />
-                 <Label htmlFor="is-accrual">Mark this entire batch as an Auto-Reversing Accrual</Label>
-              </div>
-              {isAccrual && (
-                 <div>
-                    <Label htmlFor="reversal-date">Reversal Date</Label>
-                    <Input id="reversal-date" type="date" value={reversalDate} onChange={e => setReversalDate(e.target.value)} />
-                 </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        <Alert>
-          <Download className="h-4 w-4" />
-          <AlertTitle>Download Your Template</AlertTitle>
-          <AlertDescription>
-            Download the "Smart Template" to ensure your data is formatted correctly. The template includes reference tabs for your Chart of Accounts and Dimensions.
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-4"
-              onClick={async () => {
-                try {
-                  const response = await fetch(`/api/clients/${clientId}/journal-entries/batch-template?mode=${mode}`, {
-                    method: 'GET',
-                    credentials: 'include',
-                  });
-
-                  if (!response.ok) {
-                    throw new Error('Failed to download template from server.');
-                  }
-
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `Wilcox_JE_Template_${mode}.xlsx`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-
-                } catch (error) {
-                  console.error("Download failed", error);
-                  toast({ title: "Download Failed", description: "Could not generate the template.", variant: "destructive" });
-                }
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Template
-            </Button>
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-2">
-          <Label>Upload Completed File</Label>
-          <div className="flex items-center space-x-2">
-            <Input ref={fileInputRef} type="file" onChange={handleFileSelect} accept=".xlsx, .xls, .csv" className="flex-1" />
-          </div>
-          {selectedFile && <p className="text-sm text-muted-foreground">Selected file: {selectedFile.name}</p>}
-        </div>
-
-        <div className="flex justify-end">
-            <Button onClick={handleAnalyzeClick} disabled={!selectedFile || analysisMutation.isPending}>
-                {analysisMutation.isPending ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                    </>
-                ) : (
-                    <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Analyze File
-                    </>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            
+            {/* Header Fields - Always Visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="e.g., June 2025 Month-End Accruals" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional description for this batch
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-            </Button>
-        </div>
+              />
+              
+              <FormField
+                control={form.control}
+                name="referenceSuffix"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference Suffix</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., ACCRUAL, IMPORT" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional suffix to append to journal entry references
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Import Mode Selection with Role-Based Restrictions */}
+            <FormField
+              control={form.control}
+              name="importMode"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Import Mode</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="standard" id="standard" />
+                        <FormLabel htmlFor="standard" className="cursor-pointer">
+                          Standard Batch Entry
+                        </FormLabel>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem 
+                          value="historical" 
+                          id="historical" 
+                          disabled={!isAdmin}
+                        />
+                        <FormLabel 
+                          htmlFor="historical" 
+                          className={`cursor-pointer ${!isAdmin ? 'text-muted-foreground' : ''}`}
+                        >
+                          Historical GL Import 
+                          {!isAdmin && (
+                            <Lock className="inline ml-2 h-4 w-4" />
+                          )}
+                        </FormLabel>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  {!isAdmin && (
+                    <FormDescription className="text-amber-600">
+                      Historical GL Import requires admin privileges
+                    </FormDescription>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Conditional Fields for Standard Mode Only */}
+            {isStandardBatchMode && (
+              <Card className="p-4 bg-gray-50">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Batch Settings</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="batchDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Batch Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isAccrual"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Auto-Reversing Accrual
+                          </FormLabel>
+                          <FormDescription>
+                            Mark this entire batch as an auto-reversing accrual
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch('isAccrual') && (
+                    <FormField
+                      control={form.control}
+                      name="reversalDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reversal Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Date when the accrual should be automatically reversed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Template Download */}
+            <Alert>
+              <Download className="h-4 w-4" />
+              <AlertTitle>Download Your Template</AlertTitle>
+              <AlertDescription>
+                Download the "Smart Template" to ensure your data is formatted correctly. The template includes reference tabs for your Chart of Accounts and Dimensions.
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="ml-4"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/clients/${clientId}/journal-entries/batch-template?mode=${importMode}`, {
+                        method: 'GET',
+                        credentials: 'include',
+                      });
+
+                      if (!response.ok) {
+                        throw new Error('Failed to download template from server.');
+                      }
+
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Wilcox_JE_Template_${importMode}.xlsx`;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+
+                    } catch (error) {
+                      console.error("Download failed", error);
+                      toast({ title: "Download Failed", description: "Could not generate the template.", variant: "destructive" });
+                    }
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Template
+                </Button>
+              </AlertDescription>
+            </Alert>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <FormLabel>Upload Completed File</FormLabel>
+              <div className="flex items-center space-x-2">
+                <Input 
+                  ref={fileInputRef} 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  className="flex-1" 
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
+              <Button 
+                type="submit"
+                disabled={analysisMutation.isPending}
+              >
+                {analysisMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Analyze File
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   );
