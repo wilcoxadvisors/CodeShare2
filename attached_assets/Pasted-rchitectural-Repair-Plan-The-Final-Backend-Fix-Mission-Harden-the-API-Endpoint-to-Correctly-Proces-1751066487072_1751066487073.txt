@@ -1,0 +1,55 @@
+rchitectural Repair Plan: The Final Backend Fix
+Mission: Harden the API Endpoint to Correctly Process Multipart Form Data
+
+Objective: To fix the 400 Bad Request error by ensuring the backend route correctly parses all text fields from the FormData payload before attempting to validate them.
+
+Architect's Instruction for Agent:
+
+You will now repair the batch-analyze route by correcting how it handles multipart/form-data. Do not modify any frontend files.
+
+File to Edit: server/journalEntryRoutes.ts
+
+Surgical Instructions:
+
+Ensure Correct Middleware Order: The multerMiddleware must be executed before any other logic in the route handler. This is the most critical step.
+
+Remove Ineffective Code: Delete the previous try/catch block and the Zod validation you added. It is not working because req.body is not being populated correctly. We will rebuild it with the correct understanding.
+
+Implement New, Corrected Validation Logic:
+
+Inside the POST /api/.../batch-analyze route handler, after the multerMiddleware has run, req.body should now be correctly populated with the text fields from the form.
+
+First, add this diagnostic log:
+
+JavaScript
+
+console.log('ARCHITECT_DEBUG: Request body AFTER multer:', req.body);
+Next, re-implement the Zod validation schema exactly as before.
+
+Finally, wrap the Zod parsing in a try/catch block as I previously instructed. This time, it will work because req.body will contain the data to be validated.
+
+Example of the Corrected Route Handler Structure:
+
+JavaScript
+
+app.post('/api/clients/:clientId/journal-entries/batch-analyze', 
+  authenticateUser, 
+  multerMiddleware, // Multer runs first!
+  asyncHandler(async (req: Request, res: Response) => {
+    
+    console.log('ARCHITECT_DEBUG: Request body AFTER multer:', req.body); // New Diagnostic Log
+
+    // Zod schema definition here...
+    const batchAnalyzeSchema = z.object({ ... });
+
+    try {
+      // Zod parsing and the rest of the logic here...
+      const validatedData = batchAnalyzeSchema.parse(req.body);
+      // ...
+    } catch (error) {
+      // Error handling here...
+    }
+}));
+Verification:
+
+Once this is complete, I need you to test one more time. The "Analyze File" button should finally work. The ARCHITECT_DEBUG log in the server console should now print the full object containing the description, importMode, and other fields you entered in the form.

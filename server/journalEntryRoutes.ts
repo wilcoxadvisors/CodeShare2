@@ -92,9 +92,12 @@ export function registerJournalEntryRoutes(app: Express) {
   }));
   
   // Batch analyze uploaded Excel file for journal entries
-  app.post('/api/clients/:clientId/journal-entries/batch-analyze', authenticateUser, multerMiddleware, asyncHandler(async (req: Request, res: Response) => {
-    // Diagnostic logging to see exactly what data is received
-    console.log('ARCHITECT_DEBUG: Raw request body received:', req.body);
+  app.post('/api/clients/:clientId/journal-entries/batch-analyze', 
+    authenticateUser, 
+    multerMiddleware, // Multer runs first!
+    asyncHandler(async (req: Request, res: Response) => {
+    
+    console.log('ARCHITECT_DEBUG: Request body AFTER multer:', req.body); // New Diagnostic Log
     console.log('ARCHITECT_DEBUG: File received:', req.file ? { name: req.file.originalname, size: req.file.size } : 'No file');
 
     // Define strict data contract with Zod
@@ -122,10 +125,80 @@ export function registerJournalEntryRoutes(app: Express) {
       }
 
       // 2. Parse and validate form data using Zod schema
-      let validatedData;
       try {
-        validatedData = batchAnalyzeSchema.parse(req.body);
+        const validatedData = batchAnalyzeSchema.parse(req.body);
         console.log('ARCHITECT_DEBUG: Validated data:', validatedData);
+
+        // Convert isAccrual to a proper boolean
+        const isAccrualBoolean = validatedData.isAccrual === 'true';
+
+        // 3. Create the form data object with validated fields
+        const formData = {
+          importMode: validatedData.importMode,
+          description: validatedData.description || '',
+          referenceSuffix: validatedData.referenceSuffix || '',
+          batchDate: validatedData.batchDate,
+          isAccrual: isAccrualBoolean,
+          reversalDate: validatedData.reversalDate || ''
+        };
+
+        // 4. Validate accrual settings (only validation needed after Zod parsing)
+        if (formData.isAccrual && !formData.reversalDate) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'MISSING_REVERSAL_DATE',
+              message: 'Reversal date is required when auto-reversing accrual is enabled.',
+            },
+          });
+        }
+
+        console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
+        console.log(`ARCHITECT_DEBUG: Form data received:`, formData);
+
+        // Phase 1 Complete Implementation: Smart Parser + Validation + AI Analysis
+        const parsingService = new BatchParsingService();
+        const validationService = new BatchValidationService();
+        const aiService = new AIAssistanceService();
+
+        // 6. Pass the file buffer to the parser
+        const parsedData = await parsingService.parse(req.file.buffer);
+
+        // 7. Pass the parsed data to the validator
+        const validationResult = await validationService.validate(parsedData, clientId);
+
+        // 8. Get AI suggestions for all valid entry groups
+        console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
+        const aiSuggestions = await aiService.getSuggestions(validationResult.entryGroups);
+
+        // 5. Integrate AI suggestions into the response
+        const enrichedEntryGroups = validationResult.entryGroups.map(group => ({
+          ...group,
+          aiSuggestions: Array.from(aiSuggestions.entries())
+            .filter(([rowNumber, suggestions]) => 
+              group.lines.some(line => line.originalRow === rowNumber)
+            )
+            .reduce((acc, [rowNumber, suggestions]) => {
+              acc[rowNumber] = suggestions;
+              return acc;
+            }, {} as Record<number, any[]>)
+        }));
+
+        const enrichedResult = {
+          ...validationResult,
+          entryGroups: enrichedEntryGroups,
+          aiAnalysisSummary: {
+            totalSuggestions: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'SUGGESTION').length,
+            totalAnomalies: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'ANOMALY').length
+          },
+          configurationData: formData // Include the validated configuration data for frontend use
+        };
+
+        // 6. Format the final enriched response with AI analysis
+        return res.status(200).json({
+          success: true,
+          data: enrichedResult, // Send the complete analysis with AI suggestions back to the client
+        });
       } catch (validationError: any) {
         console.error("ARCHITECT_ERROR: Backend validation failed!", validationError);
         return res.status(400).json({ 
@@ -137,77 +210,6 @@ export function registerJournalEntryRoutes(app: Express) {
           }
         });
       }
-
-      // Convert isAccrual to a proper boolean
-      const isAccrualBoolean = validatedData.isAccrual === 'true';
-
-      // 3. Create the form data object with validated fields
-      const formData = {
-        importMode: validatedData.importMode,
-        description: validatedData.description || '',
-        referenceSuffix: validatedData.referenceSuffix || '',
-        batchDate: validatedData.batchDate,
-        isAccrual: isAccrualBoolean,
-        reversalDate: validatedData.reversalDate || ''
-      };
-
-      // 4. Validate accrual settings (only validation needed after Zod parsing)
-      if (formData.isAccrual && !formData.reversalDate) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'MISSING_REVERSAL_DATE',
-            message: 'Reversal date is required when auto-reversing accrual is enabled.',
-          },
-        });
-      }
-
-      console.log(`ARCHITECT_DEBUG: Starting batch analysis for client ${clientId}, file: ${req.file.originalname}`);
-      console.log(`ARCHITECT_DEBUG: Form data received:`, formData);
-
-      // Phase 1 Complete Implementation: Smart Parser + Validation + AI Analysis
-      const parsingService = new BatchParsingService();
-      const validationService = new BatchValidationService();
-      const aiService = new AIAssistanceService();
-
-      // 6. Pass the file buffer to the parser
-      const parsedData = await parsingService.parse(req.file.buffer);
-
-      // 7. Pass the parsed data to the validator
-      const validationResult = await validationService.validate(parsedData, clientId);
-
-      // 8. Get AI suggestions for all valid entry groups
-      console.log('ARCHITECT_DEBUG: Getting AI suggestions for validated entry groups');
-      const aiSuggestions = await aiService.getSuggestions(validationResult.entryGroups);
-
-      // 5. Integrate AI suggestions into the response
-      const enrichedEntryGroups = validationResult.entryGroups.map(group => ({
-        ...group,
-        aiSuggestions: Array.from(aiSuggestions.entries())
-          .filter(([rowNumber, suggestions]) => 
-            group.lines.some(line => line.originalRow === rowNumber)
-          )
-          .reduce((acc, [rowNumber, suggestions]) => {
-            acc[rowNumber] = suggestions;
-            return acc;
-          }, {} as Record<number, any[]>)
-      }));
-
-      const enrichedResult = {
-        ...validationResult,
-        entryGroups: enrichedEntryGroups,
-        aiAnalysisSummary: {
-          totalSuggestions: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'SUGGESTION').length,
-          totalAnomalies: Array.from(aiSuggestions.values()).flat().filter(s => s.type === 'ANOMALY').length
-        },
-        configurationData: formData // Include the validated configuration data for frontend use
-      };
-
-      // 6. Format the final enriched response with AI analysis
-      return res.status(200).json({
-        success: true,
-        data: enrichedResult, // Send the complete analysis with AI suggestions back to the client
-      });
 
     } catch (error: any) {
       console.error("Batch Analysis Error:", error);
