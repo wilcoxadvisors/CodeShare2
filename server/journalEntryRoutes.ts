@@ -261,7 +261,7 @@ export function registerJournalEntryRoutes(app: Express) {
   app.post('/api/clients/:clientId/journal-entries/batch-process', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
     try {
       const clientId = parseInt(req.params.clientId, 10);
-      const { approvedEntries, entityId, batchSettings } = req.body;
+      const { approvedEntries, entityId, batchSettings, pendingAttachments } = req.body;
 
       if (!approvedEntries || !entityId || approvedEntries.length === 0) {
         return res.status(400).json({ 
@@ -276,7 +276,7 @@ export function registerJournalEntryRoutes(app: Express) {
       console.log(`ARCHITECT_DEBUG: Starting batch processing for client ${clientId}, entity ${entityId}, ${approvedEntries.length} entries`);
 
       const processingService = new BatchProcessingService();
-      const result = await processingService.processBatch(approvedEntries, clientId, entityId, batchSettings);
+      const result = await processingService.processBatch(approvedEntries, clientId, entityId, batchSettings, pendingAttachments);
 
       if (!result) {
         return res.status(500).json({

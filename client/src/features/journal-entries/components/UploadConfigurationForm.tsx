@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -46,6 +46,9 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
   // Role-based access control
   const isAdmin = user?.role === 'admin';
 
+  // State for supporting documents
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+
   // Initialize form with react-hook-form
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -83,7 +86,11 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
     },
     onSuccess: (response) => {
       toast({ title: "Success", description: "File analysis complete. Please review the results." });
-      onAnalysisComplete(response.data); // Pass results to parent wizard
+      // Pass results to parent wizard including pending attachments
+      onAnalysisComplete({
+        ...response.data,
+        pendingAttachments: pendingAttachments // Include supporting documents in the response
+      });
     },
     onError: (error: any) => {
       toast({
@@ -319,33 +326,65 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
               </AlertDescription>
             </Alert>
 
-            {/* File Upload */}
-            <div className="space-y-2">
-              <FormLabel>Upload Completed File</FormLabel>
-              <div className="flex items-center space-x-2">
-                <Input 
-                  ref={fileInputRef} 
-                  type="file" 
-                  accept=".xlsx, .xls, .csv" 
-                  className="flex-1" 
-                />
+            {/* Step 1: Upload Data File */}
+            <Card className="p-4 border-2 border-blue-200 bg-blue-50">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg text-blue-900">Step 1: Upload Data File</h3>
+                <div className="space-y-2">
+                  <FormLabel>Select your Excel or CSV file containing journal entry data</FormLabel>
+                  <div className="flex items-center space-x-2">
+                    <Input 
+                      ref={fileInputRef} 
+                      type="file" 
+                      accept=".xlsx, .xls, .csv" 
+                      className="flex-1 bg-white" 
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
-              </p>
-            </div>
+            </Card>
 
-            {/* Conditional AttachmentSection for Standard Mode Only */}
+            {/* Step 2: Add Supporting Documents (Conditional) */}
             {isStandardBatchMode && (
-              <AttachmentSection
-                entityId={parseInt(params.entityId || '0')}
-                clientId={parseInt(clientId || '0')}
-                journalEntryId={0} // This is for a new batch import, no existing journal entry
-                isInEditMode={true} // Always editable during configuration
-                attachments={[]} // No existing attachments for new batch
-                onRemoveAttachment={() => {}} // Placeholder - files will be managed by the batch process
-                onAddAttachments={() => {}} // Placeholder - files will be managed by the batch process
-              />
+              <Card className="p-4 border-2 border-green-200 bg-green-50">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg text-green-900">Step 2: Add Supporting Documents (Optional)</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Upload supporting documents like receipts, invoices, or contracts that relate to your journal entries.
+                  </p>
+                  <AttachmentSection
+                    entityId={parseInt(params.entityId || '0')}
+                    clientId={parseInt(clientId || '0')}
+                    journalEntryId={0} // This is for a new batch import, no existing journal entry
+                    isInEditMode={true} // Always editable during configuration
+                    attachments={pendingAttachments.map((file, index) => ({
+                      id: -(index + 1), // Temporary negative ID for pending files
+                      filename: file.name,
+                      size: file.size,
+                      mimeType: file.type,
+                      uploadedAt: new Date(),
+                      journalEntryId: 0,
+                      uploadedBy: 1
+                    }))}
+                    onRemoveAttachment={(fileId: number) => {
+                      // Remove from pending attachments using the negative index
+                      const pendingIndex = Math.abs(fileId + 1);
+                      setPendingAttachments(prev => prev.filter((_, index) => index !== pendingIndex));
+                    }}
+                    onAddAttachments={(files: File[]) => {
+                      // Add to pending attachments
+                      setPendingAttachments(prev => [...prev, ...files]);
+                      toast({ 
+                        title: "Files added", 
+                        description: `${files.length} supporting document(s) added to your batch.` 
+                      });
+                    }}
+                  />
+                </div>
+              </Card>
             )}
 
             {/* Submit Button */}

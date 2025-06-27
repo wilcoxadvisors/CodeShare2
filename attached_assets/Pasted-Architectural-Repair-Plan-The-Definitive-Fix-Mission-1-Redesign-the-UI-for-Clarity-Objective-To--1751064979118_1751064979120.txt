@@ -1,0 +1,78 @@
+Architectural Repair Plan: The Definitive Fix
+Mission 1: Redesign the UI for Clarity
+
+Objective: To create two distinct and clearly labeled upload zones: one for the primary data file and a separate one for supporting documents.
+
+Architect's Instruction for Agent:
+
+You will redesign the UploadConfigurationForm.tsx to guide the user through two separate actions.
+
+File to Edit: client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+Surgical Instructions:
+
+Data File Upload Area:
+
+Create a dedicated section labeled "Step 1: Upload Data File".
+
+This section will contain the file input specifically for the Excel or CSV file.
+
+The button associated with this input will remain "Analyze File". This button triggers the analysisMutation as it does now.
+
+Supporting Documents Area (Conditional):
+
+Create a second, distinct section below the first, labeled "Step 2: Add Supporting Documents (Optional)".
+
+This entire section must be conditionally rendered and only appear if isStandardBatchMode is true.
+
+Inside this section, you will place the AttachmentSection component. This component will be responsible for uploading and managing the supporting documents (PDFs, images, etc.).
+
+Mission 2: Implement Correct State Management for Attachments
+
+Objective: To manage the state of supporting documents on the client-side until the final submission, decoupling them from the analysis step.
+
+Architect's Instruction for Agent:
+
+You will now correctly wire up the state management for the new Supporting Documents section.
+
+File to Edit: client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+Surgical Instructions:
+
+Create New State: Introduce a new state variable to hold the list of uploaded supporting documents.
+
+JavaScript
+
+const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+Wire Up AttachmentSection: The AttachmentSection you added in Mission 1 now needs to be functional.
+
+Pass the pendingAttachments array to its attachments prop.
+
+Implement the onAddAttachments and onRemoveAttachment handlers to correctly add to and remove from the pendingAttachments state array.
+
+Pass State Forward: In the onSubmit function (triggered by the "Analyze File" button), you must now pass the pendingAttachments array along with the other configuration data inside the onAnalysisComplete callback.
+
+Mission 3: Repair Backend and Finalize the Data Flow
+Objective: To fix the 400 Bad Request error and ensure the backend correctly handles the full, structured data payload in the final processing step.
+
+Architect's Instruction for Agent:
+
+You will fix the backend data contract and ensure the final processing service handles the attachments.
+
+Surgical Instructions:
+
+Fix batch-analyze Endpoint:
+
+File to Edit: server/journalEntryRoutes.ts
+
+Action: Find the POST /api/.../batch-analyze route. The agent was correct to add validation for the configuration fields (importMode, description, etc.). Re-implement this validation. The key is that the validated configuration data must be returned in the API response. This will resolve the 400 error.
+
+Enhance batch-process Endpoint:
+
+File to Edit: server/services/BatchProcessingService.ts
+
+Action: The processBatch method must be updated to accept the pendingAttachments array from the final API call.
+
+Logic: Inside the database transaction, after the journal entries are created, you must now loop through the pendingAttachments, physically store them, and create the corresponding records in the journal_entry_files table, linking them to the newly created entries.
+
+This three-part plan will resolve the UI confusion, fix the data flow, and eliminate the backend error. Proceed with Mission 1.
