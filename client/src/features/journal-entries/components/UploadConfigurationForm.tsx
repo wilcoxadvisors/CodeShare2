@@ -1,43 +1,82 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Download, Upload, Loader2, Info } from 'lucide-react';
+import { Download, Upload, Loader2, Lock } from 'lucide-react';
 
 interface UploadConfigurationFormProps {
   onAnalysisComplete: (result: any) => void;
 }
 
-type ImportMode = 'standard' | 'historical';
+// Form schema with comprehensive validation
+const formSchema = z.object({
+  importMode: z.enum(['standard', 'historical'], {
+    required_error: "Please select an import mode",
+  }),
+  description: z.string().optional(),
+  referenceSuffix: z.string().optional(),
+  batchDate: z.string().min(1, "Batch date is required"),
+  isAccrual: z.boolean().default(false),
+  reversalDate: z.string().optional(),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = ({ onAnalysisComplete }) => {
-  const [mode, setMode] = useState<ImportMode>('standard');
-  const [description, setDescription] = useState('');
-  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isAccrual, setIsAccrual] = useState(false);
-  const [reversalDate, setReversalDate] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const params = useParams();
   const clientId = params.clientId;
 
+  // Role-based access control
+  const isAdmin = user?.role === 'admin';
+
+  // Initialize form with react-hook-form
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      importMode: 'standard',
+      description: '',
+      referenceSuffix: '',
+      batchDate: new Date().toISOString().split('T')[0],
+      isAccrual: false,
+      reversalDate: '',
+    },
+  });
+
+  // Watch import mode for conditional rendering
+  const importMode = form.watch('importMode');
+  const isStandardBatchMode = importMode === 'standard';
+
   const analysisMutation = useMutation({
-    mutationFn: (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
+    mutationFn: ({ file, formData }: { file: File; formData: FormData }) => {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      // Include all form configuration data in the analysis
+      uploadData.append('importMode', formData.importMode);
+      uploadData.append('description', formData.description || '');
+      uploadData.append('referenceSuffix', formData.referenceSuffix || '');
+      uploadData.append('batchDate', formData.batchDate);
+      uploadData.append('isAccrual', formData.isAccrual.toString());
+      uploadData.append('reversalDate', formData.reversalDate || '');
+      
       return apiRequest(`/api/clients/${clientId}/journal-entries/batch-analyze`, {
         method: 'POST',
-        data: formData,
+        data: uploadData,
         isFormData: true,
       });
     },
@@ -51,23 +90,23 @@ export const UploadConfigurationForm: React.FC<UploadConfigurationFormProps> = (
         description: error?.error?.message || "An unknown error occurred during file analysis.",
         variant: "destructive",
       });
-      setSelectedFile(null); // Clear the file on error
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
   });
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleAnalyzeClick = () => {
+  const onSubmit = (data: FormData) => {
+    const fileInput = fileInputRef.current;
+    const selectedFile = fileInput?.files?.[0];
+    
     if (!selectedFile) {
       toast({ title: "No File Selected", description: "Please select a file to upload and analyze.", variant: "destructive" });
       return;
     }
-    analysisMutation.mutate(selectedFile);
+    
+    analysisMutation.mutate({ file: selectedFile, formData: data });
   };
 
   return (

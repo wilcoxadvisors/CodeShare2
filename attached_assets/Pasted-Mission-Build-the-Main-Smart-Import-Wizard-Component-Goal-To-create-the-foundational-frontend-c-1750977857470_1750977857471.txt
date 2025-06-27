@@ -1,0 +1,98 @@
+Mission: Build the Main "Smart Import" Wizard Component
+
+Goal: To create the foundational frontend component, BatchImportWizard.tsx, that will orchestrate the entire multi-step "Smart Import" workflow. This component will manage the overall state of the process and render the correct sub-component for each stage of the user's journey.
+
+Architectural Justification: A complex, multi-step user process like this requires a parent "controller" or "wizard" component. This state-of-the-art pattern centralizes the workflow logic, making the system easier to understand, manage, and debug. It keeps the child components focused on their specific tasks (one for configuration, one for review).
+
+Surgical Code Implementation
+Step 1: Create the BatchImportWizard.tsx File
+
+Action: Create a new file at client/src/features/journal-entries/pages/BatchImportWizard.tsx.
+
+Instruction: Add the following complete code to the new file. This code establishes the state machine (currentStep) and the conditional rendering logic that forms the core of the wizard.
+
+TypeScript
+
+import React, { useState } from 'react';
+import PageHeader from '@/components/PageHeader';
+// Placeholders for the components we will build in the next missions
+// import { UploadConfigurationForm } from '../components/UploadConfigurationForm';
+// import { IntelligentReviewScreen } from '../components/IntelligentReviewScreen';
+
+// A placeholder type for the analysis data that will be passed between steps
+type BatchAnalysisResult = any;
+
+const BatchImportWizard: React.FC = () => {
+  // This state hook is the "engine" of the wizard, controlling which view is shown.
+  const [currentStep, setCurrentStep] = useState<'CONFIG' | 'REVIEW'>('CONFIG');
+
+  // This state holds the result from the backend analysis and is passed to the review screen.
+  const [analysisResult, setAnalysisResult] = useState<BatchAnalysisResult | null>(null);
+
+  // This callback will be passed to the configuration form.
+  const handleAnalysisComplete = (result: BatchAnalysisResult) => {
+    setAnalysisResult(result);
+    setCurrentStep('REVIEW'); // Advance the wizard to the next step
+  };
+
+  // This callback allows the user to go back from the review screen.
+  const handleReturnToConfig = () => {
+    setAnalysisResult(null);
+    setCurrentStep('CONFIG');
+  };
+
+  return (
+    <div className="py-6">
+      <PageHeader
+        title="Batch Journal Entry Import"
+        description="A guided workflow to upload and process multiple journal entries from a single file."
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
+        {currentStep === 'CONFIG' && (
+          // This is where the configuration form will go (Mission 2.2)
+          <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center bg-white">
+            <h2 className="text-xl font-semibold">Step 1: Configuration & Upload</h2>
+            <p className="text-muted-foreground mt-2">Placeholder for the `UploadConfigurationForm` component.</p>
+          </div>
+        )}
+
+        {currentStep === 'REVIEW' && analysisResult && (
+          // This is where the interactive review screen will go (Mission 2.3)
+           <div className="p-8 border-2 border-dashed border-blue-300 rounded-lg text-center bg-blue-50">
+            <h2 className="text-xl font-semibold text-blue-800">Step 2: Review & Reconcile</h2>
+            <p className="text-muted-foreground mt-2">Placeholder for the `IntelligentReviewScreen` component.</p>
+            <button onClick={handleReturnToConfig} className="mt-4 bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700">Start Over</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BatchImportWizard;
+Step 2: Register the New Route
+
+Action: Open client/src/App.tsx.
+
+Instruction: Add a new <Route> to render our wizard component. Ensure it is placed within the authenticated AppLayout.
+
+TypeScript
+
+// Inside the main router definition
+
+// Find the existing journal entry routes...
+<Route path="/clients/:clientId/entities/:entityId/journal-entries/:id" element={<JournalEntryDetail />} />
+
+{/* --- ADD THIS NEW ROUTE --- */}
+<Route
+  path="/clients/:clientId/entities/:entityId/journal-entries/batch-import"
+  element={<BatchImportWizard />}
+/>
+Verification Plan
+After the agent has added the code, navigate to the new URL in your browser: .../journal-entries/batch-import.
+
+Expected Result: The page must load successfully. It should display the "Batch Journal Entry Import" page header and the placeholder box for "Step 1: Configuration & Upload".
+
+This test will confirm that the wizard component is created, its default state is working, and it is correctly integrated into the application's routing system.
+
+This mission creates the container and foundation for the entire frontend workflow.

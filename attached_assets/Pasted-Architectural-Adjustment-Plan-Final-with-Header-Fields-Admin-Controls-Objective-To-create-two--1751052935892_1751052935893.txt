@@ -1,0 +1,72 @@
+Architectural Adjustment Plan (Final, with Header Fields & Admin Controls)
+Objective: To create two distinct, purpose-built data flows within the Smart Import feature, with the high-volume "Historical" path being restricted to admin users and including a mandatory review step, and ensuring both paths can capture essential header information.
+
+Mission 1: Implement Comprehensive & Conditional UI Controls
+Objective: To build a single, intelligent form that adapts to the user's role and selected import mode, showing all relevant fields and hiding all irrelevant or restricted options.
+
+Architect's Instruction for Agent:
+
+You will now update the UploadConfigurationForm.tsx to be a fully adaptive component, handling mode selection, role-based access, conditional feature fields, and now, the core header information.
+
+Files to Edit:
+
+client/src/features/journal-entries/components/UploadConfigurationForm.tsx
+
+You will need to access the user's role, likely from an authentication context (e.g., useAuth).
+
+Surgical Instructions:
+
+Fetch User Role & Establish Conditions:
+
+Access the current user's role (e.g., const isAdmin = user?.role === 'admin';).
+
+Establish the mode-based condition (e.g., const isStandardBatchMode = form.watch('importMode') === 'standard';).
+
+Add New Header Fields to Schema & UI:
+
+Form Schema: Add description: z.string().optional() and referenceSuffix: z.string().optional() to your formSchema.
+
+UI Components: Add two new FormField components to the top of your form for "Description" and "Reference Suffix". These should be standard text inputs and should be visible for both "Standard" and "Historical" modes.
+
+Implement Role-Based Mode Selection:
+
+The RadioGroup option for "Historical GL Import" must be disabled if isAdmin is false.
+
+Implement Conditional Feature Controls:
+
+Accrual Fields: The FormField components for isAccrual and reversalDate must only be rendered if isStandardBatchMode is true.
+
+Attachment Section: The AttachmentSection component must only be rendered if isStandardBatchMode is true.
+
+Update API Payload:
+
+Locate the onSubmit function.
+
+Ensure that the new description and referenceSuffix values, along with the conditional isAccrual and reversalDate values, are included in the data payload sent to the parent component.
+
+Mission 2: Implement Dual-Path Backend Processing
+Objective: To enhance the backend to intelligently handle the full data payload, including the new header fields and the mode-specific logic.
+
+Architect's Instruction for Agent:
+
+You will enhance the BatchProcessingService.ts to correctly utilize all the data captured in the new, comprehensive form.
+
+File to Edit: server/services/BatchProcessingService.ts
+
+Surgical Instructions:
+
+Update Service Method Signature: The method must now accept the new header fields: process(..., batchSettings: { description?: string, referenceSuffix?: string, ... }).
+
+Apply Header Data: Inside the loop where you create each journal entry:
+
+Set the description of each new entry to the batchSettings.description.
+
+Append the batchSettings.referenceSuffix to the system-generated reference number for each entry.
+
+Implement Dual-Path Logic (No Change): The existing conditional logic remains critical.
+
+If importMode === 'historical': Set status to 'posted'.
+
+If importMode === 'standard': Set status to 'draft' and process accrual/attachment data.
+
+This is the complete and final plan. Proceed with Mission 1
