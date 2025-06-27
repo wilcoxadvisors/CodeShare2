@@ -61,12 +61,13 @@ export const queryClient = new QueryClient({
 });
 
 export async function apiRequest(url: string, options: any = {}) {
-  const { method = "GET", data, ...restOptions } = options;
+  const { method = "GET", data, isFormData = false, ...restOptions } = options;
 
   const config: RequestInit = {
     method,
     headers: {
-      "Content-Type": "application/json",
+      // Only set Content-Type to application/json if not sending FormData
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...restOptions.headers,
     },
     credentials: "include",
@@ -74,10 +75,12 @@ export async function apiRequest(url: string, options: any = {}) {
   };
 
   if (data) {
-    config.body = JSON.stringify(data);
+    // If isFormData is true, send data directly (FormData sets its own Content-Type with boundary)
+    // Otherwise, JSON stringify the data
+    config.body = isFormData ? data : JSON.stringify(data);
   }
 
-  console.log(`DEBUG apiRequest: isFormData: false data type: ${typeof data} url: ${url} method: ${method}`);
+  console.log(`DEBUG apiRequest: isFormData: ${isFormData} data type: ${typeof data} url: ${url} method: ${method}`);
 
   const response = await fetch(url, config);
 
