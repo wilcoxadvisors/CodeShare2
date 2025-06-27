@@ -1,6 +1,9 @@
 import { db } from '../db';
-import { journalEntries, journalEntryLines, txDimensionLink, entities } from '../../shared/schema';
+import { journalEntries, journalEntryLines, txDimensionLink, entities, journalEntryFiles } from '../../shared/schema';
 import { and, eq } from 'drizzle-orm';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 
 export class BatchProcessingService {
   public async processBatch(
@@ -14,7 +17,8 @@ export class BatchProcessingService {
       batchDate?: string;
       isAccrual?: boolean;
       reversalDate?: string;
-    }
+    },
+    pendingAttachments?: any[]
   ) {
     // Wrap the entire batch processing in a single database transaction
     return await db.transaction(async (tx) => {
@@ -117,6 +121,37 @@ export class BatchProcessingService {
         } catch (error) {
           console.error('ARCHITECT_DEBUG: Error processing entry group:', error);
           throw error; // This will cause the transaction to rollback
+        }
+      }
+
+      // 4. Process pending attachments if any
+      if (pendingAttachments && pendingAttachments.length > 0 && createdEntryIds.length > 0) {
+        console.log(`ARCHITECT_DEBUG: Processing ${pendingAttachments.length} pending attachments for ${createdEntryIds.length} entries`);
+        
+        // Process each attachment
+        for (const attachment of pendingAttachments) {
+          try {
+            // Generate storage key for the file
+            const storageKey = `batch-${Date.now()}-${crypto.randomBytes(16).toString('hex')}`;
+            
+            // For each created journal entry, link the attachment
+            for (const journalEntryId of createdEntryIds) {
+              const fileRecord = {
+                journalEntryId: journalEntryId,
+                filename: attachment.name || 'unknown',
+                path: storageKey, // Use path field for file storage key
+                size: attachment.size || 0,
+                mimeType: attachment.type || 'application/octet-stream',
+                uploadedBy: 1, // Default admin user for batch uploads
+              };
+              
+              await tx.insert(journalEntryFiles).values(fileRecord);
+              console.log(`ARCHITECT_DEBUG: Created file record for journal entry ${journalEntryId}`);
+            }
+          } catch (fileError) {
+            console.error('ARCHITECT_DEBUG: Error processing attachment:', fileError);
+            // Continue processing other attachments rather than failing the entire batch
+          }
         }
       }
 

@@ -79,7 +79,11 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     mutationFn: (payload: { approvedEntries: any[] }) => {
       return apiRequest(`/api/clients/${clientId}/journal-entries/batch-process`, {
         method: 'POST',
-        data: { ...payload, entityId }, // Pass the entityId for entry creation
+        data: { 
+          ...payload, 
+          entityId,
+          pendingAttachments: analysisResult?.pendingAttachments || [] // Include supporting documents
+        },
       });
     },
     onSuccess: (response) => {
