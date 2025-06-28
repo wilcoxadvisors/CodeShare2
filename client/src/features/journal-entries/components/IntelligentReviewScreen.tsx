@@ -68,6 +68,14 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
     dimensionsLength: Array.isArray(dimensionsData) ? dimensionsData.length : 'not array'
   });
 
+  // Query for entities data needed by JournalEntryLinesTable
+  const { data: entitiesData } = useQuery({
+    queryKey: ['entities', clientId],
+    queryFn: () => apiRequest(`/api/clients/${clientId}/entities`),
+    enabled: !!clientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Backup query for dimensions (only used when creating new dimension values)
   const { data: freshDimensionsData } = useQuery({
     queryKey: ['dimensions', clientId],

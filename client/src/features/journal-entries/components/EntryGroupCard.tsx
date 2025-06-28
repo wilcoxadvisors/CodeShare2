@@ -94,8 +94,8 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({
   }, [group.lines, accounts, entities, dimensions]);
 
   // Calculate totals
-  const totalDebit = transformedLines.reduce((sum, line) => sum + parseFloat(line.debit || '0'), 0);
-  const totalCredit = transformedLines.reduce((sum, line) => sum + parseFloat(line.credit || '0'), 0);
+  const totalDebit = transformedLines.reduce((sum: number, line: any) => sum + parseFloat(line.debit || '0'), 0);
+  const totalCredit = transformedLines.reduce((sum: number, line: any) => sum + parseFloat(line.credit || '0'), 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
   // Handle line changes
