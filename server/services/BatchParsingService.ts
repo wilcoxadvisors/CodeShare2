@@ -70,7 +70,7 @@ export class BatchParsingService {
       // Skip template example rows or rows with non-numeric amounts
       if (!rawAmount || rawAmount.toLowerCase().includes('example') || 
           !accountCode || accountCode.toLowerCase().includes('example') ||
-          !entryGroupKey || entryGroupKey.toLowerCase().includes('example')) {
+          entryGroupKey.toLowerCase().includes('example')) {
         console.log(`PARSER_DEBUG: Skipping template/example row ${originalRow}: amount="${rawAmount}", account="${accountCode}", key="${entryGroupKey}"`);
         continue;
       }
