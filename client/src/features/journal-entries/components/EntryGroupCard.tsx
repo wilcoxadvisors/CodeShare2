@@ -104,7 +104,7 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                         <TableCell>
                            <Input
                             type="number"
-                            defaultValue={line.amount.isPositive() ? line.amount.toFixed(2) : ''}
+                            defaultValue={Number(line.amount) > 0 ? Number(line.amount).toFixed(2) : ''}
                             onBlur={(e) => onCellUpdate(lineIndex, 'debit', e.target.value)}
                             className="text-right font-mono"
                            />
@@ -112,7 +112,7 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, on
                         <TableCell>
                             <Input
                              type="number"
-                             defaultValue={line.amount.isNegative() ? line.amount.abs().toFixed(2) : ''}
+                             defaultValue={Number(line.amount) < 0 ? Math.abs(Number(line.amount)).toFixed(2) : ''}
                              onBlur={(e) => onCellUpdate(lineIndex, 'credit', e.target.value)}
                              className="text-right font-mono"
                             />
