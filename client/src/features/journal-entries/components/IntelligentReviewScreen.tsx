@@ -324,6 +324,9 @@ export const IntelligentReviewScreen: React.FC<IntelligentReviewScreenProps> = (
             key={group.groupKey}
             group={group}
             index={index}
+            accounts={accountsData || []}
+            entities={entitiesData || []}
+            dimensions={freshDimensionsData || dimensionsData || []}
             onCellUpdate={(lineIndex, field, value) => handleCellUpdate(index, lineIndex, field, value)}
             isSelected={selectionState[group.groupKey] || false}
             onToggleSelected={() => handleToggleSelection(group.groupKey)}

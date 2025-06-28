@@ -55,6 +55,54 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
+  // Transform batch lines to journal entry lines format
+  const transformedLines = useMemo(() => {
+    return group.lines.map((line: any, index: number) => {
+      // Find the account by account code to get the account ID
+      const account = accounts?.find(acc => acc.accountCode === line.accountCode);
+      
+      // Transform dimensions to tags format
+      const tags: DimensionTag[] = [];
+      Object.entries(line.dimensions || {}).forEach(([dimKey, dimValue]) => {
+        const dimension = dimensions?.find(dim => dim.name === dimKey || dim.code === dimKey);
+        if (dimension && dimValue) {
+          const dimensionValue = dimension.values?.find((val: any) => 
+            val.code === dimValue || val.name === dimValue || 
+            val.code?.toLowerCase() === String(dimValue).toLowerCase()
+          );
+          if (dimensionValue) {
+            tags.push({
+              dimensionId: dimension.id,
+              dimensionValueId: dimensionValue.id,
+              dimensionName: dimension.name,
+              dimensionValueName: dimensionValue.name
+            });
+          }
+        }
+      });
+
+      return {
+        _key: nanoid(),
+        accountId: account?.id?.toString() || '',
+        entityCode: line.entityCode || entities?.[0]?.code || '',
+        description: line.description || '',
+        debit: line.debit || '0.00',
+        credit: line.credit || '0.00',
+        tags
+      };
+    });
+  }, [group.lines, accounts, entities, dimensions]);
+
+  // Calculate totals
+  const totalDebit = transformedLines.reduce((sum, line) => sum + parseFloat(line.debit || '0'), 0);
+  const totalCredit = transformedLines.reduce((sum, line) => sum + parseFloat(line.credit || '0'), 0);
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+
+  // Handle line changes
+  const handleLineChange = (index: number, field: string, value: string) => {
+    onCellUpdate(index, field, value);
+  };
+
   // Helper to find an error for a specific line and field for highlighting
   const getErrorForCell = (originalRow: number, field: string) => {
     return group.errors?.find((e: any) => e.originalRow === originalRow && e.field === field);
@@ -91,88 +139,17 @@ export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="p-4 pt-0 border-t">
-            <div className="border rounded-lg overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]">Row</TableHead>
-                    <TableHead>Account Code</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Debit</TableHead>
-                    <TableHead>Credit</TableHead>
-                    {/* Dynamically add dimension headers */}
-                    {Object.keys(group.lines[0]?.dimensions || {}).map(dimKey => (
-                       <TableHead key={dimKey}>{dimKey}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {group.lines.map((line: any, lineIndex: number) => {
-                    const accountError = getErrorForCell(line.originalRow, 'AccountCode');
-                    return (
-                      <TableRow key={line.originalRow} className={accountError ? 'bg-red-50' : ''}>
-                        <TableCell className="text-xs text-muted-foreground">{line.originalRow}</TableCell>
-                        <TableCell>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Input
-                                  defaultValue={line.accountCode}
-                                  onBlur={(e) => onCellUpdate(lineIndex, 'accountCode', e.target.value)}
-                                  className={accountError ? 'border-red-500' : ''}
-                                />
-                              </TooltipTrigger>
-                              {accountError && <TooltipContent><p className="text-red-600">{accountError.message}</p></TooltipContent>}
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            defaultValue={line.description}
-                            onBlur={(e) => onCellUpdate(lineIndex, 'description', e.target.value)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                           <Input
-                            type="number"
-                            defaultValue={Number(line.amount) > 0 ? Number(line.amount).toFixed(2) : ''}
-                            onBlur={(e) => onCellUpdate(lineIndex, 'debit', e.target.value)}
-                            className="text-right font-mono"
-                           />
-                        </TableCell>
-                        <TableCell>
-                            <Input
-                             type="number"
-                             defaultValue={Number(line.amount) < 0 ? Math.abs(Number(line.amount)).toFixed(2) : ''}
-                             onBlur={(e) => onCellUpdate(lineIndex, 'credit', e.target.value)}
-                             className="text-right font-mono"
-                            />
-                        </TableCell>
-                         {Object.keys(line.dimensions).map(dimKey => {
-                           const dimError = getErrorForCell(line.originalRow, dimKey);
-                           return (
-                            <TableCell key={dimKey}>
-                              <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                       <Input
-                                        defaultValue={line.dimensions[dimKey]}
-                                        onBlur={(e) => onCellUpdate(lineIndex, `dimensions.${dimKey}`, e.target.value)}
-                                        className={dimError ? 'border-red-500' : ''}
-                                       />
-                                    </TooltipTrigger>
-                                    {dimError && <TooltipContent><p className="text-red-600">{dimError.message}</p></TooltipContent>}
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-                           );
-                         })}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <JournalEntryLinesTable
+              lines={transformedLines}
+              setLines={() => {}} // Read-only for batch import
+              accounts={accounts}
+              entities={entities}
+              dimensions={dimensions}
+              fieldErrors={{}}
+              totalDebit={totalDebit}
+              totalCredit={totalCredit}
+              isBalanced={isBalanced}
+            />
             {/* Error and Suggestion Details */}
             {errorCount > 0 && (
               <div className="mt-4 space-y-2">
