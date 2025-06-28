@@ -16,6 +16,10 @@ interface EntryGroup {
   groupKey: string; // A unique key for this import run, e.g., 'entry-1'
   lines: ParsedLine[];
   errors: string[]; // To hold errors specific to this group, like being unbalanced
+  header: {
+    Date: string | null;
+    Description: string;
+  };
 }
 
 export class BatchParsingService {
@@ -127,6 +131,10 @@ export class BatchParsingService {
         groupKey,
         lines,
         errors,
+        header: {
+          Date: formData?.batchDate || null,
+          Description: formData?.description || 'Batch Import',
+        },
       });
     });
 
@@ -205,6 +213,10 @@ export class BatchParsingService {
         groupKey: `entry-${entryCounter}`,
         lines: currentGroup,
         errors,
+        header: {
+          Date: formData?.batchDate || null,
+          Description: formData?.description || 'Batch Import',
+        },
       });
     }
 
