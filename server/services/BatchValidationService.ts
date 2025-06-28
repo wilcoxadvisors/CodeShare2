@@ -44,12 +44,29 @@ export class BatchValidationService {
 
     // 2. Create efficient in-memory lookup maps.
     const accountsMap = new Map(allAccounts.map(acc => [acc.accountCode, acc]));
-    const dimensionsMap = new Map(
-      allDimensions.map((dim: any) => [
-        dim.code,
-        { ...dim, valuesMap: new Map(dim.values?.map((val: any) => [val.code, val]) || []) },
-      ])
-    );
+    
+    // Create dimension maps for both code and name lookups
+    const dimensionsMap = new Map();
+    allDimensions.forEach((dim: any) => {
+      const dimensionWithValues = {
+        ...dim,
+        valuesMap: new Map()
+      };
+      
+      // Create value maps for both exact and case-insensitive lookups
+      dim.values?.forEach((val: any) => {
+        dimensionWithValues.valuesMap.set(val.code, val);
+        dimensionWithValues.valuesMap.set(val.code.toLowerCase(), val);
+        if (val.name) {
+          dimensionWithValues.valuesMap.set(val.name, val);
+          dimensionWithValues.valuesMap.set(val.name.toLowerCase(), val);
+        }
+      });
+      
+      // Map by both code and name for flexible lookup
+      dimensionsMap.set(dim.code, dimensionWithValues);
+      dimensionsMap.set(dim.name, dimensionWithValues);
+    });
 
     console.log('ARCHITECT_DEBUG: Created lookup maps - Accounts:', accountsMap.size, 'Dimensions:', dimensionsMap.size);
 
@@ -84,7 +101,7 @@ export class BatchValidationService {
               originalRow: line.originalRow,
               field: dimCode,
             });
-          } else if (!(dimension as any).valuesMap.has(dimValueCode)) {
+          } else if (!(dimension as any).valuesMap.has(dimValueCode) && !(dimension as any).valuesMap.has(dimValueCode.toLowerCase())) {
               // This is a dimension value that doesn't exist - create an error with creation capability
               groupErrors.push({
                 type: 'DIMENSION_VALUE_NOT_FOUND',

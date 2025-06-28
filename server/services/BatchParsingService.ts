@@ -93,10 +93,19 @@ export class BatchParsingService {
       }
 
       // Extract dimension data dynamically from all other columns
+      // Exclude core accounting fields and common template columns
+      const excludedColumns = [
+        'AccountCode', 'Amount', 'LineDescription', 'Description', 'Date', 'EntryGroupKey',
+        'Row', 'Debit', 'Credit' // Also exclude any display-only columns
+      ];
+      
       const dimensions: { [key: string]: string } = {};
       Object.keys(row).forEach(key => {
-        if (!['AccountCode', 'Amount', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
-          dimensions[key] = String(row[key] || '').trim();
+        if (!excludedColumns.includes(key)) {
+          const value = String(row[key] || '').trim();
+          if (value) { // Only include non-empty dimension values
+            dimensions[key] = value;
+          }
         }
       });
 
@@ -180,10 +189,19 @@ export class BatchParsingService {
       }
 
       // Extract dimension data dynamically from all other columns
+      // Exclude core accounting fields and common template columns
+      const excludedColumns = [
+        'AccountCode', 'Amount', 'LineDescription', 'Description', 'Date', 'EntryGroupKey',
+        'Row', 'Debit', 'Credit' // Also exclude any display-only columns
+      ];
+      
       const dimensions: { [key: string]: string } = {};
       Object.keys(row).forEach(key => {
-        if (!['AccountCode', 'Amount', 'LineDescription', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
-          dimensions[key] = String(row[key] || '').trim();
+        if (!excludedColumns.includes(key)) {
+          const value = String(row[key] || '').trim();
+          if (value) { // Only include non-empty dimension values
+            dimensions[key] = value;
+          }
         }
       });
 
