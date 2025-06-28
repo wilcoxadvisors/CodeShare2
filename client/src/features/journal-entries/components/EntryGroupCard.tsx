@@ -1,18 +1,38 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronsUpDown, AlertCircle, Lightbulb } from 'lucide-react';
+import { JournalEntryLinesTable } from './JournalEntryLinesTable';
+import { nanoid } from 'nanoid';
 
-// Using 'any' for now as the exact type will be refined
+// Journal entry line interface matching the existing system
+interface JournalLine {
+  id?: number;
+  _key?: string;
+  accountId: string;
+  entityCode: string;
+  description: string;
+  debit: string;
+  credit: string;
+  tags?: DimensionTag[];
+}
+
+interface DimensionTag {
+  dimensionId: number;
+  dimensionValueId: number;
+  dimensionName: string;
+  dimensionValueName: string;
+}
+
 interface EntryGroupCardProps {
   group: any;
   index: number;
+  accounts: any[];
+  entities: any[];
+  dimensions: any[];
   onCellUpdate: (lineIndex: number, field: string, value: string) => void;
   isSelected: boolean;
   onToggleSelected: () => void;
@@ -20,7 +40,18 @@ interface EntryGroupCardProps {
   onAcceptSuggestion: (groupIndex: number, lineIndex: number, action: any) => void;
 }
 
-export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ group, index, onCellUpdate, isSelected, onToggleSelected, onCreateDimensionValue, onAcceptSuggestion }) => {
+export const EntryGroupCard: React.FC<EntryGroupCardProps> = ({ 
+  group, 
+  index, 
+  accounts,
+  entities,
+  dimensions,
+  onCellUpdate, 
+  isSelected, 
+  onToggleSelected, 
+  onCreateDimensionValue, 
+  onAcceptSuggestion 
+}) => {
   const errorCount = group.errors?.length || 0;
   const suggestionCount = group.aiSuggestions?.length || 0;
 
