@@ -188,42 +188,9 @@ export class BatchParsingService {
         dimensions,
       };
 
-      // If the date changes, it forces the current group to close.
-      if (rowDate && currentDate && new Date(rowDate).getTime() !== new Date(currentDate).getTime()) {
-        if (currentGroup.length > 0) {
-          // Close the previous group, even if unbalanced
-          const balance = currentGroup.reduce((sum, line) => sum.plus(line.amount), new Decimal(0));
-          const errors: string[] = [];
-          if (!balance.isZero()) {
-            errors.push('This entry group is not balanced. The sum of debits and credits does not equal zero.');
-          }
-
-          entryGroups.push({
-            groupKey: `entry-${entryCounter++}`,
-            lines: currentGroup,
-            errors,
-          });
-        }
-        // Start a new group
-        currentGroup = [parsedLine];
-        currentBalance = parsedLine.amount;
-        currentDate = rowDate;
-        continue;
-      }
-
+      // Since all entries use the same batch date, just add all lines to one group
       currentGroup.push(parsedLine);
       currentBalance = currentBalance.plus(parsedLine.amount);
-
-      // If the group balances, close it and start a new one.
-      if (currentBalance.isZero()) {
-        entryGroups.push({
-          groupKey: `entry-${entryCounter++}`,
-          lines: currentGroup,
-          errors: [],
-        });
-        currentGroup = [];
-        currentBalance = new Decimal(0);
-      }
     }
 
     // Handle any remaining lines at the end of the file
