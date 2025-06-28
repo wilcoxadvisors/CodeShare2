@@ -100,7 +100,7 @@ export class BatchParsingService {
         originalRow,
         accountCode,
         amount,
-        description: row['LineDescription'] || row['Description'] || null,
+        description: row['LineDescription'] || null,
         date: formData?.batchDate ? new Date(formData.batchDate) : null,
         dimensions,
       };
@@ -183,7 +183,7 @@ export class BatchParsingService {
         originalRow,
         accountCode,
         amount,
-        description: row['LineDescription'] || row['Description'] || null,
+        description: row['LineDescription'] || null,
         date: batchDate,
         dimensions,
       };
