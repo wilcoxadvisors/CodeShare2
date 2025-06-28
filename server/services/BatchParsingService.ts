@@ -19,7 +19,7 @@ interface EntryGroup {
 }
 
 export class BatchParsingService {
-  public async parse(fileBuffer: Buffer): Promise<{ entryGroups: EntryGroup[] }> {
+  public async parse(fileBuffer: Buffer, formData?: any): Promise<{ entryGroups: EntryGroup[] }> {
     try {
       const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
       const sheetName = 'JournalEntryLines (EDIT THIS)';
@@ -37,10 +37,10 @@ export class BatchParsingService {
 
       if (useKeyBasedGrouping) {
         console.log('ARCHITECT_DEBUG: Using "Explicit Grouping" strategy based on EntryGroupKey.');
-        return this.groupByEntryGroupKey(rows);
+        return this.groupByEntryGroupKey(rows, formData);
       } else {
         console.log('ARCHITECT_DEBUG: Using "Auto-Grouping by Date" strategy.');
-        return this.groupByDateAndBalance(rows);
+        return this.groupByDateAndBalance(rows, formData);
       }
       // --- END OF HYBRID LOGIC ---
 
@@ -55,7 +55,7 @@ export class BatchParsingService {
     }
   }
 
-  private groupByEntryGroupKey(rows: any[]): { entryGroups: EntryGroup[] } {
+  private groupByEntryGroupKey(rows: any[], formData?: any): { entryGroups: EntryGroup[] } {
     const groupsMap = new Map<string, ParsedLine[]>();
 
     for (let i = 0; i < rows.length; i++) {
@@ -100,8 +100,8 @@ export class BatchParsingService {
         originalRow,
         accountCode,
         amount,
-        description: row['Description'] || null,
-        date: row['Date'] instanceof Date ? row['Date'] : null,
+        description: row['LineDescription'] || row['Description'] || null,
+        date: formData?.batchDate ? new Date(formData.batchDate) : null,
         dimensions,
       };
 
@@ -134,31 +134,47 @@ export class BatchParsingService {
     return { entryGroups };
   }
 
-  private groupByDateAndBalance(rows: any[]): { entryGroups: EntryGroup[] } {
+  private groupByDateAndBalance(rows: any[], formData?: any): { entryGroups: EntryGroup[] } {
     const entryGroups: EntryGroup[] = [];
     let currentGroup: ParsedLine[] = [];
     let currentBalance = new Decimal(0);
-    let currentDate = rows[0]?.Date || null;
     let entryCounter = 1;
+
+    // Use batch date from form instead of looking for dates in data
+    const batchDate = formData?.batchDate ? new Date(formData.batchDate) : null;
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const originalRow = i + 2; // +2 to account for 0-index and header row
-      const rowDate = row.Date || null;
 
       // Extract core data and perform initial type validation
-      const amount = new Decimal(row['Amount'] || 0);
+      const rawAmount = String(row['Amount'] || '').trim();
       const accountCode = String(row['AccountCode'] || '').trim();
 
-      if (amount.isZero() || !accountCode) {
-        // Skip empty or invalid rows to make the import more resilient
+      // Skip template example rows or rows with non-numeric amounts
+      if (!rawAmount || rawAmount.toLowerCase().includes('example') || 
+          !accountCode || accountCode.toLowerCase().includes('example')) {
+        console.log(`PARSER_DEBUG: Skipping template/example row ${originalRow}: amount="${rawAmount}", account="${accountCode}"`);
+        continue;
+      }
+
+      // Try to parse amount as decimal, skip if invalid
+      let amount: Decimal;
+      try {
+        amount = new Decimal(rawAmount);
+        if (amount.isZero()) {
+          console.log(`PARSER_DEBUG: Skipping zero amount row ${originalRow}`);
+          continue;
+        }
+      } catch (error) {
+        console.log(`PARSER_DEBUG: Skipping invalid amount row ${originalRow}: "${rawAmount}"`);
         continue;
       }
 
       // Extract dimension data dynamically from all other columns
       const dimensions: { [key: string]: string } = {};
       Object.keys(row).forEach(key => {
-        if (!['AccountCode', 'Amount', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
+        if (!['AccountCode', 'Amount', 'LineDescription', 'Description', 'Date', 'EntryGroupKey'].includes(key)) {
           dimensions[key] = String(row[key] || '').trim();
         }
       });
@@ -167,8 +183,8 @@ export class BatchParsingService {
         originalRow,
         accountCode,
         amount,
-        description: row['Description'] || null,
-        date: rowDate instanceof Date ? rowDate : null,
+        description: row['LineDescription'] || row['Description'] || null,
+        date: batchDate,
         dimensions,
       };
 

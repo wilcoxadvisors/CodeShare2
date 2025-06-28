@@ -163,8 +163,8 @@ export function registerJournalEntryRoutes(app: Express) {
         const validationService = new BatchValidationService();
         const aiService = new AIAssistanceService();
 
-        // 6. Pass the file buffer to the parser
-        const parsedData = await parsingService.parse(req.file.buffer);
+        // 6. Pass the file buffer and form data to the parser
+        const parsedData = await parsingService.parse(req.file.buffer, formData);
 
         // 7. Pass the parsed data to the validator
         const validationResult = await validationService.validate(parsedData, clientId);
